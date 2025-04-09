@@ -1,0 +1,206 @@
+﻿@page "/edit-user/{userId:guid}"
+@using Sapphire2025Models.Authentication
+@using System.ComponentModel.DataAnnotations
+@inject AuthenticationClient mvarCliente
+@inject IntStorageService mvarLocalStorage
+
+@if (null == userModel)
+{
+    <div class="d-flex justify-content-center">
+        <div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="container-md">
+
+        <h3>Usuario @userModel.Name (@userModel.CF)</h3>
+
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <p class="nav-link" @onclick="() => selectTab(0)">Personal</p>
+            </li>
+            <li class="nav-item">
+                <p class="nav-link" @onclick="() => selectTab(1)">Roles</p>
+            </li>
+            <li class="nav-item">
+                <p class="nav-link" @onclick="() => selectTab(2)">Actividad</p>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link disabled" aria-disabled="true">Telegram</a>
+            </li>
+        </ul>
+
+        <div class="container-md">
+            @if (0 == mvarSelectedTab && null != userModel)
+            {
+                <EditForm Model="@userModel" OnValidSubmit="OnSendPersonalDataChanges">
+                    <DataAnnotationsValidator/>
+                    <ValidationSummary/>
+                    <div class="mb-3">
+                        <label for="CF" class="form-label">Carnet</label>
+                        <InputText id="CF" @bind-Value="userModel.CF" class="form-control"  aria-describedby="cfHelp"/>
+                        <div id="cfHelp" class="form-text">Todos los usuarios de este programa disponen de un carnet ferroviario si son de SFM o una identificación externa si pertenecen a una subcontrata.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nombre y apellidos</label>
+                        <InputText id="name" class="form-control" @bind-Value="userModel.Name"/>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Dirección de correo</label>
+                        <InputText id="email" class="form-control" @bind-Value="userModel.Email"/>
+                        <ValidationMessage For="@(() => userModel.Email)"/>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Teléfono</label>
+                        <InputText id="phone" class="form-control" @bind-Value="userModel.PhoneNumber"/>
+                    </div>
+                    <Button class="btn btn-primary" @onclick="OnSendPersonalDataChanges">Enviar</Button>
+                    <Button Class="btn btn-primary" Disabled="@userModel.NullPassword" @onclick="OnPasswordReset">Reset Password</Button>
+                </EditForm>
+            }
+            else if (1 == mvarSelectedTab)
+            {
+                <Grid TItem="ExtendedUserModel.RoleInfo"
+                Class="table table-hover table-bordered table-stripped"
+                DataProvider="RoleInfoProvider"
+                AllowSelection="true"
+                Responsive="true"
+                SelectionMode="GridSelectionMode.Multiple"
+                SelectedItemsChanged="OnSelectionChanged"
+                SelectedItems="@mcolOriginalSelectedRoles">
+                    <GridColumns>
+                        <GridColumn TItem="ExtendedUserModel.RoleInfo" PropertyName="Name">
+                            <HeaderContent>
+                                <h4>Rol</h4>
+                            </HeaderContent>
+                            <ChildContent>
+                                @roleIcon(context.roleId) @context.Name
+                            </ChildContent>
+                        </GridColumn>
+                        <GridColumn TItem="ExtendedUserModel.RoleInfo" PropertyName="Comment">
+                            <HeaderContent>
+                                <h4>Comentarios</h4>
+                            </HeaderContent>
+                            <ChildContent>
+                                @context.Comment
+                            </ChildContent>
+                        </GridColumn>
+                    </GridColumns>
+                </Grid>
+                <Button class ="btn btn-primary" @onclick="OnSendRolesChanges">Enviar</Button>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid userId{ get; set; }
+
+    private string? mvarUserToken { get; set; }
+
+    private List<uint> mcolNewSelectedRoles { get; set; } = new List<uint>();
+    private HashSet<ExtendedUserModel.RoleInfo> mcolOriginalSelectedRoles { get; set; } = new HashSet<ExtendedUserModel.RoleInfo>();
+
+
+    protected async override Task OnInitializedAsync()
+    {
+        //Carga los datos del usuario
+        mvarUserToken = await mvarLocalStorage.getToken();
+        userModel = await mvarCliente.userInfo(mvarUserToken!, userId.ToString());
+        foreach (ExtendedUserModel.RoleInfo roleInfo in userModel.roles.Values)
+        {
+            if (roleInfo.enrolled)
+                mcolOriginalSelectedRoles.Add(roleInfo);
+        }
+    }
+
+    private ExtendedUserModel? userModel { get; set; }
+
+    private byte mvarSelectedTab = 0;
+
+    private void selectTab(byte index)
+    {
+        mvarSelectedTab = index;
+    }
+
+
+
+    private async Task<GridDataProviderResult<ExtendedUserModel.RoleInfo>> RoleInfoProvider (GridDataProviderRequest<ExtendedUserModel.RoleInfo> request)
+    {
+        return new GridDataProviderResult<ExtendedUserModel.RoleInfo>
+            {
+                Data = userModel.roles.Values,
+                TotalCount = userModel.roles.Count
+            };
+    }
+
+    private RenderFragment? roleIcon(uint roleId)
+    {
+        if(roleId<7)
+            return AuthenticationClient.roleIcon(roleId,"black");
+        return null;
+    }
+
+    private void OnSelectionChanged(IEnumerable<ExtendedUserModel.RoleInfo> selectedItems)
+    {
+        mcolNewSelectedRoles.Clear();
+        foreach (ExtendedUserModel.RoleInfo auxInfo in selectedItems)
+        {
+            mcolNewSelectedRoles.Add(auxInfo.roleId);
+        }
+    }
+
+    private async void OnPasswordReset()
+    {
+        //Envía una solicitud de borrado de la contraseña
+        if(null!= userModel && null!=mvarUserToken)
+        {
+            ExtendedUserModel.ResetPasswordDataMessage paquete =
+            new ExtendedUserModel.ResetPasswordDataMessage(mvarUserToken, userModel.guid);
+            await mvarCliente.sendUserResetPassword(paquete);
+        }
+    }
+
+    private async void OnSendPersonalDataChanges()
+    {
+        // Lógica para manejar la sumisión del formulario
+        if (null != userModel && null != mvarUserToken)
+        {
+            ExtendedUserModel.UpdateUserPersonalDataMessage paquete = 
+            new ExtendedUserModel.UpdateUserPersonalDataMessage(mvarUserToken,userModel.guid);
+            paquete.CF = userModel.CF;
+            paquete.UserName = userModel.Name;
+            paquete.Phone = userModel.PhoneNumber;
+            paquete.Email = userModel.Email;
+            await mvarCliente.sendModifyUser(paquete);
+        }
+    }
+    private async Task OnSendRolesChanges()
+    {
+        //Tengo que elaborar las listas de enrole y derrole.
+
+        if(null!=userModel && null!=userModel.roles && null!=mvarUserToken)
+        {
+            ExtendedUserModel.UpdateRolesChangeMessage paquete =
+            new ExtendedUserModel.UpdateRolesChangeMessage(mvarUserToken, userModel.guid);
+            foreach (uint roleId in mcolNewSelectedRoles)
+            {
+                if (userModel.roles.ContainsKey(roleId) && !userModel.roles[roleId].enrolled)
+                    paquete.colEnrole.Add(roleId);
+            }
+            foreach (ExtendedUserModel.RoleInfo roleInfoOrigen in userModel.roles.Values)
+            {
+                if (roleInfoOrigen.enrolled && !mcolNewSelectedRoles.Contains(roleInfoOrigen.roleId))
+                    paquete.colDerole.Add(roleInfoOrigen.roleId);
+            }
+            await mvarCliente.sendUserRolesUpdate(paquete);
+        }    
+    }
+
+}
+
+

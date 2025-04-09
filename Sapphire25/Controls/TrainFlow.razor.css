@@ -1,0 +1,28 @@
+﻿body {
+}
+.upperfix {
+    position: -webkit-sticky; /* Para compatibilidad con Safari */
+    position: sticky;
+    top: 56px;
+    z-index: 1000; /* Asegura que el encabezado esté por encima del contenido */
+    background: #ffffff;
+}
+
+.content {
+    padding: 2px;
+}
+
+.custom-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .custom-table td {
+        padding: 4px;
+        text-align: center;
+    }
+
+.small-cell {
+    width: 4px;
+    height: 4px;
+}

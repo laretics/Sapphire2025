@@ -1,0 +1,37 @@
+﻿@page "/login"
+@inject MontefaroAuthService AuthService
+@inject NavigationManager Navigation
+@using System.Text
+
+<h3>Login</h3>
+<input @bind="Username" placeholder="Username" />
+<input @bind="Password" type="password" placeholder="Password" />
+<button @onclick="auxLogin">Login</button>
+
+@code {
+    private string Username { get; set; }
+    private string Password { get; set; }
+
+    private async Task auxLogin()
+    {
+        string credentials = 
+        Convert.ToBase64String(Encoding.UTF8.GetBytes($"{Username}:{Password}"));
+
+        HttpClient auxCliente = AuthService.GetHttpClient();
+        auxCliente.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", credentials);
+        HttpResponseMessage responseMessage = await auxCliente.PostAsync("/api/MontefaroLogin/login", null);
+        if(responseMessage.IsSuccessStatusCode)
+        {
+            AuthenticationStateProvider.MarkUserAsAuthenticated(Username);
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+               
+            //Mal rollito.
+        }
+    }
+
+}
+
+        

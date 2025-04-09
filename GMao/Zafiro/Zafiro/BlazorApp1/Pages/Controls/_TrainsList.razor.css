@@ -1,0 +1,7 @@
+﻿::deep tr {
+    border-width: 2px; /* border */
+    --tw-border-opacity: 1; /* border-gray-200 */
+    border-color: rgb(229 231 235 / var(--tw-border-opacity)); /* border-gray-200 */
+    background: rgba(255, 255, 255, 0.4);
+    background-color: antiquewhite;
+}

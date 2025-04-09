@@ -1,0 +1,33 @@
+﻿
+<NexusNavOption Selected="@(0==SelectedNavItem)" 
+    onclick="@(()=>SelectNavItem(0))" 
+    hRef="#" Caption="Inicio" 
+    Image="bi bi-house-door-fill-nav-menu" />
+
+<NexusNavOption Selected="@(1==SelectedNavItem)" 
+    onclick="@(()=>SelectNavItem(1))" 
+    hRef="admin/usersmanage" Caption="Usuarios"    
+    Image="bi bi-list-users-nav-menu" />
+
+<NexusNavOption Selected="@(2==SelectedNavItem)"
+    onclick="@(()=>SelectNavItem(2))"
+    hRef="trainFlow" Caption="Flujo"
+                Badge="Nuevo"
+    Image="bi bi-train-diagram-nav-menu" />
+
+<NexusNavOption Selected="@(3==SelectedNavItem)"
+    onclick="@(()=>SelectNavItem(3))"
+    hRef="counter" Caption="Contador"
+    Image="bi bi-plus-square-fill-nav-menu"/>
+
+<NexusNavOption Selected="@(4==SelectedNavItem)"
+    onclick="@(()=>SelectNavItem(4))"
+    hRef="weather" Caption="El tiempo"
+    Image="bi bi-list-nested-nav-menu"/>
+
+@code {
+    [Parameter]
+    public int SelectedNavItem{ get; set; }
+
+    private void SelectNavItem(int id){SelectedNavItem = id;}
+}

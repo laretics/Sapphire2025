@@ -1,0 +1,38 @@
+﻿@using Zafiro25.Models
+@using Sapphire25.Icons.Status
+@auxIco
+@code 
+{
+	[Parameter]
+	public Common.TrainStatus status { get; set; } = Common.TrainStatus.Unknown;
+	[Parameter]
+	public string color { get; set; } = "white";
+	private RenderFragment auxIco
+	{
+		get
+		{
+			switch (status)
+			{
+				case Common.TrainStatus.Available: 
+					return@<Available color="@color"/>;
+				case Common.TrainStatus.DepotRequested:
+					return@<DepotRequested color="@color" />;
+				case Common.TrainStatus.DepotAvailable:
+					return@<DepotAvailable color="@color" />;
+				case Common.TrainStatus.RequestToDiagnose:
+					return@<RequestToDiagnose color="@color" />;
+				case Common.TrainStatus.RequestToRepair:
+					return@<RequestToRepair color="@color" />;
+				case Common.TrainStatus.Repairing:
+					return@<Repairing color="@color" />;
+				case Common.TrainStatus.Maintenance:
+					return@<Maintenance color="@color"/>;
+				case Common.TrainStatus.StandStill:
+					return@<StandStill Color="@color" />;
+				case Common.TrainStatus.Disabled:
+					return@<Disabled color="@color" />;
+			}
+			return@<Unknown color="@color"/>;
+		}
+	}
+}

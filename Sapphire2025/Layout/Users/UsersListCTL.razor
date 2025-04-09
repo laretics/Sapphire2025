@@ -1,0 +1,252 @@
+﻿@inject NavigationManager mvarNavigator
+<Grid TItem="UserModel"
+AllowFiltering="true"
+AllowPaging="true"
+AllowSorting="true"
+AutoHidePaging="true"
+Class="table table-hover table-bordered table-striped"
+DataProvider="UsersDataProvider"
+PageSize="5"
+PageSizeSelectorVisible="true"
+PageSizeSelectorItems="@(new int[] { 5,10,20 })"
+ItemsPerPageText="Usuarios por página"
+EnumFilterSelectText="Seleccionar"
+EmptyText="No hay registros"
+FiltersTranslationProvider="GridFiltersTranslationProvider"
+PaginationItemsTextFormat="{0} - {1} de {2} elementos"
+AllowRowClick
+OnRowClick="OnRowClick"
+Responsive="true">
+    <GridColumns>
+        <GridColumn TItem="UserModel" PropertyName="CF" SortKeySelector="item => item.CF">
+            <HeaderContent>
+                <Sapphire2025.Icons.Fields.CF />
+            </HeaderContent>
+            <ChildContent>
+                @userIcon(context.CredentialKey) @context.CF
+                @if(@context.NullPassword)
+                {
+                    <Sapphire2025.Icons.Status.Disabled color="red"/>
+                }
+            </ChildContent>            
+        </GridColumn>
+        <GridColumn TItem="UserModel" PropertyName="Name" SortKeySelector="item => item.Name">
+            <HeaderContent>
+                <Sapphire2025.Icons.Headers.User/>
+            </HeaderContent>
+            <ChildContent>
+                @context.Name
+            </ChildContent>            
+        </GridColumn>
+        <GridColumn TItem="UserModel" HeaderText="Correo" PropertyName="Email" SortKeySelector="item => item.Email">
+            <HeaderContent>
+                <Sapphire2025.Icons.Fields.Mail/>
+            </HeaderContent>
+            <ChildContent>
+                @context.Email
+            </ChildContent>            
+        </GridColumn>
+        <GridColumn TItem="UserModel" HeaderText="Teléfono" PropertyName="PhoneNumber" SortKeySelector="item => item.PhoneNumber">
+            <HeaderContent>
+                <Sapphire2025.Icons.Fields.Phone/>
+            </HeaderContent>
+            <ChildContent>
+                @context.PhoneNumber
+            </ChildContent>            
+        </GridColumn>
+    </GridColumns>
+
+</Grid>
+
+@code {
+    [Parameter]
+    public IEnumerable<UserModel> users { get; set; }
+
+    private async Task OnRowClick(GridRowEventArgs<UserModel> args)
+    {
+        Guid auxUserId = args.Item.guid;
+        mvarNavigator.NavigateTo(string.Format("/edit-user/{0}",args.Item.guid));
+
+        //var userId = args.; // Asumiendo que UserModel tiene una propiedad Id
+        //mvarNavigator.NavigateTo($"/edit-user/{userId}");
+    }
+
+    private async Task<GridDataProviderResult<UserModel>> UsersDataProvider(GridDataProviderRequest<UserModel> request)
+    {
+        IEnumerable<UserModel>? auxLista = users;
+        List<UserModel> intermedia = auxLista.ToList();
+
+        if(null!=request.Filters && request.Filters.Any())
+        {
+            //Vamos pasando los filtros hasta reducir la lista
+            foreach (FilterItem auxFiltro in request.Filters)
+            {
+                intermedia = auxFilter(intermedia, auxFiltro.PropertyName, auxFiltro.Value, auxFiltro.Operator);
+            }
+        }
+        auxLista = intermedia;
+
+        int totalCount = auxLista.Count();
+        return new GridDataProviderResult<UserModel>
+            {
+                Data = auxLista,
+                TotalCount = totalCount
+            };
+    }
+
+    private async Task<IEnumerable<FilterOperatorInfo>> GridFiltersTranslationProvider()
+    {       
+        List<FilterOperatorInfo> salida = new List<FilterOperatorInfo>();
+
+        // number/date/boolean
+        salida.Add(new("=", "igual que", FilterOperator.Equals));
+        salida.Add(new("!=", "distinto a", FilterOperator.NotEquals));
+        // number/date
+        salida.Add(new("<", "menor que", FilterOperator.LessThan));
+        salida.Add(new("<=", "menor o igual que", FilterOperator.LessThanOrEquals));
+        salida.Add(new(">", "mayor que", FilterOperator.GreaterThan));
+        salida.Add(new(">=", "mayor o igual que", FilterOperator.GreaterThanOrEquals));
+        // string
+        salida.Add(new("*a*", "contiene a", FilterOperator.Contains));
+        salida.Add(new("!*a*", "no contiene a", FilterOperator.DoesNotContain));
+        salida.Add(new("a**", "empieza con", FilterOperator.StartsWith));
+        salida.Add(new("**a", "termina con", FilterOperator.EndsWith));
+        salida.Add(new("=", "igual que", FilterOperator.Equals));
+        // common
+        salida.Add(new("x", "sin filtro", FilterOperator.Clear));
+
+        return await Task.FromResult(salida);
+    }
+
+    private RenderFragment userIcon(byte credentials) 
+    { 
+        return AuthenticationClient.userIcon(credentials,"black"); 
+    }
+
+    private List<UserModel> auxFilter (List<UserModel> input, string fieldId, string filter, FilterOperator @operator)
+    {
+        if (filter.Length < 1 || @operator== FilterOperator.Clear) return input;
+        switch (@operator)
+        {
+            case FilterOperator.Equals:
+                switch (fieldId)
+                {
+                    case "CF":
+                        return input.Where(xx => xx.CF.Equals(filter)).ToList();
+                    case "Name":
+                        return input.Where(xx => xx.Name.Equals(filter)).ToList();
+                    case "Email":
+                        return input.Where(xx => xx.Email.Equals(filter)).ToList();
+                    case "PhoneNumber":
+                        return input.Where(xx => xx.PhoneNumber.Equals(filter)).ToList();
+                }
+                break;
+            case FilterOperator.StartsWith:
+                switch (fieldId)
+                {
+                    case "CF":
+                        return input.Where(xx => xx.CF.StartsWith(filter)).ToList();
+                    case "Name":
+                        return input.Where(xx => xx.Name.StartsWith(filter)).ToList();
+                    case "Email":
+                        return input.Where(xx => xx.Email.StartsWith(filter)).ToList();
+                    case "PhoneNumber":
+                        return input.Where(xx => xx.PhoneNumber.StartsWith(filter)).ToList();
+                }
+                break;
+            case FilterOperator.NotEquals:
+                switch (fieldId)
+                {
+                    case "CF":
+                        return input.Where(xx => !xx.CF.Equals(filter)).ToList();
+                    case "Name":
+                        return input.Where(xx => !xx.Name.Equals(filter)).ToList();
+                    case "Email":
+                        return input.Where(xx => !xx.Email.Equals(filter)).ToList();
+                    case "PhoneNumber":
+                        return input.Where(xx => !xx.PhoneNumber.Equals(filter)).ToList();
+                }
+                break;
+            case FilterOperator.LessThan:
+                switch (fieldId)
+                {
+                    case "CF":
+                        return input.Where(xx => xx.CF.CompareTo(filter) < 0).ToList();
+                    case "Name":
+                        return input.Where(xx => xx.Name.CompareTo(filter) < 0).ToList();
+                    case "Email":
+                        return input.Where(xx => xx.Email.CompareTo(filter) < 0).ToList();
+                    case "PhoneNumber":
+                        return input.Where(xx => xx.PhoneNumber.CompareTo(filter) < 0).ToList();
+                }
+                break;
+            case FilterOperator.LessThanOrEquals:
+                switch (fieldId)
+                {
+                    case "CF":
+                        return input.Where(xx => xx.CF.CompareTo(filter) <= 0).ToList();
+                    case "Name":
+                        return input.Where(xx => xx.Name.CompareTo(filter) <= 0).ToList();
+                    case "Email":
+                        return input.Where(xx => xx.Email.CompareTo(filter) <= 0).ToList();
+                    case "PhoneNumber":
+                        return input.Where(xx => xx.PhoneNumber.CompareTo(filter) <= 0).ToList();
+                }
+                break;
+            case FilterOperator.GreaterThan:
+                switch (fieldId)
+                {
+                    case "CF":
+                        return input.Where(xx => xx.CF.CompareTo(filter) > 0).ToList();
+                    case "Name":
+                        return input.Where(xx => xx.Name.CompareTo(filter) > 0).ToList();
+                    case "Email":
+                        return input.Where(xx => xx.Email.CompareTo(filter) > 0).ToList();
+                    case "PhoneNumber":
+                        return input.Where(xx => xx.PhoneNumber.CompareTo(filter) > 0).ToList();
+                }
+                break;
+            case FilterOperator.GreaterThanOrEquals:
+                switch (fieldId)
+                {
+                    case "CF":
+                        return input.Where(xx => xx.CF.CompareTo(filter) >= 0).ToList();
+                    case "Name":
+                        return input.Where(xx => xx.Name.CompareTo(filter) >= 0).ToList();
+                    case "Email":
+                        return input.Where(xx => xx.Email.CompareTo(filter) >= 0).ToList();
+                    case "PhoneNumber":
+                        return input.Where(xx => xx.PhoneNumber.CompareTo(filter) >= 0).ToList();
+                }
+                break;
+            case FilterOperator.Contains:
+                switch (fieldId)
+                {
+                    case "CF":
+                        return input.Where(xx => xx.CF.Contains(filter)).ToList();
+                    case "Name":
+                        return input.Where(xx => xx.Name.Contains(filter)).ToList();
+                    case "Email":
+                        return input.Where(xx => xx.Email.Contains(filter)).ToList();
+                    case "PhoneNumber":
+                        return input.Where(xx => xx.PhoneNumber.Contains(filter)).ToList();
+                }
+                break;
+            case FilterOperator.DoesNotContain:
+                switch (fieldId)
+                {
+                    case "CF":
+                        return input.Where(xx => !xx.CF.Contains(filter)).ToList();
+                    case "Name":
+                        return input.Where(xx => !xx.Name.Contains(filter)).ToList();
+                    case "Email":
+                        return input.Where(xx => !xx.Email.Contains(filter)).ToList();
+                    case "PhoneNumber":
+                        return input.Where(xx => !xx.PhoneNumber.Contains(filter)).ToList();
+                }
+                break;
+            }        
+        return input;
+    }
+}
+

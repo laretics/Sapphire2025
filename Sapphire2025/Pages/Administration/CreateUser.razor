@@ -1,0 +1,56 @@
+﻿@page "/create-user"
+@using Sapphire2025Models.Authentication
+@using System.ComponentModel.DataAnnotations
+@inject AuthenticationClient mvarCliente
+@inject IntStorageService mvarLocalStorage
+<PageTitle>Nuevo usuario</PageTitle>
+<h3>Nuevo Usuario</h3>
+@if(null==Model)
+{
+	<div class="d-flex justify-content-center">
+		<div class="spinner-border" role="status">
+			<span class="visually-hidden">Cargando...</span>
+		</div>
+	</div>
+}
+else
+{
+	<div class="row">
+		<div class="col-5">
+			<EditForm Model="@Model">
+				<div class="mb-3">
+					<label for="CF" class="form-label">Carnet</label>
+					<InputText id="CF" @bind-Value="Model.CF" class="form-control" aria-describedby="CFNotes"></InputText>
+					<div id="CFNotes" class="form-text">El número de carnet ferroviario es un código de identificación único para los trabajadores de la empresa y para los externos, que deberán ser identificados con una numeración alternativa y compatible con la de los internos.</div>
+				</div>
+				<div class="mb-3">
+					<label for="Name" class="form-label">Nombre</label>
+					<InputText id="Name" @bind-Value="Model.UserName" class="form-control" aria-describedby="NameNotes"></InputText>
+					<div id="NameNotes" class="form-text">El nombre de usuario que está introduciendo será buscado en la base de datos actual para evitar dar de alta dos veces al mismo usuario en el sistema. Por favor, asegúrese de que la lista de usuarios en conflicto aparezca vacía o bien los nombres que contiene pertenezcan a otras personas.</div>
+				</div>
+				<Button Class="btn btn-primary">Comprobar</Button>
+				<Button Class="btn btn-primary">Enviar</Button>
+			</EditForm>
+
+		</div>
+		<div class="col-7">
+			<Sapphire2025.Layout.Users.UsersListCTL users="@mcolUsers">
+
+			</Sapphire2025.Layout.Users.UsersListCTL>
+		</div>
+	</div>
+}
+@code {
+	private List<UserModel> mcolUsers = new List<UserModel>();	
+	[Parameter]
+	public ExtendedUserModel.CreateNewUserDataMessage? Model{ get; set; }
+
+	protected async override Task OnInitializedAsync()
+	{
+		//return base.OnInitializedAsync();
+		string? auxUserToken = await mvarLocalStorage.getToken();
+		Model = new ExtendedUserModel.CreateNewUserDataMessage(auxUserToken);
+		Model.CF = string.Empty;
+		Model.UserName = string.Empty;
+	}
+}

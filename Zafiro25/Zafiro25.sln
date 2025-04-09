@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35707.178
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zafiro25", "Zafiro25\Zafiro25.csproj", "{3238595A-9B4F-470A-8928-A33A2A850C7B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zafiro25.Client", "Zafiro25.Client\Zafiro25.Client.csproj", "{D751F176-225F-40E0-BE05-70C9BA5FAEC4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zafiro25.Models", "Zafiro25.Models\Zafiro25.Models.csproj", "{815E11DE-8A22-4F0B-931B-3E4D20AAE07C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3238595A-9B4F-470A-8928-A33A2A850C7B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3238595A-9B4F-470A-8928-A33A2A850C7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3238595A-9B4F-470A-8928-A33A2A850C7B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3238595A-9B4F-470A-8928-A33A2A850C7B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D751F176-225F-40E0-BE05-70C9BA5FAEC4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D751F176-225F-40E0-BE05-70C9BA5FAEC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D751F176-225F-40E0-BE05-70C9BA5FAEC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D751F176-225F-40E0-BE05-70C9BA5FAEC4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{815E11DE-8A22-4F0B-931B-3E4D20AAE07C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{815E11DE-8A22-4F0B-931B-3E4D20AAE07C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{815E11DE-8A22-4F0B-931B-3E4D20AAE07C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{815E11DE-8A22-4F0B-931B-3E4D20AAE07C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

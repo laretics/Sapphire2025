@@ -1,0 +1,30 @@
+﻿.sidebar-link {
+    color: #a0a3bd;
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    margin: 4px 16px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+    .sidebar-link:hover {
+        color: #ffffff;
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateX(5px);
+    }
+
+    .sidebar-link.active {
+        color: #ffffff;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+.collapsed .sidebar-link {
+    text-align: center;
+    padding: 1rem !important;
+    margin: 4px 8px;
+}
+
+    .collapsed .sidebar-link i {
+        margin: 0 !important;
+    }
+

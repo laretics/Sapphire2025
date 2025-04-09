@@ -1,0 +1,53 @@
+﻿@using Sapphire25.Models.Model
+@using Sapphire25.Icons.Status
+<tr class="train-table">
+@if(null!=Train)
+{
+		<td>
+			<IcoStatus color="navy" status="@Train.lastStatus" />
+		</td>
+		<td><a class="@classTrain" href="/TrainReport/@Train.id">@Train.name</a></td>
+		<td>Desconocido</td>
+		<td>@lastTimeString</td>
+		<td>@Train.lastUserInfo</td>
+		@if (showCommands)
+		{
+			<td>
+			</td>
+		}
+}
+</tr>
+
+@code {
+	/// Esto es una fila de una tabla de trenes representando eso... un tren.
+	[Parameter]
+	public TrainModel? Train { get; set; } = new TrainModel(); //Id del tren que se va a representar
+	[Parameter] //Muestra la columna de estado del tren (para vistas mezcladas)
+	public bool showStatus { get; set; } = false;
+	[Parameter] //Botones de navegación
+	public bool showCommands { get; set; } = false;
+
+	private string classTrain
+	{
+		get
+		{
+			if(null!=Train)
+			{
+				switch (Train.name.Substring(0, 1))
+				{
+					case "1": return "btn-1100";
+					case "7": return "btn-7100";
+					case "8": return "btn-8100";
+					case "9": return "btn-9100";
+				}				
+			}
+			return "btn-other";
+		}
+	}
+
+	private string lastTimeString
+	{
+		get => (null==Train)?"-":Common.timeString(Train.lastUpdateTime);
+	}	
+
+}

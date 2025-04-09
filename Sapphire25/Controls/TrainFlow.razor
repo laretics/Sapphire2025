@@ -1,0 +1,67 @@
+﻿@using Sapphire25.Models
+@using Sapphire25.Models.Model
+@using Sapphire25.Icons.Status
+@using Sapphire25.Icons.Arrows
+@using Sapphire25.Icons.Actions
+<table class="custom-table">
+    @if (advancedMode)
+    {
+        <tr>
+            <TrainStatusBlock colTrains=@colTrains status=Common.TrainStatus.Unknown />
+            <td class="small-cell"><LeftRight /></td>
+            <TrainStatusBlock colTrains=@colTrains status=Common.TrainStatus.StandStill />
+            <td class="small-cell"><LeftRight /></td>
+            <TrainStatusBlock colTrains=@colTrains status=Common.TrainStatus.Disabled />
+        </tr>
+        <tr>
+            <td class="small-cell"></td>
+            <td class="small-cell"></td>
+            <td class="small-cell"><UpDown /></td>
+            <td class="small-cell"></td>
+            <td class="small-cell"></td>
+        </tr>
+    }
+    <tr>
+        <TrainStatusBlock colTrains=@colTrains status=Common.TrainStatus.RequestToRepair />
+        <td class="small-cell"><Right /></td>
+        <TrainStatusBlock colTrains=@colTrains status=Common.TrainStatus.Repairing />
+        <td class="small-cell"></td>
+        <td class="small-cell"></td>
+    </tr>
+    <tr>
+        <td class="small-cell"><Up /></td>
+        <td class="small-cell"></td>
+        <td class="small-cell"><Down /></td>
+        <td class="small-cell"></td>
+        <td class="small-cell"></td>
+    </tr>
+    <tr>
+        <TrainStatusBlock colTrains=@colTrains status=Common.TrainStatus.RequestToDiagnose />
+        <td class="small-cell"><LeftRight /></td>
+        <TrainStatusBlock colTrains=@colTrains status=Common.TrainStatus.Available />
+        <td class="small-cell"><Right /> <Scheduler /></td>
+        <TrainStatusBlock colTrains=@colTrains status=Common.TrainStatus.DepotRequested />
+    </tr>
+    <tr>
+        <td class="small-cell"></td>
+        <td class="small-cell"></td>
+        <td class="small-cell"><Up /></td>
+        <td class="small-cell"></td>
+        <td class="small-cell"><UpDown /></td>
+    </tr>
+    <tr>
+        <td class="small-cell"></td>
+        <td class="small-cell"></td>
+        <TrainStatusBlock colTrains=@colTrains status=Common.TrainStatus.Maintenance />
+        <td class="small-cell"><LeftRight /></td>
+        <TrainStatusBlock colTrains=@colTrains status=Common.TrainStatus.DepotAvailable />
+    </tr>
+</table>
+
+@code {
+    [Parameter]
+    public IEnumerable<TrainModel>? colTrains{ get; set; }
+    [Parameter]
+    public bool advancedMode { get; set; } = false;
+
+}

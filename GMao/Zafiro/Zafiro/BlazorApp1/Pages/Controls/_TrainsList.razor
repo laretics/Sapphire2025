@@ -1,0 +1,471 @@
+﻿
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@using ZafiroGmao.Data
+@using ZafiroGmao.Data.Models
+@inject NavigationManager mvarNavigationManager
+@inject ApplicationDbContext mvarStorage
+@inject AuthenticationStateProvider mvarAuthenticationStateProvider
+@inject IJSRuntime mvarJSRuntime
+@if(mcolTrains==default!)
+{
+    <p><em>Cargando material móvil...</em></p>
+}
+else
+{
+    if(mcolTrains.Count()>0)
+    {
+        <QuickGrid class="table table-bordered table-striped"
+                   Virtualize="true" ItemSize="@mvarItemsSize"
+        Items="mcolTrains" Pagination="mvarPagination">
+            <TemplateColumn Title="UT" Sortable="true" SortBy="ordenPorNombre">
+                <span @onclick="() => commandOpenTrain(context.TrainId)">
+                @if (@auxAvailable(context.LastChange))
+                {
+                        <div class="oi oi-check" />                        
+                }
+                else
+                {                    
+                        <div class="oi oi-circle-x" />
+                }
+                    @context.Name
+                </span>
+            </TemplateColumn>
+            <PropertyColumn Property="@(t => t.LastStatusString)" Title="Estado" Sortable="true" />
+            <PropertyColumn Property="@(t => t.PendingWorks)" Title="Pr" />
+            <PropertyColumn Property="@(t => t.TimeSpanString)" Title="Fecha y Hora" Sortable="true" />
+            <PropertyColumn Property="@(t => t.LastUserId)" Title="Usuario" Sortable="true" />
+            <PropertyColumn Property="@(t => t.LastCommentString)" Title="Notas" />
+            <TemplateColumn Title="Comando" Align="Align.Center">
+                @if (context.LastStatus == Common.TrainStatus.Unknown)
+                {
+                    if(null!=Role && Role.Equals("Root"))
+                    {
+                        <button @onclick="@(() => commandActivate(context.TrainId))"><div class="oi oi-flash" /></button>
+                    }                    
+                }
+                else if (context.LastStatus == Common.TrainStatus.RequestToRepair)
+                {
+                    if(null!=Role && (Role.Equals("Inspector")||Role.Equals("Root")||Role.Equals("Oficial")))
+                    {
+                        <button @onclick="@(() => commandRepair(context.TrainId))"><div class="oi oi-wrench" /></button>
+                    }
+                }
+                else if (context.LastStatus == Common.TrainStatus.Repairing)
+                {
+                    if (null != Role && (Role.Equals("Mechanic") || Role.Equals("Root") || Role.Equals("Oficial")))
+                    {
+                        <button @onclick="@(() => commandEndRepair(context.TrainId))"><div class="oi oi-flag" /></button>
+                    }
+                }
+                else if ((context.LastStatus == Common.TrainStatus.Maintenance) || (context.LastStatus == Common.TrainStatus.Repairing))
+                {
+                    if(null!=Role && (Role.Equals("Mechanic")||Role.Equals("Root")||Role.Equals("Oficial")))
+                    {
+                        <button @onclick="@(() => commandEndMaintenance(context.TrainId))"><div class="oi oi-flag" /></button>
+                        <button @onclick="@(() => commandDiferMaintenance(context.TrainId))"><div class="oi oi-action-undo" /></button>
+                    }                
+                }                
+                else if (context.LastStatus == Common.TrainStatus.Available)
+                {
+                    if (null != Role && (Role.Equals("Oficial") || Role.Equals("Mechanic") || Role.Equals("Root")))
+                    {
+                        <button @onclick="@(() => commandDepotRequest(context.TrainId))"><div class="oi oi-loop-circular" /></button>
+                    }
+                }
+                else if (context.LastStatus == Common.TrainStatus.DepotRequested)
+                {
+                    if (null != Role && (Role.Equals("Inspector") || Role.Equals("Root")))
+                    {
+                        <button @onclick="@(() => commandAcceptMaintenance(context.TrainId))"><div class="oi oi-loop-circular" /></button>
+                    }
+                }
+                else if (context.LastStatus == Common.TrainStatus.DepotAvailable)
+                {
+                    if(null!=Role)
+                    {
+                        if (Role.Equals("Oficial"))
+                        {
+                            <button @onclick="@(() => commandBeginMaintenance(context.TrainId))"><div class="oi oi-wrench" /></button>
+                        }
+                        else if (Role.Equals("Inspector"))
+                        {
+                            <button @onclick="@(() => commandRescueFromDepot(context.TrainId))"><div class="oi oi-action-undo" /></button>
+                        }
+                    }
+                }
+            </TemplateColumn>
+        </QuickGrid>
+        <Paginator State="mvarPagination" >
+            <SummaryTemplate>
+                    @(AuxSummaryPageTemplate())
+            </SummaryTemplate>    
+    </Paginator>
+    }
+    else
+    {
+        <p><em>Actualmente no existe ningún tren en este estado.</em></p>
+    }
+}
+
+
+@code 
+{
+    [Parameter]
+    public string? Filter{ get; set; }
+    [Parameter]
+    public string? Role{ get; set; }
+
+    private int mvarItemsSize { get; set; } = 40;
+
+    private IQueryable<TrainItemListModelType> mcolTrains { get; set; } = default!; //Colección de trenes a representar
+
+
+    private GridSort<TrainItemListModelType> ordenPorNombre = GridSort<TrainItemListModelType>.ByAscending(t => t.Name);    
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+        //Rellenamos la lista en función de la tabla que toca cargar.
+        //ZafiroGmao.Data.Models.Common.TrainViewType auxVista = (ZafiroGmao.Data.Models.Common.TrainViewType)Filter;
+        List<TrainItemListModelType> auxLista;
+        switch(Filter)
+        {
+            case "Available": //Trenes disponibles
+                auxLista = await (from trainRecord in mvarStorage.Trains
+                                  join changesRecord in mvarStorage.StatusChanges
+                                  on trainRecord.lastChange equals changesRecord.Guid
+                                    into grupoUltimoCambio
+                                  from subGrupo in grupoUltimoCambio.DefaultIfEmpty()
+                                  join userRecord in mvarStorage.Users
+                                  on subGrupo.UserId equals userRecord.Id
+                                  where subGrupo.mvarOperationId == 5 || //Fin de reparación
+                                        subGrupo.mvarOperationId == 8 || //Mantenimiento rechazado
+                                         subGrupo.mvarOperationId == 6 || //Mantenimiento solicitado
+                                         subGrupo.mvarOperationId == 11 || //Fin de mantenimiento
+                                         subGrupo.mvarOperationId == 2 //Solicitado de taller
+                                  select new TrainItemListModelType
+                                      {
+                                          TrainId = trainRecord.Guid,
+                                          LastChange = subGrupo,
+                                          Name = trainRecord.Name,
+                                          TrainComment = trainRecord.Comment,
+                                          PendingWorks = "-",
+                                          LastUser = userRecord
+                                      })
+                             .OrderBy(xx => xx.Name).ToListAsync();
+                mcolTrains = auxLista.AsQueryable();
+                break;
+            case "DepotAvailable": //Trenes a disposición de taller para iniciar preventivos
+                auxLista = await (from trainRecord in mvarStorage.Trains
+                                  join changesRecord in mvarStorage.StatusChanges
+                                  on trainRecord.lastChange equals changesRecord.Guid
+                                    into grupoUltimoCambio
+                                  from subGrupo in grupoUltimoCambio.DefaultIfEmpty()
+                                  join userRecord in mvarStorage.Users
+                                  on subGrupo.UserId equals userRecord.Id
+                                  where subGrupo.mvarOperationId == 7|| //DepotRequestAccept
+                                        subGrupo.mvarOperationId == 12 //DiferMaintenance
+                                  select new TrainItemListModelType
+                                      {
+                                          TrainId = trainRecord.Guid,
+                                          LastChange = subGrupo,
+                                          Name = trainRecord.Name,
+                                          TrainComment = trainRecord.Comment,
+                                          PendingWorks = "-",
+                                          LastUser = userRecord
+                                      })
+                             .OrderBy(xx => xx.Name).ToListAsync();
+                mcolTrains = auxLista.AsQueryable();
+                break;
+            case "RepairPendant": //Trenes pendientes de entrar en taller
+                auxLista = await mvarStorage.Trains
+                            .GroupJoin(mvarStorage.StatusChanges,
+                                trainRecord => trainRecord.lastChange,
+                                changesRecord => changesRecord.Guid,
+                            (trainRecord, grupoUltimoCambio) =>
+                            new { trainRecord, grupoUltimoCambio })
+                            .SelectMany(xx => xx.grupoUltimoCambio.DefaultIfEmpty(),
+                            (xx, subGrupo) => new { xx.trainRecord, subGrupo })
+                            .Join(mvarStorage.Users,
+                            xx => xx.subGrupo.UserId,
+                            userRecord => userRecord.Id,
+                            (xx, userRecord) => new { xx.trainRecord, xx.subGrupo, userRecord })
+                            .Where(xx => xx.subGrupo.mvarOperationId == 0)
+                            .Select(xx => new TrainItemListModelType
+                                {
+                                    TrainId = xx.trainRecord.Guid,
+                                    LastChange = xx.subGrupo,
+                                    Name = xx.trainRecord.Name,
+                                    TrainComment = xx.trainRecord.Comment,
+                                    PendingWorks = "-",
+                                    LastUser = xx.userRecord
+                                })
+                                .OrderBy(xx => xx.Name).ToListAsync();
+                mcolTrains = auxLista.AsQueryable();
+                break;
+            case "Repairing": //Trenes en taller
+                auxLista = await (from trainRecord in mvarStorage.Trains
+                                  join changesRecord in mvarStorage.StatusChanges
+                                  on trainRecord.lastChange equals changesRecord.Guid
+                                    into grupoUltimoCambio
+                                  from subGrupo in grupoUltimoCambio.DefaultIfEmpty()
+                                  join userRecord in mvarStorage.Users
+                                  on subGrupo.UserId equals userRecord.Id
+                                  where subGrupo.mvarOperationId == 4
+                                  select new TrainItemListModelType
+                                      {
+                                          TrainId = trainRecord.Guid,
+                                          LastChange = subGrupo,
+                                          Name = trainRecord.Name,
+                                          TrainComment = trainRecord.Comment,
+                                          PendingWorks = "-",
+                                          LastUser = userRecord
+                                      })
+                             .OrderBy(xx => xx.Name).ToListAsync();
+                mcolTrains = auxLista.AsQueryable();
+                break;
+            case "Maintenance": //Trenes en Mantenimiento
+                auxLista = await (from trainRecord in mvarStorage.Trains
+                                  join changesRecord in mvarStorage.StatusChanges
+                                  on trainRecord.lastChange equals changesRecord.Guid
+                                    into grupoUltimoCambio
+                                  from subGrupo in grupoUltimoCambio.DefaultIfEmpty()
+                                  join userRecord in mvarStorage.Users
+                                  on subGrupo.UserId equals userRecord.Id
+                                  where subGrupo.mvarOperationId == 10
+                                  select new TrainItemListModelType
+                                      {
+                                          TrainId = trainRecord.Guid,
+                                          LastChange = subGrupo,
+                                          Name = trainRecord.Name,
+                                          TrainComment = trainRecord.Comment,
+                                          PendingWorks = "-",
+                                          LastUser = userRecord
+                                      })
+                             .OrderBy(xx => xx.Name).ToListAsync();
+                mcolTrains = auxLista.AsQueryable();
+                break;
+            default:
+                auxLista = await (from trainRecord in mvarStorage.Trains
+                                  join changesRecord in mvarStorage.StatusChanges
+                                  on trainRecord.lastChange equals changesRecord.Guid
+                                  into grupoUltimoCambio
+                                  from subGrupo in grupoUltimoCambio.DefaultIfEmpty()
+                                  join userRecord in mvarStorage.Users
+                                  on subGrupo.UserId equals userRecord.Id into grupoUsuarios
+                                  from subUsuario in grupoUsuarios.DefaultIfEmpty()
+                                  where subGrupo == null
+                                  select new TrainItemListModelType
+                                      {
+                                          TrainId = trainRecord.Guid,
+                                          LastChange = subGrupo,
+                                          Name = trainRecord.Name,
+                                          TrainComment = trainRecord.Comment,
+                                          PendingWorks = "-",
+                                          LastUser = subUsuario
+                                      })
+                             .OrderBy(xx => xx.Name).ToListAsync();
+                mcolTrains = auxLista.AsQueryable();
+                break;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        SetItemsPerPage();
+        WindowResized += OnWindowResized;
+    }
+
+    public class TrainItemListModelType
+    {
+        public TrainItemListModelType()
+        {
+            Name = "";
+            PendingWorks = "";
+
+        }
+        public Guid TrainId { get; set; } //Id del tren (sólo para enlaces)
+        public ZafiroGmao.Data.Models.StatusChange? LastChange; //último cambio
+        public string Name { get; set; } //Nombre del tren
+        public string? TrainComment { get; set; } //Comentarios del tren
+        public string PendingWorks { get; set; } //Enumeración de trabajos pendientes
+        public SFMUser? LastUser { get; set; } //Usuario responsable de la última actualización
+        public string LastUserId
+        {
+            get
+            {
+                if (null == LastUser) return "-";
+                return string.Format("{0} ({1})", LastUser.UserName, LastUser.CF);
+            }
+        }
+        public string LastStatusString
+        {
+            get
+            {
+                if (null == LastChange) return "[Desconocido]";
+                return ZafiroGmao.Data.Models.Common.TrainStatusString[(byte)LastChange.Status];
+            }
+        }
+        public string TimeSpanString
+        {
+            get
+            {
+                if (null == LastChange) return "-";
+                if (LastChange.TimeStamp.Date.Equals(DateTime.Today))
+                    return string.Format("Hoy {0:HH:mm}", LastChange.TimeStamp);
+                else
+                    return string.Format("{0:dd-MM-yy}  {0:HH:mm}", LastChange.TimeStamp);
+            }
+        }
+        public string LastCommentString
+        {
+            get
+            {
+                if(null== LastChange)
+                {
+                    if (null == TrainComment) return "-";
+                    return TrainComment;
+                }
+                else
+                {
+                    if (null == LastChange.Comment) return "-";
+                    return LastChange.Comment;
+                }
+            }
+        }
+        public ZafiroGmao.Data.Models.Common.TrainStatus LastStatus //Ultimo estado conocido del tren
+        {
+            get
+            {
+                if (null == LastChange) return Common.TrainStatus.Unknown;
+                return LastChange.Status;
+            }
+        }
+
+    }
+
+    private PaginationState mvarPagination = new PaginationState { ItemsPerPage = 10 };
+
+    //private IQueryable<Train>? mvarColTrens;
+    [Parameter]
+    public IQueryable<Train>? Trains { get; set; }
+
+    private string AuxSummaryPageTemplate()
+    {
+        int currentPageIndex = mvarPagination.CurrentPageIndex;
+        int trainsPerPage = mvarPagination.ItemsPerPage;
+        int totalCount = mvarPagination.TotalItemCount==null?0:(int)mvarPagination.TotalItemCount;
+        int trainBegin = (currentPageIndex * trainsPerPage) + 1;
+        int trainEnd = Math.Min( (currentPageIndex+1) * trainsPerPage,totalCount);        
+        if(trainsPerPage>totalCount)
+        {
+            trainEnd = totalCount;
+        }
+        string salida = string.Format("Mostrando {0} al {1} de {2} trenes.",trainBegin,trainEnd ,totalCount);
+        return salida;
+    }
+
+
+    private void commandOpenTrain(Guid trenId)
+    {
+        mvarNavigationManager.NavigateTo($"/TrainReport/{trenId}");
+    }
+    private void commandActivate(Guid trenId)
+    {
+        mvarNavigationManager.NavigateTo($"/TrainStatusChange/{trenId}/Activate");
+    }
+    private void commandRepair(Guid trenId)
+    {
+        mvarNavigationManager.NavigateTo($"/TrainStatusChange/{trenId}/BeginCorrective");
+    }
+    private void commandEndRepair(Guid trenId)
+    {
+        mvarNavigationManager.NavigateTo($"/TrainStatusChange/{trenId}/EndCorrective");
+    }
+    private void commandEndMaintenance(Guid trenId)
+    {
+        mvarNavigationManager.NavigateTo($"/TrainStatusChange/{trenId}/EndMaintenance");
+    }
+    private void commandDiagnoseToFault(Guid trenId) //Detectada avería en un tren disponible
+    {
+        mvarNavigationManager.NavigateTo($"/TrainStatusChange/{trenId}/DiagnoseToFault");
+    }
+    private void commandDepotRequest(Guid trenId)//Solicita una unidad para pasar a preventivo, pero no la aparta de la circulación
+    {
+        mvarNavigationManager.NavigateTo($"/TrainStatusChange/{trenId}/DepotRequest");
+    }
+    private void commandAcceptMaintenance(Guid trenId) //Transfiere el control del tren al personal de talleres, pero todavía no lo paraliza
+    {
+        mvarNavigationManager.NavigateTo($"/TrainStatusChange/{trenId}/DepotRequestAccept");
+    }
+    private void commandBeginMaintenance(Guid trenId) //Inicia el mantenimiento preventivo
+    {
+        mvarNavigationManager.NavigateTo($"/TrainStatusChange/{trenId}/BeginMaintenance");
+    }
+    private void commandRescueFromDepot(Guid trenId) //Saca al tren de la espera por mantenimiento y lo deja en circulación
+    {
+        mvarNavigationManager.NavigateTo($"/TrainStatusChange/{trenId}/DepotRequestDeny");
+    }
+    private void commandDiferMaintenance(Guid trenId) //Saca al tren de mantenimiento y lo pone a la espera de seguir en mantenmimiento.
+    {
+        mvarNavigationManager.NavigateTo($"/TrainStatusChange/{trenId}/DiferMaintenance");
+    }
+    private async Task commandTurnRepairToMaintenance(Guid trenId) //Pasa de una reparación a un mantenimiento
+    {
+        //Para transformar un correctivo en un preventivo tengo que hacer dos transacciones.
+        //La primera es automática y consiste en sacar el tren a circulación.
+        //if(await mvarStorage.CommitOperation(trenId,Common.OperationType.EndCorrective,))
+
+    }
+
+    private async Task<SFMUser?> getCurrentUser()
+    {
+        AuthenticationState estado = await mvarAuthenticationStateProvider.GetAuthenticationStateAsync();
+        System.Security.Claims.ClaimsPrincipal claims = estado.User;
+        //TODO: Me quedé aquí.
+
+        return null;
+    }
+
+    private bool auxAvailable(ZafiroGmao.Data.Models.StatusChange? auxChange)
+    {
+        if (null == auxChange) return false;
+        switch(auxChange.Status)
+        {
+            case Common.TrainStatus.Available:
+            case Common.TrainStatus.DepotRequested:
+            case Common.TrainStatus.RequestToDiagnose:
+            case Common.TrainStatus.RequestToRepair:
+                return true;
+            default: 
+                return false;
+        }
+    }    
+
+
+    [JSInvokable]
+    public static void NotifyResize()
+    {
+        WindowResized?.Invoke(null, EventArgs.Empty);
+    }
+
+    private void OnWindowResized(object sender, EventArgs e)
+    {
+        SetItemsPerPage();
+        StateHasChanged();
+    }
+
+    private async Task SetItemsPerPage()
+    {
+        var windowHeight = await mvarJSRuntime.InvokeAsync<int>("getWindowHeight");
+        var itemsPerPage = windowHeight / mvarItemsSize;
+        mvarPagination.ItemsPerPage = itemsPerPage;
+    }
+
+    public static event EventHandler WindowResized;
+
+}
+

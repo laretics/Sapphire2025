@@ -1,0 +1,20 @@
+﻿@inherits LayoutComponentBase
+@if (matchPrivileges())
+{
+	@Body
+}
+
+@code {
+	[Parameter]
+	public uint permissions{ get; set; }
+	[Parameter]
+	public uint privilege { get; set; }
+	[Parameter]
+	public RenderFragment? ChildContent { get; set; }
+
+
+	private bool matchPrivileges()
+	{
+		return privilege == 2;
+	}
+}

@@ -1,0 +1,46 @@
+﻿@using ZafiroGmao.Pages.Controls
+
+<div class="btn-group" role="group">
+
+	@foreach (_TabPage tabPage in Pages)
+	{
+		<button type="button"
+				class="btn @GetButtonClass(tabPage)"
+				@onclick=@( () => ActivatePage(tabPage) )>
+			@tabPage.Text
+		</button>
+	}
+
+</div>
+<CascadingValue Value="this">
+	@ChildContent
+</CascadingValue>
+
+
+
+@code {
+	//Hace falta este parámetro para añadir componentes <TabPage> dentro.
+	[Parameter]
+	public RenderFragment ChildContent { get; set; }
+
+	public _TabPage ActivePage { get; set; }
+	List<_TabPage> Pages = new List<_TabPage>();
+
+	internal void AddPage(_TabPage tabPage)
+	{
+		Pages.Add(tabPage);
+		if (Pages.Count == 1)
+			ActivePage = tabPage;
+		StateHasChanged();
+	}
+
+	string GetButtonClass(_TabPage page)
+	{
+		return page == ActivePage ? "btn-primary" : "btn-secondary";
+	}
+
+	void ActivatePage(_TabPage page)
+	{
+		ActivePage = page;
+	}
+}

@@ -1,0 +1,112 @@
+﻿@using System.Text
+@using Zafiro25.Models
+@using Zafiro25.Client.Icons.Status
+
+<td class="@cssClass" @onclick="OnStatusClick">
+	@if (null!=model)
+	{
+		<IcoStatus status=@status color="#f0f0f0" />
+		@statusString
+		@if(model.colTrains.ContainsKey(status))
+		{
+			int cuenta = model.colTrains[status].Count;
+			if(cuenta>0 && cuenta<maxTrains)
+			{
+				<table align="right">
+					<tbody>
+						@foreach(TrainModel auxTrain in model.colTrains[status])
+						{
+							<tr>
+								<td>
+									<a class="@classTrain(auxTrain)" href="/TrainReport/@auxTrain.id">@auxTrain.name</a>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			}
+		}		
+	}
+</td>
+
+@code
+{
+	
+
+	[Parameter]
+	public FlowModel model{ get; set; }
+	[Parameter]
+	public Common.TrainStatus status{ get; set; }
+	[Parameter]
+	public int maxTrains { get; set; } = 4;
+
+	private string cssClass
+	{
+		get
+		{
+			if (null != model) 
+			{
+				if (Common.TrainStatus.Available == status)
+				{
+					if(model.currentStatus==Common.TrainStatus.Available)
+						return "green-block-cell-sel";
+					else
+						return "green-block-cell";
+				}
+				else
+				{
+					if (model.cardinal(status) > 0) 
+					{
+						if(model.currentStatus==status)
+							return "block-cell";
+						else
+							return "block-cell-sel";
+					}						
+				}
+			}
+			return "disable-block-cell";
+		}
+	}	
+	private string statusString
+	{
+		get
+		{
+			if(null==model)
+			{
+				return string.Empty;
+			}
+			else
+			{
+				int auxNum = model.cardinal(status);
+				if(auxNum>maxTrains)
+				{
+					return string.Format(" {0} ({1}) ",
+					Common.TrainStatusString[(byte)status],
+					auxNum);
+				}
+				else
+				{
+					return string.Format(" {0} ",
+					Common.TrainStatusString[(byte)status]);
+				}
+			}
+		}
+	}
+	private string classTrain(TrainModel auxTrain)
+	{
+		switch (auxTrain.name.Substring(0, 1))
+		{
+			case "1": return "btn-1100-sm";
+			case "7": return "btn-7100-sm";
+			case "8": return "btn-8100-sm";
+			case "9": return "btn-9100-sm";
+		}
+		return "btn-other-sm";
+	}
+	private async Task OnStatusClick()
+	{
+		model.currentStatus = status;
+		await Task.CompletedTask;
+	}
+
+}

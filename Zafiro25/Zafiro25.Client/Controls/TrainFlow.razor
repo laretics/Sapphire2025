@@ -1,0 +1,70 @@
+﻿@using Zafiro25.Models
+@using Zafiro25.Models.Model
+@using Zafiro25.Client.Icons.Status
+@using Zafiro25.Client.Icons.Arrows
+@using Zafiro25.Client.Icons.Actions
+@rendermode pageRenderMode
+<table class="custom-table">
+    @if (advancedMode)
+    {
+        <tr>
+            <TrainStatusBlock model=@model status=Common.TrainStatus.Unknown />
+            <td class="small-cell"><LeftRight /></td>
+            <TrainStatusBlock model=@model status=Common.TrainStatus.StandStill />
+            <td class="small-cell"><LeftRight /></td>
+            <TrainStatusBlock model=@model status=Common.TrainStatus.Disabled />
+        </tr>
+        <tr>
+            <td class="small-cell"></td>
+            <td class="small-cell"></td>
+            <td class="small-cell"><UpDown /></td>
+            <td class="small-cell"></td>
+            <td class="small-cell"></td>
+        </tr>
+    }
+    <tr>
+        <TrainStatusBlock model=@model status=Common.TrainStatus.RequestToRepair />
+        <td class="small-cell"><Right /></td>
+        <TrainStatusBlock model=@model status=Common.TrainStatus.Repairing />
+        <td class="small-cell"></td>
+        <td class="small-cell"></td>
+    </tr>
+    <tr>
+        <td class="small-cell"><Up /></td>
+        <td class="small-cell"></td>
+        <td class="small-cell"><Down /></td>
+        <td class="small-cell"></td>
+        <td class="small-cell"></td>
+    </tr>
+    <tr>
+        <TrainStatusBlock model=@model status=Common.TrainStatus.RequestToDiagnose />
+        <td class="small-cell"><LeftRight /></td>
+        <TrainStatusBlock model=@model status=Common.TrainStatus.Available />
+        <td class="small-cell"><Right /> <Scheduler /></td>
+        <TrainStatusBlock model=@model status=Common.TrainStatus.DepotRequested />
+    </tr>
+    <tr>
+        <td class="small-cell"></td>
+        <td class="small-cell"></td>
+        <td class="small-cell"><Up /></td>
+        <td class="small-cell"></td>
+        <td class="small-cell"><UpDown /></td>
+    </tr>
+    <tr>
+        <td class="small-cell"></td>
+        <td class="small-cell"></td>
+        <TrainStatusBlock model=@model status=Common.TrainStatus.Maintenance />
+        <td class="small-cell"><LeftRight /></td>
+        <TrainStatusBlock model=@model status=Common.TrainStatus.DepotAvailable />
+    </tr>
+</table>
+
+@code {
+    private static IComponentRenderMode pageRenderMode = InteractiveServer;
+
+    [Parameter]
+    public FlowModel model { get; set; }
+    [Parameter]
+    public bool advancedMode { get; set; } = false;
+
+}

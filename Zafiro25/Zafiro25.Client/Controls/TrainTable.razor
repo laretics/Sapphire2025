@@ -1,0 +1,41 @@
+﻿@using Zafiro25.Client.Icons.Headers
+@if(null==model || model.listTrains.Count<1)
+{
+	<h3>Cargando</h3>
+}
+else
+{
+	<table class="train-table">
+		<thead>
+			<tr>
+				<th><TrainStatus color="white"/></th>				
+				<th><UT color="white"/></th>
+				<th><Location color="white"/></th>
+				<th><EventDateTime color="white"/></th>
+				<th><User color="white"/></th>
+				@if (showCommands)
+				{
+					<th>Comandos</th>
+				}
+			</tr>
+		</thead>
+		<tbody>
+			@foreach (TrainModel auxTrain in model.listTrains)
+			{
+				<TrainRow Train=@auxTrain showStatus="@showStatus" showCommands="@showCommands"/>
+			}
+		</tbody>
+	</table>
+}
+
+@code {
+	[Parameter]
+	public bool showStatus { get; set; } = true;
+
+	[Parameter]
+	public bool showCommands{ get; set; }
+
+	[Parameter]
+	public FlowModel model { get; set; } = new FlowModel();
+
+}

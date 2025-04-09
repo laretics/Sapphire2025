@@ -1,0 +1,25 @@
+@Sapphire2025Server_HostAddress = http://localhost:5031
+
+### Prueba del controlador existente
+GET {{Sapphire2025Server_HostAddress}}/weatherforecast/
+
+Accept: application/json
+
+### Prueba de login
+GET {{Sapphire2025Server_HostAddress}}/sapphireauthentication/login?userid=root&pwd=A930135
+
+Accept: application/json
+
+### Prueba de logout
+GET {{Sapphire2025Server_HostAddress}}/sapphireauthentication/logout?tokenid=fee9a83c-d310-485a-9954-f3d3c8d77b9e
+
+Accept: application/json
+
+### Lista de usuarios
+GET {{Sapphire2025Server_HostAddress}}/sapphireauthentication/userslist/
+
+### Información en detalle de un usuario
+GET {{Sapphire2025Server_HostAddress}}/sapphireauthentication/userinfo?tokenid=a77363a1-d47b-4d67-8f1e-9953597a7755&userid=a6fa037e-bc0f-4799-9678-ad5024c910b9
+
+### Comprobación de password vacío o nulo
+PUT {{Sapphire2025Server_HostAddress}}/sapphireauthentication/isemptypwd/jsonString = '{"userName":"227","password":null}'

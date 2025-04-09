@@ -1,0 +1,44 @@
+﻿@page "/flow"
+@inject HttpClient mvarClient
+@if(string.Empty==errorMessage)
+{
+    <Zafiro25.Models.Controls.TrainFlow colTrains=@colTrains advancedMode=false />
+    <Zafiro25.Models.Controls.TrainTable colTrains=@colTrains />
+}
+else
+{
+    <h3>@errorMessage</h3>
+}
+@code {
+    private IEnumerable<TrainModel>? colTrains;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await mvarClient.GetAsync("GMao");
+            response.EnsureSuccessStatusCode();
+            var responseBody = await response.Content.ReadAsStringAsync();            
+            errorMessage = responseBody;
+        }
+        catch (HttpRequestException httpEx)
+        {
+            errorMessage = $"HTTP error: {httpEx.Message}";
+        }
+        catch (NotSupportedException notSupEx)
+        {
+            errorMessage = $"The content type is not supported: {notSupEx.Message}";
+        }
+        catch (JsonException jsonEx)
+        {
+            errorMessage = $"JSON error: {jsonEx.Message}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+
+
+    }
+}

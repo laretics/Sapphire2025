@@ -1,0 +1,125 @@
+﻿@using System.Text
+@using Sapphire25.Models.Model
+@using Sapphire25.Icons.Status
+
+<td class="@cssClass" @onclick="OnStatusClick">
+	@if (null==colTrains)
+	{
+		<h3>Cargando...</h3>
+	}
+	else
+	{
+		<IcoStatus status=@status color="#f0f0f0" />
+		@statusString
+		trainStatusCount();
+		if (mcolFiltered.Count > 0 && mcolFiltered.Count < maxTrains)
+		{
+			<table align="right">
+				<tbody>
+					@foreach (TrainModel auxTrain in mcolFiltered)
+					{
+						<tr>
+							<td>
+								<a class="@classTrain(auxTrain)" href="/TrainReport/@auxTrain.id">@auxTrain.name</a>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		}
+	}
+</td>
+
+@code
+{
+	[Parameter]
+	public IEnumerable<TrainModel>? colTrains{ get; set; }
+	[Parameter] //Esto es el estado a representar
+	public Common.TrainStatus status{ get; set; }
+	[Parameter] //Esto es el estado seleccionado
+	public Common.TrainStatus selectedStatus{ get; set; }
+	[Parameter]
+	public int maxTrains { get; set; } = 4;
+
+	private List<TrainModel> mcolFiltered = new List<TrainModel>();
+
+	private void trainStatusCount()
+	{
+		mcolFiltered.Clear();
+		if (null == colTrains) return;
+		foreach (TrainModel auxTrain in colTrains)
+		{
+			if (auxTrain.lastStatus == status) mcolFiltered.Add(auxTrain);
+		}
+	}
+
+	private string cssClass
+	{
+		get
+		{
+			if (mcolFiltered.Count<1) 
+			{
+				if (Common.TrainStatus.Available == status)
+				{
+					if(selectedStatus==Common.TrainStatus.Available)
+						return "green-block-cell-sel";
+					else
+						return "green-block-cell";
+				}
+				else
+				{
+					if (mcolFiltered.Count > 0) 
+					{
+						if(selectedStatus==status)
+							return "block-cell-sel";
+						else
+							return "block-cell";							
+					}						
+				}
+			}
+			return "disable-block-cell";
+		}
+	}	
+	private string statusString
+	{
+		get
+		{
+			if(mcolFiltered.Count<1)
+			{
+				return string.Empty;
+			}
+			else
+			{				
+				if(mcolFiltered.Count>maxTrains)
+				{
+					return string.Format(" {0} ({1}) ",
+					Common.TrainStatusString[(byte)status],
+					mcolFiltered.Count);
+				}
+				else
+				{
+					return string.Format(" {0} ",
+					Common.TrainStatusString[(byte)status]);
+				}
+			}
+		}
+	}
+	private string classTrain(TrainModel auxTrain)
+	{
+		switch (auxTrain.name.Substring(0, 1))
+		{
+			case "1": return "btn-1100-sm";
+			case "7": return "btn-7100-sm";
+			case "8": return "btn-8100-sm";
+			case "9": return "btn-9100-sm";
+		}
+		return "btn-other-sm";
+	}
+	private async Task OnStatusClick()
+	{
+		//TODO: Tengo que poder cambiar el modelo seleccionado al hacer click aquí.
+		//model.currentStatus = status;
+		await Task.CompletedTask;
+	}
+
+}

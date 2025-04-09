@@ -1,0 +1,35 @@
+﻿@inject IJSRuntime mvarJs
+<div class="modal fade" id="myModal">
+	<div class="modal-dialog">
+		<div class="modal-content">
+
+			<div class="modal-header">
+				<h4 class="modal-title">@mvarTitle</h4>
+				<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+			</div>
+
+			<div class="modal-body">
+				@mvarText
+			</div>
+
+			<div class="modal-footer">
+				<button type="button" class="btn btn-danger" data-bs-dismiss="modal">@mvarButtonLabel</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+@code {
+	private string? mvarText{ get; set; }
+	private string? mvarTitle{ get; set; }
+	private string? mvarButtonLabel{ get; set; }
+
+	public async Task show(string title, string text, string buttonContent)
+	{
+		this.mvarText = text;
+		this.mvarButtonLabel = buttonContent;
+		this.mvarTitle = title;
+		StateHasChanged();
+		await mvarJs.InvokeVoidAsync("showModal", "myModal");
+	}
+}

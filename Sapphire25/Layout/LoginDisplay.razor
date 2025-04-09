@@ -1,0 +1,19 @@
+﻿@inject NavigationManager Navigation
+@inject MontefaroAuthenticationStateProvider mvarMontefaroProvider
+<AuthorizeView>
+    <Authorized>
+        Hello, @context.User.Identity?.Name!
+        <button class="nav-link btn btn-link" @onclick="BeginLogOut">Log out</button>
+    </Authorized>
+    <NotAuthorized>
+        <a href="/login">Log in</a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code{
+    public void BeginLogOut()
+    {
+        mvarMontefaroProvider.MarkUserAsLoggedOut();
+        Navigation.NavigateTo("/login");        
+    }
+}

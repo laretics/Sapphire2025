@@ -1,0 +1,57 @@
+﻿@using ZafiroGmao.Data.Models
+@page "/adduser"
+@inject UserManager<SFMUser> UserManager
+@inject NavigationManager NavigationManager
+<EditForm Model="@mvarNewUser" OnValidSubmit="@HandleValidSubmit" autocomplete="off">
+	<DataAnnotationsValidator />
+	<ValidationSummary />
+	<InputText id="email" @bind-Value="mvarNewUser.Email" placeholder="Correo"/>
+	<InputText id="name" @bind-Value="mvarNewUser.UserName" placeholder="Nombre" />
+	<InputText id="CF" @bind-Value="mvarNewUser.CF" placeholder="Carnet"/>
+	<InputText id="password" @bind-Value="mvarPassword" placeholder="Contraseña" type="password"/>
+	<InputText id="password2" @bind-Value="mvarPassword2" placeholder="Confirmar Contraseña" type="password"/>
+	<button type="submit">Añadir</button>
+</EditForm>
+<ModalErrorDialog Title="Error" Body=@getBody() Show="@showModal"
+OnClose="@(x => showModal=x)" />
+@code {
+	private SFMUser mvarNewUser;
+	private string mvarPassword = string.Empty;
+	private string mvarPassword2 = string.Empty;
+	private bool showModal = false;
+	private string errorMessage=string.Empty;
+
+	public AddUser()
+	{
+		mvarNewUser = new SFMUser();
+	}
+
+	private RenderFragment getBody()
+	{
+		return @<text>@errorMessage</text>;
+	}
+
+	private async Task HandleValidSubmit()
+	{
+		if(mvarPassword.Equals(mvarPassword2))
+		{
+			Microsoft.AspNetCore.Identity.IdentityResult result = await UserManager.CreateAsync(mvarNewUser, mvarPassword);
+			if (result.Succeeded)
+			{
+				NavigationManager.NavigateTo("/");
+			}
+			else
+			{
+				//Procesamos los errores.
+				errorMessage = string.Format("Se han producido errores: {0}", string.Join(", ", result.Errors.Select(e => e.Description)));
+				showModal = true;			
+			}
+		}	
+		else
+		{
+			errorMessage = "La contraseña no coincide en ambos campos.";
+			showModal = true;
+		}
+	}
+}
+

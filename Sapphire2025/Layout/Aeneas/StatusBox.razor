@@ -1,0 +1,31 @@
+﻿<rect x="@x%" y="@y%" width="20%" height="16%" rx="3%" ry="3%"
+	  class="hover-rect" fill="#606060"/>
+<text x="@(x+10)%" y="@(y+8)%" fill="white" 
+class="no-pointer-events hide-text"
+text-anchor="middle" dominant-baseline="middle">@Name</text>
+@if(null!=Badge)
+{
+	<foreignObject x="@(x+18)%" y="@(y+11)%" width="10%" height="10%">
+		<div xmlns="http://www.w3.org/1999/xhtml">
+			<span class="badge rounded-pill bg-primary">@Badge</span>
+		</div>
+	</foreignObject>
+}
+@if(null!=ChildContent)
+{
+	<foreignObject class="hide-graph no-pointer-events" x="@(x+4)%" y="@(y+4)%" width="40%" height="40%">
+		@ChildContent
+	</foreignObject>
+}
+@code {
+	[Parameter]
+	public int x{ get; set; }
+	[Parameter]
+	public int y{ get; set; }
+	[Parameter]
+	public string Name { get; set; } = "Unknown";
+	[Parameter]
+	public string? Badge{ get; set; }
+	[Parameter]
+	public RenderFragment? ChildContent { get; set; }
+}

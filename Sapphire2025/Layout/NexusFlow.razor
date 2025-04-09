@@ -1,0 +1,36 @@
+﻿@using Sapphire2025.Pages.Authentication
+@inherits LayoutComponentBase
+
+<div class="page">
+    <nav class="sidebar d-flex flex-column flex-shrink-0 position-fixed">
+        <button class="toggle-btn" onclick="toggleSidebar()">
+            <i class="bi-caret-left-fill"></i>
+        </button>
+
+        <div class="p-4">
+            <h4 class="logo-text fw-bold mb-0">Zafiro</h4>
+            <p class="text-muted small hide-on-collapse">Dashboard</p>
+        </div>
+
+        <div class="nav flex-column">
+            <NexusNav/>
+        </div>
+
+        <CurrentUserInfo></CurrentUserInfo>
+    </nav>
+
+    <main class="main-content">
+        <div class="container-fluid">
+            @Body
+        </div>
+    </main>
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+    </script>
+</div>
+@code {
+
+}

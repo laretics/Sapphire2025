@@ -1,0 +1,189 @@
+﻿@inject ZafiroGmao.Data.ApplicationDbContext mvarStorage
+@inject NavigationManager mvarNavigationManager
+@using System.Diagnostics
+@using ZafiroGmao.Pages.Controls
+@using Microsoft.AspNetCore.Components.Forms
+@page "/TrainReport/{stringGuid}"
+@if(null==mvarTrain)
+{
+	<p><em>Cargando...</em></p>
+}
+else
+{
+	<h1>UT @mvarTrain.Name</h1>
+	@if(null!=mvarLastChange)
+	{
+		<h2>(@ZafiroGmao.Data.Models.Common.TrainStatusString[(byte)mvarLastChange.Status])</h2>
+	}	
+	<_TabControl>
+		<_TabPage Text="Resumen">
+			<form>
+				@if (null == mvarLastChange)
+				{
+					<div>
+						<p><em>No hay registros previos de este tren.</em></p>
+					</div>
+				}
+				else
+				{
+					<div>
+						<h3>Última anotación</h3>
+					</div>
+					<div>
+						@if (null == mvarLastUser)
+						{
+							<p>Usuario desconocido</p>
+						}
+						else
+						{
+							<p>Usuario: @mvarLastUser.UserName</p>
+						}
+					</div>
+					<div>
+						<p>Notas: @mvarLastChange.comment</p>
+					</div>
+					<div>
+						<p>Fecha: @string.Format("{0:dd-MM-yy}", @mvarLastChange.Timestamp)</p>
+						<p>Hora: @string.Format("{0:HH:mm}", @mvarLastChange.Timestamp)</p>
+					</div>
+				}
+			</form>
+		</_TabPage>
+		<_TabPage Text="Histórico">
+			<form>
+				@if(null==mcolHistorial)
+				{
+					<p><em>Cargando...</em></p>	
+				}
+				else
+				{
+					<QuickGrid class="table table-bordered table-striped" Items="mcolHistorial" Pagination="mvarHistorialPaginationState">
+						<TemplateColumn Title="Operación" Align="Align.Left">
+							@switch (context.Operation)
+							{
+								case Data.Models.Common.OperationType.Activate:
+									<span class="oi oi-flash"> Activado en el sistema</span>
+									break;
+								case Data.Models.Common.OperationType.BeginCorrective:
+									<span class="oi oi-wrench"> Inicio reparación</span>
+									break;
+								case Data.Models.Common.OperationType.BeginMaintenance:
+									<span class="oi oi-wrench"> Inicio preventivo</span>
+									break;
+								case Data.Models.Common.OperationType.EndCorrective:
+								case Data.Models.Common.OperationType.EndMaintenance:
+									<span class="oi oi-flag"> Disponible</span>
+									break;
+								case Data.Models.Common.OperationType.DiagnoseToFault:
+									<span class="oi oi-warning"> Diagnosticado a reparar</span>
+									break;
+								case Data.Models.Common.OperationType.DepotRequest:
+									<span class="oi oi-loop-circular"> Solicitado para mantenimiento</span>
+									break;
+								case Data.Models.Common.OperationType.DepotRequestDeny:
+									<span class="oi oi-action-undo"> Recuperado desde taller</span>
+									break;
+								case Data.Models.Common.OperationType.DepotRequestAccept:
+									<span class="oi oi-loop-circular"> Transferido a taller</span>
+									break;
+								case Data.Models.Common.OperationType.DiferMaintenance:
+									<span class="oi oi-action-undo"> Preventivo interrumpido</span>
+									break;
+
+							}
+						</TemplateColumn>
+						<PropertyColumn Property="@(t=>t.userName)" Sortable="true" Title="Usuario"/>
+						<PropertyColumn Property="@(t => t.TimeStampString)" Sortable="true" Title="Fecha y Hora" />
+						<PropertyColumn Property="@(t=>t.comment)" Title="Notas" />
+					</QuickGrid>
+				}
+			</form>
+		</_TabPage>
+		<_TabPage Text="Órdenes de Trabajo">
+			<h1>El tercer tab</h1>
+		</_TabPage>
+		<_TabPage Text="Pendientes">
+			<h1>El tercer tab</h1>
+		</_TabPage>
+	</_TabControl>	
+}
+
+@code {
+	[Parameter]
+	public string? stringGuid{ get; set; } //Id del tren (que viene de fuera)
+
+	private statusChangeModelType? mvarLastChange { get; set; } = null;
+
+	private Data.Models.Train? mvarTrain{ get; set; }
+
+	private Data.Models.SFMUser? mvarLastUser { get; set; } = null;
+
+	private IQueryable<statusChangeModelType> mcolHistorial { get; set; } = default!;
+	private PaginationState mvarHistorialPaginationState = new PaginationState { ItemsPerPage = 15 };
+
+	protected async override Task OnInitializedAsync()
+	{
+		if (null == stringGuid) return;
+		Guid auxId = Guid.Empty;
+		if (Guid.TryParse(stringGuid, out auxId))
+		{
+			mvarTrain = await mvarStorage.Trains.Where(xx => xx.Guid == auxId).FirstOrDefaultAsync();
+		}		
+		await auxLoadHistorial();
+		await base.OnInitializedAsync();
+	}
+	private async Task auxLoadHistorial()
+	{
+		if (null == mvarTrain) return;
+		List<statusChangeModelType> auxLista;
+
+
+		auxLista = await (from statuschange in mvarStorage.StatusChanges
+								join user in mvarStorage.Users
+								on statuschange.UserId equals user.Id
+								where statuschange.TrainId == mvarTrain.Guid
+								select new statusChangeModelType
+                         {
+                             TrainId = statuschange.TrainId,
+                             Timestamp = statuschange.TimeStamp,
+                             Operation = statuschange.Operation,
+                             Status = statuschange.Status,
+                             userName = user.UserName,
+                             comment = statuschange.Comment
+                         }).OrderByDescending(xx => xx.Timestamp).ToListAsync();
+		mcolHistorial = auxLista.AsQueryable();
+
+		mvarLastChange = mcolHistorial.FirstOrDefault();
+	}
+
+	[DebuggerDisplay($"{{{nameof(GetDebuggerDisplay)}(),nq}}")]
+	public class statusChangeModelType
+	{	
+		public Guid TrainId { get; set; }
+		public DateTime Timestamp { get; set; }	
+		public string TimeStampString
+		{
+			get
+			{
+				if(this.Timestamp.Date==DateTime.Today)
+				{
+					return string.Format("{0:HH:mm}", Timestamp);
+				}
+				else
+				{
+					return string.Format("{0:dd-MM-yy} ({0:HH:mm})", Timestamp);
+				}
+			}
+		}
+		public Data.Models.Common.OperationType Operation { get; set; }
+        public Data.Models.Common.TrainStatus Status { get; set; }
+        public string? userName { get; set; }
+        public string? comment { get; set; }
+
+        private string GetDebuggerDisplay()
+        {
+            return ToString();
+        }
+    }
+
+}

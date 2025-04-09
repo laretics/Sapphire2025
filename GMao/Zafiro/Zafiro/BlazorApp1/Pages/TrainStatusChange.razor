@@ -1,0 +1,93 @@
+﻿@inject ZafiroGmao.Data.ApplicationDbContext mvarStorage
+@inject UserManager<ZafiroGmao.Data.Models.SFMUser> mvarUserManager
+@inject NavigationManager mvarNavigationManager
+@inject AuthenticationStateProvider mvarAuthenticationStateProvider
+@inject ZafiroGmao.Telegram.BotSoul mvarBotSoul
+
+@page "/TrainStatusChange/{stringGuid}/{stringOperation}"
+
+<h3>@getOperationName() de UT @Train.Name</h3>
+
+<InputTextArea @bind-Value="Comment" class="styled-textarea"></InputTextArea>
+
+<button @onclick="@(()=>doOperation())">@getOperationName()</button>
+
+@code {
+	[Parameter]
+	public string? stringGuid{ get; set; }
+	[Parameter]
+	public string? stringOperation{ get; set; }
+
+	public string Comment { get; set; } = string.Empty;
+
+	public ZafiroGmao.Data.Models.SFMUser? mvarUser;
+
+	private ZafiroGmao.Data.Models.Train Train { get; set; } = new Data.Models.Train();
+	private ZafiroGmao.Data.Models.Common.OperationType Operation{ get; set; }
+
+	protected override async Task OnInitializedAsync()
+	{
+		//Hacemos fetch del tren y del tipo de orden de cambio
+		Train.Name = "Sin nombre";
+		Train.Guid = Guid.Empty;
+		Operation = Data.Models.Common.OperationType.Unknown;
+		Guid auxId = Guid.Empty;
+		if(Guid.TryParse(stringGuid,out auxId))
+		{
+			ZafiroGmao.Data.Models.Train? auxTrain = await mvarStorage.Trains.Where(xx => xx.Guid == auxId).FirstOrDefaultAsync();
+			if (null != auxTrain) Train = auxTrain;
+
+			Operation = ZafiroGmao.Data.Models.Common.stringToOperation(stringOperation);
+		}
+		var auxAuthState = await mvarAuthenticationStateProvider.GetAuthenticationStateAsync();
+		var User = auxAuthState.User;
+		mvarUser = await mvarUserManager.GetUserAsync(User);
+
+		await base.OnInitializedAsync();
+	}
+
+	private async Task doOperation()
+	{	
+		if (ZafiroGmao.Data.Models.Common.OperationType.Unknown == Operation) return;
+		if (null == mvarUser) return;
+		if (Guid.Empty == Train.Guid) return;
+
+		if (await mvarStorage.CommitOperation(Train.Guid,Operation,mvarUser,Comment))
+		{
+			ZafiroGmao.Telegram.GMaoTelegram avisador = new Telegram.GMaoTelegram(mvarBotSoul);
+			await avisador.AnnounceTrainOperation(mvarUser, Train, Comment, Operation);
+		}
+		mvarNavigationManager.NavigateTo($"/TrainReport/{Train.Guid}");
+	}
+
+	private string getOperationName()
+	{
+		switch(Operation)
+		{
+			case  Data.Models.Common.OperationType.Activate:
+				return "Activación";
+			case Data.Models.Common.OperationType.CorrectiveRequest:
+			case Data.Models.Common.OperationType.DiagnoseToFault:
+				return "Solicitado para correctivo";
+			case Data.Models.Common.OperationType.BeginCorrective:
+				return "Reparación";
+			case Data.Models.Common.OperationType.BeginMaintenance:
+				return "Mantenimiento";
+			case Data.Models.Common.OperationType.EndMaintenance:
+			case Data.Models.Common.OperationType.EndCorrective:
+			case Data.Models.Common.OperationType.DiagnoseToAvailable:
+			case Data.Models.Common.OperationType.MaintenanceRescue:
+				return "Devolver a circulación";
+			case Data.Models.Common.OperationType.DepotRequest:
+				return "Solicitar preventivo";
+			case Data.Models.Common.OperationType.DepotRequestAccept:
+				return "Retirar de la circulación";
+			case Data.Models.Common.OperationType.DiferMaintenance:
+				return "Sacar de taller";
+
+			default:
+				return "Cambio de estado";
+		}
+	}
+
+}

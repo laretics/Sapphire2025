@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35707.178
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapphire2025Models", "Sapphire2025Models\Sapphire2025Models.csproj", "{CE7713CB-444C-45BA-88AC-32688D2E4D54}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapphire2025", "Sapphire2025\Sapphire2025.csproj", "{513DB98A-D492-416B-8AA8-8D7E26F54B50}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapphire2025Server", "Sapphire2025Server\Sapphire2025Server.csproj", "{3B7D83CB-B805-45A9-BE9B-A1010291A3CB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CE7713CB-444C-45BA-88AC-32688D2E4D54}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE7713CB-444C-45BA-88AC-32688D2E4D54}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE7713CB-444C-45BA-88AC-32688D2E4D54}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE7713CB-444C-45BA-88AC-32688D2E4D54}.Release|Any CPU.Build.0 = Release|Any CPU
+		{513DB98A-D492-416B-8AA8-8D7E26F54B50}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{513DB98A-D492-416B-8AA8-8D7E26F54B50}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{513DB98A-D492-416B-8AA8-8D7E26F54B50}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{513DB98A-D492-416B-8AA8-8D7E26F54B50}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3B7D83CB-B805-45A9-BE9B-A1010291A3CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B7D83CB-B805-45A9-BE9B-A1010291A3CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B7D83CB-B805-45A9-BE9B-A1010291A3CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B7D83CB-B805-45A9-BE9B-A1010291A3CB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

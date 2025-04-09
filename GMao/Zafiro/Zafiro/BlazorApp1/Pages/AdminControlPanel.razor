@@ -1,0 +1,32 @@
+﻿@page "/admincontrolpanel"
+@using Microsoft.EntityFrameworkCore
+@using ZafiroGmao.Data
+@using ZafiroGmao.Data.Models
+@inject ApplicationDbContext mvarStorage
+<h3>Consola del Administrador</h3>
+<p>Gestione con precaución las herramientas de esta página. El peligro potencial de perder información es real.</p>
+<table>
+	<thead>
+		<tr>
+			<th>Comando</th>
+			<th>Notas</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td><button @onclick="@(() => commandCommitAvailable())"><div class="oi oi-flash" /></button></td>
+			<td>Aplica cambio de estado a toda la flota hasta "Disponible"</td>
+		</tr>
+	</tbody>
+</table>
+
+
+
+@code {
+	// Panel de control para funciones administrativas.
+	private async Task commandCommitAvailable()
+	{
+		await mvarStorage.InitialCommit();
+
+	}
+}

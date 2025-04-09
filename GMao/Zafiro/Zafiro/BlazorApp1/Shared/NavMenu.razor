@@ -1,0 +1,113 @@
+﻿
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">
+            <img src="images/sfmImg.png" alt="SFM" class="logo-screen" />
+        </a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <AuthorizeView Roles="Root">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="trainspage/activation/Root" Match="NavLinkMatch.All">                    
+                    <span class="oi oi-flash" aria-hidden="true"></span> Activación
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="userspage">
+                    <span class="oi oi-people" aria-hidden="true"></span> Usuarios
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admincontrolpanel">
+                    <span class="oi oi-cog" aria-hidden="true"></span> Panel del control
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        <AuthorizeView Roles="Root,Oficial">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="trainspage/RepairPendant/Oficial">
+                    <span class="oi oi-timer" aria-hidden="true"></span> Correctivos pendientes
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        <AuthorizeView Roles="Inspector">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="trainspage/RepairPendant/Inspector">
+                    <span class="oi oi-timer" aria-hidden="true"></span> Correctivos pendientes
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="trainspage/DepotAvailable/Inspector">
+                    <span class="oi oi-loop-circular" aria-hidden="true"></span> Preventivos pendientes
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        <AuthorizeView Roles="Root,Mechanic,Oficial">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="trainspage/Repairing/Oficial">
+                    <span class="oi oi-wrench" aria-hidden="true"></span> Correctivos
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="trainspage/Maintenance/Oficial">
+                    <span class="oi oi-wrench" aria-hidden="true"></span> Preventivos
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="trainspage/DepotAvailable/Oficial">
+                    <span class="oi oi-loop-circular" aria-hidden="true"></span> Preventivos pendientes
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        <AuthorizeView Roles="Inspector,Expert,Anonymous">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="trainspage/Repairing/Inspector">
+                    <span class="oi oi-wrench" aria-hidden="true"></span> Correctivos
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="trainspage/Maintenance/Inspector">
+                    <span class="oi oi-wrench" aria-hidden="true"></span> Preventivos
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        <AuthorizeView Roles="Root,Mechanic,Oficial">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="trainspage/Available/Oficial">
+                    <span class="oi oi-flag" aria-hidden="true"></span> Disponibles
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        <AuthorizeView Roles="Inspector">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="trainspage/Available/Inspector">
+                    <span class="oi oi-flag" aria-hidden="true"></span> Disponibles
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        <AuthorizeView Roles="Expert">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="trainspage/Available/Oficial">
+                    <span class="oi oi-flag" aria-hidden="true"></span> Disponibles
+                </NavLink>
+            </div>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

@@ -1,0 +1,27 @@
+﻿@page "/auth/logout"
+@inject IntStorageService mvarClientStorage
+@inject AuthenticationClient mvarAuthenticationClient
+@inject NavigationManager mvarNavigator
+
+@code {
+	protected async override Task OnInitializedAsync()
+	{
+		await base.OnInitializedAsync();
+		await auxCloseSession();
+		mvarNavigator.NavigateTo("/");
+	}
+
+	private async Task auxCloseSession()
+	{
+		//Damos de baja la sesión en el servidor.
+		string? auxToken = await mvarClientStorage.GetStringValue("sessionToken",false);
+		if(null!=auxToken)
+			await mvarAuthenticationClient.Logout(auxToken);
+
+		//Nos damos de baja a nivel local.
+		await mvarClientStorage.SetStringValue("user", string.Empty,false);
+		await mvarClientStorage.SetGuidValue("sessionToken", Guid.Empty,false);
+		await mvarClientStorage.SetIntValue("credentials", 0, false);
+		StateHasChanged();
+	}
+}

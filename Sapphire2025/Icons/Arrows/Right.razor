@@ -1,0 +1,14 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" x="@x%" y="@y%" height="@height%" width="@height%" 
+viewBox="0 -960 960 960" fill="@Color">
+	<path d="m600-200-57-56 184-184H80v-80h647L544-704l56-56 280 280-280 280Z" />
+</svg>
+@code {
+	[Parameter]
+	public int x { get; set; }
+	[Parameter]
+	public int y { get; set; }
+	[Parameter]
+	public int height { get; set; }
+	[Parameter]
+	public string? Color { get; set; } = "black";
+}

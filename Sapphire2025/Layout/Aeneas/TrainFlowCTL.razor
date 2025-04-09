@@ -1,0 +1,115 @@
+﻿<div class="svg-container">
+	<svg width="@width%" height="@height%" xmlns="http://www.w3.org/2000/svg" enable-background="true">
+		@if (Extended)
+		{
+			<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="4" Name="Inicio">
+				<Sapphire2025.Icons.Status.Unknown color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+			<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="4" Name="Stand Still">
+				<Sapphire2025.Icons.Status.StandStill color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+			<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="4" Name="Baja">
+				<Sapphire2025.Icons.Status.Disabled color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+
+			<Sapphire2025.Icons.Arrows.LeftRight x="31" y="8" height="8" Color="navy" />
+			<Sapphire2025.Icons.Arrows.LeftRight x="61" y="8" height="8" Color="navy" />
+
+			<Sapphire2025.Icons.Arrows.UpDown x="46" y="20" height="8" Color="navy" />
+
+
+			<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="28" Name="¡Retirar!">
+				<Sapphire2025.Icons.Status.RequestToRepair color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+			<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="28" Name="Correctivo">
+				<Sapphire2025.Icons.Status.Repairing color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+
+			<Sapphire2025.Icons.Arrows.Right x="31" y="32" height="8" Color="navy" />
+
+
+			<Sapphire2025.Icons.Arrows.Up x="16" y="44" height="8" Color="navy" />
+			<Sapphire2025.Icons.Arrows.Down x="46" y="44" height="8" Color="navy" />
+
+			<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="52" Name="Pend. Diagnóstico">
+				<Sapphire2025.Icons.Status.RequestToDiagnose color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+			<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="52" Name="Disponible" Badge="30">
+				<Sapphire2025.Icons.Status.Available color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+			<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="52" Name="Solicitado Preventivo">
+				<Sapphire2025.Icons.Status.DepotRequested color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+
+
+			<Sapphire2025.Icons.Arrows.LeftRight x="31" y="56" height="8" Color="navy" />
+
+			<Sapphire2025.Icons.Actions.Scheduler x="61" y="53" height="8" Color="navy" />
+			<Sapphire2025.Icons.Arrows.Right x="61" y="59" height="8" Color="navy" />
+
+			<Sapphire2025.Icons.Arrows.Up x="46" y="68" height="8" Color="navy" />
+			<Sapphire2025.Icons.Arrows.UpDown x="76" y="68" height="8" Color="navy" />
+
+			<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="76" Name="Preventivo">
+				<Sapphire2025.Icons.Status.Maintenance color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+			<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="76" Name="Esperando Preventivo">
+				<Sapphire2025.Icons.Status.DepotAvailable color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+
+			<Sapphire2025.Icons.Arrows.LeftRight x="61" y="80" height="8" Color="navy" />
+		}
+		else
+		{
+			<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="6" Name="¡Retirar!">
+				<Sapphire2025.Icons.Status.RequestToRepair color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+			<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="6" Name="Correctivo">
+				<Sapphire2025.Icons.Status.Repairing color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+
+
+			<Sapphire2025.Icons.Arrows.Right x="31" y="10" height="8" Color="navy" />
+
+
+			<Sapphire2025.Icons.Arrows.Up x="16" y="27" height="8" Color="navy" />
+			<Sapphire2025.Icons.Arrows.Down x="46" y="27" height="8" Color="navy" />
+
+			<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="39" Name="Pend. Diagnóstico">
+				<Sapphire2025.Icons.Status.RequestToDiagnose color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+			<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="39" Name="Disponible">
+				<Sapphire2025.Icons.Status.Available color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+			<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="39" Name="Solicitado Preventivo" Badge="2">
+				<Sapphire2025.Icons.Status.DepotRequested color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+
+			<Sapphire2025.Icons.Arrows.LeftRight x="31" y="43" height="8" Color="navy" />
+
+			<Sapphire2025.Icons.Actions.Scheduler x="61" y="40" height="8" Color="navy" />
+			<Sapphire2025.Icons.Arrows.Right x="61" y="48" height="8" Color="navy" />
+
+			<Sapphire2025.Icons.Arrows.Up x="46" y="59" height="8" Color="navy" />
+			<Sapphire2025.Icons.Arrows.UpDown x="76" y="59" height="8" Color="navy" />
+
+			<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="72" Name="Preventivo">
+				<Sapphire2025.Icons.Status.Maintenance color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+			<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="72" Name="Esperando Preventivo">
+				<Sapphire2025.Icons.Status.DepotAvailable color="white" />
+			</Sapphire2025.Layout.Aeneas.StatusBox>
+
+			<Sapphire2025.Icons.Arrows.LeftRight x="61" y="76" height="8" Color="navy" />
+		}
+	</svg>
+</div>
+
+@code {
+	[Parameter]
+	public bool Extended { get; set; } = false;
+	[Parameter]
+	public int width{ get; set; }
+	[Parameter]
+	public int height{ get; set; }
+}

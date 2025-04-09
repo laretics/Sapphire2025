@@ -1,0 +1,64 @@
+﻿@page "/auth/login"
+@inject IntStorageService mvarClientStorage
+@inject AuthenticationClient mvarAuthenticationClient
+@inject NavigationManager mvarNavigator
+<PageTitle>Inicio de Sesión</PageTitle>
+<EditForm Model="@mvarLoginModel" OnValidSubmit="LoginCall">
+	<div class="mb-3">
+		<h2>Inicio de Sesión</h2>
+	</div>
+	<div class="mb-3">
+		<label for="name" class="form-label">Identificación</label>
+		<InputText id="name" @bind-Value="mvarLoginModel.userName" class="form-control" aria-describedby="cfId"/>
+		<div id="cfId" class="form-text">Puede iniciar la sesión tecleando su nombre, su buzón de correo electrónico o su carnet ferroviario (CF).</div>
+	</div>
+	<div class="mb-3">
+		<label for="pwd" class="form-label">Contraseña</label>
+		<PasswordInput id="pwd" @bind-Value="mvarLoginModel.password" class="form-control"  />
+	</div>
+	<Button Class="btn btn-primary" @onclick="LoginCall">Iniciar Sesión</Button>
+</EditForm>
+<ModalDialog @ref="mvarModal"/>
+
+@code {
+	UserModel? mvarUser{ get; set; }
+	private UserLoginModel mvarLoginModel = new UserLoginModel();
+
+	private ModalDialog mvarModal { get; set; } = new ModalDialog();
+	//Tras la autenticación, el servidor dará un token único a cada sesión.
+	//Este es el token que vamos a usar encabezando cada petición para que el
+	//servidor nos responda con datos correctos.
+
+	private async Task LoginCall()
+	{
+		//Primero comprobamos si el password está vacío.
+		if (null == mvarLoginModel.password)
+			mvarLoginModel.password = string.Empty;
+
+		bool auxPasswordVacio = await mvarAuthenticationClient.isEmptyPassword(mvarLoginModel);
+		if(auxPasswordVacio)
+		{
+			//El password está vacío... voy a la página para asignar el password.
+			mvarNavigator.NavigateTo(string.Format("/auth/setpassword/{0}", mvarLoginModel.userName));
+		}
+		else
+		{
+			mvarUser = await mvarAuthenticationClient.Login(mvarLoginModel);
+			if (null == mvarUser || mvarUser.guid.Equals(Guid.Empty))
+			{
+				await mvarClientStorage.SetStringValue("user", string.Empty, false);
+				await mvarModal.show("Error", "No ha podido iniciar sesión. Introduzca unas credenciales válidas y vuelva a intentarlo.", "Aceptar");
+				//Usuario no admitido... manejamos el error.
+			}
+			else
+			{
+				//Usuario validado. Guardamos el token de sesión.
+				await mvarClientStorage.SetStringValue("user", mvarUser.Name, false);
+				await mvarClientStorage.SetGuidValue("sessionToken", mvarUser.sessionToken, false);
+				await mvarClientStorage.SetIntValue("credentials", mvarUser.CredentialKey, false);
+				StateHasChanged();
+				mvarNavigator.NavigateTo("/");
+			}
+		}
+	}
+}

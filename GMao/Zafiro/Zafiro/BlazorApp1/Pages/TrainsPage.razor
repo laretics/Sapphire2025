@@ -1,0 +1,11 @@
+﻿@page "/trainspage/{stage}/{role}"
+
+<ZafiroGmao.Pages.Controls._TrainsList Filter="@stage" Role="@role"/>
+
+@code {
+	[Parameter]
+	public string? stage { get; set; }
+	[Parameter]
+	public string? role{ get; set; }
+
+}

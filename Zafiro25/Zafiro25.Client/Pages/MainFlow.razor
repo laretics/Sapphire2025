@@ -1,0 +1,29 @@
+﻿@page "/mainflow"
+@using Zafiro25.Models
+@using Zafiro25.Models.Model
+@using Zafiro25.Client.Icons.Status
+@using Zafiro25.Client.Icons.Arrows
+@using Zafiro25.Client.Icons.Actions
+@using Zafiro25.Client.Controls
+@inject HttpClient Http
+
+<div class="upperfix">
+    <TrainFlow model=@model/>
+</div>
+<div class="content">
+    <TrainTable model=@model/>
+</div>
+
+@code {
+    ///<summary>
+    ///Diagrama de flujo principal.
+    ///Esta página va a mostrar el flujo actual en que se encuentran los trenes.
+    ///</summary>
+
+    private FlowModel? model;    
+
+    protected async override Task OnInitializedAsync()
+    {
+        model = await Http.GetFromJsonAsync<FlowModel>($"/api/TrainTableProvider");
+    }
+}

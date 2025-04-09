@@ -1,0 +1,162 @@
+﻿.block-cell {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    background-color: #1d0181;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    color: #ffffff;    
+    text-align: center;
+}
+    .block-cell:hover {
+        background-color: #5d21c1;
+    }
+
+.block-cell-sel {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    background-color: #1d0181;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    color: #ffffff;
+    text-align: center;
+    border: 8px solid #b05030;
+}
+
+.block-cell-sel:hover {
+    background-color: #5d21c1;
+}
+
+.green-block-cell {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    background-color: #018101;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    color: #ffffff;
+    text-align: center;
+}
+
+    .green-block-cell:hover {
+        background-color: #21b121;
+    }
+
+.green-block-cell-sel {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    background-color: #018101;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    color: #ffffff;
+    text-align: center;
+    border: 8px solid #50b030;
+}
+
+    .green-block-cell-sel:hover {
+        background-color: #21b121;
+    }
+
+.disable-block-cell {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    background-color: #818181;
+    cursor: pointer;
+    color: #ffffff;
+    text-align: center;
+}
+
+.btn-other-sm {
+    display: inline-block;
+    padding: 2px 2px;
+    font-size: 10px;
+    font-weight: bold;
+    color: #303030;
+    background-color: #c0c0c0;
+    border: none;
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .btn-other-sm:hover {
+        background-color: #e0e0e0;
+    }
+
+.btn-1100-sm {
+    display: inline-block;
+    padding: 2px 2px;
+    font-size: 10px;
+    font-weight: bold;
+    color: #505030;
+    background-color: #d0d0c0;
+    border: none;
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .btn-1100-sm:hover {
+        background-color: #f0f0e0;
+    }
+
+
+.btn-7100-sm {
+    display: inline-block;
+    padding: 2px 2px;
+    font-size: 10px;
+    font-weight: bold;
+    color: #503030;
+    background-color: #d0c0c0;
+    border: none;
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .btn-7100-sm:hover {
+        background-color: #f0e0e0;
+    }
+
+
+.btn-8100-sm {
+    display: inline-block;
+    padding: 2px 2px;
+    font-size: 10px;
+    font-weight: bold;
+    color: #305050;
+    background-color: #c0d0d0;
+    border: none;
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .btn-8100-sm:hover {
+        background-color: #e0f0f0;
+    }
+
+.btn-9100-sm {
+    display: inline-block;
+    padding: 2px 2px;
+    font-size: 10px;
+    font-weight: bold;
+    color: #303050;
+    background-color: #c0c0d0;
+    border: none;
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .btn-9100-sm:hover {
+        background-color: #e0e0f0;
+    }

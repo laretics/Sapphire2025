@@ -1,0 +1,85 @@
+﻿@page "/userspage"
+@inject UserManager<ZafiroGmao.Data.Models.SFMUser> UserManager
+
+<h3>Lista de Usuarios</h3>
+
+<NavLink class="btn btn-primary" href="/adduser"><span class="oi oi-person"></span></NavLink>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Username</th>
+            <th>CF</th>
+            <th>Email</th>
+            <th>Telegram</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var user in users)
+        {
+            <tr>
+                <td>@user.UserName</td>
+                <td>@user.CF</td>
+                <td>@user.Email</td>
+                <td><div class="@userTelegram(user)"></div></td>
+                <td>
+                    <button @onclick="() => EditUser(user)"><span class="oi oi-cog"></span></button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (selectedUser != null)
+{
+    <EditForm Model="selectedUser" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div>
+            <label>Username:</label>
+            <InputText @bind-Value="selectedUser.UserName" />
+        </div>
+        <div>
+            <label>Email:</label>
+            <InputText @bind-Value="selectedUser.Email" />
+        </div>
+        <button type="submit">Guardar</button>
+    </EditForm>
+}
+
+@code {
+    private List<ZafiroGmao.Data.Models.SFMUser> users = new List<ZafiroGmao.Data.Models.SFMUser>();
+    private ZafiroGmao.Data.Models.SFMUser selectedUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        users = UserManager.Users.ToList();
+    }
+    private string userTelegram(ZafiroGmao.Data.Models.SFMUser user)
+    {
+        if (user.hasTelegram)
+            return "oi oi-circle-check";
+        else
+            return string.Empty;
+    }
+
+    private void EditUser(ZafiroGmao.Data.Models.SFMUser user)
+    {
+        selectedUser = user;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var result = await UserManager.UpdateAsync(selectedUser);
+        if (result.Succeeded)
+        {
+            // Actualizar la lista de usuarios o mostrar un mensaje de éxito
+        }
+        else
+        {
+            // Manejar errores
+        }
+    }
+}

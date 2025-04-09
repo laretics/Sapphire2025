@@ -1,0 +1,30 @@
+﻿<a href="@hRef" class="sidebar-link @selText text-decoration-none p-3" 
+@onclick="OnClick">
+    <i class="@Image me-3"></i>
+    @if (null == Badge)
+    {
+        <span class="hide-on-collapse">@Caption</span>
+    }
+    else
+    {
+        <span class="hide-on-collapse">@Caption
+            <span class="badge bg-info hide-on-collapse">@Badge</span></span>
+    }    
+</a>
+
+@code {
+    [Parameter]
+    public bool Selected{ get; set; }
+    [Parameter]
+    public string? hRef{ get; set; }
+    [Parameter]
+    public string? Caption{ get; set; }
+    [Parameter]
+    public string? Image{ get; set; }
+    [Parameter]
+    public string? Badge { get; set; }
+    [Parameter]
+    public EventCallback OnClick{ get; set; }
+
+    private string selText{ get => this.Selected ? "active" : ""; }
+}

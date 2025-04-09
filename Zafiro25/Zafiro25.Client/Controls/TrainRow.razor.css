@@ -1,0 +1,125 @@
+﻿.train-table tbody tr {
+    background-color: #f8f9fa;
+    box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
+    text-align:center;
+}
+
+    .train-table tbody tr:nth-child(odd) {
+        background-color: #e9ecefdee2e6;
+    }
+
+.train-table tbody td, .table-custom thead th {
+    padding: 5px 5px;
+    border: 1px solid #dee2e6;
+}
+
+.btn-link {
+    display: inline-block;
+    padding: 5px 5px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #303080;
+    background-color: #e8e9ea;
+    border: none;
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .btn-link:hover {
+        background-color: #ffffff;
+    }
+
+
+.btn-other {
+    display: inline-block;
+    padding: 5px 5px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #303030;
+    background-color: #c0c0c0;
+    border: none;
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .btn-other:hover {
+        background-color: #e0e0e0;
+    }
+
+.btn-1100 {
+    display: inline-block;
+    padding: 5px 5px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #505030;
+    background-color: #d0d0c0;
+    border: none;
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+    .btn-1100:hover {
+        background-color: #f0f0e0;
+    }
+
+
+.btn-7100 {
+    display: inline-block;
+    padding: 5px 5px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #503030;
+    background-color: #d0c0c0;
+    border: none;
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .btn-7100:hover {
+        background-color: #f0e0e0;
+    }
+
+
+.btn-8100 {
+    display: inline-block;
+    padding: 5px 5px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #305050;
+    background-color: #c0d0d0;
+    border: none;
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .btn-8100:hover {
+        background-color: #e0f0f0;
+    }
+
+.btn-9100 {
+    display: inline-block;
+    padding: 5px 5px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #303050;
+    background-color: #c0c0d0;
+    border: none;
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+    .btn-9100:hover {
+        background-color: #e0e0f0;
+    }
+   

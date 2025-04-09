@@ -1,0 +1,179 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<root>
+	<classes>
+		<!--Dispositivos eléctricos-->
+		<cc name="Batería" id="batt8100"/>
+		<cc name="Convertidor Auxiliar" id="ConvAx8100"/>
+
+		<!--Neumática-->
+		<cc name="Depósito 125l" id="dep125"/>
+		<cc name="Depósito 60l" id="dep60"/>
+
+		<!--Elementos de rodadura y transmisión-->
+		<cc name="Rueda" id="a01">
+			<magnitude name="Ancho de rodadura" min="830" max="850" units="mm"/>			
+		</cc>
+		<cc name="Reductor" id="a02">
+			<magnitude name="Holgura acoplamiento" min="0" max="1000" units="mm"/>
+		</cc>
+		<cc name="Cuerpo de eje" id="a03"/>
+		<cc name="Disco de freno" id="a04">
+			<magnitude name="Ancho" min="100" max="300" units="mm"/>
+		</cc>
+		<cc name="Acoplamiento lado reductor" id="a05"/>
+		<cc name="Caja de grasa" id="cajjj">
+			<magnitude name="Viscosidad" min="0" max="100" units="-"/>
+		</cc>
+		<cc name="Eje" id="a06">
+			<rr id="a01" name="Rueda Derecha"/>
+			<rr id="a01" name="Rueda Izquierda"/>
+			<rr id="a02" name="Reductor"/>
+			<rr id="a03" name="Cuerpo de eje"/>
+			<rr id="a04" name="Disco de freno BM"/>
+			<rr id="a05" name="Acoplamiento lado reductor"/>
+			<rr id="cajjj" name="Caja de grasa derecha"/>
+			<rr id="cajjj" name="Caja de grasa izquierda"/>
+		</cc>
+		<cc name="Acoplamiento lado motor" id="a07"/>
+		<cc name="Balona" id="a08"/>
+		<cc name="Bastidor" id="a09"/>
+		<cc name="Cilindro freno normal" id="a10"/>
+		<cc name="Cilindro freno servicio y estacionamiento" id="a11"/>
+		<cc name="Corona de giro" id="a12"/>
+		<cc name="Motor de tracción" id="a13"/>
+		<cc name="Resorte suspensión primaria" id="a14" />
+		<cc name="Válvula compensadora" id="a15"/>
+		<cc name="Traviesa de bogie" id="a16">
+			<rr id="a15" name="Válvula compensadora"/>
+		</cc>		
+		<cc name="Válvula niveladora" id="a17"/>
+		<cc name="Válvula presión media" id="a18"/>
+		<cc name="bogie motor tipo A" id="a19a">
+			<rr id="dep60" name="Depósito 60 litros"/>
+			<rr id="a07" name="Acoplamiento lado motor Eje A"/>
+			<rr id="a07" name="Acoplamiento lado motor Eje B"/>
+			<rr id="a08" name="Balona izquierda"/>
+			<rr id="a08" name="Balona derecha"/>
+			<rr id="a09" name="Bastidor Bogie Motor"/>
+			<rr id="a10" name="Cilindro de freno de servicio Eje A"/>
+			<rr id="a11" name="Cilindro de freno de servicio y estacionamiento Eje B"/>
+			<rr id="a12" name="Corona de giro"/>
+			<rr id="a06" name="Eje A"/>
+			<rr id="a06" name="Eje B"/>
+			<rr id="a13" name="Motor tracción Eje A"/>
+			<rr id="a13" name="Motor tracción Eje B"/>
+			<rr id="a14" name="Resorte primaria Eje A Izquierda 1" comment="Está en el lado exterior del bogie"/>
+			<rr id="a14" name="Resorte primaria Eje A Izquierda 2"/>
+			<rr id="a14" name="Resorte primaria Eje A Derecha 1"/>
+			<rr id="a14" name="Resorte primaria Eje A Derecha 2"/>
+			<rr id="a14" name="Resorte primaria Eje B Izquierda 1"/>
+			<rr id="a14" name="Resorte primaria Eje B Izquierda 2"/>
+			<rr id="a14" name="Resorte primaria Eje B Derecha 1"/>
+			<rr id="a14" name="Resorte primaria Eje B Derecha 2"/>
+			<rr id="a16" name="Traviesa Bogie Motor"/>
+			<rr id="a17" name="Válvula niveladora Izquierda"/>
+			<rr id="a17" name="Válvula niveladora Derecha"/>
+			<rr id="a18" name="Válvula presión media bogie motor"/>
+		</cc>
+		<cc name="bogie motor tipo B" id="a19b">
+			<rr id="dep60" name="Depósito 60 litros"/>
+			<rr id="a07" name="Acoplamiento lado motor Eje A"/>
+			<rr id="a07" name="Acoplamiento lado motor Eje B"/>
+			<rr id="a08" name="Balona izquierda"/>
+			<rr id="a08" name="Balona derecha"/>
+			<rr id="a09" name="Bastidor Bogie Motor"/>
+			<rr id="a10" name="Cilindro de freno de servicio Eje A"/>
+			<rr id="a11" name="Cilindro de freno de servicio y estacionamiento Eje B"/>
+			<rr id="a12" name="Corona de giro"/>
+			<rr id="a06" name="Eje A"/>
+			<rr id="a06" name="Eje B"/>
+			<rr id="a13" name="Motor tracción Eje A"/>
+			<rr id="a13" name="Motor tracción Eje B"/>
+			<rr id="a14" name="Resorte primaria Eje A Izquierda 1" comment="Está en el lado exterior del bogie"/>
+			<rr id="a14" name="Resorte primaria Eje A Izquierda 2"/>
+			<rr id="a14" name="Resorte primaria Eje A Derecha 1"/>
+			<rr id="a14" name="Resorte primaria Eje A Derecha 2"/>
+			<rr id="a14" name="Resorte primaria Eje B Izquierda 1"/>
+			<rr id="a14" name="Resorte primaria Eje B Izquierda 2"/>
+			<rr id="a14" name="Resorte primaria Eje B Derecha 1"/>
+			<rr id="a14" name="Resorte primaria Eje B Derecha 2"/>
+			<rr id="a16" name="Traviesa Bogie Motor"/>
+			<rr id="a17" name="Válvula niveladora Izquierda"/>
+			<rr id="a17" name="Válvula niveladora Derecha"/>
+			<rr id="a18" name="Válvula presión media bogie motor"/>
+		</cc>
+		<cc name="bogie motor tipo C" id="a19c">
+			<rr id="dep60" name="Depósito 60 litros"/>
+			<rr id="a07" name="Acoplamiento lado motor Eje A"/>
+			<rr id="a07" name="Acoplamiento lado motor Eje B"/>
+			<rr id="a08" name="Balona izquierda"/>
+			<rr id="a08" name="Balona derecha"/>
+			<rr id="a09" name="Bastidor Bogie Motor"/>
+			<rr id="a10" name="Cilindro de freno de servicio Eje A"/>
+			<rr id="a11" name="Cilindro de freno de servicio y estacionamiento Eje B"/>
+			<rr id="a12" name="Corona de giro"/>
+			<rr id="a06" name="Eje A"/>
+			<rr id="a06" name="Eje B"/>
+			<rr id="a13" name="Motor tracción Eje A"/>
+			<rr id="a13" name="Motor tracción Eje B"/>
+			<rr id="a14" name="Resorte primaria Eje A Izquierda 1" comment="Está en el lado exterior del bogie"/>
+			<rr id="a14" name="Resorte primaria Eje A Izquierda 2"/>
+			<rr id="a14" name="Resorte primaria Eje A Derecha 1"/>
+			<rr id="a14" name="Resorte primaria Eje A Derecha 2"/>
+			<rr id="a14" name="Resorte primaria Eje B Izquierda 1"/>
+			<rr id="a14" name="Resorte primaria Eje B Izquierda 2"/>
+			<rr id="a14" name="Resorte primaria Eje B Derecha 1"/>
+			<rr id="a14" name="Resorte primaria Eje B Derecha 2"/>
+			<rr id="a16" name="Traviesa Bogie Motor"/>
+			<rr id="a17" name="Válvula niveladora Izquierda"/>
+			<rr id="a17" name="Válvula niveladora Derecha"/>
+			<rr id="a18" name="Válvula presión media bogie motor"/>
+		</cc>
+		
+		<!--Coches y unidades tren-->
+		<cc name="Coche M1" id="a20m1">
+			<rr id="batt8100" name="Batería"/>
+			<rr id="ConvAx8100" name="Convertidor"/>
+			<rr id="dep125" name="Depósito 125l"/>
+			<rr id="a19a" name="Bogie 1"/>
+			<rr id="a19b" name="Bogie 2"/>
+		</cc>
+		<cc name="Coche N1" id="a20n1">
+			<rr id="a19b" name="Bogie 1"/>
+			<rr id="a19c" name="Bogie 2"/>
+		</cc>
+		<cc name="Coche N2" id="a20n2">
+			<rr id="a19b" name="Bogie 1"/>
+			<rr id="a19c" name="Bogie 2"/>
+		</cc>
+		<cc name="Coche M2" id="a20m2">
+			<rr id="batt8100" name="Batería"/>
+			<rr id="ConvAx8100" name="Convertidor"/>
+			<rr id="dep125" name="Depósito 125l"/>
+			<rr id="a19a" name="Bogie 1"/>
+			<rr id="a19b" name="Bogie 2"/>
+		</cc>		
+
+		<cc name="UT-8100 triple" id="a21t3">
+			<rr id="a20m1" name="M1"/>
+			<rr id="a20n1" name="N1"/>
+			<rr id="a20m2" name="M2"/>
+		</cc>
+		<cc name="UT-8100 cuadriple" id="a21t4">
+			<rr id="a20m1" name="M1"/>
+			<rr id="a20n1" name="N1"/>
+			<rr id="a20n2" name="N2"/>
+			<rr id="a20m2" name="M2"/>
+		</cc>
+
+		<cc name="Parque móvil" id="a22">
+			<rr id="a21t3" name="UT-8100 Triple"/>
+			<rr id="a21t4" name="UT-8100 Cuadriple"/>
+		</cc>
+		
+	</classes>
+	<hierarchy>
+
+	</hierarchy>	
+</root>
+

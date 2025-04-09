@@ -1,0 +1,27 @@
+﻿@page "/admin/usersmanage"
+@inject AuthenticationClient mvarClient
+@inject IntStorageService mvarLocalStorage
+@inject NavigationManager mvarNavigator
+<PageTitle>Usuarios</PageTitle>
+<Sapphire2025.Layout.Users.UsersListCTL users="@mcolUsers"></Sapphire2025.Layout.Users.UsersListCTL>
+<Button Class="btn btn-primary" @onclick="OnCreateNewUser">Nuevo</Button>
+
+@code {
+	private IEnumerable<UserModel> mcolUsers = new List<UserModel>();
+
+	protected async override Task OnInitializedAsync()
+	{
+		await base.OnInitializedAsync();
+		string? auxToken = await mvarLocalStorage.getToken();
+		IEnumerable<UserModel>? auxLista = await mvarClient.usersList(auxToken!);
+		if (null != auxLista)
+		{
+			mcolUsers = auxLista;
+			StateHasChanged();
+		}
+	}
+	protected void OnCreateNewUser()
+	{
+		mvarNavigator.NavigateTo("/create-user");
+	}
+}

@@ -1,0 +1,6 @@
+@Sapphire25Server_HostAddress = http://localhost:5194
+
+GET {{Sapphire25Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

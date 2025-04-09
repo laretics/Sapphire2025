@@ -1,0 +1,72 @@
+﻿@inherits LayoutComponentBase
+@using System.Security.Claims
+@using ZafiroGmao.Data
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject MontefaroSessionContainer MontefaroContainer
+
+
+<PageTitle>Zafiro</PageTitle>
+
+<div class="page">
+    <div class="sidebar" >
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4 auth">
+            @if(mvarAutenticado)
+            {
+                <AuthorizeView Roles="Root">
+                    <NavLink class="nav-link" href="counter" @onclick="selectRoot">Admin</NavLink>
+                </AuthorizeView>
+                <AuthorizeView Roles="Oficial">
+                    <NavLink class="nav-link" href="counter" @onclick="selectOficial">Oficial</NavLink>
+                </AuthorizeView>
+                <AuthorizeView Roles="Expert">
+                    <NavLink class="nav-link" href="counter" @onclick="selectExpert">Experto</NavLink>
+                </AuthorizeView>
+                <AuthorizeView Roles="Mechanic">
+                    <NavLink class="nav-link" href="counter" @onclick="selectMechanic">Taller</NavLink>
+                </AuthorizeView>
+                <AuthorizeView Roles="Inspector">
+                    <NavLink class="nav-link" href="counter" @onclick="selectInspector">Circulación</NavLink>
+                </AuthorizeView>
+                <NavLink class="nav-link" href="counter" @onclick="selectAnonymous">Partes de Avería</NavLink>    
+            }
+            <LoginDisplay />
+            <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code
+{
+    private bool mvarAutenticado = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        ClaimsPrincipal user = authState.User;
+
+        if (user.Identity is not null && user.Identity.IsAuthenticated)
+        {
+            mvarAutenticado = true;
+            if(user.IsInRole("Oficial"))
+            {
+
+            }
+        }
+    }
+    private void selectRoot(){ MontefaroContainer.CurrentRole = Data.Models.Common.UserRole.Root; }
+    private void selectMechanic(){ MontefaroContainer.CurrentRole = Data.Models.Common.UserRole.Mechanic; }
+    private void selectOficial(){ MontefaroContainer.CurrentRole = Data.Models.Common.UserRole.Oficial; }
+    private void selectExpert(){ MontefaroContainer.CurrentRole = Data.Models.Common.UserRole.Expert; }
+    private void selectInspector(){ MontefaroContainer.CurrentRole = Data.Models.Common.UserRole.Inspector; }
+    private void selectAnonymous(){ MontefaroContainer.CurrentRole = Data.Models.Common.UserRole.Anonymous; }
+}
+    
+

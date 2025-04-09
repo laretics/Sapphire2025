@@ -1,0 +1,24 @@
+﻿@if (Parent.ActivePage == this)
+{
+    @ChildContent
+}
+@code {
+    [CascadingParameter]
+    private _TabControl Parent { get; set; }
+
+    [Parameter]
+    public string Text { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (null== Parent)
+            throw new ArgumentNullException(nameof(Parent), "TabPage must exist within a TabControl");
+        
+        Parent.AddPage(this);
+
+        base.OnInitialized();
+    }
+}

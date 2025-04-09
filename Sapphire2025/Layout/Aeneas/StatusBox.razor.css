@@ -1,0 +1,28 @@
+﻿.hover-rect {
+    transition: fill 0.3s ease;
+}
+
+.hover-rect:hover {
+    fill: blue;
+    background-color:lightblue;
+}
+
+.no-pointer-events {
+    pointer-events: none;
+}
+
+.hide-text {
+    font-size: 1rem; /* Tamaño de fuente por defecto */
+}
+
+@media (max-width: 900px) {
+    .hide-text {
+        display: none; /* Oculta el texto cuando el ancho es menor que 600px */
+    }
+}
+
+@media (min-width:900px) {
+    .hide-graph{
+        display:none; /*Ocultamos los dibujos cuando hay texto*/
+    }
+}

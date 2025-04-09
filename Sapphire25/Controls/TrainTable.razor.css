@@ -1,0 +1,28 @@
+﻿.train-table {
+    border-collapse: separate;
+    border-spacing: 0 7px;
+}
+
+    .train-table thead th {
+        background-color: #343a40;
+        color: #fff;
+        border: none;
+        min-width:fit-content;
+        padding-left:10px;
+        padding-right:10px;
+        text-align:center;
+    }
+
+    .train-table tbody tr {
+        background-color: #f8f9fa;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+        .train-table tbody tr:nth-child(odd) {
+            background-color: #e9ecefdee2e6;
+        }
+
+    .train-table tbody td, .table-custom thead th {
+        padding: 12px 15px;
+        border: 1px solid #dee2e6;
+    }
