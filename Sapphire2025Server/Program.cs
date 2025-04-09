@@ -3,7 +3,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Configura la lectura del archivo appsettings.json
 builder.Configuration
 	.SetBasePath(Directory.GetCurrentDirectory())
-	.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+	.AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true);
 
 // Accede a la cadena de conexión remota
 var remoteConnectionString = builder.Configuration.GetConnectionString("RemoteConnection");
