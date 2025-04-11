@@ -14,7 +14,8 @@ builder.Services.AddBlazorBootstrap();
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:7153")});
 
-builder.Services.AddScoped<AuthenticationClient>();
+builder.Services.AddScoped<AuthenticationClient>(); //Cliente http autenticación
+builder.Services.AddScoped<AeneasClient>(); //Cliente http Aeneas
 
 builder.Services.AddScoped<IntStorageService>(); //Acceso a los datos de sesión.
 

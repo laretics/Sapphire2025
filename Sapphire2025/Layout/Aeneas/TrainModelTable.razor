@@ -1,0 +1,90 @@
+﻿
+@if(null!=Trains)
+{
+	<div>
+		<div class="row border-bottom border-top bg-secondary text-light ">
+			@if (ShowStatus)
+			{
+				<div class="col-1 border-end justify-content-center align-items-center" 
+				onclick="@(()=>sortFields(2))" style="min-width: 64px;">
+					<Sapphire2025.Icons.Headers.TrainStatus color="white" />
+				</div>
+			}
+			<div class="col-2 border-end justify-content-center align-items-center"
+			onclick="@(()=>sortFields(1))"
+			style="min-width: 100px;"><Sapphire2025.Icons.Headers.UT color="white" />
+			</div>
+			<div class="col-3 border-end justify-content-center align-items-center"
+			onclick="@(()=>sortFields(0))"
+			style="min-width: 200px;"><Sapphire2025.Icons.Headers.EventDateTime color="white" />
+			</div>
+		</div>
+		<div class="overflow-auto" style="height:@(Height-10)vh; overflow-y: auto; width: @Width %">
+			@foreach (TrainModel train in Trains)
+			{
+				<div class="row border-bottom">
+					<TrainModelRow Train="@train" ShowStatus="@ShowStatus" />
+				</div>										
+			}
+		</div>
+	</div>
+}
+@code {
+	[Parameter]
+	public IEnumerable<TrainModel>? Trains{ get; set; }
+	[Parameter]
+	public int Width{ get; set; }
+	[Parameter]
+	public int Height{ get; set; }
+	[Parameter]
+	public bool ShowStatus{ get; set; }
+
+	private int mvarLastOrderField { get; set; } = -1;
+
+	protected override void OnParametersSet()
+	{
+		base.OnParametersSet();
+		sortFields(1);
+	}
+
+	private void sortFields(int fieldId)
+	{
+		if(null!=Trains)
+		{
+			if(mvarLastOrderField.Equals(fieldId))
+			{
+				//Orden inverso
+				switch (fieldId)
+				{
+					case 1:
+						Trains = Trains.OrderByDescending(xx => xx.name).ToList();
+						break;
+					case 2:
+						Trains = Trains.OrderByDescending(xx => xx.lastStatus).ToList();
+						break;
+					default:
+						Trains = Trains.OrderByDescending(xx => xx.lastUpdateTime).ToList();
+						break;
+				}
+				mvarLastOrderField = -1; //Para poder volver a ordenar en directo
+			}
+			else
+			{
+				switch (fieldId)
+				{
+					case 1:
+						Trains = Trains.OrderBy(xx => xx.name).ToList();
+						break;
+					case 2:
+						Trains = Trains.OrderBy(xx => xx.lastStatus).ToList();
+						break;
+					default:
+						Trains = Trains.OrderBy(xx => xx.lastUpdateTime).ToList();
+						break;
+				}
+				mvarLastOrderField = fieldId;
+			}			
+			StateHasChanged();
+		}		
+	}
+}

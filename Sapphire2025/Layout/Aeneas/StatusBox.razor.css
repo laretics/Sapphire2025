@@ -2,10 +2,18 @@
     transition: fill 0.3s ease;
 }
 
-.hover-rect:hover {
-    fill: blue;
-    background-color:lightblue;
+.hover-empty-rect:hover {
+    fill: #bdc5cd;
 }
+
+.hover-populated-rect:hover {
+    fill: #7620ff;
+}
+
+.selected-rect:hover {
+    pointer-events: none;
+}
+
 
 .no-pointer-events {
     pointer-events: none;

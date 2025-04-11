@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,53 +15,18 @@ namespace Sapphire2025Models.Aeneas
 		public string name { get; set; }
 		public string? nameCloud { get; set; } //Colección de cadenas para poder buscar esta unidad.
 
-		public List<StatusChangeModel> statusChanges { get; private set; }
-
 		public TrainModel()
 		{
-			statusChanges = new List<StatusChangeModel>();
 			name = string.Empty;
-
-		}
-		public Common.TrainStatus lastStatus
-		{
-			get
-			{
-				if (statusChanges.Count > 0)
-				{
-					StatusChangeModel auxLast = statusChanges.First();
-					return auxLast.status;
-				}
-				return Common.TrainStatus.Unknown;
-			}
-		}
-		public DateTime lastUpdateTime
-		{
-			get
-			{
-				if (statusChanges.Count > 0)
-				{
-					StatusChangeModel auxLast = statusChanges.First();
-					return auxLast.timeStamp;
-				}
-				return DateTime.Now;
-			}
 		}
 
-		public string lastUserInfo
-		{
-			get
-			{
-				if (statusChanges.Count > 0)
-				{
-					StatusChangeModel auxLast = statusChanges.First();
-					if (null != auxLast)
-					{
-						return auxLast.userId;
-					}
-				}
-				return "-";
-			}
-		}
+		//Estado actual en el que se encuentra este tren.
+		public Common.TrainStatus lastStatus { get; set; }
+
+		//Fecha del último cambio
+		public DateTime lastUpdateTime { get; set; }
+
+		//Id del último usuario que interactuó con este tren
+		public string? lastUserInfo { get; set; }
 	}
 }

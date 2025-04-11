@@ -1,8 +1,42 @@
 ﻿@page "/trainFlow"
+@inject AeneasClient mvarAeneasClient
+@if(null==mcolTrains)
+{
+	<div class="d-flex justify-content-center">
+		<h4>Cargando...</h4>
+		<div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
+			<span class="visually-hidden">Cargando...</span>
+		</div>
+	</div>
+}
+else
+{
+	<div class="row align-items-start" style="height: 50vh; width: 100%">
+		<div class="col">
+			<Sapphire2025.Layout.Aeneas.TrainFlowCTL Extended="false"
+						width="100" height="50" Trains="@mcolTrains" />
+		</div>
+		<div class="col">
+			<Sapphire2025.Layout.Aeneas.TrainModelTable Trains="@mcolTrains" 
+			Width="100" Height="50" ShowStatus="false"/>
+		</div>
+	</div>
+	<div class="row align-items-start" style="height: 50vh;">
+		<div class="col">
+			<Sapphire2025.Layout.Aeneas.TrainModelTable Trains="@mcolTrains"
+			Width="95" Height="50" ShowStatus="true"/>
+		</div>
+	</div>
 
-<Sapphire2025.Layout.Aeneas.TrainFlowCTL Extended="false" width="100" height="50" />
+}
 
-@code {
+@code 
+{
+	private IEnumerable<TrainModel>? mcolTrains{ get; set; }
 
+	protected async override Task OnInitializedAsync()
+	{
+		mcolTrains = await mvarAeneasClient.trainsList();
+	}
 
 }

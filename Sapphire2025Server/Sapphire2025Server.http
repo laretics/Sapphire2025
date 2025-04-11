@@ -23,3 +23,6 @@ GET {{Sapphire2025Server_HostAddress}}/sapphireauthentication/userinfo?tokenid=a
 
 ### Comprobación de password vacío o nulo
 PUT {{Sapphire2025Server_HostAddress}}/sapphireauthentication/isemptypwd/jsonString = '{"userName":"227","password":null}'
+
+### Lista de trenes
+GET {{Sapphire2025Server_HostAddress}}/sapphireaeneas/trains

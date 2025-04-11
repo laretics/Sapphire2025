@@ -26,5 +26,29 @@ namespace Sapphire2025Models
 			return (byte)(rhs | (1 << byteId));
 		}
 
+		public static string autoDate(DateTime rhs)
+		{
+			DateTime ahora = DateTime.Now;
+			double dias = ahora.Subtract(rhs).TotalDays;
+			if(rhs.Equals(DateTime.MinValue))
+			{
+				return "-";
+			}
+			else
+			{
+				if (dias < 1)
+				{
+					return string.Format("{0:HH:mm}", rhs);
+				}
+				else if (dias < 2)
+				{
+					return string.Format("Ayer {0:HH:mm}", rhs);
+				}
+				else
+				{
+					return string.Format("{0:dd-MM-yy}", rhs);
+				}
+			}
+		}
 	}
 }

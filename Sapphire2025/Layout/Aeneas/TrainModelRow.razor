@@ -1,0 +1,20 @@
+﻿@if(null!=Train)
+{
+    @if (ShowStatus)
+    {
+        <div class="col-1 border-end text-center d-flex justify-content-center align-items-center" style="min-width: 64px;">
+            <Sapphire2025.Icons.Status.IcoStatus status="@Train.lastStatus" color="black" />
+        </div>
+    }
+    <div class="col-2 border-end text-center d-flex justify-content-center align-items-center" style="min-width: 100px;">
+        @Train.name
+    </div>
+    <div class="col-3 border-end" style="min-width: 200px;">@Sapphire2025Models.Utils.autoDate(Train.lastUpdateTime)</div>
+}
+@code {
+    [Parameter]
+    public TrainModel? Train { get; set; }
+    [Parameter]
+    public bool ShowStatus{ get; set; }
+
+}

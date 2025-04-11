@@ -1,109 +1,140 @@
-﻿<div class="svg-container">
-	<svg width="@width%" height="@height%" xmlns="http://www.w3.org/2000/svg" enable-background="true">
-		@if (Extended)
-		{
-			<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="4" Name="Inicio">
-				<Sapphire2025.Icons.Status.Unknown color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
-			<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="4" Name="Stand Still">
-				<Sapphire2025.Icons.Status.StandStill color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
-			<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="4" Name="Baja">
-				<Sapphire2025.Icons.Status.Disabled color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
+﻿@if(mvarInitialized)
+{
+	<div class="svg-container">
+		<svg width="@width%" height="@height%" xmlns="http://www.w3.org/2000/svg" enable-background="true">
+			<CascadingValue Value="Trains">
+				<CascadingValue Value="Selection">				
+				@if (Extended)
+				{
+					<rect x="8%" y="26%" width="24%" height="28%" fill="#c0f0c0" rx="3%" ry="3%" />
+					<rect x="8%" y="50%" width="84%" height="20%" fill="#c0f0c0" rx="3%" ry="3%" />
+						<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="4"
+															  Name="Inicio"															  
+						>
+							<Sapphire2025.Icons.Status.Unknown color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
+						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="4"
+															  Name="Stand Still"
+						>
+							<Sapphire2025.Icons.Status.StandStill color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
+						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="4" Name="Baja"															  
+						>
+							<Sapphire2025.Icons.Status.Disabled color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
 
-			<Sapphire2025.Icons.Arrows.LeftRight x="31" y="8" height="8" Color="navy" />
-			<Sapphire2025.Icons.Arrows.LeftRight x="61" y="8" height="8" Color="navy" />
+						<Sapphire2025.Icons.Arrows.LeftRight x="31" y="8" height="8" Color="navy" />
+						<Sapphire2025.Icons.Arrows.LeftRight x="61" y="8" height="8" Color="navy" />
 
-			<Sapphire2025.Icons.Arrows.UpDown x="46" y="20" height="8" Color="navy" />
-
-
-			<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="28" Name="¡Retirar!">
-				<Sapphire2025.Icons.Status.RequestToRepair color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
-			<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="28" Name="Correctivo">
-				<Sapphire2025.Icons.Status.Repairing color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
-
-			<Sapphire2025.Icons.Arrows.Right x="31" y="32" height="8" Color="navy" />
-
-
-			<Sapphire2025.Icons.Arrows.Up x="16" y="44" height="8" Color="navy" />
-			<Sapphire2025.Icons.Arrows.Down x="46" y="44" height="8" Color="navy" />
-
-			<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="52" Name="Pend. Diagnóstico">
-				<Sapphire2025.Icons.Status.RequestToDiagnose color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
-			<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="52" Name="Disponible" Badge="30">
-				<Sapphire2025.Icons.Status.Available color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
-			<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="52" Name="Solicitado Preventivo">
-				<Sapphire2025.Icons.Status.DepotRequested color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
+						<Sapphire2025.Icons.Arrows.UpDown x="46" y="20" height="8" Color="navy" />
 
 
-			<Sapphire2025.Icons.Arrows.LeftRight x="31" y="56" height="8" Color="navy" />
+						<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="28" Name="¡Retirar!"
+						>
+							<Sapphire2025.Icons.Status.RequestToRepair color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
+						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="28" Name="Correctivo"
+						>
+							<Sapphire2025.Icons.Status.Repairing color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
 
-			<Sapphire2025.Icons.Actions.Scheduler x="61" y="53" height="8" Color="navy" />
-			<Sapphire2025.Icons.Arrows.Right x="61" y="59" height="8" Color="navy" />
-
-			<Sapphire2025.Icons.Arrows.Up x="46" y="68" height="8" Color="navy" />
-			<Sapphire2025.Icons.Arrows.UpDown x="76" y="68" height="8" Color="navy" />
-
-			<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="76" Name="Preventivo">
-				<Sapphire2025.Icons.Status.Maintenance color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
-			<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="76" Name="Esperando Preventivo">
-				<Sapphire2025.Icons.Status.DepotAvailable color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
-
-			<Sapphire2025.Icons.Arrows.LeftRight x="61" y="80" height="8" Color="navy" />
-		}
-		else
-		{
-			<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="6" Name="¡Retirar!">
-				<Sapphire2025.Icons.Status.RequestToRepair color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
-			<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="6" Name="Correctivo">
-				<Sapphire2025.Icons.Status.Repairing color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
+						<Sapphire2025.Icons.Arrows.Right x="31" y="32" height="8" Color="navy" />
 
 
-			<Sapphire2025.Icons.Arrows.Right x="31" y="10" height="8" Color="navy" />
+						<Sapphire2025.Icons.Arrows.Up x="16" y="44" height="8" Color="navy" />
+						<Sapphire2025.Icons.Arrows.Down x="46" y="44" height="8" Color="navy" />
+
+						<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="52" Name="Pend. Diagnóstico"
+						>
+							<Sapphire2025.Icons.Status.RequestToDiagnose color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
+						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="52" Name="Disponible"															  
+						>
+							<Sapphire2025.Icons.Status.Available color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
+						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="52" Name="Solicitado Preventivo"
+						>
+							<Sapphire2025.Icons.Status.DepotRequested color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
 
 
-			<Sapphire2025.Icons.Arrows.Up x="16" y="27" height="8" Color="navy" />
-			<Sapphire2025.Icons.Arrows.Down x="46" y="27" height="8" Color="navy" />
+						<Sapphire2025.Icons.Arrows.LeftRight x="31" y="56" height="8" Color="navy" />
 
-			<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="39" Name="Pend. Diagnóstico">
-				<Sapphire2025.Icons.Status.RequestToDiagnose color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
-			<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="39" Name="Disponible">
-				<Sapphire2025.Icons.Status.Available color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
-			<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="39" Name="Solicitado Preventivo" Badge="2">
-				<Sapphire2025.Icons.Status.DepotRequested color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
+						<Sapphire2025.Icons.Actions.Scheduler x="61" y="53" height="8" Color="navy" />
+						<Sapphire2025.Icons.Arrows.Right x="61" y="59" height="8" Color="navy" />
 
-			<Sapphire2025.Icons.Arrows.LeftRight x="31" y="43" height="8" Color="navy" />
+						<Sapphire2025.Icons.Arrows.Up x="46" y="68" height="8" Color="navy" />
+						<Sapphire2025.Icons.Arrows.UpDown x="76" y="68" height="8" Color="navy" />
 
-			<Sapphire2025.Icons.Actions.Scheduler x="61" y="40" height="8" Color="navy" />
-			<Sapphire2025.Icons.Arrows.Right x="61" y="48" height="8" Color="navy" />
+						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="76" Name="Preventivo"
+						>
+							<Sapphire2025.Icons.Status.Maintenance color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
+						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="76" Name="Esperando Preventivo"
+						>
+							<Sapphire2025.Icons.Status.DepotAvailable color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
 
-			<Sapphire2025.Icons.Arrows.Up x="46" y="59" height="8" Color="navy" />
-			<Sapphire2025.Icons.Arrows.UpDown x="76" y="59" height="8" Color="navy" />
+						<Sapphire2025.Icons.Arrows.LeftRight x="61" y="80" height="8" Color="navy" />
+				}
+				else
+				{
+					<rect x="8%" y="4%" width="24%" height="39%" fill="#c0f0c0" rx="3%" ry="3%" />
+					<rect x="8%" y="37%" width="84%" height="20%" fill="#c0f0c0" rx="3%" ry="3%" />
 
-			<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="72" Name="Preventivo">
-				<Sapphire2025.Icons.Status.Maintenance color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
-			<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="72" Name="Esperando Preventivo">
-				<Sapphire2025.Icons.Status.DepotAvailable color="white" />
-			</Sapphire2025.Layout.Aeneas.StatusBox>
+						<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="6" Name="¡Retirar!"
+						>
+							<Sapphire2025.Icons.Status.RequestToRepair color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
+						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="6" Name="Correctivo"
+						>
+							<Sapphire2025.Icons.Status.Repairing color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
 
-			<Sapphire2025.Icons.Arrows.LeftRight x="61" y="76" height="8" Color="navy" />
-		}
-	</svg>
-</div>
+
+						<Sapphire2025.Icons.Arrows.Right x="31" y="10" height="8" Color="navy" />
+
+
+						<Sapphire2025.Icons.Arrows.Up x="16" y="27" height="8" Color="navy" />
+						<Sapphire2025.Icons.Arrows.Down x="46" y="27" height="8" Color="navy" />
+
+						<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="39" Name="Pend. Diagnóstico"
+						>
+							<Sapphire2025.Icons.Status.RequestToDiagnose color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
+						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="39" Name="Disponible"
+						>
+							<Sapphire2025.Icons.Status.Available color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
+						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="39" Name="Solicitado Preventivo"
+						>
+							<Sapphire2025.Icons.Status.DepotRequested color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
+
+						<Sapphire2025.Icons.Arrows.LeftRight x="31" y="43" height="8" Color="navy" />
+
+						<Sapphire2025.Icons.Actions.Scheduler x="61" y="40" height="8" Color="navy" />
+						<Sapphire2025.Icons.Arrows.Right x="61" y="48" height="8" Color="navy" />
+
+						<Sapphire2025.Icons.Arrows.Up x="46" y="59" height="8" Color="navy" />
+						<Sapphire2025.Icons.Arrows.UpDown x="76" y="59" height="8" Color="navy" />
+
+						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="72" Name="Preventivo"
+						>
+							<Sapphire2025.Icons.Status.Maintenance color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
+						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="72" Name="Esperando Preventivo"
+						>
+							<Sapphire2025.Icons.Status.DepotAvailable color="white" />
+						</Sapphire2025.Layout.Aeneas.StatusBox>
+
+						<Sapphire2025.Icons.Arrows.LeftRight x="61" y="76" height="8" Color="navy" />
+				}
+				</CascadingValue>
+			</CascadingValue>
+		</svg>
+	</div>
+}
 
 @code {
 	[Parameter]
@@ -112,4 +143,48 @@
 	public int width{ get; set; }
 	[Parameter]
 	public int height{ get; set; }
+	[Parameter]
+	public IEnumerable<TrainModel>? Trains{ get; set; }
+
+	private bool mvarInitialized = false;
+
+	private Dictionary<Sapphire2025Models.Common.TrainStatus, int> mcolCounters = new Dictionary<Sapphire2025Models.Common.TrainStatus, int>();
+
+	[Parameter]
+	public Sapphire2025Models.Common.TrainStatus Selection { get; set; }
+
+	private int ItemCount(Sapphire2025Models.Common.TrainStatus status)
+	{
+		if(mcolCounters.ContainsKey(status))
+		{
+			return mcolCounters[status];
+		}
+		return 0;
+	}
+	private void onChangeSel(Sapphire2025Models.Common.TrainStatus status)
+	{
+		Selection = status;
+		StateHasChanged();
+	}
+	protected async override Task OnInitializedAsync()
+	{
+		//Distribuye los trenes en el diagrama
+		if (null != Trains)
+		{
+			foreach (TrainModel auxTrain in Trains)
+			{
+				if (mcolCounters.ContainsKey(auxTrain.lastStatus))
+				{
+					mcolCounters[auxTrain.lastStatus] = mcolCounters[auxTrain.lastStatus] + 1;
+				}
+				else
+				{
+					mcolCounters.Add(auxTrain.lastStatus, 1);
+				}
+			}
+		}
+		mvarInitialized = true;
+		StateHasChanged();
+	}
+
 }

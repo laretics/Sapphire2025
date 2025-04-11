@@ -26,7 +26,7 @@ namespace ZafiroGmao.Telegram
     /// </summary>
     public class BotSoul
     {
-        private static string Token = "7400996890:AAFvz2zdrBaAiBpG9010TexLMAkjuCny-CA";
+        private static string Token = "popo";
         private TelegramBotClient mvarClient;
         internal IServiceScopeFactory mvarScopeFactory; //Necesario para cargar UserManager
         internal UserManager<SFMUser> userManager; //Lo necesito para verificar passwords

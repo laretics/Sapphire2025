@@ -39,5 +39,10 @@ namespace Sapphire2025Server
 		public DbSet<RoleDictionary> RoleDictionary { get; set; }
 
 		#endregion authentication
+		#region Aeneas
+		public DbSet<StatusChange> StatusChanges { get; set; }
+		public DbSet<Train> Trains { get; set; }
+		public DbSet<Note> Notes { get; set; }
+		#endregion
 	}
 }

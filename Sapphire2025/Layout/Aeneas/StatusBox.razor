@@ -1,13 +1,29 @@
-﻿<rect x="@x%" y="@y%" width="20%" height="16%" rx="3%" ry="3%"
-	  class="hover-rect" fill="#606060"/>
-<text x="@(x+10)%" y="@(y+8)%" fill="white" 
+﻿@if(populated)
+{
+	<rect x="@x%" y="@y%" width="20%" height="16%" rx="3%" ry="3%"
+	class="hover-populated-rect" fill="#5600e2" />
+}
+else
+{
+	<rect x="@x%" y="@y%" width="20%" height="16%" rx="3%" ry="3%"
+	class="hover-empty-rect" fill="#9da5ad" />
+}
+
+@if(Selected)
+{
+	<rect x="@x%" y="@y%" width="20%" height="16%" rx="3%" ry="3%"
+	style="stroke-width:5; stroke:#0dcaf0;"
+	class="selected-rect" fill="none" />
+}
+<text x="@(x+10)%" y="@(y+8)%" fill="white"
 class="no-pointer-events hide-text"
 text-anchor="middle" dominant-baseline="middle">@Name</text>
-@if(null!=Badge)
+
+@if(populated)
 {
 	<foreignObject x="@(x+18)%" y="@(y+11)%" width="10%" height="10%">
 		<div xmlns="http://www.w3.org/1999/xhtml">
-			<span class="badge rounded-pill bg-primary">@Badge</span>
+			<span class="badge rounded-pill bg-primary">@string.Format("{0}",itemCount)</span>
 		</div>
 	</foreignObject>
 }
@@ -25,7 +41,26 @@ text-anchor="middle" dominant-baseline="middle">@Name</text>
 	[Parameter]
 	public string Name { get; set; } = "Unknown";
 	[Parameter]
-	public string? Badge{ get; set; }
-	[Parameter]
 	public RenderFragment? ChildContent { get; set; }
+
+	[Parameter]
+	public IEnumerable<TrainModel>? Trains{ get; set; }
+	[Parameter]
+	public Sapphire2025Models.Common.TrainStatus Selection{ get; set; }
+	[Parameter]
+	public Sapphire2025Models.Common.TrainStatus Status{ get; set; }
+
+	private int itemCount
+	{
+		get
+		{
+			if (null == Trains)
+				return 0;
+			return Trains.Where(x => x.lastStatus.Equals(Status)).Count();
+		}
+	}
+
+	private bool populated { get => itemCount > 0; }
+
+	private bool Selected {get => Status == Selection;}
 }
