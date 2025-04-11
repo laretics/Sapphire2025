@@ -17,4 +17,8 @@
     <ProjectReference Include="..\Sapphire2025Models\Sapphire2025Models.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Telegram\" />
+  </ItemGroup>
+
 </Project>
