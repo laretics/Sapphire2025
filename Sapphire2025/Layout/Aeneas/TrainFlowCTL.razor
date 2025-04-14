@@ -3,23 +3,26 @@
 	<div class="svg-container">
 		<svg width="@width%" height="@height%" xmlns="http://www.w3.org/2000/svg" enable-background="true">
 			<CascadingValue Value="Trains">
-				<CascadingValue Value="Selection">				
-				@if (Extended)
-				{
-					<rect x="8%" y="26%" width="24%" height="28%" fill="#c0f0c0" rx="3%" ry="3%" />
-					<rect x="8%" y="50%" width="84%" height="20%" fill="#c0f0c0" rx="3%" ry="3%" />
+				<CascadingValue Value="Status">	
+					@if (Extended)
+					{
+						<rect x="8%" y="26%" width="24%" height="28%" fill="#c0f0c0" rx="3%" ry="3%" />
+						<rect x="8%" y="50%" width="84%" height="20%" fill="#c0f0c0" rx="3%" ry="3%" />
 						<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="4"
-															  Name="Inicio"															  
-						>
+						Name="Inicio"
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.Unknown">
 							<Sapphire2025.Icons.Status.Unknown color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="4"
-															  Name="Stand Still"
-						>
+						Name="Stand Still"
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.StandStill">
 							<Sapphire2025.Icons.Status.StandStill color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
-						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="4" Name="Baja"															  
-						>
+						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="4" Name="Baja"
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.Disabled">
 							<Sapphire2025.Icons.Status.Disabled color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 
@@ -30,11 +33,13 @@
 
 
 						<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="28" Name="¡Retirar!"
-						>
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.RequestToRepair">
 							<Sapphire2025.Icons.Status.RequestToRepair color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="28" Name="Correctivo"
-						>
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.Repairing">
 							<Sapphire2025.Icons.Status.Repairing color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 
@@ -45,15 +50,18 @@
 						<Sapphire2025.Icons.Arrows.Down x="46" y="44" height="8" Color="navy" />
 
 						<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="52" Name="Pend. Diagnóstico"
-						>
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.RequestToDiagnose">
 							<Sapphire2025.Icons.Status.RequestToDiagnose color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
-						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="52" Name="Disponible"															  
-						>
+						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="52" Name="Disponible"
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.Available">
 							<Sapphire2025.Icons.Status.Available color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="52" Name="Solicitado Preventivo"
-						>
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.DepotRequested">
 							<Sapphire2025.Icons.Status.DepotRequested color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 
@@ -67,47 +75,53 @@
 						<Sapphire2025.Icons.Arrows.UpDown x="76" y="68" height="8" Color="navy" />
 
 						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="76" Name="Preventivo"
-						>
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.Maintenance">
 							<Sapphire2025.Icons.Status.Maintenance color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="76" Name="Esperando Preventivo"
-						>
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.DepotAvailable">
 							<Sapphire2025.Icons.Status.DepotAvailable color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 
 						<Sapphire2025.Icons.Arrows.LeftRight x="61" y="80" height="8" Color="navy" />
-				}
-				else
-				{
-					<rect x="8%" y="4%" width="24%" height="39%" fill="#c0f0c0" rx="3%" ry="3%" />
-					<rect x="8%" y="37%" width="84%" height="20%" fill="#c0f0c0" rx="3%" ry="3%" />
+					}
+					else
+					{
+						<rect x="8%" y="4%" width="24%" height="39%" fill="#c0f0c0" rx="3%" ry="3%" />
+						<rect x="8%" y="37%" width="84%" height="20%" fill="#c0f0c0" rx="3%" ry="3%" />
 
 						<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="6" Name="¡Retirar!"
-						>
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.RequestToRepair">
 							<Sapphire2025.Icons.Status.RequestToRepair color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="6" Name="Correctivo"
-						>
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.Repairing">
 							<Sapphire2025.Icons.Status.Repairing color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 
 
 						<Sapphire2025.Icons.Arrows.Right x="31" y="10" height="8" Color="navy" />
 
-
 						<Sapphire2025.Icons.Arrows.Up x="16" y="27" height="8" Color="navy" />
 						<Sapphire2025.Icons.Arrows.Down x="46" y="27" height="8" Color="navy" />
 
 						<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="39" Name="Pend. Diagnóstico"
-						>
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.RequestToDiagnose">
 							<Sapphire2025.Icons.Status.RequestToDiagnose color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="39" Name="Disponible"
-						>
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.Available">
 							<Sapphire2025.Icons.Status.Available color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="39" Name="Solicitado Preventivo"
-						>
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.DepotRequested">
 							<Sapphire2025.Icons.Status.DepotRequested color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 
@@ -120,16 +134,19 @@
 						<Sapphire2025.Icons.Arrows.UpDown x="76" y="59" height="8" Color="navy" />
 
 						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="72" Name="Preventivo"
-						>
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.Maintenance">
 							<Sapphire2025.Icons.Status.Maintenance color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="72" Name="Esperando Preventivo"
-						>
+						OnStatusSelected="HandleStatusSelected"
+						MyStatus="Sapphire2025Models.Common.TrainStatus.DepotAvailable">
 							<Sapphire2025.Icons.Status.DepotAvailable color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 
 						<Sapphire2025.Icons.Arrows.LeftRight x="61" y="76" height="8" Color="navy" />
-				}
+					}
+
 				</CascadingValue>
 			</CascadingValue>
 		</svg>
@@ -143,16 +160,25 @@
 	public int width{ get; set; }
 	[Parameter]
 	public int height{ get; set; }
-	[Parameter]
+	[CascadingParameter]
 	public IEnumerable<TrainModel>? Trains{ get; set; }
+	[CascadingParameter]
+	public Sapphire2025Models.Common.TrainStatus Status{ get; set; }
+	[Parameter]
+	public EventCallback<Sapphire2025Models.Common.TrainStatus> OnStatusSelected{ get; set; }
 
 	private bool mvarInitialized = false;
 
 	private Dictionary<Sapphire2025Models.Common.TrainStatus, int> mcolCounters = new Dictionary<Sapphire2025Models.Common.TrainStatus, int>();
 
-	[Parameter]
-	public Sapphire2025Models.Common.TrainStatus Selection { get; set; }
-
+	private void HandleStatusSelected(Sapphire2025Models.Common.TrainStatus status)
+	{
+		//Primero tengo que ver si hay algún tren en este estado...
+		if(ItemCount(status)>0)
+		{
+			OnStatusSelected.InvokeAsync(status);
+		}
+	}
 	private int ItemCount(Sapphire2025Models.Common.TrainStatus status)
 	{
 		if(mcolCounters.ContainsKey(status))
@@ -160,11 +186,6 @@
 			return mcolCounters[status];
 		}
 		return 0;
-	}
-	private void onChangeSel(Sapphire2025Models.Common.TrainStatus status)
-	{
-		Selection = status;
-		StateHasChanged();
 	}
 	protected async override Task OnInitializedAsync()
 	{

@@ -11,32 +11,51 @@
 }
 else
 {
-	<div class="row align-items-start" style="height: 50vh; width: 100%">
-		<div class="col">
-			<Sapphire2025.Layout.Aeneas.TrainFlowCTL Extended="false"
-						width="100" height="50" Trains="@mcolTrains" />
-		</div>
-		<div class="col">
-			<Sapphire2025.Layout.Aeneas.TrainModelTable Trains="@mcolTrains" 
-			Width="100" Height="50" ShowStatus="false"/>
-		</div>
-	</div>
-	<div class="row align-items-start" style="height: 50vh;">
-		<div class="col">
-			<Sapphire2025.Layout.Aeneas.TrainModelTable Trains="@mcolTrains"
-			Width="95" Height="50" ShowStatus="true"/>
-		</div>
-	</div>
-
+	<CascadingValue Value="mcolTrains">
+		<CascadingValue Value="Users">		
+			<CascadingValue Value="Status">
+				<div class="row align-items-start" style="height: 50vh; width: 100%">
+					<div class="col">
+						<Sapphire2025.Layout.Aeneas.TrainFlowCTL Extended="false"
+						OnStatusSelected="HandleStatusSelected"
+						width="100" height="50" />
+					</div>
+					<div class="col">
+						<Sapphire2025.Layout.Aeneas.StatusTrainsTable Width="100" Height="50"/>
+					</div>
+				</div>
+			</CascadingValue>
+			<div class="row align-items-start" style="height: 50vh;">
+				<div class="col">
+					<Sapphire2025.Layout.Aeneas.AvailableTrainsTable Width="95" Height="50"/>
+				</div>
+			</div>
+		</CascadingValue>
+	</CascadingValue>
 }
 
 @code 
 {
 	private IEnumerable<TrainModel>? mcolTrains{ get; set; }
+	[Parameter]
+	public Sapphire2025Models.Common.TrainStatus Status { get; set; }	
+	[Parameter]
+	public Dictionary<string,UserModel> Users{ get; set; }
 
 	protected async override Task OnInitializedAsync()
 	{
 		mcolTrains = await mvarAeneasClient.trainsList();
+		Users = await mvarAeneasClient.usersTrainList();
+	}
+
+	/// <summary>
+	/// Función para actualizar las tablas de trenes en función del elemento seleccionado.
+	/// </summary>
+	/// <param name="status"></param>
+	private void HandleStatusSelected(Sapphire2025Models.Common.TrainStatus status)
+	{
+		Status = status;
+		StateHasChanged();
 	}
 
 }

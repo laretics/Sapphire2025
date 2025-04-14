@@ -1,0 +1,50 @@
+﻿@inherits TrainModelTable
+@if (null != base.Trains)
+{
+	<div class="row border-bottom border-top bg-secondary text-light ">
+		<div class="col-3 border-end justify-content-center align-items-center"
+		onclick="@(()=>sortFields(1))"
+		style="min-width: 100px;">
+			<Sapphire2025.Icons.Headers.UT color="white" />
+		</div>
+		<div class="col-4 border-end justify-content-center align-items-center"
+		onclick="@(()=>sortFields(0))"
+		style="min-width: 200px;">
+			<Sapphire2025.Icons.Headers.EventDateTime color="white" />
+		</div>
+		<div class="col-2 border-end justify-content-center align-items-center"
+			 onclick="@(()=>sortFields(0))"
+			 style="min-width: 200px;">
+			<Sapphire2025.Icons.Headers.User color="white" />
+		</div>
+	</div>
+	<div class="overflow-auto" style="height:@(Height-10)vh; overflow-y: auto; width: @Width %">
+		@foreach (TrainModel train in mcolTrains)
+		{			
+			<TrainModelRow Train="@train" User="@userFromTrain(train)" ShowStatus="false" />
+		}
+	</div>
+}
+
+@code {
+	[CascadingParameter]
+	public Sapphire2025Models.Common.TrainStatus Status { get; set; }
+
+
+	protected override void OnParametersSet()
+	{
+		base.OnParametersSet();
+		//Carga la lista con los trenes en un determinado estado.
+		mcolTrains.Clear();
+		if (null != Trains)
+		{
+			foreach (TrainModel auxTren in Trains)
+			{
+				if (auxTren.lastStatus.Equals(Status))
+					mcolTrains.Add(auxTren);
+			}
+			sortFields(1);
+		}
+	}
+
+}

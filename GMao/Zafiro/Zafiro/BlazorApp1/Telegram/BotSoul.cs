@@ -18,8 +18,7 @@ using System.Transactions;
 
 
 namespace ZafiroGmao.Telegram
-{
-    //7400996890:AAFvz2zdrBaAiBpG9010TexLMAkjuCny-CA
+{    
     /// <summary>
     /// Interacción con el bot SFM_GMAOBot
     /// Localizable en t.me/SFM_GMAOBot

@@ -1,19 +1,19 @@
 ﻿@if(populated)
 {
 	<rect x="@x%" y="@y%" width="20%" height="16%" rx="3%" ry="3%"
-	class="hover-populated-rect" fill="#5600e2" />
+	class="hover-populated-rect" fill="#5600e2" @onclick="HandleClick" />
 }
 else
 {
 	<rect x="@x%" y="@y%" width="20%" height="16%" rx="3%" ry="3%"
-	class="hover-empty-rect" fill="#9da5ad" />
+	class="hover-empty-rect" fill="#9da5ad" @onclick="HandleClick" />
 }
 
 @if(Selected)
 {
 	<rect x="@x%" y="@y%" width="20%" height="16%" rx="3%" ry="3%"
 	style="stroke-width:5; stroke:#0dcaf0;"
-	class="selected-rect" fill="none" />
+	class="selected-rect" fill="none" @onclick="HandleClick" />
 }
 <text x="@(x+10)%" y="@(y+8)%" fill="white"
 class="no-pointer-events hide-text"
@@ -43,12 +43,20 @@ text-anchor="middle" dominant-baseline="middle">@Name</text>
 	[Parameter]
 	public RenderFragment? ChildContent { get; set; }
 
-	[Parameter]
+	[CascadingParameter]
 	public IEnumerable<TrainModel>? Trains{ get; set; }
-	[Parameter]
-	public Sapphire2025Models.Common.TrainStatus Selection{ get; set; }
-	[Parameter]
+	[CascadingParameter]
 	public Sapphire2025Models.Common.TrainStatus Status{ get; set; }
+	[Parameter]
+	public Sapphire2025Models.Common.TrainStatus MyStatus{ get; set; }
+
+
+	/// <summary>
+	/// Esto es un evento para propagar al padre y que los demás StatusBox cambien su
+	/// estado de selección.
+	/// </summary>
+	[Parameter]
+	public EventCallback<Sapphire2025Models.Common.TrainStatus> OnStatusSelected { get; set; }
 
 	private int itemCount
 	{
@@ -56,11 +64,17 @@ text-anchor="middle" dominant-baseline="middle">@Name</text>
 		{
 			if (null == Trains)
 				return 0;
-			return Trains.Where(x => x.lastStatus.Equals(Status)).Count();
+			return Trains.Where(x => x.lastStatus.Equals(MyStatus)).Count();
 		}
 	}
 
 	private bool populated { get => itemCount > 0; }
 
-	private bool Selected {get => Status == Selection;}
+	private bool Selected {get => MyStatus == Status;}
+
+
+	private void HandleClick()
+	{		
+		OnStatusSelected.InvokeAsync(MyStatus);
+	}
 }

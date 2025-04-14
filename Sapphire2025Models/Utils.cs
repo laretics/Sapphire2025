@@ -50,5 +50,30 @@ namespace Sapphire2025Models
 				}
 			}
 		}
+		public static string TrainStyleFill(string? trainId)
+		{
+			if (null != trainId)
+			{
+				if (trainId.Length > 0)
+				{
+					switch (trainId.ToUpper()[0])
+					{
+						case '1':
+							return "#f2f2ff";
+						case '6':
+							return "#fff2ff";
+						case '7':
+							return "#fffff2";
+						case '8':
+							return "#fff2f2";
+						case '9':
+							return "#fff2ff";
+						default:
+							return "#f2f2f2";
+					}
+				}
+			}
+			return "transparent";
+		}
 	}
 }

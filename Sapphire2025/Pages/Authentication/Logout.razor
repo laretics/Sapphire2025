@@ -2,6 +2,7 @@
 @inject IntStorageService mvarClientStorage
 @inject AuthenticationClient mvarAuthenticationClient
 @inject NavigationManager mvarNavigator
+@inject InteractiveService mvarInteractiveService
 
 @code {
 	protected async override Task OnInitializedAsync()
@@ -22,6 +23,7 @@
 		await mvarClientStorage.SetStringValue("user", string.Empty,false);
 		await mvarClientStorage.SetGuidValue("sessionToken", Guid.Empty,false);
 		await mvarClientStorage.SetIntValue("credentials", 0, false);
+		mvarInteractiveService.CurrentUserId = string.Empty;
 		StateHasChanged();
 	}
 }

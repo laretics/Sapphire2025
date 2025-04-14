@@ -1,20 +1,61 @@
-﻿@if(null!=Train)
+﻿@inject NavigationManager mvarNavigator
+@if(null!=Train)
 {
-    @if (ShowStatus)
-    {
-        <div class="col-1 border-end text-center d-flex justify-content-center align-items-center" style="min-width: 64px;">
-            <Sapphire2025.Icons.Status.IcoStatus status="@Train.lastStatus" color="black" />
-        </div>
-    }
-    <div class="col-2 border-end text-center d-flex justify-content-center align-items-center" style="min-width: 100px;">
-        @Train.name
+    <div class="row border-bottom" >    
+        @if(ShowStatus)
+        {
+            <div @onclick="OnTrainClick"  class="col-1 border-end text-center d-flex justify-content-center align-items-center" style="min-width: 64px;">
+                <Sapphire2025.Icons.Status.IcoStatus status="@Train.lastStatus" color="black" />
+            </div>
+            <div @onclick="OnTrainClick" class="col-2 border-end text-center d-flex justify-content-center align-items-center" style="min-width: 100px; background-color: @trainColor;">
+                @Train.name
+            </div>
+            <div @onclick="OnUserClick" class="col-3 border-end" style="min-width: 200px;">@Sapphire2025Models.Utils.autoDate(Train.lastUpdateTime)</div>
+            <div @onclick="OnUserClick" class="col-2 border-end" style="min-width: 200px;">
+                @if(null!=User)
+                {
+                    @User.Name
+                }                    
+            </div>
+        }
+        else
+        {
+            <div @onclick="OnTrainClick" class="col-3 border-end text-center d-flex justify-content-center align-items-center" style="min-width: 100px; background-color: @trainColor;">
+                @Train.name
+            </div>
+            <div @onclick="OnTrainClick" class="col-4 border-end" style="min-width: 200px;">@Sapphire2025Models.Utils.autoDate(Train.lastUpdateTime)</div>
+            <div @onclick="OnUserClick" class="col-2 border-end" style="min-width: 200px;">
+                @if (null != User)
+                {
+                    @User.Name
+                }
+            </div>
+        }
     </div>
-    <div class="col-3 border-end" style="min-width: 200px;">@Sapphire2025Models.Utils.autoDate(Train.lastUpdateTime)</div>
 }
 @code {
     [Parameter]
     public TrainModel? Train { get; set; }
     [Parameter]
     public bool ShowStatus{ get; set; }
+    [Parameter]
+    public UserModel? User{ get; set; }
+
+    private string trainColor{ get => Train==null?"transparent":Sapphire2025Models.Utils.TrainStyleFill(Train.name); }
+
+    public void OnTrainClick()
+    {
+        if(null!=Train)
+        {
+            mvarNavigator.NavigateTo(string.Format("/train/{0}", Train.id));
+        }        
+    }  
+    public void OnUserClick()
+    {
+        if(null!=User)
+        {
+            mvarNavigator.NavigateTo(string.Format("/user/{0}", User.guid));
+        }
+    }
 
 }

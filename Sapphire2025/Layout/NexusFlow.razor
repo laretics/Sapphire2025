@@ -1,4 +1,5 @@
 ﻿@using Sapphire2025.Pages.Authentication
+@inject InteractiveService mvarInteractiveService
 @inherits LayoutComponentBase
 
 <div class="page">
@@ -26,11 +27,24 @@
     </main>
     <script>
         function toggleSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            sidebar.classList.toggle('collapsed');
+        const sidebar = document.querySelector('.sidebar');
+        sidebar.classList.toggle('collapsed');
         }
     </script>
 </div>
 @code {
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        mvarInteractiveService.OnChange += HandleHasChanged;
+    }
+    public void Dispose()
+    {
+        mvarInteractiveService.OnChange -= HandleHasChanged;
+    }
+    private void HandleHasChanged()
+    {
+        StateHasChanged();
+    }
 
 }
