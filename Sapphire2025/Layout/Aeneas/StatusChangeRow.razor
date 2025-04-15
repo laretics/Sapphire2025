@@ -1,0 +1,27 @@
+﻿@inject NavigationManager mvarNavigator
+@if(null!=changeModel)
+{
+<div class="row border-bottom">
+	<div class="col-1 border-end d-flex">
+		<Sapphire2025.Icons.Status.IcoStatus status="@changeModel.status" color="black"/>
+	</div>
+	<div class="col-2 border-end d-flex">
+		@changeModel.timeStamp
+	</div>
+	<div class="col-2 border-end d-flex">
+
+	</div>
+	<div class="col-2 border-end d-flex">
+		@if(null!=userModel)
+		{
+			@userModel.Name
+		}
+		</div> 
+	</div>
+}
+@code {
+	[Parameter]
+	public StatusChangeModel? changeModel{ get; set; }
+	[Parameter]
+	public UserModel? userModel{ get; set; }
+}

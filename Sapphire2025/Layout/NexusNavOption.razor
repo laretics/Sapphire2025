@@ -1,18 +1,24 @@
-﻿<a href="@hRef" class="sidebar-link @selText text-decoration-none p-3" 
-@onclick="OnClick">
-    <i class="@Image me-3"></i>
-    @if (null == Badge)
-    {
-        <span class="hide-on-collapse">@Caption</span>
-    }
-    else
-    {
-        <span class="hide-on-collapse">@Caption
-            <span class="badge bg-info hide-on-collapse">@Badge</span></span>
-    }    
-</a>
-
+﻿@if(matchRoles)
+{
+    <a href="@hRef" class="sidebar-link @selText text-decoration-none p-3"
+    @onclick="OnClick">
+        <i class="@Image me-3"></i>
+        @if (null == Badge)
+        {
+            <span class="hide-on-collapse">@Caption</span>
+        }
+        else
+        {
+            <span class="hide-on-collapse">
+                @Caption
+                <span class="badge bg-info hide-on-collapse">@Badge</span>
+            </span>
+        }
+    </a>
+}
 @code {
+    [CascadingParameter]
+    public SessionModel? Session{ get; set; }
     [Parameter]
     public bool Selected{ get; set; }
     [Parameter]
@@ -25,6 +31,28 @@
     public string? Badge { get; set; }
     [Parameter]
     public EventCallback OnClick{ get; set; }
+    [Parameter]
+    public List<Sapphire2025Models.Common.UserRole>? Roles{ get; set; }
 
     private string selText{ get => this.Selected ? "active" : ""; }
+    private bool matchRoles
+    {
+        get
+        {
+            if (null == Session || Session.Roles.Count < 1)
+                return false;
+            if(null!=Roles &&  Roles.Count>0)
+            {
+                foreach(Sapphire2025Models.Common.UserRole currentRole in Session.Roles)
+                {
+                    foreach(Sapphire2025Models.Common.UserRole thisRole in Roles)
+                    {
+                        if (currentRole.Equals(thisRole)) return true;
+                    }
+                }
+                return false;
+            }
+            return true;
+        }
+    }
 }

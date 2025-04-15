@@ -8,15 +8,15 @@ namespace Sapphire2025.Storage
 	public class InteractiveService
 	{
 		public event Action? OnChange;
-		private string? mvarCurrentUser;
+		private Sapphire2025Models.Authentication.SessionModel? mvarSessionInfo;
 
-		public string CurrentUserId
+		public Sapphire2025Models.Authentication.SessionModel? SessionInfo
 		{
-			get => null==mvarCurrentUser?string.Empty:mvarCurrentUser;
+			get => mvarSessionInfo;
 			set
 			{
-				mvarCurrentUser = value;
-				NotifyStateChanged();				
+				mvarSessionInfo = value;
+				NotifyStateChanged();
 			}
 		}
 		private void NotifyStateChanged() => OnChange?.Invoke();

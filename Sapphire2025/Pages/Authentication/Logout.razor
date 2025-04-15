@@ -20,10 +20,7 @@
 			await mvarAuthenticationClient.Logout(auxToken);
 
 		//Nos damos de baja a nivel local.
-		await mvarClientStorage.SetStringValue("user", string.Empty,false);
-		await mvarClientStorage.SetGuidValue("sessionToken", Guid.Empty,false);
-		await mvarClientStorage.SetIntValue("credentials", 0, false);
-		mvarInteractiveService.CurrentUserId = string.Empty;
+		await mvarClientStorage.SetSessionInfo(null);
 		StateHasChanged();
 	}
 }

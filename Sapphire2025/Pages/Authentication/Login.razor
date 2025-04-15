@@ -22,7 +22,7 @@
 <ModalDialog @ref="mvarModal"/>
 
 @code {
-	UserModel? mvarUser{ get; set; }
+	SessionModel? mvarSession{ get; set; }
 	private UserLoginModel mvarLoginModel = new UserLoginModel();
 
 	private ModalDialog mvarModal { get; set; } = new ModalDialog();
@@ -44,21 +44,15 @@
 		}
 		else
 		{
-			mvarUser = await mvarAuthenticationClient.Login(mvarLoginModel);
-			if (null == mvarUser || mvarUser.guid.Equals(Guid.Empty))
+			mvarSession = await mvarAuthenticationClient.Login(mvarLoginModel);
+			await mvarClientStorage.SetSessionInfo(mvarSession);
+			mvarInteractiveService.SessionInfo = mvarSession;
+			if(null == mvarSession)
 			{
-				await mvarClientStorage.SetStringValue("user", string.Empty, false);
 				await mvarModal.show("Error", "No ha podido iniciar sesión. Introduzca unas credenciales válidas y vuelva a intentarlo.", "Aceptar");
-				mvarInteractiveService.CurrentUserId = string.Empty;
-				//Usuario no admitido... manejamos el error.
 			}
 			else
 			{
-				//Usuario validado. Guardamos el token de sesión.
-				await mvarClientStorage.SetStringValue("user", mvarUser.Name, false);
-				await mvarClientStorage.SetGuidValue("sessionToken", mvarUser.sessionToken, false);
-				await mvarClientStorage.SetIntValue("credentials", mvarUser.CredentialKey, false);
-				mvarInteractiveService.CurrentUserId = mvarUser.Name;
 				mvarNavigator.NavigateTo("/");
 			}
 		}

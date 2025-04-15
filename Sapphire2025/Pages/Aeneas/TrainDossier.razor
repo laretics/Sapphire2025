@@ -1,10 +1,50 @@
 ﻿@page "/train/{id}"
-<h2>@id</h2>
+@using Sapphire2025.Layout.Generic
+@inject AeneasClient mvarAeneasClient
+@if(null!=mvarTrain)
+{
+	<h2>@mvarTrain.name</h2>
+	<TabControl>
+		<TabPage Text="Principal">
 
+		</TabPage>
+		<TabPage Text="Historial">
+			<div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
+				<Sapphire2025.Layout.Aeneas.StatusChangesTable StatusChanges="mcolChanges"
+															   StatusChangesUsers="mcolUsers" />
+			</div>
+		</TabPage>
+		<TabPage Text="Actuaciones">
+			<div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
+				<div class="card" style="width: 22rem;">
+					<img src="img/ZafiroTheme.jpeg" class="card-img-top" alt="...">
+					<div class="card-body">
+						<h5 class="card-title">Comandos</h5>
+						<p class="card-text">Estas son las posibles transiciones que puede realizar este material móvil desde el estado actual con sus credenciales.</p>
+						<Sapphire2025.Layout.Aeneas.TrainCommandBar Train="mvarTrain" />
+					</div>
+				</div>				
+			</div>		
+		</TabPage>
+		<TabPage Text="Campañas">
+
+		</TabPage>
+	</TabControl>
+}
 @code {
 	[Parameter]
 	public string? id{ get; set; }
-
-
-
+	protected async override Task OnInitializedAsync()
+	{
+		if(null!=id)
+		{
+			mcolChanges = await mvarAeneasClient.trainChangesList(id);
+			mcolUsers = await mvarAeneasClient.usersChangesList(id);
+			mvarTrain = await mvarAeneasClient.train(id);
+			StateHasChanged();
+		}
+	}
+	private Dictionary<string, UserModel>? mcolUsers = new Dictionary<string, UserModel>();
+	private IEnumerable<StatusChangeModel>? mcolChanges = new List<StatusChangeModel>();
+	private TrainModel? mvarTrain = null;
 }

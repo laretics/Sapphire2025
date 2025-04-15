@@ -1,6 +1,8 @@
 ﻿using Microsoft.JSInterop;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
+using Sapphire2025Models.Aeneas;
+using Sapphire2025Models.Authentication;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 namespace Sapphire2025.Storage
 {
 	/// <summary>
@@ -29,8 +31,87 @@ namespace Sapphire2025.Storage
         {
             return string.Format("{0}.{1}",session? SESSION_STORAGE_ID: LOCAL_STORAGE_ID, command);
         }
+		#region "Autenticación"
+        public async Task<SessionModel?> GetSessionInfo()
+        {
+            string? auxCadena = await GetStringValue("sessioninfo", false);
+			if (null!=auxCadena)
+			{
+                return JsonSerializer.Deserialize<SessionModel?>(auxCadena);				
+			}
+            return null;
+		}
+        public async Task<bool> SetSessionInfo(SessionModel? session)
+        {
+            if (null == session)
+            {
+                await ResetValue("sessioninfo", false);
+                return true;
+            }
+            else
+            {
+                string cadena = JsonSerializer.Serialize(session);
+                await SetStringValue("sessioninfo", cadena, false);
+                return true;
+            }
+        }
 
-        public async Task SetStringValue(string key, string value, bool session)
+		#endregion "Autenticación"
+
+		#region "Caché de trenes"
+		public async Task<IEnumerable<TrainModel>?>GetTrainList()
+        {
+            string? auxCadena = await GetStringValue("cachetrainlist",false);
+            if(null!=auxCadena)
+            {
+                return JsonSerializer.Deserialize<IEnumerable<TrainModel>>(auxCadena);
+            }
+            return null; //No tenemos ninguna caché almacenada en la memoria
+        }
+        public async Task<bool>SetTrainList(IEnumerable<TrainModel>? rhs)
+        {
+            if(null!=rhs)
+            {
+                string cadena = JsonSerializer.Serialize(rhs);
+                await SetStringValue("cachetrainlist",cadena, false);
+                return true;
+            }
+            return false;
+        }
+        public async Task<Dictionary<string,UserModel>?>GetTrainUsersDictionary()
+        {
+            string? auxCadena = await GetStringValue("cacheuserslist", false);
+            if(null!=auxCadena)
+            {
+                return JsonSerializer.Deserialize<Dictionary<string,UserModel>>(auxCadena);
+            }
+            return null;
+        }
+        public async Task<bool>SetTrainUsersDictionary(Dictionary<string,UserModel>? rhs)
+        {
+            if(null!=rhs)
+            {
+                string cadena = JsonSerializer.Serialize(rhs);
+                await SetStringValue("cacheuserslist", cadena, false);
+                return true;
+            }
+            return false;
+        }
+
+		#endregion "Caché de trenes"
+
+		#region "Valores"
+        /// <summary>
+        /// Elimina un valor del almacenamiento interno
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public async Task ResetValue(string key, bool session)
+        {
+            string auxStorageId = internalRequestString(session, "removeItem");
+            await mvarJsRuntime.InvokeVoidAsync(auxStorageId, key);
+        }
+		public async Task SetStringValue(string key, string value, bool session)
         {
             NotifyStateChanged();
             string auxStorageId = internalRequestString(session, "setItem");
@@ -63,106 +144,9 @@ namespace Sapphire2025.Storage
             Guid.TryParse(entrada, out salida);
             return salida;
         }
+		#endregion "Valores"
 
 		private void NotifyStateChanged() => OnChange?.Invoke();
 	}
 }
 
-/*
- * public static class WebAssemblyHostExtension
-{
-    public static async Task SetDefaultCulture(this WebApplication host)
-    {
-        using (var scope = host.Services.CreateScope())
-        {
-            var jsInterop = scope.ServiceProvider.GetRequiredService<IJSRuntime>();
-            var result = await jsInterop.InvokeAsync<string>("blazorCulture.get");
-            CultureInfo culture;
-
-            if (result != null)
-                culture = new CultureInfo(result);
-            else
-                culture = new CultureInfo("en-US");
-
-            CultureInfo.DefaultThreadCurrentCulture = culture;
-            CultureInfo.DefaultThreadCurrentUICulture = culture;
-        }
-    }
-}
-
- * 
- * 
- * 
- * 
- * 
- * 
- * ¡No te preocupes, no parece loco en absoluto! Es completamente razonable querer gestionar la política de usuarios sin depender de módulos de terceros. En Blazor WebAssembly, puedes utilizar el almacenamiento local (localStorage) o el almacenamiento de sesión (sessionStorage) para guardar datos de sesión. Aquí te explico cómo hacerlo:
-
-Uso de sessionStorage en Blazor WebAssembly
-sessionStorage permite almacenar datos que persisten durante la sesión del navegador. Los datos se eliminan cuando la pestaña o ventana del navegador se cierra.
-
-1. Agregar el Servicio de JavaScript Interop
-Primero, necesitas agregar un servicio para interactuar con sessionStorage utilizando JavaScript Interop.
-
-SessionStorageService.cs:
-
-
-2. Registrar el Servicio en Program.cs
-Asegúrate de registrar el servicio en Program.cs.
-
-var builder = WebAssemblyHostBuilder.CreateDefault(args);
-builder.RootComponents.Add<App>("#app");
-
-builder.Services.AddScoped<SessionStorageService>();
-
-await builder.Build().RunAsync();
-3. Utilizar el Servicio en una Página Razor
-Ahora puedes utilizar el servicio SessionStorageService en tus páginas Razor para guardar y recuperar datos de sesión.
-
-Login.razor:
-
-
-4. Recuperar Datos de Sesión
-Puedes recuperar los datos de sesión en otras páginas utilizando el servicio SessionStorageService.
-
-Home.razor:
-
-@page "/"
-@inject SessionStorageService SessionStorage
-
-<h3>Home</h3>
-<p>Bienvenido, @username</p>
-
-@code {
-    private string username;
-
-    protected override async Task OnInitializedAsync()
-    {
-        username = await SessionStorage.GetItemAsync("username");
-    }
-}
-5. Eliminar Datos de Sesión
-Puedes eliminar los datos de sesión cuando el usuario cierre sesión.
-
-Logout.razor:
-
-@page "/logout"
-@inject SessionStorageService SessionStorage
-@inject NavigationManager Navigation
-
-<h3>Logout</h3>
-<button @onclick="Logout">Logout</button>
-
-@code {
-    private async Task Logout()
-    {
-        await SessionStorage.RemoveItemAsync("username");
-        Navigation.NavigateTo("/login");
-    }
-}
-Resumen
-Guardar datos de sesión: Utiliza sessionStorage para almacenar datos durante la sesión del navegador.
-Recuperar datos de sesión: Utiliza el servicio SessionStorageService para recuperar datos almacenados.
-Eliminar datos de sesión: Elimina los datos de sesión cuando el usuario cierre sesión.
- * 
- * */

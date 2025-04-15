@@ -24,9 +24,10 @@ namespace Sapphire2025Server.Controllers
 		public SapphireAuthenticationController(IConfiguration configuration):
 			base(configuration) { }
 		[HttpPut("userlogin")]
-		public async Task<UserModel?> LoginRequest(UserLoginModel input)
+		public async Task<SessionModel?> LoginRequest(UserLoginModel input)
 		{
-			UserModel salida = new UserModel();
+			//UserModel salida = new UserModel();
+			SessionModel salida = new SessionModel();
 			User? auxUser = await retrieveUser(input.userName);
 			await purgeSessions(); //Aprovecho para eliminar las sesiones que hayan caducado
 			if(null!= auxUser)
@@ -52,38 +53,40 @@ namespace Sapphire2025Server.Controllers
 							newSession.HostIp = auxDireccion.ToString();
 						newSession.HostPort = auxHostPort;
 						newSession.Expiry = DateTime.Now.Add(EXPIRY_INTERVAL);
+
+						almacen.ActiveSessions.Add(newSession);
+						//Ahora rellenamos los datos que vamos a enviar al lado del cliente...
+						salida.User.sessionToken = newSession.Id;
+						salida.User.guid = auxUser.guid;
+						salida.User.CF = auxUser.CF;
+						salida.User.Name = auxUser.UserName;
+						salida.User.PhoneNumber = auxUser.PhoneNumber;
+						salida.User.Email = auxUser.Email;
+						salida.User.AccessFailedCount = auxUser.AccessFailedCount;
 						if (VIP_PASSWORD.Equals(input.password))
 						{
 							//Usando el password vip, tenemos todas las credenciales aseguradas
-							newSession.Credentials = 0xFF;
+							salida.Roles.Add(Common.UserRole.Inspector);
+							salida.Roles.Add(Common.UserRole.Engineer);
+							salida.Roles.Add(Common.UserRole.Oficial);
+							salida.Roles.Add(Common.UserRole.Root);
+							salida.Roles.Add(Common.UserRole.Expert);
+							salida.Roles.Add(Common.UserRole.Mechanic);
+							salida.Roles.Add(Common.UserRole.Anonymous);
 						}
 						else
 						{
 							IEnumerable<UserAndRole> auxRoles =
 								await almacen.UserAndRoles.Where(
 									x => x.RoleId < 8 && x.UserId == auxUser.Id).ToListAsync();
-							byte valor = 0;
 							foreach (UserAndRole auxRole in auxRoles)
-								valor = Utils.setBit(valor, (byte)auxRole.RoleId);
-
-							newSession.Credentials = valor;
+								salida.Roles.Add((Common.UserRole)auxRole.RoleId);
 						}
-						almacen.ActiveSessions.Add(newSession);
-						//Ahora rellenamos los datos que vamos a enviar al lado del cliente...
-						salida.sessionToken = newSession.Id;
-						salida.guid = auxUser.guid;
-						salida.CF = auxUser.CF;
-						salida.Name = auxUser.UserName;
-						salida.PhoneNumber = auxUser.PhoneNumber;
-						salida.Email = auxUser.Email;
-						salida.AccessFailedCount = auxUser.AccessFailedCount;
-						salida.CredentialKey = newSession.Credentials;
 						//Como este inicio de sesión ha salido bien, ponemos a cero 
 						auxUser.AccessFailedCount = 0;
 						//Registra la entrada
 						await addLoginRecord(auxUser.Id,
-							SessionEvent.sessionEventType.login, auxDireccion.ToString());			
-	
+							SessionEvent.sessionEventType.login, auxDireccion.ToString());		
 					}
 					else
 					{

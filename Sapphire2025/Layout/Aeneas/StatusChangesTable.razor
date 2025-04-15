@@ -1,0 +1,51 @@
+﻿@if(null!=StatusChanges)
+{
+	<div class="row border-bottom border-top bg-secondary text-light ">
+		<div class="col-1 border-end justify-content-center align-items-center"
+		onclick="@(()=>sortFields(1))"
+		style="min-width: 100px;">
+			<Sapphire2025.Icons.Headers.TrainStatus color="white" />
+		</div>
+		<div class="col-4 border-end justify-content-center align-items-center"
+		onclick="@(()=>sortFields(0))"
+		style="min-width: 200px;">
+			<Sapphire2025.Icons.Headers.EventDateTime color="white" />
+		</div>
+		<div class="col-2 border-end justify-content-center align-items-center"
+		onclick="@(()=>sortFields(0))"
+		style="min-width: 200px;">
+			<Sapphire2025.Icons.Headers.User color="white" />
+		</div>
+	</div>
+	<div class="overflow-auto" style="height:@(Height-10)vh; overflow-y: auto; width: @Width %">
+		@foreach(StatusChangeModel changeModel in StatusChanges)
+		{
+			<StatusChangeRow changeModel="changeModel" userModel="@userFromStatus(changeModel)"/>
+		}
+	</div>
+}
+@code {
+	[Parameter]
+	public IEnumerable<StatusChangeModel>? StatusChanges { get; set; }
+	[Parameter]
+	public Dictionary<string,UserModel>? StatusChangesUsers { get; set; }
+	[Parameter]
+	public int Height{ get; set; }
+	[Parameter]
+	public int Width{ get; set; }
+
+	private UserModel? userFromStatus(StatusChangeModel rhs)
+	{
+		if(null!=StatusChangesUsers && null!=rhs.userId)
+		{
+			if (StatusChangesUsers.ContainsKey(rhs.userId))
+				return StatusChangesUsers[rhs.userId];
+		}
+		return null;
+	}
+
+	private void sortFields(int rhs)
+	{
+		//TODO: Rellenar con código para ordenar.
+	}
+}

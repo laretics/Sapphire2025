@@ -1,0 +1,72 @@
+﻿@inject InteractiveService mvarInteractive
+<div class="btn-group" role="group">
+	@if(trainInCirculation)
+	{
+		<Button Class="btn btn-primary">Parte de Avería</Button>
+	}		
+	@if(isExpert&&currentStatus== Sapphire2025Models.Common.TrainStatus.RequestToDiagnose)
+	{
+		<Button Class="btn btn-primary ">No Se Retira</Button>
+		<Button Class="btn btn-primary">Retirar de Circulación</Button>
+	}
+	@if(isInspector&&currentStatus== Sapphire2025Models.Common.TrainStatus.RequestToRepair)
+	{
+		<Button Class="btn btn-primary">Entrar a Reparar</Button>
+	}
+	@if(isMechanic&&currentStatus== Sapphire2025Models.Common.TrainStatus.Repairing)
+	{
+		<Button Class="btn btn-primary">Terminar Reparación</Button>
+	}
+	@if(isOfficial&&currentStatus== Sapphire2025Models.Common.TrainStatus.Available)
+	{
+		<Button Class="btn btn-primary">Solicitar Mantenimiento</Button>
+	}
+	@if(isOfficial&&currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested)
+	{
+		<Button Class="btn btn-warning">Anular Solicitud Mant.</Button>
+	}
+	@if(isInspector&&currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested)
+	{
+		<Button Class="btn btn-primary">Enviar a Mantenimiento</Button>
+	}
+	@if(isOfficial&&currentStatus== Sapphire2025Models.Common.TrainStatus.DepotAvailable)
+	{
+		<Button Class="btn btn-warning">Rescatar de depósito</Button>
+		<Button Class="btn btn-primary">Entrar a Mantenimiento</Button>
+	}
+	@if(isMechanic&&currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance)
+	{
+		<Button Class="btn btn-primary">Terminar Mantenimiento</Button>
+	}
+</div>
+@code {
+	//Esto es una barra de comandos para cambiar a los trenes de estado.
+	//Dependiendo de los permisos del usuario actual y del estado del tren,
+	//aparecerán unos botones u otros.
+	private SessionModel? mvarSession{ get; set; }	
+	[Parameter]
+	public TrainModel? Train{ get; set; } //A partir de este modelo obtenemos el último estado del tren
+
+	protected override void OnParametersSet()
+	{
+		base.OnParametersSet();
+		mvarSession = mvarInteractive.SessionInfo;
+	}
+	private bool isRoot { get => null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Root); }
+	private bool isOfficial { get => isRoot || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Mechanic)); }
+	private bool isMechanic{ get => isOfficial ||( null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Mechanic)); }	
+	private bool isExpert { get => isRoot || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Expert)); }
+	private bool isInspector { get => isRoot || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Inspector)); }	
+	private bool isEngineer { get => isRoot || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Engineer)); }
+	private bool trainInCirculation
+	{
+		get => currentStatus == Sapphire2025Models.Common.TrainStatus.Available ||
+			currentStatus == Sapphire2025Models.Common.TrainStatus.DepotAvailable ||
+			currentStatus == Sapphire2025Models.Common.TrainStatus.DepotRequested ||
+			currentStatus == Sapphire2025Models.Common.TrainStatus.RequestToDiagnose;
+	}
+	private Sapphire2025Models.Common.TrainStatus currentStatus
+	{
+		get => null == Train ? Sapphire2025Models.Common.TrainStatus.Unknown : Train.lastStatus;
+	}
+}

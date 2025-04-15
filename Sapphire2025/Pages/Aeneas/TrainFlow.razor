@@ -1,5 +1,6 @@
 ﻿@page "/trainFlow"
 @inject AeneasClient mvarAeneasClient
+@inject IntStorageService mvarInternalStorage
 @if(null==mcolTrains)
 {
 	<div class="d-flex justify-content-center">
@@ -40,12 +41,12 @@ else
 	[Parameter]
 	public Sapphire2025Models.Common.TrainStatus Status { get; set; }	
 	[Parameter]
-	public Dictionary<string,UserModel> Users{ get; set; }
+	public Dictionary<string,UserModel>? Users{ get; set; }
 
 	protected async override Task OnInitializedAsync()
 	{
-		mcolTrains = await mvarAeneasClient.trainsList();
-		Users = await mvarAeneasClient.usersTrainList();
+		await TrainCache();
+
 	}
 
 	/// <summary>
@@ -57,5 +58,75 @@ else
 		Status = status;
 		StateHasChanged();
 	}
+
+	/// <summary>
+	/// Para acelerar considerablemente la ejecución del programa vamos a cargar la lista en dos
+	/// fases... primero leemos del almacenamiento interno la lista completa, luego pedimos al servidor
+	/// las operaciones posteriores a la última fecha y luego guardamos todo en la caché.
+	/// </summary>
+	private async Task TrainCache()
+	{
+		IEnumerable<TrainModel>? auxLista = await mvarInternalStorage.GetTrainList();
+		if(null==auxLista)
+		{
+			//Es la primera vez que se ejecuta la sesión, así que tenemos la caché vacía.
+			//Vamos a llenarla y a devolverla
+			mcolTrains = await mvarAeneasClient.trainsList();
+			Users = await mvarAeneasClient.usersTrainList();
+			await mvarInternalStorage.SetTrainList(mcolTrains);
+			await UpgradeUsersDictionary(true);
+		}
+		else
+		{
+			//Vamos a obtener sólo los datos más recientes.
+			mcolTrains = auxLista;
+			await UpgradeUsersDictionary(false);
+			DateTime ultima = mcolTrains.Max(xx => xx.lastUpdateTime);
+			IEnumerable<StatusChangeModel> colUpdates = await mvarAeneasClient.recentChangeList(ultima);
+			if(colUpdates.Count(xx=>true)>0)
+			{
+				bool isAnyNewUser = false;
+				//Hay que procesar estos elementos y añadirlos a la colección
+				foreach(StatusChangeModel cambio in colUpdates)
+				{
+					TrainModel? auxTrain = mcolTrains.FirstOrDefault(xx => xx.id == cambio.trainId);
+					if(null!=auxTrain)
+					{
+						auxTrain.lastUpdateTime = cambio.timeStamp;
+						auxTrain.lastStatus = cambio.status;
+						auxTrain.lastUserInfo = cambio.userId;
+						if(null!=cambio.userId && null!=Users && !(Users.ContainsKey(cambio.userId)))
+						{
+							//Esto va a ser un caso realmente raro... un cambio en el que aparece un
+							//nuevo usuario... en este caso el coste de añadir el usuario al diccionario
+							//es menor que cargar el diccionario entero.
+							isAnyNewUser = true;					
+						}
+					}
+				}
+				if(isAnyNewUser)
+					await UpgradeUsersDictionary(true);
+			}
+		}
+	}
+	private async Task UpgradeUsersDictionary(bool forceExternalLoad)
+	{
+		Users = await mvarInternalStorage.GetTrainUsersDictionary();
+		if(null==Users || forceExternalLoad)
+		{
+			Dictionary<string, UserModel>? auxDictionario = await mvarInternalStorage.GetTrainUsersDictionary();
+			if (null == auxDictionario)
+			{
+				//En este caso raro, a lo mejor tenemos que obtener el diccionario desde el servidor
+				auxDictionario = await mvarAeneasClient.usersTrainList();
+			}
+			if (null != auxDictionario)
+			{
+				Users = auxDictionario;
+				await mvarInternalStorage.SetTrainUsersDictionary(auxDictionario);
+			}
+		}
+	}
+
 
 }

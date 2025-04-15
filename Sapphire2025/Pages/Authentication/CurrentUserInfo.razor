@@ -1,5 +1,4 @@
-﻿@inject IntStorageService mvarClientStorage
-@inject InteractiveService mvarInteractiveService
+﻿@inject InteractiveService mvarInteractiveService
 @namespace Sapphire2025.Pages.Authentication
 
 <div class="profile-section mt-auto p-4">
@@ -14,7 +13,7 @@
 		<!--<img src="https://randomuser.me/api/portraits/women/70.jpg" style="height:60px" class="rounded-circle" alt="Profile">-->
 
 		<div class="ms-3 profile-info">
-			<h6 class="text-white mb-0">@mvarInteractiveService.CurrentUserId</h6>
+			<h6 class="text-white mb-0">@userString</h6>
 			@if(activeSession)
 			{
 				<a href="/auth/logout" class="text-white mb-1">Cerrar Sesión</a>
@@ -31,42 +30,41 @@
 @code {
 	//Este componente muestra los datos de la sesión actual leyendo desde
 	//el almacenamiento interno.	
-	private Guid mvarToken{ get; set; }
-	private byte mvarCredentials { get; set; }	
+	[CascadingParameter]
+	public SessionModel? Session{ get; set; }
 
 	protected async override Task OnInitializedAsync()
 	{
-		await base.OnInitializedAsync();
-		string? auxUserId = await mvarClientStorage.GetStringValue("user", false);
-		mvarInteractiveService.CurrentUserId = auxUserId!;
-		mvarToken = await mvarClientStorage.GetGuidValue("sessionToken",false);
-		int valor = await mvarClientStorage.GetIntValue("credentials", false);
-		mvarCredentials = (byte)valor;
-		//mvarClientStorage.OnChange += StateHasChanged;
-	}
-	public void Dispose()
-	{
-		//mvarClientStorage.OnChange -= StateHasChanged;
+
 	}
 
-
-	private bool activeSession { get => !(Guid.Empty.Equals(mvarToken)); }
+	private bool activeSession { get => null != Session; }
 
 	private string userString
 	{
 		get
 		{
-			if(activeSession)
+			if(null==Session)
 			{
-				if (null == mvarInteractiveService.CurrentUserId)
-					return "Usuario desconocido";
-				else
-					return mvarInteractiveService.CurrentUserId;
+				return "-";
 			}
 			else
-				return "-";
+			{
+				if (null == Session.User)
+					return "Usuario desconocido";
+				else
+					return Session.User.Name;
+			}
 		}
 	}
-	private string userIcon{ get => AuthenticationClient.userIconHtml(mvarCredentials, "gray"); }
-	//private RenderFragment userIcon { get => AuthenticationClient.userIcon(mvarCredentials,"gray");}
+	private string userIcon
+	{ 
+		get
+		{
+			if (null == Session)
+				return AuthenticationClient.userIconHtml(new List<Sapphire2025Models.Common.UserRole>(), "gray");
+			else
+				return AuthenticationClient.userIconHtml(Session.Roles, "gray");
+		}
+	}
 }
