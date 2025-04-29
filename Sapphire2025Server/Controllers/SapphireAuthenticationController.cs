@@ -27,7 +27,7 @@ namespace Sapphire2025Server.Controllers
 		public async Task<SessionModel?> LoginRequest(UserLoginModel input)
 		{
 			//UserModel salida = new UserModel();
-			SessionModel salida = new SessionModel();
+			SessionModel? salida = null;
 			User? auxUser = await retrieveUser(input.userName);
 			await purgeSessions(); //Aprovecho para eliminar las sesiones que hayan caducado
 			if(null!= auxUser)
@@ -56,6 +56,7 @@ namespace Sapphire2025Server.Controllers
 
 						almacen.ActiveSessions.Add(newSession);
 						//Ahora rellenamos los datos que vamos a enviar al lado del cliente...
+						salida = new SessionModel();
 						salida.User.sessionToken = newSession.Id;
 						salida.User.guid = auxUser.guid;
 						salida.User.CF = auxUser.CF;

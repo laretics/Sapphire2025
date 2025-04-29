@@ -1,30 +1,26 @@
 ﻿<CascadingValue Value="Session">
     <NexusNavOption Selected="@(0==SelectedNavItem)"
                     onclick="@(()=>SelectNavItem(0))"
-                    hRef="#" Caption="Inicio"
-                    Image="bi bi-house-door-fill-nav-menu" />
+                    Link="#" Caption="Inicio"
+                    Image="bi bi-house-door-fill-nav-menu" 
+                    Tooltip="Pantalla de inicio"
+                    />
 
     <NexusNavOption Selected="@(1==SelectedNavItem)"
                     onclick="@(()=>SelectNavItem(1))"
-                    hRef="admin/usersmanage" Caption="Usuarios"
+                    Link="admin/usersmanage" Caption="Usuarios"
                     Image="bi bi-list-users-nav-menu" 
+                    Tooltip="Gestión de usuarios del sistema."
                     Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Root}"/>
 
     <NexusNavOption Selected="@(2==SelectedNavItem)"
                     onclick="@(()=>SelectNavItem(2))"
-                    hRef="trainFlow" Caption="Flujo"
+                    Link="trainFlow" Caption="Flujo"
                     Badge="Nuevo"
-                    Image="bi bi-train-diagram-nav-menu" />
+                    Image="bi bi-train-diagram-nav-menu" 
+                    Tooltip="Flujograma de unidades tren y resto de vehículos"/>
 
-    <NexusNavOption Selected="@(3==SelectedNavItem)"
-                    onclick="@(()=>SelectNavItem(3))"
-                    hRef="counter" Caption="Contador"
-                    Image="bi bi-plus-square-fill-nav-menu" />
-
-    <NexusNavOption Selected="@(4==SelectedNavItem)"
-                    onclick="@(()=>SelectNavItem(4))"
-                    hRef="weather" Caption="El tiempo"
-                    Image="bi bi-list-nested-nav-menu" />
+   
 </CascadingValue>
     <Image Src="img/sfmImg.png" Style="width:75%; margin:5%;"/>
 @code {

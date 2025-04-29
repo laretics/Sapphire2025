@@ -68,7 +68,16 @@ namespace Sapphire2025.Storage
 		{
             string jsonString = JsonSerializer.Serialize(data);
             HttpResponseMessage respuesta = await sendPutRequest("userlogin", jsonString);
-            return await respuesta.Content.ReadFromJsonAsync<SessionModel?>();
+            string? contenido = await respuesta.Content.ReadAsStringAsync();
+            if (respuesta.IsSuccessStatusCode &&!string.IsNullOrWhiteSpace(contenido))
+            {
+                return JsonSerializer.Deserialize<SessionModel>(contenido);
+			}
+            else
+            {
+                return null; //No se ha podido autenticar el usuario
+			}
+            
 		}
 		internal async Task <HttpResponseMessage> sendModifyUser(ExtendedUserModel.UpdateUserPersonalDataMessage message)
         {

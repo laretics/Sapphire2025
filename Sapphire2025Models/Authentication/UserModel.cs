@@ -26,11 +26,11 @@ namespace Sapphire2025Models.Authentication
 		public Guid guid {  get; set; }
 		public Guid sessionToken { get; set; } //Este token certifica al usuario para entrar sin credenciales.
 		public string CF { get; set; }
-		public string Name { get; set; }
+		public string? Name { get; set; }
 		[Required(ErrorMessage = "El correo electrónico es obligatorio.")]
 		[EmailAddress(ErrorMessage = "Formato de correo electrónico no válido.")]
-		public string Email { get; set; }
-		public string PhoneNumber {  get; set; }
+		public string? Email { get; set; }
+		public string? PhoneNumber {  get; set; }
 		public byte CredentialKey { get; set; } //Clave de 8 bits con 8 posibles activaciones para mostrar u ocultar componentes en la parte del cliente
 		public int AccessFailedCount {  get; set; }
 		public bool NullPassword { get; set; } //Si es true, el usuario no tiene el password activo

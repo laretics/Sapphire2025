@@ -1,7 +1,9 @@
-﻿@if(matchRoles)
+﻿@inject NavigationManager mvarNavegador
+@if(matchRoles)
 {
-    <a href="@hRef" class="sidebar-link @selText text-decoration-none p-3"
-    @onclick="OnClick">
+    <div class="sidebar-link @selText text-decoration-none p-3"
+    title="@Tooltip"
+    @onclick="OnClickHandler">
         <i class="@Image me-3"></i>
         @if (null == Badge)
         {
@@ -14,7 +16,7 @@
                 <span class="badge bg-info hide-on-collapse">@Badge</span>
             </span>
         }
-    </a>
+    </div>
 }
 @code {
     [CascadingParameter]
@@ -22,17 +24,31 @@
     [Parameter]
     public bool Selected{ get; set; }
     [Parameter]
-    public string? hRef{ get; set; }
-    [Parameter]
     public string? Caption{ get; set; }
     [Parameter]
     public string? Image{ get; set; }
     [Parameter]
     public string? Badge { get; set; }
     [Parameter]
-    public EventCallback OnClick{ get; set; }
+	public string? Link { get; set; }
+    [Parameter]
+	public string? Tooltip { get; set; }
+    [Parameter]
+    public EventCallback OnClick{ get ; set; }
     [Parameter]
     public List<Sapphire2025Models.Common.UserRole>? Roles{ get; set; }
+
+	private void OnClickHandler()
+	{
+		if (null != Link)
+		{
+			mvarNavegador.NavigateTo(Link);
+		}        
+		if (OnClick.HasDelegate)
+		{
+			OnClick.InvokeAsync();
+		}
+	}
 
     private string selText{ get => this.Selected ? "active" : ""; }
     private bool matchRoles
