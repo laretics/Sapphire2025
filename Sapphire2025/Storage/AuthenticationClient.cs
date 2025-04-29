@@ -71,7 +71,11 @@ namespace Sapphire2025.Storage
             string? contenido = await respuesta.Content.ReadAsStringAsync();
             if (respuesta.IsSuccessStatusCode &&!string.IsNullOrWhiteSpace(contenido))
             {
-                return JsonSerializer.Deserialize<SessionModel>(contenido);
+                JsonSerializerOptions opciones = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                return JsonSerializer.Deserialize<SessionModel?>(contenido,opciones);
 			}
             else
             {

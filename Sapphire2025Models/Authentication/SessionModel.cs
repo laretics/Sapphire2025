@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,7 +12,16 @@ namespace Sapphire2025Models.Authentication
 	/// </summary>
 	public class SessionModel
 	{
-		public Guid Token { get; set; }
+		private Guid mvarToken;
+		public Guid Token 
+		{
+			get => mvarToken;
+			set
+			{
+				mvarToken = value;
+			
+			}
+		}
 		public UserModel User { get; set; }
 		public List<Common.UserRole> Roles { get; set; }
 
@@ -20,5 +30,6 @@ namespace Sapphire2025Models.Authentication
 			Roles = new List<Common.UserRole>();
 			User = new UserModel();
 		}
+		
 	}
 }

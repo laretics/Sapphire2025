@@ -1,28 +1,27 @@
 ﻿<CascadingValue Value="Session">
     <NexusNavOption Selected="@(0==SelectedNavItem)"
-                    onclick="@(()=>SelectNavItem(0))"
-                    Link="#" Caption="Inicio"
-                    Image="bi bi-house-door-fill-nav-menu" 
-                    Tooltip="Pantalla de inicio"
-                    />
+    onclick="@(()=>SelectNavItem(0))"
+    Link="#" Caption="Inicio"
+    Image="bi bi-house-door-fill-nav-menu" 
+    Tooltip="Pantalla de inicio"
+    />
 
     <NexusNavOption Selected="@(1==SelectedNavItem)"
-                    onclick="@(()=>SelectNavItem(1))"
-                    Link="admin/usersmanage" Caption="Usuarios"
-                    Image="bi bi-list-users-nav-menu" 
-                    Tooltip="Gestión de usuarios del sistema."
-                    Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Root}"/>
+    onclick="@(()=>SelectNavItem(1))"
+    Link="admin/usersmanage" Caption="Usuarios"
+    Image="bi bi-list-users-nav-menu" 
+    Tooltip="Gestión de usuarios del sistema."
+    Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Root}"/>
 
     <NexusNavOption Selected="@(2==SelectedNavItem)"
-                    onclick="@(()=>SelectNavItem(2))"
-                    Link="trainFlow" Caption="Flujo"
-                    Badge="Nuevo"
-                    Image="bi bi-train-diagram-nav-menu" 
-                    Tooltip="Flujograma de unidades tren y resto de vehículos"/>
+    onclick="@(()=>SelectNavItem(2))"
+    Link="trainFlow" Caption="Flujo"
+    Badge="Nuevo"
+    Image="bi bi-train-diagram-nav-menu" 
+    Tooltip="Flujograma de unidades tren y resto de vehículos"/>
 
-   
 </CascadingValue>
-    <Image Src="img/sfmImg.png" Style="width:75%; margin:5%;"/>
+<Image Src="img/sfmImg.png" Style="width:75%; margin:5%;"/>
 @code {
     //Este componente muestra los datos de la sesión actual leyendo desde
     //el almacenamiento interno.

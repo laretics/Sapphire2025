@@ -44,17 +44,14 @@
 	{
 		get
 		{
-			if(null==Session)
-			{
-				return "-";
-			}
-			else
+			if(null!=Session)
 			{
 				if (null == Session.User)
 					return "Usuario desconocido";
 				else
 					return Session.User.Name;
 			}
+			return string.Empty;
 		}
 	}
 	private string userIcon

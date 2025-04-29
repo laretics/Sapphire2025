@@ -9,7 +9,6 @@
 	{
 		await base.OnInitializedAsync();
 		await auxCloseSession();
-		mvarNavigator.NavigateTo("/");
 	}
 
 	private async Task auxCloseSession()
@@ -21,6 +20,8 @@
 
 		//Nos damos de baja a nivel local.
 		await mvarClientStorage.SetSessionInfo(null);
-		StateHasChanged();
+		mvarInteractiveService.SessionInfo = null;
+		mvarNavigator.NavigateTo("/");
+		//StateHasChanged();
 	}
 }
