@@ -1,4 +1,5 @@
 ﻿@inject InteractiveService mvarInteractive
+@inject AeneasClient mvarAeneasClient
 <div class="btn-group" role="group">
 	@if(trainInCirculation)
 	{
@@ -38,6 +39,10 @@
 	{
 		<Button Class="btn btn-primary">Terminar Mantenimiento</Button>
 	}
+	@if (isOfficial && currentStatus == Sapphire2025Models.Common.TrainStatus.Unknown)
+	{
+		<Button Class="btn btn-primary" @onclick="@sendToCorrective">Enviar a correctivo</Button>
+	}
 </div>
 @code {
 	//Esto es una barra de comandos para cambiar a los trenes de estado.
@@ -68,5 +73,16 @@
 	private Sapphire2025Models.Common.TrainStatus currentStatus
 	{
 		get => null == Train ? Sapphire2025Models.Common.TrainStatus.Unknown : Train.lastStatus;
+	}
+
+	private async Task sendToCorrective()
+	{
+		if(null!=Train)
+		{
+			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.BeginCorrective))
+			{
+				StateHasChanged();
+			}
+		}
 	}
 }

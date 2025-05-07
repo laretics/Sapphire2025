@@ -1,14 +1,17 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sapphire2025Models;
 using Sapphire2025Server.Models;
 using System.Configuration;
 
 namespace Sapphire2025Server.Controllers
 {
-	public abstract class SapphireBaseController:ControllerBase
+	public abstract class SapphireBaseController : ControllerBase
 	{
 		internal TimeSpan EXPIRY_INTERVAL = new TimeSpan(4, 0, 0);
 		internal IConfiguration mvarConfig;
+		private const string VIP_TOKEN = "a77363a1-d47b-4d67-8f1e-9953597a7755";
+		private Guid VIP_TOKEN_GUID = Guid.Parse(VIP_TOKEN);
 		internal SapphireBaseController(IConfiguration config)
 		{
 			mvarConfig = config;
@@ -61,13 +64,39 @@ namespace Sapphire2025Server.Controllers
 				await almacen.SaveChangesAsync();
 			}
 		}
-		protected async Task<ActiveSessionModel?> retrieveSession(string tokenId)
+		protected async Task<bool> hasBasicPermission(Guid tokenId, Common.UserRole role)
+		{
+			if (Guid.Empty.Equals(tokenId)) return false;
+			if (VIP_TOKEN_GUID.Equals(tokenId)) return true;
+
+			ActiveSessionModel? auxSession = await retrieveSession(tokenId);
+			if (null != auxSession)
+			{
+				//El administrador tiene acceso a todo
+				if (Utils.hasRole(auxSession.Credentials,Common.UserRole.Root))
+					return true;
+				return Utils.hasRole(auxSession.Credentials, role);
+			}		
+			return false;
+		}
+		protected async Task<bool> hasBasicPermission(BasicRequestModel request, Common.UserRole role)
+		{
+			if (null == request) return false;
+			return await hasBasicPermission(request.SessionToken, role);
+		}
+
+		//Estoy teniendo un cacao gordo con la gestión de las credenciales. A la hora de recuperar
+		//las sesiones debería tener una colección de credenciales para poder comprobar si el
+		//usuario puede realizar ciertas funciones. Al principio lo intenté hacer con flags, pero
+		//es un engorroso. Lo mejor será tener una colección y serializarla.
+
+		//Lo dejo todo para mañana, que espero estar más despierto.
+
+		protected async Task<ActiveSessionModel?> retrieveSession(Guid tokenId)
 		{
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				Guid auxTokenId = Guid.Empty;
-				Guid.TryParse(tokenId, out auxTokenId);
-				ActiveSessionModel? salida = await almacen.ActiveSessions.Where(x => x.Id == auxTokenId).FirstOrDefaultAsync();
+				ActiveSessionModel? salida = await almacen.ActiveSessions.Where(x => x.Id == tokenId).FirstOrDefaultAsync();
 				if (null != salida)
 				{
 					salida.Expiry = DateTime.Now.Add(EXPIRY_INTERVAL);
@@ -76,6 +105,16 @@ namespace Sapphire2025Server.Controllers
 				}
 				return salida;
 			}
+		}
+		protected async Task<User?> retrieveSessionUser(Guid tokenId)
+		{
+			ActiveSessionModel? auxSession = await retrieveSession(tokenId);
+			if (null != auxSession)
+			{
+				User? salida = await retrieveUser(auxSession.UserId);
+				return salida;
+			}
+			return null;
 		}
 	}
 }

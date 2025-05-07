@@ -100,7 +100,7 @@ else
     [Parameter]
     public Guid userId{ get; set; }
 
-    private string? mvarUserToken { get; set; }
+    private Guid mvarUserToken { get; set; }
 
     private List<uint> mcolNewSelectedRoles { get; set; } = new List<uint>();
     private HashSet<ExtendedUserModel.RoleInfo> mcolOriginalSelectedRoles { get; set; } = new HashSet<ExtendedUserModel.RoleInfo>();
@@ -110,11 +110,14 @@ else
     {
         //Carga los datos del usuario
         mvarUserToken = await mvarLocalStorage.getToken();
-        userModel = await mvarCliente.userInfo(mvarUserToken!, userId.ToString());
-        foreach (ExtendedUserModel.RoleInfo roleInfo in userModel.roles.Values)
+        userModel = await mvarCliente.userInfo(userId);
+        if(null!=userModel)
         {
-            if (roleInfo.enrolled)
-                mcolOriginalSelectedRoles.Add(roleInfo);
+            foreach (ExtendedUserModel.RoleInfo roleInfo in userModel.roles.Values)
+            {
+                if (roleInfo.enrolled)
+                    mcolOriginalSelectedRoles.Add(roleInfo);
+            }
         }
     }
 

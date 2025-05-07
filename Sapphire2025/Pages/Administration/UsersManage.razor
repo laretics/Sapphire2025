@@ -11,9 +11,7 @@
 
 	protected async override Task OnInitializedAsync()
 	{
-		await base.OnInitializedAsync();
-		string? auxToken = await mvarLocalStorage.getToken();
-		IEnumerable<UserModel>? auxLista = await mvarClient.usersList(auxToken!);
+		IEnumerable<UserModel>? auxLista = await mvarClient.usersList();
 		if (null != auxLista)
 		{
 			mcolUsers = auxLista;

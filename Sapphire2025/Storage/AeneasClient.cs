@@ -1,4 +1,5 @@
-﻿using Sapphire2025Models.Aeneas;
+﻿using Sapphire2025Models;
+using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
 using System.Net.Http.Json;
 
@@ -6,7 +7,7 @@ namespace Sapphire2025.Storage
 {
 	public class AeneasClient:HttpClientBase
 	{
-		public AeneasClient(HttpClient httpClient) : base(httpClient, "sapphireaeneas") { }
+		public AeneasClient(HttpClient httpClient, IntStorageService intStorage) : base(httpClient, intStorage, "sapphireaeneas") { }
 
 		public async Task<IEnumerable<TrainModel>?> trainsList()
 		{
@@ -22,11 +23,11 @@ namespace Sapphire2025.Storage
 			HttpResponseMessage respuesta = await sendGetRequest(request);
 			return await respuesta.Content.ReadFromJsonAsync<TrainModel?>();
 		}
-		public async Task<Dictionary<string,UserModel>?>  usersTrainList()
+		public async Task<Dictionary<Guid,UserModel>?>  usersTrainList()
 		{
 			string request = composeCommand("userstrains");
 			HttpResponseMessage respuesta = await sendGetRequest(request);
-			return await respuesta.Content.ReadFromJsonAsync<Dictionary<string,UserModel>>();
+			return await respuesta.Content.ReadFromJsonAsync<Dictionary<Guid,UserModel>>();
 		}
 		public async Task<IEnumerable<StatusChangeModel>> trainChangesList(string trainId)
 		{
@@ -50,13 +51,24 @@ namespace Sapphire2025.Storage
 			return auxLista;
 		}
 
-		public async Task<Dictionary<string,UserModel>?> usersChangesList(string trainId)
+		public async Task<Dictionary<Guid,UserModel>?> usersChangesList(string trainId)
 		{
 			string request = composeCommand(
 				"usersstchngs",
 				new requestParam("trainid",trainId));
 			HttpResponseMessage respuesta = await sendGetRequest(request);
-			return await respuesta.Content.ReadFromJsonAsync<Dictionary<string ,UserModel>>();
+			return await respuesta.Content.ReadFromJsonAsync<Dictionary<Guid ,UserModel>>();
+		}
+
+		public async Task<bool> commitTrainStatus(Guid trainId, Common.OperationType operation)
+		{
+			Guid auxToken = await getCurrentToken();
+			TrainStatusCommitModel commit = new TrainStatusCommitModel(auxToken,trainId,operation);
+			string jsonData = System.Text.Json.JsonSerializer.Serialize(commit);
+			HttpResponseMessage response = await sendPostRequest("cmtstatus", jsonData);
+			if(response.IsSuccessStatusCode)
+				return await response.Content.ReadFromJsonAsync<bool>();
+			return false;
 		}
 	}
 }

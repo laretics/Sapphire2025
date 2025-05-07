@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Sapphire2025Models.Authentication;
 using Sapphire2025Models;
+using System.Text.Json;
 using System.Reflection.Metadata.Ecma335;
 using System.Diagnostics.CodeAnalysis;
 using Org.BouncyCastle.Crypto.Agreement;
@@ -20,9 +21,14 @@ namespace Sapphire2025Server.Controllers
 		
 		private const string MY_SALT = "EraseUnaVezUnPlanetaTristeYHelado983948";		
 		private const string VIP_PASSWORD = "A930135";
-		private const string VIP_TOKEN = "a77363a1-d47b-4d67-8f1e-9953597a7755";
+		
 		public SapphireAuthenticationController(IConfiguration configuration):
 			base(configuration) { }
+		[HttpGet("ping")]
+		public IActionResult GetPing()
+		{
+			return Ok("Pong");
+		}
 		[HttpPut("userlogin")]
 		public async Task<SessionModel?> LoginRequest(UserLoginModel input)
 		{
@@ -58,6 +64,7 @@ namespace Sapphire2025Server.Controllers
 						//Ahora rellenamos los datos que vamos a enviar al lado del cliente...
 						salida = new SessionModel();
 						salida.User.sessionToken = newSession.Id;
+						salida.Token = salida.User.sessionToken;
 						salida.User.guid = auxUser.guid;
 						salida.User.CF = auxUser.CF;
 						salida.User.Name = auxUser.UserName;
@@ -103,113 +110,135 @@ namespace Sapphire2025Server.Controllers
 			return salida;
 		}
 
-		[HttpGet("logout")]
-		public async Task<bool> LogoutRequest(string tokenid)
+		[HttpPut("logout")]
+		public async Task<bool> LogoutRequest(BasicRequestModel? request)
 		{
 			//Se envía una petición con el token suministrado para dar
 			//de baja la sesión.
 			bool salida = false;
 			string auxHostPoint = string.Empty;
-			if(null!=HttpContext.Connection)
+			//BasicRequestModel? auxQuestion = JsonSerializer.Deserialize<BasicRequestModel?>(question);
+			if(null!=request)
 			{
-				IPAddress? auxDireccion = HttpContext.Connection.RemoteIpAddress;
-				if (null!=auxDireccion)
+				if (null != HttpContext.Connection)
 				{
-					auxHostPoint = auxDireccion.ToString();
-				}				
-			}
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{				
-				ActiveSessionModel? auxSesion = await almacen.ActiveSessions.FirstOrDefaultAsync();
-				if(null==auxSesion)
-					salida = true;
-				else
+					IPAddress? auxDireccion = HttpContext.Connection.RemoteIpAddress;
+					if (null != auxDireccion)
+					{
+						auxHostPoint = auxDireccion.ToString();
+					}
+				}
+				using (DataStorage almacen = new DataStorage(mvarConfig))
 				{
-					//Voy a dar de baja esta sesión
-					List<ActiveSessionModel> auxColSesiones = await almacen.ActiveSessions.Where(xx=>xx.UserId.Equals(auxSesion.UserId)).ToListAsync();
+					ActiveSessionModel? auxSesion = await almacen.ActiveSessions.FirstOrDefaultAsync();
+					if (null == auxSesion)
+						salida = true;
+					else
+					{
+						//Voy a dar de baja esta sesión
+						List<ActiveSessionModel> auxColSesiones = await almacen.ActiveSessions.Where(xx => xx.UserId.Equals(auxSesion.UserId)).ToListAsync();
 
-					almacen.RemoveRange(auxColSesiones);
+						almacen.RemoveRange(auxColSesiones);
 
-					//Marco el log.
-					await addLoginRecord(auxSesion.UserId, SessionEvent.sessionEventType.logout,auxHostPoint);
+						//Marco el log.
+						await addLoginRecord(auxSesion.UserId, SessionEvent.sessionEventType.logout, auxHostPoint);
 
-					salida = true;
+						salida = true;
 
-					await almacen.SaveChangesAsync();
+						await almacen.SaveChangesAsync();
+					}
 				}
 			}
 			return salida;
 		}
 
-		[HttpGet("userslist")]
-		public async Task<IEnumerable<UserModel>> UsersListRequest(string tokenid)
+		[HttpPut("userslist")]
+		public async Task<IEnumerable<UserModel>> UsersListRequest(BasicRequestModel request)
 		{
 			//Pide la lista actual de usuarios del sistema. Ya aplicaré filtros (si es necesario)
 			//en el cliente.
 			List<UserModel> salida = new List<UserModel>();
-			if(await hasBasicPermission(tokenid, Common.UserRole.Root))
+			//BasicRequestModel? auxQuestion = JsonSerializer.Deserialize<BasicRequestModel?>(question);
+			if(null!=request)
 			{
-				using (DataStorage almacen = new DataStorage(mvarConfig))
+				if (await hasBasicPermission(request, Common.UserRole.Root))
 				{
-					IEnumerable<User> entrada = await almacen.Users.ToListAsync();
-					foreach (User user in entrada)
+					using (DataStorage almacen = new DataStorage(mvarConfig))
 					{
-						salida.Add(await modeloFromUser(user));
+						IEnumerable<User> entrada = await almacen.Users.ToListAsync();
+						foreach (User user in entrada)
+						{
+							salida.Add(await modeloFromUser(user));
+						}
 					}
 				}
 			}
 			return salida;
 		}
-		[HttpGet("userinfo")]
-		public async Task<ExtendedUserModel> UserInfo(string tokenid, string userid)
+		[HttpPut("isemptypwd")]
+		public async Task<bool> IsEmptyPassword(UserLoginModel message)
+		{
+			User? auxUser = await retrieveUser(message.userName);
+			if (null != auxUser)
+			{
+				return (null == auxUser.PasswordHash) || (string.Empty.Equals(auxUser.PasswordHash));
+			}
+			return false;
+		}
+		[HttpPut("userinfo")]
+		public async Task<ExtendedUserModel> UserInfo(string question)
 		{
 			//Obtiene toda la información posible de un determinado usuario según los permisos
 			//del token enviado
 			ExtendedUserModel salida = new ExtendedUserModel();
-			bool hasPermission = false;
-
-			//Administrador... puede acceder a toda la información de cualquier usuario
-			if (await hasBasicPermission(tokenid, Common.UserRole.Root))
-				hasPermission = true;
-
-			//El propio usuario puede acceder a sus propios datos
-			ActiveSessionModel? auxSession = await retrieveSession(tokenid);
-			if (null != auxSession && auxSession.UserId.Equals(userid))
-				hasPermission = true;
-
-			if(hasPermission)
+			UserInfoRequestModel? auxQuestion = JsonSerializer.Deserialize<UserInfoRequestModel?>(question);
+			if(null!=auxQuestion)
 			{
-				User? auxUsuarioNulo;
-				User auxUsuario;
-				//Cargo toda la información que puedo sacar de la base de datos..
-				using (DataStorage almacen = new DataStorage(mvarConfig))
+				bool hasPermission = false;
+
+				//Administrador... puede acceder a toda la información de cualquier usuario
+				if (await hasBasicPermission(auxQuestion.SessionToken, Common.UserRole.Root))
+					hasPermission = true;
+
+				//El propio usuario puede acceder a sus propios datos
+				ActiveSessionModel? auxSession = await retrieveSession(auxQuestion.SessionToken);
+				if (null != auxSession && auxSession.UserId.Equals(auxQuestion.UserId.ToString()))
+					hasPermission = true;
+
+				if (hasPermission)
 				{
-					auxUsuarioNulo = await almacen.Users.Where(x=>x.Id.Equals(userid)).FirstOrDefaultAsync();
-					if(null != auxUsuarioNulo)
+					User? auxUsuarioNulo;
+					User auxUsuario;
+					//Cargo toda la información que puedo sacar de la base de datos..
+					using (DataStorage almacen = new DataStorage(mvarConfig))
 					{
-						auxUsuario = auxUsuarioNulo;
-						salida.CF = auxUsuario.CF;
-						if(null!=auxUsuario.UserName)
-							salida.Name = auxUsuario.UserName;
-						if (null != auxUsuario.PhoneNumber)
-							salida.PhoneNumber = auxUsuario.PhoneNumber;
-						if(null!= auxUsuario.Email)
-							salida.Email = auxUsuario.Email;
-						salida.guid = auxUsuario.guid;
-						salida.NullPassword = (null == auxUsuario.PasswordHash) || (auxUsuario.PasswordHash.Length < 1);
+						auxUsuarioNulo = await almacen.Users.Where(x => x.Id.Equals(auxQuestion.UserId.ToString())).FirstOrDefaultAsync();
+						if (null != auxUsuarioNulo)
+						{
+							auxUsuario = auxUsuarioNulo;
+							salida.CF = auxUsuario.CF;
+							if (null != auxUsuario.UserName)
+								salida.Name = auxUsuario.UserName;
+							if (null != auxUsuario.PhoneNumber)
+								salida.PhoneNumber = auxUsuario.PhoneNumber;
+							if (null != auxUsuario.Email)
+								salida.Email = auxUsuario.Email;
+							salida.guid = auxUsuario.guid;
+							salida.NullPassword = (null == auxUsuario.PasswordHash) || (auxUsuario.PasswordHash.Length < 1);
+						}
+					}
+					salida.roles = await retrieveRolesDictionary();
+					//Recuperamos los roles del usuario
+					if (null != auxUsuarioNulo)
+					{
+						List<uint> auxRoles = await retrieveUserRoles(auxUsuarioNulo.guid);
+						foreach (uint role in auxRoles)
+						{
+							if (salida.roles.ContainsKey(role))
+								salida.roles[role].enrolled = true;
+						}
 					}
 				}
-				salida.roles = await retrieveRolesDictionary();
-				//Recuperamos los roles del usuario
-				if(null!=auxUsuarioNulo)
-				{
-					List<uint> auxRoles = await retrieveUserRoles(auxUsuarioNulo.guid);
-					foreach(uint role in auxRoles)
-					{
-						if(salida.roles.ContainsKey(role))
-							salida.roles[role].enrolled = true;
-					}
-				}		
 			}
 			return salida;
 		}
@@ -225,7 +254,9 @@ namespace Sapphire2025Server.Controllers
 		[HttpPut("enrole")]
 		public async Task<bool> Enrole(string tokenid, string userid, uint roleid, bool enrole)
 		{
-			if (await hasBasicPermission(tokenid,Common.UserRole.Root))
+			Guid token = Guid.Empty;
+			Guid.TryParse(tokenid, out token);
+			if (await hasBasicPermission(token,Common.UserRole.Root))
 			{
 				Guid userGuid = Guid.Empty;
 				Guid.TryParse(userid, out userGuid);
@@ -359,16 +390,7 @@ namespace Sapphire2025Server.Controllers
 			}
 			return false;
 		}
-		[HttpPut("isemptypwd")]
-		public async Task<bool> IsEmptyPassword(UserLoginModel message)
-		{
-			User? auxUser = await retrieveUser(message.userName);
-			if (null != auxUser)
-			{
-				return (null==auxUser.PasswordHash) || ( string.Empty.Equals(auxUser.PasswordHash));
-			}
-			return false;
-		}
+
 		[HttpPut("setpwd")]
 		public async Task<bool> SetPassword(ExtendedUserModel.SetPasswordDataMessage message)
 		{
@@ -443,21 +465,7 @@ namespace Sapphire2025Server.Controllers
 					salida.Add(role.RoleId);
 			}
 			return salida;
-		}					
-		private async Task<bool> hasBasicPermission(string? tokenId,Common.UserRole role)
-		{
-			if(null==tokenId) return false;
-			//Consulta en la base de datos de sesiones abiertas si el usuario que está haciendo
-			//la petición tiene permiso.
-			if (VIP_TOKEN.Equals(tokenId)) return true;
-
-			ActiveSessionModel? auxSession = await retrieveSession(tokenId);
-			if (null!=auxSession)
-				return Utils.hasRole(auxSession.Credentials, role);
-
-			return false;
-		}
-
+		}							
 		private async Task<UserModel> modeloFromUser(User user)
 		{
 			UserModel salida = new UserModel();

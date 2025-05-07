@@ -9,7 +9,7 @@ namespace Sapphire2025Server.Models
 	{		
 		public StatusChange()
 		{
-			UserId = string.Empty;
+			UserId = Guid.Empty;
 		}
 		[Key]
 		public Guid Guid { get; set; } //Referencia interna de esta transacción
@@ -72,6 +72,6 @@ namespace Sapphire2025Server.Models
 				}
 			}
 		}
-		public string UserId { get; set; } // Usuario que realiza esta transacción
+		public Guid UserId { get; set; } // Usuario que realiza esta transacción
 	}
 }

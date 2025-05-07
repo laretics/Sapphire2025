@@ -12,11 +12,29 @@ namespace Sapphire2025.Storage
 	{
 		public string controllerId { get;private set; }
 		internal readonly HttpClient mvarClient;
+		internal readonly IntStorageService mvarIntStorage;
 
-		public HttpClientBase(HttpClient httpClient,string controllerId)
+		public HttpClientBase(HttpClient httpClient,IntStorageService intStorageService, string controllerId)
 		{
 			mvarClient = httpClient;
+			mvarIntStorage = intStorageService;
 			this.controllerId = controllerId;
+		}
+
+		/// <summary>
+		/// Obtiene el token de sesión del usuario que está realizando la operación.
+		/// </summary>
+		/// <returns>Guid del token asignado o Guid.empty si no hay sesión</returns>
+		internal async Task<Guid> getCurrentToken()
+		{
+			Guid salida = Guid.Empty;
+
+			SessionModel? sesion = await mvarIntStorage.GetSessionInfo();
+
+			if (null != sesion)
+				return sesion.Token;
+
+			return Guid.Empty; //En caso de no encontrar sesión devolvemos un token vacío.
 		}
 
 		internal string composeUri(string command)
@@ -59,6 +77,7 @@ namespace Sapphire2025.Storage
 			salida.EnsureSuccessStatusCode();
 			return salida;
 		}
+
 
 		/// <summary>
 		/// Put es para editar un elemento que ya existe en la base de datos

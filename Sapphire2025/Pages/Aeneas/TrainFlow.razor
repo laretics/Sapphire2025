@@ -4,33 +4,37 @@
 @if(null==mcolTrains)
 {
 	<div class="d-flex justify-content-center">
-		<h4>Cargando...</h4>
 		<div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
-			<span class="visually-hidden">Cargando...</span>
+			<span class="visually-hidden"> Cargando información...</span>
 		</div>
 	</div>
 }
 else
 {
-	<CascadingValue Value="mcolTrains">
-		<CascadingValue Value="Users">		
-			<CascadingValue Value="Status">
-				<div class="row align-items-start" style="height: 50vh; width: 100%">
-					<div class="col">
-						<Sapphire2025.Layout.Aeneas.TrainFlowCTL Extended="false"
-						OnStatusSelected="HandleStatusSelected"
-						width="100" height="50" />
+	<CascadingValue Value="Extended">
+		<CascadingValue Value="mcolTrains">
+			<CascadingValue Value="Users">
+				<CascadingValue Value="Status">
+					<div class="row align-items-start" style="height: 50vh; width: 100%">
+						<div class="col">
+							<Sapphire2025.Layout.Aeneas.TrainFlowCTL
+							OnStatusSelected="HandleStatusSelected"
+							width="100" height="50" />
+						</div>
+						<div class="col">
+							<Sapphire2025.Layout.Aeneas.StatusTrainsTable Width="100" Height="50" />
+						</div>
 					</div>
+				</CascadingValue>
+				<div class="row">
+					<Button Class="btn-secondary" @onclick="@changeExtended" >...</Button>
+				</div>
+				<div class="row align-items-start" style="height: 50vh;">
 					<div class="col">
-						<Sapphire2025.Layout.Aeneas.StatusTrainsTable Width="100" Height="50"/>
+						<Sapphire2025.Layout.Aeneas.AvailableTrainsTable Width="95" Height="50" />
 					</div>
 				</div>
 			</CascadingValue>
-			<div class="row align-items-start" style="height: 50vh;">
-				<div class="col">
-					<Sapphire2025.Layout.Aeneas.AvailableTrainsTable Width="95" Height="50"/>
-				</div>
-			</div>
 		</CascadingValue>
 	</CascadingValue>
 }
@@ -41,7 +45,9 @@ else
 	[Parameter]
 	public Sapphire2025Models.Common.TrainStatus Status { get; set; }	
 	[Parameter]
-	public Dictionary<string,UserModel>? Users{ get; set; }
+	public Dictionary<Guid,UserModel>? Users{ get; set; }
+
+	private bool Extended { get; set; } = false;
 
 	protected async override Task OnInitializedAsync()
 	{
@@ -58,6 +64,11 @@ else
 		Status = status;
 		StateHasChanged();
 	}
+	private void changeExtended()
+	{
+		Extended = !Extended;
+		StateHasChanged();
+	}	
 
 	/// <summary>
 	/// Para acelerar considerablemente la ejecución del programa vamos a cargar la lista en dos
@@ -95,7 +106,7 @@ else
 						auxTrain.lastUpdateTime = cambio.timeStamp;
 						auxTrain.lastStatus = cambio.status;
 						auxTrain.lastUserInfo = cambio.userId;
-						if(null!=cambio.userId && null!=Users && !(Users.ContainsKey(cambio.userId)))
+						if(Guid.Empty!=cambio.userId && null!=Users && !(Users.ContainsKey(cambio.userId)))
 						{
 							//Esto va a ser un caso realmente raro... un cambio en el que aparece un
 							//nuevo usuario... en este caso el coste de añadir el usuario al diccionario
@@ -104,7 +115,7 @@ else
 						}
 					}
 				}
-				if(isAnyNewUser)
+				if(isAnyNewUser || null==Users || 0==Users.Count)
 					await UpgradeUsersDictionary(true);
 			}
 		}
@@ -114,8 +125,8 @@ else
 		Users = await mvarInternalStorage.GetTrainUsersDictionary();
 		if(null==Users || forceExternalLoad)
 		{
-			Dictionary<string, UserModel>? auxDictionario = await mvarInternalStorage.GetTrainUsersDictionary();
-			if (null == auxDictionario)
+			Dictionary<Guid, UserModel>? auxDictionario = await mvarInternalStorage.GetTrainUsersDictionary();
+			if (null == auxDictionario || 0==auxDictionario.Count)
 			{
 				//En este caso raro, a lo mejor tenemos que obtener el diccionario desde el servidor
 				auxDictionario = await mvarAeneasClient.usersTrainList();

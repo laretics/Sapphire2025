@@ -1,6 +1,7 @@
 ﻿using Microsoft.JSInterop;
 using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
+using System.Diagnostics.Metrics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 namespace Sapphire2025.Storage
@@ -22,11 +23,6 @@ namespace Sapphire2025.Storage
             mvarJsRuntime = jsRuntime;
         }
 
-        public async Task<string?> getToken()
-        {
-            return await GetStringValue("sessionToken",false);
-        }
-
         internal string internalRequestString(bool session, string command)
         {
             return string.Format("{0}.{1}",session? SESSION_STORAGE_ID: LOCAL_STORAGE_ID, command);
@@ -41,7 +37,16 @@ namespace Sapphire2025.Storage
 			}
             return null;
 		}
-        public async Task<bool> SetSessionInfo(SessionModel? session)
+        public async Task<Guid> getToken()
+        {
+            SessionModel? sesion = await GetSessionInfo();
+            if (null != sesion)
+                return sesion.Token;
+
+            return Guid.Empty; //En caso de no encontrar sesión devolvemos un token vacío.
+        }
+
+		public async Task<bool> SetSessionInfo(SessionModel? session)
         {
             if (null == session)
             {
@@ -78,16 +83,16 @@ namespace Sapphire2025.Storage
             }
             return false;
         }
-        public async Task<Dictionary<string,UserModel>?>GetTrainUsersDictionary()
+        public async Task<Dictionary<Guid,UserModel>?>GetTrainUsersDictionary()
         {
             string? auxCadena = await GetStringValue("cacheuserslist", false);
             if(null!=auxCadena)
             {
-                return JsonSerializer.Deserialize<Dictionary<string,UserModel>>(auxCadena);
+                return JsonSerializer.Deserialize<Dictionary<Guid,UserModel>>(auxCadena);
             }
             return null;
         }
-        public async Task<bool>SetTrainUsersDictionary(Dictionary<string,UserModel>? rhs)
+        public async Task<bool>SetTrainUsersDictionary(Dictionary<Guid,UserModel>? rhs)
         {
             if(null!=rhs)
             {

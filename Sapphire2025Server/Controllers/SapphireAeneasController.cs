@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
+using MySql.Data.MySqlClient;
+using Sapphire2025Models;
 using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
 using Sapphire2025Server.Models;
@@ -13,7 +15,7 @@ namespace Sapphire2025Server.Controllers
 	public class SapphireAeneasController:SapphireBaseController
 	{
 		public SapphireAeneasController(IConfiguration configuration) : base(configuration) 
-		{ 
+		{			
 		}
 
 		/// <summary>
@@ -36,7 +38,6 @@ namespace Sapphire2025Server.Controllers
 		}
 
 
-
 		[HttpGet("traininfo")]
 		public async Task<TrainModel?> TrainInfo(string trainid)
 		{
@@ -56,9 +57,9 @@ namespace Sapphire2025Server.Controllers
 		/// </summary>
 		/// <returns></returns>
 		[HttpGet("userstrains")]
-		public async Task<Dictionary<string, UserModel>> TrainsUsers()
+		public async Task<Dictionary<Guid, UserModel>> TrainsUsers()
 		{
-			Dictionary<string, UserModel> salida = new Dictionary<string, UserModel>();
+			Dictionary<Guid, UserModel> salida = new Dictionary<Guid, UserModel>();
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
 				List<Train> trenes = await almacen.Trains.ToListAsync();
@@ -69,9 +70,11 @@ namespace Sapphire2025Server.Controllers
 					{
 						if(!salida.ContainsKey(lastChange.UserId))
 						{
-							User? auxUser = await almacen.Users.Where(x => x.Id.Equals(lastChange.UserId)).FirstOrDefaultAsync();
+							User? auxUser = await almacen.Users.Where(x => x.Id.Equals(lastChange.UserId.ToString())).FirstOrDefaultAsync();
 							if (null != auxUser)
-								salida.Add(auxUser.guid.ToString(), userFromUser(auxUser));
+							{
+								salida.Add(auxUser.guid, userFromUser(auxUser));
+							}								
 						}
 					}
 				}
@@ -120,9 +123,9 @@ namespace Sapphire2025Server.Controllers
 		/// <returns></returns>
 
 		[HttpGet("usersstchngs")]
-		public async Task<Dictionary<string,UserModel>> ChangesUsers(string trainid)
+		public async Task<Dictionary<Guid,UserModel>> ChangesUsers(string trainid)
 		{
-			Dictionary<string, UserModel> salida = new Dictionary<string, UserModel>();
+			Dictionary<Guid, UserModel> salida = new Dictionary<Guid, UserModel>();
 			Guid auxId = Guid.Empty;
 			Guid.TryParse(trainid, out auxId);
 			using (DataStorage almacen = new DataStorage(mvarConfig))
@@ -134,15 +137,43 @@ namespace Sapphire2025Server.Controllers
 					{
 						if(!salida.ContainsKey(auxChange.UserId))
 						{
-							User? auxUser = await almacen.Users.Where(x => x.Id.Equals(auxChange.UserId)).FirstOrDefaultAsync();
+							User? auxUser = await almacen.Users.Where(x => x.Id.Equals(auxChange.UserId.ToString())).FirstOrDefaultAsync();
 							if (null != auxUser)
-								salida.Add(auxUser.guid.ToString(), userFromUser(auxUser));
+								salida.Add(auxUser.guid, userFromUser(auxUser));
 						}
 					}					
 				}
 			}
 			return salida;
-		}	
+		}
+
+
+		[HttpPost("cmtstatus")]
+		public async Task<bool> CommitStatus(TrainStatusCommitModel commit)
+		{
+			bool salida = false;
+			if (await credentialValidForTrainOperation(commit))
+			{
+				using (DataStorage almacen = new DataStorage(mvarConfig))
+				{
+					Train? auxTrain = await almacen.Trains.Where(x => x.Guid == commit.trainId).FirstOrDefaultAsync();
+					if (null != auxTrain)
+					{
+						StatusChange nuevoCambio = new StatusChange();
+						nuevoCambio.Guid = Guid.NewGuid();
+						nuevoCambio.TrainId = auxTrain.Guid;
+						nuevoCambio.Operation = commit.operation;
+						nuevoCambio.TimeStamp = DateTime.Now;
+						User? auxUser = await retrieveSessionUser(commit.SessionToken);
+						if(null!=auxUser)
+							nuevoCambio.UserId = auxUser.guid;
+						almacen.StatusChanges.Add(nuevoCambio);
+						salida = (await almacen.SaveChangesAsync() > 0);
+					}
+				}
+			}
+			return salida;
+		}
 
 		protected UserModel userFromUser(User rhs)
 		{
@@ -169,7 +200,7 @@ namespace Sapphire2025Server.Controllers
 				{
 					salida.lastUpdateTime = DateTime.MinValue;
 					salida.lastStatus = Sapphire2025Models.Common.TrainStatus.Unknown;
-					salida.lastUserInfo = string.Empty;
+					salida.lastUserInfo = Guid.Empty;
 				}
 				else
 				{
@@ -191,5 +222,21 @@ namespace Sapphire2025Server.Controllers
 			modelo.timeStamp = rhs.TimeStamp;
 			return modelo;
 		}
+		private async Task<bool> credentialValidForTrainOperation(TrainStatusCommitModel? request)
+		{
+			if(null == request) return false;
+			switch(request.operation)
+			{
+				case Common.OperationType.Activate:
+					return await hasBasicPermission(request, Common.UserRole.Oficial);
+				case Common.OperationType.BeginCorrective:
+					return await hasBasicPermission(request, Common.UserRole.Oficial);
+				//TODO: Agregar la gestión de permisos para el resto de operaciones
+
+				default:
+					return false;			
+			}
+		}
+
 	}
 }

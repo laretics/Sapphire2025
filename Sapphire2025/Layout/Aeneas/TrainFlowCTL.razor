@@ -146,16 +146,16 @@
 
 						<Sapphire2025.Icons.Arrows.LeftRight x="61" y="76" height="8" Color="navy" />
 					}
-
 				</CascadingValue>
 			</CascadingValue>
 		</svg>
+		
 	</div>
 }
 
 @code {
-	[Parameter]
-	public bool Extended { get; set; } = false;
+	[CascadingParameter]
+	public bool Extended { get; set; }
 	[Parameter]
 	public int width{ get; set; }
 	[Parameter]

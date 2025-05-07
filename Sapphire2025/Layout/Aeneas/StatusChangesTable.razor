@@ -28,7 +28,7 @@
 	[Parameter]
 	public IEnumerable<StatusChangeModel>? StatusChanges { get; set; }
 	[Parameter]
-	public Dictionary<string,UserModel>? StatusChangesUsers { get; set; }
+	public Dictionary<Guid,UserModel>? StatusChangesUsers { get; set; }
 	[Parameter]
 	public int Height{ get; set; }
 	[Parameter]
@@ -36,7 +36,7 @@
 
 	private UserModel? userFromStatus(StatusChangeModel rhs)
 	{
-		if(null!=StatusChangesUsers && null!=rhs.userId)
+		if(null!=StatusChangesUsers && Guid.Empty!=rhs.userId)
 		{
 			if (StatusChangesUsers.ContainsKey(rhs.userId))
 				return StatusChangesUsers[rhs.userId];

@@ -44,7 +44,7 @@
 			StateHasChanged();
 		}
 	}
-	private Dictionary<string, UserModel>? mcolUsers = new Dictionary<string, UserModel>();
+	private Dictionary<Guid, UserModel>? mcolUsers = new Dictionary<Guid, UserModel>();
 	private IEnumerable<StatusChangeModel>? mcolChanges = new List<StatusChangeModel>();
 	private TrainModel? mvarTrain = null;
 }

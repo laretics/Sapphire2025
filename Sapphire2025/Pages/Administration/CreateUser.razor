@@ -48,9 +48,12 @@ else
 	protected async override Task OnInitializedAsync()
 	{
 		//return base.OnInitializedAsync();
-		string? auxUserToken = await mvarLocalStorage.getToken();
-		Model = new ExtendedUserModel.CreateNewUserDataMessage(auxUserToken);
-		Model.CF = string.Empty;
-		Model.UserName = string.Empty;
+		Guid auxUserToken = await mvarLocalStorage.getToken();
+		if(Guid.Empty==auxUserToken)
+		{
+			Model = new ExtendedUserModel.CreateNewUserDataMessage(auxUserToken);
+			Model.CF = string.Empty;
+			Model.UserName = string.Empty;
+		}
 	}
 }

@@ -16,7 +16,12 @@ GET {{Sapphire2025Server_HostAddress}}/sapphireauthentication/logout?tokenid=fee
 Accept: application/json
 
 ### Lista de usuarios
-GET {{Sapphire2025Server_HostAddress}}/sapphireauthentication/userslist/
+### Prueba de solicitud PUT con JSON
+PUT {{Sapphire2025Server_HostAddress}}/sapphireauthentication/userslist
+Content-Type: application/json
+{
+  "SessionToken": "8a8ed964-0e2f-42f7-b3fd-24dcba933085"
+}
 
 ### Información en detalle de un usuario
 GET {{Sapphire2025Server_HostAddress}}/sapphireauthentication/userinfo?tokenid=a77363a1-d47b-4d67-8f1e-9953597a7755&userid=a6fa037e-bc0f-4799-9678-ad5024c910b9

@@ -14,7 +14,7 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddCors(options =>
 {
-	options.AddPolicy("PolicyName", builder => 
+	options.AddPolicy("TodoVale", builder => 
 		builder.AllowAnyOrigin().
 		AllowAnyHeader().
 		AllowAnyMethod());
@@ -36,7 +36,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.UseCors("PolicyName");
+app.UseCors("TodoVale");
 
 app.Run();
 

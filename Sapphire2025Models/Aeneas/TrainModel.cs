@@ -18,6 +18,7 @@ namespace Sapphire2025Models.Aeneas
 		public TrainModel()
 		{
 			name = string.Empty;
+			lastUserInfo = Guid.Empty;
 		}
 
 		//Estado actual en el que se encuentra este tren.
@@ -27,6 +28,6 @@ namespace Sapphire2025Models.Aeneas
 		public DateTime lastUpdateTime { get; set; }
 
 		//Id del último usuario que interactuó con este tren
-		public string? lastUserInfo { get; set; }
+		public Guid lastUserInfo { get; set; }
 	}
 }

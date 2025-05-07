@@ -3,6 +3,7 @@ using Sapphire2025.Icons.Roles;
 using Sapphire2025Models;
 using Sapphire2025Models.Authentication;
 using System.Diagnostics;
+using System.Linq.Expressions;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -11,17 +12,19 @@ namespace Sapphire2025.Storage
 {
 	public class AuthenticationClient:HttpClientBase
 	{       
-        public AuthenticationClient(HttpClient httpClient): base(httpClient, "sapphireauthentication") {}
+        public AuthenticationClient(HttpClient httpClient, IntStorageService intStorage): base(httpClient, intStorage, "sapphireauthentication") {}
 
         public async Task<bool> Logout(string tokenId)
         {
             try
             {
-                string request = composeCommand(
-                    "logout",
-                    new requestParam("tokenid", tokenId));
+                //string request = composeCommand(
+                //    "logout",
+                //    new requestParam("tokenid", tokenId));
 
-                HttpResponseMessage respuesta = await sendGetRequest(request);
+                BasicRequestModel question = new BasicRequestModel(await mvarIntStorage.getToken());
+				string request = JsonSerializer.Serialize(question);
+				HttpResponseMessage respuesta = await sendPutRequest("logout",request);
                 
                 return true;
             }
@@ -31,28 +34,34 @@ namespace Sapphire2025.Storage
 			}
             return false;
 		}
-        public async Task<IEnumerable<UserModel>?> usersList(string tokenId)
+        public async Task<IEnumerable<UserModel>?> usersList()
         {
-            string request = composeCommand(
-                "userslist",
-                new requestParam("tokenid", tokenId));
+            Guid auxToken = await mvarIntStorage.getToken();
+			BasicRequestModel question = new BasicRequestModel(auxToken);
+            string jsonString = JsonSerializer.Serialize(question);
 
-            HttpResponseMessage respuesta = await sendGetRequest(request);
-            return await respuesta.Content.ReadFromJsonAsync<IEnumerable<UserModel>?>();
+            HttpResponseMessage respuesta = await sendPutRequest("userslist", jsonString);
+
+			return await respuesta.Content.ReadFromJsonAsync<IEnumerable<UserModel>?>();
         }
 
-        public async Task<ExtendedUserModel?> userInfo(string tokenId, string userId)
+        public async Task<ExtendedUserModel?> userInfo(Guid userId)
         {
-            string request = composeCommand(
-                "userinfo",
-                new requestParam("tokenid", tokenId),
-                new requestParam("userid", userId));
-            HttpResponseMessage respuesta = await sendGetRequest(request);
+            Guid token = await mvarIntStorage.getToken();
+			UserInfoRequestModel peticion = new UserInfoRequestModel(token,userId);
+            string pregunta = JsonSerializer.Serialize(peticion);
+
+            //string request = composeCommand(
+            //    "userinfo",
+            //    new requestParam("question", pregunta)
+            //    );
+            HttpResponseMessage respuesta = await sendPutRequest("userinfo",pregunta);
             return await respuesta.Content.ReadFromJsonAsync<ExtendedUserModel?>();
         }
 
         public async Task<bool> changeRoles(string tokenId, string userId, string enroles, string deroles)
         {
+            //TODO: No es compatible la petición (GET) con el controlador (PUT)
             string request = composeCommand(
                 "changeroles",
                 new requestParam("tokenid",tokenId),
@@ -75,7 +84,8 @@ namespace Sapphire2025.Storage
                 {
                     PropertyNameCaseInsensitive = true
                 };
-                return JsonSerializer.Deserialize<SessionModel?>(contenido,opciones);
+                SessionModel? salida = JsonSerializer.Deserialize<SessionModel>(contenido, opciones);
+                return salida;
 			}
             else
             {

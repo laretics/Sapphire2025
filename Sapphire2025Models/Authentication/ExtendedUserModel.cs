@@ -37,9 +37,9 @@ namespace Sapphire2025Models.Authentication
 		}
 		public abstract class UpdateBase
 		{
-			public string? TokenId { get; set; } // Token con la autorización para hacer modificaciones en la base de datos
+			public Guid TokenId { get; set; } // Token con la autorización para hacer modificaciones en la base de datos
 			
-			public UpdateBase(string? tokenId)
+			public UpdateBase(Guid tokenId)
 			{
 				TokenId = tokenId;
 			}
@@ -48,14 +48,14 @@ namespace Sapphire2025Models.Authentication
 		{
 			public string? UserName { get; set; }
 			public string? CF { get; set; }
-			public CreateNewUserDataMessage(string? tokenId) 
+			public CreateNewUserDataMessage(Guid tokenId) 
 				:base(tokenId) { }
 		}
 
 		public abstract class UpdateUserBase:UpdateBase
 		{
 			public Guid UserId { get; set; }
-			public UpdateUserBase(string? tokenId, Guid userId)
+			public UpdateUserBase(Guid tokenId, Guid userId)
 				:base(tokenId)
 			{
 				UserId = userId;
@@ -64,7 +64,7 @@ namespace Sapphire2025Models.Authentication
 
 		public class UpdateRolesChangeMessage:UpdateUserBase
 		{	
-			public UpdateRolesChangeMessage(string? tokenId, Guid userId):base(tokenId,userId)
+			public UpdateRolesChangeMessage(Guid tokenId, Guid userId):base(tokenId,userId)
 			{
 				this.colEnrole = new List<uint>();
 				this.colDerole = new List<uint>();
@@ -74,7 +74,7 @@ namespace Sapphire2025Models.Authentication
 		}
 		public class UpdateUserPersonalDataMessage:UpdateUserBase
 		{
-			public UpdateUserPersonalDataMessage(string? tokenId, Guid userId) : base(tokenId, userId)
+			public UpdateUserPersonalDataMessage(Guid tokenId, Guid userId) : base(tokenId, userId)
 			{ }
 
 			public string? UserName { get; set; }
@@ -84,7 +84,7 @@ namespace Sapphire2025Models.Authentication
 		}
 		public class ResetPasswordDataMessage:UpdateUserBase
 		{
-			public ResetPasswordDataMessage(string? tokenId, Guid userId) : base(tokenId, userId)
+			public ResetPasswordDataMessage(Guid tokenId, Guid userId) : base(tokenId, userId)
 			{ }
 
 		}
