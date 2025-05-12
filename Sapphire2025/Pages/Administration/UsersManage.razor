@@ -11,7 +11,7 @@
 
 	protected async override Task OnInitializedAsync()
 	{
-		IEnumerable<UserModel>? auxLista = await mvarClient.usersList();
+		IEnumerable<UserModel>? auxLista = await mvarClient.completeUsersList();
 		if (null != auxLista)
 		{
 			mcolUsers = auxLista;

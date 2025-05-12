@@ -3,7 +3,7 @@
 	[CascadingParameter]
 	public IEnumerable<TrainModel>? Trains{ get; set; }
 	[CascadingParameter]
-	public Dictionary<Guid,UserModel>? Users{ get; set; }
+	public Dictionary<Guid,UserModelBase>? Users{ get; set; }
 
 	protected List<TrainModel> mcolTrains = new List<TrainModel>();
 
@@ -55,7 +55,7 @@
 		}		
 	}
 
-	internal UserModel? userFromTrain(TrainModel? train)
+	internal UserModelBase? userFromTrain(TrainModel? train)
 	{
 		if(null!=Users && null!=train && Guid.Empty!=train.lastUserInfo)
 		{

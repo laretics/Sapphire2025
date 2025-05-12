@@ -1,0 +1,25 @@
+﻿@if(null==Notes)
+{
+	<h3>...</h3>
+}
+else
+{
+	<CascadingValue Value="Users">
+		@foreach (NoteModel note in Notes)
+		{
+			<NoteChatEntry Note="@note" />
+		}
+	</CascadingValue>
+
+}
+
+@code {
+	///El noteChat es un documento que muestra las entradas de texto (y en un futuro gráficos)
+	///correspondientes a un determinado tren, junto con sus horas de suceso.
+	///Es una especie de bitácora mostrada en un tono desenfadado que permite
+	///asimilar la información de una manera más amena.
+	[Parameter]
+	public List<NoteModel>? Notes { get; set; } = new List<NoteModel>();
+	[CascadingParameter]
+	public Dictionary<Guid, UserModel>? Users { get; set; }
+}

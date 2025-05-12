@@ -28,13 +28,13 @@
 	[Parameter]
 	public IEnumerable<StatusChangeModel>? StatusChanges { get; set; }
 	[Parameter]
-	public Dictionary<Guid,UserModel>? StatusChangesUsers { get; set; }
+	public Dictionary<Guid,UserModelBase>? StatusChangesUsers { get; set; }
 	[Parameter]
 	public int Height{ get; set; }
 	[Parameter]
 	public int Width{ get; set; }
 
-	private UserModel? userFromStatus(StatusChangeModel rhs)
+	private UserModelBase? userFromStatus(StatusChangeModel rhs)
 	{
 		if(null!=StatusChangesUsers && Guid.Empty!=rhs.userId)
 		{

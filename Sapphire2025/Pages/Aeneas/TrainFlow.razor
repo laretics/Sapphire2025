@@ -1,5 +1,6 @@
 ﻿@page "/trainFlow"
 @inject AeneasClient mvarAeneasClient
+@inject AuthenticationClient mvarAuthClient
 @inject IntStorageService mvarInternalStorage
 @if(null==mcolTrains)
 {
@@ -41,11 +42,11 @@ else
 
 @code 
 {
-	private IEnumerable<TrainModel>? mcolTrains{ get; set; }
+	private IEnumerable<TrainModel> mcolTrains{ get; set; }
 	[Parameter]
 	public Sapphire2025Models.Common.TrainStatus Status { get; set; }	
 	[Parameter]
-	public Dictionary<Guid,UserModel>? Users{ get; set; }
+	public Dictionary<Guid,UserModelBase>? Users{ get; set; }
 
 	private bool Extended { get; set; } = false;
 
@@ -77,67 +78,37 @@ else
 	/// </summary>
 	private async Task TrainCache()
 	{
-		IEnumerable<TrainModel>? auxLista = await mvarInternalStorage.GetTrainList();
-		if(null==auxLista)
+		IEnumerable<TrainModel> auxLista = await mvarInternalStorage.GetTrainList();
+		Users = await mvarAuthClient.cachedUserList();
+		if(auxLista.Count()<1)
 		{
-			//Es la primera vez que se ejecuta la sesión, así que tenemos la caché vacía.
-			//Vamos a llenarla y a devolverla
-			mcolTrains = await mvarAeneasClient.trainsList();
-			Users = await mvarAeneasClient.usersTrainList();
-			await mvarInternalStorage.SetTrainList(mcolTrains);
-			await UpgradeUsersDictionary(true);
+			//Tenemos la lista vacía. La sesión no tiene la información.
+			//Lo primero que hacemos es cargar lista de trenes y usuarios
+			//después lo almacenamos en la caché.
+			auxLista = await mvarAeneasClient.trainsList();
+			await mvarInternalStorage.SetTrainList(mcolTrains);			
 		}
-		else
-		{
-			//Vamos a obtener sólo los datos más recientes.
-			mcolTrains = auxLista;
-			await UpgradeUsersDictionary(false);
-			DateTime ultima = mcolTrains.Max(xx => xx.lastUpdateTime);
-			IEnumerable<StatusChangeModel> colUpdates = await mvarAeneasClient.recentChangeList(ultima);
-			if(colUpdates.Count(xx=>true)>0)
-			{
-				bool isAnyNewUser = false;
-				//Hay que procesar estos elementos y añadirlos a la colección
-				foreach(StatusChangeModel cambio in colUpdates)
-				{
-					TrainModel? auxTrain = mcolTrains.FirstOrDefault(xx => xx.id == cambio.trainId);
-					if(null!=auxTrain)
-					{
-						auxTrain.lastUpdateTime = cambio.timeStamp;
-						auxTrain.lastStatus = cambio.status;
-						auxTrain.lastUserInfo = cambio.userId;
-						if(Guid.Empty!=cambio.userId && null!=Users && !(Users.ContainsKey(cambio.userId)))
-						{
-							//Esto va a ser un caso realmente raro... un cambio en el que aparece un
-							//nuevo usuario... en este caso el coste de añadir el usuario al diccionario
-							//es menor que cargar el diccionario entero.
-							isAnyNewUser = true;					
-						}
-					}
-				}
-				if(isAnyNewUser || null==Users || 0==Users.Count)
-					await UpgradeUsersDictionary(true);
-			}
-		}
-	}
-	private async Task UpgradeUsersDictionary(bool forceExternalLoad)
-	{
-		Users = await mvarInternalStorage.GetTrainUsersDictionary();
-		if(null==Users || forceExternalLoad)
-		{
-			Dictionary<Guid, UserModel>? auxDictionario = await mvarInternalStorage.GetTrainUsersDictionary();
-			if (null == auxDictionario || 0==auxDictionario.Count)
-			{
-				//En este caso raro, a lo mejor tenemos que obtener el diccionario desde el servidor
-				auxDictionario = await mvarAeneasClient.usersTrainList();
-			}
-			if (null != auxDictionario)
-			{
-				Users = auxDictionario;
-				await mvarInternalStorage.SetTrainUsersDictionary(auxDictionario);
-			}
-		}
-	}
 
-
+		//Ahora se supone que tenemos ya la lista cargada.
+		DateTime ultimaFecha = auxLista.Max(xx => xx.lastUpdateTime);
+		//Cargamos ahora los datos más recientes.
+		IEnumerable<StatusChangeModel> actualizaciones = await mvarAeneasClient.recentChangeList(ultimaFecha);
+		if (actualizaciones.Count() > 0)
+		{
+			bool nuevoUsuario = false; //Flag para detectar usuarios que no estaban en el diccionario
+			foreach (StatusChangeModel nuevoCambio in actualizaciones)
+			{
+				TrainModel? auxTrain = auxLista.FirstOrDefault(xx => xx.id == nuevoCambio.trainId);
+				System.Diagnostics.Debug.Assert(null != auxTrain, "El tren no existe en la lista de trenes");
+				auxTrain.lastUpdateTime = nuevoCambio.timeStamp;
+				auxTrain.lastStatus = nuevoCambio.status;
+				auxTrain.lastUserInfo = nuevoCambio.userId;
+				if (Guid.Empty != nuevoCambio.userId && null != Users && !(Users.ContainsKey(nuevoCambio.userId)))
+					nuevoUsuario = true; //Tengo al menos un usuario que no está en el diccionario
+			}
+			//Guardaré la nueva lista en la caché.
+			await mvarInternalStorage.SetTrainList(auxLista);
+		}		
+		mcolTrains = auxLista;		
+	}
 }

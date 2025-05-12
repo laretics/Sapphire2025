@@ -1,6 +1,7 @@
 ﻿@page "/train/{id}"
 @using Sapphire2025.Layout.Generic
 @inject AeneasClient mvarAeneasClient
+@inject AuthenticationClient mvarAuthClient
 @if(null!=mvarTrain)
 {
 	<h2>@mvarTrain.name</h2>
@@ -39,12 +40,12 @@
 		if(null!=id)
 		{
 			mcolChanges = await mvarAeneasClient.trainChangesList(id);
-			mcolUsers = await mvarAeneasClient.usersChangesList(id);
+			mcolUsers = await mvarAuthClient.cachedUserList();
 			mvarTrain = await mvarAeneasClient.train(id);
 			StateHasChanged();
 		}
 	}
-	private Dictionary<Guid, UserModel>? mcolUsers = new Dictionary<Guid, UserModel>();
+	private Dictionary<Guid, UserModelBase>? mcolUsers = new Dictionary<Guid, UserModelBase>();
 	private IEnumerable<StatusChangeModel>? mcolChanges = new List<StatusChangeModel>();
 	private TrainModel? mvarTrain = null;
 }

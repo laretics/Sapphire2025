@@ -30,6 +30,7 @@ namespace Sapphire2025Server
 			//base.OnConfiguring(optionsBuilder);
 		}
 
+		public DbSet<TimeCache> TimeCache { get; set; }
 		#region authentication
 		public DbSet<ActiveSessionModel> ActiveSessions { get; set; }
 		public DbSet<SessionEvent> SessionEvents { get; set; }

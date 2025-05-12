@@ -108,32 +108,39 @@ namespace Sapphire2025Models
 									  // Administrador
 			Unknown = 255 //Operación anómala.
 		}
-		public static OperationType stringToOperation(string? rhs)
+
+		public enum CacheTableKey : byte
 		{
-			if (null == rhs) return OperationType.Unknown;
-			string auxNormalized = rhs.ToUpper();
-			if (auxNormalized.Contains("ACTIVATE")) return OperationType.Activate;
-			if (auxNormalized.Contains("CORRECTIVEREQUEST")) return OperationType.CorrectiveRequest;
-			if (auxNormalized.Contains("DIAGNOSETOFAULT")) return OperationType.DiagnoseToFault;
-			if (auxNormalized.Contains("DIAGNOSETOAVAILABLE")) return OperationType.DiagnoseToAvailable;
-			if (auxNormalized.Contains("BEGINCORRECTIVE")) return OperationType.BeginCorrective;
-			if (auxNormalized.Contains("ENDCORRECTIVE")) return OperationType.EndCorrective;
-			if (auxNormalized.Contains("DEPOTREQUESTACCEPT")) return OperationType.DepotRequestAccept;
-			if (auxNormalized.Contains("DEPOTREQUESTDENY")) return OperationType.DepotRequestDeny;
-			if (auxNormalized.Contains("DEPOTREQUEST")) return OperationType.DepotRequest;
-			if (auxNormalized.Contains("MAINTENANCERESCUE")) return OperationType.MaintenanceRescue;
-			if (auxNormalized.Contains("BEGINMAINTENANCE")) return OperationType.BeginMaintenance;
-			if (auxNormalized.Contains("ENDMAINTENANCE")) return OperationType.EndMaintenance;
-			if (auxNormalized.Contains("DIFERMAINTENANCE")) return OperationType.DiferMaintenance;
-			if (auxNormalized.Contains("SENDTOSTANDSTILL")) return OperationType.SendToStandStill;
-			if (auxNormalized.Contains("RESCUEFROMSTANDSTILL")) return OperationType.RescueFromStandStill;
-			if (auxNormalized.Contains("SENDTODISABLED")) return OperationType.SendToDisabled;
-			if (auxNormalized.Contains("RESCUEFROMDISABLED")) return OperationType.RescueFromDisabled;
-			return OperationType.Unknown;
+			None = 0, //Ninguna tabla en concreto
+			Users = 1, //Tabla de usuarios
+			TrainStatus = 2 //Tabla de cambios de estado de los trenes
 		}
+		//public static OperationType stringToOperation(string? rhs)
+		//{
+		//	if (null == rhs) return OperationType.Unknown;
+		//	string auxNormalized = rhs.ToUpper();
+		//	if (auxNormalized.Contains("ACTIVATE")) return OperationType.Activate;
+		//	if (auxNormalized.Contains("CORRECTIVEREQUEST")) return OperationType.CorrectiveRequest;
+		//	if (auxNormalized.Contains("DIAGNOSETOFAULT")) return OperationType.DiagnoseToFault;
+		//	if (auxNormalized.Contains("DIAGNOSETOAVAILABLE")) return OperationType.DiagnoseToAvailable;
+		//	if (auxNormalized.Contains("BEGINCORRECTIVE")) return OperationType.BeginCorrective;
+		//	if (auxNormalized.Contains("ENDCORRECTIVE")) return OperationType.EndCorrective;
+		//	if (auxNormalized.Contains("DEPOTREQUESTACCEPT")) return OperationType.DepotRequestAccept;
+		//	if (auxNormalized.Contains("DEPOTREQUESTDENY")) return OperationType.DepotRequestDeny;
+		//	if (auxNormalized.Contains("DEPOTREQUEST")) return OperationType.DepotRequest;
+		//	if (auxNormalized.Contains("MAINTENANCERESCUE")) return OperationType.MaintenanceRescue;
+		//	if (auxNormalized.Contains("BEGINMAINTENANCE")) return OperationType.BeginMaintenance;
+		//	if (auxNormalized.Contains("ENDMAINTENANCE")) return OperationType.EndMaintenance;
+		//	if (auxNormalized.Contains("DIFERMAINTENANCE")) return OperationType.DiferMaintenance;
+		//	if (auxNormalized.Contains("SENDTOSTANDSTILL")) return OperationType.SendToStandStill;
+		//	if (auxNormalized.Contains("RESCUEFROMSTANDSTILL")) return OperationType.RescueFromStandStill;
+		//	if (auxNormalized.Contains("SENDTODISABLED")) return OperationType.SendToDisabled;
+		//	if (auxNormalized.Contains("RESCUEFROMDISABLED")) return OperationType.RescueFromDisabled;
+		//	return OperationType.Unknown;
+		//}
 
 		/// <summary>
-		/// Estados de un expediente.
+		/// Estados de una orden de trabajo.
 		/// </summary>
 		public enum ActionRecordStatus : byte
 		{
@@ -173,19 +180,19 @@ namespace Sapphire2025Models
 			Engineer = 6,     //Ingeniero que accede a la base de datos para consultar informes.
 		}
 
-		public static UserRole fromRoleName(string roleName)
-		{
-			switch(roleName.ToUpper())
-			{
-				case "ENGINEER": return UserRole.Engineer;
-				case "MECHANIC": return UserRole.Mechanic;
-				case "ROOT": return UserRole.Root;
-				case "INSPECTOR": return UserRole.Inspector;
-				case "OFICIAL": return UserRole.Oficial;
-				case "EXPERT": return UserRole.Expert;			
-			}
-			return UserRole.Anonymous;
-		}
+		//public static UserRole fromRoleName(string roleName)
+		//{
+		//	switch(roleName.ToUpper())
+		//	{
+		//		case "ENGINEER": return UserRole.Engineer;
+		//		case "MECHANIC": return UserRole.Mechanic;
+		//		case "ROOT": return UserRole.Root;
+		//		case "INSPECTOR": return UserRole.Inspector;
+		//		case "OFICIAL": return UserRole.Oficial;
+		//		case "EXPERT": return UserRole.Expert;			
+		//	}
+		//	return UserRole.Anonymous;
+		//}
 
 
 		/// <summary>

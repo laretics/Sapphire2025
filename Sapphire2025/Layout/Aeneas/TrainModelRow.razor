@@ -14,6 +14,7 @@
             <div @onclick="OnUserClick" class="col-2 border-end" style="min-width: 200px;">
                 @if(null!=User)
                 {
+                    @userIcon(User.CredentialKey)
                     @User.Name
                 }                    
             </div>
@@ -27,6 +28,7 @@
             <div @onclick="OnUserClick" class="col-2 border-end" style="min-width: 200px;">
                 @if (null != User)
                 {
+					@userIcon(User.CredentialKey)
                     @User.Name
                 }
             </div>
@@ -39,7 +41,7 @@
     [Parameter]
     public bool ShowStatus{ get; set; }
     [Parameter]
-    public UserModel? User{ get; set; }
+    public UserModelBase? User{ get; set; }
 
     private string trainColor{ get => Train==null?"transparent":Sapphire2025Models.Utils.TrainStyleFill(Train.name); }
 
@@ -56,6 +58,10 @@
         {
             mvarNavigator.NavigateTo(string.Format("/user/{0}", User.guid));
         }
+    }
+    private RenderFragment userIcon(byte credentials)
+    {
+        return AuthenticationClient.userIcon(credentials, "gray");
     }
 
 }

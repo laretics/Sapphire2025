@@ -16,7 +16,7 @@
 else
 {
 	<div class="row">
-		<div class="col-5">
+		<div class="col-6">
 			<EditForm Model="@Model">
 				<div class="mb-3">
 					<label for="CF" class="form-label">Carnet</label>
@@ -31,29 +31,53 @@ else
 				<Button Class="btn btn-primary">Comprobar</Button>
 				<Button Class="btn btn-primary">Enviar</Button>
 			</EditForm>
-
-		</div>
-		<div class="col-7">
-			<Sapphire2025.Layout.Users.UsersListCTL users="@mcolUsers">
-
-			</Sapphire2025.Layout.Users.UsersListCTL>
+		</div>	
+		<div class="col-5">
+			<h3>Usuarios existentes</h3>
+			<div class="overflow-auto" style="max-height: 90vh;">
+			@foreach (UserModelBase usuario in sortedUsers())
+			{				
+				<div class="card mb-3">
+						<div class="card-header">
+							@userIcon(usuario.CredentialKey)
+							@usuario.CF
+						</div>
+					<div class="card-body">
+						<h5 class="card-title">@usuario.Name</h5>						
+					</div>
+				</div>
+			}
+			</div>
 		</div>
 	</div>
 }
 @code {
-	private List<UserModel> mcolUsers = new List<UserModel>();	
 	[Parameter]
 	public ExtendedUserModel.CreateNewUserDataMessage? Model{ get; set; }
+	private Dictionary<Guid,UserModelBase>? mcolUsers;
+
+	private IEnumerable<UserModelBase> sortedUsers()
+	{
+		IEnumerable<UserModelBase> salida = new List<UserModelBase>();
+		if (null != mcolUsers)
+		{
+			salida = mcolUsers.Values.OrderBy(xx => xx.Name);
+		}
+		return salida;
+	}
+
 
 	protected async override Task OnInitializedAsync()
 	{
-		//return base.OnInitializedAsync();
-		Guid auxUserToken = await mvarLocalStorage.getToken();
-		if(Guid.Empty==auxUserToken)
-		{
-			Model = new ExtendedUserModel.CreateNewUserDataMessage(auxUserToken);
-			Model.CF = string.Empty;
-			Model.UserName = string.Empty;
-		}
+		Model = new ExtendedUserModel.CreateNewUserDataMessage(Guid.NewGuid());
+		//Vamos a cargar la tabla de usuarios desde la caché para poder saber fácilmente
+		//si el usuario que vamos a crear existe ya o hay alguno con un nombre parecido.
+		mcolUsers = await mvarCliente.cachedUserList();
+
 	}
+	private RenderFragment userIcon(byte credentials)
+	{
+		return AuthenticationClient.userIcon(credentials, "gray");
+	}
+
 }

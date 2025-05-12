@@ -33,10 +33,14 @@ namespace Sapphire2025Server.Models
 					case Common.OperationType.Activate: //Activación
 					case Common.OperationType.RescueFromStandStill: //Rescate de parada de larga duración
 						return Common.TrainStatus.RequestToRepair; // -->Solicitado para correctivo (Entrada en ciclo normal)
+					case Common.OperationType.SendToStandStill: // -->Envío explícito a Stand-Still
 					case Common.OperationType.RescueFromDisabled: // -->Rescate de tren apartado de servicio
 						return Common.TrainStatus.StandStill; // -->StandStill
 					case Common.OperationType.SendToDisabled: //Baja del tren (desde standstill)
 						return Common.TrainStatus.Disabled; //-->Disabled
+					
+
+
 
 					//Ciclo de correctivos
 					case Common.OperationType.CorrectiveRequest: //Parte de averías

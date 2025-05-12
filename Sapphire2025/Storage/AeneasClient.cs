@@ -9,11 +9,13 @@ namespace Sapphire2025.Storage
 	{
 		public AeneasClient(HttpClient httpClient, IntStorageService intStorage) : base(httpClient, intStorage, "sapphireaeneas") { }
 
-		public async Task<IEnumerable<TrainModel>?> trainsList()
+		public async Task<IEnumerable<TrainModel>> trainsList()
 		{
 			string request = composeCommand("trains");
 			HttpResponseMessage respuesta = await sendGetRequest(request);
-			return await respuesta.Content.ReadFromJsonAsync<IEnumerable<TrainModel>>();
+			IEnumerable<TrainModel>? auxLista = await respuesta.Content.ReadFromJsonAsync<IEnumerable<TrainModel>>();
+			if(null == auxLista) return new List<TrainModel>();
+			return auxLista;
 		}
 		public async Task<TrainModel?> train(string trainId)
 		{
@@ -58,6 +60,28 @@ namespace Sapphire2025.Storage
 				new requestParam("trainid",trainId));
 			HttpResponseMessage respuesta = await sendGetRequest(request);
 			return await respuesta.Content.ReadFromJsonAsync<Dictionary<Guid ,UserModel>>();
+		}
+
+		public async Task<bool> addNote(NoteModel note)
+		{
+			string jsonData = System.Text.Json.JsonSerializer.Serialize(note);
+			HttpResponseMessage respuesta = await sendPostRequest("addnote", jsonData);
+			if (respuesta.IsSuccessStatusCode)
+				return await respuesta.Content.ReadFromJsonAsync<bool>();
+			return false;
+		}
+		//Obtiene las últimas notas de un determinado tren.
+		//Si el parámetro max es cero, devuelve todas las notas.
+		//Si tiene otro valor, devuelve el número de notas requerido.
+		public async Task<List<NoteModel>> retrieveNotes(Guid trainId, int max)
+		{
+			string request = composeCommand(
+				"notes",
+				new requestParam("trainid", trainId.ToString()));
+			HttpResponseMessage respuesta = await sendGetRequest(request);
+			List<NoteModel>? auxLista = await respuesta.Content.ReadFromJsonAsync<List<NoteModel>>();
+			if (null == auxLista) return new List<NoteModel>();
+			return auxLista;
 		}
 
 		public async Task<bool> commitTrainStatus(Guid trainId, Common.OperationType operation)

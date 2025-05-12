@@ -29,6 +29,25 @@ namespace Sapphire2025Server.Controllers
 		{
 			return Ok("Pong");
 		}
+
+		/// <summary>
+		/// Busca la fecha de última actualización de la caché de una tabla
+		/// </summary>
+		/// <param name="key">Id de la tabla</param>
+		/// <returns>La fecha del último cambio o DateTime.MinValue</returns>
+		[HttpPut("lastcache")]
+		public async Task<DateTime> GetLastCache(LastUpdateCacheTableModel request)
+		{				
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				byte auxValor = (byte)request.Key;
+				TimeCache? elemento = await almacen.TimeCache.Where(x => x.Key == auxValor).FirstOrDefaultAsync();
+				if (null != elemento)
+					return elemento.TimeStamp;
+			}
+			return DateTime.MinValue;
+		}
+
 		[HttpPut("userlogin")]
 		public async Task<SessionModel?> LoginRequest(UserLoginModel input)
 		{
@@ -175,6 +194,28 @@ namespace Sapphire2025Server.Controllers
 			}
 			return salida;
 		}
+
+		/// <summary>
+		/// Obtiene la tabla restringida de usuarios para la copia en la caché del sistema.
+		/// </summary>
+		/// <param name="request"></param>
+		/// <returns></returns>
+		[HttpPut("smalluserlist")]
+		public async Task<Dictionary<Guid, UserModelBase>> SmallUsersList(BasicRequestModel request)
+		{
+			Dictionary<Guid, UserModelBase> salida = new Dictionary<Guid, UserModelBase>();
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				IEnumerable<User> entrada = await almacen.Users.ToListAsync();
+				foreach (User user in entrada)
+				{
+					UserModelBase auxModelo = await modeloFromBaseUser(user);
+					salida.Add(auxModelo.guid, auxModelo);
+				}
+			}
+			return salida;
+		}
+
 		[HttpPut("isemptypwd")]
 		public async Task<bool> IsEmptyPassword(UserLoginModel message)
 		{
@@ -186,57 +227,53 @@ namespace Sapphire2025Server.Controllers
 			return false;
 		}
 		[HttpPut("userinfo")]
-		public async Task<ExtendedUserModel> UserInfo(string question)
+		public async Task<ExtendedUserModel> UserInfo(UserInfoRequestModel? request)
 		{
 			//Obtiene toda la información posible de un determinado usuario según los permisos
 			//del token enviado
 			ExtendedUserModel salida = new ExtendedUserModel();
-			UserInfoRequestModel? auxQuestion = JsonSerializer.Deserialize<UserInfoRequestModel?>(question);
-			if(null!=auxQuestion)
+			bool hasPermission = false;
+
+			//Administrador... puede acceder a toda la información de cualquier usuario
+			if (await hasBasicPermission(request.SessionToken, Common.UserRole.Root))
+				hasPermission = true;
+
+			//El propio usuario puede acceder a sus propios datos
+			ActiveSessionModel? auxSession = await retrieveSession(request.SessionToken);
+			if (null != auxSession && auxSession.UserId.Equals(request.UserId.ToString()))
+				hasPermission = true;
+
+			if (hasPermission)
 			{
-				bool hasPermission = false;
-
-				//Administrador... puede acceder a toda la información de cualquier usuario
-				if (await hasBasicPermission(auxQuestion.SessionToken, Common.UserRole.Root))
-					hasPermission = true;
-
-				//El propio usuario puede acceder a sus propios datos
-				ActiveSessionModel? auxSession = await retrieveSession(auxQuestion.SessionToken);
-				if (null != auxSession && auxSession.UserId.Equals(auxQuestion.UserId.ToString()))
-					hasPermission = true;
-
-				if (hasPermission)
+				User? auxUsuarioNulo;
+				User auxUsuario;
+				//Cargo toda la información que puedo sacar de la base de datos..
+				using (DataStorage almacen = new DataStorage(mvarConfig))
 				{
-					User? auxUsuarioNulo;
-					User auxUsuario;
-					//Cargo toda la información que puedo sacar de la base de datos..
-					using (DataStorage almacen = new DataStorage(mvarConfig))
-					{
-						auxUsuarioNulo = await almacen.Users.Where(x => x.Id.Equals(auxQuestion.UserId.ToString())).FirstOrDefaultAsync();
-						if (null != auxUsuarioNulo)
-						{
-							auxUsuario = auxUsuarioNulo;
-							salida.CF = auxUsuario.CF;
-							if (null != auxUsuario.UserName)
-								salida.Name = auxUsuario.UserName;
-							if (null != auxUsuario.PhoneNumber)
-								salida.PhoneNumber = auxUsuario.PhoneNumber;
-							if (null != auxUsuario.Email)
-								salida.Email = auxUsuario.Email;
-							salida.guid = auxUsuario.guid;
-							salida.NullPassword = (null == auxUsuario.PasswordHash) || (auxUsuario.PasswordHash.Length < 1);
-						}
-					}
-					salida.roles = await retrieveRolesDictionary();
-					//Recuperamos los roles del usuario
+					auxUsuarioNulo = await almacen.Users.Where(x => x.Id.Equals(request.UserId.ToString())).FirstOrDefaultAsync();
 					if (null != auxUsuarioNulo)
 					{
-						List<uint> auxRoles = await retrieveUserRoles(auxUsuarioNulo.guid);
-						foreach (uint role in auxRoles)
-						{
-							if (salida.roles.ContainsKey(role))
-								salida.roles[role].enrolled = true;
-						}
+						auxUsuario = auxUsuarioNulo;
+						salida.CF = auxUsuario.CF;
+						if (null != auxUsuario.UserName)
+							salida.Name = auxUsuario.UserName;
+						if (null != auxUsuario.PhoneNumber)
+							salida.PhoneNumber = auxUsuario.PhoneNumber;
+						if (null != auxUsuario.Email)
+							salida.Email = auxUsuario.Email;
+						salida.guid = auxUsuario.guid;
+						salida.NullPassword = (null == auxUsuario.PasswordHash) || (auxUsuario.PasswordHash.Length < 1);
+					}
+				}
+				salida.roles = await retrieveRolesDictionary();
+				//Recuperamos los roles del usuario
+				if (null != auxUsuarioNulo)
+				{
+					List<uint> auxRoles = await retrieveUserRoles(auxUsuarioNulo.guid);
+					foreach (uint role in auxRoles)
+					{
+						if (salida.roles.ContainsKey(role))
+							salida.roles[role].enrolled = true;
 					}
 				}
 			}
@@ -479,6 +516,16 @@ namespace Sapphire2025Server.Controllers
 			salida.PhoneNumber = user.PhoneNumber;
 			salida.AccessFailedCount = user.AccessFailedCount;
 			salida.NullPassword = (null==user.PasswordHash) || (user.PasswordHash.Length < 1);
+			salida.CredentialKey = await userIcon(user);
+			return salida;
+		}
+		private async Task<UserModelBase> modeloFromBaseUser(User user)
+		{
+			UserModelBase salida = new UserModelBase();
+			salida.guid = user.guid;
+			salida.CF = user.CF;
+			if(null!= user.UserName)
+				salida.Name = user.UserName;
 			salida.CredentialKey = await userIcon(user);
 			return salida;
 		}

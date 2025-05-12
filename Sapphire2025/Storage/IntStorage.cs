@@ -64,15 +64,17 @@ namespace Sapphire2025.Storage
 		#endregion "Autenticación"
 
 		#region "Caché de trenes"
-		public async Task<IEnumerable<TrainModel>?>GetTrainList()
+		public async Task<IEnumerable<TrainModel>>GetTrainList()
         {
             string? auxCadena = await GetStringValue("cachetrainlist",false);
             if(null!=auxCadena)
             {
-                return JsonSerializer.Deserialize<IEnumerable<TrainModel>>(auxCadena);
-            }
-            return null; //No tenemos ninguna caché almacenada en la memoria
-        }
+                IEnumerable<TrainModel>? auxLista = JsonSerializer.Deserialize<IEnumerable<TrainModel>>(auxCadena);
+				if (null != auxLista)
+					return auxLista;
+			}
+			return new List<TrainModel>();
+		}
         public async Task<bool>SetTrainList(IEnumerable<TrainModel>? rhs)
         {
             if(null!=rhs)
@@ -83,16 +85,61 @@ namespace Sapphire2025.Storage
             }
             return false;
         }
-        public async Task<Dictionary<Guid,UserModel>?>GetTrainUsersDictionary()
+
+		#region "Caché de usuarios"
+
+		/// <summary>
+		/// Asigna la última hora en que actualizó la caché de la tabla de usuarios
+		/// </summary>
+		/// <param name="time"></param>
+		/// <returns></returns>
+		public async Task SetUsersCacheTime(DateTime time)
+		{
+			string cadena = JsonSerializer.Serialize(time);
+			await SetStringValue("userscachetime", cadena, false);
+		}
+        public async Task<DateTime> GetUsersCacheTime()
         {
-            string? auxCadena = await GetStringValue("cacheuserslist", false);
-            if(null!=auxCadena)
+            string? auxCadena = await GetStringValue("userscachetime", false);
+            if (null != auxCadena)
             {
-                return JsonSerializer.Deserialize<Dictionary<Guid,UserModel>>(auxCadena);
+                DateTime salida = DateTime.MinValue;
+                DateTime.TryParse(auxCadena, out salida);
+                return salida;
+            }
+            return DateTime.MinValue;
+        }
+
+		public async Task<Dictionary<Guid, UserModelBase>?> GetUsersCache()
+        {
+            string? auxCadena = await GetStringValue("userscachetable", false);
+            if (null != auxCadena)
+            {
+                return JsonSerializer.Deserialize<Dictionary<Guid, UserModelBase>>(auxCadena);
             }
             return null;
         }
-        public async Task<bool>SetTrainUsersDictionary(Dictionary<Guid,UserModel>? rhs)
+        public async Task SetUsersCache(Dictionary<Guid, UserModelBase>? rhs)
+		{
+			if (null != rhs)
+			{
+				string cadena = JsonSerializer.Serialize(rhs);
+				await SetStringValue("userscachetable", cadena, false);
+			}
+		}
+
+		#endregion "Caché de usuarios"
+
+		//public async Task<Dictionary<Guid,UserModel>?>GetTrainUsersDictionary()
+		//{
+		//    string? auxCadena = await GetStringValue("cacheuserslist", false);
+		//    if(null!=auxCadena)
+		//    {
+		//        return JsonSerializer.Deserialize<Dictionary<Guid,UserModel>>(auxCadena);
+		//    }
+		//    return null;
+		//}
+		public async Task<bool>SetTrainUsersDictionary(Dictionary<Guid,UserModel>? rhs)
         {
             if(null!=rhs)
             {

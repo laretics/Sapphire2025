@@ -7,6 +7,7 @@ using System.Linq.Expressions;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Sapphire2025.Storage
 {
@@ -34,7 +35,64 @@ namespace Sapphire2025.Storage
 			}
             return false;
 		}
-        public async Task<IEnumerable<UserModel>?> usersList()
+
+        /// <summary>
+        /// Esta función es muy importante. Para no sobrecargar las comunicaciones, el cliente
+        /// mantendrá una copia reducida de la tabla de usuarios en la memoria local del navegador.
+        /// Esta memoria se actualizará en la primera ejecución, al destruir los datos de 
+        /// navegación y cada vez que se verifique de ha habido modificaciones en el controlador
+        /// del servidor.
+        /// </summary>
+        /// <returns>Lista reducida cacheada</returns>
+        public async Task<Dictionary<Guid,UserModelBase>> cachedUserList()
+        {
+			//Comprobamos si la tabla de usuarios sigue estando en vigor
+            DateTime localTimeStamp = await mvarIntStorage.GetUsersCacheTime();
+			DateTime serverTimeStamp = await LastTableServerUpdate(Common.CacheTableKey.Users);
+			Dictionary<Guid, UserModelBase>? fromSession = await mvarIntStorage.GetUsersCache();
+			if (localTimeStamp < serverTimeStamp || null==fromSession || 0==fromSession.Count())
+			{
+				//La tabla de usuarios ha cambiado, así que la actualizamos
+				Dictionary<Guid, UserModelBase>? auxLista = await smallUsersList();
+				if (null != auxLista)
+				{
+					await mvarIntStorage.SetUsersCache(auxLista);
+					await mvarIntStorage.SetUsersCacheTime(serverTimeStamp);
+					fromSession = auxLista;
+				}
+			}
+            Dictionary<Guid, UserModelBase> salida = new Dictionary<Guid, UserModelBase>();
+			if (null != fromSession)
+                salida = fromSession;
+            return salida;
+		}
+
+        /// <summary>
+        /// Preguntamos al servidor cuándo fue el último cambio de una tabla concreta
+        /// </summary>
+        /// <param name="tableKey">Código de la tabla que preguntamos</param>
+        /// <returns>Fecha del último cambio. Si no se lee nada, la fecha será ahora</returns>
+        public async Task<DateTime> LastTableServerUpdate(Common.CacheTableKey tableKey)
+        {
+            Guid auxToken = await mvarIntStorage.getToken();
+			LastUpdateCacheTableModel question = new LastUpdateCacheTableModel();
+            question.SessionToken = auxToken;
+			question.Key = tableKey;
+			string jsonString = JsonSerializer.Serialize(question);
+            HttpResponseMessage respuesta = await sendPutRequest("lastcache", jsonString);
+
+            DateTime? auxSalida = await respuesta.Content.ReadFromJsonAsync<DateTime?>();
+			if (null == auxSalida)
+				return DateTime.MinValue;
+			else
+				return (DateTime)auxSalida;
+		}
+
+        /// <summary>
+        /// Obtiene la lista de usuarios completa para la administración.
+        /// </summary>
+        /// <returns>IEnumerable de UserModel con la lista actualizada de usuarios</returns>
+        public async Task<IEnumerable<UserModel>?> completeUsersList()
         {
             Guid auxToken = await mvarIntStorage.getToken();
 			BasicRequestModel question = new BasicRequestModel(auxToken);
@@ -44,18 +102,29 @@ namespace Sapphire2025.Storage
 
 			return await respuesta.Content.ReadFromJsonAsync<IEnumerable<UserModel>?>();
         }
-
-        public async Task<ExtendedUserModel?> userInfo(Guid userId)
+        /// <summary>
+        /// Devuelve la lista de usuarios básicos.
+        /// </summary>
+        /// <returns></returns>
+        public async Task<Dictionary<Guid, UserModelBase>?> smallUsersList()
         {
-            Guid token = await mvarIntStorage.getToken();
-			UserInfoRequestModel peticion = new UserInfoRequestModel(token,userId);
-            string pregunta = JsonSerializer.Serialize(peticion);
+            Guid auxToken = await mvarIntStorage.getToken();
+			BasicRequestModel question = new BasicRequestModel(auxToken);
+			string jsonString = JsonSerializer.Serialize(question);
+			HttpResponseMessage respuesta = await sendPutRequest("smalluserlist", jsonString);
+			Dictionary<Guid, UserModelBase>? auxLista = await respuesta.Content.ReadFromJsonAsync<Dictionary<Guid, UserModelBase>?>();
+			if (null == auxLista) return new Dictionary<Guid, UserModelBase>();
+			return auxLista;
+		}
 
-            //string request = composeCommand(
-            //    "userinfo",
-            //    new requestParam("question", pregunta)
-            //    );
-            HttpResponseMessage respuesta = await sendPutRequest("userinfo",pregunta);
+		public async Task<ExtendedUserModel?> userInfo(Guid userId)
+        {
+            Guid auxToken = await mvarIntStorage.getToken();
+			UserInfoRequestModel peticion = new UserInfoRequestModel(auxToken,userId);
+            string jsonString = JsonSerializer.Serialize(peticion);
+          
+            HttpResponseMessage respuesta = await sendPutRequest("userinfo",jsonString);
+
             return await respuesta.Content.ReadFromJsonAsync<ExtendedUserModel?>();
         }
 

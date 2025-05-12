@@ -1,0 +1,42 @@
+﻿@if (null != mvarUser)
+{
+	<div class="d-flex @alineacion mb-3">
+		<div class="card shadow-sm" style="max-width: 75%;">
+			<div class="card-header bg-primary text-white">
+				<span><Sapphire2025.Icons.Roles.UserParam color="black" Role="@Role" /></span>
+				<strong>@userName</strong>
+				<small class="text-muted float-end"> @textoFecha</small>
+			</div>
+			<div class="card-body">
+				<p class="card-text">@Note.Text</p>
+			</div>
+		</div>
+	</div>
+}
+<h3>NoteChatEntry</h3>
+
+@code {
+	[Parameter]
+	public NoteModel Note { get; set; } = new NoteModel();
+	[CascadingParameter]
+	public Dictionary<Guid, UserModel>? Users { get; set; }
+	private UserModel? mvarUser { get; set; } = null;
+	private Sapphire2025Models.Common.UserRole Role 
+	{ 
+		get => 
+		(null == mvarUser ? Sapphire2025Models.Common.UserRole.Anonymous : 
+			(Sapphire2025Models.Common.UserRole)mvarUser.CredentialKey); 
+	}
+	private string userName
+	{
+		get => ((null == mvarUser) ? "[Desconocido]" : mvarUser.Name!);
+	}
+	private string alineacion
+	{
+		get => (0 == Note.Type ? "justify-content-start" : "justify-content-end");
+	}
+	private string textoFecha
+	{
+		get => Sapphire2025Models.Common.timeString(Note.TimeStamp);
+	}
+}

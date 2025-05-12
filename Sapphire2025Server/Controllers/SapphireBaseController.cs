@@ -17,13 +17,40 @@ namespace Sapphire2025Server.Controllers
 			mvarConfig = config;
 		}
 
-		protected async Task<User?> retrieveUser(string userId)
+
+		/// <summary>
+		/// Actualiza la caché de una tabla. Esto se hace asignando
+		/// la fecha y hora actual a la clave especificada
+		/// </summary>
+		/// <param name="key"></param>
+		/// <returns></returns>
+		public async Task udateTableCache(Common.CacheTableKey key)
 		{
-			User? salida = null;
-			string mayus = userId.ToUpper();
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				salida = await almacen.Users.Where(x => x.CF == userId).FirstOrDefaultAsync();
+				TimeCache? auxCache = await almacen.TimeCache.Where(x => x.Key == (byte)key).FirstOrDefaultAsync();
+				if (null == auxCache)
+				{
+					auxCache = new TimeCache();
+					auxCache.Id = Guid.NewGuid();
+					auxCache.Key = (byte)key;
+					auxCache.TimeStamp = DateTime.Now;
+					almacen.TimeCache.Add(auxCache);
+				}
+				else
+				{
+					auxCache.TimeStamp = DateTime.Now;
+				}
+				await almacen.SaveChangesAsync();
+			}				
+		}
+		protected async Task<User?> retrieveUser(string userName)
+		{
+			User? salida = null;
+			string mayus = userName.ToUpper();
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				salida = await almacen.Users.Where(x => x.CF == userName).FirstOrDefaultAsync();
 				if (null == salida)
 				{
 					salida = await almacen.Users.Where(x => x.NormalizedEmail == mayus).FirstOrDefaultAsync();
@@ -34,6 +61,14 @@ namespace Sapphire2025Server.Controllers
 				}
 			}
 			return salida;
+		}
+		protected async Task<User?> userById(string userId)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				User? salida = await almacen.Users.Where(x => x.Id == userId).FirstOrDefaultAsync();
+				return salida;
+			}
 		}
 		protected async Task purgeSessions()
 		{
@@ -72,13 +107,63 @@ namespace Sapphire2025Server.Controllers
 			ActiveSessionModel? auxSession = await retrieveSession(tokenId);
 			if (null != auxSession)
 			{
-				//El administrador tiene acceso a todo
-				if (Utils.hasRole(auxSession.Credentials,Common.UserRole.Root))
-					return true;
-				return Utils.hasRole(auxSession.Credentials, role);
+				//A partir de la sesión saco los roles del usuario.
+				List<Common.UserRole> roles = await retrieveBasicRoles(auxSession.UserId);
+				return roles.Contains(role);
 			}		
 			return false;
 		}
+
+		protected async Task<List<uint>> retrieveUserRoles(string userId)
+		{
+			List<uint> salida = new List<uint>();
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				List<UserAndRole> roles = await almacen.UserAndRoles.Where(x => x.UserId == userId).ToListAsync();
+				foreach (UserAndRole rol in roles)
+					salida.Add(rol.RoleId);
+			}
+			return salida;
+		}
+
+		protected async Task<List<Common.UserRole>> retrieveBasicRoles(String userId)
+		{
+			List<Common.UserRole> salida = new List<Common.UserRole>();
+			List<uint> auxRoles = await retrieveUserRoles(userId);
+			foreach(uint rol in auxRoles)
+			{
+				if (rol < 8)
+				{
+					Common.UserRole auxRol = (Common.UserRole)rol;
+					if(!salida.Contains(auxRol))
+						salida.Add(auxRol);
+				}					
+			}	
+			//Gestionamos el administrador.
+			//Si el usuario tiene rol de administrador, damos de alta todos los roles menores de 8.
+			if(salida.Contains(Common.UserRole.Root))
+			{
+				salida= retrieveAllRoles();
+			}
+			return salida;
+		}
+
+		/// <summary>
+		/// Devuelve todos los roles enumerados (para usuarios root o vip)
+		/// </summary>
+		/// <returns></returns>
+		private List<Common.UserRole> retrieveAllRoles()
+		{
+			return new List<Common.UserRole>
+				{ Common.UserRole.Anonymous,
+					Common.UserRole.Inspector,
+					Common.UserRole.Expert,
+					Common.UserRole.Oficial,
+					Common.UserRole.Mechanic,
+					Common.UserRole.Root,
+					Common.UserRole.Engineer};
+		}
+
 		protected async Task<bool> hasBasicPermission(BasicRequestModel request, Common.UserRole role)
 		{
 			if (null == request) return false;
@@ -111,7 +196,7 @@ namespace Sapphire2025Server.Controllers
 			ActiveSessionModel? auxSession = await retrieveSession(tokenId);
 			if (null != auxSession)
 			{
-				User? salida = await retrieveUser(auxSession.UserId);
+				User? salida = await userById(auxSession.UserId);
 				return salida;
 			}
 			return null;

@@ -14,6 +14,7 @@
 	<div class="col-2 border-end d-flex">
 		@if(null!=userModel)
 		{
+			@userIcon(userModel.CredentialKey)
 			@userModel.Name
 		}
 		</div> 
@@ -23,5 +24,9 @@
 	[Parameter]
 	public StatusChangeModel? changeModel{ get; set; }
 	[Parameter]
-	public UserModel? userModel{ get; set; }
+	public UserModelBase? userModel{ get; set; }
+	private RenderFragment userIcon(byte credentials)
+	{
+		return AuthenticationClient.userIcon(credentials, "gray");
+	}
 }

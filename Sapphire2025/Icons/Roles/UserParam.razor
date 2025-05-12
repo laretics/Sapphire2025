@@ -1,0 +1,30 @@
+﻿@switch(Role)
+{
+	case Sapphire2025Models.Common.UserRole.Root:
+		<Admin color="@color"/>
+		break;
+	case Sapphire2025Models.Common.UserRole.Engineer:
+		<Detective color="@color"/>
+		break;
+	case Sapphire2025Models.Common.UserRole.Inspector:
+		<Inspector color="@color" />
+		break;
+	case Sapphire2025Models.Common.UserRole.Expert:
+		<Diagnoser color="@color" />
+		break;
+	case Sapphire2025Models.Common.UserRole.Oficial:
+		<AdvancedUser color="@color" />
+		break;
+	case Sapphire2025Models.Common.UserRole.Mechanic:
+		<Mechanic color="@color" />
+		break;
+	default:
+		<User color="@color" />
+		break;	
+}
+@code {
+	[Parameter]
+	public string color { get; set; } = "black";
+	[Parameter]
+	public Sapphire2025Models.Common.UserRole Role { get; set; }
+}

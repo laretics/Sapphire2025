@@ -167,9 +167,62 @@ namespace Sapphire2025Server.Controllers
 						User? auxUser = await retrieveSessionUser(commit.SessionToken);
 						if(null!=auxUser)
 							nuevoCambio.UserId = auxUser.guid;
-						almacen.StatusChanges.Add(nuevoCambio);
-						salida = (await almacen.SaveChangesAsync() > 0);
+						almacen.StatusChanges.Add(nuevoCambio);						
+						auxTrain.lastChange = nuevoCambio.Guid;
+						salida = (await almacen.SaveChangesAsync() > 0);					
 					}
+				}
+			}
+			return salida;
+		}
+
+		[HttpPost("addnote")]
+		public async Task<bool> AddNote(NoteModel note)
+		{
+			bool salida = false;
+			//Todos los usuarios tienen permiso para añadir notas.
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				Note nuevaNota = new Note();
+				nuevaNota.Id = Guid.NewGuid();
+				nuevaNota.Parent = note.parent;
+				nuevaNota.TimeStamp = DateTime.Now;
+				User? auxUser = await retrieveSessionUser(note.SessionToken);
+				if (null != auxUser)
+					nuevaNota.UserId = auxUser.guid;
+				nuevaNota.Text = note.Text;
+				nuevaNota.Type = note.Type;
+				almacen.Notes.Add(nuevaNota);
+				salida = (await almacen.SaveChangesAsync() > 0);
+			}
+			return salida;
+		}
+		[HttpGet("notes")]
+		public async Task<List<NoteModel>> RetrieveNotes(string trainid, int max)
+		{
+			List<NoteModel> salida = new List<NoteModel>();
+			Guid auxId = Guid.Empty;
+			Guid.TryParse(trainid, out auxId);
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				List<Note> auxNotas;
+				if (max > 0)
+				{
+					auxNotas = await almacen.Notes.Where(x => x.Parent == auxId).OrderByDescending(x => x.TimeStamp).Take(max).ToListAsync();
+				}
+				else
+				{
+					auxNotas = await almacen.Notes.Where(x => x.Parent == auxId).OrderByDescending(x => x.TimeStamp).ToListAsync();
+				}
+				foreach (Note auxNota in auxNotas)
+				{
+					NoteModel nuevoModelo = new NoteModel();
+					nuevoModelo.parent = auxNota.Parent;
+					nuevoModelo.Text = auxNota.Text;
+					nuevoModelo.TimeStamp = auxNota.TimeStamp;
+					nuevoModelo.UserId = auxNota.UserId;
+					nuevoModelo.Type = auxNota.Type;
+					salida.Add(nuevoModelo);
 				}
 			}
 			return salida;
@@ -225,14 +278,48 @@ namespace Sapphire2025Server.Controllers
 		private async Task<bool> credentialValidForTrainOperation(TrainStatusCommitModel? request)
 		{
 			if(null == request) return false;
-			switch(request.operation)
+			bool salida = false;
+			switch (request.operation)
 			{
 				case Common.OperationType.Activate:
 					return await hasBasicPermission(request, Common.UserRole.Oficial);
 				case Common.OperationType.BeginCorrective:
+					salida = await hasBasicPermission(request, Common.UserRole.Oficial); //El oficial de taller puede reintegra un tren stand-still
+					if(!salida)
+						salida = await hasBasicPermission(request, Common.UserRole.Inspector); //El inspector puede mandar un tren a reparar
+					return salida;							
+				case Common.OperationType.DepotRequestAccept: //El inspector acepta enviar un tren a mantenimiento
+					salida = await hasBasicPermission(request, Common.UserRole.Inspector); //Es importante que ningún otro pueda tomar esta decisión.
+					return salida;
+				case Common.OperationType.DepotRequestDeny: //El oficial de taller puede rescatar un tren del que se ha pedido un mantenimiento sin querer.
 					return await hasBasicPermission(request, Common.UserRole.Oficial);
-				//TODO: Agregar la gestión de permisos para el resto de operaciones
+				case Common.OperationType.DepotRequest: //Solicitud de preventivo
+				case Common.OperationType.BeginMaintenance: //Puede comenzar el mantenimiento un oficial o un mecánico
+				case Common.OperationType.EndMaintenance: //Cualquier mecánico y cualquier oficial pueden terminar el mantenimiento
+				case Common.OperationType.MaintenanceRescue: //Puede devolver a la vía un tren que ha sido retirado para mantenimiento un oficial o un mecánico
+				case Common.OperationType.EndCorrective:
+					salida = await hasBasicPermission(request, Common.UserRole.Oficial);
+					if (!salida)
+						salida = await hasBasicPermission(request, Common.UserRole.Mechanic);
+					return salida;
+				case Common.OperationType.CorrectiveRequest: //Abrimos parte de avería, para diagnóstico.
+					return true; //Aquí puede abrir un parte hasta el apuntador.
+				case Common.OperationType.DiagnoseToFault: //Evaluación del experto sobre retirada de un tren
+				case Common.OperationType.DiagnoseToAvailable:
+					salida = await hasBasicPermission(request, Common.UserRole.Expert);
+					if (!salida)
+						salida = await hasBasicPermission(request, Common.UserRole.Oficial);
+					if(!salida)
+						salida = await hasBasicPermission(request, Common.UserRole.Mechanic);
+					if(!salida)
+						salida = await hasBasicPermission(request, Common.UserRole.Inspector);
+					return salida;
+				case Common.OperationType.SendToStandStill:
+					salida = await hasBasicPermission(request, Common.UserRole.Engineer);
+					return salida;
 
+
+				//TODO: Agregar la gestión de permisos para el resto de operaciones
 				default:
 					return false;			
 			}
