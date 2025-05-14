@@ -9,6 +9,26 @@ namespace Sapphire2025.Storage
 	{
 		public AeneasClient(HttpClient httpClient, IntStorageService intStorage) : base(httpClient, intStorage, "sapphireaeneas") { }
 
+
+		public async Task<bool> openFailReport(TrainModel? train)
+		{
+
+			if(null!=train)
+			{
+				//La apertura de un parte de averías envía el tren al estado de
+				//solicitud de diagnóstico sólo si el tren está activo o bien
+				//en estado de solicitud de diagnóstico.
+				Common.TrainStatus currentStatus = train.lastStatus;
+				if (currentStatus == Common.TrainStatus.Available ||
+					currentStatus == Common.TrainStatus.RequestToDiagnose)
+				{
+					return await commitTrainStatus(train.id, Common.OperationType.CorrectiveRequest);
+				}
+				else
+					return true; //En cualquier otro estado la salida es correcta y no se hace nada.
+			}
+			return false;
+		}	
 		public async Task<IEnumerable<TrainModel>> trainsList()
 		{
 			string request = composeCommand("trains");
@@ -73,15 +93,19 @@ namespace Sapphire2025.Storage
 		//Obtiene las últimas notas de un determinado tren.
 		//Si el parámetro max es cero, devuelve todas las notas.
 		//Si tiene otro valor, devuelve el número de notas requerido.
-		public async Task<List<NoteModel>> retrieveNotes(Guid trainId, int max)
+		public async Task<List<NoteModel>> retrieveNotes(Guid parentId,string type, int max)
 		{
-			string request = composeCommand(
-				"notes",
-				new requestParam("trainid", trainId.ToString()));
-			HttpResponseMessage respuesta = await sendGetRequest(request);
-			List<NoteModel>? auxLista = await respuesta.Content.ReadFromJsonAsync<List<NoteModel>>();
-			if (null == auxLista) return new List<NoteModel>();
-			return auxLista;
+			Guid auxToken = await getCurrentToken();
+			NoteChatRequestModel requestModel = new NoteChatRequestModel(auxToken,parentId,type,max);
+			string jsonData = System.Text.Json.JsonSerializer.Serialize(requestModel);
+			HttpResponseMessage response = await sendPostRequest("getnotes", jsonData);
+			if(response.IsSuccessStatusCode)
+			{
+				List<NoteModel>? auxLista = await response.Content.ReadFromJsonAsync<List<NoteModel>>();
+				if (null != auxLista)
+					return auxLista;
+			}
+			return new List<NoteModel>(); //No se han encontrado notas.
 		}
 
 		public async Task<bool> commitTrainStatus(Guid trainId, Common.OperationType operation)

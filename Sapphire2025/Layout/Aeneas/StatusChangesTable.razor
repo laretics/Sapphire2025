@@ -17,7 +17,7 @@
 			<Sapphire2025.Icons.Headers.User color="white" />
 		</div>
 	</div>
-	<div class="overflow-auto" style="height:@(Height-10)vh; overflow-y: auto; width: @Width %">
+	<div class="overflow-auto" style="max-height:@(Height-10)vh;">
 		@foreach(StatusChangeModel changeModel in StatusChanges)
 		{
 			<StatusChangeRow changeModel="changeModel" userModel="@userFromStatus(changeModel)"/>
@@ -25,10 +25,10 @@
 	</div>
 }
 @code {
+	[CascadingParameter]
+	public Dictionary<Guid,UserModelBase>? Users { get; set; }
 	[Parameter]
 	public IEnumerable<StatusChangeModel>? StatusChanges { get; set; }
-	[Parameter]
-	public Dictionary<Guid,UserModelBase>? StatusChangesUsers { get; set; }
 	[Parameter]
 	public int Height{ get; set; }
 	[Parameter]
@@ -36,10 +36,10 @@
 
 	private UserModelBase? userFromStatus(StatusChangeModel rhs)
 	{
-		if(null!=StatusChangesUsers && Guid.Empty!=rhs.userId)
+		if(null!=Users && Guid.Empty!=rhs.userId)
 		{
-			if (StatusChangesUsers.ContainsKey(rhs.userId))
-				return StatusChangesUsers[rhs.userId];
+			if (Users.ContainsKey(rhs.userId))
+				return Users[rhs.userId];
 		}
 		return null;
 	}

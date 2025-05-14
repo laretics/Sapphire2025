@@ -22,13 +22,13 @@ namespace Sapphire2025Models.Authentication
 			
 			}
 		}
-		public UserModel User { get; set; }
+		public UserModelBase User { get; set; }
 		public List<Common.UserRole> Roles { get; set; }
 
 		public SessionModel() 
 		{ 
 			Roles = new List<Common.UserRole>();
-			User = new UserModel();
+			User = new UserModelBase();
 		}
 		
 	}

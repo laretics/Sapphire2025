@@ -1,53 +1,66 @@
 ﻿@inject InteractiveService mvarInteractive
 @inject AeneasClient mvarAeneasClient
-<div class="btn-group" role="group">
-	@if(trainInCirculation)
-	{
-		<Button Class="btn btn-primary" @onclick="@sendToDiagnose">Parte de Avería</Button>
-	}		
-	@if(isExpert&&currentStatus== Sapphire2025Models.Common.TrainStatus.RequestToDiagnose)
-	{
-		<Button Class="btn btn-primary" @onclick="@diagnoseToAvailable">No Se Retira</Button>
-		<Button Class="btn btn-primary" @onclick="@diagnoseToFault">Retirar de Circulación</Button>
-	}
-	@if(isInspector&&currentStatus== Sapphire2025Models.Common.TrainStatus.RequestToRepair)
-	{
-		<Button Class="btn btn-primary" @onclick="@sendToCorrective">Entrar a Reparar</Button>
-	}
-	@if(isMechanic&&currentStatus== Sapphire2025Models.Common.TrainStatus.Repairing)
-	{
-		<Button Class="btn btn-primary" @onclick="@sendToAvailable">Terminar Reparación</Button>
-	}
-	@if(isOfficial&&currentStatus== Sapphire2025Models.Common.TrainStatus.Available)
-	{
-		<Button Class="btn btn-primary" @onclick="@requestMaintenance" >Solicitar Mantenimiento</Button>
-	}
-	@if(isOfficial&&currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested)
-	{
-		<Button Class="btn btn-warning" @onclick="@undoSendToMaintenance">Anular Solicitud Mant.</Button>
-	}
-	@if(isInspector&&currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested)
-	{
-		<Button Class="btn btn-primary" @onclick="@acceptSendToMaintenance">Enviar a Mantenimiento</Button>
-	}
-	@if(isOfficial&&currentStatus== Sapphire2025Models.Common.TrainStatus.DepotAvailable)
-	{
-		<Button Class="btn btn-warning" @onclick="@rescueFromMaintenance">Rescatar de depósito</Button>
-		<Button Class="btn btn-primary" @onclick="@sendToMaintenance">Entrar a Mantenimiento</Button>
-	}
-	@if(isMechanic&&currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance)
-	{
-		<Button Class="btn btn-primary" @onclick="@endMaintenance">Terminar Mantenimiento</Button>
-	}
-	@if (isOfficial && currentStatus == Sapphire2025Models.Common.TrainStatus.Unknown)
-	{
-		<Button Class="btn btn-primary" @onclick="@sendToCorrective">Enviar a correctivo</Button>
-	}
-	@if (isEngineer && readyForStandStill)
-	{
-		<Button Class="btn btn-danger" @onclick="@sendToStandStill">Stand Still</Button>
-	}
-</div>
+@inject NavigationManager mvarNavigationManager
+@if(trainInCirculation)
+{
+	<Button Class="btn btn-outline-secondary" @onclick="@openFailureReport">
+		<span><Sapphire2025.Icons.Actions.AddReport color="#b02020"/></span>
+		Parte de Avería</Button>
+}		
+@if(isExpert&&currentStatus== Sapphire2025Models.Common.TrainStatus.RequestToDiagnose)
+{
+	<Button Class="btn btn-outline-secondary" @onclick="@diagnoseToAvailable">No Se Retira</Button>
+	<Button Class="btn btn-outline-secondary" @onclick="@diagnoseToFault">Retirar de Circulación</Button>
+}
+@if(isInspector&&currentStatus== Sapphire2025Models.Common.TrainStatus.RequestToRepair)
+{
+	<Button Class="btn btn-outline-secondary" @onclick="@sendToCorrective">Entrar a Reparar</Button>
+}
+@if(isMechanic&&currentStatus== Sapphire2025Models.Common.TrainStatus.Repairing)
+{
+	<Button Class="btn btn-outline-secondary" @onclick="@sendToAvailable">Terminar Reparación</Button>
+}
+@if(isOfficial&&currentStatus== Sapphire2025Models.Common.TrainStatus.Available)
+{
+	<Button Class="btn btn-outline-secondary" @onclick="@requestMaintenance">Solicitar Mantenimiento</Button>
+}
+@if(isOfficial&&currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested)
+{
+	<Button Class="btn btn-outline-warning" @onclick="@undoSendToMaintenance">Anular Solicitud Mant.</Button>
+}
+@if(isInspector&&currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested)
+{
+	<Button Class="btn btn-outline-secondary" @onclick="@acceptSendToMaintenance">Enviar a Mantenimiento</Button>
+}
+@if(isOfficial&&currentStatus== Sapphire2025Models.Common.TrainStatus.DepotAvailable)
+{
+	<Button Class="btn btn-outline-warning" @onclick="@rescueFromMaintenance">Rescatar de depósito</Button>
+	<Button Class="btn btn-outline-secondary" @onclick="@sendToMaintenance">Entrar a Mantenimiento</Button>
+}
+@if(isMechanic&&currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance)
+{
+	<Button Class="btn btn-outline-secondary" @onclick="@endMaintenance">Terminar Mantenimiento</Button>
+}
+@if (isOfficial && currentStatus == Sapphire2025Models.Common.TrainStatus.Unknown)
+{
+	<Button Class="btn btn-outline-secondary" @onclick="@sendToCorrective">Enviar a correctivo</Button>
+}
+@if (isEngineer && readyForStandStill)
+{
+	<Button Class="btn btn-outline-danger" @onclick="@sendToStandStill">Stand Still</Button>
+}
+@if (isEngineer && currentStatus == Sapphire2025Models.Common.TrainStatus.StandStill)
+{
+	<Button Class="btn btn-outline-primary" @onclick="@sendToCorrective">Reactivar</Button>
+	<Button Class="btn btn-outline-secondary" @onclick="@sendToDisabled">Baja definitiva</Button>
+}
+@if (isEngineer && currentStatus == Sapphire2025Models.Common.TrainStatus.Disabled)
+{
+	<Button Class="btn btn-outline-primary" @onclick="@sendToStandStill">Reconstruir</Button>
+}
+<Button Class="btn btn-outline-secondary" @onclick="@onAddNote">
+	<span><Sapphire2025.Icons.Actions.WriteNote color="gray" />Nota</span>
+</Button>
 @code {
 	//Esto es una barra de comandos para cambiar a los trenes de estado.
 	//Dependiendo de los permisos del usuario actual y del estado del tren,
@@ -90,6 +103,11 @@
 	{
 		get => null == Train ? Sapphire2025Models.Common.TrainStatus.Unknown : Train.lastStatus;
 	}
+	private async Task onAddNote()
+	{
+		if(null!=Train)
+			mvarNavigationManager.NavigateTo($"/addnote/{Train.id}/2");
+	}
 	/// <summary>
 	/// El tren ha sido diagnosticado y el inspector decide enviarlo a reparar.
 	/// o bien... el tren se ha dado de alta y necesita una revisión antes de estar disponible.
@@ -99,7 +117,7 @@
 		if(null!=Train)
 		{
 			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.BeginCorrective))
-				StateHasChanged();
+				endCommand();
 		}
 	}
 	/// <summary>
@@ -110,7 +128,7 @@
 		if (null != Train)
 		{
 			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.EndCorrective))
-				StateHasChanged();
+				endCommand();
 		}
 	}
 	/// <summary>
@@ -121,7 +139,7 @@
 		if (null != Train)
 		{
 			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.DepotRequest))
-				StateHasChanged();
+				endCommand();
 		}
 	}
 	private async Task acceptSendToMaintenance()
@@ -129,7 +147,7 @@
 		if (null != Train)
 		{
 			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.DepotRequestAccept))
-				StateHasChanged();
+				endCommand();
 		}
 	}
 	private async Task rescueFromMaintenance()
@@ -137,7 +155,7 @@
 		if (null != Train)
 		{
 			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.MaintenanceRescue))
-				StateHasChanged();
+				endCommand();
 		}
 	}
 	private async Task undoSendToMaintenance()
@@ -145,7 +163,7 @@
 		if (null != Train)
 		{
 			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.DepotRequestDeny))
-				StateHasChanged();
+				endCommand();
 		}
 	}
 	private async Task sendToMaintenance()
@@ -153,7 +171,7 @@
 		if (null != Train)
 		{
 			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.BeginMaintenance))
-				StateHasChanged();
+				endCommand();
 		}
 	}
 	private async Task endMaintenance()
@@ -161,15 +179,17 @@
 		if (null != Train)
 		{
 			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.EndMaintenance))
-				StateHasChanged();
+				endCommand();
 		}
 	}
-	private async Task sendToDiagnose()
+	private async Task openFailureReport()
 	{
 		if (null != Train)
 		{
-			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.CorrectiveRequest))
-				StateHasChanged();
+			if(await mvarAeneasClient.openFailReport(Train))
+			{
+				mvarNavigationManager.NavigateTo($"/addnote/{Train.id}/1");
+			}
 		}
 	}
 	private async Task diagnoseToFault()
@@ -177,7 +197,7 @@
 		if(null!= Train)
 		{
 			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.DiagnoseToFault))
-				StateHasChanged();
+				endCommand();
 		}
 	}
 	private async Task diagnoseToAvailable()
@@ -185,7 +205,7 @@
 		if (null != Train)
 		{
 			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.DiagnoseToAvailable))
-				StateHasChanged();
+				endCommand();
 		}
 	}
 	private async Task sendToStandStill()
@@ -193,7 +213,20 @@
 		if (null != Train)
 		{
 			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.SendToStandStill))
-				StateHasChanged();
+				endCommand();
 		}
+	}
+	private async Task sendToDisabled()
+	{
+		if(null!=Train)
+		{
+			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.SendToDisabled))
+				endCommand();
+		}
+	}
+	private void endCommand()
+	{
+		StateHasChanged();
+		mvarNavigationManager.NavigateTo($"/trainFlow");
 	}
 }

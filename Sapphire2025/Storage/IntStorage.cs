@@ -28,6 +28,21 @@ namespace Sapphire2025.Storage
             return string.Format("{0}.{1}",session? SESSION_STORAGE_ID: LOCAL_STORAGE_ID, command);
         }
 		#region "Autenticación"
+		/// <summary>
+		/// Esta fución es una ayuda. Se podría obtener el usuario actual a partir de
+        /// GetSessionInfo.
+		/// </summary>
+		/// <returns>Obtiene el usuario actual (o null, si no hay una sesión activa</returns>
+		public async Task<UserModelBase?> GetCurrentUser()
+        {
+            SessionModel? auxSesion = await GetSessionInfo();
+			if (null != auxSesion)
+			{
+				if (null != auxSesion.User)
+					return auxSesion.User;
+			}
+            return null;
+		}
         public async Task<SessionModel?> GetSessionInfo()
         {
             string? auxCadena = await GetStringValue("sessioninfo", false);
@@ -103,9 +118,9 @@ namespace Sapphire2025.Storage
             string? auxCadena = await GetStringValue("userscachetime", false);
             if (null != auxCadena)
             {
-                DateTime salida = DateTime.MinValue;
-                DateTime.TryParse(auxCadena, out salida);
-                return salida;
+                DateTime? salida = JsonSerializer.Deserialize<DateTime?>(auxCadena);
+                if(null != salida) 
+					return salida.Value;
             }
             return DateTime.MinValue;
         }

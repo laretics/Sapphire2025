@@ -1,25 +1,38 @@
-﻿@if(null==Notes)
-{
-	<h3>...</h3>
-}
-else
-{
-	<CascadingValue Value="Users">
-		@foreach (NoteModel note in Notes)
-		{
-			<NoteChatEntry Note="@note" />
-		}
-	</CascadingValue>
-
-}
+﻿@inject AeneasClient mvarAeneasClient
+<div style="height: 80vh; overflow-y: auto;" class="bg-light rounded p-3">
+	@if(null==Notes)
+	{
+		<h3>...</h3>
+	}
+	else
+	{
+		<CascadingValue Value="Users">
+			@foreach (NoteModel note in Notes)
+			{
+				<NoteChatEntry Note="@note" />
+			}
+		</CascadingValue>
+	}
+</div>
 
 @code {
 	///El noteChat es un documento que muestra las entradas de texto (y en un futuro gráficos)
 	///correspondientes a un determinado tren, junto con sus horas de suceso.
 	///Es una especie de bitácora mostrada en un tono desenfadado que permite
-	///asimilar la información de una manera más amena.
+	///asimilar la información de una manera más amena. <summary>
+	/// El noteChat es un documento que muestra las entradas de texto (y en un futuro gráficos)
 	[Parameter]
-	public List<NoteModel>? Notes { get; set; } = new List<NoteModel>();
+	public Guid Parent { get; set; } = Guid.Empty; //Guid del padre de las notas	
+	[Parameter]
+	public string NoteType { get; set; } = "0"; //Tipo de nota que se va a mostrar en este chat
+	[Parameter]
+	public int MaxLines { get; set; } = 20; //Máximo de líneas a mostrar en el chat
 	[CascadingParameter]
-	public Dictionary<Guid, UserModel>? Users { get; set; }
+	public Dictionary<Guid, UserModelBase>? Users { get; set; }
+	private List<NoteModel>? Notes { get; set; } = new List<NoteModel>();
+
+	protected async override Task OnInitializedAsync()
+	{
+		Notes = await mvarAeneasClient.retrieveNotes(Parent, NoteType,MaxLines);		
+	}
 }

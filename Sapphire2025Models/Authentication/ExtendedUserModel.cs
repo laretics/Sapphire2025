@@ -35,24 +35,25 @@ namespace Sapphire2025Models.Authentication
 			public string? UserName { get; set; }
 			public string? Password { get; set; }
 		}
-		public abstract class UpdateBase
-		{
-			public Guid TokenId { get; set; } // Token con la autorización para hacer modificaciones en la base de datos
+		//public abstract class UpdateBase
+		//{
+		//	public Guid TokenId { get; set; } // Token con la autorización para hacer modificaciones en la base de datos
 			
-			public UpdateBase(Guid tokenId)
-			{
-				TokenId = tokenId;
-			}
-		}
-		public class CreateNewUserDataMessage : UpdateBase
+		//	public UpdateBase(Guid tokenId)
+		//	{
+		//		TokenId = tokenId;
+		//	}
+		//}
+		public class CreateNewUserDataMessage :BasicRequestModel
 		{
 			public string? UserName { get; set; }
 			public string? CF { get; set; }
 			public CreateNewUserDataMessage(Guid tokenId) 
 				:base(tokenId) { }
+			public CreateNewUserDataMessage(): base(Guid.Empty) { }
 		}
 
-		public abstract class UpdateUserBase:UpdateBase
+		public abstract class UpdateUserBase:BasicRequestModel
 		{
 			public Guid UserId { get; set; }
 			public UpdateUserBase(Guid tokenId, Guid userId)
@@ -60,6 +61,7 @@ namespace Sapphire2025Models.Authentication
 			{
 				UserId = userId;
 			}
+			public UpdateUserBase() : base(Guid.Empty) { }
 		}
 
 		public class UpdateRolesChangeMessage:UpdateUserBase
@@ -69,6 +71,7 @@ namespace Sapphire2025Models.Authentication
 				this.colEnrole = new List<uint>();
 				this.colDerole = new List<uint>();
 			}
+			public UpdateRolesChangeMessage() : base() { }
 			public List<uint> colEnrole { get; set; }
 			public List<uint> colDerole { get; set; }
 		}
@@ -76,7 +79,7 @@ namespace Sapphire2025Models.Authentication
 		{
 			public UpdateUserPersonalDataMessage(Guid tokenId, Guid userId) : base(tokenId, userId)
 			{ }
-
+			public UpdateUserPersonalDataMessage() : base() { }
 			public string? UserName { get; set; }
 			public string? CF { get; set; }
 			public string? Email { get; set; }
@@ -86,6 +89,7 @@ namespace Sapphire2025Models.Authentication
 		{
 			public ResetPasswordDataMessage(Guid tokenId, Guid userId) : base(tokenId, userId)
 			{ }
+			public ResetPasswordDataMessage() : base() { }
 
 		}
 	}

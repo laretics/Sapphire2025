@@ -187,9 +187,7 @@ namespace Sapphire2025Server.Controllers
 				nuevaNota.Id = Guid.NewGuid();
 				nuevaNota.Parent = note.parent;
 				nuevaNota.TimeStamp = DateTime.Now;
-				User? auxUser = await retrieveSessionUser(note.SessionToken);
-				if (null != auxUser)
-					nuevaNota.UserId = auxUser.guid;
+				nuevaNota.UserId = note.UserId;
 				nuevaNota.Text = note.Text;
 				nuevaNota.Type = note.Type;
 				almacen.Notes.Add(nuevaNota);
@@ -197,22 +195,20 @@ namespace Sapphire2025Server.Controllers
 			}
 			return salida;
 		}
-		[HttpGet("notes")]
-		public async Task<List<NoteModel>> RetrieveNotes(string trainid, int max)
+		[HttpPost("getnotes")]
+		public async Task<List<NoteModel>> RetrieveNotes(NoteChatRequestModel model)
 		{
 			List<NoteModel> salida = new List<NoteModel>();
-			Guid auxId = Guid.Empty;
-			Guid.TryParse(trainid, out auxId);
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
 				List<Note> auxNotas;
-				if (max > 0)
+				if (model.TakeMax > 0)
 				{
-					auxNotas = await almacen.Notes.Where(x => x.Parent == auxId).OrderByDescending(x => x.TimeStamp).Take(max).ToListAsync();
+					auxNotas = await almacen.Notes.Where(x => x.Parent == model.ParentId).OrderByDescending(x => x.TimeStamp).Take(model.TakeMax).ToListAsync();
 				}
 				else
 				{
-					auxNotas = await almacen.Notes.Where(x => x.Parent == auxId).OrderByDescending(x => x.TimeStamp).ToListAsync();
+					auxNotas = await almacen.Notes.Where(x => x.Parent == model.ParentId).OrderByDescending(x => x.TimeStamp).ToListAsync();
 				}
 				foreach (Note auxNota in auxNotas)
 				{
@@ -315,6 +311,9 @@ namespace Sapphire2025Server.Controllers
 						salida = await hasBasicPermission(request, Common.UserRole.Inspector);
 					return salida;
 				case Common.OperationType.SendToStandStill:
+					salida = await hasBasicPermission(request, Common.UserRole.Engineer);
+					return salida;
+				case Common.OperationType.SendToDisabled:
 					salida = await hasBasicPermission(request, Common.UserRole.Engineer);
 					return salida;
 

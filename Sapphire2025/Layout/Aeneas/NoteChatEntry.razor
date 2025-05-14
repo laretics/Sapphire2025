@@ -1,31 +1,46 @@
-﻿@if (null != mvarUser)
-{
-	<div class="d-flex @alineacion mb-3">
-		<div class="card shadow-sm" style="max-width: 75%;">
-			<div class="card-header bg-primary text-white">
-				<span><Sapphire2025.Icons.Roles.UserParam color="black" Role="@Role" /></span>
-				<strong>@userName</strong>
-				<small class="text-muted float-end"> @textoFecha</small>
-			</div>
-			<div class="card-body">
-				<p class="card-text">@Note.Text</p>
-			</div>
+﻿<div class="d-flex @alineacion mb-3">
+	<div class="card shadow-sm" style="max-width: 75%;">
+		<div class="card-header @bgType text-white">
+			<span>@userIcon()</span>
+			<strong class="me-2">@userName</strong>
+			<small class="text-white float-end">@textoFecha</small>
+		</div>
+		<div class="card-body">
+			<p class="card-text">@Note.Text</p>
 		</div>
 	</div>
-}
-<h3>NoteChatEntry</h3>
-
+</div>
 @code {
 	[Parameter]
 	public NoteModel Note { get; set; } = new NoteModel();
 	[CascadingParameter]
-	public Dictionary<Guid, UserModel>? Users { get; set; }
-	private UserModel? mvarUser { get; set; } = null;
+	public Dictionary<Guid, UserModelBase>? Users { get; set; }
+	private UserModelBase? mvarUser { get; set; } = null;
 	private Sapphire2025Models.Common.UserRole Role 
 	{ 
 		get => 
 		(null == mvarUser ? Sapphire2025Models.Common.UserRole.Anonymous : 
 			(Sapphire2025Models.Common.UserRole)mvarUser.CredentialKey); 
+	}
+	private RenderFragment userIcon()
+	{
+		if(null!=mvarUser)
+			return AuthenticationClient.userIcon(mvarUser.CredentialKey, "white");
+
+		return AuthenticationClient.userIcon(0, "gray");
+	}
+	private string bgType
+	{
+		get 
+		{
+			switch(Note.Type)
+			{
+				case 1: return "bg-primary";
+				case 2: return "bg-secondary";
+				case 3: return "bg-warning";
+				default: return "bg-light";
+			}
+		}
 	}
 	private string userName
 	{
@@ -33,10 +48,18 @@
 	}
 	private string alineacion
 	{
-		get => (0 == Note.Type ? "justify-content-start" : "justify-content-end");
+		get => (1 == Note.Type ? "justify-content-start" : "justify-content-end");
 	}
 	private string textoFecha
 	{
 		get => Sapphire2025Models.Common.timeString(Note.TimeStamp);
+	}
+	protected override void OnParametersSet()
+	{
+		if (null != Users && Users.ContainsKey(Note.UserId)) 
+			mvarUser = Users[Note.UserId];
+		else
+			mvarUser = null;
+		base.OnParametersSet();
 	}
 }

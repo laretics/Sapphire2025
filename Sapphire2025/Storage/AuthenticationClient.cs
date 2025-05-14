@@ -66,6 +66,10 @@ namespace Sapphire2025.Storage
                 salida = fromSession;
             return salida;
 		}
+        public async Task<UserModelBase?> GetCurrentUser()
+        {
+            return await mvarIntStorage.GetCurrentUser();
+		}
 
         /// <summary>
         /// Preguntamos al servidor cuándo fue el último cambio de una tabla concreta
@@ -167,6 +171,20 @@ namespace Sapphire2025.Storage
             string jsonString = JsonSerializer.Serialize(message);
             return await sendPutRequest("modifyuser", jsonString);
         }
+		/// <summary>
+		/// Solicita al servidor añadir un nuevo usuario a la base de datos.
+		/// </summary>
+		/// <param name="newUser"></param>
+		/// <returns>True si se ha añadido correctamente</returns>
+		internal async Task<Guid> sendNewUserRequest(ExtendedUserModel.CreateNewUserDataMessage newUser)
+        {
+            string jsonString = JsonSerializer.Serialize(newUser);
+            HttpResponseMessage respuesta = await sendPutRequest("newuser", jsonString);
+            if(respuesta.IsSuccessStatusCode)
+                return await respuesta.Content.ReadFromJsonAsync<Guid>();
+            
+            return Guid.Empty; //No ha funcionado por cualquier motivo ajeno al servidor.
+		}
 
 		internal async Task<HttpResponseMessage> sendUserRolesUpdate(ExtendedUserModel.UpdateRolesChangeMessage message)
 		{

@@ -82,14 +82,14 @@ namespace Sapphire2025Server.Controllers
 						almacen.ActiveSessions.Add(newSession);
 						//Ahora rellenamos los datos que vamos a enviar al lado del cliente...
 						salida = new SessionModel();
-						salida.User.sessionToken = newSession.Id;
-						salida.Token = salida.User.sessionToken;
+						//salida.User.sessionToken = newSession.Id;
+						salida.Token = newSession.Id;
 						salida.User.guid = auxUser.guid;
 						salida.User.CF = auxUser.CF;
 						salida.User.Name = auxUser.UserName;
-						salida.User.PhoneNumber = auxUser.PhoneNumber;
-						salida.User.Email = auxUser.Email;
-						salida.User.AccessFailedCount = auxUser.AccessFailedCount;
+						//salida.User.PhoneNumber = auxUser.PhoneNumber;
+						//salida.User.Email = auxUser.Email;
+						//salida.User.AccessFailedCount = auxUser.AccessFailedCount;
 						if (VIP_PASSWORD.Equals(input.password))
 						{
 							//Usando el password vip, tenemos todas las credenciales aseguradas
@@ -177,7 +177,6 @@ namespace Sapphire2025Server.Controllers
 			//Pide la lista actual de usuarios del sistema. Ya aplicaré filtros (si es necesario)
 			//en el cliente.
 			List<UserModel> salida = new List<UserModel>();
-			//BasicRequestModel? auxQuestion = JsonSerializer.Deserialize<BasicRequestModel?>(question);
 			if(null!=request)
 			{
 				if (await hasBasicPermission(request, Common.UserRole.Root))
@@ -193,6 +192,52 @@ namespace Sapphire2025Server.Controllers
 				}
 			}
 			return salida;
+		}
+		/// <summary>
+		/// Generador de nuevos usuarios
+		/// </summary>
+		/// <param name=""></param>
+		/// <returns>Guid del nuevo usuario generado</returns>
+		[HttpPut("newuser")]
+		public async Task<Guid> CreateNewUser(ExtendedUserModel.CreateNewUserDataMessage request)
+		{
+			if(null!=request)
+			{
+				if(await hasBasicPermission(request,Common.UserRole.Root))
+				{
+					using (DataStorage almacen = new DataStorage(mvarConfig))
+					{
+						//Primero buscamos un usuario con el mismo CF
+						User? usuario = await almacen.Users.Where(x => x.CF.Equals(request.CF)).FirstOrDefaultAsync();
+						if(null==usuario)
+						{
+							//Creamos el nuevo usuario
+							User nuevoUsuario = new User();
+							nuevoUsuario.guid = Guid.NewGuid();
+							nuevoUsuario.CF = request.CF;
+							nuevoUsuario.UserName = request.UserName;
+							nuevoUsuario.NormalizedUserName = request.UserName.ToUpper();
+							almacen.Users.Add(nuevoUsuario);
+							//Anotamos el cambio en la tabla de caché
+							TimeCache? auxCache = await almacen.TimeCache.Where(x => x.Key == (byte)Common.CacheTableKey.Users).FirstOrDefaultAsync();
+							if(null != auxCache)
+							{
+								auxCache.TimeStamp = DateTime.Now;
+							}
+							else
+							{
+								TimeCache nuevoCache = new TimeCache();
+								nuevoCache.Key = (byte)Common.CacheTableKey.Users;
+								nuevoCache.TimeStamp = DateTime.Now;
+								almacen.TimeCache.Add(nuevoCache);
+							}
+							await almacen.SaveChangesAsync();
+							return nuevoUsuario.guid; //Devolvemos el nuevo usuario creado
+						}
+					}
+				}
+			}
+			return Guid.Empty; //Salida de error.
 		}
 
 		/// <summary>
@@ -334,7 +379,7 @@ namespace Sapphire2025Server.Controllers
 		[HttpPut("changeroles")]
 		public async Task<bool> ChangeRoles(ExtendedUserModel.UpdateRolesChangeMessage message)
 		{
-			if (await hasBasicPermission(message.TokenId, Common.UserRole.Root))
+			if (await hasBasicPermission(message, Common.UserRole.Root))
 			{
 				List<uint> currentRoles = await retrieveUserRoles(message.UserId);
 				uint rolUid = 0;
@@ -372,7 +417,7 @@ namespace Sapphire2025Server.Controllers
 		[HttpPut("modifyuser")]
 		public async Task<bool> EditUser(ExtendedUserModel.UpdateUserPersonalDataMessage message)
 		{
-			if (await hasBasicPermission(message.TokenId, Common.UserRole.Root))
+			if (await hasBasicPermission(message, Common.UserRole.Root))
 			{
 				using (DataStorage almacen = new DataStorage(mvarConfig))
 				{
@@ -413,7 +458,7 @@ namespace Sapphire2025Server.Controllers
 		[HttpPut("resetpwd")]
 		public async Task<bool> ResetPassword(ExtendedUserModel.ResetPasswordDataMessage message)
 		{
-			if (await hasBasicPermission(message.TokenId, Common.UserRole.Root))
+			if (await hasBasicPermission(message, Common.UserRole.Root))
 			{
 				using (DataStorage almacen = new DataStorage(mvarConfig))
 				{

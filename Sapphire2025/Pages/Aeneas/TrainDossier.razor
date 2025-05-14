@@ -2,35 +2,54 @@
 @using Sapphire2025.Layout.Generic
 @inject AeneasClient mvarAeneasClient
 @inject AuthenticationClient mvarAuthClient
-@if(null!=mvarTrain)
+@inject NavigationManager mvarNavigationManager
+@if(null==mvarTrain)
 {
-	<h2>@mvarTrain.name</h2>
-	<TabControl>
-		<TabPage Text="Principal">
-
-		</TabPage>
-		<TabPage Text="Historial">
-			<div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
-				<Sapphire2025.Layout.Aeneas.StatusChangesTable StatusChanges="mcolChanges"
-															   StatusChangesUsers="mcolUsers" />
+	<div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
+		<div class="card" style="width: 24rem;">
+			<img src="img/ZafiroTheme.jpeg" class="card-img-top" alt="...">
+			<div class="card-body">
+				<h5 class="card-title">Cargando</h5>
+				<div class="spinner-grow"></div>
+				<p class="card-text">Cargando datos...</p>
 			</div>
-		</TabPage>
-		<TabPage Text="Actuaciones">
-			<div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
-				<div class="card" style="width: 22rem;">
-					<img src="img/ZafiroTheme.jpeg" class="card-img-top" alt="...">
-					<div class="card-body">
-						<h5 class="card-title">Comandos</h5>
-						<p class="card-text">Estas son las posibles transiciones que puede realizar este material móvil desde el estado actual con sus credenciales.</p>
-						<Sapphire2025.Layout.Aeneas.TrainCommandBar Train="mvarTrain" />
-					</div>
-				</div>				
+		</div>
+	</div>
+}
+else
+{
+	<CascadingValue Value="Users">
+		<div class="alert alert-@alertColor" role="alert">
+			<div class="d-flex justify-content-between align-items-center">
+				<h2 class="mb-0">@mvarTrain.name</h2>
+				<p class="mb-0">@statusDesciption</p>
+			</div>
+		</div>
+		<div class="btn-toolbar mb-3" role="toolbar" aria-label="Opciones del tren">
+			<div class="btn-group me-2" role="group" aria-label="Operaciones primarias">
+				<Sapphire2025.Layout.Aeneas.TrainCommandBar Train="mvarTrain" />
 			</div>		
-		</TabPage>
-		<TabPage Text="Campañas">
+		</div>
+		<TabControl>
+			<TabPage Text="Principal">
+				<Sapphire2025.Layout.Aeneas.NoteChat 
+				Parent="@mvarTrain.id" NoteType="2" MaxLines="20"/>
+			</TabPage>
+			<TabPage Text="Historial">
+				<div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
+					<Sapphire2025.Layout.Aeneas.StatusChangesTable 
+					StatusChanges="mcolChanges"/>
+				</div>
+			</TabPage>
+			<TabPage Text="Actuaciones">			
 
-		</TabPage>
-	</TabControl>
+
+			</TabPage>
+			<TabPage Text="Campañas">
+
+			</TabPage>
+		</TabControl>
+	</CascadingValue>
 }
 @code {
 	[Parameter]
@@ -40,12 +59,69 @@
 		if(null!=id)
 		{
 			mcolChanges = await mvarAeneasClient.trainChangesList(id);
-			mcolUsers = await mvarAuthClient.cachedUserList();
+			Users = await mvarAuthClient.cachedUserList();
 			mvarTrain = await mvarAeneasClient.train(id);
 			StateHasChanged();
 		}
 	}
-	private Dictionary<Guid, UserModelBase>? mcolUsers = new Dictionary<Guid, UserModelBase>();
+	private string alertColor
+	{
+		get
+		{
+			if(null == mvarTrain) return "secondary";
+
+			switch(mvarTrain.lastStatus)
+			{
+				case Sapphire2025Models.Common.TrainStatus.Available:
+				case Sapphire2025Models.Common.TrainStatus.DepotRequested:
+					return "success";
+				case Sapphire2025Models.Common.TrainStatus.RequestToDiagnose:
+					return "warning";
+				case Sapphire2025Models.Common.TrainStatus.RequestToRepair:
+					return "danger";
+				case Sapphire2025Models.Common.TrainStatus.DepotAvailable:
+				case Sapphire2025Models.Common.TrainStatus.Repairing:
+				case Sapphire2025Models.Common.TrainStatus.Maintenance:
+					return "info";
+				case Sapphire2025Models.Common.TrainStatus.StandStill:
+				case Sapphire2025Models.Common.TrainStatus.Disabled:
+					return "dark";
+
+			}
+			return "primary";
+		}
+	}
+	private string statusDesciption
+	{
+		get
+		{
+			if (null == mvarTrain) return "[Sin información]";
+			switch (mvarTrain.lastStatus)
+			{
+				case Sapphire2025Models.Common.TrainStatus.Available:
+					return "Material disponible";
+				case Sapphire2025Models.Common.TrainStatus.DepotAvailable:
+					return "Retirado para mantenimiento";
+				case Sapphire2025Models.Common.TrainStatus.DepotRequested:
+					return "Disponible (solicitado para mantenimiento)";
+				case Sapphire2025Models.Common.TrainStatus.RequestToDiagnose:
+					return "Disponible, pendiente de diagnóstico";
+				case Sapphire2025Models.Common.TrainStatus.Repairing:
+					return "En reparación.";
+				case Sapphire2025Models.Common.TrainStatus.Maintenance:
+					return "En mantenimiento.";
+				case Sapphire2025Models.Common.TrainStatus.RequestToRepair:
+					return "¡Solicitado para reparación!";
+				case Sapphire2025Models.Common.TrainStatus.StandStill:
+					return "StandStill";
+				case Sapphire2025Models.Common.TrainStatus.Disabled:
+					return "Material de baja o desmantelado";
+
+			}
+			return "[Sin información]";
+		}
+	}
+	private Dictionary<Guid, UserModelBase>? Users = new Dictionary<Guid, UserModelBase>();
 	private IEnumerable<StatusChangeModel>? mcolChanges = new List<StatusChangeModel>();
 	private TrainModel? mvarTrain = null;
 }

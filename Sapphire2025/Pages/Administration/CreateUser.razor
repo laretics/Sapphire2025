@@ -3,6 +3,7 @@
 @using System.ComponentModel.DataAnnotations
 @inject AuthenticationClient mvarCliente
 @inject IntStorageService mvarLocalStorage
+@inject NavigationManager mvarNavigationManager
 <PageTitle>Nuevo usuario</PageTitle>
 <h3>Nuevo Usuario</h3>
 @if(null==Model)
@@ -28,26 +29,37 @@ else
 					<InputText id="Name" @bind-Value="Model.UserName" class="form-control" aria-describedby="NameNotes"></InputText>
 					<div id="NameNotes" class="form-text">El nombre de usuario que está introduciendo será buscado en la base de datos actual para evitar dar de alta dos veces al mismo usuario en el sistema. Por favor, asegúrese de que la lista de usuarios en conflicto aparezca vacía o bien los nombres que contiene pertenezcan a otras personas.</div>
 				</div>
-				<Button Class="btn btn-primary">Comprobar</Button>
-				<Button Class="btn btn-primary">Enviar</Button>
+				<Button Class="btn btn-primary" @onclick=@StateHasChanged>Comprobar</Button>
+				<Button Class="btn btn-primary" @onclick=@addNewUser>Enviar</Button>
 			</EditForm>
 		</div>	
 		<div class="col-5">
-			<h3>Usuarios existentes</h3>
-			<div class="overflow-auto" style="max-height: 90vh;">
-			@foreach (UserModelBase usuario in sortedUsers())
-			{				
-				<div class="card mb-3">
-						<div class="card-header">
-							@userIcon(usuario.CredentialKey)
-							@usuario.CF
-						</div>
-					<div class="card-body">
-						<h5 class="card-title">@usuario.Name</h5>						
-					</div>
+			@if (null == mcolFilteredUsers || 0 == mcolFilteredUsers.Count())
+			{
+				<div class="alert alert-success" role="alert">
+					No se han encontrado usuarios en conflicto.
 				</div>
 			}
-			</div>
+			else
+			{
+				<div class="alert alert-danger" role="alert">
+					Se han encontrado los siguientes usuarios en conflicto:
+				</div>
+				<div class="overflow-auto" style="max-height: 90vh;">
+					@foreach (UserModelBase usuario in mcolFilteredUsers)
+					{
+						<div class="card mb-3">
+							<div class="card-header">
+								@userIcon(usuario.CredentialKey)
+								@usuario.CF
+							</div>
+							<div class="card-body">
+								<h5 class="card-title">@usuario.Name</h5>
+							</div>
+						</div>
+					}
+				</div>
+			}
 		</div>
 	</div>
 }
@@ -55,25 +67,62 @@ else
 	[Parameter]
 	public ExtendedUserModel.CreateNewUserDataMessage? Model{ get; set; }
 	private Dictionary<Guid,UserModelBase>? mcolUsers;
+	private IEnumerable<UserModelBase>? mcolFilteredUsers;
 
 	private IEnumerable<UserModelBase> sortedUsers()
 	{
 		IEnumerable<UserModelBase> salida = new List<UserModelBase>();
-		if (null != mcolUsers)
+		//Vamos a buscar coincidencias en la lista de usuarios.
+		//Primero buscamos por CF y luego por nombre.
+		if(null!=mcolUsers && null!=Model)
 		{
-			salida = mcolUsers.Values.OrderBy(xx => xx.Name);
+			if (null != Model.CF && Model.CF.Length>0)
+			{
+				salida = mcolUsers.Values
+				.Where(xx => xx.CF.Contains(Model.CF))
+				.OrderBy(xx => xx.CF);
+			}
+			if (0 == salida.Count())
+			{
+				if (null != Model.UserName) 
+				{ 
+					salida = mcolUsers.Values
+					.Where(xx => (null != xx.Name && xx.Name.ToUpper().Contains(Model.UserName.ToUpper())))
+					.OrderBy(xx => xx.Name);
+				}
+			}
 		}
 		return salida;
 	}
-
+	/// <summary>
+	/// Añade un nuevo usuario a la base de datos.
+	/// </summary>
+	/// <returns></returns>
+	private async Task addNewUser()
+	{
+		System.Diagnostics.Debug.Assert(null != Model);
+		Guid newUserId = Guid.Empty;
+		newUserId = await mvarCliente.sendNewUserRequest(Model);
+		if (Guid.Empty != newUserId)
+		{
+			//En caso positivo navegamos a la página de edición de este usuario.
+			mvarNavigationManager.NavigateTo(string.Format("/edit-user/{0}",newUserId));
+		}
+	}
 
 	protected async override Task OnInitializedAsync()
 	{
-		Model = new ExtendedUserModel.CreateNewUserDataMessage(Guid.NewGuid());
+		Guid auxSession = await mvarLocalStorage.getToken();
+		Model = new ExtendedUserModel.CreateNewUserDataMessage(auxSession);
 		//Vamos a cargar la tabla de usuarios desde la caché para poder saber fácilmente
 		//si el usuario que vamos a crear existe ya o hay alguno con un nombre parecido.
 		mcolUsers = await mvarCliente.cachedUserList();
-
+		mcolFilteredUsers = sortedUsers();
+	}
+	protected override bool ShouldRender()
+	{
+		mcolFilteredUsers = sortedUsers();
+		return base.ShouldRender();
 	}
 	private RenderFragment userIcon(byte credentials)
 	{
