@@ -1,0 +1,91 @@
+﻿@inject NavigationManager mvarNavigator
+<div class="row border-bottom @rowBgClass" @onclick="@onRowClick"style="cursor:pointer;">
+	<div class="col border-end d-flex align-items-center">
+		@userIcon 
+		<span class="ms-2"><p>@userCF</p></span>
+		@if(null!=User)
+		{
+			if(User.NullPassword)
+			{
+				<Sapphire2025.Icons.Status.Disabled color="red" />
+			}			
+		}
+	</div>
+	<div class="col border-end d-flex align-items-center">@userName</div>
+	<div class="col border-end d-flex align-items-center">@userEmail</div>
+	<div class="col d-flex align-items-center">
+		@userPhone
+		@if(User.HasTelegramId)
+		{
+			<span class="ms-2">
+				@if(User.TelegramEnabled)
+				{
+					<Sapphire2025.Icons.Fields.Telegram color="blue" />
+				}
+				else
+				{
+					<Sapphire2025.Icons.Fields.Telegram color="gray" />
+				}
+			</span>
+		}
+	</div>
+</div>
+@code {
+	[Parameter]
+	public UserModel User { get; set; } = new UserModel();
+	[Parameter]
+	public int RowIndex { get; set; } //Parámetro para alternar los colores de las filas
+
+	private string rowBgClass => (RowIndex % 2 == 0) ? "bg-light" : "bg-white";
+
+	private string userCF
+	{
+		get
+		{
+			if (null == User || null == User.CF) return string.Empty;
+			return User.CF;
+		}
+	}
+	private RenderFragment userIcon
+	{
+		get
+		{
+			if (null == User) return AuthenticationClient.userIcon(0, "black");
+			return AuthenticationClient.userIcon(User.CredentialKey, "black");
+		}
+	}
+	private string userName
+	{
+		get
+		{
+			if (null == User ||null==User.Name) return string.Empty;
+			return User.Name;
+		}
+	}
+	private string userEmail
+	{
+		get
+		{
+			if (null == User || null == User.Email) return string.Empty;
+			return User.Email;
+		}
+	}
+	private string userPhone
+	{
+		get
+		{
+			if (null == User || null == User.PhoneNumber) return string.Empty;
+			return User.PhoneNumber;
+		}
+	}
+
+	private Task onRowClick()
+	{
+		if (null != User)
+		{
+			mvarNavigator.NavigateTo(string.Format("/edit-user/{0}", User.guid));
+		}
+		return Task.CompletedTask;
+	}
+
+}

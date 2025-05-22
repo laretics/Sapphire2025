@@ -12,6 +12,7 @@ namespace Sapphire2025Server.Models
 		public string Id { get; set; }
 		public string CF { get; set; }
 		public long TelegramId { get; set; }
+		public bool TelegramEnabled { get; set; }
 		public string? UserName { get; set; }
 		public string? NormalizedUserName {  get; set; }
 		public string? Email { get; set; }

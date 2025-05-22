@@ -166,7 +166,8 @@ namespace Sapphire2025.Storage
 			}
             
 		}
-		internal async Task <HttpResponseMessage> sendModifyUser(ExtendedUserModel.UpdateUserPersonalDataMessage message)
+
+		internal async Task <HttpResponseMessage> sendModifyUser(UpdateUserPersonalDataMessage message)
         {
             string jsonString = JsonSerializer.Serialize(message);
             return await sendPutRequest("modifyuser", jsonString);
@@ -176,7 +177,7 @@ namespace Sapphire2025.Storage
 		/// </summary>
 		/// <param name="newUser"></param>
 		/// <returns>True si se ha añadido correctamente</returns>
-		internal async Task<Guid> sendNewUserRequest(ExtendedUserModel.CreateNewUserDataMessage newUser)
+		internal async Task<Guid> sendNewUserRequest(CreateNewUserDataMessage newUser)
         {
             string jsonString = JsonSerializer.Serialize(newUser);
             HttpResponseMessage respuesta = await sendPutRequest("newuser", jsonString);
@@ -186,26 +187,28 @@ namespace Sapphire2025.Storage
             return Guid.Empty; //No ha funcionado por cualquier motivo ajeno al servidor.
 		}
 
-		internal async Task<HttpResponseMessage> sendUserRolesUpdate(ExtendedUserModel.UpdateRolesChangeMessage message)
+		internal async Task<HttpResponseMessage> sendUserRolesUpdate(UpdateRolesChangeMessage message)
 		{
 			string jsonString = JsonSerializer.Serialize(message);
             return await sendPutRequest("changeroles", jsonString);
 		}
 
         internal async Task<HttpResponseMessage> sendUserResetPassword
-            (ExtendedUserModel.ResetPasswordDataMessage message)
+            (ResetPasswordDataMessage message)
         {
             string jsonString = JsonSerializer.Serialize(message);
             return await sendPutRequest("resetpwd", jsonString);
         }
         internal async Task<bool> isEmptyPassword (UserLoginModel data)
         {
-            string jsonString = JsonSerializer.Serialize(data);
+			string jsonString = JsonSerializer.Serialize(data);
             HttpResponseMessage respuesta = await sendPutRequest("isemptypwd", jsonString);
-            return await respuesta.Content.ReadFromJsonAsync<bool>();
+            bool salida = await respuesta.Content.ReadFromJsonAsync<bool>();
+            Console.WriteLine("Deserialized response");
+            return salida;
         }
 
-        internal async Task<bool> sendSetPassword(ExtendedUserModel.SetPasswordDataMessage model)
+        internal async Task<bool> sendSetPassword(SetPasswordDataMessage model)
         {
             string jsonString = JsonSerializer.Serialize(model);
             HttpResponseMessage response = await sendPutRequest("setpwd", jsonString);
@@ -213,6 +216,22 @@ namespace Sapphire2025.Storage
                 return await response.Content.ReadFromJsonAsync<bool>();
             return false;
         }
+
+        internal async Task<UserActivityModel?> getUserActivity(Guid tokenId, Guid userId, int maxRecords=0)
+        {
+			UserActivityRequest peticion = new UserActivityRequest();
+            peticion.SessionToken = tokenId;
+			peticion.userId = userId.ToString();
+            peticion.maxRecords = maxRecords;
+			string jsonString = JsonSerializer.Serialize(peticion);
+			HttpResponseMessage respuesta = await sendPutRequest("usractivity", jsonString);
+            if(respuesta.IsSuccessStatusCode)
+            {
+				UserActivityModel? salida = await respuesta.Content.ReadFromJsonAsync<UserActivityModel>();
+                return salida;
+			}
+            return null;
+		}
 
 		/// <summary>
 		/// En función de las credenciales del usuario devueltas por el sistema

@@ -79,13 +79,13 @@ namespace Sapphire2025Server.Controllers
 				foreach (ActiveSessionModel elemento in seleccion)
 				{
 					//Añado un log de cierre de sesión por expiración.
-					await addLoginRecord(elemento.UserId, SessionEvent.sessionEventType.sessionExpiry, elemento.HostIp);
+					await addLoginRecord(elemento.UserId, Common.sessionEventType.sessionExpiry, elemento.HostIp);
 				}
 				almacen.ActiveSessions.RemoveRange(seleccion);
 				await almacen.SaveChangesAsync();
 			}
 		}
-		protected async Task addLoginRecord(string userId, SessionEvent.sessionEventType type, string hostPoint)
+		protected async Task addLoginRecord(string userId, Common.sessionEventType type, string hostPoint)
 		{
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
@@ -113,7 +113,6 @@ namespace Sapphire2025Server.Controllers
 			}		
 			return false;
 		}
-
 		protected async Task<List<uint>> retrieveUserRoles(string userId)
 		{
 			List<uint> salida = new List<uint>();

@@ -9,16 +9,19 @@ namespace Sapphire2025Models.Authentication
 	/// <summary>
 	/// Contiene toda la información del modelo de usuario normal y además los datos de sesión, etc.
 	/// </summary>
-	public class ExtendedUserModel:UserModel
+	public class ExtendedUserModel : UserModel
 	{
 		//La lista de roles contiene los índices de todos los roles a los que pertenece este usuario
+		public bool TelegramEnabled { get; set; } //true si el usuario tiene habilitado el telegram
+		public string TelegramRules { get; set; } //Reglas de uso del telegram
+		public bool TelegramPaired { get; set; } //true si el usuario tiene el telegram emparejado
 
-		public ExtendedUserModel():base()
+		public ExtendedUserModel() : base()
 		{
-			roles = new Dictionary<uint, RoleInfo>();	
+			roles = new Dictionary<uint, RoleInfo>();
 		}
 
-		public Dictionary<uint,RoleInfo> roles { get; set; }
+		public Dictionary<uint, RoleInfo> roles { get; set; }
 
 		public class RoleInfo
 		{
@@ -27,9 +30,7 @@ namespace Sapphire2025Models.Authentication
 			public bool enrolled { get; set; } //El usuario actual está enrolado o no
 			public string? Comment { get; set; } //Notas sobre lo que es este rol
 		}
-
-
-
+	}
 		public class SetPasswordDataMessage
 		{
 			public string? UserName { get; set; }
@@ -75,16 +76,18 @@ namespace Sapphire2025Models.Authentication
 			public List<uint> colEnrole { get; set; }
 			public List<uint> colDerole { get; set; }
 		}
-		public class UpdateUserPersonalDataMessage:UpdateUserBase
-		{
-			public UpdateUserPersonalDataMessage(Guid tokenId, Guid userId) : base(tokenId, userId)
-			{ }
-			public UpdateUserPersonalDataMessage() : base() { }
-			public string? UserName { get; set; }
-			public string? CF { get; set; }
-			public string? Email { get; set; }
-			public string? Phone { get; set; }
-		}
+	public class UpdateUserPersonalDataMessage : UpdateUserBase
+	{
+		public UpdateUserPersonalDataMessage(Guid tokenId, Guid userId) : base(tokenId, userId)
+		{ }
+		public UpdateUserPersonalDataMessage() : base() { }
+		public string? UserName { get; set; }
+		public string? CF { get; set; }
+		public string? Email { get; set; }
+		public string? Phone { get; set; }
+		public string? TelegramRules { get; set; }
+		public bool TelegramEnabled { get; set; } //true si el usuario tiene habilitado el telegram
+	}
 		public class ResetPasswordDataMessage:UpdateUserBase
 		{
 			public ResetPasswordDataMessage(Guid tokenId, Guid userId) : base(tokenId, userId)
@@ -92,5 +95,5 @@ namespace Sapphire2025Models.Authentication
 			public ResetPasswordDataMessage() : base() { }
 
 		}
-	}
+	
 }

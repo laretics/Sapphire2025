@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Sapphire2025Models;
 
 namespace Sapphire2025Server.Models
 {
@@ -12,9 +13,9 @@ namespace Sapphire2025Server.Models
 
 		public byte eventType { get; set; }
 		[NotMapped]
-		public sessionEventType type 
+		public Common.sessionEventType type 
 		{ 
-			get => (sessionEventType)eventType;  
+			get => (Common.sessionEventType)eventType;  
 			set => eventType = (byte)value;
 		}
 		public DateTime timeSpan { get; set; }
@@ -24,19 +25,11 @@ namespace Sapphire2025Server.Models
 		{
 			Id = Guid.Empty.ToString();
 			userId = Guid.Empty.ToString();
-			type = sessionEventType.undefined;
+			type = Common.sessionEventType.undefined;
 			timeSpan = DateTime.Now;
 			hostPoint = string.Empty;
 		}
 
-		public enum sessionEventType:byte
-		{
-			undefined=0,		//Evento sin describir
-			login=1,			//El usuario inició sesión
-			logout=2,			//El usuario cerró sesión
-			sessionExpiry=3,	//La sesión abierta de un usuario expiró
-			badPassword=4,		//Error de credenciales
-			banned=5			//Usuario expulsado por un administrador
-		}
+		
 	}
 }

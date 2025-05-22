@@ -42,5 +42,7 @@ namespace Sapphire2025Models.Authentication
 		public string? PhoneNumber {  get; set; }
 		public int AccessFailedCount {  get; set; }
 		public bool NullPassword { get; set; } //Si es true, el usuario no tiene el password activo
+		public bool TelegramEnabled { get; set; } //Si es true, el usuario tiene el telegram habilitado
+		public bool HasTelegramId { get; set; } //Si es true, el usuario tiene el telegramId habilitado
 	}
 }

@@ -113,14 +113,14 @@ namespace Sapphire2025Server.Controllers
 						auxUser.AccessFailedCount = 0;
 						//Registra la entrada
 						await addLoginRecord(auxUser.Id,
-							SessionEvent.sessionEventType.login, auxDireccion.ToString());		
+							Common.sessionEventType.login, auxDireccion.ToString());		
 					}
 					else
 					{
 						//Autenticación fallida
 						auxUser.AccessFailedCount++;
 						await addLoginRecord(auxUser.Id,
-							SessionEvent.sessionEventType.badPassword,
+							Common.sessionEventType.badPassword,
 							auxDireccion.ToString());
 					}
 					await almacen.SaveChangesAsync();
@@ -160,7 +160,7 @@ namespace Sapphire2025Server.Controllers
 						almacen.RemoveRange(auxColSesiones);
 
 						//Marco el log.
-						await addLoginRecord(auxSesion.UserId, SessionEvent.sessionEventType.logout, auxHostPoint);
+						await addLoginRecord(auxSesion.UserId, Common.sessionEventType.logout, auxHostPoint);
 
 						salida = true;
 
@@ -199,7 +199,7 @@ namespace Sapphire2025Server.Controllers
 		/// <param name=""></param>
 		/// <returns>Guid del nuevo usuario generado</returns>
 		[HttpPut("newuser")]
-		public async Task<Guid> CreateNewUser(ExtendedUserModel.CreateNewUserDataMessage request)
+		public async Task<Guid> CreateNewUser(CreateNewUserDataMessage request)
 		{
 			if(null!=request)
 			{
@@ -308,6 +308,8 @@ namespace Sapphire2025Server.Controllers
 							salida.Email = auxUsuario.Email;
 						salida.guid = auxUsuario.guid;
 						salida.NullPassword = (null == auxUsuario.PasswordHash) || (auxUsuario.PasswordHash.Length < 1);
+						salida.TelegramEnabled = auxUsuario.TelegramEnabled;
+						salida.TelegramRules = await almacen.GetRegisterValue(auxUsuario.guid, "TGRULES", string.Empty);
 					}
 				}
 				salida.roles = await retrieveRolesDictionary();
@@ -320,7 +322,8 @@ namespace Sapphire2025Server.Controllers
 						if (salida.roles.ContainsKey(role))
 							salida.roles[role].enrolled = true;
 					}
-				}
+					
+				}				
 			}
 			return salida;
 		}
@@ -377,7 +380,7 @@ namespace Sapphire2025Server.Controllers
 		/// <param name="deroles">Lista separada por comas con los RoleId que va a perder</param>
 		/// <returns></returns>
 		[HttpPut("changeroles")]
-		public async Task<bool> ChangeRoles(ExtendedUserModel.UpdateRolesChangeMessage message)
+		public async Task<bool> ChangeRoles(UpdateRolesChangeMessage message)
 		{
 			if (await hasBasicPermission(message, Common.UserRole.Root))
 			{
@@ -415,7 +418,7 @@ namespace Sapphire2025Server.Controllers
 		}
 
 		[HttpPut("modifyuser")]
-		public async Task<bool> EditUser(ExtendedUserModel.UpdateUserPersonalDataMessage message)
+		public async Task<bool> EditUser(UpdateUserPersonalDataMessage message)
 		{
 			if (await hasBasicPermission(message, Common.UserRole.Root))
 			{
@@ -448,6 +451,15 @@ namespace Sapphire2025Server.Controllers
 						{
 							usuario.PhoneNumber = message.Phone;
 						}
+						usuario.TelegramEnabled = message.TelegramEnabled;
+						if (null != message.TelegramRules)
+						{
+							Guid auxGuid = Guid.Empty;
+							if(Guid.TryParse(usuario.Id, out auxGuid))
+							{
+								await almacen.SetRegisterValue(auxGuid, "TGRULES", message.TelegramRules);
+							}							
+						}
 						return await almacen.SaveChangesAsync() > 0;
 					}
 				}
@@ -456,7 +468,7 @@ namespace Sapphire2025Server.Controllers
 		}
 
 		[HttpPut("resetpwd")]
-		public async Task<bool> ResetPassword(ExtendedUserModel.ResetPasswordDataMessage message)
+		public async Task<bool> ResetPassword(ResetPasswordDataMessage message)
 		{
 			if (await hasBasicPermission(message, Common.UserRole.Root))
 			{
@@ -474,7 +486,7 @@ namespace Sapphire2025Server.Controllers
 		}
 
 		[HttpPut("setpwd")]
-		public async Task<bool> SetPassword(ExtendedUserModel.SetPasswordDataMessage message)
+		public async Task<bool> SetPassword(SetPasswordDataMessage message)
 		{
 			User? auxUsuario = await retrieveUser(message.UserName);
 			if(null != auxUsuario)
@@ -495,6 +507,34 @@ namespace Sapphire2025Server.Controllers
 				}
 			}
 			return false;
+		}
+		[HttpPut("usractivity")]
+		public async Task<UserActivityModel> GetUserActivity(UserActivityRequest request)
+		{
+			UserActivityModel salida = new UserActivityModel();
+			if (await hasBasicPermission(request, Common.UserRole.Root))
+			{
+				using (DataStorage almacen = new DataStorage(mvarConfig))
+				{
+					IEnumerable<SessionEvent> entrada;
+					if (0 != request.maxRecords)
+					{
+						entrada = await almacen.SessionEvents.Where(x => x.userId.Equals(request.userId)).Take(request.maxRecords).OrderByDescending(x=>x.timeSpan).ToListAsync();
+					}
+					else
+					{
+						entrada = await almacen.SessionEvents.Where(x => x.userId.Equals(request.userId)).OrderByDescending(x=>x.timeSpan).ToListAsync();
+					}
+					foreach (SessionEvent evento in entrada)
+					{
+						UserActivityModel.UserActivityAtom nuevo = new UserActivityModel.UserActivityAtom();
+						nuevo.timeStamp = evento.timeSpan;
+						nuevo.type = evento.eventType;
+						salida.activity.Add(nuevo);
+					}
+				}
+			}
+			return salida;
 		}
 		private void auxEnrole(string userId, uint roleId, DataStorage storage)
 		{
@@ -562,6 +602,8 @@ namespace Sapphire2025Server.Controllers
 			salida.AccessFailedCount = user.AccessFailedCount;
 			salida.NullPassword = (null==user.PasswordHash) || (user.PasswordHash.Length < 1);
 			salida.CredentialKey = await userIcon(user);
+			salida.TelegramEnabled = user.TelegramEnabled;
+			salida.HasTelegramId = (0!=user.TelegramId);
 			return salida;
 		}
 		private async Task<UserModelBase> modeloFromBaseUser(User user)

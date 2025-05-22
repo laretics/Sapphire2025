@@ -65,7 +65,7 @@ else
 }
 @code {
 	[Parameter]
-	public ExtendedUserModel.CreateNewUserDataMessage? Model{ get; set; }
+	public CreateNewUserDataMessage? Model{ get; set; }
 	private Dictionary<Guid,UserModelBase>? mcolUsers;
 	private IEnumerable<UserModelBase>? mcolFilteredUsers;
 
@@ -113,7 +113,7 @@ else
 	protected async override Task OnInitializedAsync()
 	{
 		Guid auxSession = await mvarLocalStorage.getToken();
-		Model = new ExtendedUserModel.CreateNewUserDataMessage(auxSession);
+		Model = new CreateNewUserDataMessage(auxSession);
 		//Vamos a cargar la tabla de usuarios desde la caché para poder saber fácilmente
 		//si el usuario que vamos a crear existe ya o hay alguno con un nombre parecido.
 		mcolUsers = await mvarCliente.cachedUserList();
@@ -128,5 +128,4 @@ else
 	{
 		return AuthenticationClient.userIcon(credentials, "gray");
 	}
-
 }

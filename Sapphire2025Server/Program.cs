@@ -1,3 +1,5 @@
+using Sapphire2025Server.Telegram;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Configura la lectura del archivo appsettings.json
@@ -21,16 +23,20 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
+builder.Services.AddSingleton<Sapphire2025Server.Telegram.BotSoul>();
 
 var app = builder.Build();
+
+BotSoul instancia = app.Services.GetRequiredService<BotSoul>();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
 	app.MapOpenApi();
+	//Esto lo he tenido que comentar porque no me va el servidor desde fuera de local.
+	//app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
 
 app.UseAuthorization();
 

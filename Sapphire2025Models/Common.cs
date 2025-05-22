@@ -180,6 +180,16 @@ namespace Sapphire2025Models
 			Engineer = 6,     //Ingeniero que accede a la base de datos para consultar informes.
 		}
 
+		public enum sessionEventType : byte
+		{
+			undefined = 0,      //Evento sin describir
+			login = 1,          //El usuario inició sesión
+			logout = 2,         //El usuario cerró sesión
+			sessionExpiry = 3,  //La sesión abierta de un usuario expiró
+			badPassword = 4,        //Error de credenciales
+			banned = 5          //Usuario expulsado por un administrador
+		}
+
 		//public static UserRole fromRoleName(string roleName)
 		//{
 		//	switch(roleName.ToUpper())
@@ -204,19 +214,25 @@ namespace Sapphire2025Models
 		{			
 			if (null == rhs) return "-";
 			DateTime secc = (DateTime)rhs;			
-			string cadenaFormato = "{0:dd-MM-yy} ({0:HH:mm}";
-			if (DateTime.Now.Subtract(secc).Days < 1)
+			string cadenaFormato = "{0:dd-MM-yy} ({0:HH:mm})";
+			if (DateTime.Now.Subtract(secc).Ticks > 0) //Tiempo pasado
 			{
-				cadenaFormato = "Hoy, {0:HH:mm}";
+				if (DateTime.Now.Subtract(secc).Days < 1)
+				{
+					cadenaFormato = "Hoy, {0:HH:mm}";
+				}
+				else if (DateTime.Now.Subtract(secc).Days < 2)
+				{
+					cadenaFormato = "Ayer, {0:HH:mm}";
+				}
+				else if (DateTime.Now.Subtract(secc).Days > 30)
+				{
+					cadenaFormato = "{0:dd-MM-yy}";
+				}
 			}
-			else if (DateTime.Now.Subtract(secc).Days < 2)
-			{
-				cadenaFormato = "Ayer, {0:HH:mm}";
-			}
-			else if (DateTime.Now.Subtract(secc).Days > 30)
-			{
+			else //Tiempo futuro
 				cadenaFormato = "{0:dd-MM-yy}";
-			}
+
 			return string.Format(cadenaFormato, secc);
 		}
 	}

@@ -1,23 +1,142 @@
 ﻿@page "/admin/usersmanage"
 @inject AuthenticationClient mvarClient
-@inject IntStorageService mvarLocalStorage
 @inject NavigationManager mvarNavigator
 <PageTitle>Usuarios</PageTitle>
-<Sapphire2025.Layout.Users.UsersListCTL users="@mcolUsers"></Sapphire2025.Layout.Users.UsersListCTL>
-<Button Class="btn btn-primary" @onclick="OnCreateNewUser">Nuevo</Button>
+@if (null == mcolUsers)
+{
+	<div class="d-flex justify-content-center align-items-center" style="height: 60vh;">
+		<div class="text-center">
+			<div class="spinner-border text-primary mb-3" style="width: 4rem; height: 4rem;" role="status">
+				<span class="visually-hidden">Cargando...</span>
+			</div>
+			<div>
+				<h5 class="mt-2">Cargando tabla de usuarios...</h5>
+				<p class="text-muted">Por favor, espere un momento.</p>
+			</div>
+		</div>
+	</div>
+}
+else
+{
+	<div class="row border-bottom border-top bg-secondary text-light">
+		<div class="col" @onclick="@onCFHeaderClick">
+			<Sapphire2025.Icons.Fields.CF />
+		</div>
+		<div class="col" @onclick="@onNameHeaderClick">
+			<Sapphire2025.Icons.Headers.User />
+		</div>
+		<div class="col" @onclick="@onEmailHeaderClick">
+			<Sapphire2025.Icons.Fields.Mail />
+		</div>
+		<div class="col" @onclick="@onPhoneHeaderClick">
+			<Sapphire2025.Icons.Fields.Phone />
+		</div>
+	</div>
+	<div class="overflow-auto" style="height: 80vh; overflow-y: auto; width: 100%">
+		@foreach (var tupla in mcolUsersFiltered.Select((user,idx)=>(user,idx)))
+		{
+			<Sapphire2025.Layout.Users.UsersListCTLRecord 
+			User="@tupla.user" RowIndex="@tupla.idx"/>
+		}
+	</div>
+	<Button Class="btn btn-primary" @onclick="OnCreateNewUser">Nuevo</Button>
+}
 
 @code {
-	private IEnumerable<UserModel> mcolUsers = new List<UserModel>();
+	private IEnumerable<UserModel>? mcolUsers;
+	private IEnumerable<UserModel> mcolUsersFiltered = new List<UserModel>();
+	private bool lastOrderUp;
+	private byte lastColumnSelected;
+
 
 	protected async override Task OnInitializedAsync()
 	{
-		IEnumerable<UserModel>? auxLista = await mvarClient.completeUsersList();
-		if (null != auxLista)
+		mcolUsers = await mvarClient.completeUsersList();
+		if (null != mcolUsers)
 		{
-			mcolUsers = auxLista;
+			mcolUsersFiltered = mcolUsers.OrderBy(user => user.CF);			
+		}
+		lastOrderUp = true;
+		lastColumnSelected = 0;
+	}
+
+	private void onCFHeaderClick()
+	{
+		if(null!=mcolUsers)
+		{
+			if (lastColumnSelected == 0)
+				lastOrderUp = !lastOrderUp;
+			else
+				lastOrderUp = true;
+
+			if (lastOrderUp)
+				mcolUsersFiltered = mcolUsers.OrderBy(user => user.CF);
+			else
+				mcolUsersFiltered = mcolUsers.OrderByDescending(user => user.CF);
+
+			lastColumnSelected = 0;
 			StateHasChanged();
 		}
+		
 	}
+	private void onNameHeaderClick()
+	{
+		if (null != mcolUsers)
+		{
+			if (lastColumnSelected == 1)
+				lastOrderUp = !lastOrderUp;
+			else
+				lastOrderUp = true;
+
+			if (lastOrderUp)
+				mcolUsersFiltered = mcolUsers.OrderBy(user => user.Name);
+			else
+				mcolUsersFiltered = mcolUsers.OrderByDescending(user => user.Name);
+
+			lastColumnSelected = 1;
+			StateHasChanged();
+		}
+		
+	}
+	private void onEmailHeaderClick()
+	{
+		if (null != mcolUsers)
+		{
+			if (lastColumnSelected == 2)
+				lastOrderUp = !lastOrderUp;
+			else
+				lastOrderUp = true;
+
+			if (lastOrderUp)
+				mcolUsersFiltered = mcolUsers.OrderBy(user => user.Email);
+			else
+				mcolUsersFiltered = mcolUsers.OrderByDescending(user => user.Email);
+
+			lastColumnSelected = 2;
+			StateHasChanged();
+		}
+
+	}
+	private void onPhoneHeaderClick()
+	{
+		if (null != mcolUsers)
+		{
+			if (lastColumnSelected == 3)
+				lastOrderUp = !lastOrderUp;
+			else
+				lastOrderUp = true;
+
+			if (lastOrderUp)
+				mcolUsersFiltered = mcolUsers.OrderBy(user => user.PhoneNumber);
+			else
+				mcolUsersFiltered = mcolUsers.OrderByDescending(user => user.PhoneNumber);
+
+			lastColumnSelected = 3;
+			StateHasChanged();
+		}
+		
+	}
+
 	protected void OnCreateNewUser()
 	{
 		mvarNavigator.NavigateTo("/create-user");
