@@ -44,24 +44,7 @@ namespace Sapphire2025Server.Controllers
 				await almacen.SaveChangesAsync();
 			}				
 		}
-		protected async Task<User?> retrieveUser(string userName)
-		{
-			User? salida = null;
-			string mayus = userName.ToUpper();
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{
-				salida = await almacen.Users.Where(x => x.CF == userName).FirstOrDefaultAsync();
-				if (null == salida)
-				{
-					salida = await almacen.Users.Where(x => x.NormalizedEmail == mayus).FirstOrDefaultAsync();
-				}
-				if (null == salida)
-				{
-					salida = await almacen.Users.Where(x => x.NormalizedUserName == mayus).FirstOrDefaultAsync();
-				}
-			}
-			return salida;
-		}
+
 		protected async Task<User?> userById(string userId)
 		{
 			using (DataStorage almacen = new DataStorage(mvarConfig))

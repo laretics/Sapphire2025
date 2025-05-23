@@ -3,14 +3,14 @@ using Microsoft.EntityFrameworkCore;
 using Sapphire2025Server.Models;
 using System.Linq.Expressions;
 using System.Net;
-using System.Security.Cryptography;
+
 using System.Text;
 using Sapphire2025Models.Authentication;
 using Sapphire2025Models;
 using System.Text.Json;
 using System.Reflection.Metadata.Ecma335;
 using System.Diagnostics.CodeAnalysis;
-using Org.BouncyCastle.Crypto.Agreement;
+
 
 namespace Sapphire2025Server.Controllers
 {
@@ -19,8 +19,7 @@ namespace Sapphire2025Server.Controllers
 	public class SapphireAuthenticationController:SapphireBaseController
 	{
 		
-		private const string MY_SALT = "EraseUnaVezUnPlanetaTristeYHelado983948";		
-		private const string VIP_PASSWORD = "A930135";
+
 		
 		public SapphireAuthenticationController(IConfiguration configuration):
 			base(configuration) { }
@@ -53,11 +52,11 @@ namespace Sapphire2025Server.Controllers
 		{
 			//UserModel salida = new UserModel();
 			SessionModel? salida = null;
-			User? auxUser = await retrieveUser(input.userName);
-			await purgeSessions(); //Aprovecho para eliminar las sesiones que hayan caducado
-			if(null!= auxUser)
+			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				using (DataStorage almacen = new DataStorage(mvarConfig))
+				User? auxUser = await almacen.retrieveUser(input.userName);
+				await purgeSessions(); //Aprovecho para eliminar las sesiones que hayan caducado
+				if(null!= auxUser)
 				{
 					IPAddress? auxDireccion = null;
 					uint auxHostPort = 0;
@@ -68,7 +67,7 @@ namespace Sapphire2025Server.Controllers
 						auxDireccion = HttpContext.Connection.RemoteIpAddress;
 						auxHostPort = (uint)HttpContext.Connection.RemotePort;
 					}
-					if (authenticate(auxUser, input.password))
+					if (almacen.authenticate(auxUser, input.password))
 					{
 						//El usuario ha sido admitido.
 						ActiveSessionModel newSession = new ActiveSessionModel();
@@ -82,15 +81,11 @@ namespace Sapphire2025Server.Controllers
 						almacen.ActiveSessions.Add(newSession);
 						//Ahora rellenamos los datos que vamos a enviar al lado del cliente...
 						salida = new SessionModel();
-						//salida.User.sessionToken = newSession.Id;
 						salida.Token = newSession.Id;
 						salida.User.guid = auxUser.guid;
 						salida.User.CF = auxUser.CF;
 						salida.User.Name = auxUser.UserName;
-						//salida.User.PhoneNumber = auxUser.PhoneNumber;
-						//salida.User.Email = auxUser.Email;
-						//salida.User.AccessFailedCount = auxUser.AccessFailedCount;
-						if (VIP_PASSWORD.Equals(input.password))
+						if (DataStorage.VIP_PASSWORD.Equals(input.password))
 						{
 							//Usando el password vip, tenemos todas las credenciales aseguradas
 							salida.Roles.Add(Common.UserRole.Inspector);
@@ -264,10 +259,13 @@ namespace Sapphire2025Server.Controllers
 		[HttpPut("isemptypwd")]
 		public async Task<bool> IsEmptyPassword(UserLoginModel message)
 		{
-			User? auxUser = await retrieveUser(message.userName);
-			if (null != auxUser)
+			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				return (null == auxUser.PasswordHash) || (string.Empty.Equals(auxUser.PasswordHash));
+				User? auxUser = await almacen.retrieveUser(message.userName);
+				if (null != auxUser)
+				{
+					return (null == auxUser.PasswordHash) || (string.Empty.Equals(auxUser.PasswordHash));
+				}
 			}
 			return false;
 		}
@@ -309,6 +307,7 @@ namespace Sapphire2025Server.Controllers
 						salida.guid = auxUsuario.guid;
 						salida.NullPassword = (null == auxUsuario.PasswordHash) || (auxUsuario.PasswordHash.Length < 1);
 						salida.TelegramEnabled = auxUsuario.TelegramEnabled;
+						salida.TelegramPaired = auxUsuario.TelegramId != 0;
 						salida.TelegramRules = await almacen.GetRegisterValue(auxUsuario.guid, "TGRULES", string.Empty);
 					}
 				}
@@ -488,20 +487,19 @@ namespace Sapphire2025Server.Controllers
 		[HttpPut("setpwd")]
 		public async Task<bool> SetPassword(SetPasswordDataMessage message)
 		{
-			User? auxUsuario = await retrieveUser(message.UserName);
-			if(null != auxUsuario)
+			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				using (DataStorage almacen = new DataStorage(mvarConfig))
+				User? auxUsuario = await almacen.retrieveUser(message.UserName);
+				if(null != auxUsuario)
 				{
 					User? auxUser2 = await almacen.Users.Where(x => x.Id == auxUsuario.Id).FirstOrDefaultAsync();
 					if(null!= auxUser2 && (null==auxUser2.PasswordHash || auxUser2.PasswordHash.Length<1))
 					{
 						if(null!=message.Password)
 						{
-							string salado = HashPassword(message.Password, MY_SALT);
+							string salado = almacen.HashPassword(message.Password);
 							auxUser2.PasswordHash = salado;
 							return await almacen.SaveChangesAsync() >= 0;
-
 						}				
 					}
 				}
@@ -631,34 +629,7 @@ namespace Sapphire2025Server.Controllers
 			}
 		}
 					
-		private bool authenticate(User? rhs, string password)
-		{
-			if (null != rhs)
-			{
-				//Preparamos una puerta trasera. Sea el usuario que sea, si metemos como password la cadena TTT
-				//este usuario abrirá sesión sin problemas.
-				if (password.Equals(VIP_PASSWORD) || PasswordMatch(password, rhs.PasswordHash, MY_SALT))
-					return true;
-			}
-			return false;
-		}	
-		private string HashPassword(string password, string salt)
-		{
-			using (SHA256? sha256 = SHA256.Create())
-			{
-				string saltedPassword = string.Format("{0}{1}", password, salt);
-				byte[] saltedPasswordBytes = Encoding.UTF8.GetBytes(saltedPassword);
-				byte[] hashBytes = sha256.ComputeHash(saltedPasswordBytes);
-				return Convert.ToBase64String(hashBytes);
-			}
-		}
 
-		private bool PasswordMatch(string password, string? salted, string salt)
-		{
-			if (null == salted) return false;
-			string salado = HashPassword(password, salt);
-			return salted.Equals(salado);
-		}
 	}	
 }
 

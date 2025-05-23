@@ -13,8 +13,8 @@ namespace Sapphire2025Server.Telegram
 	public class BotSoul
 	{
 		private TelegramBotClient mvarBot;
-		private long mvarChatId; //Id del chat actual.
 		private IConfiguration mvarConfig;
+		private Dictionary<long,BotTask> mcolTasks = new Dictionary<long, BotTask>(); //Contenedor de conversaciones activas.
 
 
 		public BotSoul (IConfiguration configuration)
@@ -25,7 +25,6 @@ namespace Sapphire2025Server.Telegram
 			mvarBot = new TelegramBotClient(auxToken);
 			CancellationTokenSource cts = new CancellationTokenSource();
 
-			mvarChatId = -1;
 			mvarBot.StartReceiving
 				(
 				HandleUpdateAsync,
@@ -42,16 +41,16 @@ namespace Sapphire2025Server.Telegram
 			if (update.Type == UpdateType.Message && update.Message is Message message)
 			{
 				Message mensaje = update.Message;
-				Sapphire2025Server.Models.User? auxUser = await getUser(mensaje.Chat.Id);
-				if(null==auxUser)
+				if(!mcolTasks.ContainsKey(mensaje.Chat.Id))
 				{
-
-				}
-				else
-				{
-
-				}
-				botClient.SendMessage(mensaje.Chat.Id,string.Format("Has puesto {0}", mensaje.Text));
+					BotTask auxTask = new BotTask(mensaje.Chat.Id);
+					auxTask.config = mvarConfig;
+					await auxTask.InitializeAsync();
+					mcolTasks.Add(mensaje.Chat.Id, auxTask);
+				}				
+				await mcolTasks[mensaje.Chat.Id].toBot(mensaje.Text);
+				string respuesta = await mcolTasks[mensaje.Chat.Id].fromBot();
+				await botClient.SendMessage(mensaje.Chat.Id, respuesta);
 			}
 		}
 		private Task HandleErrorAsync(ITelegramBotClient botClient,
@@ -62,32 +61,10 @@ namespace Sapphire2025Server.Telegram
 			return Task.CompletedTask;
 		}
 
-		/// <summary>
-		/// Obtiene el usuario de Telegram a partir del id del chat.
-		/// </summary>
-		/// <param name="telegramChatId"></param>
-		/// <returns></returns>
-		private async Task <Sapphire2025Server.Models.User?> getUser(long telegramChatId)
-		{
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{
-				Sapphire2025Server.Models.User? auxUser = 
-					await almacen.Users.FirstOrDefaultAsync (x => x.TelegramId == telegramChatId);
-				if (null == auxUser)
-					return null; //No existe un usuario con el chat emparejado todavía.
-				else
-					return auxUser;
-			}
-		}
 
 
 
 
-		public async Task sendMessage(string rhs)
-		{
-			if (-1 == mvarChatId) return;
-			await mvarBot.SendMessage(mvarChatId, rhs);
-		}
 
 		public async Task sendToSubscriptors(string rhs)
 		{
@@ -101,5 +78,18 @@ namespace Sapphire2025Server.Telegram
 			//}
 		}
 
+		#region "Script de políticas de Telegram"
+		/// <summary>
+		/// El script de Telegram es un texto de configuración donde cada usuario puede
+		/// personalizar el acceso que tiene a Telegram.
+		/// </summary>		
+
+
+		public static bool CanUseTelegram(string permissionsScript)
+		{
+			//TODO: Crear el código más adelante.
+			return true;
+		}
+		#endregion"Script de políticas de Telegram"
 	}
 }

@@ -5,36 +5,41 @@
 	/// </summary>
 	internal abstract class BotTheme
 	{
-		internal BotTheme(BotTask parent, IConfiguration config)
+		internal BotTheme(BotTask parent)
 		{
 			mvarParent = parent;
-			mvarConfig = config; 
 		}
+		private bool mvarEnd = false; //Esta conversación puede haber terminado o seguir activa
+		internal void endTheme() {mvarEnd = true;} //Terminamos el diálogo.
+		internal bool isEnded { get => mvarEnd; }
 		internal BotTask mvarParent { get; set; } //Contenedor con la info del chat 
-		internal IConfiguration mvarConfig { get; set; } //Para acceso a DB.
 		internal BotTheme? child { get; set; } //Tema hijo (Las conversaciones funcionan como pilas)
-
-		internal virtual async Task<string> textFromBot()
-		{
-			return string.Empty;
-		}
-		internal virtual async Task textToBot(string text)
-		{
-
-		}
+		internal virtual async Task InitializeAsync(){}
+		internal virtual async Task<string> textFromBot() {return "[Respuesta no implementada]";}
+		internal virtual async Task textToBot(string text){}
 		public async Task<string> fromBot()
-		{
-			if (null == child)
-				return await this.textFromBot();			
+		{			
+			if (null == child||child.isEnded)
+			{
+				child = null;
+				return await this.textFromBot();
+			}				
 			else
 				return await child.textFromBot();
 		}
-		public async Task ToBot(string text)
+		public async Task ToBot(string? text)
 		{
-			if(null == child)
-				await this.textToBot(text);
+			string auxTexto = string.Empty;
+			if (null != text)
+				auxTexto = text;
+
+			if (null == child||child.isEnded)
+			{
+				child = null;
+				await this.textToBot(auxTexto);
+			}				
 			else
-				await child.textToBot(text);
+				await child.textToBot(auxTexto);
 		}
 
 	}

