@@ -1,4 +1,5 @@
 ﻿using Sapphire2025Server.Models;
+using Sapphire2025Server.Telegram.Semantics;
 
 namespace Sapphire2025Server.Telegram
 {
@@ -21,12 +22,12 @@ namespace Sapphire2025Server.Telegram
 		}
 		internal User user { get; set; } //Referencia al usuario que tiene esta conversación
 		internal BotTheme theme { get; set; } //Tema de la conversación actual.
-		internal IConfiguration config { get; set; } //Para acceso a las DB
+		internal static IConfiguration config { get; set; } //Para acceso a las DB
 
 		/// <summary>
 		/// Obtiene el texto que el bot va a enviar al usuario.
 		/// </summary>
-		public async Task<string> fromBot()
+		public async Task<Response> fromBot()
 		{return await theme.fromBot();}
 		/// <summary>
 		/// Envía al bot el texto que ha escrito el usuario.

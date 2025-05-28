@@ -186,10 +186,7 @@
 	{
 		if (null != Train)
 		{
-			if(await mvarAeneasClient.openFailReport(Train))
-			{
-				mvarNavigationManager.NavigateTo($"/addnote/{Train.id}/1");
-			}
+			mvarNavigationManager.NavigateTo($"/addnote/{Train.id}/1");
 		}
 	}
 	private async Task diagnoseToFault()

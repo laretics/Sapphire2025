@@ -9,14 +9,14 @@
     <NexusNavOption Selected="@(1==SelectedNavItem)"
     onclick="@(()=>SelectNavItem(1))"
     Link="admin/usersmanage" Caption="Usuarios"
+    Badge="Nuevo"
     Image="bi bi-list-users-nav-menu" 
     Tooltip="Gestión de usuarios del sistema."
     Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Root}"/>
 
     <NexusNavOption Selected="@(2==SelectedNavItem)"
     onclick="@(()=>SelectNavItem(2))"
-    Link="trainFlow" Caption="Flujo"
-    Badge="Nuevo"
+    Link="trainFlow" Caption="Flujo"    
     Image="bi bi-train-diagram-nav-menu" 
     Tooltip="Flujograma de unidades tren y resto de vehículos"/>
 

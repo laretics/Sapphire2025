@@ -131,14 +131,12 @@ else
             if(null!=mvarTrain)
             {
                 //Parte específica de los partes y las notas de los trenes.
-				if (noteModel.Type == 1)
-				{
+                if (noteModel.Type == 1)
+                {
                     //La apertura de un parte de avería va a cambiar el tren al estado pendiente
                     //de diagnóstico, pero esto no lo deberíamos hacer aquí, sino en el cliente
                     //de Aeneas.
-
-
-
+                    await mvarAeneasClient.openFailReport(mvarTrain);
 				}
             }
             mvarNavigationManager.NavigateTo($"/train/{trainId}");

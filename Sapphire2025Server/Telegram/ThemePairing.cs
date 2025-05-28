@@ -1,14 +1,14 @@
 ﻿
 using Microsoft.EntityFrameworkCore;
 using Sapphire2025Server.Models;
+using Sapphire2025Server.Telegram.Semantics;
+using Sapphire2025Server.Telegram.Semantics.Responses;
 
 namespace Sapphire2025Server.Telegram
-{	
+{
 
 	internal class ThemePairing:BotTheme
 	{
-		internal ThemePairing(BotTask parent) : base(parent){}
-
 		private string? mvarUserId { get; set; } //ID del usuario en Zafiro
 		private bool mvarInitialized = false; //Indica si el tema ha sido inicializado.
 		private bool mvarError = false; //Error en la autenticación previa.
@@ -22,26 +22,26 @@ namespace Sapphire2025Server.Telegram
 			tfEnd = 3
 		}
 		private typeFase mvarFase = typeFase.tfInitial; //Fase de la conversación actual.
-
-		internal async override Task<string> textFromBot()
+		internal ThemePairing(BotTask parent) : base(parent){}
+		internal async override Task<Response> ResponseFromBot()
 		{
 			if(mvarError)
 			{
 				mvarError = false; //Quitamos el error para la siguiente vez.
-				return "Los datos introducidos no son correctos. Por favor, vuelve a introducir un ID de usuario de Zafiro.";
+				return new PairingResponse(3); //Datos desconocidos o erróneos.
 			}
 			else
 			{
 				switch (mvarFase)
 				{
 					case typeFase.tfInitial:
-						return "Hola, soy el bot de Zafiro. Para emparejar este chat de Telegram con tu cuenta de Zafiro, por favor introduce tu ID de usuario de Zafiro.";
+						return new PairingResponse(0); //Fase inicial, pedimos el ID de usuario.
 					case typeFase.tfUserId:
-						return "Teclea tu identificador de usuario.";
+						return new PairingResponse(1); //Fase de ID de usuario, pedimos el ID de usuario.
 					case typeFase.tfPassword:
-						return "Ahora introduce tu contraseña de Zafiro.";
+						return new PairingResponse(2); //Fase de contraseña, pedimos la contraseña del usuario.
 					default:
-						return "[Error]"; //No debería llegar aquí.
+						return new NonImplementedResponse(); //Fase final, no debería llegar aquí.
 				}
 			}
 		}
@@ -57,7 +57,7 @@ namespace Sapphire2025Server.Telegram
 					mvarFase = typeFase.tfPassword;
 					break;
 				case typeFase.tfPassword:
-					using (DataStorage almacen = new DataStorage(mvarParent.config))
+					using (DataStorage almacen = new DataStorage(BotTask.config))
 					{
 						User? auxUser = await almacen.retrieveUser(mvarUserId);
 						if (null != auxUser)

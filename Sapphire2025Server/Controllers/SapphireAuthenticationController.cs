@@ -181,7 +181,7 @@ namespace Sapphire2025Server.Controllers
 						IEnumerable<User> entrada = await almacen.Users.ToListAsync();
 						foreach (User user in entrada)
 						{
-							salida.Add(await modeloFromUser(user));
+							salida.Add(await modeloFromUser(user,mvarConfig));
 						}
 					}
 				}
@@ -586,7 +586,7 @@ namespace Sapphire2025Server.Controllers
 			}
 			return salida;
 		}							
-		private async Task<UserModel> modeloFromUser(User user)
+		internal static async Task<UserModel> modeloFromUser(User user, IConfiguration config)
 		{
 			UserModel salida = new UserModel();
 			salida.guid = user.guid;
@@ -599,7 +599,7 @@ namespace Sapphire2025Server.Controllers
 			salida.PhoneNumber = user.PhoneNumber;
 			salida.AccessFailedCount = user.AccessFailedCount;
 			salida.NullPassword = (null==user.PasswordHash) || (user.PasswordHash.Length < 1);
-			salida.CredentialKey = await userIcon(user);
+			salida.CredentialKey = await userIcon(user,config);
 			salida.TelegramEnabled = user.TelegramEnabled;
 			salida.HasTelegramId = (0!=user.TelegramId);
 			return salida;
@@ -611,13 +611,13 @@ namespace Sapphire2025Server.Controllers
 			salida.CF = user.CF;
 			if(null!= user.UserName)
 				salida.Name = user.UserName;
-			salida.CredentialKey = await userIcon(user);
+			salida.CredentialKey = await userIcon(user,mvarConfig);
 			return salida;
 		}
 
-		private async Task<byte> userIcon(User user)
+		private static async Task<byte> userIcon(User user, IConfiguration config)
 		{
-			using (DataStorage almacen = new DataStorage(mvarConfig))
+			using (DataStorage almacen = new DataStorage(config))
 			{
 				List<UserAndRole> roles = await almacen.UserAndRoles.Where(x => x.UserId == user.Id && x.RoleId<7).ToListAsync();
 				byte salida = 0;

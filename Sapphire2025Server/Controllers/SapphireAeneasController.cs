@@ -32,7 +32,7 @@ namespace Sapphire2025Server.Controllers
 			{
 				List<Train> trenes = await almacen.Trains.ToListAsync();
 				foreach (Train tren in trenes)
-					salida.Add(await trainFromTrain(tren));
+					salida.Add(await trainFromTrain(tren,mvarConfig));
 			}
 			return salida;
 		}
@@ -47,7 +47,7 @@ namespace Sapphire2025Server.Controllers
 			{
 				Train? auxsalida = await almacen.Trains.Where(x => x.Guid == auxId).FirstOrDefaultAsync();
 				if (null != auxsalida)
-					return await trainFromTrain(auxsalida);
+					return await trainFromTrain(auxsalida, mvarConfig);
 			}
 			return null;
 		}
@@ -176,6 +176,41 @@ namespace Sapphire2025Server.Controllers
 			return salida;
 		}
 
+		public async Task<bool> CommitTrainStatusFromTelegram(Guid trainId, Guid userId, Common.OperationType operation)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				Train? auxTrain = await almacen.Trains.Where(x => x.Guid == trainId).FirstOrDefaultAsync();
+				if (null != auxTrain)
+				{
+					if(operation== Common.OperationType.CorrectiveRequest)
+					{
+						StatusChange? ultimoCambio = await almacen.StatusChanges.Where(x => x.TrainId == auxTrain.Guid).OrderByDescending(x => x.TimeStamp).FirstOrDefaultAsync();
+						if (null != ultimoCambio && !(ultimoCambio.Operation == Common.OperationType.EndMaintenance ||
+							ultimoCambio.Operation == Common.OperationType.EndCorrective))
+						{
+							//No metemos un cambio a diagnóstico si es incompatible la situación.
+							return false;
+						}
+					}
+
+					StatusChange nuevoCambio = new StatusChange();
+					nuevoCambio.Guid = Guid.NewGuid();
+					nuevoCambio.TrainId = auxTrain.Guid;
+					nuevoCambio.Operation = operation;
+					nuevoCambio.TimeStamp = DateTime.Now;
+					nuevoCambio.UserId = userId;
+					almacen.StatusChanges.Add(nuevoCambio);
+					auxTrain.lastChange = nuevoCambio.Guid;
+					return (await almacen.SaveChangesAsync() > 0);
+				}
+				else
+				{
+					return false; //No se ha encontrado el tren.
+				}
+			}
+		}
+
 		[HttpPost("addnote")]
 		public async Task<bool> AddNote(NoteModel note)
 		{
@@ -183,15 +218,18 @@ namespace Sapphire2025Server.Controllers
 			//Todos los usuarios tienen permiso para añadir notas.
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				Note nuevaNota = new Note();
-				nuevaNota.Id = Guid.NewGuid();
-				nuevaNota.Parent = note.parent;
-				nuevaNota.TimeStamp = DateTime.Now;
-				nuevaNota.UserId = note.UserId;
-				nuevaNota.Text = note.Text;
-				nuevaNota.Type = note.Type;
-				almacen.Notes.Add(nuevaNota);
-				salida = (await almacen.SaveChangesAsync() > 0);
+				if(null!=note.Text && note.Text.Length>0)
+				{
+					Note nuevaNota = new Note();
+					nuevaNota.Id = Guid.NewGuid();
+					nuevaNota.Parent = note.parent;
+					nuevaNota.TimeStamp = DateTime.Now;
+					nuevaNota.UserId = note.UserId;
+					nuevaNota.Text = note.Text;
+					nuevaNota.Type = note.Type;
+					almacen.Notes.Add(nuevaNota);
+					salida = (await almacen.SaveChangesAsync() > 0);
+				}
 			}
 			return salida;
 		}
@@ -235,13 +273,13 @@ namespace Sapphire2025Server.Controllers
 			return salida;
 		}
 
-		private async Task<TrainModel> trainFromTrain(Train train)
+		internal static async Task<TrainModel> trainFromTrain(Train train, IConfiguration config)
 		{
 			TrainModel salida = new TrainModel();
 			salida.id = train.Guid;
 			salida.name = train.Name;
 			salida.nameCloud = train.NameCloud;
-			using (DataStorage almacen = new DataStorage(mvarConfig))
+			using (DataStorage almacen = new DataStorage(config))
 			{
 				//Ahora obtiene los últimos movimientos de este tren...
 				StatusChange? lastChange = await almacen.StatusChanges.Where(x => x.TrainId == train.Guid).OrderByDescending(x => x.TimeStamp).FirstOrDefaultAsync();

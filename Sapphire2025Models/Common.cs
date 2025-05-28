@@ -39,6 +39,17 @@ namespace Sapphire2025Models
 			"StandStill",
 			"De baja"
 		};
+		public static readonly string[] TrainStatusTelegramString =
+		{
+			"está en estado desconocido. No tengo datos sobre él.",
+			"está disponible para la circulación.",
+			"tiene una solicitud pendiente para revisión.",
+			"debe ser retirado de la circulación para entrar a reparar.",
+			"está en talleres, en proceso de reparación.",
+			"está en talleres, en una revisión.",
+			"se encuentra en situación de parada prolongada (stand-still).",
+			"ya no se encuentra en el sistema. Está de baja."
+		};
 
 		public enum TrainViewType : byte //Pantalla de lista de trenes que vamos a mostrar
 		{
@@ -213,7 +224,7 @@ namespace Sapphire2025Models
 		static public string timeString(DateTime? rhs)
 		{			
 			if (null == rhs) return "-";
-			DateTime secc = (DateTime)rhs;			
+			DateTime secc = ((DateTime)rhs).AddHours(2);
 			string cadenaFormato = "{0:dd-MM-yy} ({0:HH:mm})";
 			if (DateTime.Now.Subtract(secc).Ticks > 0) //Tiempo pasado
 			{
@@ -233,6 +244,32 @@ namespace Sapphire2025Models
 			else //Tiempo futuro
 				cadenaFormato = "{0:dd-MM-yy}";
 
+			return string.Format(cadenaFormato, secc);
+		}
+		static public string timeStringTelegram(DateTime? rhs)
+		{
+			if (null == rhs) return "-";
+			DateTime secc = ((DateTime)rhs).AddHours(2);
+			string cadenaFormato = "{0:dd-MM-yy} ({0:HH:mm})";
+			if (DateTime.Now.Subtract(secc).Ticks > 0) //Tiempo pasado
+			{
+				if (DateTime.Now.Subtract(secc).Days < 1)
+				{
+					cadenaFormato = "hoy, a las {0:HH:mm}";
+				}
+				else if (DateTime.Now.Subtract(secc).Days < 2)
+				{
+					cadenaFormato = "ayer, a las {0:HH:mm}";
+				}
+				else if (DateTime.Now.Subtract(secc).Days > 30)
+				{
+					cadenaFormato = "el {0:dd} de {0:MM} a las {0:hh:mm}";
+				}
+			}
+			else //Tiempo futuro
+			{
+				cadenaFormato = "el {0:dd} de {0:MM} a las {0:hh:mm}";
+			}			
 			return string.Format(cadenaFormato, secc);
 		}
 	}

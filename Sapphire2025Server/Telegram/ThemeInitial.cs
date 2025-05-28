@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Sapphire2025Server.Telegram.Semantics;
+using Sapphire2025Server.Telegram.Semantics.Responses;
 
 
 namespace Sapphire2025Server.Telegram
@@ -8,7 +10,6 @@ namespace Sapphire2025Server.Telegram
 	/// </summary>
 	internal class ThemeInitial:BotTheme
 	{
-		internal ThemeInitial(BotTask parent) : base(parent){}
 		internal override async Task InitializeAsync()
 		{
 			child = new ThemePermissions(mvarParent);
@@ -16,9 +17,10 @@ namespace Sapphire2025Server.Telegram
 
 
 		}
-		internal override async Task<string> textFromBot()
+		public ThemeInitial(BotTask parent) : base(parent){}
+		internal override async Task<Response> ResponseFromBot()
 		{
-			return "Hola, ¿En qué puedo ayudarte?";
+			return new HelloResponse();
 		}
 		internal override async Task textToBot(string text)
 		{

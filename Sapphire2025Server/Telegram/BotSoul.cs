@@ -7,6 +7,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Polling;
 using Microsoft.EntityFrameworkCore;
+using Sapphire2025Server.Telegram.Semantics;
 
 namespace Sapphire2025Server.Telegram
 {
@@ -44,13 +45,13 @@ namespace Sapphire2025Server.Telegram
 				if(!mcolTasks.ContainsKey(mensaje.Chat.Id))
 				{
 					BotTask auxTask = new BotTask(mensaje.Chat.Id);
-					auxTask.config = mvarConfig;
+					BotTask.config = mvarConfig;
 					await auxTask.InitializeAsync();
 					mcolTasks.Add(mensaje.Chat.Id, auxTask);
 				}				
 				await mcolTasks[mensaje.Chat.Id].toBot(mensaje.Text);
-				string respuesta = await mcolTasks[mensaje.Chat.Id].fromBot();
-				await botClient.SendMessage(mensaje.Chat.Id, respuesta);
+				Response respuesta = await mcolTasks[mensaje.Chat.Id].fromBot();
+				await botClient.SendMessage(mensaje.Chat.Id, respuesta.text);
 			}
 		}
 		private Task HandleErrorAsync(ITelegramBotClient botClient,
