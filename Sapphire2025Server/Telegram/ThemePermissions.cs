@@ -47,7 +47,10 @@ namespace Sapphire2025Server.Telegram
 				if (null == check)
 					return await child.ResponseFromBot();
 				else
+				{
 					return check;
+				}
+					
 			}
 		}
 		internal override async Task textToBot(string text)
@@ -65,6 +68,7 @@ namespace Sapphire2025Server.Telegram
 		{
 			if(!mvarParent.user.TelegramEnabled)
 				return new NoPermissionResponse(NoPermissionResponse.PermissionType.ZafiroDisabled);
+				mvarUser = mvarParent.user;
 				System.Diagnostics.Debug.Assert(null!=mvarUser, "El usuario no debería ser nulo en este punto.");
 			using (DataStorage almacen = new DataStorage(BotTask.config))
 			{

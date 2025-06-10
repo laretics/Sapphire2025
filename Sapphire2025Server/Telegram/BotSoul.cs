@@ -8,6 +8,8 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Polling;
 using Microsoft.EntityFrameworkCore;
 using Sapphire2025Server.Telegram.Semantics;
+using System.Threading.Tasks.Dataflow;
+using Sapphire2025Models;
 
 namespace Sapphire2025Server.Telegram
 {
@@ -17,7 +19,6 @@ namespace Sapphire2025Server.Telegram
 		private IConfiguration mvarConfig;
 		private Dictionary<long,BotTask> mcolTasks = new Dictionary<long, BotTask>(); //Contenedor de conversaciones activas.
 
-
 		public BotSoul (IConfiguration configuration)
 		{
 			mvarConfig = configuration;
@@ -25,6 +26,7 @@ namespace Sapphire2025Server.Telegram
 			Debug.Assert(null != auxToken,"Valor nulo en token de Telegram desde Config");
 			mvarBot = new TelegramBotClient(auxToken);
 			CancellationTokenSource cts = new CancellationTokenSource();
+
 
 			mvarBot.StartReceiving
 				(
@@ -54,6 +56,26 @@ namespace Sapphire2025Server.Telegram
 				await botClient.SendMessage(mensaje.Chat.Id, respuesta.text);
 			}
 		}
+		public async Task Broadcast(string message, Common.UserRole[] roles)
+		{
+			SapphireAuthenticationController auxController = new SapphireAuthenticationController(mvarConfig);
+			foreach (BotTask task in mcolTasks.Values)
+			{
+				if (task.user.TelegramEnabled)
+				{
+					List<uint> auxColRoles = await auxController.retrieveUserRoles(task.user.guid);
+					bool hasToNotificate = false;
+					foreach (Common.UserRole role in roles)
+					{
+						if (auxColRoles.Contains((uint)role)) hasToNotificate = true; break;
+					}
+					if (hasToNotificate)
+					{
+						await mvarBot.SendMessage(task.user.TelegramId, message);
+					}
+				}
+			}
+		}
 		private Task HandleErrorAsync(ITelegramBotClient botClient,
 			Exception exception,
 			CancellationToken cancellationToken)
@@ -61,11 +83,6 @@ namespace Sapphire2025Server.Telegram
 			Debug.Assert(false, "Error en el bot de Telegram: " + exception.Message);
 			return Task.CompletedTask;
 		}
-
-
-
-
-
 
 		public async Task sendToSubscriptors(string rhs)
 		{

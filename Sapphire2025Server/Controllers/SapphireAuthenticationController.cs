@@ -574,7 +574,7 @@ namespace Sapphire2025Server.Controllers
 			return salida;
 		}
 
-		private async Task<List<uint>> retrieveUserRoles(Guid userId)
+		internal async Task<List<uint>> retrieveUserRoles(Guid userId)
 		{
 			List<uint> salida = new List<uint>();
 			string userString = userId.ToString();

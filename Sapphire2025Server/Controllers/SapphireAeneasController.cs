@@ -6,7 +6,9 @@ using Sapphire2025Models;
 using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
 using Sapphire2025Server.Models;
+using Sapphire2025Server.Telegram;
 using System.Net;
+using System.Net.Http.Headers;
 
 namespace Sapphire2025Server.Controllers
 {
@@ -14,10 +16,11 @@ namespace Sapphire2025Server.Controllers
 	[Route("[controller]")]
 	public class SapphireAeneasController:SapphireBaseController
 	{
-		public SapphireAeneasController(IConfiguration configuration) : base(configuration) 
+		internal static BotSoul mvarTelegramBot { get; set; }
+		public SapphireAeneasController(IConfiguration configuration, BotSoul myBotSoul) : base(configuration) 
 		{			
+			mvarTelegramBot = myBotSoul;
 		}
-
 		/// <summary>
 		/// Lista de trenes actualizada.
 		/// Contiene los trenes y las últimas operaciones que éstos han realizado
@@ -51,6 +54,7 @@ namespace Sapphire2025Server.Controllers
 			}
 			return null;
 		}
+
 		/// <summary>
 		/// Obtiene un diccionario con todos los usuarios implicados en los últimos movimientos
 		/// de los trenes del estado actual
@@ -148,6 +152,7 @@ namespace Sapphire2025Server.Controllers
 		}
 
 
+
 		[HttpPost("cmtstatus")]
 		public async Task<bool> CommitStatus(TrainStatusCommitModel commit)
 		{
@@ -169,16 +174,17 @@ namespace Sapphire2025Server.Controllers
 							nuevoCambio.UserId = auxUser.guid;
 						almacen.StatusChanges.Add(nuevoCambio);						
 						auxTrain.lastChange = nuevoCambio.Guid;
-						salida = (await almacen.SaveChangesAsync() > 0);					
+						salida = (await almacen.SaveChangesAsync() > 0);
+						await TelegramNotify(nuevoCambio, auxTrain,mvarConfig);
 					}
 				}
 			}
 			return salida;
 		}
 
-		public async Task<bool> CommitTrainStatusFromTelegram(Guid trainId, Guid userId, Common.OperationType operation)
+		public static async Task<bool> CommitTrainStatusFromTelegram(Guid trainId, Guid userId, Common.OperationType operation, IConfiguration config)
 		{
-			using (DataStorage almacen = new DataStorage(mvarConfig))
+			using (DataStorage almacen = new DataStorage(config))
 			{
 				Train? auxTrain = await almacen.Trains.Where(x => x.Guid == trainId).FirstOrDefaultAsync();
 				if (null != auxTrain)
@@ -202,6 +208,7 @@ namespace Sapphire2025Server.Controllers
 					nuevoCambio.UserId = userId;
 					almacen.StatusChanges.Add(nuevoCambio);
 					auxTrain.lastChange = nuevoCambio.Guid;
+					await TelegramNotify(nuevoCambio,auxTrain,config);
 					return (await almacen.SaveChangesAsync() > 0);
 				}
 				else
@@ -211,27 +218,51 @@ namespace Sapphire2025Server.Controllers
 			}
 		}
 
+		/// <summary>
+		/// Notificación a todos los usuarios registrados en Telegram del cambio de estado
+		/// en uno de los trenes (Sólo si le afecta).
+		/// </summary>
+		/// <param name="statusChange"></param>
+		/// <returns></returns>
+		private static async Task TelegramNotify(StatusChange statusChange, Train train, IConfiguration config)
+		{
+			User? usuario = await retrieveUserStatic(statusChange.UserId,config);
+			string nombreUsuario = "un usuario desconocido";
+			if (usuario != null) nombreUsuario = usuario.UserName;
+			switch(statusChange.Operation)
+			{
+				case Common.OperationType.EndMaintenance:
+					await mvarTelegramBot.Broadcast(string.Format("La UT {0} acaba de reincorporarse a la circulación tras terminar {1} los trabajos planificados.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Inspector }); break;
+				case Common.OperationType.EndCorrective:
+					await mvarTelegramBot.Broadcast(string.Format("La UT {0} acaba de reincorporarse a la circulación tras dar {1} por terminada la reparación.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Inspector }); break;
+				case Common.OperationType.CorrectiveRequest:
+					await mvarTelegramBot.Broadcast(string.Format("{1} acaba de hacer un parte de avería sobre la UT {0}.", train.Name, nombreUsuario), new Common.UserRole[]{ Common.UserRole.Inspector, Common.UserRole.Expert, Common.UserRole.Oficial, Common.UserRole.Mechanic }); break;
+				case Common.OperationType.DiagnoseToFault:
+					await mvarTelegramBot.Broadcast(string.Format("{1} acaba de declarar una avería. La UT {0} debe ser retirada de la circulación.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Inspector }); break;
+				case Common.OperationType.DiagnoseToAvailable:
+					await mvarTelegramBot.Broadcast(string.Format("{1} considera que la UT {0} puede seguir en servicio.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Inspector }); break;
+				case Common.OperationType.BeginCorrective:
+					await mvarTelegramBot.Broadcast(string.Format("{1} ha dado entrada en taller a la UT {0} para correctivo.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Oficial, Common.UserRole.Engineer }); break;
+				case Common.OperationType.DepotRequest:
+					await mvarTelegramBot.Broadcast(string.Format("{1} solicita apartar la UT {0} para mantenimiento planificado.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Inspector }); break;
+				case Common.OperationType.DepotRequestAccept:
+					await mvarTelegramBot.Broadcast(string.Format("{1} acaba de apartar la UT {0} para mantenimiento planificado.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Oficial, Common.UserRole.Mechanic }); break;
+				case Common.OperationType.MaintenanceRescue:
+				case Common.OperationType.DiferMaintenance:
+					await mvarTelegramBot.Broadcast(string.Format("{1} devuelve a la circulación la UT {0} que había solicitado taller para mantenimiento planificado.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Inspector }); break;
+				case Common.OperationType.SendToStandStill:
+					await mvarTelegramBot.Broadcast(string.Format("{1} envía la UT {0} al estado \"Stand-Still\" .", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Engineer, Common.UserRole.Oficial }); break;
+				case Common.OperationType.Activate:
+					await mvarTelegramBot.Broadcast(string.Format("{1} acaba de activar la UT {0} en el sistema.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Engineer, Common.UserRole.Oficial }); break;
+				case Common.OperationType.RescueFromStandStill:
+					await mvarTelegramBot.Broadcast(string.Format("{1} ha reactivado la UT {0} desde el estado de Stand-Still. Ahora está asignada a taller para revisión.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Engineer, Common.UserRole.Oficial, Common.UserRole.Mechanic }); break;
+			}	
+		}
+
 		[HttpPost("addnote")]
 		public async Task<bool> AddNote(NoteModel note)
 		{
-			bool salida = false;
-			//Todos los usuarios tienen permiso para añadir notas.
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{
-				if(null!=note.Text && note.Text.Length>0)
-				{
-					Note nuevaNota = new Note();
-					nuevaNota.Id = Guid.NewGuid();
-					nuevaNota.Parent = note.parent;
-					nuevaNota.TimeStamp = DateTime.Now;
-					nuevaNota.UserId = note.UserId;
-					nuevaNota.Text = note.Text;
-					nuevaNota.Type = note.Type;
-					almacen.Notes.Add(nuevaNota);
-					salida = (await almacen.SaveChangesAsync() > 0);
-				}
-			}
-			return salida;
+			return await addNoteStatic(note, mvarConfig);
 		}
 		[HttpPost("getnotes")]
 		public async Task<List<NoteModel>> RetrieveNotes(NoteChatRequestModel model)
@@ -273,6 +304,27 @@ namespace Sapphire2025Server.Controllers
 			return salida;
 		}
 
+		public static async Task<bool> addNoteStatic(NoteModel note, IConfiguration config)
+		{
+			bool salida = false;
+			//Todos los usuarios tienen permiso para añadir notas.
+			using (DataStorage almacen = new DataStorage(config))
+			{
+				if (null != note.Text && note.Text.Length > 0)
+				{
+					Note nuevaNota = new Note();
+					nuevaNota.Id = Guid.NewGuid();
+					nuevaNota.Parent = note.parent;
+					nuevaNota.TimeStamp = DateTime.Now;
+					nuevaNota.UserId = note.UserId;
+					nuevaNota.Text = note.Text;
+					nuevaNota.Type = note.Type;
+					almacen.Notes.Add(nuevaNota);
+					salida = (await almacen.SaveChangesAsync() > 0);
+				}
+			}
+			return salida;
+		}
 		internal static async Task<TrainModel> trainFromTrain(Train train, IConfiguration config)
 		{
 			TrainModel salida = new TrainModel();
@@ -298,7 +350,18 @@ namespace Sapphire2025Server.Controllers
 			}
 			return salida;
 		}
-	
+		private async Task<User?> retrieveUser(Guid userId)
+		{
+			return await retrieveUserStatic(userId, mvarConfig);
+		}
+		private async static Task<User?> retrieveUserStatic(Guid userId, IConfiguration config)
+		{
+			using (DataStorage almacen = new DataStorage(config))
+			{
+				User? salida = await almacen.Users.Where(x => x.Id.Equals(userId.ToString())).FirstOrDefaultAsync();
+				return salida;
+			}
+		}
 		private StatusChangeModel changeFromChange(StatusChange rhs)
 		{
 			StatusChangeModel modelo = new StatusChangeModel();

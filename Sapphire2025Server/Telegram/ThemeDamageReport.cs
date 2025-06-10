@@ -53,17 +53,16 @@ namespace Sapphire2025Server.Telegram
 			Debug.Assert(null != concept.ToTrain);
 			Debug.Assert(null != concept.ToTrain.mvarTren);
 			Train auxTren = concept.ToTrain.mvarTren; //Guardamos el tren para no perderlo al crear el informe.
-			SapphireAeneasController auxControlador = new SapphireAeneasController(BotTask.config);
 			NoteModel nueva = new NoteModel();
 			nueva.parent = auxTren.Guid;
 			nueva.Type = 1; //Parte de avería.
 			nueva.UserId = mvarParent.user.guid;
 			nueva.TimeStamp = DateTime.Now;
 			nueva.Text = damageDescription;
-			await auxControlador.AddNote(nueva); //Damos de alta el informe de daños en la base de datos.
+			await SapphireAeneasController.addNoteStatic(nueva,BotTask.config); //Damos de alta el informe de daños en la base de datos.
 												 //Si el tren estaba en estado disponible, lo pasamos a "pendiente de diagnóstico"
 
-			await auxControlador.CommitTrainStatusFromTelegram(auxTren.Guid, mvarParent.user.guid, Sapphire2025Models.Common.OperationType.CorrectiveRequest);
+			await SapphireAeneasController.CommitTrainStatusFromTelegram(auxTren.Guid, mvarParent.user.guid, Sapphire2025Models.Common.OperationType.CorrectiveRequest,BotTask.config);
 		}
 	}
 }
