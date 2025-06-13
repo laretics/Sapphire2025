@@ -1,8 +1,8 @@
 ﻿@page "/auth/login"
 @inject IntStorageService mvarClientStorage
 @inject AuthenticationClient mvarAuthenticationClient
+@inject InteractiveService mvarInteractive
 @inject NavigationManager mvarNavigator
-@inject InteractiveService mvarInteractiveService
 <PageTitle>Inicio de Sesión</PageTitle>
 <EditForm Model="@mvarLoginModel" OnValidSubmit="LoginCall">
 	<div class="mb-3">
@@ -46,12 +46,12 @@
 		{
 			mvarSession = await mvarAuthenticationClient.Login(mvarLoginModel);
 			await mvarClientStorage.SetSessionInfo(mvarSession);
-			mvarInteractiveService.SessionInfo = mvarSession;
 			if(null == mvarSession)
 			{
 				await mvarModal.show("Error", "No ha podido iniciar sesión. Introduzca unas credenciales válidas y vuelva a intentarlo.", "Aceptar");
 			}
 			mvarNavigator.NavigateTo("/");
 		}
+		
 	}
 }

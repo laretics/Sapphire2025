@@ -1,9 +1,7 @@
 ﻿using Microsoft.JSInterop;
 using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
-using System.Diagnostics.Metrics;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 namespace Sapphire2025.Storage
 {
 	/// <summary>
@@ -14,13 +12,17 @@ namespace Sapphire2025.Storage
 	public class IntStorageService
 	{
         private readonly IJSRuntime mvarJsRuntime;
-		public event Action OnChange;
+        private readonly InteractiveService mvarInteractiveService;
+		
 		internal const string LOCAL_STORAGE_ID = "localStorage";
 		internal const string SESSION_STORAGE_ID = "sessionStorage";
 
-		public IntStorageService(IJSRuntime jsRuntime)
+        internal const string SESSION_INFO = "sessioninfo";
+
+		public IntStorageService(IJSRuntime jsRuntime, InteractiveService interactive)
         {
             mvarJsRuntime = jsRuntime;
+            mvarInteractiveService = interactive;
         }
 
         internal string internalRequestString(bool session, string command)
@@ -45,7 +47,7 @@ namespace Sapphire2025.Storage
 		}
         public async Task<SessionModel?> GetSessionInfo()
         {
-            string? auxCadena = await GetStringValue("sessioninfo", false);
+            string? auxCadena = await GetStringValue(SESSION_INFO, false);
 			if (null!=auxCadena)
 			{
                 return JsonSerializer.Deserialize<SessionModel?>(auxCadena);				
@@ -65,15 +67,15 @@ namespace Sapphire2025.Storage
         {
             if (null == session)
             {
-                await ResetValue("sessioninfo", false);
-                return true;
+                await ResetValue(SESSION_INFO, false);
             }
             else
             {
                 string cadena = JsonSerializer.Serialize(session);
-                await SetStringValue("sessioninfo", cadena, false);
-                return true;
+                await SetStringValue(SESSION_INFO, cadena, false);
             }
+			mvarInteractiveService.NotifyStateChanged();
+			return true;
         }
 
 		#endregion "Autenticación"
@@ -179,8 +181,7 @@ namespace Sapphire2025.Storage
             await mvarJsRuntime.InvokeVoidAsync(auxStorageId, key);
         }
 		public async Task SetStringValue(string key, string value, bool session)
-        {
-            NotifyStateChanged();
+        {            
             string auxStorageId = internalRequestString(session, "setItem");
 			await mvarJsRuntime.InvokeVoidAsync(auxStorageId, key, value);
         }
@@ -213,7 +214,7 @@ namespace Sapphire2025.Storage
         }
 		#endregion "Valores"
 
-		private void NotifyStateChanged() => OnChange?.Invoke();
+		
 	}
 }
 

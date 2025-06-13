@@ -2,7 +2,6 @@
 @inject IntStorageService mvarClientStorage
 @inject AuthenticationClient mvarAuthenticationClient
 @inject NavigationManager mvarNavigator
-@inject InteractiveService mvarInteractiveService
 
 @code {
 	protected async override Task OnInitializedAsync()
@@ -13,14 +12,17 @@
 
 	private async Task auxCloseSession()
 	{
-		//Damos de baja la sesión en el servidor.
-		string? auxToken = await mvarClientStorage.GetStringValue("sessionToken",false);
-		if(null!=auxToken)
-			await mvarAuthenticationClient.Logout(auxToken);
+		//Damos de baja la sesión en el servidor.		
+
+		Guid auxToken = await mvarClientStorage.getToken();
+
+
+		SessionModel? sessionInfo = await mvarClientStorage.GetSessionInfo();
+		if(null!=sessionInfo)
+			await mvarAuthenticationClient.Logout(sessionInfo.Token.ToString());
 
 		//Nos damos de baja a nivel local.
 		await mvarClientStorage.SetSessionInfo(null);
-		mvarInteractiveService.SessionInfo = null;
 		mvarNavigator.NavigateTo("/");
 		//StateHasChanged();
 	}

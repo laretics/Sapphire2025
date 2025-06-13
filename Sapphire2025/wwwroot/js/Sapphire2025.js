@@ -6,14 +6,7 @@ window.showModal = (modalId) => {
 
 //Función del foco por defecto.
 window.focusElement = (element) => {
-    if (element instanceof HTMLElement) {
+    if (element & typeof element.focus == "function") {
         element.focus();
-    } else if (element && element instanceof Object && 'focus' in element) {
-        // Para compatibilidad con Blazor Server/wasm
-        element.focus();
-    } else if (element) {
-        // Intenta obtener el elemento por id si es posible
-        let el = element instanceof Object && 'id' in element ? document.getElementById(element.id) : null;
-        if (el) el.focus();
     }
 };

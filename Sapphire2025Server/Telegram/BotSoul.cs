@@ -10,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 using Sapphire2025Server.Telegram.Semantics;
 using System.Threading.Tasks.Dataflow;
 using Sapphire2025Models;
+using System.Threading.Tasks;
+using Sapphire2025Models.Authentication;
 
 namespace Sapphire2025Server.Telegram
 {
@@ -44,18 +46,91 @@ namespace Sapphire2025Server.Telegram
 			if (update.Type == UpdateType.Message && update.Message is Message message)
 			{
 				Message mensaje = update.Message;
-				if(!mcolTasks.ContainsKey(mensaje.Chat.Id))
-				{
-					BotTask auxTask = new BotTask(mensaje.Chat.Id);
-					BotTask.config = mvarConfig;
-					await auxTask.InitializeAsync();
-					mcolTasks.Add(mensaje.Chat.Id, auxTask);
-				}				
-				await mcolTasks[mensaje.Chat.Id].toBot(mensaje.Text);
-				Response respuesta = await mcolTasks[mensaje.Chat.Id].fromBot();
+				BotTask tarea = await (getTask(mensaje.Chat.Id));
+				await tarea.toBot(mensaje.Text);
+				Response respuesta = await tarea.fromBot();
 				await botClient.SendMessage(mensaje.Chat.Id, respuesta.text);
 			}
 		}
+		/// <summary>
+		/// Al iniciar la aplicación, el bot carga la tabla de sesiones abiertas desde la
+		/// base de datos.
+		/// </summary>
+		/// <returns></returns>
+		public async Task InitUsers()
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				IEnumerable<ActiveSessionModel> sessions = await almacen.ActiveSessions.ToListAsync();
+				foreach (ActiveSessionModel session in sessions)
+				{
+					await OpenTask(session.UserId);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Abre el usuario de Telegram asociado a una cuenta determinada.
+		/// Esto hace que se inicie la suscripción a los mensajes del bot.
+		/// </summary>
+		/// <param name="userId"></param>
+		public async Task<bool> OpenTask(Guid userId)
+		{
+			return await OpenTask(userId.ToString());
+		}
+		public async Task<bool> OpenTask(string userId)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				//Obtenemos el usuario a partir del guid.
+				Sapphire2025Server.Models.User? usuario = await almacen.Users.Where(x => x.Id == userId).FirstOrDefaultAsync();
+				if (usuario != null)
+				{
+					if (usuario.TelegramEnabled && 0 != usuario.TelegramId)
+					{
+						BotTask auxTarea = await getTask(usuario.TelegramId); //Ya con esto inicio el chat y abro las notificaciones broadcast.
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+		/// <summary>
+		/// Cierra las notificaciones para este usuario. Se suele hacer en cierres de sesión.
+		/// </summary>
+		/// <param name="userId"></param>
+		/// <returns></returns>
+		public async Task<bool> CloseTask(Guid userId)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				//Obtenemos el usuario a partir del guid.
+				Sapphire2025Server.Models.User? usuario = await almacen.Users.Where(x => x.Id == userId.ToString()).FirstOrDefaultAsync();
+				if (usuario != null)
+				{
+					if(mcolTasks.ContainsKey(usuario.TelegramId))
+					{
+						mcolTasks.Remove(usuario.TelegramId);
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
+		private async Task<BotTask> getTask(long telegramId)
+		{
+			if(!mcolTasks.ContainsKey(telegramId))				
+			{
+				BotTask salida = new BotTask(telegramId);
+				BotTask.config = mvarConfig;
+				await salida.InitializeAsync();
+				mcolTasks.Add(telegramId, salida);
+			}
+			return mcolTasks[telegramId];
+		}
+
+
 		public async Task Broadcast(string message, Common.UserRole[] roles)
 		{
 			SapphireAuthenticationController auxController = new SapphireAuthenticationController(mvarConfig);
@@ -82,18 +157,6 @@ namespace Sapphire2025Server.Telegram
 		{
 			Debug.Assert(false, "Error en el bot de Telegram: " + exception.Message);
 			return Task.CompletedTask;
-		}
-
-		public async Task sendToSubscriptors(string rhs)
-		{
-			//using (ApplicationDbContext auxDb = new ApplicationDbContext())
-			//{
-			//	IQueryable<SFMUser> subscriptors = auxDb.Users.Where(f => f.TelegramId != 0);
-			//	foreach (SFMUser s in subscriptors)
-			//	{
-			//		await mvarClient.SendMessage(s.TelegramId, rhs);
-			//	}
-			//}
 		}
 
 		#region "Script de políticas de Telegram"

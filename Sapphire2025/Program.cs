@@ -19,17 +19,10 @@ string auxApiAddress = auxDoc.RootElement.GetProperty("ApiBaseAddress").GetStrin
 Console.WriteLine($"API Address for SFM: {auxApiAddress}");
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(auxApiAddress) });
 
-
-//builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:7153")});
-//builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("http://localhost:5000") });
-//builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("http://88.99.33.109:5031") });
+builder.Services.AddSingleton<InteractiveService>(); //Necesito este objeto sólo para que el sistema se sincronice con las operaciones de login y logout.
 
 builder.Services.AddScoped<IntStorageService>(); //Acceso a los datos de sesión.
-
 builder.Services.AddScoped<AuthenticationClient>(); //Cliente http autenticación
 builder.Services.AddScoped<AeneasClient>(); //Cliente http Aeneas
-
-builder.Services.AddSingleton<InteractiveService>(); //Servicio para refresco de datos.
-
 
 await builder.Build().RunAsync();

@@ -1,6 +1,6 @@
-﻿@inject InteractiveService mvarInteractive
-@inject AeneasClient mvarAeneasClient
+﻿@inject AeneasClient mvarAeneasClient
 @inject NavigationManager mvarNavigationManager
+@inject IntStorageService mvarIntStorage
 @if(trainInCirculation)
 {
 	<Button Class="btn btn-outline-secondary" @onclick="@openFailureReport">
@@ -69,10 +69,10 @@
 	[Parameter]
 	public TrainModel? Train{ get; set; } //A partir de este modelo obtenemos el último estado del tren
 
-	protected override void OnParametersSet()
+	protected async override Task OnParametersSetAsync()
 	{
-		base.OnParametersSet();
-		mvarSession = mvarInteractive.SessionInfo;
+		await base.OnParametersSetAsync();
+		mvarSession = await mvarIntStorage.GetSessionInfo();
 	}
 	private bool isRoot { get => null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Root); }
 	private bool isOfficial { get => isRoot || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Mechanic)); }

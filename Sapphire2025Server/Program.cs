@@ -27,7 +27,18 @@ builder.Services.AddSingleton<Sapphire2025Server.Telegram.BotSoul>();
 
 var app = builder.Build();
 
-BotSoul instancia = app.Services.GetRequiredService<BotSoul>();
+IHostApplicationLifetime mvarLifeTime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+BotSoul instancia = app.Services.GetRequiredService<BotSoul>(); //De esta forma se crea la instancia nada más arrancar el programa.
+
+mvarLifeTime.ApplicationStopping.Register(() =>
+{
+	// Aquí tu lógica de parada, por ejemplo:
+	instancia.Broadcast("Mensaje desde el servidor: \"¡Sistema detenido!\"", new Sapphire2025Models.Common.UserRole[] { Sapphire2025Models.Common.UserRole.Root }).GetAwaiter().GetResult();
+});
+
+await instancia.InitUsers();
+await instancia.Broadcast("Mensaje desde el servidor: \"¡Sistema iniciado!\"", new Sapphire2025Models.Common.UserRole[] { Sapphire2025Models.Common.UserRole.Root });
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

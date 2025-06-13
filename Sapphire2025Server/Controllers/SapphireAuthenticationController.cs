@@ -17,10 +17,7 @@ namespace Sapphire2025Server.Controllers
 	[ApiController]
 	[Route("[controller]")]
 	public class SapphireAuthenticationController:SapphireBaseController
-	{
-		
-
-		
+	{			
 		public SapphireAuthenticationController(IConfiguration configuration):
 			base(configuration) { }
 		[HttpGet("ping")]
@@ -144,7 +141,7 @@ namespace Sapphire2025Server.Controllers
 				}
 				using (DataStorage almacen = new DataStorage(mvarConfig))
 				{
-					ActiveSessionModel? auxSesion = await almacen.ActiveSessions.FirstOrDefaultAsync();
+					ActiveSessionModel? auxSesion = await almacen.ActiveSessions.Where(x=>x.Id==request.SessionToken).FirstOrDefaultAsync();
 					if (null == auxSesion)
 						salida = true;
 					else

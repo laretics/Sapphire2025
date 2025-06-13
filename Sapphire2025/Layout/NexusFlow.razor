@@ -1,6 +1,6 @@
 ﻿@using Sapphire2025.Pages.Authentication
-@inject InteractiveService mvarInteractiveService
 @inject IntStorageService mvarClientStorage
+@inject InteractiveService mvarInteractive
 @inherits LayoutComponentBase
 
 <CascadingValue Value="Session">
@@ -38,17 +38,18 @@
     public SessionModel? Session{ get; set; }
     protected async override Task OnInitializedAsync()
     {
+        mvarInteractive.OnChange += HandleHasChangedSync;
         await base.OnInitializedAsync();
-        if (null == mvarInteractiveService.SessionInfo)
-            mvarInteractiveService.SessionInfo = await mvarClientStorage.GetSessionInfo();
-        Session = mvarInteractiveService.SessionInfo;
-
-        mvarInteractiveService.OnChange += HandleHasChangedSync;
+        SessionModel? sessionInfo = await mvarClientStorage.GetSessionInfo();
+        if(null!=sessionInfo)
+        {
+            Session = sessionInfo;            
+        }
     }
 
     public void Dispose()
     {
-        mvarInteractiveService.OnChange -= HandleHasChangedSync;
+        mvarInteractive.OnChange -= HandleHasChangedSync;
     }
     private void UpdateSession(SessionModel? newSession)
     {
@@ -62,7 +63,6 @@
                     Roles = newSession.Roles
                 };
         }
-
     }
     private void HandleHasChangedSync()
     {
