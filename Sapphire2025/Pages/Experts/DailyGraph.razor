@@ -25,7 +25,7 @@
 
 @code {
     private ElementReference pasteTarget;
-    private DotNetObjectReference<PasteExcel>? dotNetRef;
+    private DotNetObjectReference<DailyGraph>? dotNetRef;
     private List<List<CellData>>? parsedCells;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -33,11 +33,19 @@
         if (firstRender)
         {
             dotNetRef = DotNetObjectReference.Create(this);
-            await mvarJSRuntime.InvokeVoidAsync("clipboardInterop.getHtmlFromClipboard",dotNetRef);
+            //await mvarJSRuntime.InvokeVoidAsync("clipboardInterop.receiveHtmlFromClipboard",dotNetRef);
         }
     }
+    private async Task ActivatePasteListener()
+    {
+        if (dotNetRef is null)
+        {
+            dotNetRef = DotNetObjectReference.Create(this);
+        }
+        await mvarJSRuntime.InvokeVoidAsync("clipboardInterop.registerPasteListener", pasteTarget, dotNetRef);
+    }
     [JSInvokable]
-    public Task ReceiveHtmlFromClipboard(string html)
+    public Task receiveHtmlFromClipboard(string html)
     {
         parsedCells = ParseHtmlTable(html);
         StateHasChanged();
@@ -57,7 +65,17 @@
                 List<CellData> celdas = new List<CellData>();
                 foreach ( AngleSharp.Dom.IElement celda in fila.Children)
                 {
-                    string bg = celda.GetStyle().BackgroundColor;
+                    string? auxEstilo = celda.GetAttribute("style");
+                    string bg = "transparent";
+                    if(!string.IsNullOrEmpty(auxEstilo))
+                    {
+                        string? queryEstilo = auxEstilo.Split(';')
+                        .Select(xx => xx.Trim())
+                        .FirstOrDefault(xx => xx.StartsWith("background-color:", StringComparison.OrdinalIgnoreCase));
+                        if(null!= queryEstilo)
+                            bg = queryEstilo.Split(':').ElementAtOrDefault(1)?.Trim() ?? "transparent";
+                    }
+
                     celdas.Add(new CellData
                     {
                         Text = celda.TextContent.Trim(),

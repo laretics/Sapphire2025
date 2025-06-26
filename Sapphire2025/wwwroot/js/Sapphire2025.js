@@ -12,17 +12,13 @@ window.focusElement = (element) => {
 };
 
 window.clipboardInterop = {
-    gethtmlfromclipboard: function (dotnetHelper) {
-        document.addEventListener('paste', function (e) {
-            for (const item of e.clipboardData.items) {
-                if (item.type == 'text/html') {
-                    item.getasString(function (html) {
-                        dotnetHelper.invokeMethodAsync('ReceiveHtmlFromClipboard', html);
-                    });
-                    e.preventDefault();
-                    break; //No necesito recuperar más elementos.
-                }
+    registerPasteListener: function (elemento, refDotNet) {
+        elemento.addEventListener("paste", function (evento) {
+            if (evento.clipboardData) {
+                var html = evento.clipboardData.getData("text/html");
+                refDotNet.invokeMethodAsync("receiveHtmlFromClipboard", html);
+                evento.preventDefault();
             }
-        });
+        })
     }
 };
