@@ -9,7 +9,6 @@
     <NexusNavOption Selected="@(1==SelectedNavItem)"
     onclick="@(()=>SelectNavItem(1))"
     Link="admin/usersmanage" Caption="Usuarios"
-    Badge="Nuevo"
     Image="bi bi-list-users-nav-menu" 
     Tooltip="Gestión de usuarios del sistema."
     Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Root}"/>
@@ -19,6 +18,15 @@
     Link="trainFlow" Caption="Flujo"    
     Image="bi bi-train-diagram-nav-menu" 
     Tooltip="Flujograma de unidades tren y resto de vehículos"/>
+
+    <NexusNavOption Selected="@(3 == SelectedNavItem)"
+                    Badge="Nuevo"
+                    onclick="@(()=>SelectNavItem(3))"
+                    Link="dailyGraph" Caption="G.Diario"
+                    Image="bi bi-expert-day-nav-menu"
+                    Tooltip="Gráfico diario"
+                    Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Root, 
+                    Sapphire2025Models.Common.UserRole.Expert}"/>
 
 </CascadingValue>
 <Image Src="img/sfmImg.png" Style="width:75%; margin:5%;"/>

@@ -10,3 +10,19 @@ window.focusElement = (element) => {
         element.focus();
     }
 };
+
+window.clipboardInterop = {
+    gethtmlfromclipboard: function (dotnetHelper) {
+        document.addEventListener('paste', function (e) {
+            for (const item of e.clipboardData.items) {
+                if (item.type == 'text/html') {
+                    item.getasString(function (html) {
+                        dotnetHelper.invokeMethodAsync('ReceiveHtmlFromClipboard', html);
+                    });
+                    e.preventDefault();
+                    break; //No necesito recuperar más elementos.
+                }
+            }
+        });
+    }
+};

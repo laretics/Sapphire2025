@@ -1,0 +1,81 @@
+﻿@page "/dailyGraph"
+@inject IJSRuntime mvarJSRuntime
+@implements IDisposable
+
+<h3>Gráfico diario</h3>
+<div @ref="pasteTarget" tabindex="0" style="border: 1px dashed gray; padding: 1rem;"
+@onfocus="ActivatePasteListener">
+    Haz clic aquí y pega (Ctrl+V) desde Excel
+</div>
+
+@if(null != parsedCells)
+{
+    <table>
+        @foreach (List<CellData> row in parsedCells)
+        {
+            <tr>
+                @foreach (CellData cell in row)
+                {
+                    <td style="background-color:@cell.BackgroundColor">@cell.Text</td>
+                }
+            </tr>
+        }
+    </table>
+}
+
+@code {
+    private ElementReference pasteTarget;
+    private DotNetObjectReference<PasteExcel>? dotNetRef;
+    private List<List<CellData>>? parsedCells;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetRef = DotNetObjectReference.Create(this);
+            await mvarJSRuntime.InvokeVoidAsync("clipboardInterop.getHtmlFromClipboard",dotNetRef);
+        }
+    }
+    [JSInvokable]
+    public Task ReceiveHtmlFromClipboard(string html)
+    {
+        parsedCells = ParseHtmlTable(html);
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private List<List<CellData>> ParseHtmlTable(string html)
+    {
+        AngleSharp.Html.Dom.IHtmlDocument doc = new AngleSharp.Html.Parser.HtmlParser().ParseDocument(html);
+        AngleSharp.Dom.IElement? tabla = doc.QuerySelector("table");
+        AngleSharp.Dom.IHtmlCollection<AngleSharp.Dom.IElement>? filas = tabla?.QuerySelectorAll("tr");
+        List<List<CellData>> result = new List<List<CellData>>();
+        if(null!=filas)
+        {
+            foreach (AngleSharp.Dom.IElement fila in filas)
+            {
+                List<CellData> celdas = new List<CellData>();
+                foreach ( AngleSharp.Dom.IElement celda in fila.Children)
+                {
+                    string bg = celda.GetStyle().BackgroundColor;
+                    celdas.Add(new CellData
+                    {
+                        Text = celda.TextContent.Trim(),
+                        BackgroundColor = string.IsNullOrEmpty(bg) ? "transparent" : bg
+                    });
+                }
+                result.Add(celdas);
+            }
+        }
+        return result;
+    }
+    public void Dispose()
+    {
+        dotNetRef?.Dispose();
+    }
+    private class CellData
+    {
+        public string Text { get; set; } = string.Empty;
+        public string BackgroundColor { get; set; } = "transparent";
+    }
+}
