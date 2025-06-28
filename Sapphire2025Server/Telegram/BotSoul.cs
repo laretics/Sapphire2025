@@ -20,23 +20,26 @@ namespace Sapphire2025Server.Telegram
 		private TelegramBotClient mvarBot;
 		private IConfiguration mvarConfig;
 		private Dictionary<long,BotTask> mcolTasks = new Dictionary<long, BotTask>(); //Contenedor de conversaciones activas.
+		private bool mvarEnabled = false; //Indica si el bot está habilitado o no. Si no lo está, no se reciben mensajes ni se envían respuestas.
 
 		public BotSoul (IConfiguration configuration)
 		{
 			mvarConfig = configuration;
 			string? auxToken = mvarConfig["Telegram:Secret"];
+			mvarEnabled = mvarConfig["Telegram:Enabled"] == "true";
 			Debug.Assert(null != auxToken,"Valor nulo en token de Telegram desde Config");
 			mvarBot = new TelegramBotClient(auxToken);
 			CancellationTokenSource cts = new CancellationTokenSource();
-
-
-			mvarBot.StartReceiving
-				(
-				HandleUpdateAsync,
-				HandleErrorAsync,
-				new ReceiverOptions { AllowedUpdates = Array.Empty<UpdateType>() },
-				cancellationToken: cts.Token
-				);
+			if (mvarEnabled)
+			{
+				mvarBot.StartReceiving
+					(
+					HandleUpdateAsync,
+					HandleErrorAsync,
+					new ReceiverOptions { AllowedUpdates = Array.Empty<UpdateType>() },
+					cancellationToken: cts.Token
+					);
+			}
 		}
 
 		private async Task HandleUpdateAsync(ITelegramBotClient botClient,		
@@ -134,6 +137,7 @@ namespace Sapphire2025Server.Telegram
 		public async Task Broadcast(string message, Common.UserRole[] roles)
 		{
 			SapphireAuthenticationController auxController = new SapphireAuthenticationController(mvarConfig);
+			if (!mvarEnabled) return; //No voy a enviar mensajes si el bot no está habilitado.
 			foreach (BotTask task in mcolTasks.Values)
 			{
 				if (task.user.TelegramEnabled)

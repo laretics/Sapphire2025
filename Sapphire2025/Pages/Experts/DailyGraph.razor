@@ -7,6 +7,7 @@
 @onfocus="ActivatePasteListener">
     Haz clic aquí y pega (Ctrl+V) desde Excel
 </div>
+<InputFile Onchange="onExcelChange" MaxAllowedSize="5242880" accept=".xlsx,.xls" />
 
 @if(null != parsedCells)
 {
@@ -50,6 +51,55 @@
         parsedCells = ParseHtmlTable(html);
         StateHasChanged();
         return Task.CompletedTask;
+    }
+
+    private async Task onExcelChange(InputFileChangeEventArgs e)
+    {
+        Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
+
+        if(null!=archivo)
+        {
+            using Stream corriente = archivo.OpenReadStream(maxAllowedSize: 5242880); // 5 MB
+            using MemoryStream ms = new MemoryStream();
+            await corriente.CopyToAsync(ms);
+            byte[] buffer = ms.ToArray();
+            //Ahora pasamos esto a JavaScript
+            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.uploadExcelFile", buffer,43,30,1,80);
+            Console.WriteLine(salida);
+            List<List<CellDto>> filas = System.Text.Json.JsonSerializer.Deserialize<List<List<CellDto>>>(salida) ?? new List<List<CellDto>>();
+            parsedCells = filas
+            .Select(fila => fila.Select(celda => new CellData
+                {
+                    Text = celda.text ?? string.Empty,
+                    BackgroundColor = string.IsNullOrEmpty(celda.bg) ? "transparent" : celda.bg
+                }).ToList())
+            .ToList();
+
+            StateHasChanged();
+        }
+    }
+    private class CellDto
+    {
+        public string? text { get; set; }
+        public string? bg { get; set; }    
+    }
+
+    private void applyOffset(int offsetX)
+    {
+        int valorExtremo;
+        foreach (List<CellData> row in parsedCells ?? new List<List<CellData>>())
+        {
+            for (int i = 0; i < offsetX; i++)
+            {
+                valorExtremo = i + offsetX;
+                if(valorExtremo< row.Count)
+                {
+                    row[i].Text = row[valorExtremo].Text;
+                    row[i].BackgroundColor = row[valorExtremo].BackgroundColor;
+				}                
+            }
+		}
+
     }
 
     private List<List<CellData>> ParseHtmlTable(string html)
