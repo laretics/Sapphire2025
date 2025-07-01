@@ -272,5 +272,21 @@ namespace Sapphire2025Models
 			}			
 			return string.Format(cadenaFormato, secc);
 		}
+	
+		static public DateTime? parseSapphireDate(string? rhs)
+		{
+			if (null == rhs) return null;
+			DateTime salida;
+			if (DateTime.TryParseExact(
+				rhs,
+				new[] { "d-M-yyyy", "dd-MM-yyyy", "d-M-yy", "dd-MM-yy" },
+				System.Globalization.CultureInfo.InvariantCulture,
+				System.Globalization.DateTimeStyles.None,
+				out salida))
+				return salida;
+
+			return null;
+		}
+	
 	}
 }
