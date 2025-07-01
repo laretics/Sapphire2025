@@ -1,0 +1,30 @@
+﻿@page "/admin/manageworkshifts"
+@inject ExpertClient mvarExpertClient
+<PageTitle>Turnos de Trabajo</PageTitle>
+<ModalDialog @ref="mvarModal" />
+<h3>ManageWorkshifts</h3>
+
+<InputFile Onchange="onFileUpload" accept=".xml">Plan de Explotación</InputFile>
+@code 
+{
+    private ModalDialog mvarModal { get; set; } = new ModalDialog();
+
+    private async Task onFileUpload(InputFileChangeEventArgs e)
+    {
+        Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
+        if (archivo is null) return;
+        using Stream stream = archivo.OpenReadStream(maxAllowedSize: 5242880); // 5 MB
+        string? salida = await mvarExpertClient.uploadXMLWorkShiftTemplate(stream,"WorkShiftTemplate");
+        if (null != salida && salida.Length > 0)
+            await mvarModal.show("Error", salida, "Aceptar");            
+        else
+        {
+            await mvarModal.show("Éxito", "El plan de explotación se ha subido correctamente.", "Aceptar");
+            StateHasChanged(); //Actualizamos la información de la página.
+        }               
+    }
+
+
+}
+
+

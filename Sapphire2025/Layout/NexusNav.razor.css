@@ -34,3 +34,17 @@
     -webkit-text-fill-color: transparent;
     transition: opacity 0.3s ease;
 }
+
+.sfmlogo-bg {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    border-radius: 1.5rem;
+    background: linear-gradient(135deg, #f5f7fa 60%, #c3cfe2 100%);
+    /* Puedes ajustar los colores y el ángulo del degradado */
+    margin: 2rem auto 1rem auto;
+    width: 85%;
+    /* Opcional: sombra suave para mayor separación */
+    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.08);
+}

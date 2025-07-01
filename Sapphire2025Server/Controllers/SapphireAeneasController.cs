@@ -1,14 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
-using MySql.Data.MySqlClient;
 using Sapphire2025Models;
 using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
 using Sapphire2025Server.Models;
 using Sapphire2025Server.Telegram;
-using System.Net;
-using System.Net.Http.Headers;
 
 namespace Sapphire2025Server.Controllers
 {

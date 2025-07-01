@@ -109,6 +109,14 @@ namespace Sapphire2025.Storage
 			return salida;
 		}
 
+		internal async Task<HttpResponseMessage> sendPostRequest(string commandId, MultipartFormDataContent content)
+		{
+			string auxCommand = composeUri(commandId);
+            HttpResponseMessage salida = await mvarClient.PostAsync(auxCommand, content);
+            salida.EnsureSuccessStatusCode();
+            return salida;	
+        }
+
 
 		public class requestParam
 		{

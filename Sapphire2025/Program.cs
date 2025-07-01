@@ -23,5 +23,6 @@ builder.Services.AddSingleton<InteractiveService>(); //Necesito este objeto sólo
 builder.Services.AddScoped<IntStorageService>(); //Acceso a los datos de sesión.
 builder.Services.AddScoped<AuthenticationClient>(); //Cliente http autenticación
 builder.Services.AddScoped<AeneasClient>(); //Cliente http Aeneas
+builder.Services.AddScoped<ExpertClient>(); //Cliente para peticiones de gráficos de Maquinistas
 
 await builder.Build().RunAsync();

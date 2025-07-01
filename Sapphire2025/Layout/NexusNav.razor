@@ -14,14 +14,21 @@
     Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Root}"/>
 
     <NexusNavOption Selected="@(2==SelectedNavItem)"
-    onclick="@(()=>SelectNavItem(2))"
+                    onclick="@(()=>SelectNavItem(2))"
+                    Link="admin/manageworkshifts" Caption="Turnos"
+                    Image="bi bi-person-settings-nav-menu"
+                    Tooltip="Gestión de turnos de trabajo."
+                    Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Root}" />
+
+    <NexusNavOption Selected="@(3==SelectedNavItem)"
+    onclick="@(()=>SelectNavItem(3))"
     Link="trainFlow" Caption="Flujo"    
     Image="bi bi-train-diagram-nav-menu" 
     Tooltip="Flujograma de unidades tren y resto de vehículos"/>
 
-    <NexusNavOption Selected="@(3 == SelectedNavItem)"
+    <NexusNavOption Selected="@(4 == SelectedNavItem)"
                     Badge="Nuevo"
-                    onclick="@(()=>SelectNavItem(3))"
+                    onclick="@(()=>SelectNavItem(4))"
                     Link="dailyGraph" Caption="G.Diario"
                     Image="bi bi-expert-day-nav-menu"
                     Tooltip="Gráfico diario"
@@ -29,7 +36,10 @@
                     Sapphire2025Models.Common.UserRole.Expert}"/>
 
 </CascadingValue>
-<Image Src="img/sfmImg.png" Style="width:75%; margin:5%;"/>
+<div class="sfmlogo-bg">
+    <Image Src="img/sfmImg.png" Style="width:75%; margin:5%;" />
+</div>
+
 @code {
     //Este componente muestra los datos de la sesión actual leyendo desde
     //el almacenamiento interno.

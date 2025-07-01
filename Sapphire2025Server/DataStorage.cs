@@ -7,6 +7,7 @@ using MySql.Data.MySqlClient;
 using System.Text;
 using System.Security.Cryptography;
 using Org.BouncyCastle.Crypto.Agreement;
+using Sapphire2025Server.Models.Turnos;
 
 namespace Sapphire2025Server
 {
@@ -174,6 +175,11 @@ namespace Sapphire2025Server
 		public DbSet<StatusChange> StatusChanges { get; set; }
 		public DbSet<Train> Trains { get; set; }
 		public DbSet<Note> Notes { get; set; }
-		#endregion
-	}
+        #endregion
+        #region Maquinistros
+		public DbSet<WorkShiftTemplateCollection> WorkShiftTemplateCollections { get; set; }
+        public DbSet<WorkShiftTemplate> WorkShiftTemplates { get; set; }
+		public DbSet<WorkShiftContent> WorkShiftContents { get; set; }
+        #endregion Maquinistros
+    }
 }
