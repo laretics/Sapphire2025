@@ -18,6 +18,7 @@ namespace Sapphire2025Server.Controllers
     [Route("[controller]")]
     public class SapphireExpertController : SapphireBaseController
     {
+
         public SapphireExpertController(IConfiguration configuration) : base(configuration) { }
         [HttpPost("uploadxmlworkshift")]
         public async Task<string> UploadXMLWorkShiftTemplate([FromForm] IFormFile file)
@@ -39,8 +40,27 @@ namespace Sapphire2025Server.Controllers
 
                 return ""; //Salida correcta.
         }
-
-        internal async Task<string> uploadXMLWorkShiftTemplate(XmlDocument auxDocumento)
+		[HttpGet("workshifttemplates")]
+		public async Task<List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>> WorkShiftTemplates()
+		{
+			List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel> salida = new List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>();
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+            {
+                foreach (WorkShiftTemplateCollection origen in await almacen.WorkShiftTemplateCollections.OrderByDescending(x => x.Begin).ToListAsync())
+                {
+                    Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel destino = new Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel();
+                    destino.Id = origen.Id;
+                    destino.Begin = origen.Begin;
+                    destino.Name = origen.Name;
+                    destino.Comment = origen.Comment;
+                    destino.Collective = origen.Collective;
+                    destino.Owner = origen.Owner==null?Guid.Empty:(Guid)origen.Owner;
+                    salida.Add(destino);                    
+                }
+            }
+			return salida;
+		}
+		internal async Task<string> uploadXMLWorkShiftTemplate(XmlDocument auxDocumento)
         {
             XmlElement? auxRaiz = auxDocumento.DocumentElement;
             if (null == auxRaiz || !auxRaiz.Name.Equals("plan"))
@@ -51,7 +71,6 @@ namespace Sapphire2025Server.Controllers
                 return "El plan de explotación que está intentando dar de alta no tiene un nombre válido. Asigne el valor 'Name'.";
 			DateTime? auxInicio = Sapphire2025Models.Common.parseSapphireDate
                 (auxRaiz.Attributes["start"]?.Value);
-			DateTime? auxFin = Sapphire2025Models.Common.parseSapphireDate         (auxRaiz.Attributes["end"]?.Value);
             string? auxAuthor = auxRaiz.Attributes["author"]?.Value;
             if (null == auxAuthor)
                 return "No se ha especificado un autor para este documento. Es necesario aportar la identificación (CF) de la persona que ha creado esta colección de turnos en el sistema.";
@@ -69,22 +88,15 @@ namespace Sapphire2025Server.Controllers
 				//Hay que procurar que este elemento nuevo sea compatible con todos los existentes en la base de datos.
 				foreach (WorkShiftTemplateCollection element in await almacen.WorkShiftTemplateCollections.OrderBy(x => x.Begin).ToListAsync())
                 {
-                    if(element.Begin<auxInicio)
-                    {
-                        if(null!=element.EndDate && element.EndDate>auxInicio)
-                        {
-                            return string.Format("El plan de explotación que está intentando registrar es incompatible con el existente llamado '{0}', que termina el {1:dd-MM-yyyy}", element.Name, element.EndDate);
-                        }
-                    }
                     if (null != element.Name && element.Name.ToUpper().Equals(auxName.ToUpper()))
                         return string.Format("No puede dar de alta otro plan con el mismo nombre {0} que uno ya existente.", auxName);
                 }
 			}
 			//Se supone que hemos pasado todos los filtros... ahora ya puedo crear el elemento.                
-			return await createXMLWorkshiftTemplate(auxRaiz, auxInicio, auxFin, auxName, auxComment, (User)auxUser);
+			return await createXMLWorkshiftTemplate(auxRaiz, auxInicio,  auxName, auxComment, (User)auxUser);
 		}
 
-        internal async Task<string> createXMLWorkshiftTemplate(XmlElement auxDocumento, DateTime? inicio, DateTime? fin, string nombre,string? comment, User user)
+        internal async Task<string> createXMLWorkshiftTemplate(XmlElement auxDocumento, DateTime? inicio, string nombre,string? comment, User user)
         {
             Debug.Assert(null != inicio);
             using (DataStorage almacen = new DataStorage(mvarConfig))
@@ -93,7 +105,6 @@ namespace Sapphire2025Server.Controllers
                 WorkShiftTemplateCollection padre = new WorkShiftTemplateCollection();
                 padre.Id = Guid.NewGuid();
                 padre.Begin = (DateTime)inicio;
-                padre.EndDate = fin;
                 padre.Name = nombre;
                 padre.Comment = comment;
                 padre.Owner = user.guid;
