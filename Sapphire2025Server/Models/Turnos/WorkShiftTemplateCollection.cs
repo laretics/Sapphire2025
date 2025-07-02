@@ -18,6 +18,6 @@ namespace Sapphire2025Server.Models.Turnos
         public DateTime? EndDate { get; set; } //Fecha y hora de fin de la colección
         public string? Comment { get; set; } //Comentario o descripción de la colección
         public byte Collective { get; set; } //Tipo de colectivo al que se aplica la colección (0: Maquinistas, 1: Ayudantes, 2: Otros)
-        public Guid? OwnerId { get; set; } //Identificador del propietario de la colección (opcional)
+        public Guid? Owner { get; set; } //Identificador del propietario de la colección (opcional)
     }
 }

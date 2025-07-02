@@ -287,6 +287,14 @@ namespace Sapphire2025Models
 
 			return null;
 		}
+		static public TimeSpan? parseSapphireTimeSpan(string? rhs)
+		{
+			if (null == rhs) return null;
+			TimeSpan salida;
+			if (TimeSpan.TryParseExact(rhs, new[] { "hh\\:mm", "h\\:mm" }, System.Globalization.CultureInfo.InvariantCulture, out salida))
+				return salida;
+			return null;
+		}
 	
 	}
 }

@@ -8,6 +8,8 @@ using Sapphire2025Server.Models;
 using Sapphire2025Server.Models.Turnos;
 using Sapphire2025Server.Telegram;
 using System.Diagnostics;
+using System.Net.Http.Headers;
+using System.Security.Policy;
 using System.Xml;
 
 namespace Sapphire2025Server.Controllers
@@ -43,17 +45,27 @@ namespace Sapphire2025Server.Controllers
             XmlElement? auxRaiz = auxDocumento.DocumentElement;
             if (null == auxRaiz || !auxRaiz.Name.Equals("plan"))
                 return "No se ha encontrado el elemento padre <plan>";
-            string? auxName = auxRaiz.Attributes["Name"]?.Value;
+            string? auxName = auxRaiz.Attributes["name"]?.Value;
+            string? auxComment = auxRaiz.Attributes["comment"]?.Value;
             if (null == auxName)
                 return "El plan de explotación que está intentando dar de alta no tiene un nombre válido. Asigne el valor 'Name'.";
 			DateTime? auxInicio = Sapphire2025Models.Common.parseSapphireDate
                 (auxRaiz.Attributes["start"]?.Value);
 			DateTime? auxFin = Sapphire2025Models.Common.parseSapphireDate         (auxRaiz.Attributes["end"]?.Value);
+            string? auxAuthor = auxRaiz.Attributes["author"]?.Value;
+            if (null == auxAuthor)
+                return "No se ha especificado un autor para este documento. Es necesario aportar la identificación (CF) de la persona que ha creado esta colección de turnos en el sistema.";
 			if (null == auxInicio)
 				return "No se ha especificado una fecha de comienzo para este proyecto de explotación. Debe usar el atributo 'start' con una fecha válida.";
 
+
+            User? auxUser = null;
 			using (DataStorage almacen = new DataStorage(mvarConfig))
             {
+                //Recuperamos la información del usuario:
+                auxUser = await almacen.Users.Where(x => x.CF.Equals((string)auxAuthor)).FirstOrDefaultAsync();
+                if (null == auxUser)
+                    return string.Format("El usuario con CF {0} no existe en el sistema. Por favor, aporte un usuario válido y con permisos de administración.", auxAuthor);
 				//Hay que procurar que este elemento nuevo sea compatible con todos los existentes en la base de datos.
 				foreach (WorkShiftTemplateCollection element in await almacen.WorkShiftTemplateCollections.OrderBy(x => x.Begin).ToListAsync())
                 {
@@ -69,10 +81,10 @@ namespace Sapphire2025Server.Controllers
                 }
 			}
 			//Se supone que hemos pasado todos los filtros... ahora ya puedo crear el elemento.                
-			return await createXMLWorkshiftTemplate(auxRaiz, auxInicio, auxFin, auxName);
+			return await createXMLWorkshiftTemplate(auxRaiz, auxInicio, auxFin, auxName, auxComment, (User)auxUser);
 		}
 
-        internal async Task<string> createXMLWorkshiftTemplate(XmlElement auxDocumento, DateTime? inicio, DateTime? fin, string nombre)
+        internal async Task<string> createXMLWorkshiftTemplate(XmlElement auxDocumento, DateTime? inicio, DateTime? fin, string nombre,string? comment, User user)
         {
             Debug.Assert(null != inicio);
             using (DataStorage almacen = new DataStorage(mvarConfig))
@@ -83,6 +95,8 @@ namespace Sapphire2025Server.Controllers
                 padre.Begin = (DateTime)inicio;
                 padre.EndDate = fin;
                 padre.Name = nombre;
+                padre.Comment = comment;
+                padre.Owner = user.guid;
                 almacen.WorkShiftTemplateCollections.Add(padre);
                 foreach (XmlNode seccion in auxDocumento.ChildNodes)
                 {
@@ -103,6 +117,7 @@ namespace Sapphire2025Server.Controllers
                                             auxDescanso.Comment = descanso.Attributes["comment"]?.Value;
                                             auxDescanso.Color = descanso.Attributes["color"]?.Value;
                                             auxDescanso.Parent = padre.Id;
+                                            almacen.WorkShiftTemplates.Add(auxDescanso);
 										}
                                     }
                                 }
@@ -111,19 +126,94 @@ namespace Sapphire2025Server.Controllers
                                 foreach(XmlNode trabajo in seccion.ChildNodes)
                                 {
                                     if(trabajo.Name.Equals("ws"))
-                                    {
-                                        //TODO: Aquí me quedé.
-                                        //Tengo que procesar los turnos de trabajo con
-                                        //depósito puro y los turnos de trabajo con trenes.
+                                    {                                        
+                                        if(null!=trabajo && null!=trabajo.Attributes && null != trabajo.Attributes["name"])
+                                        {
+                                            string auxName = trabajo.Attributes["name"].Value == null ? "[Sin Nombre]" : trabajo.Attributes["name"].Value;
+											TimeSpan? auxComienzo = Common.parseSapphireTimeSpan(trabajo.Attributes["start"]?.Value);
+											TimeSpan? auxDuracion = Common.parseSapphireTimeSpan(trabajo.Attributes["duration"]?.Value);
+											string? auxComment = trabajo.Attributes["comment"]?.Value;
+											string? auxColor = trabajo.Attributes["color"]?.Value;
+											string? auxDepot = trabajo.Attributes["depot"]?.Value;
+                                            if(null!=auxComienzo && null!=auxDuracion && null!=auxColor)
+                                            {
+												WorkShiftTemplate auxTrabajo = new WorkShiftTemplate();
+												auxTrabajo.Active = true;
+												auxTrabajo.Name = auxName;
+                                                auxTrabajo.Comment = auxComment;
+                                                auxTrabajo.StartTime = (TimeSpan)auxComienzo;
+                                                auxTrabajo.Duration = (TimeSpan)auxDuracion;
+                                                auxTrabajo.Color = (string)auxColor;
+                                                auxTrabajo.Att = (null != auxDepot && auxDepot.ToUpper().Contains("T"));
+                                                auxTrabajo.Id = Guid.NewGuid();
+                                                auxTrabajo.Parent = padre.Id;
+                                                
+                                                almacen.WorkShiftTemplates.Add(auxTrabajo);
+                                                loadWorkSheetContents(trabajo, auxTrabajo.Id, padre.Id,almacen);
+										    }                                                                                  
+										}
                                     }
                                 }
                                 break;
 						}
 					}
                 }
+                if (await almacen.SaveChangesAsync() < 1)
+                    return "Por algún motivo no se ha guardado ningún cambio en la base de datos.";                    
             }
 			return "";
         }
 
+        private void loadWorkSheetContents(XmlNode parent, Guid parentId, Guid rootId, DataStorage almacen)
+        {
+            foreach (XmlNode hijo in parent.ChildNodes)
+            {
+                if(hijo.NodeType== XmlNodeType.Element)
+                {
+                    TimeSpan? auxBegin;
+                    TimeSpan? auxEnd;
+                    switch(hijo.Name)
+                    {
+                        case "train":
+                            auxBegin = Common.parseSapphireTimeSpan(hijo.Attributes["start"]?.Value);
+                            auxEnd = Common.parseSapphireTimeSpan(hijo.Attributes["end"]?.Value);
+                            string? auxName = hijo.Attributes["id"]?.Value;
+                            bool auxDisc = (null != hijo.Attributes["disc"] && hijo.Attributes["disc"].Value.ToUpper().Contains("T"));
+                            if(null!=auxBegin && null!=auxEnd && null!=auxName)
+                            {
+                                WorkShiftContent tren = new WorkShiftContent();
+                                tren.Begin = (TimeSpan)auxBegin;
+                                tren.Duration = ((TimeSpan)auxEnd).Subtract(tren.Begin);
+                                tren.Id = Guid.NewGuid();
+                                tren.TrainId = auxName;
+                                tren.Parent = parentId;
+                                tren.ParentCollection = rootId;
+                                tren.ContentType = 1;
+                                tren.Discrectional = auxDisc;
+                                almacen.WorkShiftContents.Add(tren);
+                            }
+                            break;
+
+                        case "depot":
+							auxBegin = Common.parseSapphireTimeSpan(hijo.Attributes["start"]?.Value);
+							auxEnd = Common.parseSapphireTimeSpan(hijo.Attributes["end"]?.Value);
+                            bool auxForeign = (null != hijo.Attributes["foreign"] && hijo.Attributes["foreign"].Value.ToUpper().Contains("T"));
+                            if(null!=auxBegin && null!=auxEnd)
+                            {
+								WorkShiftContent deposito = new WorkShiftContent();
+								deposito.Begin = (TimeSpan)auxBegin;
+                                deposito.Duration = ((TimeSpan)auxEnd).Subtract(deposito.Begin);
+                                deposito.Id = Guid.NewGuid();
+                                deposito.Parent = parentId;
+                                deposito.ParentCollection = rootId;
+                                deposito.ContentType = 0;
+                                deposito.Foreign = auxForeign;
+                                almacen.WorkShiftContents.Add(deposito);
+							}
+							break;
+                    }
+                }
+            }
+        }
 	}
 }
