@@ -299,6 +299,8 @@ namespace Sapphire2025Server.Controllers
 							salida.Name = auxUsuario.UserName;
 						if (null != auxUsuario.PhoneNumber)
 							salida.PhoneNumber = auxUsuario.PhoneNumber;
+						if (null != auxUsuario.ShortPhoneNumber)
+							salida.ShortPhoneNumber = auxUsuario.ShortPhoneNumber;
 						if (null != auxUsuario.Email)
 							salida.Email = auxUsuario.Email;
 						salida.guid = auxUsuario.guid;
@@ -444,9 +446,11 @@ namespace Sapphire2025Server.Controllers
 							usuario.NormalizedUserName = message.UserName.ToUpper();
 						}
 						if(null!=message.Phone)
-						{
-							usuario.PhoneNumber = message.Phone;
-						}
+                            usuario.PhoneNumber = message.Phone;
+
+						if (null != message.ShortPhone)
+							usuario.ShortPhoneNumber = message.ShortPhone;
+						
 						usuario.TelegramEnabled = message.TelegramEnabled;
 						if (null != message.TelegramRules)
 						{
@@ -594,6 +598,7 @@ namespace Sapphire2025Server.Controllers
 			salida.Email = user.Email;
 			if(null!=user.PhoneNumber)
 			salida.PhoneNumber = user.PhoneNumber;
+			salida.ShortPhoneNumber = user.ShortPhoneNumber;
 			salida.AccessFailedCount = user.AccessFailedCount;
 			salida.NullPassword = (null==user.PasswordHash) || (user.PasswordHash.Length < 1);
 			salida.CredentialKey = await userIcon(user,config);

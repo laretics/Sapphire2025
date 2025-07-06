@@ -32,6 +32,7 @@ namespace Sapphire2025Models.Authentication
 			sessionToken = Guid.Empty;					
 			Email = string.Empty;
 			PhoneNumber = string.Empty;
+			ShortPhoneNumber = string.Empty;
 			
 			AccessFailedCount = 0;
 		}	
@@ -40,6 +41,7 @@ namespace Sapphire2025Models.Authentication
 		[EmailAddress(ErrorMessage = "Formato de correo electrónico no válido.")]
 		public string? Email { get; set; }
 		public string? PhoneNumber {  get; set; }
+		public string? ShortPhoneNumber { get; set; }//Extensión.
 		public int AccessFailedCount {  get; set; }
 		public bool NullPassword { get; set; } //Si es true, el usuario no tiene el password activo
 		public bool TelegramEnabled { get; set; } //Si es true, el usuario tiene el telegram habilitado

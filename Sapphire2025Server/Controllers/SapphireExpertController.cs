@@ -7,6 +7,7 @@ using Sapphire2025Models.Authentication;
 using Sapphire2025Server.Models;
 using Sapphire2025Server.Models.Turnos;
 using Sapphire2025Server.Telegram;
+using System.Collections;
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Security.Policy;
@@ -60,6 +61,42 @@ namespace Sapphire2025Server.Controllers
             }
 			return salida;
 		}
+        [HttpPost("deleteworkshifttemplatecollection")]
+        public async Task<bool> DeleteWorkShiftTemplateCollection([FromBody] Guid id)
+        {
+            try
+            {
+                using (DataStorage almacen = new DataStorage(mvarConfig))
+                {
+                    //Eliminamos los trenes y los depósitos
+                    IEnumerable<WorkShiftContent> contenidos = await almacen.WorkShiftContents
+                        .Where(x => x.ParentCollection == id)
+                        .ToListAsync();
+                    if (contenidos.Any())
+                        almacen.WorkShiftContents.RemoveRange(contenidos);
+
+                    //Eliminamos los turnos
+                    List<WorkShiftTemplate> turnos = await almacen.WorkShiftTemplates
+                        .Where(x => x.Parent == id)
+                        .ToListAsync();
+                    if (turnos.Any())
+                        almacen.WorkShiftTemplates.RemoveRange(turnos);
+
+                    WorkShiftTemplateCollection? coleccion = await almacen.WorkShiftTemplateCollections
+                        .FirstOrDefaultAsync(x => x.Id == id);
+
+                    if (null != coleccion)
+                        almacen.WorkShiftTemplateCollections.Remove(coleccion);
+
+                    await almacen.SaveChangesAsync();
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+        }
 		internal async Task<string> uploadXMLWorkShiftTemplate(XmlDocument auxDocumento)
         {
             XmlElement? auxRaiz = auxDocumento.DocumentElement;

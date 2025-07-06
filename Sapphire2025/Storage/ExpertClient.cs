@@ -18,6 +18,19 @@ namespace Sapphire2025.Storage
                 return await respuesta.Content.ReadAsStringAsync();
             return "Unknown error";
         }
-
+        public async Task<bool> deleteWorkShiftTemplateCollection(Guid id)
+        {
+            string json = System.Text.Json.JsonSerializer.Serialize(id);
+            HttpResponseMessage respuesta = await sendPostRequest("deleteworkshifttemplatecollection", json);
+            if (respuesta.IsSuccessStatusCode)
+                return await respuesta.Content.ReadFromJsonAsync<bool>();
+            return false;            
+        }
+        public async Task<List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>?> workShiftTemplateCollections()
+        {
+            string request = composeCommand("workshifttemplates");
+            HttpResponseMessage respuesta = await sendGetRequest(request);
+            return await respuesta.Content.ReadFromJsonAsync<List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>>();
+        }
     }
 }

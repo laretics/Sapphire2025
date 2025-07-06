@@ -1,13 +1,70 @@
 ﻿@page "/admin/manageworkshifts"
 @inject ExpertClient mvarExpertClient
+@inject IntStorageService mvarStorage
 <PageTitle>Turnos de Trabajo</PageTitle>
 <ModalDialog @ref="mvarModal" />
-<h3>ManageWorkshifts</h3>
-
+<h3>Planes de Explotación</h3>
 <InputFile Onchange="onFileUpload" accept=".xml">Plan de Explotación</InputFile>
+@if(null==mcolPlanes)
+{
+    <div class="text-center my-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <div>Cargando datos...</div>
+    </div>
+}
+else if (!mcolPlanes.Any())
+{
+    <div class="alert alert-info mt-4">La base de datos no contiene ningún plan de explotación.</div>
+}
+else
+{
+    <div class="table-responsive mt-4">
+        <table class="table table-hover table-bordered align-middle shadow-sm rounded">
+            <thead class="table-light">
+                <tr>
+                    <th>Autor</th>
+                    <th>Inicio</th>
+                    <th>Nombre</th>
+                    <th>Notas</th>
+                    <th>Funciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach(Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel item in mcolPlanes)
+                {
+                    <tr>
+                        <td>@ownerName(item.Owner)</td>
+                        <td>@Sapphire2025Models.Common.timeString(item.Begin)</td>
+                        <td>@item.Name</td>
+                        <td>@item.Comment</td>
+                        <td><Button class= "btn btn-danger btn-sm" 
+                            @onclick="() => onDeleteWorkShiftTemplateCollection(item.Id)">Eliminar</Button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+
 @code 
 {
     private ModalDialog mvarModal { get; set; } = new ModalDialog();
+    private List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>? mcolPlanes;
+    private Dictionary<Guid, Sapphire2025Models.Authentication.UserModelBase>? mcolUsers;
+
+    private string ownerName(Guid userId)
+    {
+        if(null!=mcolUsers)
+        {
+            if(mcolUsers.ContainsKey(userId))
+            {
+                UserModelBase usuario = mcolUsers[userId];
+                return string.Format("{0} ({1})", usuario.Name, usuario.CF);
+            }
+        }
+        return "";
+    }
 
     private async Task onFileUpload(InputFileChangeEventArgs e)
     {
@@ -23,8 +80,19 @@
             StateHasChanged(); //Actualizamos la información de la página.
         }               
     }
-
-
+    private async Task onDeleteWorkShiftTemplateCollection(Guid id)
+    {
+        if(!await mvarExpertClient.deleteWorkShiftTemplateCollection(id))
+        {
+            await mvarModal.show("Error de borrado", "Ocurrió algún problema al procesar la orden de borrado", "Aceptar");
+        }
+        StateHasChanged();
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        mcolPlanes = await mvarExpertClient.workShiftTemplateCollections();
+        mcolUsers = await mvarStorage.GetUsersCache();
+    } 
 }
 
 

@@ -14,7 +14,7 @@ namespace Sapphire2025Server.Models.Turnos
         public Guid Parent { get; set; } //Identificador del template de turno
         public Guid ParentCollection { get; set; } //Identificador de la colección de turnos a la que pertenece este contenido (Para facilitar el borrado)
         public byte ContentType { get; set; } //0: depósito, 1: tren
-        public string TrainId { get; set; } //Identificador del tren (sólo para turnos de conducción)
+        public string? TrainId { get; set; } //Identificador del tren (sólo para turnos de conducción)
         public bool Discrectional { get; set; } //Trabajo discreccional (si es true, no es obligatorio que sea realizado)
         public bool Foreign { get; set; } //Indica si el depósito o ATT se realiza fuera de la base (turnos de Inca o Manacor)
 

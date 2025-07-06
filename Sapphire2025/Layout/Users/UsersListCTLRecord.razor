@@ -13,8 +13,9 @@
 	</div>
 	<div class="col border-end d-flex align-items-center">@userName</div>
 	<div class="col border-end d-flex align-items-center">@userEmail</div>
+	<div class="col border-end d-flex align-items-center">@userPhone</div>
 	<div class="col d-flex align-items-center">
-		@userPhone
+		@userShortPhone		
 		@if(User.HasTelegramId)
 		{
 			<span class="ms-2">
@@ -76,6 +77,14 @@
 		{
 			if (null == User || null == User.PhoneNumber) return string.Empty;
 			return User.PhoneNumber;
+		}
+	}
+	private string userShortPhone
+	{
+		get
+		{
+			if (null == User || null == User.ShortPhoneNumber) return string.Empty;
+			return User.ShortPhoneNumber;
 		}
 	}
 

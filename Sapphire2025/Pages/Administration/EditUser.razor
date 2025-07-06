@@ -57,6 +57,10 @@ else
                         <label for="phone" class="form-label">Teléfono</label>
                         <InputText id="phone" class="form-control" @bind-Value="userModel.PhoneNumber"/>
                     </div>
+                    <div class="mb-3">
+                        <label for="shortPhone" class="form-label">Extensión de empresa</label>
+                        <InputText id="shortPhone" class="form-control" @bind-Value="userModel.ShortPhoneNumber" />
+                    </div>
                     <Button class="btn btn-primary" @onclick="OnSendPersonalDataChanges">Enviar</Button>
                     <Button Class="btn btn-primary" Disabled="@userModel.NullPassword" @onclick="OnPasswordReset">Reset Password</Button>
                 </EditForm>
@@ -201,17 +205,17 @@ else
         switch(evento)
         {
             case Sapphire2025Models.Common.sessionEventType.login:
-				return "Inicio de sesión";
+                return "Inicio de sesión";
             case Sapphire2025Models.Common.sessionEventType.logout:
-				return "Cierre de sesión";
+                return "Cierre de sesión";
             case Sapphire2025Models.Common.sessionEventType.sessionExpiry:
                 return "Sesión expirada";
-			case Sapphire2025Models.Common.sessionEventType.banned:
-				return "Usuario expulsado";
+            case Sapphire2025Models.Common.sessionEventType.banned:
+                return "Usuario expulsado";
             case Sapphire2025Models.Common.sessionEventType.badPassword:
-				return "Error de password";          
-			default:
-				return "¿?";
+                return "Error de password";          
+            default:
+                return "¿?";
         }
     }
 
@@ -272,6 +276,7 @@ else
             paquete.CF = userModel.CF;
             paquete.UserName = userModel.Name;
             paquete.Phone = userModel.PhoneNumber;
+            paquete.ShortPhone = userModel.ShortPhoneNumber;
             paquete.Email = userModel.Email;
 			paquete.TelegramEnabled = userModel.TelegramEnabled;
 			paquete.TelegramRules = userModel.TelegramRules;

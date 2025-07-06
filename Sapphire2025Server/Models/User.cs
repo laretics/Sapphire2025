@@ -22,6 +22,7 @@ namespace Sapphire2025Server.Models
 		public string? SecurityStamp { get; set; }
 		public string? ConcurrencyStamp { get; set; }
 		public string? PhoneNumber {  get; set; }
+		public string?ShortPhoneNumber { get; set; }
 		public bool PhoneNumberConfirmed { get; set; }
 		public bool TwoFactorEnabled { get; set; }
 		public DateTime? LockoutEnd { get; set; }
