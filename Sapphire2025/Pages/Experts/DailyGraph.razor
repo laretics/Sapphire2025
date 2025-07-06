@@ -96,11 +96,12 @@
                 {
                     row[i].Text = row[valorExtremo].Text;
                     row[i].BackgroundColor = row[valorExtremo].BackgroundColor;
-				}                
+                }                
             }
-		}
+        }
 
     }
+
 
     private List<List<CellData>> ParseHtmlTable(string html)
     {
@@ -136,6 +137,59 @@
             }
         }
         return result;
+    }
+    private int FindDate(DateTime fecha, string html)
+    {
+        AngleSharp.Html.Dom.IHtmlDocument document = new AngleSharp.Html.Parser.HtmlParser().ParseDocument(html);
+        AngleSharp.Dom.IElement? tabla = document.QuerySelector("table");
+        AngleSharp.Dom.IHtmlCollection<AngleSharp.Dom.IElement>? filas = tabla?.QuerySelectorAll("tr");
+        int numFila = 0;
+        int numCol = 0;
+        int colMes = -1;
+        int parseInte = 0;
+        string cadenaBuscada = "no_encontrar";
+        switch (fecha.Month)
+        {
+            case 1: cadenaBuscada = "ENERO"; break;
+            case 2: cadenaBuscada = "FEBRERO"; break;
+            case 3: cadenaBuscada = "MARZO"; break;
+            case 4: cadenaBuscada = "ABRIL"; break;
+            case 5: cadenaBuscada = "MAYO"; break;
+            case 6: cadenaBuscada = "JUNIO"; break;
+            case 7: cadenaBuscada = "JULIO"; break;
+            case 8: cadenaBuscada = "AGOSTO"; break;
+            case 9: cadenaBuscada = "SEPTIEMBRE"; break;
+            case 10: cadenaBuscada = "OCTUBRE"; break;
+            case 11: cadenaBuscada = "NOVIEMBRE"; break;
+            case 12: cadenaBuscada = "DICIEMBRE"; break;
+        }
+        if(null!=filas)
+        {
+            foreach (AngleSharp.Dom.IElement fila in filas)
+            {
+                numCol = 0;
+                //Primero buscamos la fila donde están las fechas.
+                foreach(AngleSharp.Dom.IElement celda in fila.Children)
+                {
+                    if (celda.TextContent.ToUpper().Equals(cadenaBuscada))
+                    {
+                        colMes = numCol;
+                        //Ya tengo localizado el comienzo del mes.
+                    }     
+                    if(colMes>0 && numCol>=colMes)
+                    {
+                        if (int.TryParse(celda.TextContent.Trim(), out parseInte))
+                        {
+                            if (parseInte.Equals(fecha.Day)) 
+                            return numCol;
+                            //TODO: Tengo que probar si esta función ha encontrado la columna de la fecha correcta.
+                        }
+                    }                                      
+                    numCol++;
+                }
+            }
+        }
+        return -1;
     }
     public void Dispose()
     {

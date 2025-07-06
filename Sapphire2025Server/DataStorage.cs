@@ -180,6 +180,7 @@ namespace Sapphire2025Server
 		public DbSet<WorkShiftTemplateCollection> WorkShiftTemplateCollections { get; set; }
         public DbSet<WorkShiftTemplate> WorkShiftTemplates { get; set; }
 		public DbSet<WorkShiftContent> WorkShiftContents { get; set; }
+		public DbSet<WorkshiftAssignation> WorkShiftAssignations { get; set; }
         #endregion Maquinistros
     }
 }
