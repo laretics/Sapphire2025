@@ -7,7 +7,7 @@ namespace Sapphire2025Server.Models.Turnos
     /// Asignación de un turno de trabajo a un Maquinista
     /// </summary>
 
-    [Table("WorkshiftAssignation")]
+    [Table("WorkShiftAssignation")]
     public class WorkshiftAssignation
     {
         public Guid Id { get; set; }

@@ -1,12 +1,10 @@
 ﻿@page "/dailyGraph"
 @inject IJSRuntime mvarJSRuntime
+@inject ExpertClient mvarExpertClient
 @implements IDisposable
-
-<h3>Gráfico diario</h3>
-<div @ref="pasteTarget" tabindex="0" style="border: 1px dashed gray; padding: 1rem;"
-@onfocus="ActivatePasteListener">
-    Haz clic aquí y pega (Ctrl+V) desde Excel
-</div>
+<PageTitle>Gráfico de Tracción</PageTitle>
+<h3>Gráfico de tracción</h3>
+<ModalDialog @ref="mvarModal" />
 <InputFile Onchange="onExcelChange" MaxAllowedSize="5242880" accept=".xlsx,.xls" />
 
 @if(null != parsedCells)
@@ -25,33 +23,10 @@
 }
 
 @code {
+    private ModalDialog mvarModal { get; set; } = new ModalDialog();
     private ElementReference pasteTarget;
     private DotNetObjectReference<DailyGraph>? dotNetRef;
     private List<List<CellData>>? parsedCells;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            dotNetRef = DotNetObjectReference.Create(this);
-            //await mvarJSRuntime.InvokeVoidAsync("clipboardInterop.receiveHtmlFromClipboard",dotNetRef);
-        }
-    }
-    private async Task ActivatePasteListener()
-    {
-        if (dotNetRef is null)
-        {
-            dotNetRef = DotNetObjectReference.Create(this);
-        }
-        await mvarJSRuntime.InvokeVoidAsync("clipboardInterop.registerPasteListener", pasteTarget, dotNetRef);
-    }
-    [JSInvokable]
-    public Task receiveHtmlFromClipboard(string html)
-    {
-        parsedCells = ParseHtmlTable(html);
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
 
     private async Task onExcelChange(InputFileChangeEventArgs e)
     {
@@ -63,134 +38,26 @@
             using MemoryStream ms = new MemoryStream();
             await corriente.CopyToAsync(ms);
             byte[] buffer = ms.ToArray();
-            //Ahora pasamos esto a JavaScript
-            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.uploadExcelFile", buffer,43,30,1,80);
+            //Ahora pasamos esto a JavaScript  
+            int[] indices = await mvarJSRuntime.InvokeAsync<int[]>("excelInterop.locateDateColumn", buffer, "JULIO", 7);
+
+            int colMakis = indices[0];
+            int colFecha = indices[1];
+
+            if (colFecha < 0) colFecha = 1;
+            //string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.uploadExcelFile", buffer,colFecha,30,1,80);
+            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.takeSnapShot", buffer, colMakis,colFecha,10);
+            //int columna = FindDate(DateTime.Today,salida);
             Console.WriteLine(salida);
-            List<List<CellDto>> filas = System.Text.Json.JsonSerializer.Deserialize<List<List<CellDto>>>(salida) ?? new List<List<CellDto>>();
-            parsedCells = filas
-            .Select(fila => fila.Select(celda => new CellData
-                {
-                    Text = celda.text ?? string.Empty,
-                    BackgroundColor = string.IsNullOrEmpty(celda.bg) ? "transparent" : celda.bg
-                }).ToList())
-            .ToList();
+            string? salidaCompilacion = await mvarExpertClient.uploadDailyWorkShift(salida);
+            if (null != salidaCompilacion && salidaCompilacion.Length > 0)
+                await mvarModal.show("Error de importación", salidaCompilacion, "Salir");
 
             StateHasChanged();
         }
     }
-    private class CellDto
-    {
-        public string? text { get; set; }
-        public string? bg { get; set; }    
-    }
-
-    private void applyOffset(int offsetX)
-    {
-        int valorExtremo;
-        foreach (List<CellData> row in parsedCells ?? new List<List<CellData>>())
-        {
-            for (int i = 0; i < offsetX; i++)
-            {
-                valorExtremo = i + offsetX;
-                if(valorExtremo< row.Count)
-                {
-                    row[i].Text = row[valorExtremo].Text;
-                    row[i].BackgroundColor = row[valorExtremo].BackgroundColor;
-                }                
-            }
-        }
-
-    }
 
 
-    private List<List<CellData>> ParseHtmlTable(string html)
-    {
-        AngleSharp.Html.Dom.IHtmlDocument doc = new AngleSharp.Html.Parser.HtmlParser().ParseDocument(html);
-        AngleSharp.Dom.IElement? tabla = doc.QuerySelector("table");
-        AngleSharp.Dom.IHtmlCollection<AngleSharp.Dom.IElement>? filas = tabla?.QuerySelectorAll("tr");
-        List<List<CellData>> result = new List<List<CellData>>();
-        if(null!=filas)
-        {
-            foreach (AngleSharp.Dom.IElement fila in filas)
-            {
-                List<CellData> celdas = new List<CellData>();
-                foreach ( AngleSharp.Dom.IElement celda in fila.Children)
-                {
-                    string? auxEstilo = celda.GetAttribute("style");
-                    string bg = "transparent";
-                    if(!string.IsNullOrEmpty(auxEstilo))
-                    {
-                        string? queryEstilo = auxEstilo.Split(';')
-                        .Select(xx => xx.Trim())
-                        .FirstOrDefault(xx => xx.StartsWith("background-color:", StringComparison.OrdinalIgnoreCase));
-                        if(null!= queryEstilo)
-                            bg = queryEstilo.Split(':').ElementAtOrDefault(1)?.Trim() ?? "transparent";
-                    }
-
-                    celdas.Add(new CellData
-                    {
-                        Text = celda.TextContent.Trim(),
-                        BackgroundColor = string.IsNullOrEmpty(bg) ? "transparent" : bg
-                    });
-                }
-                result.Add(celdas);
-            }
-        }
-        return result;
-    }
-    private int FindDate(DateTime fecha, string html)
-    {
-        AngleSharp.Html.Dom.IHtmlDocument document = new AngleSharp.Html.Parser.HtmlParser().ParseDocument(html);
-        AngleSharp.Dom.IElement? tabla = document.QuerySelector("table");
-        AngleSharp.Dom.IHtmlCollection<AngleSharp.Dom.IElement>? filas = tabla?.QuerySelectorAll("tr");
-        int numFila = 0;
-        int numCol = 0;
-        int colMes = -1;
-        int parseInte = 0;
-        string cadenaBuscada = "no_encontrar";
-        switch (fecha.Month)
-        {
-            case 1: cadenaBuscada = "ENERO"; break;
-            case 2: cadenaBuscada = "FEBRERO"; break;
-            case 3: cadenaBuscada = "MARZO"; break;
-            case 4: cadenaBuscada = "ABRIL"; break;
-            case 5: cadenaBuscada = "MAYO"; break;
-            case 6: cadenaBuscada = "JUNIO"; break;
-            case 7: cadenaBuscada = "JULIO"; break;
-            case 8: cadenaBuscada = "AGOSTO"; break;
-            case 9: cadenaBuscada = "SEPTIEMBRE"; break;
-            case 10: cadenaBuscada = "OCTUBRE"; break;
-            case 11: cadenaBuscada = "NOVIEMBRE"; break;
-            case 12: cadenaBuscada = "DICIEMBRE"; break;
-        }
-        if(null!=filas)
-        {
-            foreach (AngleSharp.Dom.IElement fila in filas)
-            {
-                numCol = 0;
-                //Primero buscamos la fila donde están las fechas.
-                foreach(AngleSharp.Dom.IElement celda in fila.Children)
-                {
-                    if (celda.TextContent.ToUpper().Equals(cadenaBuscada))
-                    {
-                        colMes = numCol;
-                        //Ya tengo localizado el comienzo del mes.
-                    }     
-                    if(colMes>0 && numCol>=colMes)
-                    {
-                        if (int.TryParse(celda.TextContent.Trim(), out parseInte))
-                        {
-                            if (parseInte.Equals(fecha.Day)) 
-                            return numCol;
-                            //TODO: Tengo que probar si esta función ha encontrado la columna de la fecha correcta.
-                        }
-                    }                                      
-                    numCol++;
-                }
-            }
-        }
-        return -1;
-    }
     public void Dispose()
     {
         dotNetRef?.Dispose();

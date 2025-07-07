@@ -22,5 +22,8 @@ namespace Sapphire2025Server.Models.Turnos
         public bool Att { get; set; } //Es atención a trenes.
         public bool Active { get; set; } //Indica si el turno de trabajo se considera como laboral. Lo contrario es un descanso o licencia.
         public string? Color { get; set; } //Color asociado al turno de trabajo, utilizado para la visualización en calendarios o interfaces gráficas
-}
+        public byte PerWeek { get; set; } //Días de la semana en que aplica este turno.
+        public uint CoorX { get; set; } //Lugar de representación en la tabla del gráfico
+		public uint CoorY { get; set; } //Coordenada y de representación en la tabla del gráfico
+	}
 }

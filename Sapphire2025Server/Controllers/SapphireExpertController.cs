@@ -11,6 +11,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Security.Policy;
+using System.Text;
 using System.Xml;
 
 namespace Sapphire2025Server.Controllers
@@ -97,6 +98,149 @@ namespace Sapphire2025Server.Controllers
                 return false;
             }
         }
+        /// <summary>
+        /// Sube a la base de datos un gráfico que ha importado de Excel.
+        /// </summary>
+        /// <param name="auxDocumento">El documento en formato JSon separado por comas.</param>
+        /// <returns>True si la importación se ha realizado de forma satisfactoria</returns>
+        [HttpPost("uploadexcelgraph")]
+        public async Task<string> uploadDailyWorkShift([FromBody] List<List<CellDto>>? filas )
+        {
+            if (null == filas) return "Colección vacía";
+            try
+            {
+				using (DataStorage almacen = new DataStorage(mvarConfig))
+                {
+					//List<List<CellDto>> filas = System.Text.Json.JsonSerializer.Deserialize<List<List<CellDto>>>(auxDocumento) ?? new List<List<CellDto>>();
+
+                    //Trasponemos el array inicial para hacer un recorrido por columnas.
+                    List<List<CellDto>> columnas = new List<List<CellDto>>();
+                    if(filas.Count>0)
+                    {
+                        int numColumnas = filas.Max(x => x.Count);
+                        for (int c = 0; c<numColumnas;c++)
+                        {
+                            List<CellDto> columna = new List<CellDto>();
+                            for(int r = 0;r<filas.Count;r++)
+                            {
+                                if (c < filas[r].Count)
+                                    columna.Add(filas[r][c]);
+                            }
+                            columnas.Add(columna);
+                        }
+                    }
+
+					int monthId = getMonth(columnas[0][0].text);
+					if (monthId < 1) return string.Format( "Mes incorrecto: {0}",columnas[0][0].text); //Esto no va bien.
+
+                    //Ahora recorremos la cosa por columnas, teniendo en cuenta que la primera es la que contiene los CF de los Maquinistas.
+                    for(int colId=1; colId<columnas.Count;colId++)
+                    {
+                        //En cada columna iteramos por filas, sabiendo que la primera es
+                        //la que contiene el número del día.
+                        int numDia = -1;
+                        if (int.TryParse(columnas[colId][0].text, out numDia))
+                        {
+                            DateTime auxFecha = new DateTime(DateTime.Now.Year, monthId, numDia);
+                            //Eliminamos todos los registros de la base de datos con esta fecha.
+                            List<WorkshiftAssignation> borrador = await almacen.WorkShiftAssignations.Where(x => x.Date == auxFecha).ToListAsync();
+                            almacen.RemoveRange(borrador);
+
+                            for(int filaId=1; filaId < columnas[colId].Count;filaId++)
+                            {
+                                string? auxEncabezadoMaquinista = columnas[0][filaId].text;
+                                if (auxEncabezadoMaquinista?.Length>0)
+                                {
+                                    string[] encabezado = auxEncabezadoMaquinista.Split(" ");
+                                    if(encabezado.Length>0)
+                                    {
+                                        string auxCF = encabezado[0].Trim();
+                                        //Vamos a dar por hecho que el CF existe.
+
+                                        WorkshiftAssignation nueva = new WorkshiftAssignation();
+                                        nueva.Id = Guid.NewGuid();
+                                        nueva.CF = auxCF;
+                                        nueva.Assignation = cleanAssignationString(columnas[colId][filaId].text);
+                                        if (null != nueva.Assignation && nueva.Assignation.Contains('/'))
+                                        {
+                                            string[] asignaciones = nueva.Assignation.Split('/');
+                                            nueva.Definitive = asignaciones.Last();
+                                        }
+                                        else
+                                            nueva.Definitive = nueva.Assignation;
+                                        nueva.Date = auxFecha;
+                                        almacen.WorkShiftAssignations.Add(nueva);                                        
+                                    }
+                                }
+                            }
+                        }
+                        else //Hemos saltado a otro mes.
+                        {
+                            monthId = getMonth(columnas[colId][0].text);
+							if (monthId < 1) return string.Format("Mes incorrecto: {0}", columnas[0][0].text); //Esto no va bien.
+						}
+                    }
+                    await almacen.SaveChangesAsync();
+                    return "";
+					//parsedCells = filas
+					//.Select(fila => fila.Select(celda => new CellData
+					//{
+					//	Text = celda.text ?? string.Empty,
+					//	BackgroundColor = string.IsNullOrEmpty(celda.bg) ? "transparent" : celda.bg
+					//}).ToList())
+					//.ToList();
+				}
+				
+            }
+            catch (Exception ex)
+            {
+                return string.Format("Error interno: {0}",ex.ToString());
+            }
+        }
+
+        private string? cleanAssignationString(string? rhs)
+        {
+            if (string.IsNullOrEmpty(rhs)) return rhs;
+            StringBuilder sb = new StringBuilder(rhs.Length);
+            foreach(char c in rhs)
+            {
+                if (char.IsLetterOrDigit(c) || c == '/')
+                    sb.Append(c);
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Obtiene el número del mes en función de la cadena en español que lee.
+        /// </summary>
+        /// <param name="cadena"></param>
+        /// <returns></returns>
+        private int getMonth(string cadena)
+        {
+            switch(cadena.ToUpper().Trim())
+            {
+				case "ENERO": return 1;
+				case "FEBRERO": return 2;
+				case "MARZO": return 3;
+				case "ABRIL": return 4;
+				case "MAYO": return 5;
+				case "JUNIO": return 6;
+				case "JULIO": return 7;
+				case "AGOSTO": return 8;
+				case "SEPTIEMBRE": return 9;
+				case "OCTUBRE": return 10;
+				case "NOVIEMBRE": return 11;
+				case "DICIEMBRE": return 12;
+                default: return -1;
+			}
+        }
+
+		public class CellDto
+		{
+			public string? text { get; set; }
+			public string? bg { get; set; }
+			public string? comment { get; set; }
+		}
 		internal async Task<string> uploadXMLWorkShiftTemplate(XmlDocument auxDocumento)
         {
             XmlElement? auxRaiz = auxDocumento.DocumentElement;
@@ -113,7 +257,6 @@ namespace Sapphire2025Server.Controllers
                 return "No se ha especificado un autor para este documento. Es necesario aportar la identificación (CF) de la persona que ha creado esta colección de turnos en el sistema.";
 			if (null == auxInicio)
 				return "No se ha especificado una fecha de comienzo para este proyecto de explotación. Debe usar el atributo 'start' con una fecha válida.";
-
 
             User? auxUser = null;
 			using (DataStorage almacen = new DataStorage(mvarConfig))
@@ -183,7 +326,9 @@ namespace Sapphire2025Server.Controllers
 											string? auxComment = trabajo.Attributes["comment"]?.Value;
 											string? auxColor = trabajo.Attributes["color"]?.Value;
 											string? auxDepot = trabajo.Attributes["depot"]?.Value;
-                                            if(null!=auxComienzo && null!=auxDuracion && null!=auxColor)
+											string? auxCoordinates = trabajo.Attributes["ord"]?.Value;
+											string? auxWeek = trabajo.Attributes["week"]?.Value;
+											if (null!=auxComienzo && null!=auxDuracion && null!=auxColor)
                                             {
 												WorkShiftTemplate auxTrabajo = new WorkShiftTemplate();
 												auxTrabajo.Active = true;
@@ -195,8 +340,39 @@ namespace Sapphire2025Server.Controllers
                                                 auxTrabajo.Att = (null != auxDepot && auxDepot.ToUpper().Contains("T"));
                                                 auxTrabajo.Id = Guid.NewGuid();
                                                 auxTrabajo.Parent = padre.Id;
-                                                
-                                                almacen.WorkShiftTemplates.Add(auxTrabajo);
+												if (null != auxCoordinates && auxCoordinates.Length > 0)
+												{
+													string[] coordinates = auxCoordinates.Split(",");
+													uint coordenada = 0;
+                                                    if (uint.TryParse(coordinates[0], out coordenada))
+                                                        auxTrabajo.CoorX = coordenada;
+													if (uint.TryParse(coordinates[1], out coordenada))
+														auxTrabajo.CoorY =coordenada;                                                 
+												}
+                                                if (null == auxWeek)
+                                                    auxTrabajo.PerWeek = 2 | 4 | 8 | 16 | 32;
+                                                else
+                                                {
+                                                    string cadenaWeek = auxWeek.Trim().ToUpper();
+                                                    if (cadenaWeek.Equals("FFF"))
+                                                        auxTrabajo.PerWeek = 1 | 64 | 128; //Sábados domingos y festivos.
+                                                    else if
+                                                        (cadenaWeek.Equals("LAB"))
+														    auxTrabajo.PerWeek = 2 | 4 | 8 | 16 | 32; //Laborables
+                                                    else
+                                                    {
+                                                        auxTrabajo.PerWeek = 0;
+                                                        if (cadenaWeek.Contains('L')) auxTrabajo.PerWeek |= 2;
+														if (cadenaWeek.Contains('M')) auxTrabajo.PerWeek |= 4;
+														if (cadenaWeek.Contains('X')) auxTrabajo.PerWeek |= 8;
+														if (cadenaWeek.Contains('J')) auxTrabajo.PerWeek |= 16;
+														if (cadenaWeek.Contains('V')) auxTrabajo.PerWeek |= 32;
+														if (cadenaWeek.Contains('S')) auxTrabajo.PerWeek |= 64;
+														if (cadenaWeek.Contains('D')) auxTrabajo.PerWeek |= 1;
+														if (cadenaWeek.Contains('F')) auxTrabajo.PerWeek |= 128;
+													}
+												}
+                                                    almacen.WorkShiftTemplates.Add(auxTrabajo);
                                                 loadWorkSheetContents(trabajo, auxTrabajo.Id, padre.Id,almacen);
 										    }                                                                                  
 										}

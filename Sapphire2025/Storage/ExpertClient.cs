@@ -18,6 +18,13 @@ namespace Sapphire2025.Storage
                 return await respuesta.Content.ReadAsStringAsync();
             return "Unknown error";
         }
+        public async Task<string?> uploadDailyWorkShift(string auxDocument)
+        {
+            HttpResponseMessage respuesta = await sendPostRequest("uploadexcelgraph", auxDocument);
+            if (respuesta.IsSuccessStatusCode)
+                return await respuesta.Content.ReadAsStringAsync();
+            return "Error desconocido en el cliente.";
+        }
         public async Task<bool> deleteWorkShiftTemplateCollection(Guid id)
         {
             string json = System.Text.Json.JsonSerializer.Serialize(id);

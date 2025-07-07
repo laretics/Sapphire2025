@@ -15,5 +15,6 @@ namespace Sapphire2025Models.Expert
 		public string? Comment { get; set; }
 		public byte Collective { get; set; }
 		public Guid Owner { get; set; }	
+		public List<WorkShiftTemplateModel>? Templates { get; set; } //Turnos que contiene este plan.
 	}
 }
