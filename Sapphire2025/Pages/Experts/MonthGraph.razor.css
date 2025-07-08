@@ -1,0 +1,101 @@
+﻿
+thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: linear-gradient(90deg, #007bff 0%, #66b2ff 100%);
+    color: #fff;
+    box-shadow: none;
+    border-top: none !important;
+}
+/* Encabezado superior */
+.bg-gradient-primary {
+    background: linear-gradient(90deg, #007bff 0%, #66b2ff 100%);
+    color: #fff;
+}
+thead th.bg-gradient-weekend {
+    /* Amarillo suave a amarillo más intenso */
+    background: linear-gradient(90deg, #fffde4 0%, #ffe680 100%);
+    color: #222;
+}
+.highlight-today {
+    display: inline-block;
+    padding: 0.35em 0.9em;
+    background: linear-gradient(90deg, #f5f6fa 0%, #cfd8dc 100%);
+    color: #222;
+    border-radius: 1.2em;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(100, 100, 100, 0.10);
+    border: 2px solid #b0bec5;
+}
+/* Columna izquierda */
+.bg-gradient-secondary {
+    background: linear-gradient(180deg, #f8f9fa 0%, #dee2e6 100%);
+}
+/* Esquina superior izquierda */
+.header-corner {
+    background: #e9ecef;
+    border-right: 2px solid #dee2e6;
+    border-bottom: 2px solid #dee2e6;
+    min-width: 2.5rem;
+}
+.header-left {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    text-align: left !important;
+    min-width: 8rem;
+}
+.cf-text {
+    font-weight: bold;
+    color: #007bff;
+}
+
+.user-name {
+    font-style: italic;
+    color: #333;    
+    font-size: 0.95em;
+}
+/* Celdas de contenido */
+.cell-content {
+    background: #fff;
+    transition: background 0.2s;
+}
+
+    .cell-content:hover {
+        background: #f1f3f4;
+    }
+/* Celdas con esquinas redondeadas */
+.custom-cell {
+    border-radius: 0.4em !important;
+    overflow: hidden;
+    padding: 0.2rem 0.5rem !important;
+    position: relative;
+}
+
+/* Contenido centrado y barra debajo */
+.cell-content-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    height: 100%;
+}
+/* Barra horizontal bajo el texto */
+.cell-bar {
+    margin-top: 0.25em;
+    width: 80%;
+    height: 4px;
+    border-radius: 2px;
+    opacity: 0.7;
+}
+/* Sombra y bordes redondeados */
+.table {
+    box-shadow: 0 14px 24px rgba(0,0,0,0.08);
+    border-radius: 0.75rem;
+    border-top: none;
+}
+
+th, td {    
+    vertical-align: middle !important;
+}
+

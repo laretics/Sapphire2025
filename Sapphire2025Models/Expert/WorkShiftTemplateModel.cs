@@ -3,19 +3,26 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Sapphire2025Models.Expert
 {
 	//Cualquier asignación tiene estos datos.
+	[JsonPolymorphic(TypeDiscriminatorPropertyName ="$type")]
+	[JsonDerivedType(typeof(RestTemplateModel),"rst")]
+	[JsonDerivedType(typeof(AttTemplateModel),"att")]
+	[JsonDerivedType(typeof(WorkTemplateModel),"wkt")]
 	public abstract class WorkShiftTemplateModel
-	{
+	{		
 		public string Name { get;set;}
 		public string? comment { get; set; }
 		public string? Color { get; set; }
+		public string? BgColor { get; set; }
+		public string? StripeColor { get; set; }
 	}
 	//Descanso, vacaciones y similar.
-	public class VacationTemplateModel:WorkShiftTemplateModel
+	public class RestTemplateModel:WorkShiftTemplateModel
 	{
 
 	}	

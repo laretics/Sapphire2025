@@ -5,7 +5,7 @@
 <PageTitle>Gráfico de Tracción</PageTitle>
 <h3>Gráfico de tracción</h3>
 <ModalDialog @ref="mvarModal" />
-<InputFile Onchange="onExcelChange" MaxAllowedSize="5242880" accept=".xlsx,.xls" />
+
 
 @if(null != parsedCells)
 {
@@ -28,34 +28,7 @@
     private DotNetObjectReference<DailyGraph>? dotNetRef;
     private List<List<CellData>>? parsedCells;
 
-    private async Task onExcelChange(InputFileChangeEventArgs e)
-    {
-        Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
 
-        if(null!=archivo)
-        {
-            using Stream corriente = archivo.OpenReadStream(maxAllowedSize: 5242880); // 5 MB
-            using MemoryStream ms = new MemoryStream();
-            await corriente.CopyToAsync(ms);
-            byte[] buffer = ms.ToArray();
-            //Ahora pasamos esto a JavaScript  
-            int[] indices = await mvarJSRuntime.InvokeAsync<int[]>("excelInterop.locateDateColumn", buffer, "JULIO", 7);
-
-            int colMakis = indices[0];
-            int colFecha = indices[1];
-
-            if (colFecha < 0) colFecha = 1;
-            //string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.uploadExcelFile", buffer,colFecha,30,1,80);
-            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.takeSnapShot", buffer, colMakis,colFecha,10);
-            //int columna = FindDate(DateTime.Today,salida);
-            Console.WriteLine(salida);
-            string? salidaCompilacion = await mvarExpertClient.uploadDailyWorkShift(salida);
-            if (null != salidaCompilacion && salidaCompilacion.Length > 0)
-                await mvarModal.show("Error de importación", salidaCompilacion, "Salir");
-
-            StateHasChanged();
-        }
-    }
 
 
     public void Dispose()
