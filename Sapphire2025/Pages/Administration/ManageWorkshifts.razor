@@ -71,7 +71,7 @@ else
         Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
         if (archivo is null) return;
         using Stream stream = archivo.OpenReadStream(maxAllowedSize: 5242880); // 5 MB
-        string? salida = await mvarExpertClient.uploadXMLWorkShiftTemplate(stream,"WorkShiftTemplate");
+        string? salida = await mvarExpertClient.uploadXML(stream,"WorkShiftTemplate");
         if (null != salida && salida.Length > 0)
             await mvarModal.show("Error", salida, "Aceptar");            
         else

@@ -25,8 +25,8 @@ namespace Sapphire2025Server.Controllers
     {
 
         public SapphireExpertController(IConfiguration configuration) : base(configuration) { }
-        [HttpPost("uploadxmlworkshift")]
-        public async Task<string> UploadXMLWorkShiftTemplate([FromForm] IFormFile file)
+        [HttpPost("uploadxml")]
+        public async Task<string> UploadXML([FromForm] IFormFile file)
         {
             XmlDocument auxDocumento = new XmlDocument();
             try
@@ -34,7 +34,7 @@ namespace Sapphire2025Server.Controllers
                 using (Stream stream = file.OpenReadStream())
                 {
                     auxDocumento.Load(stream);
-                    WorkSheetTemplateCollectionImporter importador = new WorkSheetTemplateCollectionImporter(mvarConfig);
+                    UniversalXMLImporter importador = new UniversalXMLImporter(mvarConfig);
                     return await importador.ImportXML(auxDocumento);
                 }
             }
