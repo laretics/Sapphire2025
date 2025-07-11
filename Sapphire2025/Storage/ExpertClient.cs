@@ -1,5 +1,6 @@
 ﻿using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Expert;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Json;
 
 namespace Sapphire2025.Storage
@@ -33,6 +34,17 @@ namespace Sapphire2025.Storage
             if (respuesta.IsSuccessStatusCode)
                 return await respuesta.Content.ReadFromJsonAsync<bool>();
             return false;            
+        }
+
+        public async Task<AgentsViewModel?> getAgentsView(string viewName)
+        {
+            AgentsViewRequestModel request = new AgentsViewRequestModel();
+            request.ViewId = viewName;
+            string json = System.Text.Json.JsonSerializer.Serialize(request);
+            HttpResponseMessage respuesta = await sendPostRequest("getagentviewtable", json);
+            if (respuesta.IsSuccessStatusCode)
+                return await respuesta.Content.ReadFromJsonAsync<AgentsViewModel>();
+            return null;
         }
 
         /// <summary>

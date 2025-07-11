@@ -1,4 +1,4 @@
-﻿@page "/monthGraph"
+﻿@page "/monthGraph/{AgentsViewId}"
 @inject IJSRuntime mvarJSRuntime
 @inject ExpertClient mvarExpertClient
 @inject AuthenticationClient mvarAuthClient
@@ -99,6 +99,8 @@
     private int dayCount = 16;
     private ModalDialog mvarModal { get; set; } = new ModalDialog();    
     private DateTime mvarToday = DateTime.Today;
+    [Parameter]
+    public string? AgentsViewId{ get; set; }
     private Dictionary<string,UserModelBase>? mcolAgents; //Lista de Agentes (en base a asignaciones de hoy)
     private Dictionary<Guid, UserModelBase>? mcolUsers;
     private cellFormatted?[,]? mcolCells;
@@ -113,6 +115,10 @@
     }
     private async Task loadAgents()
     {
+        //Modificación de la rutina precedente. Ahora cargamos la tabla de Agentes directamente
+
+
+
         List<WorkShiftAssignationModel> todayAssign = await mvarExpertClient.AssignationsByDate(DateTime.Today);
         mcolAgents = new Dictionary<string,UserModelBase>();
         List<UserModelBase> auxLista = mcolUsers.Values.ToList();
