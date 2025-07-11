@@ -181,6 +181,8 @@ namespace Sapphire2025Server
         public DbSet<WorkShiftTemplate> WorkShiftTemplates { get; set; }
 		public DbSet<WorkShiftContent> WorkShiftContents { get; set; }
 		public DbSet<WorkshiftAssignation> WorkShiftAssignations { get; set; }
+		public DbSet<ExpertAgentListView> ExpertAgentListViews { get; set; }
+		public DbSet<ExpertAgentListRecord> ExpertAgentListRecords { get; set; }
         #endregion Maquinistros
     }
 }

@@ -10,6 +10,7 @@ namespace Sapphire2025Server.Models.Turnos
     [Table("WorkShiftAssignation")]
     public class WorkshiftAssignation
     {
+        [Key]
         public Guid Id { get; set; }
         public Guid Agent { get; set; } //Guid del Agente que hace el turno
         public Guid SwappingAgent { get; set; } //Id del Agente que ha cambiado (empty si no hay cambio)
