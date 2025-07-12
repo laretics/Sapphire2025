@@ -9,6 +9,8 @@ namespace Sapphire2025Models.Expert
     public class WorkShiftRequestModel
     {
         public DateTime Date { get; set; }
+        public int Days { get; set; }
+        public string? AgentsTableId { get; set; }
         public Guid Id { get; set; }
     }
 }

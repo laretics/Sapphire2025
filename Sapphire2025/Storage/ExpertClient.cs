@@ -1,6 +1,4 @@
-﻿using Sapphire2025Models.Aeneas;
-using Sapphire2025Models.Expert;
-using System.Diagnostics.CodeAnalysis;
+﻿using Sapphire2025Models.Expert;
 using System.Net.Http.Json;
 
 namespace Sapphire2025.Storage
@@ -35,7 +33,6 @@ namespace Sapphire2025.Storage
                 return await respuesta.Content.ReadFromJsonAsync<bool>();
             return false;            
         }
-
         public async Task<AgentsViewModel?> getAgentsView(string viewName)
         {
             AgentsViewRequestModel request = new AgentsViewRequestModel();
@@ -64,6 +61,22 @@ namespace Sapphire2025.Storage
                 if (null != salida) return salida;
             }
             return new List<WorkShiftAssignationModel>();            
+        }
+
+        public async Task<List<AgentAssignationsModel>> AsignationsByDateAndGraph(DateTime begin, int days, string agentsTableId)
+        {
+            WorkShiftRequestModel peticion = new WorkShiftRequestModel();
+            peticion.Date = begin;
+            peticion.Days = days;
+            peticion.AgentsTableId = agentsTableId;
+            string json = System.Text.Json.JsonSerializer.Serialize(peticion);
+            HttpResponseMessage respuesta = await sendPostRequest("assignationsgraph", json);
+            if(respuesta.IsSuccessStatusCode)
+            {
+                List<AgentAssignationsModel>? salida = await respuesta.Content.ReadFromJsonAsync<List<AgentAssignationsModel>>();
+                if (null != salida) return salida;
+            }
+            return new List<AgentAssignationsModel>();
         }
 
         /// <summary>
@@ -102,6 +115,17 @@ namespace Sapphire2025.Storage
             HttpResponseMessage respuesta = await sendGetRequest(request);
             return await respuesta.Content.ReadFromJsonAsync<List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>>();
         }
-
-    }
+		/// <summary>
+		/// Obtiene una lista de las posibles vistas de Agentes.
+		/// Se usa en el menú lateral para seleccionar gráficos.
+		/// </summary>
+		/// <returns>Una lista de strings con los nombres</returns>
+		public async Task<List<string>?> getAgentsViews()
+		{
+            string request = composeCommand("agentslistsnames");
+            HttpResponseMessage respuesta = await sendGetRequest(request);
+            return await
+                respuesta.Content.ReadFromJsonAsync<List<string>>();
+		}
+	}
 }

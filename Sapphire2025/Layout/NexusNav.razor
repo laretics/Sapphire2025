@@ -1,4 +1,5 @@
-﻿<CascadingValue Value="Session">
+﻿@inject ExpertClient mvarExpertClient
+<CascadingValue Value="Session">
     <NexusNavOption Selected="@(0==SelectedNavItem)"
     onclick="@(()=>SelectNavItem(0))"
     Link="#" Caption="Inicio"
@@ -26,14 +27,30 @@
     Image="bi bi-train-diagram-nav-menu" 
     Tooltip="Flujograma de unidades tren y resto de vehículos"/>
 
-    <NexusNavOption Selected="@(4 == SelectedNavItem)"
-                    Badge="Nuevo"
-                    onclick="@(()=>SelectNavItem(4))"
-                    Link="monthGraph" Caption="G.Diario"
-                    Image="bi bi-expert-day-nav-menu"
-                    Tooltip="Gráfico diario"
-                    Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Root, 
-                    Sapphire2025Models.Common.UserRole.Expert}"/>
+
+    <NexusNavOption Selected="@(4== SelectedNavItem)"
+        Badge="Nuevo"
+        OnClick="@(()=>SelectNavItem(4))"
+        Link="dailyGraph" Caption="Maquinistas D."
+        Image="bi bi-expert-day-nav-menu"
+        Tooltip="Gráfico diario"
+        Roles=
+        "new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Expert, 
+            Sapphire2025Models.Common.UserRole.Expert}" />
+
+    @if (null!=mcolAgentsViews)
+    {
+        for(int n=0;n<mcolAgentsViews.Count;n++)
+        {
+            <NexusNavOption Selected="@((5+n) == SelectedNavItem)"
+                            onclick="@(()=>SelectNavItem(5+n))"
+                            Link="@string.Format("monthGraph/{0}",mcolAgentsViews[n])" Caption="@mcolAgentsViews[n]"
+                            Image="bi bi-expert-month-view-nav-menu"
+                            Tooltip="Gráfico mensual"
+                            Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Root,
+                                        Sapphire2025Models.Common.UserRole.Expert}" />
+        }
+    }    
 
 </CascadingValue>
 <div class="sfmlogo-bg">
@@ -47,6 +64,12 @@
     public SessionModel? Session { get; set; }
     [Parameter]
     public int SelectedNavItem{ get; set; }
+    private List<string>? mcolAgentsViews;
+
+    protected async override Task OnInitializedAsync()
+    {
+        mcolAgentsViews = await mvarExpertClient.getAgentsViews();        
+    }
 
     private void SelectNavItem(int id){SelectedNavItem = id;}
 }

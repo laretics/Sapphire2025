@@ -1,21 +1,10 @@
-﻿using BlazorBootstrap;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Sapphire2025Models;
-using Sapphire2025Models.Aeneas;
-using Sapphire2025Models.Authentication;
 using Sapphire2025Models.Expert;
 using Sapphire2025Server.Expert;
 using Sapphire2025Server.Models;
 using Sapphire2025Server.Models.Turnos;
-using Sapphire2025Server.Telegram;
-using System.Collections;
-using System.Diagnostics;
-using System.Net.Http.Headers;
-using System.Security.Policy;
-using System.Text;
 using System.Xml;
-using Telegram.Bot.Types.Passport;
 
 namespace Sapphire2025Server.Controllers
 {
@@ -73,6 +62,66 @@ namespace Sapphire2025Server.Controllers
                 }
             }
             return salida;
+        }
+
+        
+        /// <summary>
+        /// Nueva vista de gráfico mensual.
+        /// </summary>
+        /// <param name="rhs">Modelo que contiene la fecha de inicio, el número de días y la lista de Agentes que se quiere representar.</param>
+        /// <returns>Una lista de AgentsAsignationsModel con los agentes y sus asignaciones</returns>
+        [HttpPost("assignationsgraph")]
+        public async Task<List<AgentAssignationsModel>> getGraph(WorkShiftRequestModel rhs)
+        {
+            List<AgentAssignationsModel> salida = new List<AgentAssignationsModel>();
+            if(null!=rhs.AgentsTableId)
+            {
+				
+				using (DataStorage almacen = new DataStorage(mvarConfig))
+				{
+					List<User?> usuarios = await getAgentsList(rhs.AgentsTableId, almacen);
+					//Obtenemos primero la lista de los usuarios que tiene el gráfico:
+
+                    //TODO: Ahora falta crear las filas del array y modificar MonthGraph.razor
+                    //para que muestre esta estructura. Espero que sea más rápido que lo que
+                    //había hasta ahora.
+
+				}
+			}
+		    return salida;
+        }
+
+        protected async Task<List<User?>> getAgentsList(string listName, DataStorage almacen)
+        {
+            List<User?> salida = new List<User?>();
+            ExpertAgentsListView? tablaEntrada = await almacen.ExpertAgentsListViews.Where(x => x.Name.Equals(listName)).FirstOrDefaultAsync();
+            if(null!=tablaEntrada)
+            {
+                List<ExpertAgentListRecord> entrada = await almacen.ExpertAgentListRecords.Where(x => x.ParentId == tablaEntrada.Id).ToListAsync();
+                foreach (ExpertAgentListRecord registro in entrada)
+                {
+                    if(registro.Type==0) //Un agente.
+                    {
+                        User? agente = await almacen.Users.Where(x => x.Id == registro.ElementId.ToString()).FirstOrDefaultAsync();
+                        if (null != agente)
+                            salida.Add(agente);
+                    }
+                    else if(registro.Type==1) // Un separador.
+                    {
+                        //Los separadores se resuelven con elementos null.
+                        salida.Add(null);
+                    }
+                    else if(registro.Type==2) //Un bloque de inclusión
+                    {
+                        ExpertAgentsListView? auxRef = await almacen.ExpertAgentsListViews.Where(x => x.Id == registro.ElementId).FirstOrDefaultAsync();
+                        if(null!=auxRef)
+                        {
+                            salida.AddRange(await getAgentsList(auxRef.Name, almacen));
+                        }
+                    }
+                }
+			}
+            return salida;           
         }
 
         /// <summary>
@@ -239,6 +288,20 @@ namespace Sapphire2025Server.Controllers
             }
             return salida;
         }
+        [HttpGet("agentslistsnames")]
+        public async Task<List<string>> AgentsListsNames()
+        {
+            List<string> salida = new List<string>();
+            using (DataStorage almacen = new DataStorage(mvarConfig))
+            {
+                List<ExpertAgentsListView> auxVistas = await almacen.ExpertAgentsListViews
+                    .Where(x => x.Final).ToListAsync();
+                foreach (ExpertAgentsListView vista in auxVistas)
+					salida.Add(vista.Name);
+            }
+            return salida;
+        }
+
         [HttpPost("deleteworkshifttemplatecollection")]
         public async Task<bool> DeleteWorkShiftTemplateCollection([FromBody] Guid id)
         {

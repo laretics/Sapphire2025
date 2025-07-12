@@ -19,13 +19,13 @@ namespace Sapphire2025Server.Expert
             XmlElement? raiz = document.DocumentElement;
             if (null == raiz)
                 return "No se ha encontrado ningún elemento padre en el documento a importar. Verifique la sintaxis del XML";
-            if(raiz.Equals("plan"))
+            if(raiz.Name.Equals("plan"))
             {
                 //Esto es un plan de explotación
                 WorkSheetTemplateCollectionImporter auxImportaPlan = new WorkSheetTemplateCollectionImporter(mvarConfiguration);
                 return await auxImportaPlan.ImportXML(document);
             }
-            else if (raiz.Equals("agentslist"))
+            else if (raiz.Name.Equals("agentslist"))
             {
                 //Lista de Agentes para los gráficos de Excel
                 AgentsListImporter auxImportAgents = new AgentsListImporter(mvarConfiguration);

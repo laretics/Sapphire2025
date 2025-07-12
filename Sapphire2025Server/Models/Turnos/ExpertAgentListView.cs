@@ -7,8 +7,8 @@ namespace Sapphire2025Server.Models.Turnos
     /// Las listas pueden contener agentes individuales, separadores o
     /// también otras listas de agentes.
     /// </summary>
-    [Table("ExpertAgentListView")]
-    public class ExpertAgentListView
+    [Table("ExpertAgentsListView")]
+    public class ExpertAgentsListView
     {
         [Key]
         public Guid Id { get; set; } // Id de la lista de agentes

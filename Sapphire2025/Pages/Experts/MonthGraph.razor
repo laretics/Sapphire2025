@@ -63,8 +63,8 @@
                         <tr>
                             <th class="header-left bg-gradient-secondary">
                                 <div class="d-flex justify-content-between align-items-center w-100">
-                                    <span class="cf-text">@mcolAgents[row].CF</span>
-                                    <span class="user-name">@mcolAgents[row].Name.</span>
+                                    @* <span class="cf-text">@mcolAgents[row].CF</span> *@
+                                    @* <span class="user-name">@mcolAgents[row].Name.</span> *@
                                 </div>
                             </th>
                             @for (int col = 0; col < dayCount; col++)
@@ -101,7 +101,10 @@
     private DateTime mvarToday = DateTime.Today;
     [Parameter]
     public string? AgentsViewId{ get; set; }
-    private Dictionary<string,UserModelBase>? mcolAgents; //Lista de Agentes (en base a asignaciones de hoy)
+    
+
+
+
     private Dictionary<Guid, UserModelBase>? mcolUsers;
     private cellFormatted?[,]? mcolCells;
     private Dictionary<Guid, WorkShiftTemplateCollectionModel> mcolPlans; //Lista de planes de explotación
@@ -120,17 +123,16 @@
 
 
         List<WorkShiftAssignationModel> todayAssign = await mvarExpertClient.AssignationsByDate(DateTime.Today);
-        mcolAgents = new Dictionary<string,UserModelBase>();
         List<UserModelBase> auxLista = mcolUsers.Values.ToList();
         foreach(WorkShiftAssignationModel asig in todayAssign)
         {
             foreach (UserModelBase popo in auxLista)
             {
-                if(popo.CF.Equals(asig.CF))
-                {
-                    mcolAgents.Add(asig.CF, popo);
-                    auxLista.Remove(popo); //Para no volver a buscarla. Se supone que es una aceleración.
-                }
+                // if(popo.CF.Equals(asig.CF))
+                // {
+                //     mcolAgents.Add(asig.CF, popo);
+                //     auxLista.Remove(popo); //Para no volver a buscarla. Se supone que es una aceleración.
+                // }
             }
         }
     }
@@ -158,19 +160,19 @@
                     WorkShiftTemplateCollectionModel auxPlan = mcolPlans[auxPlanId];
                     for (int jj = 0; jj < mcolAgents.Count; jj++)
                     {
-                        UserModelBase agente = mcolAgents[jj];
+                        // UserModelBase agente = mcolAgents[jj];
 
-                        WorkShiftAssignationModel? asignacion = getAssignationByCF(colAssignations, agente.CF);
-                        if (null != asignacion)
-                        {
-                            cellFormatted nueva = new cellFormatted();
-                            nueva.text = asignacion.Definitive;
-                            nueva.isTd = asignacion.IsTD;
-                            if (null != auxPlan.Templates && auxPlan.Templates.ContainsKey(nueva.text))
-                                nueva.template = auxPlan.Templates[nueva.text];
+                        // WorkShiftAssignationModel? asignacion = getAssignationByCF(colAssignations, agente.CF);
+                        // if (null != asignacion)
+                        // {
+                        //     cellFormatted nueva = new cellFormatted();
+                        //     nueva.text = asignacion.Definitive;
+                        //     nueva.isTd = asignacion.IsTD;
+                        //     if (null != auxPlan.Templates && auxPlan.Templates.ContainsKey(nueva.text))
+                        //         nueva.template = auxPlan.Templates[nueva.text];
 
-                            mcolCells[i, jj] = nueva;
-                        }
+                        //     mcolCells[i, jj] = nueva;
+                        // }
                     }
                 }
             }
@@ -180,7 +182,7 @@
     {
         foreach(WorkShiftAssignationModel elemento in lista)
         {
-            if (elemento.CF.Equals(CF)) return elemento;
+            //if (elemento.CF.Equals(CF)) return elemento;
         }
         return null;
     }

@@ -15,15 +15,18 @@ namespace Sapphire2025Server.Expert
         }
         public async Task<string> ImportXML(XmlDocument document)
         {
-            foreach (XmlElement elemento in document.ChildNodes)
+            foreach (XmlNode elemento in document.ChildNodes)
             {
-                if(elemento.NodeType== XmlNodeType.Element)
+                if(elemento.NodeType== XmlNodeType.Element && elemento.Name.Equals("agentslist"))
                 {
-                    if(elemento.Name.Equals("list"))
+                    foreach(XmlNode hijo in elemento.ChildNodes)
                     {
-                        string salida = await auxImportNode(elemento);
-                        if (!salida.Equals(string.Empty)) return salida;
-                    }
+						if (hijo.NodeType == XmlNodeType.Element && hijo.Name.Equals("list"))
+						{
+							string salida = await auxImportNode(hijo);
+							if (!salida.Equals(string.Empty)) return salida;
+						}
+					}
                 }
             }
             return string.Empty;
@@ -38,7 +41,7 @@ namespace Sapphire2025Server.Expert
                 string? comments = rhs.Attributes["comments"]?.Value;
                 if (null == name || name.Length < 1)
                     return "Una de las listas de Agentes no tiene un nombre válido.";
-                ExpertAgentListView nueva = new ExpertAgentListView();
+                ExpertAgentsListView nueva = new ExpertAgentsListView();
                 if (!await RemoveList(nueva.Name)) return string.Format("El programa no pudo eliminar la antigua lista de agentes con nombre {0}.", name);
                 nueva.Name = name;
                 nueva.Id = Guid.NewGuid();
@@ -47,7 +50,7 @@ namespace Sapphire2025Server.Expert
                 mvarSequence = 0; //Inicio la secuencia de presentación en la tabla
                 using (DataStorage almacen = new DataStorage(mvarConfiguration))
                 {
-                    almacen.ExpertAgentListViews.Add(nueva);
+                    almacen.ExpertAgentsListViews.Add(nueva);
                     foreach (XmlNode hijo in rhs.ChildNodes)
                     {
                         if(hijo.NodeType== XmlNodeType.Element)
@@ -57,6 +60,7 @@ namespace Sapphire2025Server.Expert
                                 return result;
                         }
                     }
+                    await almacen.SaveChangesAsync();
                 }
                 return string.Empty;
             }
@@ -108,7 +112,7 @@ namespace Sapphire2025Server.Expert
             if (null == rhs.Attributes) return "Detectado un elemento de inclusión ( <include/> sin parámetros)";
             string? listaName = rhs.Attributes["id"]?.Value;
             if (null == listaName) return "Uno de los elementos de inclusión tiene un nombre que no es válido";
-            ExpertAgentListView? auxLista = await almacen.ExpertAgentListViews.Where(x => x.Name == listaName).FirstOrDefaultAsync();
+            ExpertAgentsListView? auxLista = await almacen.ExpertAgentsListViews.Where(x => x.Name == listaName).FirstOrDefaultAsync();
             if (null == auxLista) return string.Format("Un elemento de inclusión hace referencia a una lista llamada {0} que no está definida en el archivo. Asegúrese de que la lista referida se ha definido ANTES.", listaName);
 
             ExpertAgentListRecord registro = new ExpertAgentListRecord();
@@ -145,7 +149,7 @@ namespace Sapphire2025Server.Expert
             {
                 using (DataStorage almacen = new DataStorage(mvarConfiguration))
                 {
-                    ExpertAgentListView? auxLista = await almacen.ExpertAgentListViews.Where(x => x.Name.Equals(id)).FirstOrDefaultAsync();
+                    ExpertAgentsListView? auxLista = await almacen.ExpertAgentsListViews.Where(x => x.Name.Equals(id)).FirstOrDefaultAsync();
                     if (null != auxLista)
                     {
                         Guid parentId = auxLista.Id;
