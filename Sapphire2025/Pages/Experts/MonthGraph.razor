@@ -80,37 +80,36 @@
                                         {
                                             <th class="header-left bg-gradient-secondary">
                                                 <div class="d-flex justify-content-between align-items-center w-100">
-                                                   @HeaderText(row);
+                                                   @HeaderText(row)
                                                 </div>
                                             </th>
                                         }
                                         break;
                                     case 2: //Agente
-                                        {
+                                        {                                            
                                             <th class="header-left bg-gradient-secondary">
-                                                <div class="d-flex justify-content-between align-items-center w-100">
-
-                                                    @* <span class="cf-text">@mcolAgents[row].CF</span> *@
-                                                    @* <span class="user-name">@mcolAgents[row].Name.</span> *@
+                                                <div class="d-flex justify-content-between align-items-center w-100">                                                    
+                                                    <span class="cf-text">@AgentCFText(row)</span>
+                                                    <span class="user-name">@AgentNameText()</span>
                                                 </div>
                                             </th>
-                                            @for (int col = 0; col < dayCount; col++)
+                                             @for (int col = 0; col < dayCount; col++)
                                             {
-                                                if (null == mcolAssignations[col]?.ColAssignations?[row])
+                                                if( HasAssignation(row,col))
                                                 {
-                                                    <td class="cell-content text-center align-middle"></td>
+                                                    <td class="cell-content custom-cell text-center align-middle"
+                                                        style="@GetCellStyle()">
+                                                        <div class="cell-content-inner">
+                                                            <span>@GetCellText()</span>
+                                                            <div class="cell-bar"
+                                                                 style="@GetBarStyle()">
+                                                            </div>
+                                                        </div>
+                                                    </td>
                                                 }
                                                 else
                                                 {
-                                                    <td class="cell-content custom-cell text-center align-middle"
-                                                        style = "@GetCellStyle(col,row)">
-                                                        <div class="cell-content-inner">
-                                                            <span>@GetCellText(col,row)</span>
-                                                            <div class="cell-bar"
-                                                                style="@GetBarStyle(col,row)">                                                             
-                                                             </div>
-                                                        </div>
-                                                    </td>
+                                                    <td class="cell-content text-center align-middle"></td>
                                                 }
                                             }
                                         }
@@ -135,18 +134,39 @@
 @code {
     private int dayCount = 16;
     private ModalDialog mvarModal { get; set; } = new ModalDialog();    
-    private DateTime mvarToday = DateTime.Today;
+    private DateTime mvarToday = DateTime.Today.AddDays(-1);
     [Parameter]
     public string? AgentsViewId{ get; set; }
     private Dictionary<Guid, UserModelBase>? mcolUsers;
     private List<AgentAssignationsModel>? mcolAssignations;
-    private Dictionary<Guid, WorkShiftTemplateCollectionModel>? mcolPlans; //Lista de planes de explotación
+    private UserModelBase? mvarCurrentUser;
+    private WorkShiftTemplateModel? mvarCurrenttemplate;
+    private AgentAssignationsModel.AssignationContent? currentAssignationContent;
+    private WorkShiftTemplateCollectionModel[] mcolDayPlans;
 
     protected async override Task OnInitializedAsync()
     {
-        mcolPlans = new Dictionary<Guid, WorkShiftTemplateCollectionModel>();
+        await loadPlans();        
         mcolUsers = await mvarAuthClient.cachedUserList();
-        mcolAssignations = await mvarExpertClient.AsignationsByDateAndGraph(mvarToday, dayCount, AgentsViewId);
+        mcolAssignations = await mvarExpertClient.AsignationsByDateAndGraph(mvarToday, dayCount, AgentsViewId);        
+    }
+    //Carga en el diccionario los planes vigentes en estas fechas.
+    private async Task loadPlans()
+    {
+        mcolDayPlans = new WorkShiftTemplateCollectionModel[dayCount];
+        Dictionary<Guid, WorkShiftTemplateCollectionModel>  cachePlans = new Dictionary<Guid, WorkShiftTemplateCollectionModel>();
+        for (int i = 0;i< dayCount;i++)
+        {
+            DateTime fecha = mvarToday.AddDays(i);
+            Guid planId = await mvarExpertClient.WorkShiftTemplateHeader(fecha);
+            if(!cachePlans.ContainsKey(planId))
+            {
+                WorkShiftTemplateCollectionModel? nuevo = await mvarExpertClient.WorkShiftTemplateCollectionItem(planId);
+                if (null != nuevo)
+                    cachePlans.Add(planId, nuevo);
+            }
+            mcolDayPlans[i] = cachePlans[planId];
+        }
     }
 
     private string DayText(int index)
@@ -183,6 +203,30 @@
         }
         return string.Empty;
     }
+    private string AgentCFText(int rowIndex)
+    {
+        mvarCurrentUser = null;
+        if (null != mcolAssignations && null != mcolAssignations[rowIndex] && null!=mcolUsers)
+        {
+            if(2==RowType(rowIndex))
+            {
+                ExpertAgentListRecordModel auxRecord = (ExpertAgentListRecordModel)mcolAssignations[rowIndex].AgentRecord;
+                if (mcolUsers.ContainsKey(auxRecord.AgentId))
+                    mvarCurrentUser = mcolUsers[auxRecord.AgentId];
+            }
+        }
+        if (null != mvarCurrentUser)
+            return mvarCurrentUser.CF;
+
+        return string.Empty;        
+    }
+    private string AgentNameText()
+    {
+        if (null != mvarCurrentUser && null !=mvarCurrentUser.Name)
+            return mvarCurrentUser.Name;
+
+        return string.Empty;
+    }
     private UserModelBase? GetAgent(int rowIndex)
     {
         if (null != mcolAssignations && null != mcolAssignations[rowIndex])
@@ -197,17 +241,54 @@
 
         return null;
     }
-    private string GetCellStyle(int rowIndex, int colIndex)
+    private bool HasAssignation(int rowIndex, int colIndex)
     {
+        if (null != mcolAssignations && null!=mcolAssignations[rowIndex])
+        {
+            currentAssignationContent = mcolAssignations[rowIndex]?.ColAssignations?[colIndex];
+            mvarCurrenttemplate = null;
+            if (null != currentAssignationContent)
+            {
+                if(null!=currentAssignationContent.Definitive)
+                {
+                    WorkShiftTemplateCollectionModel plan = mcolDayPlans[colIndex];             
+                    if(null!=plan.Templates)
+                    {
+                        if (plan.Templates.ContainsKey(currentAssignationContent.Definitive))
+                        {
+                            mvarCurrenttemplate = plan.Templates?[currentAssignationContent.Definitive];
+                            return true;
+                        }                                               
+                    }                                        
+                }                                                
+            }            
+        }
+        return false;
+    }
+    private string GetCellStyle()
+    {
+        string auxColor = "black";
+        if(null!=mvarCurrenttemplate)
+        {
+            auxColor = mvarCurrenttemplate.Color ?? "black";
+            if(null!=currentAssignationContent)
+            {
+                if (currentAssignationContent.TD) auxColor = "#00CC00"; //Color del TD
+            }            
+        }
+        return string.Format("background: {1}; color: {0};", auxColor, mvarCurrenttemplate?.BgColor ?? "transparent");                        
+    }
+    private string GetCellText()
+    {
+        if(null!=currentAssignationContent)
+        {
+            return currentAssignationContent.Definitive??"";
+        }
         return "";
     }
-    private string GetCellText(int rowIndex, int colIndex)
+    private string GetBarStyle()
     {
-        return "";
-    }
-    private string GetBarStyle(int rowIndex, int colIndex)
-    {
-        return "";
+        return string.Format("background: {0};", mvarCurrenttemplate?.StripeColor ?? "transparent");
     }
 
     private async Task onExcelImport(InputFileChangeEventArgs e)
@@ -221,7 +302,8 @@
             await corriente.CopyToAsync(ms);
             byte[] buffer = ms.ToArray();
             //Ahora pasamos esto a JavaScript
-            int[] indices = await mvarJSRuntime.InvokeAsync<int[]>("excelInterop.locateDateColumn", buffer, "JULIO", 7);
+            
+            int[] indices = await mvarJSRuntime.InvokeAsync<int[]>("excelInterop.locateDateColumn", buffer, "JULIO", 12);
 
             int colMakis = indices[0];
             int colFecha = indices[1];
@@ -239,24 +321,4 @@
         }
     }
 
-    private class cellFormatted
-    {
-        public WorkShiftTemplateModel? template{ get; set; }
-
-        public string cellStyle
-        {
-            get 
-            {
-                string? auxColor = template?.Color ?? "black";
-                if (isTd) auxColor = "#00CC00"; //Color del TD
-                return string.Format("background: {1}; color: {0};", auxColor, template?.BgColor ?? "transparent");
-            }
-        }
-        public string barStyle
-        {
-            get => string.Format("background: {0};", template?.StripeColor ?? "transparent");
-        }
-        public string text{ get; set; }   
-        public bool isTd{ get; set; }
-    }
 }

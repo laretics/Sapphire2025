@@ -44,7 +44,7 @@ namespace Sapphire2025Server.Expert
                                     WorkshiftAssignation nueva = new WorkshiftAssignation();
                                     nueva.Id = Guid.NewGuid();
                                     nueva.Agent = agente.guid;
-                                    nueva.IsTD = false;
+                                    nueva.IsTD = assignation.ToUpper().Contains("TD");
                                     nueva.Assignation = assignation;
                                     nueva.Definitive = getLastAssignation(assignation);
                                     nueva.Date = auxFecha;
@@ -156,13 +156,22 @@ namespace Sapphire2025Server.Expert
         }
         private string getLastAssignation(string rhs)
         {
+            string salida = rhs;
             if (rhs.Contains('/'))
             {
                 string[] asignaciones = rhs.Split('/');
-                return asignaciones.Last();
+                salida = asignaciones.Last();
             }
-            else
-                return rhs;
+
+            return filterLastAssignation(salida);
         }
+        private string filterLastAssignation(string rhs)
+        {
+            string entrada = rhs.ToUpper();
+            if (entrada.Equals("N"))
+                return "D"; //Gente que se niega a hacer TD.
+            return entrada.Replace("TD", ""); //Quitamos TD.
+        }
+
     }
 }
