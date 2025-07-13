@@ -73,55 +73,11 @@ namespace Sapphire2025Server.Controllers
         [HttpPost("assignationsgraph")]
         public async Task<List<AgentAssignationsModel>> getGraph(WorkShiftRequestModel rhs)
         {
-            List<AgentAssignationsModel> salida = new List<AgentAssignationsModel>();
-            if(null!=rhs.AgentsTableId)
-            {
-				
-				using (DataStorage almacen = new DataStorage(mvarConfig))
-				{
-					List<User?> usuarios = await getAgentsList(rhs.AgentsTableId, almacen);
-					//Obtenemos primero la lista de los usuarios que tiene el gráfico:
-
-                    //TODO: Ahora falta crear las filas del array y modificar MonthGraph.razor
-                    //para que muestre esta estructura. Espero que sea más rápido que lo que
-                    //había hasta ahora.
-
-				}
-			}
+            if (null == rhs.AgentsTableId) return new List<AgentAssignationsModel>();
+            AgentsListCompiler compiladorAgentes = new AgentsListCompiler(mvarConfig);            
+            //Relleno la lista con asignaciones vacías pero con el encabezado correspondiente a cada Agente.            
+            List<AgentAssignationsModel> salida = await compiladorAgentes.GetAssignationsContent(rhs.AgentsTableId,rhs.Date,rhs.Days);
 		    return salida;
-        }
-
-        protected async Task<List<User?>> getAgentsList(string listName, DataStorage almacen)
-        {
-            List<User?> salida = new List<User?>();
-            ExpertAgentsListView? tablaEntrada = await almacen.ExpertAgentsListViews.Where(x => x.Name.Equals(listName)).FirstOrDefaultAsync();
-            if(null!=tablaEntrada)
-            {
-                List<ExpertAgentListRecord> entrada = await almacen.ExpertAgentListRecords.Where(x => x.ParentId == tablaEntrada.Id).ToListAsync();
-                foreach (ExpertAgentListRecord registro in entrada)
-                {
-                    if(registro.Type==0) //Un agente.
-                    {
-                        User? agente = await almacen.Users.Where(x => x.Id == registro.ElementId.ToString()).FirstOrDefaultAsync();
-                        if (null != agente)
-                            salida.Add(agente);
-                    }
-                    else if(registro.Type==1) // Un separador.
-                    {
-                        //Los separadores se resuelven con elementos null.
-                        salida.Add(null);
-                    }
-                    else if(registro.Type==2) //Un bloque de inclusión
-                    {
-                        ExpertAgentsListView? auxRef = await almacen.ExpertAgentsListViews.Where(x => x.Id == registro.ElementId).FirstOrDefaultAsync();
-                        if(null!=auxRef)
-                        {
-                            salida.AddRange(await getAgentsList(auxRef.Name, almacen));
-                        }
-                    }
-                }
-			}
-            return salida;           
         }
 
         /// <summary>

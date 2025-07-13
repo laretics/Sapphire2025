@@ -63,18 +63,21 @@ namespace Sapphire2025.Storage
             return new List<WorkShiftAssignationModel>();            
         }
 
-        public async Task<List<AgentAssignationsModel>> AsignationsByDateAndGraph(DateTime begin, int days, string agentsTableId)
+        public async Task<List<AgentAssignationsModel>> AsignationsByDateAndGraph(DateTime begin, int days, string? agentsTableId)
         {
-            WorkShiftRequestModel peticion = new WorkShiftRequestModel();
-            peticion.Date = begin;
-            peticion.Days = days;
-            peticion.AgentsTableId = agentsTableId;
-            string json = System.Text.Json.JsonSerializer.Serialize(peticion);
-            HttpResponseMessage respuesta = await sendPostRequest("assignationsgraph", json);
-            if(respuesta.IsSuccessStatusCode)
+            if(null!=agentsTableId)
             {
-                List<AgentAssignationsModel>? salida = await respuesta.Content.ReadFromJsonAsync<List<AgentAssignationsModel>>();
-                if (null != salida) return salida;
+                WorkShiftRequestModel peticion = new WorkShiftRequestModel();
+                peticion.Date = begin;
+                peticion.Days = days;
+                peticion.AgentsTableId = agentsTableId;
+                string json = System.Text.Json.JsonSerializer.Serialize(peticion);
+                HttpResponseMessage respuesta = await sendPostRequest("assignationsgraph", json);
+                if (respuesta.IsSuccessStatusCode)
+                {
+                    List<AgentAssignationsModel>? salida = await respuesta.Content.ReadFromJsonAsync<List<AgentAssignationsModel>>();
+                    if (null != salida) return salida;
+                }
             }
             return new List<AgentAssignationsModel>();
         }

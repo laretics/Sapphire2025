@@ -5,7 +5,7 @@
 <PageTitle>Gráfico mensual de Tracción</PageTitle>
 <ModalDialog></ModalDialog>
 <div style="max-height: 80vh; overflow-y: auto;">
-    @if(null==mcolAgents)
+    @if(null==mcolUsers)
     {
         <div class="d-flex justify-content-center align-items-center" style="height: 60vh;">
             <div class="text-center">
@@ -21,7 +21,7 @@
     }
     else
     {
-        @if(null==mcolCells)
+        @if(null==mcolAssignations)
         {
             <div class="d-flex justify-content-center align-items-center" style="height: 60vh;">
                 <div class="text-center">
@@ -37,58 +37,95 @@
         }
         else
         {
-            <table class="table table-bordered shadow rounded">
-                <thead>
-                    <tr>
-                        <th class="header-corner"></th>
-                        @for (int col = 0; col <= dayCount; col++)
-                        {
-                            <th class="@festiveClass(col)">
-                                @if (1 == col) //Es hoy
-                                {
-                                    <span class="highlight-today">@dayText(col)</span>
-                                }
-                                else
-                                {
-                                    @dayText(col)
-                                }
-                            </th>
-                        }
-                    </tr>
-                </thead>
-                <tbody>
-
-                    @for (int row = 0 ; row<mcolAgents.Count;row++ )
-                    {
+            if(mcolAssignations.Count<1)
+            {
+                <div class="d-flex justify-content-center align-items-center" style="height: 60vh;">
+                    <div class="text-center">
+                        <div>
+                            <h5 class="mt-2">La tabla de asignaciones está vacía.</h5>
+                            <p class="text-muted">Compruebe el nombre del gráfico y vuelva a intentar cargarlo.</p>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <table class="table table-bordered shadow rounded">
+                    <thead>
                         <tr>
-                            <th class="header-left bg-gradient-secondary">
-                                <div class="d-flex justify-content-between align-items-center w-100">
-                                    @* <span class="cf-text">@mcolAgents[row].CF</span> *@
-                                    @* <span class="user-name">@mcolAgents[row].Name.</span> *@
-                                </div>
-                            </th>
-                            @for (int col = 0; col < dayCount; col++)
+                            <th class="header-corner"></th>
+                            @for (int col = 0; col <= dayCount; col++)
                             {
-                                if(null==mcolCells[col,row])
-                                {
-                                    <td class="cell-content text-center align-middle"></td>
-                                }
-                                else
-                                {
-                                    <td class="cell-content custom-cell text-center align-middle"
-                                    style="@mcolCells[col,row]?.cellStyle">
-                                        <div class="cell-content-inner">
-                                            <span>@mcolCells[col, row]?.text</span>
-                                            <div class="cell-bar"
-                                            style="@mcolCells[col,row]?.barStyle"></div>
-                                        </div>
-                                    </td>
-                                }
+                                <th class="@FestiveClass(col)">
+                                    @if (1 == col) //Es hoy
+                                    {
+                                        <span class="highlight-today">@DayText(col)</span>
+                                    }
+                                    else
+                                    {
+                                        @DayText(col)
+                                    }
+                                </th>
                             }
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+
+                        @for (int row = 0; row < mcolAssignations.Count; row++)
+                        {
+                            <tr>
+                                @switch (RowType(row))
+                                {
+                                    case 1: //Encabezado
+                                        {
+                                            <th class="header-left bg-gradient-secondary">
+                                                <div class="d-flex justify-content-between align-items-center w-100">
+                                                   @HeaderText(row);
+                                                </div>
+                                            </th>
+                                        }
+                                        break;
+                                    case 2: //Agente
+                                        {
+                                            <th class="header-left bg-gradient-secondary">
+                                                <div class="d-flex justify-content-between align-items-center w-100">
+
+                                                    @* <span class="cf-text">@mcolAgents[row].CF</span> *@
+                                                    @* <span class="user-name">@mcolAgents[row].Name.</span> *@
+                                                </div>
+                                            </th>
+                                            @for (int col = 0; col < dayCount; col++)
+                                            {
+                                                if (null == mcolAssignations[col]?.ColAssignations?[row])
+                                                {
+                                                    <td class="cell-content text-center align-middle"></td>
+                                                }
+                                                else
+                                                {
+                                                    <td class="cell-content custom-cell text-center align-middle"
+                                                        style = "@GetCellStyle(col,row)">
+                                                        <div class="cell-content-inner">
+                                                            <span>@GetCellText(col,row)</span>
+                                                            <div class="cell-bar"
+                                                                style="@GetBarStyle(col,row)">                                                             
+                                                             </div>
+                                                        </div>
+                                                    </td>
+                                                }
+                                            }
+                                        }
+                                        break;
+                                    default: //Separador
+                                        {
+                                            
+                                        }
+                                        break;
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
         }
     }
 </div>
@@ -101,99 +138,23 @@
     private DateTime mvarToday = DateTime.Today;
     [Parameter]
     public string? AgentsViewId{ get; set; }
-    
-
-
-
     private Dictionary<Guid, UserModelBase>? mcolUsers;
-    private cellFormatted?[,]? mcolCells;
-    private Dictionary<Guid, WorkShiftTemplateCollectionModel> mcolPlans; //Lista de planes de explotación
+    private List<AgentAssignationsModel>? mcolAssignations;
+    private Dictionary<Guid, WorkShiftTemplateCollectionModel>? mcolPlans; //Lista de planes de explotación
+
     protected async override Task OnInitializedAsync()
     {
         mcolPlans = new Dictionary<Guid, WorkShiftTemplateCollectionModel>();
         mcolUsers = await mvarAuthClient.cachedUserList();
-        //Cargamos las asignaciones de hoy, lo que nos va a permitir tener la lista de Maquinistros.
-        await loadAgents();
-        await loadAssignations(); //Carga las asignaciones de los Agentes.
-    }
-    private async Task loadAgents()
-    {
-        //Modificación de la rutina precedente. Ahora cargamos la tabla de Agentes directamente
-
-
-
-        List<WorkShiftAssignationModel> todayAssign = await mvarExpertClient.AssignationsByDate(DateTime.Today);
-        List<UserModelBase> auxLista = mcolUsers.Values.ToList();
-        foreach(WorkShiftAssignationModel asig in todayAssign)
-        {
-            foreach (UserModelBase popo in auxLista)
-            {
-                // if(popo.CF.Equals(asig.CF))
-                // {
-                //     mcolAgents.Add(asig.CF, popo);
-                //     auxLista.Remove(popo); //Para no volver a buscarla. Se supone que es una aceleración.
-                // }
-            }
-        }
+        mcolAssignations = await mvarExpertClient.AsignationsByDateAndGraph(mvarToday, dayCount, AgentsViewId);
     }
 
-    private async Task loadAssignations()
+    private string DayText(int index)
     {
-        if (null == mcolAgents) return; //No debería ser nulo.
-        mcolCells = new cellFormatted[dayCount, mcolAgents.Count];
-        for (int i=0; i< dayCount;i++)
-        {
-            DateTime fecha = DateTime.Today.AddDays(i);
-            List<WorkShiftAssignationModel> colAssignations = await mvarExpertClient.AssignationsByDate(fecha);
-            Guid auxPlanId = await mvarExpertClient.WorkShiftTemplateHeader(fecha);
-            if(Guid.Empty!=auxPlanId)
-            {
-                if(!mcolPlans.ContainsKey(auxPlanId))
-                {
-                    //Cargamos el plan de explotación desde la base de datos.
-                    WorkShiftTemplateCollectionModel? nuevoPlan = await mvarExpertClient.WorkShiftTemplateCollectionItem(auxPlanId);
-                    if (null != nuevoPlan)
-                        mcolPlans.Add(auxPlanId, nuevoPlan);
-                }
-                if(mcolPlans.ContainsKey(auxPlanId))
-                {
-                    WorkShiftTemplateCollectionModel auxPlan = mcolPlans[auxPlanId];
-                    for (int jj = 0; jj < mcolAgents.Count; jj++)
-                    {
-                        // UserModelBase agente = mcolAgents[jj];
-
-                        // WorkShiftAssignationModel? asignacion = getAssignationByCF(colAssignations, agente.CF);
-                        // if (null != asignacion)
-                        // {
-                        //     cellFormatted nueva = new cellFormatted();
-                        //     nueva.text = asignacion.Definitive;
-                        //     nueva.isTd = asignacion.IsTD;
-                        //     if (null != auxPlan.Templates && auxPlan.Templates.ContainsKey(nueva.text))
-                        //         nueva.template = auxPlan.Templates[nueva.text];
-
-                        //     mcolCells[i, jj] = nueva;
-                        // }
-                    }
-                }
-            }
-        }
-    }    
-    private WorkShiftAssignationModel? getAssignationByCF(List<WorkShiftAssignationModel>lista, string CF)
-    {
-        foreach(WorkShiftAssignationModel elemento in lista)
-        {
-            //if (elemento.CF.Equals(CF)) return elemento;
-        }
-        return null;
+        DateTime auxFecha = mvarToday.AddDays(index);
+        return string.Format("{0}", auxFecha.Day);
     }
-
-
-    private string dayText(int offset)
-    {
-        DateTime fecha = mvarToday.AddDays(offset-2);
-        return fecha.Day.ToString();
-    }
-    private string festiveClass(int offset)
+    private string FestiveClass(int offset)
     {
         bool salida = false;
         DateTime fecha = mvarToday.AddDays(offset);
@@ -203,14 +164,58 @@
         if (salida) return "header-top bg-gradient-weekend text-dark text-center";
         else return "header-top bg-gradient-primary text-white text-center";
     }
+    private byte RowType(int rowIndex)
+    {
+        if (null == mcolAssignations || null==mcolAssignations[rowIndex]) return 0; //Separador
+        if (mcolAssignations[rowIndex].AgentRecord.GetType() == typeof(ExpertAgentListHeader)) return 1; //Header
+        else if (mcolAssignations[rowIndex].AgentRecord.GetType() == typeof(ExpertAgentListRecordModel)) return 2; //Agente
+        return 0; //Separador
+    }
+    private string HeaderText(int rowIndex)
+    {
+        if (null != mcolAssignations && null != mcolAssignations[rowIndex])
+        {
+            if(1==RowType(rowIndex))
+            {
+                ExpertAgentListHeader header = (ExpertAgentListHeader)mcolAssignations[rowIndex].AgentRecord;
+                return header.HeaderText;
+            }
+        }
+        return string.Empty;
+    }
+    private UserModelBase? GetAgent(int rowIndex)
+    {
+        if (null != mcolAssignations && null != mcolAssignations[rowIndex])
+        {
+            if (2 == RowType(rowIndex))
+            {
+                ExpertAgentListRecordModel auxAgent = (ExpertAgentListRecordModel)mcolAssignations[rowIndex].AgentRecord;
+                if (mcolUsers.ContainsKey(auxAgent.AgentId))
+                    return mcolUsers[auxAgent.AgentId];
+            }
+        }
+
+        return null;
+    }
+    private string GetCellStyle(int rowIndex, int colIndex)
+    {
+        return "";
+    }
+    private string GetCellText(int rowIndex, int colIndex)
+    {
+        return "";
+    }
+    private string GetBarStyle(int rowIndex, int colIndex)
+    {
+        return "";
+    }
+
     private async Task onExcelImport(InputFileChangeEventArgs e)
     {
         Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
 
         if (null != archivo)
         {
-            mcolAgents = null;
-            mcolCells = null;
             using Stream corriente = archivo.OpenReadStream(maxAllowedSize: 5242880); // 5 MB
             using MemoryStream ms = new MemoryStream();
             await corriente.CopyToAsync(ms);
@@ -227,8 +232,6 @@
             //int columna = FindDate(DateTime.Today,salida);
             Console.WriteLine(salida);
             string? salidaCompilacion = await mvarExpertClient.uploadDailyWorkShift(salida);
-            await loadAgents();
-            await loadAssignations(); //Carga las asignaciones de los Agentes.
             if (null != salidaCompilacion && salidaCompilacion.Length > 0)
                 await mvarModal.show("Error de importación", salidaCompilacion, "Salir");
 
