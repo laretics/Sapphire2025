@@ -1,0 +1,26 @@
+﻿.custom-width-table th,
+.custom-width-table td {
+    width: 8%; /* Valor base para columnas impares */
+}
+
+.custom-width-table th:nth-child(even),
+.custom-width-table td:nth-child(even) {
+    width: 16%; /* El doble para columnas pares */
+}
+
+.import-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(255,255,255,0.7);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.import-spinner {
+    text-align: center;
+}

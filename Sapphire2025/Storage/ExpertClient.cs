@@ -102,10 +102,12 @@ namespace Sapphire2025.Storage
         /// </summary>
         /// <param name="id">Guid del plan de explotación que se pretende descargar</param>
         /// <returns>El plan de explotación o null, si no existe ninguno con ese Guid</returns>
-        public async Task<WorkShiftTemplateCollectionModel?> WorkShiftTemplateCollectionItem(Guid id)
+        public async Task<WorkShiftTemplateCollectionModel?> WorkShiftTemplateCollectionItem(Guid id, DateTime date, bool onlyWork)
         {
             Sapphire2025Models.Expert.WorkShiftRequestModel peticion = new WorkShiftRequestModel();
             peticion.Id = id;
+            peticion.Date = date; //Es para filtrar el día de la semana que es.
+            peticion.onlyWork = onlyWork; //Sólo carga los turnos que sean de trabajo (para gráfico diario)
             string json = System.Text.Json.JsonSerializer.Serialize(peticion);
             HttpResponseMessage respuesta = await sendPostRequest("workshifttemplatecollectionitem", json);
             if (respuesta.IsSuccessStatusCode)

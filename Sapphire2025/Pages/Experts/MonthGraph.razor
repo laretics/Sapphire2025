@@ -161,7 +161,7 @@
             Guid planId = await mvarExpertClient.WorkShiftTemplateHeader(fecha);
             if(!cachePlans.ContainsKey(planId))
             {
-                WorkShiftTemplateCollectionModel? nuevo = await mvarExpertClient.WorkShiftTemplateCollectionItem(planId);
+                WorkShiftTemplateCollectionModel? nuevo = await mvarExpertClient.WorkShiftTemplateCollectionItem(planId,fecha,false);
                 if (null != nuevo)
                     cachePlans.Add(planId, nuevo);
             }

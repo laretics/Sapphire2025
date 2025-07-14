@@ -107,21 +107,28 @@ namespace Sapphire2025Server.Controllers
                 }
             }
             if (null != salida)
-                salida.Templates = await getWorkShiftTemplates(request.Id);
+                salida.Templates = await getWorkShiftTemplates(request.Id,request.onlyWork, request.Date);
 
             return salida;
         }
 
-        internal async Task<Dictionary<string, WorkShiftTemplateModel>> getWorkShiftTemplates(Guid templateCollectionId)
+        private bool WorkSheetOnDay( WorkShiftTemplate template, DateTime date)
+        {
+            bool salida = ((2 ^(int)(date.DayOfWeek)) & template.PerWeek) != 0;
+            return salida;
+            //TODO: Mirar más adelante los festivos.
+        }
+
+        internal async Task<Dictionary<string, WorkShiftTemplateModel>> getWorkShiftTemplates(Guid templateCollectionId, bool onlyWork, DateTime date)
         {
             Dictionary<string, WorkShiftTemplateModel> salida = new Dictionary<string, WorkShiftTemplateModel>();
             using (DataStorage almacen = new DataStorage(mvarConfig))
             {
                 List<WorkShiftTemplate> colTemplates = await almacen.WorkShiftTemplates.
-                    Where(x => x.Parent == templateCollectionId).ToListAsync();
+                    Where(x => x.Parent == templateCollectionId && (!onlyWork || x.Active)).ToListAsync();
                 foreach (WorkShiftTemplate auxPlantilla in colTemplates)
                 {
-                    if (auxPlantilla.Active)
+                    if (auxPlantilla.Active && WorkSheetOnDay(auxPlantilla,date))
                     {
                         if (auxPlantilla.Att)
                         {
@@ -134,7 +141,9 @@ namespace Sapphire2025Server.Controllers
                             nuevo.StripeColor = auxPlantilla.StripeColor;
                             nuevo.StartTime = auxPlantilla.StartTime;
                             nuevo.Duration = auxPlantilla.Duration;
-                            salida.Add(nuevo.Name, nuevo);
+                            nuevo.CoorX = auxPlantilla.CoorX;
+							nuevo.CoorY = auxPlantilla.CoorY;
+							salida.Add(nuevo.Name, nuevo);
                         }
                         else
                         {
@@ -147,8 +156,10 @@ namespace Sapphire2025Server.Controllers
                             nuevo.StripeColor = auxPlantilla.StripeColor;
                             nuevo.StartTime = auxPlantilla.StartTime;
                             nuevo.Duration = auxPlantilla.Duration;
-                            nuevo.Content = await getContents(auxPlantilla.Id);
-                            salida.Add(nuevo.Name, nuevo);
+							nuevo.CoorX = auxPlantilla.CoorX;
+							nuevo.CoorY = auxPlantilla.CoorY;
+							nuevo.Content = await getContents(auxPlantilla.Id);
+							salida.Add(nuevo.Name, nuevo);
                         }
                     }
                     else
@@ -160,7 +171,9 @@ namespace Sapphire2025Server.Controllers
                         nuevo.Color = auxPlantilla.Color;
                         nuevo.BgColor = auxPlantilla.BgColor;
                         nuevo.StripeColor = auxPlantilla.StripeColor;
-                        salida.Add(nuevo.Name, nuevo);
+						nuevo.CoorX = auxPlantilla.CoorX;
+						nuevo.CoorY = auxPlantilla.CoorY;
+						salida.Add(nuevo.Name, nuevo);
                     }
                 }
             }

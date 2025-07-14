@@ -10,6 +10,7 @@ namespace Sapphire2025Models.Expert
     {
         public DateTime Date { get; set; }
         public int Days { get; set; }
+        public bool onlyWork { get; set; }
         public string? AgentsTableId { get; set; }
         public Guid Id { get; set; }
     }

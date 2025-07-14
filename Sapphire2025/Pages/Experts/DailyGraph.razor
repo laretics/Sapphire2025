@@ -1,43 +1,191 @@
 ﻿@page "/dailyGraph"
 @inject IJSRuntime mvarJSRuntime
 @inject ExpertClient mvarExpertClient
-@implements IDisposable
 <PageTitle>Gráfico de Tracción</PageTitle>
-<h3>Gráfico de tracción</h3>
 <ModalDialog @ref="mvarModal" />
 
-
-@if(null != parsedCells)
+@if (isImporting)
 {
-    <table>
-        @foreach (List<CellData> row in parsedCells)
-        {
-            <tr>
-                @foreach (CellData cell in row)
-                {
-                    <td style="background-color:@cell.BackgroundColor">@cell.Text</td>
-                }
-            </tr>
-        }
-    </table>
+    <div class="import-overlay">
+        <div class="import-spinner">
+            <div class="spinner-border text-primary" style="width: 4rem; height: 4rem;" role="status">
+                <span class="visually-hidden">Importando...</span>
+            </div>
+            <div class="mt-3 fs-5">Importando archivo, por favor espere...</div>
+        </div>
+    </div>
 }
 
-@code {
-    private ModalDialog mvarModal { get; set; } = new ModalDialog();
-    private ElementReference pasteTarget;
-    private DotNetObjectReference<DailyGraph>? dotNetRef;
-    private List<List<CellData>>? parsedCells;
-
-
-
-
-    public void Dispose()
+<div class="container mt-4" style="@ImportingStyle()">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <label for="xmlFile" class="form-label">Cargar Gráfico</label>
+            <InputFile id="xmlFile" OnChange="OnXmlFileSelected" accept=".xlsx" class="form-control" />
+        </div>
+        <div class="col-md-6">
+            <label for="datePicker" class="form-label">Seleccionar día</label>
+            <InputDate id="datePicker" 
+                Value = "selectedDate"
+                ValueChanged = "@(async (DateTime newValue) => await OnDaySelectedChange(newValue))"
+                ValueExpression="() => selectedDate"
+                class="form-control" />
+            <div class="form-check form-switch mt-3">
+                <input class="form-check-input" type="checkbox" id="festiveSwitch" checked="@isFestive" @onchange ="OnFestiveChanged"/>
+                <label class="form-check-label" for="festiveSwitch">
+                    ¿Es festivo?
+                </label>
+            </div>
+        </div>
+    </div>
+    @if(null==mcolTemplates)
     {
-        dotNetRef?.Dispose();
+        <div class="alert alert-warning d-flex align-items-center" role="alert">
+            No hay turnos disponibles: la colección está vacía.
+        </div>
     }
-    private class CellData
+    else
     {
-        public string Text { get; set; } = string.Empty;
-        public string BackgroundColor { get; set; } = "transparent";
+        <div class="row">
+            <div class="col-12">
+                <h5 class="mb-3">Grid de muestra</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped align-middle text-center custom-width-table">
+                        <thead class="table-light">
+                            <tr>
+                                @for (int col = 0; col <= mcolTemplates.GetUpperBound(0); col++)
+                                {
+                                    <th>Turno</th>
+                                    <th>Asignación</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int row = 0; row <= mcolTemplates.GetUpperBound(1); row++)
+                            {
+                                <tr>
+                                    @for (int col = 0; col <= mcolTemplates.GetUpperBound(0); col++)
+                                    {
+                                        if(null==mcolTemplates[col,row])
+                                        {
+                                            <td>-</td>
+                                            <td>-</td>
+                                        }
+                                        else
+                                        {
+                                            <td>@mcolTemplates[col,row].Name</td>
+                                            <td>-</td>
+                                        }
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+</div>
+
+@code {
+    private ModalDialog mvarModal { get; set; } = new ModalDialog();    
+    private DateTime selectedDate = DateTime.Today;
+    private bool isFestive = false;
+    private bool isImporting = false;
+    private WorkShiftTemplateModel[,]? mcolTemplates;
+
+
+    protected async override Task OnInitializedAsync()
+    {
+        await UpdateData();
+    }
+
+    /// <summary>
+    /// Carga el plan de explotación de la fecha marcada en el calendario.
+    /// </summary>
+    /// <returns>No devuelve nada.</returns>
+    private async Task LoadPlan()
+    {
+        Guid auxHeaderId = await mvarExpertClient.WorkShiftTemplateHeader(selectedDate);
+        WorkShiftTemplateCollectionModel? auxPlan = null;
+        mcolTemplates = null;
+        if(auxHeaderId!=Guid.Empty)
+        {
+            auxPlan = await mvarExpertClient.WorkShiftTemplateCollectionItem(auxHeaderId,selectedDate,true);
+            uint maxX = 0;
+            uint maxY = 0;
+            if(null!=auxPlan && null!=auxPlan.Templates)
+            {
+                foreach (WorkShiftTemplateModel auxTemplate in auxPlan.Templates.Values)
+                {
+                    if (auxTemplate.CoorX > maxX) maxX = auxTemplate.CoorX;
+                    if (auxTemplate.CoorY > maxY) maxY = auxTemplate.CoorY;                   
+                }
+                mcolTemplates = new WorkShiftTemplateModel[maxX + 1, maxY + 1];
+                foreach(WorkShiftTemplateModel auxTemplate in auxPlan.Templates.Values)
+                {
+                    mcolTemplates[auxTemplate.CoorX, auxTemplate.CoorY] = auxTemplate;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Carga las asignaciones de hoy en el grid.
+    /// </summary>
+    /// <returns>No devuelve nada</returns>
+    private async Task LoadAssignations()
+    {
+
+    }
+
+    private async Task UpdateData()
+    {
+        isImporting = true;
+        StateHasChanged();
+        await LoadPlan();
+        await LoadAssignations();
+        isImporting = false;
+        StateHasChanged();
+    }
+
+    private string ImportingStyle()
+    {
+        if (isImporting) return "pointer-events:none;opacity:0.5;";
+        else return string.Empty;
+    }
+
+    private async Task OnFestiveChanged (ChangeEventArgs e)
+    {
+        if(null!=e.Value)
+        {
+            isFestive = (bool)e.Value;
+            await UpdateData();
+        }
+    }
+    private async Task OnDaySelectedChange(DateTime newValue)
+    {
+            selectedDate = newValue;
+            await UpdateData();
+    }
+
+    private async Task OnXmlFileSelected(InputFileChangeEventArgs e)
+    {
+        isImporting = true;
+        StateHasChanged();
+        try
+        {
+            // Aquí puedes manejar el archivo XML seleccionado
+            var file = e.File;
+            // Lógica de procesamiento...
+            await Task.Delay(3000);
+
+            await UpdateData();
+        }
+        finally
+        {
+            isImporting = false;
+            StateHasChanged();
+        }
     }
 }
