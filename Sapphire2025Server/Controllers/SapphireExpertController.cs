@@ -88,134 +88,8 @@ namespace Sapphire2025Server.Controllers
         [HttpPost("workshifttemplatecollectionitem")]
         public async Task<WorkShiftTemplateCollectionModel?> WorkShiftTemplateItem(WorkShiftRequestModel request)
         {
-            WorkShiftTemplateCollectionModel? salida = null;
-            using (DataStorage almacen = new DataStorage(mvarConfig))
-            {
-                WorkShiftTemplateCollection? candidato = await almacen.WorkShiftTemplateCollections.
-                    Where(x => x.Id == request.Id).FirstOrDefaultAsync();
-                if (null != candidato)
-                {
-                    User? usuario = await almacen.Users.
-                        Where(x => x.CF.Equals(candidato.Owner)).FirstOrDefaultAsync();
-                    salida = new WorkShiftTemplateCollectionModel();
-                    salida.Id = request.Id;
-                    salida.Name = candidato.Name;
-                    salida.Comment = candidato.Comment;
-                    salida.Collective = candidato.Collective;
-                    salida.Begin = candidato.Begin;
-                    salida.Owner = null == usuario ? Guid.Empty : usuario.guid;
-                }
-            }
-            if (null != salida)
-                salida.Templates = await getWorkShiftTemplates(request.Id,request.onlyWork, request.Date);
-
-            return salida;
-        }
-
-        private bool WorkSheetOnDay( WorkShiftTemplate template, DateTime date)
-        {
-            bool salida = ((2 ^(int)(date.DayOfWeek)) & template.PerWeek) != 0;
-            return salida;
-            //TODO: Mirar más adelante los festivos.
-        }
-
-        internal async Task<Dictionary<string, WorkShiftTemplateModel>> getWorkShiftTemplates(Guid templateCollectionId, bool onlyWork, DateTime date)
-        {
-            Dictionary<string, WorkShiftTemplateModel> salida = new Dictionary<string, WorkShiftTemplateModel>();
-            using (DataStorage almacen = new DataStorage(mvarConfig))
-            {
-                List<WorkShiftTemplate> colTemplates = await almacen.WorkShiftTemplates.
-                    Where(x => x.Parent == templateCollectionId && (!onlyWork || x.Active)).ToListAsync();
-                foreach (WorkShiftTemplate auxPlantilla in colTemplates)
-                {
-                    if (auxPlantilla.Active && WorkSheetOnDay(auxPlantilla,date))
-                    {
-                        if (auxPlantilla.Att)
-                        {
-                            //Turno de depósito
-                            AttTemplateModel nuevo = new AttTemplateModel();
-                            nuevo.Name = auxPlantilla.Name;
-                            nuevo.comment = auxPlantilla.Comment;
-                            nuevo.Color = auxPlantilla.Color;
-                            nuevo.BgColor = auxPlantilla.BgColor;
-                            nuevo.StripeColor = auxPlantilla.StripeColor;
-                            nuevo.StartTime = auxPlantilla.StartTime;
-                            nuevo.Duration = auxPlantilla.Duration;
-                            nuevo.CoorX = auxPlantilla.CoorX;
-							nuevo.CoorY = auxPlantilla.CoorY;
-							salida.Add(nuevo.Name, nuevo);
-                        }
-                        else
-                        {
-                            //Turno de conducción
-                            WorkTemplateModel nuevo = new WorkTemplateModel();
-                            nuevo.Name = auxPlantilla.Name;
-                            nuevo.comment = auxPlantilla.Comment;
-                            nuevo.Color = auxPlantilla.Color;
-                            nuevo.BgColor = auxPlantilla.BgColor;
-                            nuevo.StripeColor = auxPlantilla.StripeColor;
-                            nuevo.StartTime = auxPlantilla.StartTime;
-                            nuevo.Duration = auxPlantilla.Duration;
-							nuevo.CoorX = auxPlantilla.CoorX;
-							nuevo.CoorY = auxPlantilla.CoorY;
-							nuevo.Content = await getContents(auxPlantilla.Id);
-							salida.Add(nuevo.Name, nuevo);
-                        }
-                    }
-                    else
-                    {
-                        //Descanso o licencia
-                        RestTemplateModel nuevo = new RestTemplateModel();
-                        nuevo.Name = auxPlantilla.Name;
-                        nuevo.comment = auxPlantilla.Comment;
-                        nuevo.Color = auxPlantilla.Color;
-                        nuevo.BgColor = auxPlantilla.BgColor;
-                        nuevo.StripeColor = auxPlantilla.StripeColor;
-						nuevo.CoorX = auxPlantilla.CoorX;
-						nuevo.CoorY = auxPlantilla.CoorY;
-						salida.Add(nuevo.Name, nuevo);
-                    }
-                }
-            }
-            return salida;
-        }
-
-        /// <summary>
-        /// Obtiene los att y trenes de un determinado turno de trabajo.
-        /// </summary>
-        /// <param name="parentId">Guid del turno</param>
-        /// <returns></returns>
-        internal async Task<List<WorkShiftContentModel>> getContents(Guid parentId)
-        {
-            List<WorkShiftContentModel> salida = new List<WorkShiftContentModel>();
-            using (DataStorage almacen = new DataStorage(mvarConfig))
-            {
-                List<WorkShiftContent> contenidos = await almacen.WorkShiftContents.
-                    Where(x => x.Parent == parentId).ToListAsync();
-                foreach (WorkShiftContent contenido in contenidos)
-                {
-                    if (null == contenido.TrainId)
-                    {
-                        //Depósito o att
-                        AttWorkShiftContentModel nuevo = new AttWorkShiftContentModel();
-                        nuevo.StartTime = contenido.Begin;
-                        nuevo.EndTime = contenido.EndTime;
-                        nuevo.Foreign = contenido.Foreign;
-                        salida.Add(nuevo);
-                    }
-                    else
-                    {
-                        //Tren
-                        TrainWorkShiftContentModel nuevo = new TrainWorkShiftContentModel();
-                        nuevo.StartTime = contenido.Begin;
-                        nuevo.EndTime = contenido.EndTime;
-                        nuevo.TrainId = contenido.TrainId;
-                        nuevo.Discrectional = contenido.Discrectional;
-                        salida.Add(nuevo);
-                    }
-                }
-            }
-            return salida;
+            WorkShiftProcessor procesador = new WorkShiftProcessor(mvarConfig);
+            return await procesador.Plan(request.Id, request.onlyWork, true, request.Date);
         }
 
         /// <summary>
@@ -227,35 +101,15 @@ namespace Sapphire2025Server.Controllers
         [HttpPost("workshifttemplateheader")]
         public async Task<Guid> WorkShiftTemplateHeader(WorkShiftRequestModel request)
         {
-            using (DataStorage almacen = new DataStorage(mvarConfig))
-            {
-                WorkShiftTemplateCollection? candidato = await almacen.WorkShiftTemplateCollections.
-                    OrderByDescending(x => x.Begin).
-                    Where(x => x.Begin <= request.Date && x.Collective == 0).FirstOrDefaultAsync();
-                if (null != candidato) return candidato.Id;
-            }
-            return Guid.Empty;
+            WorkShiftProcessor procesador = new WorkShiftProcessor(mvarConfig);
+            return await procesador.HeaderPlan(request.Date, 0);
         }
 
         [HttpGet("workshifttemplates")]
         public async Task<List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>> WorkShiftTemplates()
         {
-            List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel> salida = new List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>();
-            using (DataStorage almacen = new DataStorage(mvarConfig))
-            {
-                foreach (WorkShiftTemplateCollection origen in await almacen.WorkShiftTemplateCollections.OrderByDescending(x => x.Begin).ToListAsync())
-                {
-                    Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel destino = new Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel();
-                    destino.Id = origen.Id;
-                    destino.Begin = origen.Begin;
-                    destino.Name = origen.Name;
-                    destino.Comment = origen.Comment;
-                    destino.Collective = origen.Collective;
-                    destino.Owner = origen.Owner == null ? Guid.Empty : (Guid)origen.Owner;
-                    salida.Add(destino);
-                }
-            }
-            return salida;
+            WorkShiftProcessor procesador = new WorkShiftProcessor(mvarConfig);
+            return await procesador.Plans();
         }
         [HttpGet("agentslistsnames")]
         public async Task<List<string>> AgentsListsNames()
