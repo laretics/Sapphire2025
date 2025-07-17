@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using Sapphire2025Server.Models;
 using Sapphire2025Server.Models.Turnos;
 using System.Text;
@@ -34,11 +35,13 @@ namespace Sapphire2025Server.Expert
                                 return string.Format("Error al intentar eliminar asignaciones de turnos con la fecha {0:dd-MM-yy}.", auxFecha);
                             //Creamos una lista de asignaciones. La necesitamos para resolver cambios personales tras la importación.
                             List<WorkshiftAssignation> colAssign = new List<WorkshiftAssignation>();
+                            Dictionary<string, List<WorkshiftAssignation>> mcolCambios = new Dictionary<string, List<WorkshiftAssignation>>();
 
                             for (int filaId = 1; filaId < columnas[colId].Count; filaId++)
                             {
                                 User? agente = await getAgentFromHeader(columnas[0][filaId].Text, almacen);
-                                string? assignation = getCleanAssignationString(columnas[colId][filaId].Text);
+                                AssignationCell cell = columnas[colId][filaId];
+                                string? assignation = getCleanAssignationString(cell.Text);
                                 if (null != agente && null != assignation)
                                 {
                                     WorkshiftAssignation nueva = new WorkshiftAssignation();
@@ -48,6 +51,14 @@ namespace Sapphire2025Server.Expert
                                     nueva.Assignation = assignation;
                                     nueva.Definitive = getLastAssignation(assignation);
                                     nueva.Date = auxFecha;
+                                    nueva.BgColor = manageBgColor(cell.Bg);
+                                    if (!nueva.BgColor.Equals("transparent"))
+                                    {
+                                        if(!mcolCambios.ContainsKey(nueva.BgColor))
+										    mcolCambios.Add(nueva.BgColor, new List<WorkshiftAssignation>());
+                                        mcolCambios[nueva.BgColor].Add(nueva);
+									}                                        
+                                    nueva.Annotation = manageAnnotation(cell.Comment);
                                     colAssign.Add(nueva);
                                 }
                             }
@@ -71,6 +82,31 @@ namespace Sapphire2025Server.Expert
             {
                 return string.Format("Error interno: {0}", ex.ToString());
             }
+        }
+
+        private string manageBgColor(string? bgColor)
+        {
+            string salida = "transparent";            
+            if(null!=bgColor && !bgColor.Equals("transparent"))
+            {
+				string entrada = bgColor.ToUpper();
+				if (entrada.Equals("#FFFFCC")) return "transparent"; //Festivo
+				if (entrada.Equals("#DCE6F1")) return "transparent"; //Vacaciones
+				if (entrada.Equals("#DCE6F2")) return "transparent"; //Vacaciones
+				if (entrada.Equals("#92D050")) return "transparent"; //Turno a cubrir
+
+				salida = bgColor;
+            }
+            return salida;
+        }
+        private string manageAnnotation(string? rhs)
+        {
+            string salida = string.Empty;
+            if(null!= rhs)
+            {
+
+            }
+            return salida;
         }
 
         /// <summary>
