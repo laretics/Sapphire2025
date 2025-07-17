@@ -61,12 +61,12 @@ window.excelInterop = {
                 //}
                 if (celda && celda.s && celda.s.fgColor && celda.s.fgColor.rgb) {
                     //console.log("fgColor: ", celda.s);
-                    color = "#" + celda.s.fgColor.rgb.substring(2);
+                    color = "#" + celda.s.fgColor.rgb.substring(3);
                 }
                 else if(celda && celda.s && celda.s.bgColor && celda.s.bgColor.rgb)
                 {
                     //console.log("bgColor: ", celda.s);
-                    color = "#" + celda.s.bgColor.rgb.substring(2);
+                    color = "#" + celda.s.bgColor.rgb.substring(3);
                 }
                 var anotacion = comentariosPorCelda[celdaRef] || null;
                 fila.push({ text: texto, bg: color, annotation: anotacion });
@@ -114,11 +114,13 @@ window.excelInterop = {
                 //}
                 if (celda && celda.s && celda.s.fgColor && celda.s.fgColor.rgb) {
                     //console.log("fgColor: ", celda.s);
-                    color = "#" + celda.s.fgColor.rgb.substring(2);
+                    var rgb = celda.s.fgColor.rgb;
+                    color = "#" + (rgb.length > 6 ? rgb.substring(2) : rgb);
                 }
                 else if (celda && celda.s && celda.s.bgColor && celda.s.bgColor.rgb) {
                     //console.log("bgColor: ", celda.s);
-                    color = "#" + celda.s.bgColor.rgb.substring(2);
+                    var rgb = celda.s.bgColor.rgb;
+                    color = "#" + (rgb.length > 6 ? rgb.substring(2) : rgb);
                 }
                 var anotacion = comentariosPorCelda[celdaRef] || null;
                 fila.push({ text: texto, bg: color, comment: anotacion });
