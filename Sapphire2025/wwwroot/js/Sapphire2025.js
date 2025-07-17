@@ -37,11 +37,16 @@ window.excelInterop = {
         var libro = XLSX.read(datos, { type: "array", cellStyles: true });
         var primeraHoja = libro.Sheets[libro.SheetNames[0]];
         var comentarios = (primeraHoja['!comments'] || []);
+        var notas = (primeraHoja['!notes'] || []);
         var comentariosPorCelda = {};
 
         //Mapeamos los comentarios de la hoja
         comentarios.forEach(function (comentario) {
             comentariosPorCelda[comentario.ref] = comentario.t;
+        });
+        //Mapeo de las notas clásicas
+        notas.forEach(function (nota) {
+            comentariosPorCelda[nota.ref] = nota.t;
         });
 
         var rango = XLSX.utils.decode_range(primeraHoja['!ref']);
@@ -84,11 +89,16 @@ window.excelInterop = {
         var libro = XLSX.read(datos, { type: "array", cellStyles: true });
         var primeraHoja = libro.Sheets[libro.SheetNames[0]];
         var comentarios = (primeraHoja['!comments'] || []);
+        var notas = (primeraHoja['!notes'] || []);
         var comentariosPorCelda = {};
 
         //Mapeamos los comentarios de la hoja
         comentarios.forEach(function (comentario) {
             comentariosPorCelda[comentario.ref] = comentario.t;
+        });
+        //Mapeo de las notas clásicas
+        notas.forEach(function (nota) {
+            comentariosPorCelda[nota.ref] = nota.t;
         });
 
         var rango = XLSX.utils.decode_range(primeraHoja['!ref']);

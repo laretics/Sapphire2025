@@ -80,7 +80,7 @@ else
             byte[] buffer = ms.ToArray();
             //Ahora pasamos esto a JavaScript
 
-            int[] indices = await mvarJSRuntime.InvokeAsync<int[]>("excelInterop.locateDateColumn", buffer, "JULIO", 16);
+            int[] indices = await mvarJSRuntime.InvokeAsync<int[]>("excelInterop.locateDateColumn", buffer, "JULIO", 17);
 
             int colMakis = indices[0];
             int colFecha = indices[1];
