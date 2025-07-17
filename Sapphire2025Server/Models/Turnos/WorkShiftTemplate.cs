@@ -25,7 +25,7 @@ namespace Sapphire2025Server.Models.Turnos
         public string? BgColor { get; set; } //Color del fondo de la celda
         public string? StripeColor { get; set; } //Color de la franja (suponiendo que esta celda tenga franja)
         public byte PerWeek { get; set; } //Días de la semana en que aplica este turno.
-        public uint CoorX { get; set; } //Lugar de representación en la tabla del gráfico
-		public uint CoorY { get; set; } //Coordenada y de representación en la tabla del gráfico
+        public int CoorX { get; set; } //Lugar de representación en la tabla del gráfico
+		public int CoorY { get; set; } //Coordenada y de representación en la tabla del gráfico
 	}
 }

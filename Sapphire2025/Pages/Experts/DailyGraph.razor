@@ -1,6 +1,7 @@
 ﻿@page "/dailyGraph"
 @inject IJSRuntime mvarJSRuntime
 @inject ExpertClient mvarExpertClient
+@inject AuthenticationClient mvarAuthClient
 <PageTitle>Gráfico de Tracción</PageTitle>
 <ModalDialog @ref="mvarModal" />
 
@@ -47,39 +48,50 @@
     {
         <div class="row">
             <div class="col-12">
-                <h5 class="mb-3">Grid de muestra</h5>
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped align-middle text-center custom-width-table">
-                        <thead class="table-light">
-                            <tr>
-                                @for (int col = 0; col <= mcolTemplates.GetUpperBound(0); col++)
-                                {
-                                    <th>Turno</th>
-                                    <th>Asignación</th>
-                                }
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @for (int row = 0; row <= mcolTemplates.GetUpperBound(1); row++)
-                            {
-                                <tr>
-                                    @for (int col = 0; col <= mcolTemplates.GetUpperBound(0); col++)
+                <div class="d-flex flex-row flex-wrap gap-4 justify-content-between">
+                    @for (int col = 0; col <= mcolTemplates.GetUpperBound(0); col++)
+                    {
+                        <div class="table-responsive flex-fill" style="min-width: 250px;">
+                            <table class="table table-bordered text-center custom-width-table mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Turno</th>
+                                        <th>Asignación</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (int row = 0; row <= mcolTemplates.GetUpperBound(1); row++)
                                     {
-                                        if(null==mcolTemplates[col,row])
+                                        @if (mcolTemplates[col, row] != null)
                                         {
-                                            <td>-</td>
-                                            <td>-</td>
-                                        }
-                                        else
-                                        {
-                                            <td>@mcolTemplates[col,row].Name</td>
-                                            <td>-</td>
+                                            <tr>
+                                                <td class="cell-content custom-cell text-center align-middle"
+                                                    style="@GetCellStyle(mcolTemplates[col,row])">
+                                                    <div class="cell-content-inner">
+                                                        <span>@GetCellText(mcolTemplates[col,row])</span>
+                                                        <div class="cell-bar"
+                                                        style="@GetBarStyle(mcolTemplates[col,row])"/>                                                    
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <table>
+                                                        <tbody>
+                                                            @foreach (WorkShiftAssignationModel assignation in AssignationsByTemplate(mcolTemplates[col, row].Name))
+                                                            {
+                                                                <tr>
+                                                                    <td>@GetUserString(assignation.Agent)</td>
+                                                                </tr>
+                                                            }
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>                  
                                         }
                                     }
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                                </tbody>
+                            </table>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -92,11 +104,14 @@
     private DateTime selectedDate = DateTime.Today;
     private bool isFestive = false;
     private bool isImporting = false;
+    private Dictionary<Guid, UserModelBase>? mcolUsers;
     private WorkShiftTemplateModel[,]? mcolTemplates;
+    private List<WorkShiftAssignationModel> mcolAssignations;
 
 
     protected async override Task OnInitializedAsync()
     {
+        mcolUsers = await mvarAuthClient.cachedUserList();
         await UpdateData();
     }
 
@@ -112,8 +127,8 @@
         if(auxHeaderId!=Guid.Empty)
         {
             auxPlan = await mvarExpertClient.WorkShiftTemplateCollectionItem(auxHeaderId,selectedDate,true);
-            uint maxX = 0;
-            uint maxY = 0;
+            int maxX = 0;
+            int maxY = 0;
             if(null!=auxPlan && null!=auxPlan.Templates)
             {
                 foreach (WorkShiftTemplateModel auxTemplate in auxPlan.Templates.Values)
@@ -124,19 +139,13 @@
                 mcolTemplates = new WorkShiftTemplateModel[maxX + 1, maxY + 1];
                 foreach(WorkShiftTemplateModel auxTemplate in auxPlan.Templates.Values)
                 {
-                    mcolTemplates[auxTemplate.CoorX, auxTemplate.CoorY] = auxTemplate;
+                    if(auxTemplate.CoorX>=0 && auxTemplate.CoorY>=0)
+                    {
+                        mcolTemplates[auxTemplate.CoorX, auxTemplate.CoorY] = auxTemplate;
+                    }                    
                 }
             }
         }
-    }
-
-    /// <summary>
-    /// Carga las asignaciones de hoy en el grid.
-    /// </summary>
-    /// <returns>No devuelve nada</returns>
-    private async Task LoadAssignations()
-    {
-
     }
 
     private async Task UpdateData()
@@ -144,7 +153,7 @@
         isImporting = true;
         StateHasChanged();
         await LoadPlan();
-        await LoadAssignations();
+        mcolAssignations = await mvarExpertClient.AssignationsByDate(selectedDate);
         isImporting = false;
         StateHasChanged();
     }
@@ -165,8 +174,43 @@
     }
     private async Task OnDaySelectedChange(DateTime newValue)
     {
-            selectedDate = newValue;
-            await UpdateData();
+        selectedDate = newValue;
+        await UpdateData();
+    }
+
+    private List<WorkShiftAssignationModel> AssignationsByTemplate(string definitive)
+    {
+        List<WorkShiftAssignationModel> salida = new List<WorkShiftAssignationModel>();
+        salida = mcolAssignations.Where(xx => xx.Definitive == definitive).ToList();
+        return salida;
+    }
+    private string GetUserString(Guid guid)
+    {
+        if (null!=mcolUsers && mcolUsers.ContainsKey(guid))
+        {
+            return mcolUsers[guid].Name ?? "???";
+        }
+        return "???";
+    }
+    private string GetCellStyle(WorkShiftTemplateModel? rhs)
+    {
+        string auxColor = "black";
+        string auxFondo = "transparent";
+        if (null != rhs)
+        {
+            auxColor = rhs.Color ?? "black";
+            auxFondo = rhs.BgColor ?? "transparent";
+        }        
+        return string.Format("background: {1}; color: {0};", auxColor, auxFondo);
+    }
+    private string GetCellText(WorkShiftTemplateModel? rhs)
+    {
+        if (null == rhs) return string.Empty;
+        return rhs.Name;
+    }
+    private string GetBarStyle(WorkShiftTemplateModel? rhs)
+    {
+        return string.Format("background: {0};", rhs?.StripeColor ?? "transparent");
     }
 
     private async Task OnXmlFileSelected(InputFileChangeEventArgs e)

@@ -14,12 +14,13 @@ namespace Sapphire2025Server.Expert
         protected Sapphire2025Server.Models.User? mvarAuthor;
         protected DateTime mvarStart;
         protected Guid mvarGuid;
+        protected Guid? mvarInclude;
         protected byte mvarCollective;
         public WorkSheetTemplateCollectionImporter(IConfiguration config)
         {
             mvarConfiguration = config;
-            mvarGuid = new Guid();
             mvarCollective = 0; //De momento sólo vamos con maquinistas.
+            mvarInclude = null; //No hereda de nadie.
         }
         public async Task<string> ImportXML(XmlDocument document)
         {
@@ -53,6 +54,22 @@ namespace Sapphire2025Server.Expert
             string? auxAuthor = raiz.Attributes["author"]?.Value;
             if (null == auxAuthor)
                 return "No se ha especificado un autor para este documento. Es necesario aportar la identificación (CF) de la persona que ha creado esta colección de turnos en el sistema.";
+
+            string? auxInclude = raiz.Attributes["include"]?.Value;
+            if(null!=auxInclude)
+            {
+                //Este plan hereda de otro. Tenemos que averiguar su ID.
+                using (DataStorage almacen = new DataStorage(mvarConfiguration))
+                {
+                    WorkShiftTemplateCollection? col = await almacen.WorkShiftTemplateCollections
+                        .Where(x => null!=x.Name && x.Name.Equals(auxInclude))
+                        .FirstOrDefaultAsync();
+                    if (null == col)
+                        return string.Format("El plan de explotación {0} hace referencia a otro plan llamado {1} del que no se encuentra ninguna referencia en la base de datos.", mvarName, auxInclude);
+                    else
+                        mvarInclude = col.Id;
+                }
+            }
             using (DataStorage almacen = new DataStorage(mvarConfiguration))
             {
                 Models.User? auxUser = await almacen.Users.Where(x => x.CF.Equals(auxAuthor)).FirstOrDefaultAsync();
@@ -60,7 +77,8 @@ namespace Sapphire2025Server.Expert
                     return string.Format("El usuario con CF {0} no existe en el sistema. Por favor, aporte un usuario válido y con permisos de administración.", auxAuthor);
                 else
                     mvarAuthor = auxUser;
-            }            
+            }
+            mvarGuid = Guid.NewGuid(); //Una vez superados los obstáculos, se puede generar el guid.
             return string.Empty;
         }
         private async Task<string> isWorkSheetTemplateCollectionCompatible()
@@ -87,16 +105,23 @@ namespace Sapphire2025Server.Expert
                 padre.Name = mvarName;
                 padre.Comment = mvarComment;
                 padre.Collective = mvarCollective;
-                padre.Owner = mvarAuthor.guid;
+                padre.Include = mvarInclude;
+                padre.Owner = mvarAuthor.guid;                
                 almacen.WorkShiftTemplateCollections.Add(padre);
                 foreach (XmlNode seccion in doc.ChildNodes)
                 {
                     if(seccion.NodeType== XmlNodeType.Element)
                     {
-                        switch(seccion.Name)
+                        if(seccion.Name.Equals("plan"))
                         {
-                            case "inactive": importDescanso(seccion, almacen); break;
-                            case "active":importTrabajo(seccion, almacen);break;
+                            foreach(XmlNode hijo in seccion.ChildNodes)
+                            {
+                                switch (hijo.Name)
+                                {
+                                    case "inactive": importDescansos(hijo, almacen); break;
+                                    case "active": importTrabajos(hijo, almacen); break;
+                                }
+                            }
                         }
                     }
                 }
@@ -107,14 +132,28 @@ namespace Sapphire2025Server.Expert
         }
         private void importDescansoAndTrabajoCommon(WorkShiftTemplate template, XmlNode nodo)
         {
+            template.Id = Guid.NewGuid();
             template.Name = nodo.Attributes["name"].Value;
             template.Comment = nodo.Attributes["comment"]?.Value;
             template.Color = nodo.Attributes["col"]?.Value;
             template.BgColor = nodo.Attributes["bgcol"]?.Value;
             template.StripeColor = nodo.Attributes["stcol"]?.Value;
+            template.CoorX = -1;
+            template.CoorY = -1;
+            string? auxCoordinates = nodo.Attributes["ord"]?.Value;
+            if (null != auxCoordinates && auxCoordinates.Length > 0)
+            {
+                string[] coordinates = auxCoordinates.Split(",");
+                int coordenada = -1;
+                int.TryParse(coordinates[0], out coordenada);
+                template.CoorX = coordenada;
+                coordenada = -1;
+                int.TryParse(coordinates[1], out coordenada);
+                template.CoorY = coordenada;
+            }
             template.Parent = mvarGuid;
         }
-        private void importDescanso(XmlNode node, DataStorage almacen)
+        private void importDescansos(XmlNode node, DataStorage almacen)
         {
             foreach (XmlNode descanso in node.ChildNodes)
             {
@@ -124,14 +163,14 @@ namespace Sapphire2025Server.Expert
                     {
                         WorkShiftTemplate auxDescanso = new WorkShiftTemplate();
                         auxDescanso.Active = false;
-                        importDescansoAndTrabajoCommon(auxDescanso, node);                        
+                        importDescansoAndTrabajoCommon(auxDescanso, descanso);                        
 
                         almacen.WorkShiftTemplates.Add(auxDescanso);
                     }                    
                 }
             }
         }
-        private void importTrabajo(XmlNode node, DataStorage almacen)
+        private void importTrabajos(XmlNode node, DataStorage almacen)
         {
             foreach(XmlNode trabajo in node.ChildNodes)
             {
@@ -143,23 +182,14 @@ namespace Sapphire2025Server.Expert
                     {
                         WorkShiftTemplate auxTrabajo = new WorkShiftTemplate();
                         auxTrabajo.Active = true;
-                        importDescansoAndTrabajoCommon(auxTrabajo, node);
+                        importDescansoAndTrabajoCommon(auxTrabajo, trabajo);
                         auxTrabajo.StartTime = (TimeSpan)auxComienzo;
                         auxTrabajo.Duration = (TimeSpan)auxDuracion;
                         string? auxDepot = trabajo.Attributes["depot"]?.Value;
                         auxTrabajo.Att = (null != auxDepot && auxDepot.ToUpper().Contains("T"));
                         auxTrabajo.Id = Guid.NewGuid();
-                        string? auxCoordinates = trabajo.Attributes["ord"]?.Value;
-                        if (null != auxCoordinates && auxCoordinates.Length > 0)
-                        {
-                            string[] coordinates = auxCoordinates.Split(",");
-                            uint coordenada = 0;
-                            if (uint.TryParse(coordinates[0], out coordenada))
-                                auxTrabajo.CoorX = coordenada;
-                            if (uint.TryParse(coordinates[1], out coordenada))
-                                auxTrabajo.CoorY = coordenada;
-                        }
-                        string? auxWeek = trabajo.Attributes["week"]?.Value;
+
+                            string? auxWeek = trabajo.Attributes["week"]?.Value;
                         auxTrabajo.PerWeek = parseWeekDays(auxWeek);
                         almacen.WorkShiftTemplates.Add(auxTrabajo);
                         importWorkSheetContents(trabajo,auxTrabajo, almacen);

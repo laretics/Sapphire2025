@@ -20,8 +20,8 @@ namespace Sapphire2025Models.Expert
 		public string? Color { get; set; }
 		public string? BgColor { get; set; }
 		public string? StripeColor { get; set; }
-		public uint CoorX { get; set; } //Lugar de representación en la tabla del gráfico
-		public uint CoorY { get; set; } //Coordenada y de representación en la tabla del gráfico
+		public int CoorX { get; set; } //Lugar de representación en la tabla del gráfico
+		public int CoorY { get; set; } //Coordenada y de representación en la tabla del gráfico
 	}
 	//Descanso, vacaciones y similar.
 	public class RestTemplateModel:WorkShiftTemplateModel
