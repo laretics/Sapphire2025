@@ -1,4 +1,10 @@
-﻿//Función para mostrar un diálogo modal.
+﻿//Auxiliar para obtener el color de una celda sin el flag de transparencia
+function getCellColor(rgb) {
+    if (!rgb) return "transparent";
+    return "#" + (rgb.length > 6 ? rgb.substring(2) : rgb);
+}
+
+//Función para mostrar un diálogo modal.
 window.showModal = (modalId) => {
     var modal = new bootstrap.Modal(document.getElementById(modalId));
     modal.show();
@@ -60,13 +66,11 @@ window.excelInterop = {
                 //    console.log("Estilo de la celda: ", celda.s);
                 //}
                 if (celda && celda.s && celda.s.fgColor && celda.s.fgColor.rgb) {
-                    //console.log("fgColor: ", celda.s);
-                    color = "#" + celda.s.fgColor.rgb.substring(3);
+                    color = getCellColor(celda.s.fgColor.rgb);
                 }
                 else if(celda && celda.s && celda.s.bgColor && celda.s.bgColor.rgb)
                 {
-                    //console.log("bgColor: ", celda.s);
-                    color = "#" + celda.s.bgColor.rgb.substring(3);
+                    color = getCellColor(celda.s.bgColor.rgb);
                 }
                 var anotacion = comentariosPorCelda[celdaRef] || null;
                 fila.push({ text: texto, bg: color, annotation: anotacion });
@@ -114,13 +118,11 @@ window.excelInterop = {
                 //}
                 if (celda && celda.s && celda.s.fgColor && celda.s.fgColor.rgb) {
                     //console.log("fgColor: ", celda.s);
-                    var rgb = celda.s.fgColor.rgb;
-                    color = "#" + (rgb.length > 6 ? rgb.substring(2) : rgb);
+                    color = getCellColor(celda.s.fgColor.rgb);
                 }
                 else if (celda && celda.s && celda.s.bgColor && celda.s.bgColor.rgb) {
                     //console.log("bgColor: ", celda.s);
-                    var rgb = celda.s.bgColor.rgb;
-                    color = "#" + (rgb.length > 6 ? rgb.substring(2) : rgb);
+                    color = getCellColor(celda.s.bgColor.rgb);
                 }
                 var anotacion = comentariosPorCelda[celdaRef] || null;
                 fila.push({ text: texto, bg: color, comment: anotacion });
