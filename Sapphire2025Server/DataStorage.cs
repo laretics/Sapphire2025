@@ -160,6 +160,7 @@ namespace Sapphire2025Server
 		}
 		#endregion "Usuarios
 		public DbSet<TimeCache> TimeCache { get; set; }
+		public DbSet<Festive> Festives { get; set; }
 		#region authentication
 		public DbSet<ActiveSessionModel> ActiveSessions { get; set; }
 		public DbSet<SessionEvent> SessionEvents { get; set; }

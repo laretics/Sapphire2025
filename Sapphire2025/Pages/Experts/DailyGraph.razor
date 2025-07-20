@@ -121,12 +121,12 @@
     /// <returns>No devuelve nada.</returns>
     private async Task LoadPlan()
     {
-        Guid auxHeaderId = await mvarExpertClient.WorkShiftTemplateHeader(selectedDate);
+        Guid auxHeaderId = await mvarExpertClient.PlanHeader(selectedDate);
         WorkShiftTemplateCollectionModel? auxPlan = null;
         mcolTemplates = null;
         if(auxHeaderId!=Guid.Empty)
         {
-            auxPlan = await mvarExpertClient.WorkShiftTemplateCollectionItem(auxHeaderId,selectedDate,true);
+            auxPlan = await mvarExpertClient.GetPlan(auxHeaderId,selectedDate,true);
             int maxX = 0;
             int maxY = 0;
             if(null!=auxPlan && null!=auxPlan.Templates)

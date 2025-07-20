@@ -4,6 +4,7 @@ using Sapphire2025Models.Expert;
 using Sapphire2025Server.Expert;
 using Sapphire2025Server.Models;
 using Sapphire2025Server.Models.Turnos;
+using System.Text.Json;
 using System.Xml;
 
 namespace Sapphire2025Server.Controllers
@@ -64,7 +65,22 @@ namespace Sapphire2025Server.Controllers
             return salida;
         }
 
-        
+        /// <summary>
+        /// Fuerza un borrado de las asignaciones que hay en la base de datos.
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet("assignationsclear")]
+        public async Task<bool> AssignationsClear()
+        {
+            using (DataStorage almacen = new DataStorage(mvarConfig))
+            {
+                List<WorkshiftAssignation> origen = await almacen.WorkShiftAssignations.ToListAsync();
+                almacen.RemoveRange(origen);
+                await almacen.SaveChangesAsync();
+                return true;
+            }
+        }
+
         /// <summary>
         /// Nueva vista de gráfico mensual.
         /// </summary>
@@ -85,8 +101,8 @@ namespace Sapphire2025Server.Controllers
         /// </summary>
         /// <param name="id">Guid del plan de explotación.</param>
         /// <returns></returns>
-        [HttpPost("workshifttemplatecollectionitem")]
-        public async Task<WorkShiftTemplateCollectionModel?> WorkShiftTemplateItem(WorkShiftRequestModel request)
+        [HttpPost("getplan")]
+        public async Task<WorkShiftTemplateCollectionModel?> GetPlan(WorkShiftRequestModel request)
         {
             WorkShiftProcessor procesador = new WorkShiftProcessor(mvarConfig);
             return await procesador.Plan(request.Id, request.onlyWork, true, request.Date);
@@ -98,15 +114,15 @@ namespace Sapphire2025Server.Controllers
         /// </summary>
         /// <param name="date">Fecha para la que se busca el template</param>
         /// <returns>Guid del plan de explotación o Guid.Empty si no lo hay</returns>
-        [HttpPost("workshifttemplateheader")]
-        public async Task<Guid> WorkShiftTemplateHeader(WorkShiftRequestModel request)
+        [HttpPost("planheader")]
+        public async Task<Guid> PlanHeader(WorkShiftRequestModel request)
         {
             WorkShiftProcessor procesador = new WorkShiftProcessor(mvarConfig);
             return await procesador.HeaderPlan(request.Date, 0);
         }
 
-        [HttpGet("workshifttemplates")]
-        public async Task<List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>> WorkShiftTemplates()
+        [HttpGet("plans")]
+        public async Task<List<WorkShiftTemplateCollectionModel>> GetPlans()
         {
             WorkShiftProcessor procesador = new WorkShiftProcessor(mvarConfig);
             return await procesador.Plans();
@@ -167,10 +183,25 @@ namespace Sapphire2025Server.Controllers
         /// <param name="auxDocumento">El documento en formato JSon separado por comas.</param>
         /// <returns>True si la importación se ha realizado de forma satisfactoria</returns>
         [HttpPost("uploadexcelgraph")]
-        public async Task<string> uploadDailyWorkShift([FromBody] List<List<AssignationCell>>? filas)
+        public async Task<string> uploadDailyWorkShift([FromBody] XlsxAssignUpdateModel? request)
         {
-            ExcelGraphImporter importador = new ExcelGraphImporter();
-            return await importador.ProcessExcel(filas, mvarConfig);
+            if (null == request) return "Los datos de entrada son nulos.";
+            if (null == request.ExcelDump) return "La hoja de cálculo que se ha recibido tiene un valor nulo";            
+            List<List<AssignationCell>>? asignaciones = JsonSerializer.Deserialize<List<List<AssignationCell>>>(request.ExcelDump);
+            ExcelGraphImporter importador = new ExcelGraphImporter(mvarConfig);
+            return await importador.ProcessExcel(asignaciones,request.Date,request.Days);
+        }
+        [HttpPost("nextfestives")]
+        public async Task<HashSet<DateTime>> GetNextFestives([FromBody] FestivesRequestModel request)
+        {
+            WorkShiftProcessor processor = new WorkShiftProcessor(mvarConfig);
+            return await processor.NextFestives(request.Date);
+        }
+        [HttpPost("getfestive")]
+        public async Task<bool> GetIsFestive([FromBody] FestivesRequestModel request)
+        {
+            WorkShiftProcessor processor = new WorkShiftProcessor(mvarConfig);
+            return await processor.IsFestive(request.Date);
         }
 
 

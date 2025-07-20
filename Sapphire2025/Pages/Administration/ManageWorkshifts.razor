@@ -5,8 +5,23 @@
 <PageTitle>Turnos de Trabajo</PageTitle>
 <ModalDialog @ref="mvarModal" />
 <h3>Planes de Explotación</h3>
-<InputFile Onchange="onFileUpload" accept=".xml">Plan de Explotación</InputFile>
-<InputFile OnChange="onExcelImport" MaxAllowedSize="5242880" accept=".xlsx">Gráfico mensual</InputFile>
+<div class="d-flex flex-wrap align-items-center gap-3 mb-4">
+    <InputFile Onchange="onFileUpload" accept=".xml">Plan de Explotación</InputFile>
+    <InputFile OnChange="onExcelImport" MaxAllowedSize="5242880" accept=".xlsx">Gráfico mensual</InputFile>
+    <div class="btn-toolbar mb-3" role="toolbar" aria-label="Barra de herramientas">
+        <div class="btn-group me-2" role="group" aria-label="Grupo 1">
+            <button type="button" @onclick="onAssignationsClear" class="btn btn-primary">Eliminar Asignaciones</button>
+            <button type="button" class="btn btn-secondary">Acción 2</button>
+            <button type="button" class="btn btn-success">Acción 3</button>
+        </div>
+        <div class="btn-group me-2" role="group" aria-label="Grupo 2">
+            <button type="button" class="btn btn-outline-info">Acción 4</button>
+        </div>
+        <div class="btn-group" role="group" aria-label="Grupo 3">
+            <button type="button" class="btn btn-danger">Acción 5</button>
+        </div>
+    </div>
+</div>
 @if(null==mcolPlanes)
 {
     <div class="text-center my-5">
@@ -68,6 +83,11 @@ else
         return "";
     }
 
+    private async Task onAssignationsClear()
+    {
+        await mvarExpertClient.AssignationsClear();
+        StateHasChanged();
+    }
     private async Task onExcelImport(InputFileChangeEventArgs e)
     {
         Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
@@ -79,24 +99,17 @@ else
             await corriente.CopyToAsync(ms);
             byte[] buffer = ms.ToArray();
             //Ahora pasamos esto a JavaScript
+            DateTime fecha = DateTime.Now;
+            int days = 4;
+            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day,days);
+            string? salidaCompilacion = await mvarExpertClient.uploadDailyWorkShift(salida, fecha,days);
+             if (null != salidaCompilacion && salidaCompilacion.Length > 0)
+                 await mvarModal.show("Error de importación", salidaCompilacion, "Salir");
 
-            int[] indices = await mvarJSRuntime.InvokeAsync<int[]>("excelInterop.locateDateColumn", buffer, "JULIO", 17);
-
-            int colMakis = indices[0];
-            int colFecha = indices[1];
-
-            if (colFecha < 0) colFecha = 1;
-            //string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.uploadExcelFile", buffer,colFecha,30,1,80);
-            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.takeSnapShot", buffer, colMakis, colFecha, 4);
-            //int columna = FindDate(DateTime.Today,salida);
-            Console.WriteLine(salida);
-            string? salidaCompilacion = await mvarExpertClient.uploadDailyWorkShift(salida);
-            if (null != salidaCompilacion && salidaCompilacion.Length > 0)
-                await mvarModal.show("Error de importación", salidaCompilacion, "Salir");
-
-            //StateHasChanged();
+            StateHasChanged();
         }
     }
+
     private async Task onFileUpload(InputFileChangeEventArgs e)
     {
         Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
@@ -121,7 +134,7 @@ else
     }
     protected override async Task OnInitializedAsync()
     {
-        mcolPlanes = await mvarExpertClient.workShiftTemplateCollections();
+        mcolPlanes = await mvarExpertClient.Plans();
         mcolUsers = await mvarStorage.GetUsersCache();
     } 
 }

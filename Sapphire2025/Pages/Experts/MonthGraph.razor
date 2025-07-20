@@ -158,10 +158,10 @@
         for (int i = 0;i< dayCount;i++)
         {
             DateTime fecha = mvarToday.AddDays(i);
-            Guid planId = await mvarExpertClient.WorkShiftTemplateHeader(fecha);
+            Guid planId = await mvarExpertClient.PlanHeader(fecha);
             if(!cachePlans.ContainsKey(planId))
             {
-                WorkShiftTemplateCollectionModel? nuevo = await mvarExpertClient.WorkShiftTemplateCollectionItem(planId,fecha,false);
+                WorkShiftTemplateCollectionModel? nuevo = await mvarExpertClient.GetPlan(planId,fecha,false);
                 if (null != nuevo)
                     cachePlans.Add(planId, nuevo);
             }
@@ -301,20 +301,11 @@
             using MemoryStream ms = new MemoryStream();
             await corriente.CopyToAsync(ms);
             byte[] buffer = ms.ToArray();
-            //Ahora pasamos esto a JavaScript
-            
-            int[] indices = await mvarJSRuntime.InvokeAsync<int[]>("excelInterop.locateDateColumn", buffer, "JULIO", 12);
-
-            int colMakis = indices[0];
-            int colFecha = indices[1];
-
-            if (colFecha < 0) colFecha = 1;
-            //string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.uploadExcelFile", buffer,colFecha,30,1,80);
-            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.takeSnapShot", buffer, colMakis, colFecha, dayCount+2);
-            //int columna = FindDate(DateTime.Today,salida);
-            Console.WriteLine(salida);
-            string? salidaCompilacion = await mvarExpertClient.uploadDailyWorkShift(salida);
-            if (null != salidaCompilacion && salidaCompilacion.Length > 0)
+            DateTime fecha = DateTime.Now.AddDays(-1);
+            int days = 10;
+            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day, days);
+            string? salidaCompilacion = await mvarExpertClient.uploadDailyWorkShift(salida, fecha, days);
+            if(null!=salidaCompilacion && salidaCompilacion.Length>0)
                 await mvarModal.show("Error de importación", salidaCompilacion, "Salir");
 
             StateHasChanged();

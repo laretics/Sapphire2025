@@ -3,6 +3,7 @@ using Sapphire2025Server.Models.Turnos;
 using Sapphire2025Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.Json;
+using Org.BouncyCastle.Crypto.Operators;
 
 namespace Sapphire2025Server.Expert
 {
@@ -54,6 +55,8 @@ namespace Sapphire2025Server.Expert
         {
             int diaSemanaExp = (int)fecha.DayOfWeek;
             byte diaSemana = (byte)(Math.Pow(2,diaSemanaExp));
+            if (await IsFestive(fecha))
+                diaSemana |= 128;
             return await Plan(id, actives, inactives, diaSemana);
         }
         /// <summary>
@@ -67,6 +70,7 @@ namespace Sapphire2025Server.Expert
         public async Task<WorkShiftTemplateCollectionModel?> Plan(Guid id, bool actives, bool inactives, byte dayOfWeek=255)
         {
             WorkShiftTemplateCollectionModel? salida = null;
+            WorkShiftTemplateCollectionModel? included = null ;
             using (DataStorage almacen = new DataStorage(mvarConfig))
             {
                 WorkShiftTemplateCollection? candidato = await almacen.WorkShiftTemplateCollections.
@@ -75,19 +79,86 @@ namespace Sapphire2025Server.Expert
                 {
                     User? usuario = await almacen.Users
                         .Where(x => x.CF.Equals(candidato.Owner)).FirstOrDefaultAsync();
+                    if (null!=candidato.Include)
+                    {
+                        Guid auxId = (Guid)candidato.Include;
+                        included = await Plan(auxId, actives, inactives, dayOfWeek);
+                    }                       
                     salida = new WorkShiftTemplateCollectionModel();
-                    salida.Id = id;
+                    salida.Id = id;                    
                     salida.Name = candidato.Name;
                     salida.Comment = candidato.Comment;
                     salida.Collective = candidato.Collective;
                     salida.Begin = candidato.Begin;
-                    salida.Owner = null == usuario ? Guid.Empty : usuario.guid;
+                    salida.Owner = null == usuario ? Guid.Empty : usuario.guid;                    
                 }
             }
             if (null != salida)
+            {
                 salida.Templates = await Templates(id, actives, inactives, dayOfWeek);
+                if (null == salida.Templates)
+                    salida.Templates = new Dictionary<string, WorkShiftTemplateModel>();
+                if (null != included && null != included.Templates)
+                {
+                    ///Creo que con esto tengo la herencia, pero hay que comprobarlo.
+                    foreach (WorkShiftTemplateModel template in included.Templates.Values)
+                        salida.Templates.Add(template.Name, template);
+                }
+            }                                                        
             return salida;
         }
+
+        #region Festivos
+        public async Task<HashSet<DateTime>> NextFestives(DateTime firstDay)
+        {
+            using (DataStorage almacen = new DataStorage(mvarConfig))
+            {
+                List<Festive> auxColeccion = await almacen.Festives
+                    .Where(x => x.Date >= firstDay)
+                    .ToListAsync();
+                HashSet<DateTime> salida = new HashSet<DateTime>();
+                foreach (Festive elemento in auxColeccion)
+                    salida.Add(elemento.Date);
+                return salida;
+            }
+        }
+        public async Task SetFestive(DateTime rhs, bool value)
+        {
+            bool currentValue = await IsFestive(rhs);
+            if(value!=currentValue)
+            {
+                using (DataStorage almacen = new DataStorage(mvarConfig))
+                {
+                    Festive? elemento;
+                    if (value && !currentValue)
+                    {
+                        elemento = new Festive();
+                        elemento.Date = rhs;
+                        almacen.Festives.Add(elemento);
+                    }
+                    else if (!value && currentValue)
+                    {
+                        elemento = await almacen.Festives
+                                .Where(x => x.Date == rhs)
+                                .FirstOrDefaultAsync();
+                        if(null!=elemento)
+                            almacen.Remove(elemento);                        
+                    }
+                    await almacen.SaveChangesAsync();
+                }
+            }
+        }
+        public async Task<bool> IsFestive(DateTime rhs)
+        {
+            using (DataStorage almacen = new DataStorage(mvarConfig))
+            {
+                Festive? elemento = await almacen.Festives
+                    .Where(x => x.Date == rhs)
+                    .FirstOrDefaultAsync();
+                return (null != elemento);
+            }
+        }
+        #endregion
 
         protected async Task<Dictionary<string,WorkShiftTemplateModel>> Templates(Guid parent, bool actives, bool inactives, byte dayOfWeek=255)
         {

@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query;
 using Sapphire2025Server.Models;
 using Sapphire2025Server.Models.Turnos;
 using System.Text;
@@ -12,68 +11,117 @@ namespace Sapphire2025Server.Expert
     /// </summary>
     public class ExcelGraphImporter
     {
-        public async Task<string> ProcessExcel(List<List<AssignationCell>>? sheet, IConfiguration config)
+        private IConfiguration mvarConfig;
+        public ExcelGraphImporter(IConfiguration config)
+        {
+            mvarConfig = config;
+        }
+
+        public async Task<string> ProcessExcel(List<List<AssignationCell>>? sheet, DateTime date, int days)
         {
             try
             {
-                if (null == sheet) return "Colección a importar vacía";
-                List<List<AssignationCell>> columnas = transposeArray(sheet);
-                int monthId = getMonth(columnas[0][0].Text);
-                if (monthId < 1) return string.Format("Mes incorrecto: {0}", columnas[0][0].Text); //Mes incorrecto.
-                using (DataStorage almacen = new DataStorage(config))
-                {
-                    //La primera columna es la que contiene los CF de los Maquinistas
-                    for (int colId = 1; colId < columnas.Count; colId++)
-                    {
-                        int numDia = -1;
-                        if (int.TryParse(columnas[colId][0].Text, out numDia))
-                        //La primera fila debería contener el número del día.
-                        {
-                            DateTime auxFecha = new DateTime(DateTime.Now.Year, monthId, numDia);
-                            //Lo primero que vamos a hacer es eliminar todos los registros de asignación con esta fecha.
-                            if (!(await removeAssignations(auxFecha, almacen)))
-                                return string.Format("Error al intentar eliminar asignaciones de turnos con la fecha {0:dd-MM-yy}.", auxFecha);
-                            //Creamos una lista de asignaciones. La necesitamos para resolver cambios personales tras la importación.
-                            List<WorkshiftAssignation> colAssign = new List<WorkshiftAssignation>();
-                            Dictionary<string, List<WorkshiftAssignation>> mcolCambios = new Dictionary<string, List<WorkshiftAssignation>>();
+                if (null == sheet) return "La hoja está vacía. No hay datos que importar.";
+                WorkshiftAssignation[,] colSalida = new WorkshiftAssignation[days,sheet.Count];
 
-                            for (int filaId = 1; filaId < columnas[colId].Count; filaId++)
+                //Los datos que vamos a recibir son siempre del mismo tipo...
+                //Cabecera1,dia1,dia2,...,dia-n
+                //Cabecera2,dia1,dia2,...,dia-n
+                //
+                //Cabecera-m,dia1,dia2,...,dia-n
+                //Gracias a los datos que pasamos como parámetros es posible acelerar el proceso.
+                using (DataStorage almacen = new DataStorage(mvarConfig))
+                {
+                    int filaId = 0;
+                    foreach (List<AssignationCell> fila in sheet)
+                    {
+                        //Sacamos los datos del Agente.
+                        //El texto de la primera celda contiene un CF y el nombre del Agente.
+                        //A nosotros sólo nos hace falta el CF.
+                        User? agente = await getAgentFromHeader(fila[0].Text, almacen);
+                        if (null != agente)
+                        {
+                            int maxCol = fila.Count - 1;                            
+                            for (int col = 0; col < maxCol; col++)
                             {
-                                User? agente = await getAgentFromHeader(columnas[0][filaId].Text, almacen);
-                                AssignationCell cell = columnas[colId][filaId];
-                                string? assignation = getCleanAssignationString(cell.Text);
-                                if (null != agente && null != assignation)
+                                AssignationCell original = fila[col + 1];
+                                WorkshiftAssignation nueva = new WorkshiftAssignation();
+                                if (null != original.Text)
                                 {
-                                    WorkshiftAssignation nueva = new WorkshiftAssignation();
                                     nueva.Id = Guid.NewGuid();
                                     nueva.Agent = agente.guid;
-                                    nueva.IsTD = assignation.ToUpper().Contains("TD");
-                                    nueva.Assignation = assignation;
-                                    nueva.Definitive = getLastAssignation(assignation);
-                                    nueva.Date = auxFecha;
-                                    nueva.BgColor = manageBgColor(cell.Bg);
-                                    if (!nueva.BgColor.Equals("transparent"))
-                                    {
-                                        if(!mcolCambios.ContainsKey(nueva.BgColor))
-										    mcolCambios.Add(nueva.BgColor, new List<WorkshiftAssignation>());
-                                        mcolCambios[nueva.BgColor].Add(nueva);
-									}                                        
-                                    nueva.Annotation = manageAnnotation(cell.Comment);
-                                    colAssign.Add(nueva);
-                                }
+                                    nueva.Annotation = original.Comment;
+                                    nueva.Assignation = getCleanAssignationString(original.Text);
+                                    nueva.BgColor = manageBgColor(original.Bg);
+                                    nueva.Date = date.AddDays(col);
+                                    nueva.Definitive = getLastAssignation(original.Text);
+                                    if(null!=nueva.Assignation)
+                                        nueva.IsTD = nueva.Assignation.ToUpper().Contains("TD");
+                                    colSalida[col, filaId] = nueva;
+                                }                                                              
                             }
-                            //TODO: Resolver cambios personales a continuación.
-
-                            //Una vez procesados los cambios personales, podemos dar de alta la lista en la base de datos
-                            almacen.WorkShiftAssignations.AddRange(colAssign);
-                            await almacen.SaveChangesAsync(); //Guardamos el día entero.
                         }
-                        else //Hemos saltado al mes siguiente
+                        filaId++;
+                    }
+                }
+                //Resuelvo los cambios entre Agentes.
+                for (int col=0;col<days;col++)
+                {
+                    Dictionary<string, List<WorkshiftAssignation>> cambios = new Dictionary<string, List<WorkshiftAssignation>>();
+                    for (int fila = 0;fila<sheet.Count;fila++)
+                    {
+                        string? auxColor = colSalida[col, fila].BgColor;
+                        if (auxColor!="transparent" && null!=auxColor)
                         {
-                            monthId = getMonth(columnas[colId][0].Text);
-                            if (monthId < 1)
-                                return string.Format("Mes incorrecto: {0}", columnas[colId][0].Text);
+                            if (!cambios.ContainsKey(auxColor))
+                                cambios.Add(auxColor, new List<WorkshiftAssignation>());
+                            cambios[auxColor].Add(colSalida[col, fila]);
                         }
+                    }
+                    //Ya tenemos la colección de turnos a cambiar.
+                    foreach (List<WorkshiftAssignation> grupo in cambios.Values)
+                    {
+                        if(grupo.Count==2)
+                        {
+                            //Cambio normal.
+                            grupo[0].SwappingAgent = grupo[1].Agent;
+                            grupo[1].SwappingAgent = grupo[0].Agent;
+                            string? turnoDefinitivo = grupo[0].Definitive;
+                            grupo[0].Definitive = grupo[1].Definitive;
+                            grupo[1].Definitive = turnoDefinitivo;
+                        }
+                        else if (grupo.Count>2)
+                        {
+                            //Cambio a tres, cuatro o más bandas.
+                            Dictionary<Guid, string?> auxColTurnosOriginales = new Dictionary<Guid, string?>();
+                            foreach(WorkshiftAssignation elemento in grupo)
+                            {
+                                //Guardo la asignación definitiva de este agente en un diccionario.
+                                auxColTurnosOriginales.Add(elemento.Agent, elemento.Definitive);
+                                if(null!= elemento.Annotation)
+                                {
+                                    //Obtengo el id de Agente que hará realmente este turno tras el cambio.
+                                    WorkshiftAssignation? otro = auxGetTurnoByString(grupo, elemento.Annotation);
+                                    if (null != otro)
+                                        elemento.SwappingAgent = otro.Agent;
+                                }                                   
+                            }
+                            //Asigno los turnos cambiados a los agentes en lugar del que tenían.
+                            foreach(WorkshiftAssignation elemento in grupo)
+                                elemento.Definitive = auxColTurnosOriginales[elemento.SwappingAgent];
+                        }
+                    }
+                }
+                //Escribo las asignaciones en la base de datos.
+                using (DataStorage almacen = new DataStorage(mvarConfig))
+                {
+                    for (int col=0;col<days;col++)
+                    {
+                        //Elimino las asignaciones anteriores para esta fecha
+                        await removeAssignations(date.AddDays(col), almacen);
+                        for (int fila = 0; fila < sheet.Count; fila++)
+                            almacen.WorkShiftAssignations.Add(colSalida[col, fila]);
+                        await almacen.SaveChangesAsync();
                     }
                 }
                 return string.Empty;
@@ -84,6 +132,15 @@ namespace Sapphire2025Server.Expert
             }
         }
 
+        private WorkshiftAssignation? auxGetTurnoByString(List<WorkshiftAssignation> grupo, string turnoId)
+        {
+            foreach (WorkshiftAssignation elemento in grupo)
+                if (turnoId.Equals(elemento.Definitive)) return elemento;
+            foreach (WorkshiftAssignation elemento in grupo)
+                if (elemento.Definitive!.Contains(turnoId)) return elemento;
+            return null;
+        }
+
         private string manageBgColor(string? bgColor)
         {
             string salida = "transparent";            
@@ -91,20 +148,11 @@ namespace Sapphire2025Server.Expert
             {
 				string entrada = bgColor.ToUpper();
 				if (entrada.Equals("#FFFFCC")) return "transparent"; //Festivo
-				if (entrada.Equals("#DCE6F1")) return "transparent"; //Vacaciones
-				if (entrada.Equals("#DCE6F2")) return "transparent"; //Vacaciones
+                if (entrada.Equals("#FFFF99")) return "transparent"; //Festivo alternativo
+                if (entrada.Equals("#DCE6F2")) return "transparent"; //Vacaciones
 				if (entrada.Equals("#92D050")) return "transparent"; //Turno a cubrir
 
 				salida = bgColor;
-            }
-            return salida;
-        }
-        private string manageAnnotation(string? rhs)
-        {
-            string salida = string.Empty;
-            if(null!= rhs)
-            {
-
             }
             return salida;
         }
@@ -129,22 +177,7 @@ namespace Sapphire2025Server.Expert
                 return false;
             }
         }
-        private List<List<AssignationCell>> transposeArray(List<List<AssignationCell>> rhs)
-        {
-            List<List<AssignationCell>> salida = new List<List<AssignationCell>>();
-            int numColumnas = rhs.Max(x => x.Count);
-            for (int c = 0; c<numColumnas;c++)
-            {
-                List<AssignationCell> columna = new List<AssignationCell>();
-                for (int r=0;r<rhs.Count;r++)
-                {
-                    if (c < rhs[r].Count)
-                        columna.Add(rhs[r][c]);
-                }
-                salida.Add(columna);
-            }
-            return salida;
-        }
+
         private async Task<User?> getAgentFromHeader(string? header, DataStorage almacen)
         {
             if(null!=header && header.Length>0)
@@ -159,26 +192,7 @@ namespace Sapphire2025Server.Expert
             }
             return null;
         }
-        private int getMonth(string? rhs)
-        {
-            if (null == rhs) return -1;
-            switch (rhs.ToUpper().Trim())
-            {
-                case "ENERO": return 1;
-                case "FEBRERO": return 2;
-                case "MARZO": return 3;
-                case "ABRIL": return 4;
-                case "MAYO": return 5;
-                case "JUNIO": return 6;
-                case "JULIO": return 7;
-                case "AGOSTO": return 8;
-                case "SEPTIEMBRE": return 9;
-                case "OCTUBRE": return 10;
-                case "NOVIEMBRE": return 11;
-                case "DICIEMBRE": return 12;
-                default: return -1;
-            }
-        }
+
         private string? getCleanAssignationString(string? rhs)
         {
             if (string.IsNullOrEmpty(rhs)) return null;
@@ -198,7 +212,6 @@ namespace Sapphire2025Server.Expert
                 string[] asignaciones = rhs.Split('/');
                 salida = asignaciones.Last();
             }
-
             return filterLastAssignation(salida);
         }
         private string filterLastAssignation(string rhs)

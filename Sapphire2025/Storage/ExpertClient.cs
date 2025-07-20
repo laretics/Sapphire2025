@@ -18,9 +18,14 @@ namespace Sapphire2025.Storage
                 return await respuesta.Content.ReadAsStringAsync();
             return "Unknown error";
         }
-        public async Task<string?> uploadDailyWorkShift(string auxDocument)
+        public async Task<string?> uploadDailyWorkShift(string auxDocument, DateTime date, int days)
         {
-            HttpResponseMessage respuesta = await sendPostRequest("uploadexcelgraph", auxDocument);
+            XlsxAssignUpdateModel data = new();
+            data.Date = date;
+            data.Days = days;
+            data.ExcelDump = auxDocument;
+            string json = System.Text.Json.JsonSerializer.Serialize(data);
+            HttpResponseMessage respuesta = await sendPostRequest("uploadexcelgraph", json);
             if (respuesta.IsSuccessStatusCode)
                 return await respuesta.Content.ReadAsStringAsync();
             return "Error desconocido en el cliente.";
@@ -63,6 +68,13 @@ namespace Sapphire2025.Storage
             return new List<WorkShiftAssignationModel>();            
         }
 
+        public async Task<bool> AssignationsClear()
+        {
+            string request = composeCommand("assignationsclear");
+            HttpResponseMessage respuesta = await sendGetRequest(request);
+            return await respuesta.Content.ReadFromJsonAsync<bool>();
+        }
+
         public async Task<List<AgentAssignationsModel>> AsignationsByDateAndGraph(DateTime begin, int days, string? agentsTableId)
         {
             if(null!=agentsTableId)
@@ -87,12 +99,12 @@ namespace Sapphire2025.Storage
         /// </summary>
         /// <param name="date">Fecha de los turnos correspondientes al plan de explotación</param>
         /// <returns>Guid del plan de explotación/returns>
-        public async Task<Guid> WorkShiftTemplateHeader(DateTime date)
+        public async Task<Guid> PlanHeader(DateTime date)
         {
             Sapphire2025Models.Expert.WorkShiftRequestModel peticion = new WorkShiftRequestModel();
             peticion.Date = date;
             string json = System.Text.Json.JsonSerializer.Serialize(peticion);
-            HttpResponseMessage respuesta = await sendPostRequest("workshifttemplateheader", json);
+            HttpResponseMessage respuesta = await sendPostRequest("planheader", json);
             if (respuesta.IsSuccessStatusCode)
                 return await respuesta.Content.ReadFromJsonAsync<Guid>();
             return Guid.Empty; //Esto es si no encuentra nada en la base de datos.
@@ -102,21 +114,21 @@ namespace Sapphire2025.Storage
         /// </summary>
         /// <param name="id">Guid del plan de explotación que se pretende descargar</param>
         /// <returns>El plan de explotación o null, si no existe ninguno con ese Guid</returns>
-        public async Task<WorkShiftTemplateCollectionModel?> WorkShiftTemplateCollectionItem(Guid id, DateTime date, bool onlyWork)
+        public async Task<WorkShiftTemplateCollectionModel?> GetPlan(Guid id, DateTime date, bool onlyWork)
         {
             Sapphire2025Models.Expert.WorkShiftRequestModel peticion = new WorkShiftRequestModel();
             peticion.Id = id;
             peticion.Date = date; //Es para filtrar el día de la semana que es.
             peticion.onlyWork = onlyWork; //Sólo carga los turnos que sean de trabajo (para gráfico diario)
             string json = System.Text.Json.JsonSerializer.Serialize(peticion);
-            HttpResponseMessage respuesta = await sendPostRequest("workshifttemplatecollectionitem", json);
+            HttpResponseMessage respuesta = await sendPostRequest("getplan", json);
             if (respuesta.IsSuccessStatusCode)
                 return await respuesta.Content.ReadFromJsonAsync<WorkShiftTemplateCollectionModel>();
             return null;
         }
-        public async Task<List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>?> workShiftTemplateCollections()
+        public async Task<List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>?> Plans()
         {
-            string request = composeCommand("workshifttemplates");
+            string request = composeCommand("plans");
             HttpResponseMessage respuesta = await sendGetRequest(request);
             return await respuesta.Content.ReadFromJsonAsync<List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>>();
         }
@@ -132,5 +144,22 @@ namespace Sapphire2025.Storage
             return await
                 respuesta.Content.ReadFromJsonAsync<List<string>>();
 		}
-	}
+	
+        /// <summary>
+        /// Obtiene un conjunto con los días festivos a partir de la fecha especificada.
+        /// </summary>
+        /// <param name="today">La fecha de inicio (para descartar festivos pasados)</param>
+        /// <returns>El conjunto de los festivos</returns>
+        public async Task<HashSet<DateTime>?> nextFestives(DateTime today)
+        {
+            FestivesRequestModel requestModel = new FestivesRequestModel();
+            requestModel.Date = today;
+            string json = System.Text.Json.JsonSerializer.Serialize(requestModel);
+            HttpResponseMessage respuesta = await sendPostRequest("nextfestives", json);
+            if (respuesta.IsSuccessStatusCode)
+                return await respuesta.Content.ReadFromJsonAsync<HashSet<DateTime>>();
+
+            return null;
+        }
+    }
 }
