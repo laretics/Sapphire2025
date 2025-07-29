@@ -55,39 +55,7 @@ thead th.bg-gradient-weekend {
     color: #333;    
     font-size: 0.95em;
 }
-/* Celdas de contenido */
-.cell-content {
-    background: #fff;
-    transition: background 0.2s;
-}
 
-    .cell-content:hover {
-        background: #f1f3f4;
-    }
-/* Celdas con esquinas redondeadas */
-.custom-cell {
-    border-radius: 0.4em !important;
-    overflow: hidden;
-    padding: 0.2rem 0.5rem !important;
-    position: relative;
-}
-
-/* Contenido centrado y barra debajo */
-.cell-content-inner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    height: 100%;
-}
-/* Barra horizontal bajo el texto */
-.cell-bar {
-    margin-top: 0.25em;
-    width: 80%;
-    height: 4px;
-    border-radius: 2px;
-    opacity: 0.7;
-}
 /* Sombra y bordes redondeados */
 .table {
     box-shadow: 0 14px 24px rgba(0,0,0,0.08);

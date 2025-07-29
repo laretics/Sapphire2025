@@ -1,0 +1,95 @@
+﻿@if (HasAssignation(Row, Col))
+{
+    <td class="cell-content custom-cell text-center align-middle"
+        style="@GetCellStyle()">
+        <div class="cell-content-inner">
+            <span>@GetCellText()</span>
+            <div class="cell-bar"
+                 style="@GetBarStyle()">
+            </div>
+        </div>
+    </td>
+}
+else
+{
+    <td class="cell-content text-center align-middle"></td>
+}
+
+@code {
+    [CascadingParameter]
+    public List<AgentAssignationsModel>? mcolAssignations { get; set; }
+    [CascadingParameter]
+    public WorkShiftTemplateCollectionModel[]? mcolDayPlans{ get; set; }
+    [CascadingParameter]
+    public DateTime mvarFirstDate{ get; set; }
+    [Parameter]
+    public int Col { get; set; }
+    [Parameter]
+    public int Row { get; set; }
+
+    private AgentAssignationsModel.AssignationContent? mvarCurrentAssignationContent;
+    private WorkShiftTemplateModel? mvarCurrentTemplate;
+
+    private bool HasAssignation(int rowIndex, int colIndex)
+    {
+        if (null != mcolAssignations && null != mcolAssignations[rowIndex])
+        {
+            mvarCurrentAssignationContent = mcolAssignations[rowIndex]?.ColAssignations?[colIndex];
+            mvarCurrentTemplate = GetTemplate(colIndex);
+            if (null != mvarCurrentAssignationContent)
+            {
+                if (null!= mcolDayPlans && null != mvarCurrentAssignationContent.Definitive)
+                {
+                    WorkShiftTemplateCollectionModel plan = mcolDayPlans[colIndex];
+                    if (null != plan.Templates)
+                    {
+                        if (plan.Templates.ContainsKey(mvarCurrentAssignationContent.Definitive))
+                        {
+                            mvarCurrentTemplate = plan.Templates?[mvarCurrentAssignationContent.Definitive];
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    /// <summary>
+    /// Obtiene un turno concreto en función del offset y de la fecha de comienzo.
+    /// </summary>
+    /// <param name="offset"></param>
+    /// <returns>El template del turno elegido</returns>
+    private WorkShiftTemplateModel? GetTemplate(int offset)
+    {
+        if(null!=mcolDayPlans)
+        {
+            WorkShiftTemplateCollectionModel plan = mcolDayPlans[offset];
+
+
+        }              
+        return null;
+    }
+    private string GetCellStyle()
+    {
+        string auxColor = "black";
+        if (null != mvarCurrentTemplate)
+        {
+            auxColor = mvarCurrentTemplate.Color ?? "black";
+            if (null != mvarCurrentAssignationContent)
+            {
+                if (mvarCurrentAssignationContent.TD) auxColor = "#00CC00"; //Color del TD
+            }
+        }
+        return string.Format("background: {1}; color: {0};", auxColor, mvarCurrentTemplate?.BgColor ?? "transparent");
+    }
+    private string GetCellText()
+    {
+        if (null != mvarCurrentAssignationContent)
+            return mvarCurrentAssignationContent.Definitive ?? "";
+        return "";
+    }
+    private string GetBarStyle()
+    {
+        return string.Format("background: {0};", mvarCurrentTemplate?.StripeColor ?? "transparent");
+    }
+}

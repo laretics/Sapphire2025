@@ -37,7 +37,9 @@
         }
         else
         {
-            if(mcolAssignations.Count<1)
+            <CascadingValue value = "mcolAssignations">
+                <CascadingValue Value="mcolDayPlans">
+            @if(mcolAssignations.Count<1)
             {
                 <div class="d-flex justify-content-center align-items-center" style="height: 60vh;">
                     <div class="text-center">
@@ -86,7 +88,8 @@
                                         }
                                         break;
                                     case 2: //Agente
-                                        {                                            
+                                        {   
+                                            
                                             <th class="header-left bg-gradient-secondary">
                                                 <div class="d-flex justify-content-between align-items-center w-100">                                                    
                                                     <span class="cf-text">@AgentCFText(row)</span>
@@ -95,22 +98,8 @@
                                             </th>
                                              @for (int col = 0; col < dayCount; col++)
                                             {
-                                                if( HasAssignation(row,col))
-                                                {
-                                                    <td class="cell-content custom-cell text-center align-middle"
-                                                        style="@GetCellStyle()">
-                                                        <div class="cell-content-inner">
-                                                            <span>@GetCellText()</span>
-                                                            <div class="cell-bar"
-                                                                 style="@GetBarStyle()">
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                }
-                                                else
-                                                {
-                                                    <td class="cell-content text-center align-middle"></td>
-                                                }
+                                                <Sapphire2025.Layout.Expert.AssignationCell Row="@row" Col="@col" />
+
                                             }
                                         }
                                         break;
@@ -125,6 +114,8 @@
                     </tbody>
                 </table>
             }
+                </CascadingValue>
+            </CascadingValue>
         }
     }
 </div>
@@ -241,56 +232,6 @@
 
         return null;
     }
-    private bool HasAssignation(int rowIndex, int colIndex)
-    {
-        if (null != mcolAssignations && null!=mcolAssignations[rowIndex])
-        {
-            currentAssignationContent = mcolAssignations[rowIndex]?.ColAssignations?[colIndex];
-            mvarCurrenttemplate = null;
-            if (null != currentAssignationContent)
-            {
-                if(null!=currentAssignationContent.Definitive)
-                {
-                    WorkShiftTemplateCollectionModel plan = mcolDayPlans[colIndex];             
-                    if(null!=plan.Templates)
-                    {
-                        if (plan.Templates.ContainsKey(currentAssignationContent.Definitive))
-                        {
-                            mvarCurrenttemplate = plan.Templates?[currentAssignationContent.Definitive];
-                            return true;
-                        }                                               
-                    }                                        
-                }                                                
-            }            
-        }
-        return false;
-    }
-    private string GetCellStyle()
-    {
-        string auxColor = "black";
-        if(null!=mvarCurrenttemplate)
-        {
-            auxColor = mvarCurrenttemplate.Color ?? "black";
-            if(null!=currentAssignationContent)
-            {
-                if (currentAssignationContent.TD) auxColor = "#00CC00"; //Color del TD
-            }            
-        }
-        return string.Format("background: {1}; color: {0};", auxColor, mvarCurrenttemplate?.BgColor ?? "transparent");                        
-    }
-    private string GetCellText()
-    {
-        if(null!=currentAssignationContent)
-        {
-            return currentAssignationContent.Definitive??"";
-        }
-        return "";
-    }
-    private string GetBarStyle()
-    {
-        return string.Format("background: {0};", mvarCurrenttemplate?.StripeColor ?? "transparent");
-    }
-
     private async Task onExcelImport(InputFileChangeEventArgs e)
     {
         Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
