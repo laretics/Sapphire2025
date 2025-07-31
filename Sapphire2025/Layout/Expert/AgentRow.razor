@@ -1,0 +1,46 @@
+﻿<th class="header-left bg-gradient-secondary">
+    <div class="d-flex justify-content-between align-items-center w-100">
+        <span class="cf-text">@AgentCFText()</span>
+        <span class="user-name">@AgentNameText()</span>
+    </div>
+</th>
+
+@code {
+    //Esto es una fila en el calendario de asignaciones.
+    [Parameter] //Agente al que corresponden las asignaciones
+    public UserModelBase? User { get; set; }
+    [CascadingParameter] //Fecha correspondiente a la primera posición
+    public DateTime InitialDate{ get; set; }
+    [CascadingParameter] //Número de días consecutivos
+    public int DayCount{ get; set; }
+    [CascadingParameter] //Colección de asignaciones (de todos los Agentes)
+    public List<WorkShiftAssignationModel>? ColAssignations { get; set; }
+
+    private WorkShiftAssignationModel[] mcolAssignationsArray = new WorkShiftAssignationModel[0];
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        if (null != ColAssignations && null != User)
+        {
+            DateTime finalDate = InitialDate.AddDays(DayCount);
+
+            mcolAssignationsArray = ColAssignations
+            .Where(xx => xx.Agent == User.guid && 
+                xx.Date>=InitialDate && xx.Date<finalDate
+                ).OrderBy(xx => xx.Date).ToArray();
+        }        
+    }
+
+    private string AgentCFText()
+    {
+        return (null != User) && (null != User.CF)
+            ? User.CF : string.Empty;
+    }
+    private string AgentNameText()
+    {
+        return ( null != User) && (null!= User.Name) 
+        ? User.Name : string.Empty;
+    }
+
+}

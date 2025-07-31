@@ -1,5 +1,39 @@
-﻿<h3>AssignationCalendar</h3>
+﻿@if(null== Assignations)
+{
 
+}
+else
+{
+
+	
+}
 @code {
+	//A un calendario de asignaciones se le tiene que pasar la colección de asignaciones
+
+	//Asignaciones del gráfico
+	[CascadingParameter]
+	public List<WorkShiftAssignationModel>? Assignations { get; set; }
+	//Diccionario de usuarios a representar
+	[CascadingParameter]
+	public Dictionary<Guid, UserModelBase>? Users { get; set; }
+
+	//Obtiene la fila a representar para un determinado Agente.
+	private List<AgentAssignationsModel> GetAssignationsByAgent(Guid userId)
+	{
+		List<AgentAssignationsModel> salida = new List<AgentAssignationsModel>();
+		if(null != Assignations && null != Users)
+		{
+			List<WorkShiftAssignationModel> auxLista = Assignations.
+			Where(x => x.Agent == userId).OrderBy(xx => xx.Date).ToList();
+			foreach (WorkShiftAssignationModel assignation in auxLista)
+			{
+				AgentAssignationsModel nuevo = new AgentAssignationsModel();
+				
+
+
+			}
+		}
+		return salida;
+	}
 
 }
