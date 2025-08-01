@@ -14,6 +14,7 @@ namespace Sapphire2025Models.Expert
 		public string Definitive { get; set; }
 		public bool IsTD { get; set; }
 		public Guid SwappingAgent { get; set; }
+		public string? Comment { get; set; } //Anotación que hace el Jefe de Maquinistas en la hoja de Excel.
 		public WorkShiftAssignationModel()
 		{			
 			Assignation = "";

@@ -4,6 +4,10 @@
         <span class="user-name">@AgentNameText()</span>
     </div>
 </th>
+@foreach (AssignationContentModel? assignationModel in mcolAssignationsArray)
+{
+    <AssignationCell Assignation="@assignationModel" />
+}
 
 @code {
     //Esto es una fila en el calendario de asignaciones.
@@ -15,8 +19,10 @@
     public int DayCount{ get; set; }
     [CascadingParameter] //Colección de asignaciones (de todos los Agentes)
     public List<WorkShiftAssignationModel>? ColAssignations { get; set; }
+    [CascadingParameter] //Colección de planes vigentes cada día
+    public WorkShiftTemplateCollectionModel[]? ColPlans{ get; set; }
 
-    private WorkShiftAssignationModel[] mcolAssignationsArray = new WorkShiftAssignationModel[0];
+    private AssignationContentModel?[] mcolAssignationsArray = new AssignationContentModel[0];
 
     protected override void OnInitialized()
     {
@@ -24,11 +30,24 @@
         if (null != ColAssignations && null != User)
         {
             DateTime finalDate = InitialDate.AddDays(DayCount);
-
-            mcolAssignationsArray = ColAssignations
+            WorkShiftAssignationModel[] colAssignationsByAgent =
+            ColAssignations
             .Where(xx => xx.Agent == User.guid && 
                 xx.Date>=InitialDate && xx.Date<finalDate
                 ).OrderBy(xx => xx.Date).ToArray();
+            mcolAssignationsArray = new AssignationContentModel[DayCount];
+            foreach(WorkShiftAssignationModel assignation in ColAssignations)
+            {
+                int auxIndex = assignation.Date.Subtract(InitialDate).Days;
+                System.Diagnostics.Debug.Assert(auxIndex >= 0 && auxIndex < DayCount);
+                AssignationContentModel nueva = new AssignationContentModel();
+                nueva.AssignationsChain = assignation.Assignation;
+                nueva.Definitive = assignation.Definitive;
+                nueva.Comment = assignation.Comment;
+                nueva.SwappingAgent = assignation.SwappingAgent;
+                nueva.TD = assignation.IsTD;
+                mcolAssignationsArray[auxIndex] = nueva;
+            }
         }        
     }
 
