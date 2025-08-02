@@ -1,9 +1,10 @@
-﻿@if(null== Assignations)
+﻿@if(null== ColAssignations)
 {
 
 }
 else
 {
+
 
 	
 }
@@ -12,7 +13,7 @@ else
 
 	//Asignaciones del gráfico
 	[CascadingParameter]
-	public List<WorkShiftAssignationModel>? Assignations { get; set; }
+	public List<WorkShiftAssignationModel>? ColAssignations { get; set; }
 	//Diccionario de usuarios a representar
 	[CascadingParameter]
 	public Dictionary<Guid, UserModelBase>? Users { get; set; }

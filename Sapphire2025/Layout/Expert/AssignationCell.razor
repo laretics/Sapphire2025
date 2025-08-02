@@ -1,4 +1,5 @@
-﻿@if (null==Assignation)
+﻿@using Sapphire2025Models.Expert.WorkshiftTemplates
+@if (null==Assignation)
 {
     <td class="cell-content custom-cell text-center align-middle"></td>
 }
@@ -14,18 +15,15 @@ else
         </div>
     </td>
 }
-else
-{
-    <td class="cell-content text-center align-middle"></td>
-}
 
 @code {
+    [CascadingParameter]//Con este modo activado se representa toda la cadena de asignaciones
+    public bool WholeAssignations { get; set; }
     [Parameter] //Asignación concreta para esta celda.
     public AssignationContentModel? Assignation { get; set; }
     [Parameter]
     public WorkShiftTemplateCollectionModel? Plan{ get; set; }
 
-    private AssignationContentModel? mvarCurrentAssignationContent;
     private WorkShiftTemplateModel? mvarCurrentTemplate;
 
     protected override void OnInitialized()
@@ -54,17 +52,22 @@ else
         if (null != mvarCurrentTemplate)
         {
             auxColor = mvarCurrentTemplate.Color ?? "black";
-            if (null != mvarCurrentAssignationContent)
+            if (null != Assignation)
             {
-                if (mvarCurrentAssignationContent.TD) auxColor = "#00CC00"; //Color del TD
+                if (Assignation.TD) auxColor = "#00CC00"; //Color del TD
             }
         }
         return string.Format("background: {1}; color: {0};", auxColor, mvarCurrentTemplate?.BgColor ?? "transparent");
     }
     private string GetCellText()
     {
-        if (null != mvarCurrentAssignationContent)
-            return mvarCurrentAssignationContent.Definitive ?? "";
+        if (null != Assignation)
+        {
+            if (WholeAssignations)
+                return Assignation.AssignationsChain ?? "";
+            else
+                return Assignation.Definitive ?? "";
+        }        
         return "";
     }
     private string GetBarStyle()

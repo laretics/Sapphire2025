@@ -13,7 +13,8 @@ namespace Sapphire2025Server.Models.Turnos
         public Guid Id { get; set; } //Identificador único del turno de trabajo
         public Guid Parent { get; set; } //Identificador del proyecto de explotación al que pertenece este turno
         [Required]
-        public string Name { get; set; } //Nombre del turno de trabajo        
+        public string Name { get; set; } //Nombre del turno de trabajo (se separan por comas todas las cadenas aceptadas)        
+        public string Tokens { get; set; } //Lista separada por comas con todas las cadenas que se reconocen como este turno.
         public string? Comment { get; set; } //Comentario o descripción del turno de trabajo
         public TimeSpan StartTime { get; set; } //Hora de inicio del turno de trabajo
         public TimeSpan Duration { get; set; } //Duración del turno de trabajo

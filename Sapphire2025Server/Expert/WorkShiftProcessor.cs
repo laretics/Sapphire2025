@@ -4,6 +4,7 @@ using Sapphire2025Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.Json;
 using Org.BouncyCastle.Crypto.Operators;
+using Sapphire2025Models.Expert.WorkshiftTemplates;
 
 namespace Sapphire2025Server.Expert
 {

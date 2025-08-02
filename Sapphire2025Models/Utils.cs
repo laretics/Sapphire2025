@@ -75,5 +75,19 @@ namespace Sapphire2025Models
 			}
 			return "transparent";
 		}
+
+		/// <summary>
+		/// Auxiliar para definir la compatibilidad de un turno con un día concreto de la semana
+		/// </summary>
+		/// <param name="pattern">Patrón del turno</param>
+		/// <param name="today">Tipo enumerado DateTime con el día de hoy</param>
+		/// <param name="todayIsFestive">Flag que indica si hoy se considera festivo según el calendario laboral</param>
+		/// <returns></returns>
+		public static bool IsDayCompatible(byte pattern, DayOfWeek today, bool todayIsFestive)
+		{
+			if (todayIsFestive && getBit(pattern, 7)) return true; //Da igual lo demás... es un festivo.
+			return (pattern & (1 << (byte)today))!=0;
+		}
+
 	}
 }
