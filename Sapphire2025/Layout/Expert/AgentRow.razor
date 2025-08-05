@@ -4,10 +4,17 @@
         <span class="user-name">@AgentNameText()</span>
     </div>
 </th>
-@foreach (AssignationContentModel? assignationModel in mcolAssignationsArray)
-{
-    <AssignationCell Assignation="@assignationModel" />
-}
+<CascadingValue Value="WholeAssignations">
+    @for (int index = 0; index < DayCount; index++)
+    {
+        <AssignationCell 
+            Assignation="@mcolAssignationsArray[index]" 
+            Plan="@ColPlans[index]"
+            Day="@InitialDate.AddDays(index)"
+            Festive = "@ColFestive[index]"
+        />
+    }
+</CascadingValue>
 
 @code {
     //Esto es una fila en el calendario de asignaciones.
@@ -21,6 +28,10 @@
     public List<WorkShiftAssignationModel>? ColAssignations { get; set; }
     [CascadingParameter] //Colección de planes vigentes cada día
     public WorkShiftTemplateCollectionModel[]? ColPlans{ get; set; }
+    [CascadingParameter] //Colección de festividades laborales de cada día.
+    public bool[]? ColFestive{ get; set; }
+    [CascadingParameter] //Mostrar todas las asignaciones o sólo las definitivas
+    public bool WholeAssignations{ get; set; }
 
     private AssignationContentModel?[] mcolAssignationsArray = new AssignationContentModel[0];
 

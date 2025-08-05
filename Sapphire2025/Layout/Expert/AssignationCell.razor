@@ -23,6 +23,10 @@ else
     public AssignationContentModel? Assignation { get; set; }
     [Parameter]
     public WorkShiftTemplateCollectionModel? Plan{ get; set; }
+    [Parameter]
+    public DateTime Day{ get; set; }
+    [Parameter]
+    public bool Festive { get; set; }
 
     private WorkShiftTemplateModel? mvarCurrentTemplate;
 
@@ -41,8 +45,7 @@ else
     {
         if(null!=Plan && null!=Plan.Templates && null!=Assignation &&null!=Assignation.Definitive)
         {
-            if (Plan.Templates.ContainsKey(Assignation.Definitive))
-                return Plan.Templates[Assignation.Definitive];
+            return Plan.Template(Assignation.Definitive, Day, Festive);
         }
         return null;
     }

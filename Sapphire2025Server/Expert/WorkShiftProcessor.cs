@@ -52,14 +52,6 @@ namespace Sapphire2025Server.Expert
             return Guid.Empty;
         }
 
-        public async Task<WorkShiftTemplateCollectionModel?> Plan(Guid id, bool actives, bool inactives, DateTime fecha)
-        {
-            int diaSemanaExp = (int)fecha.DayOfWeek;
-            byte diaSemana = (byte)(Math.Pow(2,diaSemanaExp));
-            if (await IsFestive(fecha))
-                diaSemana |= 128;
-            return await Plan(id, actives, inactives, diaSemana);
-        }
         /// <summary>
         /// Obtiene el plan de explotación para un día concreto de la semana.
         /// </summary>
@@ -68,7 +60,7 @@ namespace Sapphire2025Server.Expert
         /// <param name="inactives">Recupera sólo los turnos de descanso</param>
         /// <param name="dayOfWeek">Días de la semana, en formato flag (1,2,4,8,16...)</param>
         /// <returns></returns>
-        public async Task<WorkShiftTemplateCollectionModel?> Plan(Guid id, bool actives, bool inactives, byte dayOfWeek=255)
+        public async Task<WorkShiftTemplateCollectionModel?> Plan(Guid id, bool actives, bool inactives)
         {
             WorkShiftTemplateCollectionModel? salida = null;
             WorkShiftTemplateCollectionModel? included = null ;
@@ -83,7 +75,7 @@ namespace Sapphire2025Server.Expert
                     if (null!=candidato.Include)
                     {
                         Guid auxId = (Guid)candidato.Include;
-                        included = await Plan(auxId, actives, inactives, dayOfWeek);
+                        included = await Plan(auxId, actives, inactives);
                     }                       
                     salida = new WorkShiftTemplateCollectionModel();
                     salida.Id = id;                    
@@ -96,14 +88,13 @@ namespace Sapphire2025Server.Expert
             }
             if (null != salida)
             {
-                salida.Templates = await Templates(id, actives, inactives, dayOfWeek);
-                if (null == salida.Templates)
-                    salida.Templates = new Dictionary<string, WorkShiftTemplateModel>();
+                salida.Templates = await Templates(id, actives, inactives);
+
                 if (null != included && null != included.Templates)
                 {
                     ///Creo que con esto tengo la herencia, pero hay que comprobarlo.
-                    foreach (WorkShiftTemplateModel template in included.Templates.Values)
-                        salida.Templates.Add(template.Name, template);
+                    foreach (WorkShiftTemplateModel template in included.Templates)
+                        salida.Templates.Add(template);
                 }
             }                                                        
             return salida;
@@ -161,9 +152,10 @@ namespace Sapphire2025Server.Expert
         }
         #endregion
 
-        protected async Task<Dictionary<string,WorkShiftTemplateModel>> Templates(Guid parent, bool actives, bool inactives, byte dayOfWeek=255)
+        protected async Task<List<WorkShiftTemplateModel>> Templates(Guid parent, bool actives, bool inactives)
         {
-            Dictionary<string,WorkShiftTemplateModel> salida = new Dictionary<string, WorkShiftTemplateModel>();
+            List<WorkShiftTemplateModel> salida = new List<WorkShiftTemplateModel>();
+
             using (DataStorage almacen = new DataStorage(mvarConfig))
             {
                 List<WorkShiftTemplate> colTemplates = await almacen.WorkShiftTemplates
@@ -178,13 +170,10 @@ namespace Sapphire2025Server.Expert
                     }
                     else
                     {
-                        if (isDayCompatible(dayOfWeek, auxPlantilla.PerWeek))
-                        {
-                            if (auxPlantilla.Att) //Depósito
-                                nuevo = new AttTemplateModel();
-                            else
-                                nuevo = new WorkTemplateModel();
-                        }
+						if (auxPlantilla.Att) //Depósito
+							nuevo = new AttTemplateModel();
+						else
+							nuevo = new WorkTemplateModel();
                     }
                     if(null!=nuevo)
                     {
@@ -195,6 +184,7 @@ namespace Sapphire2025Server.Expert
                         nuevo.StripeColor = auxPlantilla.StripeColor;
                         nuevo.CoorX = auxPlantilla.CoorX;
                         nuevo.CoorY = auxPlantilla.CoorY;
+                        nuevo.DayOfWeekEnabled = auxPlantilla.PerWeek;
                         if(nuevo.GetType()==typeof(AttTemplateModel))
                         {
                             AttTemplateModel auxAtencion = (AttTemplateModel)nuevo;
@@ -215,7 +205,7 @@ namespace Sapphire2025Server.Expert
                     }
                     if(null!=nuevo)
                     {
-                        salida.Add(nuevo.Name, nuevo);
+                        salida.Add(nuevo);
                     }
                 }
             }

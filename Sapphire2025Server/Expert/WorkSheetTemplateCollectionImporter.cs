@@ -130,28 +130,35 @@ namespace Sapphire2025Server.Expert
             }
             return "";
         }
-        private void importDescansoAndTrabajoCommon(WorkShiftTemplate template, XmlNode nodo)
+        private void importDescansoAndTrabajoCommon(WorkShiftTemplate template, string name, XmlNode nodo)
         {
-            template.Id = Guid.NewGuid();
-            template.Name = nodo.Attributes["name"].Value;
-            template.Comment = nodo.Attributes["comment"]?.Value;
-            template.Color = nodo.Attributes["col"]?.Value;
-            template.BgColor = nodo.Attributes["bgcol"]?.Value;
-            template.StripeColor = nodo.Attributes["stcol"]?.Value;
-            template.CoorX = -1;
-            template.CoorY = -1;
-            string? auxCoordinates = nodo.Attributes["ord"]?.Value;
-            if (null != auxCoordinates && auxCoordinates.Length > 0)
-            {
-                string[] coordinates = auxCoordinates.Split(",");
-                int coordenada = -1;
-                int.TryParse(coordinates[0], out coordenada);
-                template.CoorX = coordenada;
-                coordenada = -1;
-                int.TryParse(coordinates[1], out coordenada);
-                template.CoorY = coordenada;
-            }
-            template.Parent = mvarGuid;
+			template.Id = Guid.NewGuid();
+            //El nombre es el primer elemento de la cadena "name". El resto son los tokens.
+            string[] auxColTokens = name.Split(',');
+            if (auxColTokens.GetUpperBound(0) > 0)
+                template.Name = auxColTokens[0];
+            else
+                template.Name = name;
+
+            template.Tokens = name;
+			template.Comment = nodo.Attributes["comment"]?.Value;
+			template.Color = nodo.Attributes["col"]?.Value;
+			template.BgColor = nodo.Attributes["bgcol"]?.Value;
+			template.StripeColor = nodo.Attributes["stcol"]?.Value;
+			template.CoorX = -1;
+			template.CoorY = -1;
+			string? auxCoordinates = nodo.Attributes["ord"]?.Value;
+			if (null != auxCoordinates && auxCoordinates.Length > 0)
+			{
+				string[] coordinates = auxCoordinates.Split(",");
+				int coordenada = -1;
+				int.TryParse(coordinates[0], out coordenada);
+				template.CoorX = coordenada;
+				coordenada = -1;
+				int.TryParse(coordinates[1], out coordenada);
+				template.CoorY = coordenada;
+			}
+			template.Parent = mvarGuid;
         }
         private void importDescansos(XmlNode node, DataStorage almacen)
         {
@@ -161,9 +168,10 @@ namespace Sapphire2025Server.Expert
                 {
                     if(null!=descanso.Attributes && null != descanso.Attributes["name"])
                     {
+                        string nombre = descanso.Attributes["name"].Value;
                         WorkShiftTemplate auxDescanso = new WorkShiftTemplate();
                         auxDescanso.Active = false;
-                        importDescansoAndTrabajoCommon(auxDescanso, descanso);                        
+                        importDescansoAndTrabajoCommon(auxDescanso,nombre, descanso);                        
 
                         almacen.WorkShiftTemplates.Add(auxDescanso);
                     }                    
@@ -180,9 +188,10 @@ namespace Sapphire2025Server.Expert
                     TimeSpan? auxDuracion = Common.parseSapphireTimeSpan(trabajo.Attributes["duration"]?.Value);
                     if (null != trabajo.Attributes && null != trabajo.Attributes["name"] && null!=auxComienzo && null!=auxDuracion)
                     {
+                        string nombre = trabajo.Attributes["name"].Value;
                         WorkShiftTemplate auxTrabajo = new WorkShiftTemplate();
                         auxTrabajo.Active = true;
-                        importDescansoAndTrabajoCommon(auxTrabajo, trabajo);
+                        importDescansoAndTrabajoCommon(auxTrabajo,nombre, trabajo);
                         auxTrabajo.StartTime = (TimeSpan)auxComienzo;
                         auxTrabajo.Duration = (TimeSpan)auxDuracion;
                         string? auxDepot = trabajo.Attributes["depot"]?.Value;
