@@ -1,4 +1,5 @@
 ﻿using Sapphire2025Models.Expert;
+using Sapphire2025Models.Expert.WorkshiftTemplates;
 using System.Net.Http.Json;
 
 namespace Sapphire2025.Storage
@@ -7,7 +8,7 @@ namespace Sapphire2025.Storage
     {
         public ExpertClient(HttpClient httpClient, IntStorageService intStorage) : base(httpClient, intStorage, "sapphireexpert") { }
 
-        public async Task<string?> uploadXML(Stream xmlSourceCode, string fileName)
+        public async Task<string?> UploadXML(Stream xmlSourceCode, string fileName)
         {
             using MultipartFormDataContent contenido = new MultipartFormDataContent();
             StreamContent streamContent = new StreamContent(xmlSourceCode);
@@ -18,56 +19,11 @@ namespace Sapphire2025.Storage
                 return await respuesta.Content.ReadAsStringAsync();
             return "Unknown error";
         }
-        public async Task<string?> uploadDailyWorkShift(string auxDocument, DateTime date, int days)
-        {
-            XlsxAssignUpdateModel data = new();
-            data.Date = date;
-            data.Days = days;
-            data.ExcelDump = auxDocument;
-            string json = System.Text.Json.JsonSerializer.Serialize(data);
-            HttpResponseMessage respuesta = await sendPostRequest("uploadexcelgraph", json);
-            if (respuesta.IsSuccessStatusCode)
-                return await respuesta.Content.ReadAsStringAsync();
-            return "Error desconocido en el cliente.";
-        }
-        public async Task<bool> deleteWorkShiftTemplateCollection(Guid id)
-        {
-            string json = System.Text.Json.JsonSerializer.Serialize(id);
-            HttpResponseMessage respuesta = await sendPostRequest("deleteworkshifttemplatecollection", json);
-            if (respuesta.IsSuccessStatusCode)
-                return await respuesta.Content.ReadFromJsonAsync<bool>();
-            return false;            
-        }
-        public async Task<AgentsViewModel?> getAgentsView(string viewName)
-        {
-            AgentsViewRequestModel request = new AgentsViewRequestModel();
-            request.ViewId = viewName;
-            string json = System.Text.Json.JsonSerializer.Serialize(request);
-            HttpResponseMessage respuesta = await sendPostRequest("getagentviewtable", json);
-            if (respuesta.IsSuccessStatusCode)
-                return await respuesta.Content.ReadFromJsonAsync<AgentsViewModel>();
-            return null;
-        }
-
+        
         /// <summary>
-        /// Devuelve las asignaciones de turnos realizadas para la fecha ordenadas por CF.
+        /// Fuerza un borrado de las asignaciones que hay en la base de datos.
         /// </summary>
-        /// <param name="date">Fecha de asignación</param>
-        /// <returns>Lista de las asignaciones</returns>
-        public async Task<List<WorkShiftAssignationModel>> AssignationsByDate(DateTime rhs)
-        {
-            Sapphire2025Models.Expert.WorkShiftRequestModel peticion = new WorkShiftRequestModel();
-            peticion.Date = rhs;
-            string json = System.Text.Json.JsonSerializer.Serialize(peticion);
-            HttpResponseMessage respuesta = await sendPostRequest("assignationsbydate",json);
-            if (respuesta.IsSuccessStatusCode)
-            {
-                List<WorkShiftAssignationModel>? salida = await respuesta.Content.ReadFromJsonAsync<List<WorkShiftAssignationModel>>();
-                if (null != salida) return salida;
-            }
-            return new List<WorkShiftAssignationModel>();            
-        }
-
+        /// <returns></returns>
         public async Task<bool> AssignationsClear()
         {
             string request = composeCommand("assignationsclear");
@@ -75,40 +31,19 @@ namespace Sapphire2025.Storage
             return await respuesta.Content.ReadFromJsonAsync<bool>();
         }
 
-        public async Task<List<AgentAssignationsModel>> AsignationsByDateAndGraph(DateTime begin, int days, string? agentsTableId)
+        public async Task<List<AssignationContentModel>?> Assignations(DateTime date, int dayCount=1)
         {
-            if(null!=agentsTableId)
-            {
-                WorkShiftRequestModel peticion = new WorkShiftRequestModel();
-                peticion.Date = begin;
-                peticion.Days = days;
-                peticion.AgentsTableId = agentsTableId;
-                string json = System.Text.Json.JsonSerializer.Serialize(peticion);
-                HttpResponseMessage respuesta = await sendPostRequest("assignationsgraph", json);
-                if (respuesta.IsSuccessStatusCode)
-                {
-                    List<AgentAssignationsModel>? salida = await respuesta.Content.ReadFromJsonAsync<List<AgentAssignationsModel>>();
-                    if (null != salida) return salida;
-                }
-            }
-            return new List<AgentAssignationsModel>();
+            WorkShiftRequestModel request = new WorkShiftRequestModel();
+            request.Date = date;
+            request.Days = dayCount;
+            string json = System.Text.Json.JsonSerializer.Serialize(request);
+            HttpResponseMessage response = await sendPostRequest("assignations", json);
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<List<AssignationContentModel>>();
+
+            return null;
         }
 
-        /// <summary>
-        /// Busca un plan de explotación definido para esta fecha.
-        /// </summary>
-        /// <param name="date">Fecha de los turnos correspondientes al plan de explotación</param>
-        /// <returns>Guid del plan de explotación/returns>
-        public async Task<Guid> PlanHeader(DateTime date)
-        {
-            Sapphire2025Models.Expert.WorkShiftRequestModel peticion = new WorkShiftRequestModel();
-            peticion.Date = date;
-            string json = System.Text.Json.JsonSerializer.Serialize(peticion);
-            HttpResponseMessage respuesta = await sendPostRequest("planheader", json);
-            if (respuesta.IsSuccessStatusCode)
-                return await respuesta.Content.ReadFromJsonAsync<Guid>();
-            return Guid.Empty; //Esto es si no encuentra nada en la base de datos.
-        }
         /// <summary>
         /// Descarga un plan de explotación completo.
         /// </summary>
@@ -126,31 +61,93 @@ namespace Sapphire2025.Storage
                 return await respuesta.Content.ReadFromJsonAsync<WorkShiftTemplateCollectionModel>();
             return null;
         }
+        /// <summary>
+        /// Busca un plan de explotación definido para esta fecha.
+        /// </summary>
+        /// <param name="date">Fecha de los turnos correspondientes al plan de explotación</param>
+        /// <returns>Guid del plan de explotación/returns>
+        public async Task<Guid> PlanHeader(DateTime date)
+        {
+            Sapphire2025Models.Expert.WorkShiftRequestModel peticion = new WorkShiftRequestModel();
+            peticion.Date = date;
+            string json = System.Text.Json.JsonSerializer.Serialize(peticion);
+            HttpResponseMessage respuesta = await sendPostRequest("planheader", json);
+            if (respuesta.IsSuccessStatusCode)
+                return await respuesta.Content.ReadFromJsonAsync<Guid>();
+            return Guid.Empty; //Esto es si no encuentra nada en la base de datos.
+        }
+
+        /// <summary>
+        /// Obtiene la lista completa de planes.
+        /// Mirar si esto puede quedarse obsoleto.
+        /// </summary>
+        /// <returns>La tabla de planes.</returns>
         public async Task<List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>?> Plans()
         {
             string request = composeCommand("plans");
             HttpResponseMessage respuesta = await sendGetRequest(request);
             return await respuesta.Content.ReadFromJsonAsync<List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>>();
         }
-		/// <summary>
-		/// Obtiene una lista de las posibles vistas de Agentes.
-		/// Se usa en el menú lateral para seleccionar gráficos.
-		/// </summary>
-		/// <returns>Una lista de strings con los nombres</returns>
-		public async Task<List<string>?> getAgentsViews()
-		{
-            string request = composeCommand("agentslistsnames");
+
+        /// <summary>
+        /// Devuelve un objeto dinámico de tipo PlansYearSlice con las asignaciones de planes a lo largo
+        /// de todo el tiempo que se requiere.
+        /// También contiene las festividades laborales.
+        /// </summary>
+        /// <param name="date">Fecha de inicio</param>
+        /// <param name="dayCount">Número de días a retornar</param>
+        /// <returns></returns>
+        public async Task<PlansYearSlice?> PlansTimeSlice(DateTime date, int dayCount)
+        {
+            WorkShiftRequestModel request = new WorkShiftRequestModel();
+            request.Date = date;
+            request.Days = dayCount;
+            string json = System.Text.Json.JsonSerializer.Serialize(request);
+            HttpResponseMessage respuesta = await sendPostRequest("planstimeslice", json);
+            if (respuesta.IsSuccessStatusCode)
+                return await respuesta.Content.ReadFromJsonAsync<PlansYearSlice>();
+
+            return null;
+        }
+
+        /// <summary>
+        /// Devuelve la lista de tablas de Agentes que se pueden mostrar en un gráfico de turnos.
+        /// Es para menús, donde el usuario puede escoger una lista concreta.
+        /// </summary>
+        /// <returns>Lista de string, con los nombres de cada lista</returns>
+        public async Task<List<string>?> AgentsListsCatalog()
+        {
+            string request = composeCommand("agentslistscatalog");
             HttpResponseMessage respuesta = await sendGetRequest(request);
             return await
                 respuesta.Content.ReadFromJsonAsync<List<string>>();
-		}
-	
+        }
+
+        /// <summary>
+        /// Vista de Agentes para un control de gráfico.
+        /// </summary>
+        /// <param name="viewName">Nombre de la vista de Agentes</param>
+        /// <returns>Lista de vista de Agentes</returns>
+        public async Task<AgentsViewModel?> AgentsView(string viewName)
+        {
+            AgentsViewRequestModel request = new AgentsViewRequestModel();
+            request.ViewId = viewName;
+            string json = System.Text.Json.JsonSerializer.Serialize(request);
+            HttpResponseMessage respuesta = await sendPostRequest("agentsview", json);
+            if (respuesta.IsSuccessStatusCode)
+            {
+                AgentsViewModel? salida = await respuesta.Content.ReadFromJsonAsync<AgentsViewModel>();
+                return salida;
+            }                         
+            return null;
+        }
+
         /// <summary>
         /// Obtiene un conjunto con los días festivos a partir de la fecha especificada.
         /// </summary>
         /// <param name="today">La fecha de inicio (para descartar festivos pasados)</param>
         /// <returns>El conjunto de los festivos</returns>
-        public async Task<HashSet<DateTime>?> nextFestives(DateTime today)
+        public async Task<HashSet<DateTime>?> NextFestives(DateTime today)
         {
             FestivesRequestModel requestModel = new FestivesRequestModel();
             requestModel.Date = today;
@@ -160,6 +157,52 @@ namespace Sapphire2025.Storage
                 return await respuesta.Content.ReadFromJsonAsync<HashSet<DateTime>>();
 
             return null;
+        }
+
+        public async Task<bool> IsFestive(DateTime day)
+        {
+            FestivesRequestModel requestModel = new FestivesRequestModel();
+            requestModel.Date = day;
+            string json = System.Text.Json.JsonSerializer.Serialize(requestModel);
+            HttpResponseMessage respuesta = await sendPostRequest("getfestive", json);
+            if (respuesta.IsSuccessStatusCode)
+                return await respuesta.Content.ReadFromJsonAsync<bool>();
+
+            return false;
+        }
+
+        /// <summary>
+        /// Elimina un plan de explotación y todos los elementos que dependen de él.
+        /// </summary>
+        /// <param name="id">Id del plan</param>
+        /// <returns>True si todo fue bien</returns>
+        public async Task<bool> DeletePlan(Guid id)
+        {
+            string json = System.Text.Json.JsonSerializer.Serialize(id);
+            HttpResponseMessage respuesta = await sendPostRequest("deleteplan", json);
+            if (respuesta.IsSuccessStatusCode)
+                return await respuesta.Content.ReadFromJsonAsync<bool>();
+            return false;
+        }
+
+        /// <summary>
+        /// Sube a la base de datos un gráfico que ha importado de Excel.
+        /// </summary>
+        /// <param name="auxDocument">Nombre del archivo.</param>
+        /// <param name="date">Fecha de comienzo de importación.</param>
+        /// <param name="days">Número de días.</param>
+        /// <returns>True si la importación se ha realizado de forma satisfactoria</returns>
+        public async Task<string?> UploadDailyWorkShift(string auxDocument, DateTime date, int days)
+        {
+            XlsxAssignUpdateModel data = new();
+            data.Date = date;
+            data.Days = days;
+            data.ExcelDump = auxDocument;
+            string json = System.Text.Json.JsonSerializer.Serialize(data);
+            HttpResponseMessage respuesta = await sendPostRequest("uploadexcelgraph", json);
+            if (respuesta.IsSuccessStatusCode)
+                return await respuesta.Content.ReadAsStringAsync();
+            return "Error desconocido en el cliente.";
         }
     }
 }

@@ -19,48 +19,49 @@ else
 @code {
     [CascadingParameter]//Con este modo activado se representa toda la cadena de asignaciones
     public bool WholeAssignations { get; set; }
+    [CascadingParameter]//Rodaja de tiempo
+    public Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice{ get; set; }
     [Parameter] //Asignación concreta para esta celda.
     public AssignationContentModel? Assignation { get; set; }
     [Parameter]
-    public WorkShiftTemplateCollectionModel? Plan{ get; set; }
-    [Parameter]
-    public DateTime Day{ get; set; }
-    [Parameter]
-    public bool Festive { get; set; }
+    public int DayId{ get; set; }
 
-    private WorkShiftTemplateModel? mvarCurrentTemplate;
+    private WorkShiftTemplateModel? mvarTemplate = null;
 
     protected override void OnInitialized()
     {
-        mvarCurrentTemplate = GetTemplate();
         base.OnInitialized();
+        if(null!=TimeSlice)
+        {
+            WorkShiftTemplateCollectionModel? auxPlan = TimeSlice.GetPlan(DayId);
+            if (null != auxPlan && null != Assignation && null!=Assignation.Definitive)
+            {
+                mvarTemplate = auxPlan.Template(Assignation.Definitive, TimeSlice.GetDay(DayId), TimeSlice.GetFestive(DayId));
+            }
+        }
     }
 
-    /// <summary>
-    /// Obtiene un turno concreto en función del offset y de la fecha de comienzo.
-    /// </summary>
-    /// <param name="offset"></param>
-    /// <returns>El template del turno elegido</returns>
-    private WorkShiftTemplateModel? GetTemplate()
-    {
-        if(null!=Plan && null!=Plan.Templates && null!=Assignation &&null!=Assignation.Definitive)
-        {
-            return Plan.Template(Assignation.Definitive, Day, Festive);
-        }
-        return null;
-    }
     private string GetCellStyle()
     {
         string auxColor = "black";
-        if (null != mvarCurrentTemplate)
+        string auxBackgroundColor = "transparent";
+        if(null==mvarTemplate)
         {
-            auxColor = mvarCurrentTemplate.Color ?? "black";
+            //Tenemos una asignación, pero no hemos encontrado un turno en este plan.
+            //Mostraremos la asignación en colores que sean fáciles de distinguir.
+            auxColor = "white";
+            auxBackgroundColor = "red";
+        }
+        else
+        {
+            auxColor = mvarTemplate.Color ?? "black";
+            auxBackgroundColor = mvarTemplate.BgColor ?? "transparent";
             if (null != Assignation)
             {
                 if (Assignation.TD) auxColor = "#00CC00"; //Color del TD
             }
         }
-        return string.Format("background: {1}; color: {0};", auxColor, mvarCurrentTemplate?.BgColor ?? "transparent");
+        return string.Format("background: {1}; color: {0};", auxColor, auxBackgroundColor);
     }
     private string GetCellText()
     {
@@ -75,6 +76,6 @@ else
     }
     private string GetBarStyle()
     {
-        return string.Format("background: {0};", mvarCurrentTemplate?.StripeColor ?? "transparent");
+        return string.Format("background: {0};", mvarTemplate?.StripeColor ?? "transparent");
     }
 }

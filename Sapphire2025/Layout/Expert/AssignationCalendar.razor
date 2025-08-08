@@ -1,40 +1,102 @@
-﻿@if(null== ColAssignations)
+﻿@if(null==Users)
 {
-
+<LoadingTab ElementText="tabla de usuarios" />
+}
+else if(null== ColAssignations)
+{
+	<LoadingTab ElementText="asignaciones de turnos"/>
+}
+else if(null==AgentsList)
+{
+	<LoadingTab ElementText="lista de agentes" />
+}
+else if(null==TimeSlice)
+{
+	<LoadingTab ElementText="turnos de cada día" />
 }
 else
 {
-
-
-	
+	<CascadingValue Value="WholeAssignations">
+		<CascadingValue Value="ColAssignations">
+			<CascadingValue Value="TimeSlice">
+				<table class="table table-bordered shadow rounded">
+					<thead>
+						<tr>
+							<th class="header-corner"/>
+							@for(int col = 0; col<= TimeSlice.DayCount; col++)
+							{
+								<th class="@TypeOfDayClass(col)">
+									@if(IsToday(col))
+									{
+										<span class="highlight-today">@DayText(col)</span>
+									}
+									else
+									{
+										@DayText(col)
+									}
+								</th>								
+							}
+						</tr>
+					</thead>
+					<tbody>
+						<AssignationSubListRow AgentsView="@AgentsList" />
+					</tbody>					
+				</table>				
+			</CascadingValue>
+		</CascadingValue>
+	</CascadingValue>
 }
 @code {
 	//A un calendario de asignaciones se le tiene que pasar la colección de asignaciones
-
-	//Asignaciones del gráfico
-	[CascadingParameter]
-	public List<WorkShiftAssignationModel>? ColAssignations { get; set; }
-	//Diccionario de usuarios a representar
-	[CascadingParameter]
+	[CascadingParameter] //Diccionario de usuarios a representar
 	public Dictionary<Guid, UserModelBase>? Users { get; set; }
+	[Parameter] //Rodaja de Agentes a representar	
+	public Sapphire2025Models.Expert.AgentsViewModel? AgentsList{ get; set; }
+	[Parameter] //Rodaja de días.
+	public Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice{ get; set; }
+	[Parameter] //Asignaciones del gráfico
+	public List<AssignationContentModel>? ColAssignations { get; set; }
+	[Parameter] //Mostrar todas las asignaciones o sólo las definitivas
+	public bool WholeAssignations { get; set; }
 
-	//Obtiene la fila a representar para un determinado Agente.
-	private List<AgentAssignationsModel> GetAssignationsByAgent(Guid userId)
+
+	/// <summary>
+	/// Clase diferente dependiendo de si el día es laborable o festivo
+	/// </summary>
+	/// <param name="col">Número de la columna</param>
+	/// <returns>La clase del encabezado, mostrando el tipo de día que es.</returns>
+	public string TypeOfDayClass(int col)
 	{
-		List<AgentAssignationsModel> salida = new List<AgentAssignationsModel>();
-		if(null != Assignations && null != Users)
+		bool festive = false;
+		if(null!=TimeSlice)
 		{
-			List<WorkShiftAssignationModel> auxLista = Assignations.
-			Where(x => x.Agent == userId).OrderBy(xx => xx.Date).ToList();
-			foreach (WorkShiftAssignationModel assignation in auxLista)
-			{
-				AgentAssignationsModel nuevo = new AgentAssignationsModel();
-				
-
-
-			}
+			DayOfWeek auxDia = TimeSlice.InitialDate.AddDays(col).DayOfWeek;
+			festive = TimeSlice.GetFestive(col) || auxDia == DayOfWeek.Sunday || auxDia == DayOfWeek.Saturday;			
 		}
-		return salida;
+		if (festive) return "header-top bg-gradient-weekend text-dark text-center";
+		else return "header-top bg-gradient-primary text-white text-center";
 	}
 
+	/// <summary>
+	/// Indica si la columna corresponde al día de hoy.
+	/// </summary>
+	/// <param name="col">Número de la columna</param>
+	/// <returns>True si es hoy</returns>
+	public bool IsToday(int col)
+	{
+		if (null == TimeSlice) return false;
+		return TimeSlice.InitialDate.AddDays(col) == DateTime.Today;
+	}
+
+	/// <summary>
+	/// Número del día correspondiente a la columna
+	/// </summary>
+	/// <param name="col">Número de la columna</param>
+	/// <returns>El número del día</returns>
+	public string DayText(int col)
+	{
+		if (null == TimeSlice) return "?";
+		DateTime fecha = TimeSlice.InitialDate.AddDays(col);
+		return string.Format("{0}", fecha.Day);
+	}
 }

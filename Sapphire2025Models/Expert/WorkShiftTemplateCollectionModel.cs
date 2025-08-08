@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -39,6 +40,46 @@ namespace Sapphire2025Models.Expert
 				}
 			}
 			return null;
+		}
+		public WorkShiftTemplateModel? Template(string name, byte dayPattern)
+		{
+            if (null != Templates)
+            {
+                foreach (WorkShiftTemplateModel auxTemplate in Templates)
+                {
+					if(auxTemplate.Match(name))
+					{
+						if (auxTemplate.DayOfWeekEnabled == dayPattern)
+							return auxTemplate;
+                    }
+                }
+            }
+            return null;
+        }
+		/// <summary>
+		/// Añade un template a la colección, pero sólo si no existe otro similar.
+		/// </summary>
+		/// <param name="template">El nuevo template a meter</param>
+		/// <param name="overriding">Si es true, eliminará el template existente previo.</param>
+		/// <returns>true si ha logrado añadirlo a la colección</returns>
+		public bool Add(WorkShiftTemplateModel template, bool overriding)
+		{
+			bool adding = true;
+			WorkShiftTemplateModel? existente = this.Template(template.Name ?? "", template.DayOfWeekEnabled);
+			if(null!=Templates && null!=existente)
+			{
+				if (overriding)
+					Templates.Remove(existente);
+				else
+					adding = false; //Ya existe un template incompatible, así que no añadirá.
+
+				if(adding)
+				{
+					Templates.Add(template);
+					return true;
+				}
+			}
+			return false;
 		}
 	}
 }

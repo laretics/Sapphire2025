@@ -1,5 +1,4 @@
-﻿
-thead th {
+﻿thead th {
     position: sticky;
     top: 0;
     z-index: 10;
@@ -8,16 +7,7 @@ thead th {
     box-shadow: none;
     border-top: none !important;
 }
-/* Encabezado superior */
-.bg-gradient-primary {
-    background: linear-gradient(90deg, #007bff 0%, #66b2ff 100%);
-    color: #fff;
-}
-thead th.bg-gradient-weekend {
-    /* Amarillo suave a amarillo más intenso */
-    background: linear-gradient(90deg, #fffde4 0%, #ffe680 100%);
-    color: #222;
-}
+
 .highlight-today {
     display: inline-block;
     padding: 0.35em 0.9em;
@@ -28,32 +18,29 @@ thead th.bg-gradient-weekend {
     box-shadow: 0 2px 8px rgba(100, 100, 100, 0.10);
     border: 2px solid #b0bec5;
 }
+
+/* Encabezado superior */
+.bg-gradient-primary {
+    background: linear-gradient(90deg, #007bff 0%, #66b2ff 100%);
+    color: #fff;
+}
+
+thead th.bg-gradient-weekend {
+    /* Amarillo suave a amarillo más intenso */
+    background: linear-gradient(90deg, #fffde4 0%, #ffe680 100%);
+    color: #222;
+}
 /* Columna izquierda */
 .bg-gradient-secondary {
     background: linear-gradient(180deg, #f8f9fa 0%, #dee2e6 100%);
 }
+
 /* Esquina superior izquierda */
 .header-corner {
     background: #e9ecef;
     border-right: 2px solid #dee2e6;
     border-bottom: 2px solid #dee2e6;
     min-width: 2.5rem;
-}
-.header-left {
-    padding-left: 0.25rem;
-    padding-right: 0.25rem;
-    text-align: left !important;
-    min-width: 8rem;
-}
-.cf-text {
-    font-weight: bold;
-    color: #007bff;
-}
-
-.user-name {
-    font-style: italic;
-    color: #333;    
-    font-size: 0.95em;
 }
 
 /* Sombra y bordes redondeados */
@@ -63,7 +50,6 @@ thead th.bg-gradient-weekend {
     border-top: none;
 }
 
-th, td {    
+th, td {
     vertical-align: middle !important;
 }
-

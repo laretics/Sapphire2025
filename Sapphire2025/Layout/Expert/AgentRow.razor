@@ -1,62 +1,58 @@
-﻿<th class="header-left bg-gradient-secondary">
-    <div class="d-flex justify-content-between align-items-center w-100">
-        <span class="cf-text">@AgentCFText()</span>
-        <span class="user-name">@AgentNameText()</span>
-    </div>
-</th>
-<CascadingValue Value="WholeAssignations">
-    @for (int index = 0; index < DayCount; index++)
+﻿<tr>
+    <th class="header-left bg-gradient-secondary-agent">
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <span class="cf-text">@AgentCFText()</span>
+            <span class="user-name">@AgentNameText()</span>
+        </div>
+    </th>
+    @if (null != TimeSlice)
     {
-        <AssignationCell 
-            Assignation="@mcolAssignationsArray[index]" 
-            Plan="@ColPlans[index]"
-            Day="@InitialDate.AddDays(index)"
-            Festive = "@ColFestive[index]"
-        />
+        <CascadingValue Value="WholeAssignations">
+            @for (int index = 0; index < TimeSlice.DayCount; index++)
+            {
+                <CascadingValue Value="TimeSlice">
+                    <AssignationCell Assignation="@mcolAssignationsArray[index]"
+                                     DayId="@index" />
+                </CascadingValue>
+            }
+        </CascadingValue>
     }
-</CascadingValue>
-
+</tr>
 @code {
     //Esto es una fila en el calendario de asignaciones.
-    [Parameter] //Agente al que corresponden las asignaciones
-    public UserModelBase? User { get; set; }
-    [CascadingParameter] //Fecha correspondiente a la primera posición
-    public DateTime InitialDate{ get; set; }
-    [CascadingParameter] //Número de días consecutivos
-    public int DayCount{ get; set; }
+    [CascadingParameter] //Rodaja de días a representar.
+    Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice{ get; set; }
     [CascadingParameter] //Colección de asignaciones (de todos los Agentes)
-    public List<WorkShiftAssignationModel>? ColAssignations { get; set; }
-    [CascadingParameter] //Colección de planes vigentes cada día
-    public WorkShiftTemplateCollectionModel[]? ColPlans{ get; set; }
-    [CascadingParameter] //Colección de festividades laborales de cada día.
-    public bool[]? ColFestive{ get; set; }
+    public List<AssignationContentModel>? ColAssignations { get; set; }
     [CascadingParameter] //Mostrar todas las asignaciones o sólo las definitivas
-    public bool WholeAssignations{ get; set; }
+    public bool WholeAssignations { get; set; }
+    [Parameter] //Objeto que contiene la información de este Agente.
+    public Sapphire2025Models.Expert.AgentsViewAgent? AgentModel { get; set; }
+
 
     private AssignationContentModel?[] mcolAssignationsArray = new AssignationContentModel[0];
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        if (null != ColAssignations && null != User)
+        if (null != ColAssignations && null!= TimeSlice && null!= AgentModel)
         {
-            DateTime finalDate = InitialDate.AddDays(DayCount);
-            WorkShiftAssignationModel[] colAssignationsByAgent =
+            AssignationContentModel[] colAssignationsByAgent =
             ColAssignations
-            .Where(xx => xx.Agent == User.guid && 
-                xx.Date>=InitialDate && xx.Date<finalDate
+            .Where(xx => xx.AgentId == AgentModel.Id && 
+                xx.Date>=TimeSlice.InitialDate && xx.Date<TimeSlice.FinalDate
                 ).OrderBy(xx => xx.Date).ToArray();
-            mcolAssignationsArray = new AssignationContentModel[DayCount];
-            foreach(WorkShiftAssignationModel assignation in ColAssignations)
+            mcolAssignationsArray = new AssignationContentModel[TimeSlice.DayCount];
+            foreach(AssignationContentModel assignation in ColAssignations)
             {
-                int auxIndex = assignation.Date.Subtract(InitialDate).Days;
-                System.Diagnostics.Debug.Assert(auxIndex >= 0 && auxIndex < DayCount);
+                int auxIndex = assignation.Date.Subtract(TimeSlice.InitialDate).Days;
+                System.Diagnostics.Debug.Assert(auxIndex >= 0 && auxIndex < TimeSlice.DayCount);
                 AssignationContentModel nueva = new AssignationContentModel();
-                nueva.AssignationsChain = assignation.Assignation;
+                nueva.AssignationsChain = assignation.AssignationsChain;
                 nueva.Definitive = assignation.Definitive;
                 nueva.Comment = assignation.Comment;
                 nueva.SwappingAgent = assignation.SwappingAgent;
-                nueva.TD = assignation.IsTD;
+                nueva.TD = assignation.TD;
                 mcolAssignationsArray[auxIndex] = nueva;
             }
         }        
@@ -64,13 +60,10 @@
 
     private string AgentCFText()
     {
-        return (null != User) && (null != User.CF)
-            ? User.CF : string.Empty;
+        return AgentModel?.CF ?? "";
     }
     private string AgentNameText()
     {
-        return ( null != User) && (null!= User.Name) 
-        ? User.Name : string.Empty;
+        return AgentModel?.Name ?? "??";
     }
-
 }

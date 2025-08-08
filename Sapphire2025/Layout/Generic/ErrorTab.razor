@@ -1,0 +1,18 @@
+﻿<div class="d-flex justify-content-center align-items-center" style="height: 60vh;">
+    <div class="text-center">
+        <div>
+            <h5 class="mt-2">@Description</h5>
+            @if(null!=Instructions)
+            {
+                <p class="text-muted">@Instructions</p>
+            }            
+        </div>
+    </div>
+</div>
+@code {
+    [Parameter] //Descripción del error.
+    public string? Description{ get; set; }
+    [Parameter] //Acción recomendada al usuario para corregirlo (opcional).
+    public string? Instructions{ get; set; }
+
+}

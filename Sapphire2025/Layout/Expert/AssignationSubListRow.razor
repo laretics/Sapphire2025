@@ -1,0 +1,36 @@
+﻿@if(null!=AgentsView)
+{
+    <tr> 
+        <td>
+            <span><CheckboxInput 
+                @bind-value="AgentsView.Collapsed"                 
+            >+</CheckboxInput>@AgentsView.Name</span>
+        </td>
+    </tr>
+    @if(!AgentsView.Collapsed)
+    {
+        foreach (AgentsViewRegisterModel element in AgentsView.ColModel)
+        {
+            if (null != element)
+            {
+                if (element.GetType() == typeof(AgentsViewSpace))
+                {
+                    <AssignationSpaceRow />
+                }
+                else if (element is AgentsViewAgent agentRow)
+                {
+                    <AgentRow AgentModel="@agentRow" />
+                }
+                else if (element is AgentsViewSubList subList)
+                {
+                    <AssignationSubListRow AgentsView="@subList.SubList" />
+                }
+            }
+        }
+    }
+}
+@code {
+    //Lista de elementos como Agentes que se muestran en una vista de gráfico de turnos.
+    [Parameter]
+    public AgentsViewModel? AgentsView { get; set; }
+}

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sapphire2025Models.Expert;
+using Sapphire2025Models.Expert.WorkshiftTemplates;
 using Sapphire2025Server.Expert;
 using Sapphire2025Server.Models;
 using Sapphire2025Server.Models.Turnos;
@@ -33,38 +34,7 @@ namespace Sapphire2025Server.Controllers
                 return string.Format("Error de XML: {0}", ex.Message);
             }
         }
-
-        /// <summary>
-        /// Obtiene todas las asignaciones laborales en el gráfico para una fecha concreta.
-        /// </summary>
-        /// <param name="rhs">Fecha de asignación</param>
-        /// <returns>Lista de asignaciones en gráfico</returns>
-        [HttpPost("assignationsbydate")]
-        public async Task<List<WorkShiftAssignationModel>> getAssignations(WorkShiftRequestModel rhs)
-        {
-            List<WorkShiftAssignationModel> salida = new List<WorkShiftAssignationModel>();
-            using (DataStorage almacen = new DataStorage(mvarConfig))
-            {
-                List<WorkshiftAssignation> origen = await almacen.WorkShiftAssignations.
-                    Where(x => x.Date.Equals(rhs.Date)).ToListAsync();
-                foreach (WorkshiftAssignation elemento in origen)
-                {
-                    if (null != elemento.Assignation && null != elemento.Definitive)
-                    {
-                        WorkShiftAssignationModel nuevo = new WorkShiftAssignationModel();
-                        nuevo.Agent = elemento.Agent;
-                        nuevo.Assignation = elemento.Assignation;
-                        nuevo.Date = rhs.Date;
-                        nuevo.Definitive = elemento.Definitive;
-                        nuevo.IsTD = elemento.IsTD;
-                        nuevo.SwappingAgent = elemento.SwappingAgent;
-                        salida.Add(nuevo);
-                    }
-                }
-            }
-            return salida;
-        }
-
+        
         /// <summary>
         /// Fuerza un borrado de las asignaciones que hay en la base de datos.
         /// </summary>
@@ -83,16 +53,33 @@ namespace Sapphire2025Server.Controllers
 
         /// <summary>
         /// Nueva vista de gráfico mensual.
+        /// En este caso vamos a pasar toda la carga de filtrado por agentes al FrontEnd.
         /// </summary>
         /// <param name="rhs">Modelo que contiene la fecha de inicio, el número de días y la lista de Agentes que se quiere representar.</param>
-        /// <returns>Una lista de AgentsAsignationsModel con los agentes y sus asignaciones</returns>
-        [HttpPost("assignationsgraph")]
-        public async Task<List<AgentAssignationsModel>> getGraph(WorkShiftRequestModel rhs)
+        /// <returns>Lista de todas las asignaciones válidas en estas fechas (para todos los Agentes)</returns>
+        [HttpPost("assignations")]
+        public async Task<List<AssignationContentModel>> Assignations(WorkShiftRequestModel rhs)
         {
-            if (null == rhs.AgentsTableId) return new List<AgentAssignationsModel>();
-            AgentsListCompiler compiladorAgentes = new AgentsListCompiler(mvarConfig);            
-            //Relleno la lista con asignaciones vacías pero con el encabezado correspondiente a cada Agente.            
-            List<AgentAssignationsModel> salida = await compiladorAgentes.GetAssignationsContent(rhs.AgentsTableId,rhs.Date,rhs.Days);
+            List<AssignationContentModel> salida = new List<AssignationContentModel>();
+            using (DataStorage almacen = new DataStorage(mvarConfig))
+            {
+                DateTime fechaFin = rhs.Date.AddDays(rhs.Days);
+                List<WorkshiftAssignation> auxOrigen = await almacen.WorkShiftAssignations.
+                    Where(x => x.Date >= rhs.Date && x.Date < fechaFin).
+                    ToListAsync();
+                foreach (WorkshiftAssignation elemento in auxOrigen)
+                {
+                    AssignationContentModel nuevo = new AssignationContentModel();
+                    nuevo.AgentId = elemento.Agent;
+                    nuevo.Date = elemento.Date;
+                    nuevo.AssignationsChain = elemento.Assignation;
+                    nuevo.Comment = elemento.Annotation;
+                    nuevo.Definitive = elemento.Definitive;
+                    nuevo.SwappingAgent = elemento.SwappingAgent;
+                    nuevo.TD = elemento.IsTD;
+                    salida.Add(nuevo);
+                }
+            }            
 		    return salida;
         }
 
@@ -105,7 +92,7 @@ namespace Sapphire2025Server.Controllers
         public async Task<WorkShiftTemplateCollectionModel?> GetPlan(WorkShiftRequestModel request)
         {
             WorkShiftProcessor procesador = new WorkShiftProcessor(mvarConfig);
-            return await procesador.Plan(request.Id, request.onlyWork, true, request.Date);
+            return await procesador.Plan(request.Id);
         }
 
         /// <summary>
@@ -121,28 +108,81 @@ namespace Sapphire2025Server.Controllers
             return await procesador.HeaderPlan(request.Date, 0);
         }
 
+        /// <summary>
+        /// Obtiene la lista completa de planes.
+        /// Mirar si esto puede quedarse obsoleto.
+        /// </summary>
+        /// <returns>La tabla de planes.</returns>
         [HttpGet("plans")]
-        public async Task<List<WorkShiftTemplateCollectionModel>> GetPlans()
+        public async Task<List<WorkShiftTemplateCollectionModel>> Plans()
         {
             WorkShiftProcessor procesador = new WorkShiftProcessor(mvarConfig);
             return await procesador.Plans();
         }
-        [HttpGet("agentslistsnames")]
-        public async Task<List<string>> AgentsListsNames()
+
+        /// <summary>
+        /// Obtiene un objeto dinámico de tipo PlansYearSlice con las asignaciones de planes a lo largo
+        /// de todo el tiempo que se requiere.
+        /// </summary>
+        /// <param name="request">Objeto que contiene la fecha de inicio y el número de días</param>
+        /// <returns>Un PlansYearSlice con las asignaciones de planes y festivos</returns>
+        [HttpPost("planstimeslice")]
+        public async Task<PlansYearSlice> PlansTimeSlice(WorkShiftRequestModel request)
         {
-            List<string> salida = new List<string>();
-            using (DataStorage almacen = new DataStorage(mvarConfig))
-            {
-                List<ExpertAgentsListView> auxVistas = await almacen.ExpertAgentsListViews
-                    .Where(x => x.Final).ToListAsync();
-                foreach (ExpertAgentsListView vista in auxVistas)
-					salida.Add(vista.Name);
-            }
-            return salida;
+            WorkShiftProcessor procesador = new WorkShiftProcessor(mvarConfig);
+            return await procesador.PlansTimeSlice(request.Date, request.Days);
         }
 
-        [HttpPost("deleteworkshifttemplatecollection")]
-        public async Task<bool> DeleteWorkShiftTemplateCollection([FromBody] Guid id)
+        /// <summary>
+        /// Devuelve la lista de tablas de Agentes que se pueden mostrar en un gráfico de turnos.
+        /// Es para menús, donde el usuario puede escoger una lista concreta.
+        /// </summary>
+        /// <returns>Lista de string, con los nombres de cada lista</returns>
+        [HttpGet("agentslistscatalog")]
+        public async Task<List<string>> AgentsListsCatalog()
+        {
+            WorkShiftProcessor procesador = new WorkShiftProcessor(mvarConfig);
+            return await procesador.AgentsListsCatalog();
+        }
+        
+        /// <summary>
+        /// Vista de Agentes para un control de gráfico.
+        /// </summary>
+        /// <param name="name">Nombre de la vista de Agentes</param>
+        /// <returns>Lista de vista de Agentes</returns>
+        [HttpPost("agentsview")]
+        public async Task<AgentsViewModel> AgentsView(AgentsViewRequestModel rhs)
+        {
+            WorkShiftProcessor procesador = new WorkShiftProcessor(mvarConfig);
+            return await procesador.AgentsViewList(rhs.ViewId);
+        }
+
+        /// <summary>
+        /// Devuelve los siguientes festivos a partir de la fecha indicada en la petición
+        /// </summary>
+        /// <param name="request">Petición</param>
+        /// <returns>Conjunto de festivos</returns>
+        [HttpPost("nextfestives")]
+        public async Task<HashSet<DateTime>> NextFestives([FromBody] FestivesRequestModel request)
+        {
+            WorkShiftProcessor processor = new WorkShiftProcessor(mvarConfig);
+            return await processor.NextFestives(request.Date);
+        }
+
+        [HttpPost("getfestive")]
+        public async Task<bool> IsFestive([FromBody] FestivesRequestModel request)
+        {
+            WorkShiftProcessor processor = new WorkShiftProcessor(mvarConfig);
+            return await processor.IsFestive(request.Date);
+        }
+
+        /// <summary>
+        /// Elimina un plan de explotación y todos los elementos que dependen de él.
+        /// </summary>
+        /// <param name="id">Id del plan</param>
+        /// <returns>True si todo fue bien</returns>
+        [HttpPost("deleteplan")]
+        public async Task<bool> DeletePlan([FromBody] Guid id)
         {
             try
             {
@@ -177,13 +217,14 @@ namespace Sapphire2025Server.Controllers
                 return false;
             }
         }
+
         /// <summary>
         /// Sube a la base de datos un gráfico que ha importado de Excel.
         /// </summary>
         /// <param name="auxDocumento">El documento en formato JSon separado por comas.</param>
         /// <returns>True si la importación se ha realizado de forma satisfactoria</returns>
         [HttpPost("uploadexcelgraph")]
-        public async Task<string> uploadDailyWorkShift([FromBody] XlsxAssignUpdateModel? request)
+        public async Task<string> UploadDailyWorkShift([FromBody] XlsxAssignUpdateModel? request)
         {
             if (null == request) return "Los datos de entrada son nulos.";
             if (null == request.ExcelDump) return "La hoja de cálculo que se ha recibido tiene un valor nulo";            
@@ -191,19 +232,5 @@ namespace Sapphire2025Server.Controllers
             ExcelGraphImporter importador = new ExcelGraphImporter(mvarConfig);
             return await importador.ProcessExcel(asignaciones,request.Date,request.Days);
         }
-        [HttpPost("nextfestives")]
-        public async Task<HashSet<DateTime>> GetNextFestives([FromBody] FestivesRequestModel request)
-        {
-            WorkShiftProcessor processor = new WorkShiftProcessor(mvarConfig);
-            return await processor.NextFestives(request.Date);
-        }
-        [HttpPost("getfestive")]
-        public async Task<bool> GetIsFestive([FromBody] FestivesRequestModel request)
-        {
-            WorkShiftProcessor processor = new WorkShiftProcessor(mvarConfig);
-            return await processor.IsFestive(request.Date);
-        }
-
-
     } 
 }

@@ -6,212 +6,41 @@
 <PageTitle>Gráfico mensual de Tracción</PageTitle>
 <ModalDialog></ModalDialog>
 <div style="max-height: 80vh; overflow-y: auto;">
-    @if(null==mcolUsers)
-    {
-        <div class="d-flex justify-content-center align-items-center" style="height: 60vh;">
-            <div class="text-center">
-                <div class="spinner-border text-primary mb-3" style="width: 4rem; height: 4rem;" role="status">
-                    <span class="visually-hidden">Cargando...</span>
-                </div>
-                <div>
-                    <h5 class="mt-2">Cargando tabla de usuarios...</h5>
-                    <p class="text-muted">Por favor, espere un momento.</p>
-                </div>
-            </div>
-        </div>
-    }
-    else
-    {
-        @if(null==mcolAssignations)
-        {
-            <div class="d-flex justify-content-center align-items-center" style="height: 60vh;">
-                <div class="text-center">
-                    <div class="spinner-border text-warning mb-3" style="width: 4rem; height: 4rem;" role="status">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
-                    <div>
-                        <h5 class="mt-2">Cargando asignación de turnos...</h5>
-                        <p class="text-muted">Por favor, espere un momento.</p>
-                    </div>
-                </div>
-            </div>
-        }
-        else
-        {
-            <CascadingValue value = "mcolAssignations">
-                <CascadingValue Value="mcolDayPlans">
-            @if(mcolAssignations.Count<1)
-            {
-                <div class="d-flex justify-content-center align-items-center" style="height: 60vh;">
-                    <div class="text-center">
-                        <div>
-                            <h5 class="mt-2">La tabla de asignaciones está vacía.</h5>
-                            <p class="text-muted">Compruebe el nombre del gráfico y vuelva a intentar cargarlo.</p>
-                        </div>
-                    </div>
-                </div>
-            }
-            else
-            {
-                <table class="table table-bordered shadow rounded">
-                    <thead>
-                        <tr>
-                            <th class="header-corner"></th>
-                            @for (int col = 0; col <= dayCount; col++)
-                            {
-                                <th class="@FestiveClass(col)">
-                                    @if (1 == col) //Es hoy
-                                    {
-                                        <span class="highlight-today">@DayText(col)</span>
-                                    }
-                                    else
-                                    {
-                                        @DayText(col)
-                                    }
-                                </th>
-                            }
-                        </tr>
-                    </thead>
-                    <tbody>
-
-                        @for (int row = 0; row < mcolAssignations.Count; row++)
-                        {
-                            <tr>
-                                @switch (RowType(row))
-                                {
-                                    case 1: //Encabezado
-                                        {
-                                            <th class="header-left bg-gradient-secondary">
-                                                <div class="d-flex justify-content-between align-items-center w-100">
-                                                   @HeaderText(row)
-                                                </div>
-                                            </th>
-                                        }
-                                        break;
-                                    case 2: //Agente
-                                        {   
-                                            <Sapphire2025.Layout.Expert.AgentHeader User="@GetAgent(row)" RowType="@RowType(row)"/>
-                                             @for (int col = 0; col < dayCount; col++)
-                                            {
-                                                <Sapphire2025.Layout.Expert.AssignationCell Row="@row" Col="@col" />
-
-                                            }
-                                        }
-                                        break;
-                                    default: //Separador
-                                        {
-                                            
-                                        }
-                                        break;
-                                }
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            }
-                </CascadingValue>
-            </CascadingValue>
-        }
-    }
+<CascadingValue Value="mcolUsers">
+    <Sapphire2025.Layout.Expert.AssignationCalendar 
+        ColAssignations="@mcolAsignations"        
+        AgentsList="@mvarAgentsCol"
+        TimeSlice="@mvarTimeSlice"
+        
+        WholeAssignations="@mvarWholeAssignations"
+    />
+</CascadingValue>
 </div>
 <InputFile Onchange="onExcelImport" MaxAllowedSize="5242880" accept=".xlsx,.xls" />
 
 
-                    @code {
-                private int dayCount = 16;
-    private ModalDialog mvarModal { get; set; } = new ModalDialog();    
-    private DateTime mvarToday = DateTime.Today.AddDays(-1);
-    [Parameter]
-    public string? AgentsViewId{ get; set; }
+@code {
+    private ModalDialog mvarModal { get; set; } = new ModalDialog();
     private Dictionary<Guid, UserModelBase>? mcolUsers;
-    private List<AgentAssignationsModel>? mcolAssignations;
-    private UserModelBase? mvarCurrentUser;
-    private WorkShiftTemplateModel? mvarCurrenttemplate;
-    private AgentAssignationsModel.AssignationContent? currentAssignationContent;
-    private WorkShiftTemplateCollectionModel[] mcolDayPlans;
+    private Sapphire2025Models.Expert.AgentsViewModel? mvarAgentsCol;
+    private Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? mvarTimeSlice;
+    private List<AssignationContentModel>? mcolAsignations;
+    private bool mvarWholeAssignations{ get; set; }
+    [Parameter]
+    public string? AgentsViewId { get; set; }
+    [Parameter]
+    public int dayCount { get; set; } = 16;
 
     protected async override Task OnInitializedAsync()
     {
-        await loadPlans();        
-        mcolUsers = await mvarAuthClient.cachedUserList();
-        mcolAssignations = await mvarExpertClient.AsignationsByDateAndGraph(mvarToday, dayCount, AgentsViewId);        
-    }
-    //Carga en el diccionario los planes vigentes en estas fechas.
-    private async Task loadPlans()
-    {
-        mcolDayPlans = new WorkShiftTemplateCollectionModel[dayCount];
-        Dictionary<Guid, WorkShiftTemplateCollectionModel>  cachePlans = new Dictionary<Guid, WorkShiftTemplateCollectionModel>();
-        for (int i = 0;i< dayCount;i++)
-        {
-                DateTime fecha = mvarToday.AddDays(i);
-                Guid planId = await mvarExpertClient.PlanHeader(fecha);
-                if(!cachePlans.ContainsKey(planId))
-                {
-                    WorkShiftTemplateCollectionModel? nuevo = await mvarExpertClient.GetPlan(planId,fecha,false);
-                    if (null != nuevo)
-                        cachePlans.Add(planId, nuevo);
-                }
-                mcolDayPlans[i] = cachePlans[planId];
-        }
-    }
-
-    private string DayText(int index)
-    {
-        DateTime auxFecha = mvarToday.AddDays(index);
-        return string.Format("{0}", auxFecha.Day);
-    }
-    private string FestiveClass(int offset)
-    {
-        bool salida = false;
-        DateTime fecha = mvarToday.AddDays(offset);
-        if (fecha.DayOfWeek == DayOfWeek.Sunday || fecha.DayOfWeek == DayOfWeek.Saturday) salida = true;
-        //TODO: Tengo que añadir una consulta a la tabla de días festivos aquí.
-
-        if (salida) return "header-top bg-gradient-weekend text-dark text-center";
-        else return "header-top bg-gradient-primary text-white text-center";
-    }
-    private byte RowType(int rowIndex)
-    {
-        if (null == mcolAssignations || null==mcolAssignations[rowIndex]) return 0; //Separador
-        if (mcolAssignations[rowIndex].AgentRecord.GetType() == typeof(ExpertAgentListHeader)) return 1; //Header
-        else if (mcolAssignations[rowIndex].AgentRecord.GetType() == typeof(ExpertAgentListRecordModel)) return 2; //Agente
-        return 0; //Separador
-    }
-    private string HeaderText(int rowIndex)
-    {
-        if (null != mcolAssignations && null != mcolAssignations[rowIndex])
-        {
-                if(1==RowType(rowIndex))
-                {
-                    ExpertAgentListHeader header = (ExpertAgentListHeader)mcolAssignations[rowIndex].AgentRecord;
-                    return header.HeaderText;
-                }
-        }
-        return string.Empty;
+        mcolUsers = await mvarAuthClient.cachedUserList(); //Tabla de usuarios
+        mcolAsignations = await mvarExpertClient.Assignations(DateTime.Today, dayCount); //Asignaciones
+        mvarAgentsCol = await mvarExpertClient.AgentsView(AgentsViewId ?? ""); //Columna de Agentes
+        mvarTimeSlice = await mvarExpertClient.PlansTimeSlice(DateTime.Today, dayCount); //Rodaja de tiempos        
     }
 
 
-    private string AgentNameText()
-    {
-        if (null != mvarCurrentUser && null !=mvarCurrentUser.Name)
-            return mvarCurrentUser.Name;
 
-        return string.Empty;
-    }
-    private UserModelBase? GetAgent(int rowIndex)
-    {
-        if (null != mcolAssignations && null != mcolAssignations[rowIndex])
-        {
-            if (2 == RowType(rowIndex))
-            {
-                ExpertAgentListRecordModel auxAgent = (ExpertAgentListRecordModel)mcolAssignations[rowIndex].AgentRecord;
-                if (mcolUsers.ContainsKey(auxAgent.AgentId))
-                    return mcolUsers[auxAgent.AgentId];
-            }
-        }
-
-        return null;
-    }
     private async Task onExcelImport(InputFileChangeEventArgs e)
     {
         Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
@@ -225,7 +54,7 @@
             DateTime fecha = DateTime.Now.AddDays(-1);
             int days = 10;
             string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day, days);
-            string? salidaCompilacion = await mvarExpertClient.uploadDailyWorkShift(salida, fecha, days);
+            string? salidaCompilacion = await mvarExpertClient.UploadDailyWorkShift(salida, fecha, days);
             if(null!=salidaCompilacion && salidaCompilacion.Length>0)
                 await mvarModal.show("Error de importación", salidaCompilacion, "Salir");
 

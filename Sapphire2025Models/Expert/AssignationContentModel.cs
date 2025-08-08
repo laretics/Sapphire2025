@@ -8,6 +8,8 @@ namespace Sapphire2025Models.Expert
 {
 	public class AssignationContentModel
 	{
+		public Guid AgentId { get; set; } //Id del Agente
+		public DateTime Date { get; set; } //Fecha de la asignación.
 		public string? AssignationsChain { get; set; } //Cadena de asignaciones.
 		public string? Definitive { get; set; } //Asignación definitiva.
 		public string? Comment { get; set; } //Notas del Jefe de Maquinistas.

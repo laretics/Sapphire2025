@@ -1,0 +1,22 @@
+﻿.cf-text {
+    font-weight: bold;
+    color: #007bff;
+}
+
+.user-name {
+    font-style: italic;
+    color: #333;
+    font-size: 0.95em;
+}
+
+.header-left {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    text-align: left !important;
+    min-width: 8rem;
+}
+
+/* Columna izquierda */
+.bg-gradient-secondary-agent {
+    background: linear-gradient(180deg, #f8f9fa 0%, #dee2e6 100%);
+}

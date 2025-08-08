@@ -68,7 +68,7 @@
 
     protected async override Task OnInitializedAsync()
     {
-        mcolAgentsViews = await mvarExpertClient.getAgentsViews();        
+        mcolAgentsViews = await mvarExpertClient.AgentsListsCatalog();        
     }
 
     private void SelectNavItem(int id){SelectedNavItem = id;}

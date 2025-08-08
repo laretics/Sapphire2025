@@ -102,7 +102,7 @@ else
             DateTime fecha = DateTime.Now;
             int days = 4;
             string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day,days);
-            string? salidaCompilacion = await mvarExpertClient.uploadDailyWorkShift(salida, fecha,days);
+            string? salidaCompilacion = await mvarExpertClient.UploadDailyWorkShift(salida, fecha,days);
              if (null != salidaCompilacion && salidaCompilacion.Length > 0)
                  await mvarModal.show("Error de importación", salidaCompilacion, "Salir");
 
@@ -115,7 +115,7 @@ else
         Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
         if (archivo is null) return;
         using Stream stream = archivo.OpenReadStream(maxAllowedSize: 5242880); // 5 MB
-        string? salida = await mvarExpertClient.uploadXML(stream,"WorkShiftTemplate");
+        string? salida = await mvarExpertClient.UploadXML(stream,"WorkShiftTemplate");
         if (null != salida && salida.Length > 0)
             await mvarModal.show("Error", salida, "Aceptar");            
         else
@@ -126,7 +126,7 @@ else
     }
     private async Task onDeleteWorkShiftTemplateCollection(Guid id)
     {
-        if(!await mvarExpertClient.deleteWorkShiftTemplateCollection(id))
+        if(!await mvarExpertClient.DeletePlan(id))
         {
             await mvarModal.show("Error de borrado", "Ocurrió algún problema al procesar la orden de borrado", "Aceptar");
         }

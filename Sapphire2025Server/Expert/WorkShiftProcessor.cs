@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.Json;
 using Org.BouncyCastle.Crypto.Operators;
 using Sapphire2025Models.Expert.WorkshiftTemplates;
+using System.Security.Cryptography.Xml;
 
 namespace Sapphire2025Server.Expert
 {
@@ -60,7 +61,7 @@ namespace Sapphire2025Server.Expert
         /// <param name="inactives">Recupera sólo los turnos de descanso</param>
         /// <param name="dayOfWeek">Días de la semana, en formato flag (1,2,4,8,16...)</param>
         /// <returns></returns>
-        public async Task<WorkShiftTemplateCollectionModel?> Plan(Guid id, bool actives, bool inactives)
+        public async Task<WorkShiftTemplateCollectionModel?> Plan(Guid id)
         {
             WorkShiftTemplateCollectionModel? salida = null;
             WorkShiftTemplateCollectionModel? included = null ;
@@ -75,7 +76,7 @@ namespace Sapphire2025Server.Expert
                     if (null!=candidato.Include)
                     {
                         Guid auxId = (Guid)candidato.Include;
-                        included = await Plan(auxId, actives, inactives);
+                        included = await Plan(auxId);
                     }                       
                     salida = new WorkShiftTemplateCollectionModel();
                     salida.Id = id;                    
@@ -88,13 +89,13 @@ namespace Sapphire2025Server.Expert
             }
             if (null != salida)
             {
-                salida.Templates = await Templates(id, actives, inactives);
+                salida.Templates = await Templates(id);
 
                 if (null != included && null != included.Templates)
                 {
                     ///Creo que con esto tengo la herencia, pero hay que comprobarlo.
                     foreach (WorkShiftTemplateModel template in included.Templates)
-                        salida.Templates.Add(template);
+                        salida.Add(template,false);
                 }
             }                                                        
             return salida;
@@ -150,16 +151,149 @@ namespace Sapphire2025Server.Expert
                 return (null != elemento);
             }
         }
-        #endregion
+        #endregion Festivos
 
-        protected async Task<List<WorkShiftTemplateModel>> Templates(Guid parent, bool actives, bool inactives)
+        #region Rodajas de tiempo
+        /// <summary>
+        /// Obtiene un objeto compuesto con las asignaciones de planes correspondientes a los días solicitados
+        /// Se usa para representar calendarios de asignaciones (gráficos).
+        /// </summary>
+        /// <param name="begin">Fecha de inicio</param>
+        /// <param name="dayCount">Número de días a devolver</param>
+        /// <returns></returns>
+        public async Task<PlansYearSlice> PlansTimeSlice(DateTime begin, int dayCount)
+        {
+            PlansYearSlice salida = new PlansYearSlice(dayCount,begin);
+            using (DataStorage almacen = new DataStorage(mvarConfig))
+            {
+                WorkShiftTemplateCollection? auxPrimerPlan = null;
+                Guid lastPlanId = Guid.Empty;
+                WorkShiftTemplateCollectionModel? auxPlan = null;
+                //Planes.
+                for (int i = 0;i< dayCount;i++)
+                {
+                    DateTime auxFecha = begin.AddDays(dayCount);
+                    auxPrimerPlan = await almacen.WorkShiftTemplateCollections
+                    .Where(x => x.Begin <= auxFecha)
+                    .OrderBy(x => x.Begin)
+                    .LastOrDefaultAsync();
+                    if(null!= auxPrimerPlan) 
+                    {
+                        if (auxPrimerPlan.Id != lastPlanId)
+                        {
+                            lastPlanId = auxPrimerPlan.Id;
+                            auxPlan = await Plan(lastPlanId);
+                        }
+                        if(null!=auxPlan)
+                            salida.SetPlan(i, auxPlan);
+                    }
+                }
+                //Festivos.
+                List<Festive> festives = await almacen.Festives
+                   .Where(x => x.Date >= salida.InitialDate && x.Date <= salida.FinalDate)
+                   .ToListAsync();
+                foreach(Festive festivo in festives)
+                    salida.SetFestive(festivo.Date, true);              
+            }
+            return salida;
+        }
+
+        #endregion Rodajas de tiempo
+
+        #region Listas de Agentes
+        //Aunque no debería estar aquí, por funcionalidad, al ser algo relacionado con los turnos, lo pongo en este objeto
+
+        public async Task<List<string>> AgentsListsCatalog()
+        {
+            List<string> salida = new List<string>();
+            using (DataStorage almacen = new DataStorage(mvarConfig))
+            {
+                List<ExpertAgentsListView> auxVistas = await almacen.ExpertAgentsListViews
+                    .Where(x => x.Final).ToListAsync();
+                foreach (ExpertAgentsListView vista in auxVistas)
+                    salida.Add(vista.Name);
+            }
+            return salida;
+        }
+        public async Task<AgentsViewModel> AgentsViewList(string name)
+        {
+            using (DataStorage almacen = new DataStorage(mvarConfig))
+            {
+                ExpertAgentsListView? auxVista = await almacen.ExpertAgentsListViews
+                    .Where(x => x.Name.Equals(name))
+                    .FirstOrDefaultAsync();
+                if (null != auxVista)
+                {
+                    AgentsViewModel salida = await AgentsViewList(auxVista.Id);
+                    return salida;
+                }
+            }
+            return new AgentsViewModel();
+        }
+        public async Task<AgentsViewModel> AgentsViewList(Guid id)
+        {
+            AgentsViewModel salida = new AgentsViewModel();
+            using (DataStorage almacen = new DataStorage(mvarConfig))
+            {
+                ExpertAgentsListView? auxVista = await almacen.ExpertAgentsListViews
+                    .Where(x => x.Id.Equals(id))
+                    .FirstOrDefaultAsync();
+                if(null!=auxVista)
+                {
+                    salida.Name = auxVista.Name;
+                    List<ExpertAgentListRecord> auxContenido = await almacen.ExpertAgentListRecords
+                        .Where(x => x.ParentId == id)
+                        .OrderBy(x => x.Order)
+                        .ToListAsync();
+                    foreach (ExpertAgentListRecord elemento in auxContenido)
+                    {
+                        switch (elemento.Type)
+                        {
+                            case 0: //Agente                                
+                                User? usuario = await almacen.Users
+                                    .Where(x => x.Id == elemento.Id.ToString())
+                                    .FirstOrDefaultAsync();
+                                if(null!=usuario)
+                                {
+                                    AgentsViewAgent registroAgente = new AgentsViewAgent();
+                                    registroAgente.CF = usuario.CF;
+                                    registroAgente.Name = usuario.UserName??"??";
+                                    registroAgente.Id = usuario.guid;
+                                    salida.ColModel.Add(registroAgente);
+                                }
+                                break;
+                            case 1: //Separador
+                                AgentsViewSpace espacio = new AgentsViewSpace();
+                                salida.ColModel.Add(espacio);
+                                break;
+                            case 2: //Sub-Lista
+                                AgentsViewModel subConjunto = await AgentsViewList(elemento.Id);
+                                if(subConjunto.ColModel.Count>0)
+                                {
+                                    AgentsViewSubList subLista = new AgentsViewSubList();
+                                    subLista.SubList = subConjunto;
+                                    subLista.Name = subConjunto.Name;
+                                    subLista.SubList.Collapsed = false;
+                                    salida.ColModel.Add(subLista);
+                                }
+                                break;
+                        }
+                    }
+                }
+            }
+            return salida;
+        }
+
+        #endregion Listas de Agentes
+
+        protected async Task<List<WorkShiftTemplateModel>> Templates(Guid parent)
         {
             List<WorkShiftTemplateModel> salida = new List<WorkShiftTemplateModel>();
 
             using (DataStorage almacen = new DataStorage(mvarConfig))
             {
                 List<WorkShiftTemplate> colTemplates = await almacen.WorkShiftTemplates
-                    .Where(x => x.Parent == parent && ((!actives || x.Active) || (!inactives || !x.Active)))
+                    .Where(x => x.Parent == parent)
                     .ToListAsync();
                 foreach(WorkShiftTemplate auxPlantilla in colTemplates)
                 {
@@ -241,12 +375,6 @@ namespace Sapphire2025Server.Expert
                 }
             }
             return salida;
-        }
-
-        private bool isDayCompatible(byte dayOfWeek, byte templateDayId)
-        {
-            //TODO: Mirar más adelante los días festivos.
-            return 0 != (dayOfWeek & templateDayId);
         }
 
     }

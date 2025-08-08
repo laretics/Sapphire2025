@@ -77,10 +77,10 @@
                                                 <td>
                                                     <table>
                                                         <tbody>
-                                                            @foreach (WorkShiftAssignationModel assignation in AssignationsByTemplate(mcolTemplates[col, row].Name))
+                                                            @foreach (AssignationContentModel assignation in AssignationsByTemplate(mcolTemplates[col, row].Name))
                                                             {
                                                                 <tr>
-                                                                    <td>@GetUserString(assignation.Agent)</td>
+                                                                    <td>@GetUserString(assignation.AgentId)</td>
                                                                 </tr>
                                                             }
                                                         </tbody>
@@ -107,7 +107,7 @@
     private bool isImporting = false;
     private Dictionary<Guid, UserModelBase>? mcolUsers;
     private WorkShiftTemplateModel[,]? mcolTemplates;
-    private List<WorkShiftAssignationModel> mcolAssignations;
+    private List<AssignationContentModel>? mcolAssignations;
 
 
     protected async override Task OnInitializedAsync()
@@ -132,13 +132,13 @@
             int maxY = 0;
             if(null!=auxPlan && null!=auxPlan.Templates)
             {
-                foreach (WorkShiftTemplateModel auxTemplate in auxPlan.Templates.Values)
+                foreach (WorkShiftTemplateModel auxTemplate in auxPlan.Templates)
                 {
                     if (auxTemplate.CoorX > maxX) maxX = auxTemplate.CoorX;
                     if (auxTemplate.CoorY > maxY) maxY = auxTemplate.CoorY;                   
                 }
                 mcolTemplates = new WorkShiftTemplateModel[maxX + 1, maxY + 1];
-                foreach(WorkShiftTemplateModel auxTemplate in auxPlan.Templates.Values)
+                foreach(WorkShiftTemplateModel auxTemplate in auxPlan.Templates)
                 {
                     if(auxTemplate.CoorX>=0 && auxTemplate.CoorY>=0)
                     {
@@ -154,7 +154,7 @@
         isImporting = true;
         StateHasChanged();
         await LoadPlan();
-        mcolAssignations = await mvarExpertClient.AssignationsByDate(selectedDate);
+        mcolAssignations = await mvarExpertClient.Assignations(selectedDate);
         isImporting = false;
         StateHasChanged();
     }
@@ -179,9 +179,9 @@
         await UpdateData();
     }
 
-    private List<WorkShiftAssignationModel> AssignationsByTemplate(string definitive)
+    private List<AssignationContentModel> AssignationsByTemplate(string definitive)
     {
-        List<WorkShiftAssignationModel> salida = new List<WorkShiftAssignationModel>();
+        List<AssignationContentModel> salida = new List<AssignationContentModel>();
         salida = mcolAssignations.Where(xx => xx.Definitive == definitive).ToList();
         return salida;
     }

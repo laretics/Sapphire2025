@@ -11,9 +11,15 @@ namespace Sapphire2025Models.Expert
 	/// </summary>
 	public class AgentsViewModel
 	{
-		public List<AgentsViewRegisterModel> ColModel { get; set; }
-
-	}
+		public AgentsViewModel()
+		{
+			ColModel = new List<AgentsViewRegisterModel>();
+			Name = string.Empty;
+		}
+		public string Name { get; set; } //Nombre para mostrar en el título o en un encabezado.
+		public List<AgentsViewRegisterModel> ColModel { get; set; } //Lista de elementos.
+        public bool Collapsed { get; set; }
+    }
 
 
 
