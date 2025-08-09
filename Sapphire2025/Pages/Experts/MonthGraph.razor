@@ -33,10 +33,10 @@
 
     protected async override Task OnInitializedAsync()
     {
+        mvarTimeSlice = await mvarExpertClient.PlansTimeSlice(DateTime.Today, dayCount); //Rodaja de tiempos
         mcolUsers = await mvarAuthClient.cachedUserList(); //Tabla de usuarios
         mcolAsignations = await mvarExpertClient.Assignations(DateTime.Today, dayCount); //Asignaciones
-        mvarAgentsCol = await mvarExpertClient.AgentsView(AgentsViewId ?? ""); //Columna de Agentes
-        mvarTimeSlice = await mvarExpertClient.PlansTimeSlice(DateTime.Today, dayCount); //Rodaja de tiempos        
+        mvarAgentsCol = await mvarExpertClient.AgentsView(AgentsViewId ?? ""); //Columna de Agentes        
     }
 
 
