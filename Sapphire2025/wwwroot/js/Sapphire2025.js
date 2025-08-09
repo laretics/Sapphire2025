@@ -13,6 +13,11 @@ window.focusElement = (element) => {
     }
 };
 
+//Rutina para hacer click en un InputFile oculto desde un botón normal
+window.triggerFileInputClick = function (element) {
+    if (element) element.click();
+}
+
 //Rutina para pegar contenido del portapapeles en un elemento HTML.
 window.clipboardInterop = {
     registerPasteListener: function (elemento, refDotNet) {

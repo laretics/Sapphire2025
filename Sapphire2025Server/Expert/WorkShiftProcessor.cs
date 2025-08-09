@@ -215,7 +215,7 @@ namespace Sapphire2025Server.Expert
             }
             return salida;
         }
-        public async Task<AgentsViewModel> AgentsViewList(string name)
+        public async Task<AgentsViewContainer> AgentsViewList(string name)
         {
             using (DataStorage almacen = new DataStorage(mvarConfig))
             {
@@ -224,15 +224,16 @@ namespace Sapphire2025Server.Expert
                     .FirstOrDefaultAsync();
                 if (null != auxVista)
                 {
-                    AgentsViewModel salida = await AgentsViewList(auxVista.Id);
+                    AgentsViewContainer salida = await AgentsViewList(auxVista.Id);
                     return salida;
                 }
             }
-            return new AgentsViewModel();
+            return new AgentsViewContainer();
         }
-        public async Task<AgentsViewModel> AgentsViewList(Guid id)
+        public async Task<AgentsViewContainer> AgentsViewList(Guid id)
         {
-            AgentsViewModel salida = new AgentsViewModel();
+            AgentsViewContainer salida = new AgentsViewContainer();
+            salida.RegisterCollection = new List<AgentsViewRegisterModel>();
             using (DataStorage almacen = new DataStorage(mvarConfig))
             {
                 ExpertAgentsListView? auxVista = await almacen.ExpertAgentsListViews
@@ -251,7 +252,7 @@ namespace Sapphire2025Server.Expert
                         {
                             case 0: //Agente                                
                                 User? usuario = await almacen.Users
-                                    .Where(x => x.Id == elemento.Id.ToString())
+                                    .Where(x => x.Id == elemento.ElementId.ToString())
                                     .FirstOrDefaultAsync();
                                 if(null!=usuario)
                                 {
@@ -259,22 +260,22 @@ namespace Sapphire2025Server.Expert
                                     registroAgente.CF = usuario.CF;
                                     registroAgente.Name = usuario.UserName??"??";
                                     registroAgente.Id = usuario.guid;
-                                    salida.ColModel.Add(registroAgente);
+                                    salida.RegisterCollection?.Add(registroAgente);
                                 }
                                 break;
                             case 1: //Separador
                                 AgentsViewSpace espacio = new AgentsViewSpace();
-                                salida.ColModel.Add(espacio);
+                                salida.RegisterCollection?.Add(espacio);
                                 break;
                             case 2: //Sub-Lista
-                                AgentsViewModel subConjunto = await AgentsViewList(elemento.Id);
-                                if(subConjunto.ColModel.Count>0)
+                                AgentsViewContainer subConjunto = await AgentsViewList(elemento.ElementId);
+                                if(subConjunto.RegisterCollection?.Count>0)
                                 {
-                                    AgentsViewSubList subLista = new AgentsViewSubList();
-                                    subLista.SubList = subConjunto;
+                                    AgentsViewContainer subLista = new AgentsViewContainer();
+                                    subLista.RegisterCollection = subConjunto.RegisterCollection;
                                     subLista.Name = subConjunto.Name;
-                                    subLista.SubList.Collapsed = false;
-                                    salida.ColModel.Add(subLista);
+                                    subLista.Collapsed = false;
+                                    salida.RegisterCollection?.Add(subLista);
                                 }
                                 break;
                         }

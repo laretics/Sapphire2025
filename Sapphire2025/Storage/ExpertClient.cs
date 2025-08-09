@@ -128,7 +128,7 @@ namespace Sapphire2025.Storage
         /// </summary>
         /// <param name="viewName">Nombre de la vista de Agentes</param>
         /// <returns>Lista de vista de Agentes</returns>
-        public async Task<AgentsViewModel?> AgentsView(string viewName)
+        public async Task<AgentsViewContainer?> AgentsView(string viewName)
         {
             AgentsViewRequestModel request = new AgentsViewRequestModel();
             request.ViewId = viewName;
@@ -136,7 +136,7 @@ namespace Sapphire2025.Storage
             HttpResponseMessage respuesta = await sendPostRequest("agentsview", json);
             if (respuesta.IsSuccessStatusCode)
             {
-                AgentsViewModel? salida = await respuesta.Content.ReadFromJsonAsync<AgentsViewModel>();
+                AgentsViewContainer? salida = await respuesta.Content.ReadFromJsonAsync<AgentsViewContainer>();
                 return salida;
             }                         
             return null;

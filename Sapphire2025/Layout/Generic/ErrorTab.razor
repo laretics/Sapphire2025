@@ -1,6 +1,6 @@
 ﻿<div class="d-flex justify-content-center align-items-center" style="height: 60vh;">
     <div class="text-center">
-        <div>
+        <div class="alert alert-@AlertColor" role="alert">
             <h5 class="mt-2">@Description</h5>
             @if(null!=Instructions)
             {
@@ -14,5 +14,7 @@
     public string? Description{ get; set; }
     [Parameter] //Acción recomendada al usuario para corregirlo (opcional).
     public string? Instructions{ get; set; }
+    [Parameter] //Color del alert (bootstrap)
+    public string AlertColor { get; set; } = "primary";
 
 }

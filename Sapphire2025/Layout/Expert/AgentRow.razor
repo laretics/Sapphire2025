@@ -8,13 +8,13 @@
     @if (null != TimeSlice)
     {
         <CascadingValue Value="WholeAssignations">
-            @for (int index = 0; index < TimeSlice.DayCount; index++)
-            {
-                <CascadingValue Value="TimeSlice">
-                    <AssignationCell Assignation="@mcolAssignationsArray[index]"
-                                     DayId="@index" />
-                </CascadingValue>
-            }
+            <CascadingValue Value="TimeSlice">
+                @for (int index = 0; index < TimeSlice.DayCount; index++)
+                {
+                    <AssignationCell Assignation="@GetAssignation(index)"
+                                        DayId="@index" />                
+                }
+            </CascadingValue>
         </CascadingValue>
     }
 </tr>
@@ -32,30 +32,42 @@
 
     private AssignationContentModel?[] mcolAssignationsArray = new AssignationContentModel[0];
 
+    private AssignationContentModel? GetAssignation(int index)
+    {
+        if(null!=mcolAssignationsArray && index>=0 && index<mcolAssignationsArray.Length)
+        {
+            return mcolAssignationsArray[index];            
+        }
+        return null;
+    }
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        if (null != ColAssignations && null!= TimeSlice && null!= AgentModel)
+        if(null!= TimeSlice)
         {
-            AssignationContentModel[] colAssignationsByAgent =
-            ColAssignations
-            .Where(xx => xx.AgentId == AgentModel.Id && 
-                xx.Date>=TimeSlice.InitialDate && xx.Date<TimeSlice.FinalDate
-                ).OrderBy(xx => xx.Date).ToArray();
             mcolAssignationsArray = new AssignationContentModel[TimeSlice.DayCount];
-            foreach(AssignationContentModel assignation in ColAssignations)
+            if (null != ColAssignations && null != AgentModel)
             {
-                int auxIndex = assignation.Date.Subtract(TimeSlice.InitialDate).Days;
-                System.Diagnostics.Debug.Assert(auxIndex >= 0 && auxIndex < TimeSlice.DayCount);
-                AssignationContentModel nueva = new AssignationContentModel();
-                nueva.AssignationsChain = assignation.AssignationsChain;
-                nueva.Definitive = assignation.Definitive;
-                nueva.Comment = assignation.Comment;
-                nueva.SwappingAgent = assignation.SwappingAgent;
-                nueva.TD = assignation.TD;
-                mcolAssignationsArray[auxIndex] = nueva;
+                AssignationContentModel[] colAssignationsByAgent =
+                ColAssignations
+                .Where(xx => xx.AgentId == AgentModel.Id &&
+                    xx.Date >= TimeSlice.InitialDate && xx.Date < TimeSlice.FinalDate
+                    ).OrderBy(xx => xx.Date).ToArray();
+                foreach (AssignationContentModel assignation in colAssignationsByAgent)
+                {
+                    int auxIndex = assignation.Date.Subtract(TimeSlice.InitialDate).Days;
+                    System.Diagnostics.Debug.Assert(auxIndex >= 0 && auxIndex < TimeSlice.DayCount);
+                    AssignationContentModel nueva = new AssignationContentModel();
+                    nueva.AssignationsChain = assignation.AssignationsChain;
+                    nueva.Definitive = assignation.Definitive;
+                    nueva.Comment = assignation.Comment;
+                    nueva.SwappingAgent = assignation.SwappingAgent;
+                    nueva.TD = assignation.TD;
+                    mcolAssignationsArray[auxIndex] = nueva;
+                }
             }
-        }        
+        }
     }
 
     private string AgentCFText()

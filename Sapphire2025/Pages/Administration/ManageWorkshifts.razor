@@ -1,74 +1,91 @@
 ﻿@page "/admin/manageworkshifts"
+@using Microsoft.AspNetCore.Components.Forms;
 @inject ExpertClient mvarExpertClient
 @inject IntStorageService mvarStorage
 @inject IJSRuntime mvarJSRuntime
 <PageTitle>Turnos de Trabajo</PageTitle>
 <ModalDialog @ref="mvarModal" />
+<InputFile style="display:none" @ref="mvarCBXMLInputRef" OnChange="onXMLFileUpload" accept=".xml" />
+<InputFile style="display:none" @ref="mvarCBExcelInputRef" OnChange="onExcelImport" MaxAllowedSize="5242880" accept=".xlsx" />
 <h3>Planes de Explotación</h3>
-<div class="d-flex flex-wrap align-items-center gap-3 mb-4">
-    <InputFile Onchange="onFileUpload" accept=".xml">Plan de Explotación</InputFile>
-    <InputFile OnChange="onExcelImport" MaxAllowedSize="5242880" accept=".xlsx">Gráfico mensual</InputFile>
-    <div class="btn-toolbar mb-3" role="toolbar" aria-label="Barra de herramientas">
-        <div class="btn-group me-2" role="group" aria-label="Grupo 1">
-            <button type="button" @onclick="onAssignationsClear" class="btn btn-primary">Eliminar Asignaciones</button>
-            <button type="button" class="btn btn-secondary">Acción 2</button>
-            <button type="button" class="btn btn-success">Acción 3</button>
-        </div>
-        <div class="btn-group me-2" role="group" aria-label="Grupo 2">
-            <button type="button" class="btn btn-outline-info">Acción 4</button>
-        </div>
-        <div class="btn-group" role="group" aria-label="Grupo 3">
-            <button type="button" class="btn btn-danger">Acción 5</button>
-        </div>
-    </div>
-</div>
-@if(null==mcolPlanes)
+@if(mvarLoading)
 {
-    <div class="text-center my-5">
-        <div class="spinner-border text-primary" role="status"></div>
-        <div>Cargando datos...</div>
-    </div>
-}
-else if (!mcolPlanes.Any())
-{
-    <div class="alert alert-info mt-4">La base de datos no contiene ningún plan de explotación.</div>
+    <LoadingTab ElementText="@mvarLoadingString" />
 }
 else
 {
-    <div class="table-responsive mt-4">
-        <table class="table table-hover table-bordered align-middle shadow-sm rounded">
-            <thead class="table-light">
-                <tr>
-                    <th>Autor</th>
-                    <th>Inicio</th>
-                    <th>Nombre</th>
-                    <th>Notas</th>
-                    <th>Funciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach(Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel item in mcolPlanes)
-                {
-                    <tr>
-                        <td>@ownerName(item.Owner)</td>
-                        <td>@Sapphire2025Models.Common.timeString(item.Begin)</td>
-                        <td>@item.Name</td>
-                        <td>@item.Comment</td>
-                        <td><Button class= "btn btn-danger btn-sm" 
-                            @onclick="() => onDeleteWorkShiftTemplateCollection(item.Id)">Eliminar</Button></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-}
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
 
+        <div class="btn-toolbar mb-3" role="toolbar" aria-label="Barra de herramientas">
+            <div class="btn-group me-2" role="group" aria-label="Grupo 1">
+                <button type="button" @onclick="onAssignationsClear" class="btn btn-primary">Eliminar Asignaciones</button>
+                <button type="button" class="btn btn-secondary">Acción 2</button>
+                <button type="button" class="btn btn-success">Acción 3</button>
+            </div>
+            <div class="btn-group me-2" role="group" aria-label="Grupo 2">
+                <button type="button" class="btn btn-secondary">Importar</button>                
+                <button type="button" class="btn btn-secondary" @onclick="() => TriggerFileInputBlazor(mvarCBXMLInputRef)">XML</button>                
+                <button Type="button" class="btn btn-secondary" @onclick="() => TriggerFileInputBlazor(mvarCBExcelInputRef)">Excel</button>
+            </div>
+            <div class="btn-group" role="group" aria-label="Grupo 3">
+                <button type="button" class="btn btn-danger">Acción 5</button>
+            </div>
+        </div>
+    </div>
+    @if (null == mcolPlanes)
+    {
+        <LoadingTab ElementText="Cargando planes de explotación" />
+    }
+    else if (!mcolPlanes.Any())
+    {
+        <ErrorTab Description="La base de datos no contiene ningún plan de explotación."
+                  Instructions="Cargue al menos un plan de explotación mediante el importador de esta misma página."
+                  AlertColor="warning" />
+    }
+    else
+    {
+        <div class="table-responsive mt-4">
+            <table class="table table-hover table-bordered align-middle shadow-sm rounded">
+                <thead class="table-light">
+                    <tr>
+                        <th>Autor</th>
+                        <th>Inicio</th>
+                        <th>Nombre</th>
+                        <th>Notas</th>
+                        <th>Funciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel item in mcolPlanes)
+                    {
+                        <tr>
+                            <td>@ownerName(item.Owner)</td>
+                            <td>@Sapphire2025Models.Common.timeString(item.Begin)</td>
+                            <td>@item.Name</td>
+                            <td>@item.Comment</td>
+                            <td>
+                                <Button class="btn btn-danger btn-sm"
+                                        @onclick="() => onDeleteWorkShiftTemplateCollection(item.Id)">
+                                    Eliminar
+                                </Button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
 
 @code 
 {
     private ModalDialog mvarModal { get; set; } = new ModalDialog();
     private List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>? mcolPlanes;
     private Dictionary<Guid, Sapphire2025Models.Authentication.UserModelBase>? mcolUsers;
+    private InputFile? mvarCBXMLInputRef;
+    private InputFile? mvarCBExcelInputRef;
+    private bool mvarLoading; //Flag para mostrar el diálogo de carga.
+    private string mvarLoadingString = "Procesando solicitud";
 
     private string ownerName(Guid userId)
     {
@@ -90,32 +107,36 @@ else
     }
     private async Task onExcelImport(InputFileChangeEventArgs e)
     {
-        Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
+        mvarLoadingString = "Importando gráfico de Agentes desde Excel";
+        mvarLoading = true;
+        StateHasChanged();
 
-        if (null != archivo)
-        {
-            using Stream corriente = archivo.OpenReadStream(maxAllowedSize: 5242880); // 5 MB
-            using MemoryStream ms = new MemoryStream();
-            await corriente.CopyToAsync(ms);
-            byte[] buffer = ms.ToArray();
-            //Ahora pasamos esto a JavaScript
-            DateTime fecha = DateTime.Now;
-            int days = 4;
-            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day,days);
-            string? salidaCompilacion = await mvarExpertClient.UploadDailyWorkShift(salida, fecha,days);
+         Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
+
+         if (null != archivo)
+         {
+             using Stream corriente = archivo.OpenReadStream(maxAllowedSize: 5242880); // 5 MB
+             using MemoryStream ms = new MemoryStream();
+             await corriente.CopyToAsync(ms);
+             byte[] buffer = ms.ToArray();
+             //Ahora pasamos esto a JavaScript
+             DateTime fecha = DateTime.Today;
+             int days = 4;
+             string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day,days);
+             string? salidaCompilacion = await mvarExpertClient.UploadDailyWorkShift(salida, fecha,days);
              if (null != salidaCompilacion && salidaCompilacion.Length > 0)
-                 await mvarModal.show("Error de importación", salidaCompilacion, "Salir");
-
-            StateHasChanged();
-        }
+                 await mvarModal.show("Error de importación", salidaCompilacion, "Salir");            
+         }
+        mvarLoading = false;
+        StateHasChanged();
     }
 
-    private async Task onFileUpload(InputFileChangeEventArgs e)
-    {
+    private async Task onXMLFileUpload(InputFileChangeEventArgs e)
+    {        
         Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
         if (archivo is null) return;
         using Stream stream = archivo.OpenReadStream(maxAllowedSize: 5242880); // 5 MB
-        string? salida = await mvarExpertClient.UploadXML(stream,"WorkShiftTemplate");
+        string? salida = await mvarExpertClient.UploadXML(stream,archivo.Name);
         if (null != salida && salida.Length > 0)
             await mvarModal.show("Error", salida, "Aceptar");            
         else
@@ -137,6 +158,11 @@ else
         mcolPlanes = await mvarExpertClient.Plans();
         mcolUsers = await mvarStorage.GetUsersCache();
     } 
+    private async Task TriggerFileInputBlazor(InputFile? rhs)
+    {
+        if (null != rhs)
+            await mvarJSRuntime.InvokeVoidAsync("triggerFileInputClick", rhs.Element);
+    }
 }
 
 

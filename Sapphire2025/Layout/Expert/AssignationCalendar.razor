@@ -1,18 +1,18 @@
 ﻿@if(null==Users)
 {
-<LoadingTab ElementText="tabla de usuarios" />
+	<LoadingTab ElementText="Cargando tabla de usuarios" />
 }
 else if(null== ColAssignations)
 {
-	<LoadingTab ElementText="asignaciones de turnos"/>
+	<LoadingTab ElementText="Cargando asignaciones de turnos"/>
 }
 else if(null==AgentsList)
 {
-	<LoadingTab ElementText="lista de agentes" />
+	<LoadingTab ElementText="Procesando lista de agentes" />
 }
 else if(null==TimeSlice)
 {
-	<LoadingTab ElementText="turnos de cada día" />
+	<LoadingTab ElementText="Enlazando turnos" />
 }
 else
 {
@@ -23,7 +23,7 @@ else
 					<thead>
 						<tr>
 							<th class="header-corner"/>
-							@for(int col = 0; col<= TimeSlice.DayCount; col++)
+							@for(int col = 0; col< TimeSlice.DayCount; col++)
 							{
 								<th class="@TypeOfDayClass(col)">
 									@if(IsToday(col))
@@ -51,7 +51,7 @@ else
 	[CascadingParameter] //Diccionario de usuarios a representar
 	public Dictionary<Guid, UserModelBase>? Users { get; set; }
 	[Parameter] //Rodaja de Agentes a representar	
-	public Sapphire2025Models.Expert.AgentsViewModel? AgentsList{ get; set; }
+	public Sapphire2025Models.Expert.AgentsViewContainer? AgentsList{ get; set; }
 	[Parameter] //Rodaja de días.
 	public Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice{ get; set; }
 	[Parameter] //Asignaciones del gráfico

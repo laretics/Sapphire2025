@@ -151,7 +151,7 @@ namespace Sapphire2025Server.Controllers
         /// <param name="name">Nombre de la vista de Agentes</param>
         /// <returns>Lista de vista de Agentes</returns>
         [HttpPost("agentsview")]
-        public async Task<AgentsViewModel> AgentsView(AgentsViewRequestModel rhs)
+        public async Task<AgentsViewContainer> AgentsView(AgentsViewRequestModel rhs)
         {
             WorkShiftProcessor procesador = new WorkShiftProcessor(mvarConfig);
             return await procesador.AgentsViewList(rhs.ViewId);

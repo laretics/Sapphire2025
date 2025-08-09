@@ -24,9 +24,9 @@ namespace Sapphire2025Models.Expert.WorkshiftTemplates
             InitialDate = DateTime.Today;
         }
         public PlansYearSlice(int days, DateTime dateBegin)
-        {           
-            ColFestives = new bool[days];
+        {
             mcolPlans = new Dictionary<Guid, WorkShiftTemplateCollectionModel>();
+            ColFestives = new bool[days];            
             mcolPlanPointers = new Guid[days];
             InitialDate = dateBegin;
             DayCount = days;
@@ -77,7 +77,7 @@ namespace Sapphire2025Models.Expert.WorkshiftTemplates
         }
         public DateTime GetDay(int dayId)
         {
-            if (dayId > DayCount)
+            if (dayId >= DayCount)
                 return InitialDate;
             else
                 return InitialDate.AddDays(dayId);
@@ -102,7 +102,7 @@ namespace Sapphire2025Models.Expert.WorkshiftTemplates
         }
         public WorkShiftTemplateCollectionModel? GetPlan(int dayId)
         {
-            if (dayId <= DayCount && dayId >= 0)
+            if (dayId < DayCount && dayId >= 0)
             {
                 if (mcolPlans.ContainsKey(mcolPlanPointers[dayId]))
                     return mcolPlans[mcolPlanPointers[dayId]];
