@@ -63,22 +63,20 @@ namespace Sapphire2025Models.Expert
 		/// <returns>true si ha logrado añadirlo a la colección</returns>
 		public bool Add(WorkShiftTemplateModel template, bool overriding)
 		{
+			if (null == Templates) return false;
 			bool adding = true;
 			WorkShiftTemplateModel? existente = this.Template(template.Name ?? "", template.DayOfWeekEnabled);
-			if(null!=Templates && null!=existente)
+			if(null!=existente)
 			{
 				if (overriding)
 					Templates.Remove(existente);
 				else
 					adding = false; //Ya existe un template incompatible, así que no añadirá.
-
-				if(adding)
-				{
-					Templates.Add(template);
-					return true;
-				}
 			}
-			return false;
+            if (adding) 
+				Templates.Add(template);
+
+            return adding;
 		}
 	}
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Sapphire2025Models.Expert.WorkshiftTemplates
@@ -12,9 +13,9 @@ namespace Sapphire2025Models.Expert.WorkshiftTemplates
     /// </summary>
     public class PlansYearSlice
     {
-        public int mvarDayCount;
-        public Dictionary<Guid, WorkShiftTemplateCollectionModel> mcolPlans; //Diccionario que contiene todas las referencias a los planes.
-        public Guid[] mcolPlanPointers;
+        public int mvarDayCount { get; set; }
+        public Dictionary<Guid, WorkShiftTemplateCollectionModel> mcolPlans { get; set; } //Diccionario que contiene todas las referencias a los planes.
+        public Guid[] mcolPlanPointers { get; set; }
         public PlansYearSlice()
         {
             mcolPlans = new Dictionary<Guid, WorkShiftTemplateCollectionModel>();
@@ -32,7 +33,9 @@ namespace Sapphire2025Models.Expert.WorkshiftTemplates
             DayCount = days;
         }
         public DateTime InitialDate { get; set; } //Fecha inicial
+        [JsonIgnore]
         public DateTime FinalDate { get => InitialDate.AddDays(DayCount); }
+        [JsonIgnore]
         public int DayCount //Número de días
         {
             get => mvarDayCount;
@@ -42,7 +45,8 @@ namespace Sapphire2025Models.Expert.WorkshiftTemplates
                 ColFestives = new bool[value];
                 mcolPlanPointers = new Guid[value];
             }
-        } 
+        }
+        [JsonIgnore]
         public WorkShiftTemplateCollectionModel[] ColPlans 
         { 
             get
@@ -56,7 +60,7 @@ namespace Sapphire2025Models.Expert.WorkshiftTemplates
                 return salida;
             }
         }
-        public bool[] ColFestives { get; private set; }
+        public bool[] ColFestives { get; set; }
         public bool SetFestive (DateTime day, bool Festive)
         {
             int offset = (int)day.Subtract(InitialDate).TotalDays;

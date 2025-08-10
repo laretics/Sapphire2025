@@ -30,6 +30,10 @@ else
             <div class="btn-group" role="group" aria-label="Grupo 3">
                 <button type="button" class="btn btn-danger">Acción 5</button>
             </div>
+            <div class="input-group" style="width: 120px;">
+                <span class="input-group-text">Días</span>
+                <InputNumber @bind-Value="mvarNumDay" class="form-control" />
+            </div>
         </div>
     </div>
     @if (null == mcolPlanes)
@@ -86,6 +90,7 @@ else
     private InputFile? mvarCBExcelInputRef;
     private bool mvarLoading; //Flag para mostrar el diálogo de carga.
     private string mvarLoadingString = "Procesando solicitud";
+    private int mvarNumDay { get; set; } = 4;
 
     private string ownerName(Guid userId)
     {
@@ -121,9 +126,8 @@ else
              byte[] buffer = ms.ToArray();
              //Ahora pasamos esto a JavaScript
              DateTime fecha = DateTime.Today;
-             int days = 4;
-             string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day,days);
-             string? salidaCompilacion = await mvarExpertClient.UploadDailyWorkShift(salida, fecha,days);
+             string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day,mvarNumDay);
+             string? salidaCompilacion = await mvarExpertClient.UploadDailyWorkShift(salida, fecha,mvarNumDay);
              if (null != salidaCompilacion && salidaCompilacion.Length > 0)
                  await mvarModal.show("Error de importación", salidaCompilacion, "Salir");            
          }

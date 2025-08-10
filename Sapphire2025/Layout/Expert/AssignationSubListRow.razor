@@ -1,13 +1,17 @@
 ﻿@if(null!=AgentsView)
 {
-    <tr> 
-        <td>
-            <span><CheckboxInput 
-                @bind-value="AgentsView.Collapsed"                 
-            >+</CheckboxInput>@AgentsView.Name</span>
-        </td>
-    </tr>
-    @if(!AgentsView.Collapsed)
+    @if(AgentsView.ShowHeader)
+    {
+        <tr>
+            <td>
+                <span style="display: flex; align-items: center;">
+                    <CheckboxInput @bind-value="AgentsView.Show">+</CheckboxInput>
+                    <span style="margin-left: 0.5em;">@AgentsView.Name</span>
+                </span>
+            </td>
+        </tr>
+    }
+    @if(AgentsView.Show)
     {
         foreach (AgentsViewRegisterModel element in AgentsView.RegisterCollection??(new List<AgentsViewRegisterModel>()))
         {
@@ -33,4 +37,5 @@
     //Lista de elementos como Agentes que se muestran en una vista de gráfico de turnos.
     [Parameter]
     public AgentsViewContainer? AgentsView { get; set; }
+
 }

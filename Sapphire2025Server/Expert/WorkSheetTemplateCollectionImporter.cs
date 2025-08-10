@@ -145,7 +145,9 @@ namespace Sapphire2025Server.Expert
 			template.Color = nodo.Attributes["col"]?.Value;
 			template.BgColor = nodo.Attributes["bgcol"]?.Value;
 			template.StripeColor = nodo.Attributes["stcol"]?.Value;
-			template.CoorX = -1;
+            string? auxWeek = nodo.Attributes["week"]?.Value;
+            template.PerWeek = parseWeekDays(auxWeek);
+            template.CoorX = -1;
 			template.CoorY = -1;
 			string? auxCoordinates = nodo.Attributes["ord"]?.Value;
 			if (null != auxCoordinates && auxCoordinates.Length > 0)
@@ -198,8 +200,7 @@ namespace Sapphire2025Server.Expert
                         auxTrabajo.Att = (null != auxDepot && auxDepot.ToUpper().Contains("T"));
                         auxTrabajo.Id = Guid.NewGuid();
 
-                            string? auxWeek = trabajo.Attributes["week"]?.Value;
-                        auxTrabajo.PerWeek = parseWeekDays(auxWeek);
+
                         almacen.WorkShiftTemplates.Add(auxTrabajo);
                         importWorkSheetContents(trabajo,auxTrabajo, almacen);
                     }                       

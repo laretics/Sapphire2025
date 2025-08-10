@@ -233,6 +233,7 @@ namespace Sapphire2025Server.Expert
         public async Task<AgentsViewContainer> AgentsViewList(Guid id)
         {
             AgentsViewContainer salida = new AgentsViewContainer();
+            salida.ShowHeader = false;
             salida.RegisterCollection = new List<AgentsViewRegisterModel>();
             using (DataStorage almacen = new DataStorage(mvarConfig))
             {
@@ -274,7 +275,8 @@ namespace Sapphire2025Server.Expert
                                     AgentsViewContainer subLista = new AgentsViewContainer();
                                     subLista.RegisterCollection = subConjunto.RegisterCollection;
                                     subLista.Name = subConjunto.Name;
-                                    subLista.Collapsed = false;
+                                    subLista.Show = true;
+                                    subLista.ShowHeader = true;
                                     salida.RegisterCollection?.Add(subLista);
                                 }
                                 break;
@@ -296,55 +298,69 @@ namespace Sapphire2025Server.Expert
                 List<WorkShiftTemplate> colTemplates = await almacen.WorkShiftTemplates
                     .Where(x => x.Parent == parent)
                     .ToListAsync();
-                foreach(WorkShiftTemplate auxPlantilla in colTemplates)
+                await auxAddTemplatesToList(salida, colTemplates);                
+            }
+            return salida;
+        }
+
+        private async Task auxAddTemplatesToList(List<WorkShiftTemplateModel> content, List<WorkShiftTemplate>origin)
+        {
+            foreach (WorkShiftTemplate auxPlantilla in origin)
+            {
+                WorkShiftTemplateModel? nuevo = null;
+                if (!auxPlantilla.Active)
                 {
-                    WorkShiftTemplateModel? nuevo = null;
-                    if(!auxPlantilla.Active)
+                    nuevo = new RestTemplateModel();
+                }
+                else
+                {
+                    if (auxPlantilla.Att) //Depósito
+                        nuevo = new AttTemplateModel();
+                    else
+                        nuevo = new WorkTemplateModel();
+                }
+                if (null != nuevo)
+                {
+                    nuevo.Name = auxPlantilla.Name;
+                    nuevo.comment = auxPlantilla.Comment;
+                    nuevo.Color = auxPlantilla.Color;
+                    nuevo.BgColor = auxPlantilla.BgColor;
+                    nuevo.StripeColor = auxPlantilla.StripeColor;
+                    nuevo.CoorX = auxPlantilla.CoorX;
+                    nuevo.CoorY = auxPlantilla.CoorY;
+                    nuevo.DayOfWeekEnabled = auxPlantilla.PerWeek;
+                    if (null == auxPlantilla.Tokens)
                     {
-                        nuevo = new RestTemplateModel();
+                        nuevo.Tokens = new List<string>();
+                        nuevo.Tokens.Add(nuevo.Name);
                     }
                     else
                     {
-						if (auxPlantilla.Att) //Depósito
-							nuevo = new AttTemplateModel();
-						else
-							nuevo = new WorkTemplateModel();
+                        nuevo.Tokens = auxPlantilla.Tokens.Split(',').ToList();
                     }
-                    if(null!=nuevo)
+                    if (nuevo.GetType() == typeof(AttTemplateModel))
                     {
-                        nuevo.Name = auxPlantilla.Name;
-                        nuevo.comment = auxPlantilla.Comment;
-                        nuevo.Color = auxPlantilla.Color;
-                        nuevo.BgColor = auxPlantilla.BgColor;
-                        nuevo.StripeColor = auxPlantilla.StripeColor;
-                        nuevo.CoorX = auxPlantilla.CoorX;
-                        nuevo.CoorY = auxPlantilla.CoorY;
-                        nuevo.DayOfWeekEnabled = auxPlantilla.PerWeek;
-                        if(nuevo.GetType()==typeof(AttTemplateModel))
-                        {
-                            AttTemplateModel auxAtencion = (AttTemplateModel)nuevo;
-                            auxAtencion.StartTime = auxPlantilla.StartTime;
-                            auxAtencion.Duration = auxPlantilla.Duration;                            
-                        }
-                        else if (nuevo.GetType()==typeof(WorkTemplateModel))
-                        {
-                            WorkTemplateModel auxTrabajo = (WorkTemplateModel)nuevo;
-                            auxTrabajo.StartTime = auxPlantilla.StartTime;
-                            auxTrabajo.Duration = auxPlantilla.Duration;
-                            auxTrabajo.Content = await TemplateContents(auxPlantilla.Id);
-                        }
-                        else //Tiene que ser un descanso
-                        {
-                            RestTemplateModel auxDescanso = (RestTemplateModel)nuevo;
-                        }
+                        AttTemplateModel auxAtencion = (AttTemplateModel)nuevo;
+                        auxAtencion.StartTime = auxPlantilla.StartTime;
+                        auxAtencion.Duration = auxPlantilla.Duration;
                     }
-                    if(null!=nuevo)
+                    else if (nuevo.GetType() == typeof(WorkTemplateModel))
                     {
-                        salida.Add(nuevo);
+                        WorkTemplateModel auxTrabajo = (WorkTemplateModel)nuevo;
+                        auxTrabajo.StartTime = auxPlantilla.StartTime;
+                        auxTrabajo.Duration = auxPlantilla.Duration;
+                        auxTrabajo.Content = await TemplateContents(auxPlantilla.Id);
+                    }
+                    else //Tiene que ser un descanso
+                    {
+                        RestTemplateModel auxDescanso = (RestTemplateModel)nuevo;
                     }
                 }
+                if (null != nuevo)
+                {
+                    content.Add(nuevo);
+                }
             }
-            return salida;
         }
         private async Task<List<WorkShiftContentModel>> TemplateContents(Guid parentId)
         {

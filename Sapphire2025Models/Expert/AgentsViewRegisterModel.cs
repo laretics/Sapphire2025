@@ -30,6 +30,7 @@ namespace Sapphire2025Models.Expert
 	public class AgentsViewContainer:AgentsViewRegisterModel
 	{
 		public List<AgentsViewRegisterModel>? RegisterCollection { get; set; } //Lista de elementos
-		public bool Collapsed { get; set; } //Elementos colapsados o desplegados.		
+		public bool Show { get; set; } = true; //Elementos colapsados o desplegados.
+		public bool ShowHeader { get; set; } //Se usa de forma local... sirve para mostrar u ocultar el encabezado
 	}
 }
