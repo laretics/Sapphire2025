@@ -19,8 +19,7 @@ namespace Sapphire2025Server.Models.Turnos
         public string? Definitive { get; set; } //Asignación definitiva (precalculada)
         public bool IsTD { get; set; } //Un TD.
         [NotMapped]                                      
-        public string? BgColor { get; set; } //La necesito para resolver los cambios entre Agentes
-        [NotMapped]
+        public string? BgColor { get; set; } //La necesito para resolver los cambios entre Agentes        
         public string? Annotation { get; set; } //La necesito para gestionar los cambios a tres o más bandas
     }
 }

@@ -5,12 +5,17 @@
 }
 else
 {
-    <td class="cell-content custom-cell text-center align-middle"
+    <td class="cell-content custom-cell text-center align-middle" 
+        title="@GetCellComment()"
         style="@GetCellStyle()">
         <div class="cell-content-inner">
             <span>@GetCellText()</span>
+            @if(HasChange())
+            {
+                <span class="smallest-text">Pelayo Carrasco Montejo</span>
+            }            
             <div class="cell-bar"
-                 style="@GetBarStyle()">
+                    style="@GetBarStyle()">
             </div>
         </div>
     </td>
@@ -40,7 +45,14 @@ else
             }
         }
     }
-
+    private string? GetCellComment()
+    {
+        if(null!=Assignation)
+        {
+            return Assignation.Comment;
+        }
+        return null;
+    }
     private string GetCellStyle()
     {
         string auxColor = "black";
@@ -77,5 +89,11 @@ else
     private string GetBarStyle()
     {
         return string.Format("background: {0};", mvarTemplate?.StripeColor ?? "transparent");
+    }
+    private bool HasChange()
+    {
+        if (null != Assignation)
+            return Assignation.SwappingAgent >= Guid.Empty;
+        return false;
     }
 }

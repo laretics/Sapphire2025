@@ -21,7 +21,7 @@ else
 	<div class="row">
 		<div class="col-12">
 			<div class="d-flex flex-row flex-warp gap-4 justify-content-between">
-				@for(int col = 0; col<=mcolTemplates.GetUpperBound(0);col++)
+				@for(int col = 0; col <= mcolTemplates.GetUpperBound(0);col++)
 				{
 					<div class="table-responsible flex-fill" style="min-width: 250px;"	>
 						<table class="table table-bordered text-center custom-width-table mb-0">
@@ -32,7 +32,7 @@ else
 								</tr>
 							 </thead>
 							 <tbody>
-								 @for (int row = 0; row<=mcolTemplates.GetUpperBound(1);row++)
+								 @for (int row = 0; row <= mcolTemplates.GetUpperBound(1);row++)
 								{
 									@if(null!=mcolTemplates[col,row])
 									{
@@ -104,14 +104,14 @@ else
 			if (auxColTemplates.Count() > 0)
 			{
 				//Calculamos los límites del array
-				int maxX = 0;
-				int maxY = 0;
+				int maxX = -1;
+				int maxY = -1;
 				foreach(WorkShiftTemplateModel auxTemplate in auxColTemplates)
 				{
 					if (auxTemplate.CoorX > maxX) maxX = auxTemplate.CoorX;
 					if (auxTemplate.CoorY > maxY) maxY = auxTemplate.CoorY;
 				}
-				mcolTemplates = new WorkShiftTemplateModel[maxX, maxY];
+				mcolTemplates = new WorkShiftTemplateModel[maxX+1, maxY+1];
 				//Rellenamos el array
 				foreach (WorkShiftTemplateModel auxTemplate in auxColTemplates)
 				{

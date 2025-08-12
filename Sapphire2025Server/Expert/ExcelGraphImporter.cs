@@ -54,7 +54,7 @@ namespace Sapphire2025Server.Expert
                                     nueva.Assignation = getCleanAssignationString(original.Text);
                                     nueva.BgColor = manageBgColor(original.Bg);
                                     nueva.Date = date.AddDays(col);
-                                    nueva.Definitive = getLastAssignation(original.Text);
+                                    nueva.Definitive = getLastAssignation(nueva.Assignation??"");
                                     if(null!=nueva.Assignation)
                                         nueva.IsTD = nueva.Assignation.ToUpper().Contains("TD");
                                     colSalida[col, filaId] = nueva;
