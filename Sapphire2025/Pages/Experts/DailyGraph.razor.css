@@ -1,12 +1,4 @@
-﻿.custom-width-table th,
-.custom-width-table td {
-    width: 8%; /* Valor base para columnas impares */
-}
-
-.custom-width-table th:nth-child(even),
-.custom-width-table td:nth-child(even) {
-    width: 16%; /* El doble para columnas pares */
-}
+﻿
 
 .import-overlay {
     position: fixed;
@@ -25,35 +17,4 @@
     text-align: center;
 }
 
-.cell-content {
-    background: #fff;
-    transition: background 0.2s;
-}
 
-    .cell-content:hover {
-        background: #f1f3f4;
-    }
-/* Celdas con esquinas redondeadas */
-.custom-cell {
-    border-radius: 0.4em !important;
-    overflow: hidden;
-    padding: 0.2rem 0.5rem !important;
-    position: relative;
-}
-
-/* Contenido centrado y barra debajo */
-.cell-content-inner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    height: 100%;
-}
-/* Barra horizontal bajo el texto */
-.cell-bar {
-    margin-top: 0.25em;
-    width: 80%;
-    height: 4px;
-    border-radius: 2px;
-    opacity: 0.7;
-}

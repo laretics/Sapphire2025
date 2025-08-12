@@ -1,0 +1,152 @@
+﻿@using Sapphire2025Models.Expert.WorkshiftTemplates;
+@if(null==Users)
+{
+	<LoadingTab ElementText="Cargando lista de usuarios"/>
+}
+else if(null==TimeSlice)
+{
+	<LoadingTab ElementText="Cargando información de fecha" />
+}
+else if (null == ColAssignations)
+{
+	<LoadingTab ElementText="Cargando asignaciones de turnos" />
+}
+else if(mcolTemplates.Length<1)
+{
+	<ErrorTab Description="No hay turnos disponibles: La colección está vacía"
+			  Instructions="Asegúrese de tener definido al menos un plan de explotación en una fecha anterior a la mostrada" />
+}
+else
+{
+	<div class="row">
+		<div class="col-12">
+			<div class="d-flex flex-row flex-warp gap-4 justify-content-between">
+				@for(int col = 0; col<=mcolTemplates.GetUpperBound(0);col++)
+				{
+					<div class="table-responsible flex-fill" style="min-width: 250px;"	>
+						<table class="table table-bordered text-center custom-width-table mb-0">
+							 <thead class="table-light">
+								<tr>
+									<th>Turno</th>
+									<th>Asignación</th>
+								</tr>
+							 </thead>
+							 <tbody>
+								 @for (int row = 0; row<=mcolTemplates.GetUpperBound(1);row++)
+								{
+									@if(null!=mcolTemplates[col,row])
+									{
+										<tr>
+											<td class="cell-content custom-cell text-center align-middle"
+												style="@GetCellStyle(mcolTemplates[col,row])">
+												<div class="cell-content-inner">
+													<span>@GetCellText(mcolTemplates[col,row])</span>
+													<div class="cell-bar"
+														style="@GetBarStyle(mcolTemplates[col,row])"
+													/>
+												</div>
+
+
+											</td>
+											<td>
+												<table>
+													@foreach (AssignationContentModel assignation in AssignationsByTemplate(mcolTemplates[col, row].Name))
+													{
+														<tr>
+														   <td>@GetUserString(assignation.AgentId)</td>
+														</tr>
+													}
+												</table>
+											</td>
+										</tr>
+									}
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	[CascadingParameter] //Diccionario de usuarios a representar
+	public Dictionary<Guid, UserModelBase>? Users { get; set; }
+	[Parameter] //Rodaja de días.
+	public Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice { get; set; }
+	[Parameter] //Asignaciones del gráfico
+	public List<AssignationContentModel>? ColAssignations { get; set; }
+
+	private WorkShiftTemplateModel[,] mcolTemplates { get; set; } = new WorkShiftTemplateModel[0, 0];
+	protected override void OnInitialized()
+	{
+		LoadPlan();
+
+	}
+	private List<AssignationContentModel> AssignationsByTemplate(string? assignationText)
+	{
+		List<AssignationContentModel> salida = new List<AssignationContentModel>();
+		if(null!=ColAssignations && null!=assignationText)
+			salida = ColAssignations.Where(xx => xx.Definitive == assignationText).ToList();
+
+		return salida;
+	}
+	private void LoadPlan()
+	{
+		if (null != TimeSlice)
+		{
+			WorkShiftTemplateCollectionModel? auxPlan = TimeSlice.GetPlan(0);
+			List<WorkShiftTemplateModel> auxColTemplates = new List<WorkShiftTemplateModel>();
+			if (null != auxPlan)
+				auxColTemplates = auxPlan.TemplatesByDay(TimeSlice.InitialDate, TimeSlice.GetFestive(0));
+
+			if (auxColTemplates.Count() > 0)
+			{
+				//Calculamos los límites del array
+				int maxX = 0;
+				int maxY = 0;
+				foreach(WorkShiftTemplateModel auxTemplate in auxColTemplates)
+				{
+					if (auxTemplate.CoorX > maxX) maxX = auxTemplate.CoorX;
+					if (auxTemplate.CoorY > maxY) maxY = auxTemplate.CoorY;
+				}
+				mcolTemplates = new WorkShiftTemplateModel[maxX, maxY];
+				//Rellenamos el array
+				foreach (WorkShiftTemplateModel auxTemplate in auxColTemplates)
+				{
+					if (auxTemplate.CoorX >= 0 && auxTemplate.CoorY >= 0)
+						mcolTemplates[auxTemplate.CoorX, auxTemplate.CoorY] = auxTemplate;
+				}
+			}
+		}
+	}
+	private string GetCellStyle(WorkShiftTemplateModel? rhs)
+	{
+		string auxColor = "black";
+		string auxFondo = "transparent";
+		if (null != rhs)
+		{
+			auxColor = rhs.Color ?? "black";
+			auxFondo = rhs.BgColor ?? "transparent";
+		}
+		return string.Format("background: {1}; color: {0};", auxColor, auxFondo);
+	}
+	private string GetCellText(WorkShiftTemplateModel? rhs)
+	{
+		if (null == rhs) return string.Empty;
+		return rhs.Name??string.Empty;
+	}
+	private string GetBarStyle(WorkShiftTemplateModel? rhs)
+	{
+		return string.Format("background: {0};", rhs?.StripeColor ?? "transparent");
+	}
+	private string GetUserString(Guid userId)
+	{
+		if(null!=Users && Users.ContainsKey(userId))
+		{
+			return Users[userId].Name ?? "???";
+		}
+		return "????";
+	}
+}

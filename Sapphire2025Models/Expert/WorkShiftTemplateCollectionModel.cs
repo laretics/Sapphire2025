@@ -78,5 +78,26 @@ namespace Sapphire2025Models.Expert
 
             return adding;
 		}
+	
+		/// <summary>
+		/// Obtiene todos los templates vigentes un día concreto del año.
+		/// Se usa para la vista diaria de turnos cubiertos.
+		/// </summary>
+		/// <param name="day">Fecha</param>
+		/// <param name="festive">Indicación de si ese día se considera festivo o no</param>
+		/// <returns>Lista de los turnos vigentes ese día</returns>
+		public List<WorkShiftTemplateModel> TemplatesByDay (DateTime day, bool festive)
+		{
+			List<WorkShiftTemplateModel> salida = new List<WorkShiftTemplateModel>();
+			if(null!=Templates)
+			{
+                foreach (WorkShiftTemplateModel auxTemplate in Templates)
+                {
+                    if (auxTemplate.IsEnabled(day.DayOfWeek, festive))
+                        salida.Add(auxTemplate);
+                }
+            }
+			return salida;
+		}
 	}
 }

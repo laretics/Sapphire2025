@@ -97,7 +97,7 @@ namespace Sapphire2025.Storage
         /// <param name="date">Fecha de inicio</param>
         /// <param name="dayCount">Número de días a retornar</param>
         /// <returns></returns>
-        public async Task<PlansYearSlice?> PlansTimeSlice(DateTime date, int dayCount)
+        public async Task<PlansYearSlice?> PlansTimeSlice(DateTime date, int dayCount=1)
         {
             WorkShiftRequestModel request = new WorkShiftRequestModel();
             request.Date = date;
