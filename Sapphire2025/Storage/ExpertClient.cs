@@ -171,6 +171,19 @@ namespace Sapphire2025.Storage
             return false;
         }
 
+        public async Task<bool> SetFestive(DateTime day, bool rhs)
+        {
+            FestivesRequestModel requestModel = new FestivesRequestModel();
+            requestModel.Date = day;
+            requestModel.Value = rhs;
+            string json = System.Text.Json.JsonSerializer.Serialize(requestModel);
+            HttpResponseMessage respuesta = await sendPostRequest("setfestive", json);
+            if (respuesta.IsSuccessStatusCode)
+                return await respuesta.Content.ReadFromJsonAsync<bool>();
+
+            return false;            
+        }
+
         /// <summary>
         /// Elimina un plan de explotación y todos los elementos que dependen de él.
         /// </summary>

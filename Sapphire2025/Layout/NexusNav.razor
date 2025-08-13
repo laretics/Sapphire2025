@@ -29,21 +29,38 @@
 
 
     <NexusNavOption Selected="@(4== SelectedNavItem)"
-        Badge="Nuevo"
         OnClick="@(()=>SelectNavItem(4))"
         Link="dailyGraph" Caption="Maquinistas D."
         Image="bi bi-expert-day-nav-menu"
         Tooltip="Gráfico diario"
         Roles=
         "new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Expert, 
-            Sapphire2025Models.Common.UserRole.Expert}" />
+            Sapphire2025Models.Common.UserRole.Inspector}" />
+
+    <NexusNavOption Selected ="@(5== SelectedNavItem)"
+                    OnClick="@(()=>SelectNavItem(5))" 
+                    Link="instantsnap" Caption="Actual"
+                    Image="bi bi-expert-day-nav-menu"
+                    Tooltip="Situación actual"
+                    Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Expert,
+                                Sapphire2025Models.Common.UserRole.Inspector}" />
+    
+    <NexusNavOption Selected="@(6 == SelectedNavItem)"
+                    Badge="Nuevo"
+                    OnClick="@(()=>SelectNavItem(6))"
+                    Link="agentsctc" Caption="Agentes CTC"
+                    Image="bi bi-expert-day-nav-menu"
+                    Tooltip="Listado de Agentes para el personal del CTC"
+                    Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Expert,
+                                                    Sapphire2025Models.Common.UserRole.Inspector}" />
+    
 
     @if (null!=mcolAgentsViews)
     {
         for(int n=0;n<mcolAgentsViews.Count;n++)
         {
-            <NexusNavOption Selected="@((5+n) == SelectedNavItem)"
-                            onclick="@(()=>SelectNavItem(5+n))"
+            <NexusNavOption Selected="@((7+n) == SelectedNavItem)"
+                            onclick="@(()=>SelectNavItem(7+n))"
                             Link="@string.Format("monthGraph/{0}",mcolAgentsViews[n])" Caption="@mcolAgentsViews[n]"
                             Image="bi bi-expert-month-view-nav-menu"
                             Tooltip="Gráfico mensual"

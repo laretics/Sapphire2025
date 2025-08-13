@@ -2,6 +2,7 @@
 using Sapphire2025Server.Models;
 using Sapphire2025Server.Models.Turnos;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Sapphire2025Server.Expert
@@ -101,9 +102,12 @@ namespace Sapphire2025Server.Expert
                                 if(null!= elemento.Annotation)
                                 {
                                     //Obtengo el id de Agente que hará realmente este turno tras el cambio.
-                                    WorkshiftAssignation? otro = auxGetTurnoByString(grupo, elemento.Annotation);
+                                    WorkshiftAssignation? otro = auxGetTurnoByString(grupo, GetOnlyNumbers(elemento.Annotation));
                                     if (null != otro)
-                                        elemento.SwappingAgent = otro.Agent;
+                                    {
+										elemento.SwappingAgent = otro.Agent;
+                                        elemento.Annotation = string.Format("Cambio a {0} bandas", grupo.Count());
+									}                                        
                                 }                                   
                             }
                             //Asigno los turnos cambiados a los agentes en lugar del que tenían.
@@ -140,6 +144,16 @@ namespace Sapphire2025Server.Expert
                 if (elemento.Definitive!.Contains(turnoId)) return elemento;
             return null;
         }
+        /// <summary>
+        /// Saca los caracteres raros de la anotación y se queda solo con los números.
+        /// </summary>
+        /// <param name="rhs">Cadena de entrada</param>
+        /// <returns>Cadena sólo con números</returns>
+        private string GetOnlyNumbers(string rhs)
+        {
+			var matches = Regex.Matches(rhs, @"\d+");
+			return matches.Count > 0 ? string.Join("|", matches.Select(m => m.Value)) : string.Empty;
+		}
 
         private string manageBgColor(string? bgColor)
         {

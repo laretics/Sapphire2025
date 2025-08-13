@@ -1,0 +1,54 @@
+﻿@page "/agentsctc"
+@inject IJSRuntime mvarJSRuntime
+@inject ExpertClient mvarExpertClient
+@inject AuthenticationClient mvarAuthClient
+<PageTitle>Lista de Agentes</PageTitle>
+@if (isImporting)
+{
+	<LoadingTab ElementText="Importando archivo" />
+}
+else
+{
+    <CascadingValue Value="mcolUsers">
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <label for="datePicker" class="form-label">Fecha</label>
+                <InputDate id="datePicker"
+                           Value="selectedDate"
+                           ValueChanged="@(async (DateTime newValue) => await OnDaySelectedChange(newValue))"
+                           ValueExpression="() => selectedDate"
+                           class="form-control" />
+            </div>
+        </div>
+        <Sapphire2025.Layout.Expert.AssignationDayCalendar CTCView="true"
+                                                           ColAssignations="mcolAssignations"
+                                                           TimeSlice="mvarTimeSlice" />
+    </CascadingValue>
+}
+@code {
+	private bool isImporting = false;
+    private DateTime selectedDate = DateTime.Today;
+    private Dictionary<Guid, UserModelBase>? mcolUsers;
+    private List<AssignationContentModel>? mcolAssignations;
+    private Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? mvarTimeSlice;
+
+    protected async override Task OnInitializedAsync()
+    {
+        mcolUsers = await mvarAuthClient.cachedUserList();
+        await UpdateData();
+    }
+    private async Task OnDaySelectedChange(DateTime newValue)
+    {
+        selectedDate = newValue;
+        await UpdateData();
+    }
+    private async Task UpdateData()
+    {
+        isImporting = true;
+        StateHasChanged();
+        mvarTimeSlice = await mvarExpertClient.PlansTimeSlice(selectedDate); //Rodaja de tiempos
+        mcolAssignations = await mvarExpertClient.Assignations(selectedDate); //Asignaciones del día
+        isImporting = false;
+        StateHasChanged();
+    }
+}

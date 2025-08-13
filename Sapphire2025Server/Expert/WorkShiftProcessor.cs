@@ -115,31 +115,39 @@ namespace Sapphire2025Server.Expert
                 return salida;
             }
         }
-        public async Task SetFestive(DateTime rhs, bool value)
+        public async Task<bool> SetFestive(DateTime rhs, bool value)
         {
-            bool currentValue = await IsFestive(rhs);
-            if(value!=currentValue)
+            try
             {
-                using (DataStorage almacen = new DataStorage(mvarConfig))
-                {
-                    Festive? elemento;
-                    if (value && !currentValue)
-                    {
-                        elemento = new Festive();
-                        elemento.Date = rhs;
-                        almacen.Festives.Add(elemento);
-                    }
-                    else if (!value && currentValue)
-                    {
-                        elemento = await almacen.Festives
-                                .Where(x => x.Date == rhs)
-                                .FirstOrDefaultAsync();
-                        if(null!=elemento)
-                            almacen.Remove(elemento);                        
-                    }
-                    await almacen.SaveChangesAsync();
-                }
+				bool currentValue = await IsFestive(rhs);
+				if (value != currentValue)
+				{
+					using (DataStorage almacen = new DataStorage(mvarConfig))
+					{
+						Festive? elemento;
+						if (value && !currentValue)
+						{
+							elemento = new Festive();
+							elemento.Date = rhs;
+							almacen.Festives.Add(elemento);
+						}
+						else if (!value && currentValue)
+						{
+							elemento = await almacen.Festives
+									.Where(x => x.Date == rhs)
+									.FirstOrDefaultAsync();
+							if (null != elemento)
+								almacen.Remove(elemento);
+						}
+						await almacen.SaveChangesAsync();
+					}
+				}
+			}
+            catch (Exception ex)
+            {
+                return false;
             }
+            return true;
         }
         public async Task<bool> IsFestive(DateTime rhs)
         {

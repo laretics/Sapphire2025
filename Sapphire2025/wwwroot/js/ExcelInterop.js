@@ -23,12 +23,6 @@ function getMontString(month) {
         default: return ""; break;
     }
 }
-function getOnlyNumbers(rhs) {
-    //Extrae todos los dígitos y los concatena en un solo string
-    const salida = rhs.match(/\d+/g);
-    return salida ? salida.join('|') : '';
-}
-
 window.excelInterop = {
     //bytes: Entrada en bruto del importador.
     //month: Mes de la fecha.
@@ -104,7 +98,7 @@ window.excelInterop = {
                             }
                             var comment = "";
                             if (celdaInfo && celdaInfo.c && celdaInfo.c[0] && celdaInfo.c[0].t) {
-                                comment = getOnlyNumbers(celdaInfo.c[0].t);
+                                comment = celdaInfo.c[0].t;
                             }
                             fila.push({ Text: texto, Bg: color, Comment: comment });
                         }

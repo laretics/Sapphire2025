@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -25,6 +26,54 @@ namespace Sapphire2025Models
 		{
 			return (byte)(rhs | (1 << byteId));
 		}
+
+		/// <summary>
+		/// Traduce un intervalo en texto
+		/// </summary>
+		/// <param name="rhs">Intervalo</param>
+		/// <returns></returns>
+		public static string autoInterval(TimeSpan rhs, bool timeFormat)
+		{
+			if(timeFormat)
+				return string.Format("{0:00}:{1:00}", rhs.Hours, rhs.Minutes);
+			else
+			{
+				StringBuilder salida = new StringBuilder();
+				if(rhs.Hours>0)
+				{
+					if (rhs.Hours == 1)
+						salida.Append("una hora");
+					else
+						salida.AppendFormat("{0} h",rhs.Hours);
+				}
+				if(rhs.Minutes>0)
+				{
+					if (salida.Length > 0)
+					{
+						if (rhs.Seconds > 0)
+							salida.Append(" , ");
+						else
+							salida.Append(" y ");
+					}
+
+					if (rhs.Minutes == 1)
+						salida.Append("un minuto");
+					else
+						salida.AppendFormat("{0} min",rhs.Minutes);
+				}
+				if(rhs.Seconds>0)
+				{
+					if (salida.Length > 0)
+						salida.Append(" y ");
+					if (rhs.Seconds == 1)
+						salida.Append("un segundo");
+					else
+						salida.AppendFormat("{0} s",rhs.Seconds);
+				}
+				return salida.ToString();
+			}
+		}
+		
 
 		public static string autoDate(DateTime rhs)
 		{
@@ -85,7 +134,11 @@ namespace Sapphire2025Models
 		/// <returns></returns>
 		public static bool IsDayCompatible(byte pattern, DayOfWeek today, bool todayIsFestive)
 		{
-			if (todayIsFestive && getBit(pattern, 7)) return true; //Da igual lo demás... es un festivo.
+			if (todayIsFestive)
+			{
+				if (getBit(pattern, 7)) return true; //Da igual lo demás... es un turno festivo.
+				if (!getBit(pattern, 0) && !getBit(pattern, 6)) return false; //Si es festivo y el turno no es de sábado ni de domingo NO concuerda.
+			}				
 			return (pattern & (1 << (byte)today))!=0;
 		}
 

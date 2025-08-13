@@ -102,7 +102,17 @@ namespace Sapphire2025.Storage
             }
             return false;
         }
-
+		public async Task<bool> SetTrainUsersDictionary(Dictionary<Guid, UserModel>? rhs)
+		{
+			if (null != rhs)
+			{
+				string cadena = JsonSerializer.Serialize(rhs);
+				await SetStringValue("cacheuserslist", cadena, false);
+				return true;
+			}
+			return false;
+		}
+		#endregion "Caché de trenes"
 		#region "Caché de usuarios"
 
 		/// <summary>
@@ -147,27 +157,10 @@ namespace Sapphire2025.Storage
 
 		#endregion "Caché de usuarios"
 
-		//public async Task<Dictionary<Guid,UserModel>?>GetTrainUsersDictionary()
-		//{
-		//    string? auxCadena = await GetStringValue("cacheuserslist", false);
-		//    if(null!=auxCadena)
-		//    {
-		//        return JsonSerializer.Deserialize<Dictionary<Guid,UserModel>>(auxCadena);
-		//    }
-		//    return null;
-		//}
-		public async Task<bool>SetTrainUsersDictionary(Dictionary<Guid,UserModel>? rhs)
-        {
-            if(null!=rhs)
-            {
-                string cadena = JsonSerializer.Serialize(rhs);
-                await SetStringValue("cacheuserslist", cadena, false);
-                return true;
-            }
-            return false;
-        }
 
-		#endregion "Caché de trenes"
+
+
+
 
 		#region "Valores"
         /// <summary>

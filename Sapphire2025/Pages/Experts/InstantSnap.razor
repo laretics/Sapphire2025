@@ -1,0 +1,18 @@
+﻿@page "/instantsnap"
+@using Sapphire2025Models.Expert.WorkshiftTemplates
+@inject ExpertClient mvarExpertClient
+@inject AuthenticationClient mvarAuthClient
+<PageTitle>Situación Actual</PageTitle>
+<h3>Situación actual</h3>
+
+@code {
+    private Dictionary<Guid, UserModelBase>? mcolUsers;
+    private List<AssignationContentModel>? mcolAssignations;
+
+    protected async override Task OnInitializedAsync()
+    {
+        mcolUsers = await mvarAuthClient.cachedUserList();
+        mcolAssignations = await mvarExpertClient.Assignations(DateTime.Today);
+
+    }
+}

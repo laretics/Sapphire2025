@@ -6,13 +6,23 @@
 else
 {
     <td class="cell-content custom-cell text-center align-middle" 
-        title="@GetCellComment()"
+        title="@mvarCellComment"
         style="@GetCellStyle()">
         <div class="cell-content-inner">
-            <span>@GetCellText()</span>
-            @if(HasChange())
-            {
-                <span class="smallest-text">Pelayo Carrasco Montejo</span>
+            <span class="cell-inline-content">
+                @if (mvarAssignationChanged)
+                {
+                    <span class="icon-svg-cycle"></span>
+                }
+                <span>@GetCellText()</span>
+                @if(null!=mvarCellComment)
+                {
+                    <span class="icon-svg-document"></span>
+                }                
+            </span>
+            @if(mvarAssignationChanged)
+            {                
+                <span class="smallest-text">@GetAgentChangedName()</span>
             }            
             <div class="cell-bar"
                     style="@GetBarStyle()">
@@ -24,6 +34,8 @@ else
 @code {
     [CascadingParameter]//Con este modo activado se representa toda la cadena de asignaciones
     public bool WholeAssignations { get; set; }
+    [CascadingParameter] //Diccionario de usuarios a representar
+    public Dictionary<Guid, UserModelBase>? Users { get; set; }
     [CascadingParameter]//Rodaja de tiempo
     public Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice{ get; set; }
     [Parameter] //Asignación concreta para esta celda.
@@ -32,6 +44,8 @@ else
     public int DayId{ get; set; }
 
     private WorkShiftTemplateModel? mvarTemplate = null;
+    private bool mvarAssignationChanged{ get; set; }
+    private string? mvarCellComment{ get; set; }
 
     protected override void OnInitialized()
     {
@@ -42,6 +56,8 @@ else
             if (null != auxPlan && null != Assignation && null!=Assignation.Definitive)
             {
                 mvarTemplate = auxPlan.Template(Assignation.Definitive, TimeSlice.GetDay(DayId), TimeSlice.GetFestive(DayId));
+                mvarAssignationChanged = HasChange();
+                mvarCellComment = GetCellComment();
             }
         }
     }
@@ -49,7 +65,8 @@ else
     {
         if(null!=Assignation)
         {
-            return Assignation.Comment;
+            if (null!=Assignation.Comment && Assignation.Comment.Length>0)
+                return Assignation.Comment;
         }
         return null;
     }
@@ -93,7 +110,19 @@ else
     private bool HasChange()
     {
         if (null != Assignation)
-            return Assignation.SwappingAgent >= Guid.Empty;
+            return Assignation.SwappingAgent != Guid.Empty;
         return false;
+    }
+    private string GetAgentChangedName()
+    {
+        string salida = "T.Cambiado";
+        if(null!=Users && null!=Assignation)
+        {
+            if (Users.ContainsKey(Assignation.SwappingAgent))
+                salida= Users[Assignation.SwappingAgent].Name ?? "T.Cambiado";
+        }
+        if (salida.Length > 16)
+            salida = salida.Substring(0, 16) + "...";
+        return salida;
     }
 }

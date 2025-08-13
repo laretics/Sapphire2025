@@ -9,5 +9,6 @@ namespace Sapphire2025Models.Expert
     public class FestivesRequestModel
     {
         public DateTime Date { get; set; }
+        public bool Value { get; set; }
     }
 }

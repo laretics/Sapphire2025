@@ -176,6 +176,13 @@ namespace Sapphire2025Server.Controllers
             return await processor.IsFestive(request.Date);
         }
 
+        [HttpPost("setfestive")]
+        public async Task<bool> SetFestive([FromBody] FestivesRequestModel request)
+        {
+            WorkShiftProcessor processor = new WorkShiftProcessor(mvarConfig);
+            return await processor.SetFestive(request.Date, request.Value);
+        }
+
         /// <summary>
         /// Elimina un plan de explotación y todos los elementos que dependen de él.
         /// </summary>

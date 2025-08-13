@@ -3,7 +3,7 @@
 @inject IJSRuntime mvarJSRuntime
 @inject ExpertClient mvarExpertClient
 @inject AuthenticationClient mvarAuthClient
-<PageTitle>Gráfico de Tracción</PageTitle>
+<PageTitle>Gráfico diario de Tracción</PageTitle>
 <ModalDialog @ref="mvarModal" />
 
 @if (isImporting)
@@ -34,6 +34,7 @@ else
             </div>
         </div>
         <Sapphire2025.Layout.Expert.AssignationDayCalendar 
+             CTCView="false"
              ColAssignations="mcolAssignations"
              TimeSlice="mvarTimeSlice"
         />
@@ -61,6 +62,8 @@ else
         isImporting = true;
         StateHasChanged();
         mvarTimeSlice = await mvarExpertClient.PlansTimeSlice(selectedDate); //Rodaja de tiempos
+        if(null!=mvarTimeSlice)
+            isFestive = mvarTimeSlice.GetFestive(0);
         mcolAssignations = await mvarExpertClient.Assignations(selectedDate); //Asignaciones del día
         isImporting = false;
         StateHasChanged();
@@ -71,6 +74,7 @@ else
         if(null!=e.Value)
         {
             isFestive = (bool)e.Value;
+            await mvarExpertClient.SetFestive(selectedDate, isFestive);
             await UpdateData();
         }
     }
