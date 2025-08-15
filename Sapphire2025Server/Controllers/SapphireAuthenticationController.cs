@@ -597,7 +597,7 @@ namespace Sapphire2025Server.Controllers
 			if(null!=user.Email)
 			salida.Email = user.Email;
 			if(null!=user.PhoneNumber)
-			salida.PhoneNumber = user.PhoneNumber;
+				salida.PhoneNumber = user.PhoneNumber;
 			salida.ShortPhoneNumber = user.ShortPhoneNumber;
 			salida.AccessFailedCount = user.AccessFailedCount;
 			salida.NullPassword = (null==user.PasswordHash) || (user.PasswordHash.Length < 1);
@@ -611,7 +611,10 @@ namespace Sapphire2025Server.Controllers
 			UserModelBase salida = new UserModelBase();
 			salida.guid = user.guid;
 			salida.CF = user.CF;
-			if(null!= user.UserName)
+			if (null != user.PhoneNumber)
+				salida.PhoneNumber = user.PhoneNumber;			
+			salida.ShortPhoneNumber = user.ShortPhoneNumber;
+			if (null!= user.UserName)
 				salida.Name = user.UserName;
 			salida.CredentialKey = await userIcon(user,mvarConfig);
 			return salida;

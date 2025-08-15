@@ -1,4 +1,5 @@
 ﻿@using Sapphire2025Models.Expert.WorkshiftTemplates;
+@inject IJSRuntime JS
 @if(null==Users)
 {
 	<LoadingTab ElementText="Cargando lista de usuarios"/>
@@ -20,15 +21,105 @@ else
 {
 	@if(CTCView)
 	{
-		<div class="row">
-			
+		<button class="btn btn-outline-primary mb-3" @onclick="PrintPage">
+			<i class="bi bi-printer"></i> Imprimir lista
+		</button>
+		<div class="print-area">
+			<div class="print-title">
+				<h2>
+					Lista de Maquinistas - @TimeSlice?.InitialDate.ToString("dd/MM/yyyy")
+				</h2>
+			</div>
+			<div class="table-responsive my-3">
+				<table class="table table-bordered table-sm align-middle">
+					<thead class="table-light">
+						<tr>
+							<th>T</th>
+							<th>Turno</th>
+							<th>Horario</th>
+							<th>CF</th>
+							<th>Asignación inicial</th>
+							<th>CF</th>
+							<th>Asignación definitiva</th>
+							<th>Teléfono</th>
+							<th>Extensión</th>
+						</tr>
+					</thead>
+					<tbody>
+						@if (null != Users)
+						{
+							for (int i = 0; i < mcolSortedTemplates.Count; i++)
+							{
+								WorkShiftTemplateModel template = mcolSortedTemplates[i];
+								if (template is AttTemplateModel attModel)
+								{
+									//Buscar asignación principal
+									List<AssignationContentModel>? assignations = ColAssignations?.Where(a => a.Definitive == attModel.Name).ToList();
+									if (null != assignations)
+									{
+										foreach (AssignationContentModel auxAsigna in assignations)
+										{
+											UserModelBase? swapUser = null;
+											UserModelBase? mainUser = null;
+											if (auxAsigna.SwappingAgent != Guid.Empty && Users.ContainsKey(auxAsigna.SwappingAgent))
+											{
+												swapUser = Users[auxAsigna.SwappingAgent];
+											}
 
+											if (null != Users && Users.ContainsKey(auxAsigna.AgentId))
+											{
+												mainUser = Users[auxAsigna.AgentId];
+											}
+											<tr class="@(i % 2 == 0 ? "table-light" : "table-white")">
+												<td class="text-center align-middle">
+													@if (attModel is WorkTemplateModel)
+													{
+														<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#321D71">
+															<path d="M160-340v-380q0-53 27.5-84.5t72.5-48q45-16.5 102.5-22T480-880q66 0 124.5 5.5t102 22q43.5 16.5 68.5 48t25 84.5v380q0 59-40.5 99.5T660-200l60 60v20h-80l-80-80H400l-80 80h-80v-20l60-60q-59 0-99.5-40.5T160-340Zm320-460q-106 0-155 12.5T258-760h448q-15-17-64.5-28.5T480-800ZM240-560h200v-120H240v120Zm420 80H240h480-60Zm-140-80h200v-120H520v120ZM340-320q26 0 43-17t17-43q0-26-17-43t-43-17q-26 0-43 17t-17 43q0 26 17 43t43 17Zm280 0q26 0 43-17t17-43q0-26-17-43t-43-17q-26 0-43 17t-17 43q0 26 17 43t43 17Zm-320 40h360q26 0 43-17t17-43v-140H240v140q0 26 17 43t43 17Zm180-480h226-448 222Z" />
+														</svg>
+													}
+													else
+													{
+														<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#314D1C"><path d="M200-120q-17 0-28.5-11.5T160-160v-40q-50 0-85-35t-35-85v-200q0-50 35-85t85-35v-80q0-50 35-85t85-35h400q50 0 85 35t35 85v80q50 0 85 35t35 85v200q0 50-35 85t-85 35v40q0 17-11.5 28.5T760-120q-17 0-28.5-11.5T720-160v-40H240v40q0 17-11.5 28.5T200-120Zm-40-160h640q17 0 28.5-11.5T840-320v-200q0-17-11.5-28.5T800-560q-17 0-28.5 11.5T760-520v160H200v-160q0-17-11.5-28.5T160-560q-17 0-28.5 11.5T120-520v200q0 17 11.5 28.5T160-280Zm120-160h400v-80q0-27 11-49t29-39v-112q0-17-11.5-28.5T680-760H280q-17 0-28.5 11.5T240-720v112q18 17 29 39t11 49v80Zm200 0Zm0 160Zm0-80Z" /></svg>
+													}
+												</td>
+												<td class="turno-cell" style="@GetCellStyle(template)">@GetCellText(template)</td>
+												<td>@GetCellTime(template)</td>
+												<td>@(swapUser?.CF ?? "")</td>
+												<td>@(swapUser?.Name ?? "")</td>
+												<td>@(mainUser?.CF ?? "")</td>
+												<td>@(mainUser?.Name ?? "")</td>
+												<td>@(mainUser?.PhoneNumber ?? "")</td>
+												<td>@(mainUser?.ShortPhoneNumber ?? "")</td>
+											</tr>
+										}
+									}
+								}
+							}
+						}
+					</tbody>
+				</table>
+			</div>
 		</div>
 	}
 	else
 	{
 		<div class="row">
 			<div class="col-12">
+				<div class="card mb-3 border-primary">
+					<div class="card-body py-2 px-3 d-flex align-items-center gap-4">
+						<div class="fw-bold text-primary">
+							@(mvarPlan?.Name ?? "Sin título")
+						</div>
+						<div class="text-muted">
+							<i class="bi bi-calendar-event"></i>
+							desde @(mvarPlan?.Begin.ToString("dd/MM/yyyy"))
+						</div>
+						<div class="small text-secondary flex-fill">
+							@(mvarPlan?.Comment ?? "[Sin descripción]")
+						</div>
+					</div>
+				</div>
 				<div class="d-flex flex-row flex-warp gap-4 justify-content-between">
 					@for (int col = 0; col <= mcolTemplates.GetUpperBound(0); col++)
 					{
@@ -92,6 +183,7 @@ else
 
 	private WorkShiftTemplateModel[,] mcolTemplates { get; set; } = new WorkShiftTemplateModel[0, 0];
 	private List<WorkShiftTemplateModel> mcolSortedTemplates = new List<WorkShiftTemplateModel>();
+	private WorkShiftTemplateCollectionModel? mvarPlan;
 
 	protected override void OnInitialized()
 	{
@@ -112,12 +204,26 @@ else
 	{
 		if (null != TimeSlice)
 		{
-			WorkShiftTemplateCollectionModel? auxPlan = TimeSlice.GetPlan(0);
+			mvarPlan = TimeSlice.GetPlan(0);
 			mcolSortedTemplates = new List<WorkShiftTemplateModel>();
-			if (null != auxPlan)
-				mcolSortedTemplates = auxPlan.TemplatesByDay(TimeSlice.InitialDate, TimeSlice.GetFestive(0));
+			if (null != mvarPlan)
+				mcolSortedTemplates = mvarPlan.TemplatesByDay(TimeSlice.InitialDate, TimeSlice.GetFestive(0));
 
-			mcolSortedTemplates = mcolSortedTemplates.OrderBy(xx => xx.Name).ToList();
+			mcolSortedTemplates = mcolSortedTemplates
+			.OrderBy(xx =>
+			{
+				var name = xx.Name ?? "";
+				// Si termina en 'F', intenta parsear el número anterior
+				if (name.EndsWith("F", StringComparison.OrdinalIgnoreCase) && int.TryParse(name[..^1], out int festNum))
+					return festNum;
+				// Si es solo número
+				if (int.TryParse(name, out int num))
+					return num;
+				// Si no es número, lo pone al final
+				return int.MaxValue;
+			})
+			.ThenBy(xx => xx.Name)
+			.ToList();
 
 			if (mcolSortedTemplates.Count() > 0)
 			{
@@ -186,5 +292,9 @@ else
 			return string.Format("({0}) {1}", usuario.CF, usuario.Name);
 		}
 		return "????";
+	}
+	private async Task PrintPage()
+	{
+		await JS.InvokeVoidAsync("window.print");
 	}
 }
