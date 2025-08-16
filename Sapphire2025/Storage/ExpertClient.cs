@@ -31,6 +31,13 @@ namespace Sapphire2025.Storage
             return await respuesta.Content.ReadFromJsonAsync<bool>();
         }
 
+        public async Task<bool> AgentsListsClear()
+        {
+			string request = composeCommand("agentslistsclear");
+			HttpResponseMessage respuesta = await sendGetRequest(request);
+			return await respuesta.Content.ReadFromJsonAsync<bool>();
+		}
+
         public async Task<List<AssignationContentModel>?> Assignations(DateTime date, int dayCount=1)
         {
             WorkShiftRequestModel request = new WorkShiftRequestModel();
@@ -205,11 +212,12 @@ namespace Sapphire2025.Storage
         /// <param name="date">Fecha de comienzo de importación.</param>
         /// <param name="days">Número de días.</param>
         /// <returns>True si la importación se ha realizado de forma satisfactoria</returns>
-        public async Task<string?> UploadDailyWorkShift(string auxDocument, DateTime date, int days)
+        public async Task<string?> UploadDailyWorkShift(string auxDocument, DateTime date, int days, int timeOffset)
         {
             XlsxAssignUpdateModel data = new();
             data.Date = date;
             data.Days = days;
+            data.TimeOffset = timeOffset;
             data.ExcelDump = auxDocument;
             string json = System.Text.Json.JsonSerializer.Serialize(data);
             HttpResponseMessage respuesta = await sendPostRequest("uploadexcelgraph", json);

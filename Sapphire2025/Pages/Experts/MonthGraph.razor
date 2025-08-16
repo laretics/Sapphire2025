@@ -54,7 +54,7 @@
             DateTime fecha = DateTime.Now.AddDays(-1);
             int days = 10;
             string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day, days);
-            string? salidaCompilacion = await mvarExpertClient.UploadDailyWorkShift(salida, fecha, days);
+            string? salidaCompilacion = await mvarExpertClient.UploadDailyWorkShift(salida, fecha, days,0);
             if(null!=salidaCompilacion && salidaCompilacion.Length>0)
                 await mvarModal.show("Error de importación", salidaCompilacion, "Salir");
 

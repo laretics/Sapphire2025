@@ -26,10 +26,73 @@ else
 		</button>
 		<div class="print-area">
 			<div class="print-title">
+				<div class="print-logo">
+					<img src="img/sfmImg.png" alt="Logotipo SFM" />
+				</div>
 				<h2>
-					Lista de Maquinistas - @TimeSlice?.InitialDate.ToString("dd/MM/yyyy")
+					Agentes de Tracción - @TimeSlice?.InitialDate.ToString("dd/MM/yyyy")
 				</h2>
 			</div>
+			<div class="card mb-4 shadow-sm print-only">
+				<div class="card-body">
+					<div class="row g-3 align-items-center">
+						<!-- Inspector -->
+						<div class="col-md-6">
+							<label class="form-label fw-bold text-primary">Inspector</label>
+							@if (null != mvarInspector)
+							{
+								<div class="mt-2 p-2 rounded bg-light border">
+									<div class="fw-semibold text-dark">@mvarInspector.Name</div>
+									<div class="text-muted small">
+										<i class="bi bi-telephone"></i> @mvarInspector.PhoneNumber
+										@if (!string.IsNullOrWhiteSpace(mvarInspector.ShortPhoneNumber))
+										{
+											<span class="ms-2">Ext: @mvarInspector.ShortPhoneNumber</span>
+										}
+									</div>
+								</div>
+							}
+							else
+							{
+								<div class="mt-2 text-danger small">No se ha asignado.</div>
+							}
+						</div>						
+						<!-- Jefe de Maquinistas -->
+						<div class="col-md-6">
+							<label class="form-label fw-bold text-success">Jefe de Maquinistas</label>
+							@if (null!=mvarExpert)
+							{
+								<div class="mt-2 p-2 rounded bg-light border">
+									<div class="fw-semibold text-dark">@mvarExpert.Name</div>
+									<div class="text-muted small">
+										<i class="bi bi-telephone"></i> @mvarExpert.PhoneNumber
+										@if (!string.IsNullOrWhiteSpace(mvarExpert.ShortPhoneNumber))
+										{
+											<span class="ms-2">Ext: @mvarExpert.ShortPhoneNumber</span>
+										}
+									</div>
+								</div>
+							}
+							else
+							{
+								<div class="mt-2 text-danger small">No se ha asignado.</div>
+							}
+						</div>
+					</div>
+					<!-- Condiciones del servicio -->
+					@if(null!=Comments)
+					{
+						<div class="row mt-4">
+							<div class="col-12">
+								<label class="form-label fw-bold text-secondary">Condiciones del servicio</label>
+								<textarea class="form-control" rows="4">
+									@Comments
+								</textarea>
+							</div>
+						</div>
+					}
+				</div>
+			</div>			
 			<div class="table-responsive my-3">
 				<table class="table table-bordered table-sm align-middle">
 					<thead class="table-light">
@@ -88,7 +151,7 @@ else
 												<td>@(swapUser?.CF ?? "")</td>
 												<td>@(swapUser?.Name ?? "")</td>
 												<td>@(mainUser?.CF ?? "")</td>
-												<td>@(mainUser?.Name ?? "")</td>
+												<td>@(mainUser?.Name?.ToUpper() ?? "")</td>
 												<td>@(mainUser?.PhoneNumber ?? "")</td>
 												<td>@(mainUser?.ShortPhoneNumber ?? "")</td>
 											</tr>
@@ -180,14 +243,34 @@ else
 	public List<AssignationContentModel>? ColAssignations { get; set; }
 	[Parameter] //Formato de representación (CTC o Cap de Maquinistros)
 	public bool CTCView { get; set; }
+	[Parameter]
+	public Guid InspectorId{ get; set; }
+	[Parameter]
+	public Guid ExpertId{ get; set; }
+	[Parameter]
+	public string? Comments{ get; set; }
 
 	private WorkShiftTemplateModel[,] mcolTemplates { get; set; } = new WorkShiftTemplateModel[0, 0];
 	private List<WorkShiftTemplateModel> mcolSortedTemplates = new List<WorkShiftTemplateModel>();
 	private WorkShiftTemplateCollectionModel? mvarPlan;
+	private UserModelBase? mvarInspector;
+	private UserModelBase? mvarExpert;
 
 	protected override void OnInitialized()
 	{
 		LoadPlan();
+
+	}
+	protected override void OnParametersSet()
+	{
+		base.OnParametersSet();
+		if (null != Users)
+		{
+			if (Users.ContainsKey(InspectorId))
+				mvarInspector = Users[InspectorId];
+			if (Users.ContainsKey(ExpertId))
+				mvarExpert = Users[ExpertId];
+		}
 	}
 
 	private List<AssignationContentModel> AssignationsByTemplate(string? assignationText)
@@ -294,7 +377,7 @@ else
 		return "????";
 	}
 	private async Task PrintPage()
-	{
+	{		
 		await JS.InvokeVoidAsync("window.print");
 	}
 }

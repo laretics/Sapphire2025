@@ -64,9 +64,10 @@ namespace Sapphire2025.Storage
 
 		public async Task<IEnumerable<StatusChangeModel>> recentChangeList(DateTime timeStamp)
 		{
+			DateTime auxUtc = timeStamp.ToUniversalTime();
 			string request = composeCommand(
 				"rcchngs",
-				new requestParam("timestamp", timeStamp.ToString()));
+				new requestParam("timestamp", auxUtc.ToString()));
 			HttpResponseMessage respuesta = await sendGetRequest(request);
 			IEnumerable<StatusChangeModel>? auxLista = await respuesta.Content.ReadFromJsonAsync<IEnumerable<StatusChangeModel>>();
 			if(null==auxLista) return new List<StatusChangeModel>() ;

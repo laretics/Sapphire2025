@@ -51,6 +51,23 @@ namespace Sapphire2025Server.Controllers
             }
         }
 
+        [HttpGet("agentslistsclear")]
+        public async Task<bool> AgentsListsClear()
+        {
+            using (DataStorage almacen = new DataStorage(mvarConfig))
+            {
+                List<ExpertAgentListRecord> auxColRecords =
+                    await almacen.ExpertAgentListRecords.ToListAsync();
+                almacen.RemoveRange(auxColRecords);
+
+                List<ExpertAgentsListView> auxColVistas =
+                    await almacen.ExpertAgentsListViews.ToListAsync();
+                almacen.RemoveRange(auxColVistas);
+                await almacen.SaveChangesAsync();
+            }
+            return true;
+        }
+
         /// <summary>
         /// Nueva vista de gráfico mensual.
         /// En este caso vamos a pasar toda la carga de filtrado por agentes al FrontEnd.
@@ -237,7 +254,7 @@ namespace Sapphire2025Server.Controllers
             if (null == request.ExcelDump) return "La hoja de cálculo que se ha recibido tiene un valor nulo";            
             List<List<AssignationCell>>? asignaciones = JsonSerializer.Deserialize<List<List<AssignationCell>>>(request.ExcelDump);
             ExcelGraphImporter importador = new ExcelGraphImporter(mvarConfig);
-            return await importador.ProcessExcel(asignaciones,request.Date,request.Days);
+            return await importador.ProcessExcel(asignaciones,request.Date, request.Days, request.TimeOffset);
         }
     } 
 }

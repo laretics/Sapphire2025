@@ -18,7 +18,7 @@ namespace Sapphire2025Server.Expert
             mvarConfig = config;
         }
 
-        public async Task<string> ProcessExcel(List<List<AssignationCell>>? sheet, DateTime date, int days)
+        public async Task<string> ProcessExcel(List<List<AssignationCell>>? sheet, DateTime dateutc, int days, int localOffset)
         {
             try
             {
@@ -31,6 +31,8 @@ namespace Sapphire2025Server.Expert
                 //
                 //Cabecera-m,dia1,dia2,...,dia-n
                 //Gracias a los datos que pasamos como parámetros es posible acelerar el proceso.
+                DateTime date = dateutc.AddMinutes(-localOffset);
+
                 using (DataStorage almacen = new DataStorage(mvarConfig))
                 {
                     int filaId = 0;
