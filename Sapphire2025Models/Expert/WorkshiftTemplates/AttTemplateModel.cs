@@ -12,5 +12,6 @@ namespace Sapphire2025Models.Expert.WorkshiftTemplates
         public TimeSpan StartTime { get; set; }
         public TimeSpan Duration { get; set; }
         public TimeSpan EndTime { get => StartTime.Add(Duration); set => Duration = value.Subtract(StartTime); }
-    }
+		public List<WorkShiftContentModel>? Content { get; set; } //Trenes y depósitos que contiene este turno.
+	}
 }

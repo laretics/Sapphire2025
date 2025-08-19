@@ -37,8 +37,8 @@ else
 				<div class="card-body">
 					<div class="row g-3 align-items-center">
 						<!-- Inspector -->
-						<div class="col-md-6">
-							<label class="form-label fw-bold text-primary">Inspector</label>
+						<div class="col-md-3">
+							<label class="form-label fw-bold text-primary">Inspector de mañana</label>
 							@if (null != mvarInspector)
 							{
 								<div class="mt-2 p-2 rounded bg-light border">
@@ -57,18 +57,39 @@ else
 								<div class="mt-2 text-danger small">No se ha asignado.</div>
 							}
 						</div>						
-						<!-- Jefe de Maquinistas -->
-						<div class="col-md-6">
-							<label class="form-label fw-bold text-success">Jefe de Maquinistas</label>
-							@if (null!=mvarExpert)
+						<!-- Jefe de Maquinistas 1 -->
+						<div class="col-md-3">
+							<label class="form-label fw-bold text-success">J.Maquinistas de mañana</label>
+							@if (null!=mvarExpert1)
 							{
 								<div class="mt-2 p-2 rounded bg-light border">
-									<div class="fw-semibold text-dark">@mvarExpert.Name</div>
+									<div class="fw-semibold text-dark">@mvarExpert1.Name</div>
 									<div class="text-muted small">
-										<i class="bi bi-telephone"></i> @mvarExpert.PhoneNumber
-										@if (!string.IsNullOrWhiteSpace(mvarExpert.ShortPhoneNumber))
+										<i class="bi bi-telephone"></i> @mvarExpert1.PhoneNumber
+										@if (!string.IsNullOrWhiteSpace(mvarExpert1.ShortPhoneNumber))
 										{
-											<span class="ms-2">Ext: @mvarExpert.ShortPhoneNumber</span>
+											<span class="ms-2">Ext: @mvarExpert1.ShortPhoneNumber</span>
+										}
+									</div>
+								</div>
+							}
+							else
+							{
+								<div class="mt-2 text-danger small">No se ha asignado.</div>
+							}
+						</div>
+						<!-- Jefe de Maquinistas 2 -->
+						<div class="col-md-3">
+							<label class="form-label fw-bold text-success">J.Maquinistas de tarde</label>
+							@if (null != mvarExpert2)
+							{
+								<div class="mt-2 p-2 rounded bg-light border">
+									<div class="fw-semibold text-dark">@mvarExpert2.Name</div>
+									<div class="text-muted small">
+										<i class="bi bi-telephone"></i> @mvarExpert2.PhoneNumber
+										@if (!string.IsNullOrWhiteSpace(mvarExpert2.ShortPhoneNumber))
+										{
+											<span class="ms-2">Ext: @mvarExpert2.ShortPhoneNumber</span>
 										}
 									</div>
 								</div>
@@ -246,7 +267,9 @@ else
 	[Parameter]
 	public Guid InspectorId{ get; set; }
 	[Parameter]
-	public Guid ExpertId{ get; set; }
+	public Guid ExpertId1{ get; set; }
+	[Parameter]
+	public Guid ExpertId2 { get; set; }
 	[Parameter]
 	public string? Comments{ get; set; }
 
@@ -254,7 +277,8 @@ else
 	private List<WorkShiftTemplateModel> mcolSortedTemplates = new List<WorkShiftTemplateModel>();
 	private WorkShiftTemplateCollectionModel? mvarPlan;
 	private UserModelBase? mvarInspector;
-	private UserModelBase? mvarExpert;
+	private UserModelBase? mvarExpert1;
+	private UserModelBase? mvarExpert2;
 
 	protected override void OnInitialized()
 	{
@@ -268,8 +292,10 @@ else
 		{
 			if (Users.ContainsKey(InspectorId))
 				mvarInspector = Users[InspectorId];
-			if (Users.ContainsKey(ExpertId))
-				mvarExpert = Users[ExpertId];
+			if (Users.ContainsKey(ExpertId1))
+				mvarExpert1 = Users[ExpertId1];
+			if (Users.ContainsKey(ExpertId2))
+				mvarExpert2 = Users[ExpertId2];
 		}
 	}
 

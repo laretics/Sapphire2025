@@ -107,9 +107,9 @@ namespace Sapphire2025Server.Expert
                                     WorkshiftAssignation? otro = auxGetTurnoByString(grupo, GetOnlyNumbers(elemento.Annotation));
                                     if (null != otro)
                                     {
-										elemento.SwappingAgent = otro.Agent;
-                                        elemento.Annotation = string.Format("Cambio a {0} bandas", grupo.Count());
-									}                                        
+				        				elemento.SwappingAgent = otro.Agent;
+                                       elemento.Annotation = string.Format("Cambio a {0} bandas", grupo.Count());
+		        					}                                        
                                 }                                   
                             }
                             //Asigno los turnos cambiados a los agentes en lugar del que tenían.

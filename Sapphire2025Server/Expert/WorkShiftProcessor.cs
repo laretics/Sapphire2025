@@ -346,15 +346,14 @@ namespace Sapphire2025Server.Expert
                     {
                         nuevo.Tokens = auxPlantilla.Tokens.Split(',').ToList();
                     }
-                    if (nuevo.GetType() == typeof(AttTemplateModel))
+                    if (nuevo is AttTemplateModel auxAtencion)
                     {
-                        AttTemplateModel auxAtencion = (AttTemplateModel)nuevo;
                         auxAtencion.StartTime = auxPlantilla.StartTime;
                         auxAtencion.Duration = auxPlantilla.Duration;
+                        auxAtencion.Content = await TemplateContents(auxPlantilla.Id);
                     }
-                    else if (nuevo.GetType() == typeof(WorkTemplateModel))
+                    else if (nuevo is WorkTemplateModel auxTrabajo)
                     {
-                        WorkTemplateModel auxTrabajo = (WorkTemplateModel)nuevo;
                         auxTrabajo.StartTime = auxPlantilla.StartTime;
                         auxTrabajo.Duration = auxPlantilla.Duration;
                         auxTrabajo.Content = await TemplateContents(auxPlantilla.Id);

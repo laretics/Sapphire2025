@@ -5,7 +5,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace Sapphire2025Models.Expert
+namespace Sapphire2025Models.Expert.WorkshiftTemplates
 {
 	[JsonPolymorphic(TypeDiscriminatorPropertyName ="$type")]
 	[JsonDerivedType(typeof(AttWorkShiftContentModel),"atw")]
@@ -15,6 +15,8 @@ namespace Sapphire2025Models.Expert
 		public TimeSpan StartTime { get; set; }
 		public TimeSpan EndTime { get; set; }
 		public TimeSpan Duration { get => EndTime.Subtract(StartTime); }
+		[JsonIgnore]
+		public WorkShiftTemplateModel? Parent { get; set; } //Enlace al turno que contiene este elemento.
 	}
 	public class AttWorkShiftContentModel:WorkShiftContentModel
 	{

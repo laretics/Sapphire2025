@@ -8,6 +8,9 @@ namespace Sapphire2025Models.Expert.WorkshiftTemplates
 {
     public class WorkTemplateModel : AttTemplateModel
     {
-        public List<WorkShiftContentModel>? Content { get; set; } //Trenes y depósitos que contiene este turno.
+        //He trasladado el contenido del turno al objeto att.
+        //Los Att tienen contenido, que son los depósitos. En lugar de trabajar con la
+        //jornada, debería trabajar con el tiempo que duran estos depósitos.
+
     }
 }
