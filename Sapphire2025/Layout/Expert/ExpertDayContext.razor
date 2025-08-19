@@ -1,0 +1,130 @@
+﻿@using Sapphire2025Models.Expert.WorkshiftTemplates
+@inject ExpertClient mvarExpertClient
+@inject AuthenticationClient mvarAuthClient
+@if(mvarDataProcessing)
+{
+    <LoadingTab ElementText="Procesando Información" />
+}
+else
+{
+    <CascadingValue Value="Users">
+        <CascadingValue Value="Assignations">            
+                <CascadingValue Value="TimeSlice">
+                    <CascadingValue Value="mvarCurrentDate">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <Sapphire2025.Layout.Expert.DateTimePicker @bind-SelectedDate="selectedDate">
+                                </Sapphire2025.Layout.Expert.DateTimePicker>
+                                <div class="form-check form-switch mt-3">
+                                    <input class="form-check-input" type="checkbox" id="festiveSwitch" checked="@isFestive" @onchange="OnFestiveChanged" />
+                                    <label class="form-check-label" for="festiveSwitch">
+                                        Festivo
+                                    </label>
+                                </div>
+                            </div>
+                            @if(null!=Plan)
+                            {
+                                <div class="col-md-6">
+                                    <div class="card mb-3 border-primary">
+                                        <div class="card-body py-2 px-3 d-flex align-items-center gap-4">
+                                            <div class="fw-bold text-primary">
+                                                @(Plan?.Name ?? "Sin título")
+                                            </div>
+                                            <div class="text-muted">
+                                                <i class="bi bi-calendar-event"></i>
+                                                desde @(Plan?.Begin.ToString("dd/MM/yyyy"))
+                                            </div>
+                                            <div class="small text-secondary flex-fill">
+                                                @(Plan?.Comment ?? "[Sin descripción]")
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    <CascadingValue Value="Plan">
+                        <CascadingValue Value="SortedTemplates">
+                            @ChildContent
+                        </CascadingValue>                        
+                    </CascadingValue>
+                </CascadingValue>
+            </CascadingValue>
+        </CascadingValue>
+    </CascadingValue>
+}
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; } //Contenido de este control.
+    public Dictionary<Guid, UserModelBase>? Users;
+    public List<AssignationContentModel>? Assignations;
+    private WorkShiftTemplateCollectionModel? Plan;
+    private List<WorkShiftTemplateModel> SortedTemplates = new List<WorkShiftTemplateModel>();
+    private bool isFestive = false;
+    private bool mvarDataProcessing = false;
+    private Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice;
+    private DateTime mvarCurrentDate = DateTime.Today;
+    private DateTime selectedDate
+    {
+        get => mvarCurrentDate;
+        set
+        {
+            mvarCurrentDate = value;
+            _ = UpdateData(); //Fire and forget.
+        }
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        Users = await mvarAuthClient.cachedUserList();
+        Assignations = await mvarExpertClient.Assignations(selectedDate);
+        await UpdateData();
+    }
+    private async Task OnFestiveChanged(ChangeEventArgs e)
+    {
+        if (null != e.Value)
+        {
+            isFestive = (bool)e.Value;
+            await mvarExpertClient.SetFestive(selectedDate, isFestive);
+            await UpdateData();
+        }
+    }
+    protected async Task UpdateData()
+    {
+        mvarDataProcessing = true;
+        StateHasChanged();
+        TimeSlice = await mvarExpertClient.PlansTimeSlice(selectedDate); //Rodaja de tiempos
+        if (null != TimeSlice)
+            isFestive = TimeSlice.GetFestive(0);
+        LoadPlan();
+        Assignations = await mvarExpertClient.Assignations(selectedDate); //Asignaciones del día
+        mvarDataProcessing = false;
+        StateHasChanged();
+    }
+    private void LoadPlan()
+    {
+        if (null != TimeSlice)
+        {
+            Plan = TimeSlice.GetPlan(0);
+            List<WorkShiftTemplateModel> auxSortedTemplates = new List<WorkShiftTemplateModel>();
+            if (null != Plan)
+                auxSortedTemplates = Plan.TemplatesByDay(TimeSlice.InitialDate, TimeSlice.GetFestive(0));
+
+            SortedTemplates = auxSortedTemplates
+            .OrderBy(xx =>
+            {
+                var name = xx.Name ?? "";
+                // Si termina en 'F', intenta parsear el número anterior
+                if (name.EndsWith("F", StringComparison.OrdinalIgnoreCase) && int.TryParse(name[..^1], out int festNum))
+                    return festNum;
+                // Si es solo número
+                if (int.TryParse(name, out int num))
+                    return num;
+                // Si no es número, lo pone al final
+                return int.MaxValue;
+            })
+            .ThenBy(xx => xx.Name)
+            .ToList();
+
+        }
+    }
+}

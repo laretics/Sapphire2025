@@ -1,0 +1,337 @@
+﻿@using Sapphire2025Models.Expert.WorkshiftTemplates;
+@inject IJSRuntime JS
+<div class="card mb-4 shadow-sm">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <!-- Inspector -->
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-primary">CF Inspector</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" maxlength="8"
+                           @bind="mvarCFInspector"
+                           @bind:event="oninput"
+                           placeholder="Introduce CF del Inspector" />
+                    <span class="input-group-text bg-light">
+                        <i class="bi bi-search"></i>
+                    </span>
+                </div>
+                @if (InspectorUser != null)
+                {
+                    <div class="mt-2 p-2 rounded bg-light border">
+                        <div class="fw-semibold text-dark">@InspectorUser.Name</div>
+                        <div class="text-muted small">
+                            <i class="bi bi-telephone"></i> @InspectorUser.PhoneNumber
+                            @if (!string.IsNullOrWhiteSpace(InspectorUser.ShortPhoneNumber))
+                            {
+                                <span class="ms-2">Ext: @InspectorUser.ShortPhoneNumber</span>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(mvarCFInspector))
+                {
+                    <div class="mt-2 text-danger small">No se ha encontrado ningún usuario con ese CF.</div>
+                }
+            </div>
+            <!-- Jefe de Maquinistas 1-->
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-success">CF Jefe de Maquinistas</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" maxlength="8"
+                           @bind="mvarCFCap1"
+                           @bind:event="oninput"
+                           placeholder="Introduce CF del Jefe de Maquinistas" />
+                    <span class="input-group-text bg-light">
+                        <i class="bi bi-search"></i>
+                    </span>
+                </div>
+                @if (CapUser1 != null)
+                {
+                    <div class="mt-2 p-2 rounded bg-light border">
+                        <div class="fw-semibold text-dark">@CapUser1.Name</div>
+                        <div class="text-muted small">
+                            <i class="bi bi-telephone"></i> @CapUser1.PhoneNumber
+                            @if (!string.IsNullOrWhiteSpace(CapUser1.ShortPhoneNumber))
+                            {
+                                <span class="ms-2">Ext: @CapUser1.ShortPhoneNumber</span>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(mvarCFCap1))
+                {
+                    <div class="mt-2 text-danger small">No se ha encontrado ningún usuario con ese CF.</div>
+                }
+            </div>
+            <!-- Jefe de Maquinistas 2-->
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-success">CF Jefe de Maquinistas</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" maxlength="8"
+                           @bind="mvarCFCap2"
+                           @bind:event="oninput"
+                           placeholder="Introduce CF del Jefe de Maquinistas" />
+                    <span class="input-group-text bg-light">
+                        <i class="bi bi-search"></i>
+                    </span>
+                </div>
+                @if (CapUser2 != null)
+                {
+                    <div class="mt-2 p-2 rounded bg-light border">
+                        <div class="fw-semibold text-dark">@CapUser2.Name</div>
+                        <div class="text-muted small">
+                            <i class="bi bi-telephone"></i> @CapUser2.PhoneNumber
+                            @if (!string.IsNullOrWhiteSpace(CapUser2.ShortPhoneNumber))
+                            {
+                                <span class="ms-2">Ext: @CapUser2.ShortPhoneNumber</span>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(mvarCFCap2))
+                {
+                    <div class="mt-2 text-danger small">No se ha encontrado ningún usuario con ese CF.</div>
+                }
+            </div>
+        </div>
+        <!-- Condiciones del servicio -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <label class="form-label fw-bold text-secondary">Condiciones del servicio</label>
+                <textarea class="form-control" rows="4"
+                          @bind="mvarComment"
+                          placeholder="Escribe aquí las condiciones especiales del servicio..."></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+<!--Ahora viene la lista de Agentes-->
+<button class="btn btn-outline-primary mb-3" @onclick="PrintPage">
+	<i class="bi bi-printer"></i> Imprimir lista
+</button>
+<div class="print-area">
+	<div class="print-title">
+		<div class="print-logo">
+			<img src="img/sfmImg.png" alt="Logotipo SFM" />
+		</div>
+		<h2>
+			Agentes de Tracción - @TimeSlice?.InitialDate.ToString("dd/MM/yyyy")
+		</h2>
+	</div>
+	<div class="card mb-4 shadow-sm print-only">
+		<div class="card-body">
+			<div class="row g-3 align-items-center">
+				<!-- Inspector -->
+				<div class="col-md-3">
+					<label class="form-label fw-bold text-primary">Inspector de mañana</label>
+					@if (null != InspectorUser)
+					{
+						<div class="mt-2 p-2 rounded bg-light border">
+							<div class="fw-semibold text-dark">@InspectorUser.Name</div>
+							<div class="text-muted small">
+								<i class="bi bi-telephone"></i> @InspectorUser.PhoneNumber
+								@if (!string.IsNullOrWhiteSpace(InspectorUser.ShortPhoneNumber))
+								{
+									<span class="ms-2">Ext: @InspectorUser.ShortPhoneNumber</span>
+								}
+							</div>
+						</div>
+					}
+					else
+					{
+						<div class="mt-2 text-danger small">No se ha asignado.</div>
+					}
+				</div>
+				<!-- Jefe de Maquinistas 1 -->
+				<div class="col-md-3">
+					<label class="form-label fw-bold text-success">J.Maquinistas de mañana</label>
+					@if (null != CapUser1)
+					{
+						<div class="mt-2 p-2 rounded bg-light border">
+							<div class="fw-semibold text-dark">@CapUser1.Name</div>
+							<div class="text-muted small">
+								<i class="bi bi-telephone"></i> @CapUser1.PhoneNumber
+								@if (!string.IsNullOrWhiteSpace(CapUser1.ShortPhoneNumber))
+								{
+									<span class="ms-2">Ext: @CapUser1.ShortPhoneNumber</span>
+								}
+							</div>
+						</div>
+					}
+					else
+					{
+						<div class="mt-2 text-danger small">No se ha asignado.</div>
+					}
+				</div>
+				<!-- Jefe de Maquinistas 2 -->
+				<div class="col-md-3">
+					<label class="form-label fw-bold text-success">J.Maquinistas de tarde</label>
+					@if (null != CapUser2)
+					{
+						<div class="mt-2 p-2 rounded bg-light border">
+							<div class="fw-semibold text-dark">@CapUser2.Name</div>
+							<div class="text-muted small">
+								<i class="bi bi-telephone"></i> @CapUser2.PhoneNumber
+								@if (!string.IsNullOrWhiteSpace(CapUser2.ShortPhoneNumber))
+								{
+									<span class="ms-2">Ext: @CapUser2.ShortPhoneNumber</span>
+								}
+							</div>
+						</div>
+					}
+					else
+					{
+						<div class="mt-2 text-danger small">No se ha asignado.</div>
+					}
+				</div>
+			</div>
+			<!-- Condiciones del servicio -->
+			@if (null != mvarComment)
+			{
+				<div class="row mt-4">
+					<div class="col-12">
+						<label class="form-label fw-bold text-secondary">Condiciones del servicio</label>
+						<textarea class="form-control" rows="4">
+									@mvarComment
+								</textarea>
+					</div>
+				</div>
+			}
+		</div>
+	</div>
+	<div class="table-responsive my-3">
+		<table class="table table-bordered table-sm align-middle">
+			<thead class="table-light">
+				<tr>
+					<th>T</th>
+					<th>Turno</th>
+					<th>Horario</th>
+					<th>CF</th>
+					<th>Asignación inicial</th>
+					<th>CF</th>
+					<th>Asignación definitiva</th>
+					<th>Teléfono</th>
+					<th>Extensión</th>
+				</tr>
+			</thead>
+			<tbody>
+				@if (null != Users && null != SortedTemplates)
+				{
+					for (int i = 0; i < SortedTemplates.Count; i++)
+					{
+						WorkShiftTemplateModel template = SortedTemplates[i];
+						if (template is AttTemplateModel attModel)
+						{
+							//Buscar asignación principal
+							List<AssignationContentModel>? assignations = ColAssignations?.Where(a => a.Definitive == attModel.Name).ToList();
+							if (null != assignations)
+							{
+								foreach (AssignationContentModel auxAsigna in assignations)
+								{
+									UserModelBase? swapUser = null;
+									UserModelBase? mainUser = null;
+									if (auxAsigna.SwappingAgent != Guid.Empty && Users.ContainsKey(auxAsigna.SwappingAgent))
+									{
+										swapUser = Users[auxAsigna.SwappingAgent];
+									}
+
+									if (null != Users && Users.ContainsKey(auxAsigna.AgentId))
+									{
+										mainUser = Users[auxAsigna.AgentId];
+									}
+									<tr class="@(i % 2 == 0 ? "table-light" : "table-white")">
+										<td class="text-center align-middle">
+											@if (attModel is WorkTemplateModel)
+											{
+												<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#321D71">
+													<path d="M160-340v-380q0-53 27.5-84.5t72.5-48q45-16.5 102.5-22T480-880q66 0 124.5 5.5t102 22q43.5 16.5 68.5 48t25 84.5v380q0 59-40.5 99.5T660-200l60 60v20h-80l-80-80H400l-80 80h-80v-20l60-60q-59 0-99.5-40.5T160-340Zm320-460q-106 0-155 12.5T258-760h448q-15-17-64.5-28.5T480-800ZM240-560h200v-120H240v120Zm420 80H240h480-60Zm-140-80h200v-120H520v120ZM340-320q26 0 43-17t17-43q0-26-17-43t-43-17q-26 0-43 17t-17 43q0 26 17 43t43 17Zm280 0q26 0 43-17t17-43q0-26-17-43t-43-17q-26 0-43 17t-17 43q0 26 17 43t43 17Zm-320 40h360q26 0 43-17t17-43v-140H240v140q0 26 17 43t43 17Zm180-480h226-448 222Z" />
+												</svg>
+											}
+											else
+											{
+												<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#314D1C"><path d="M200-120q-17 0-28.5-11.5T160-160v-40q-50 0-85-35t-35-85v-200q0-50 35-85t85-35v-80q0-50 35-85t85-35h400q50 0 85 35t35 85v80q50 0 85 35t35 85v200q0 50-35 85t-85 35v40q0 17-11.5 28.5T760-120q-17 0-28.5-11.5T720-160v-40H240v40q0 17-11.5 28.5T200-120Zm-40-160h640q17 0 28.5-11.5T840-320v-200q0-17-11.5-28.5T800-560q-17 0-28.5 11.5T760-520v160H200v-160q0-17-11.5-28.5T160-560q-17 0-28.5 11.5T120-520v200q0 17 11.5 28.5T160-280Zm120-160h400v-80q0-27 11-49t29-39v-112q0-17-11.5-28.5T680-760H280q-17 0-28.5 11.5T240-720v112q18 17 29 39t11 49v80Zm200 0Zm0 160Zm0-80Z" /></svg>
+											}
+										</td>
+										<td class="turno-cell" style="@GetCellStyle(template)">@GetCellText(template)</td>
+										<td class="smallest-text">@GetCellTime(template)</td>
+										<td>@(swapUser?.CF ?? "")</td>
+										<td>@(swapUser?.Name ?? "")</td>
+										<td>@(mainUser?.CF ?? "")</td>
+										<td>@(mainUser?.Name?.ToUpper() ?? "")</td>
+										<td>@(mainUser?.PhoneNumber ?? "")</td>
+										<td>@(mainUser?.ShortPhoneNumber ?? "")</td>
+									</tr>
+								}
+							}
+						}
+					}
+				}
+			</tbody>
+		</table>
+	</div>
+</div>
+
+
+@code {
+	[CascadingParameter]
+	public Dictionary<Guid, UserModelBase>? Users { get; set; }
+	[CascadingParameter] //Asignaciones del gráfico
+	public List<AssignationContentModel>? ColAssignations { get; set; }
+	[CascadingParameter]
+	public List<WorkShiftTemplateModel>? SortedTemplates { get; set; }
+	[CascadingParameter] //Rodaja de días.
+	public Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice { get; set; }
+
+	private string? mvarCFInspector;
+	private string? mvarCFCap1;
+	private string? mvarCFCap2;
+	private string? mvarComment;
+	private UserModelBase? InspectorUser => FindUserByCF(mvarCFInspector);
+	private UserModelBase? CapUser1 => FindUserByCF(mvarCFCap1);
+	private UserModelBase? CapUser2 => FindUserByCF(mvarCFCap2);
+
+    private UserModelBase? FindUserByCF(string? cf)
+    {
+        if (string.IsNullOrWhiteSpace(cf) || Users == null)
+            return null;
+        return Users.Values.FirstOrDefault(u => u.CF.Equals(cf.Trim(), StringComparison.OrdinalIgnoreCase));
+    }
+	private string GetCellStyle(WorkShiftTemplateModel? rhs)
+	{
+		string auxColor = "black";
+		string auxFondo = "transparent";
+		if (null != rhs)
+		{
+			auxColor = rhs.Color ?? "black";
+			auxFondo = rhs.BgColor ?? "transparent";
+		}
+		return string.Format("background: {1}; color: {0};", auxColor, auxFondo);
+	}
+	private string GetCellTime(WorkShiftTemplateModel? rhs)
+	{
+		if (null == rhs) return string.Empty;
+
+		if (rhs is AttTemplateModel auxTrabajo)
+		{
+			System.Text.StringBuilder auxElapsed = new System.Text.StringBuilder();
+			auxElapsed.AppendFormat("{0} h", auxTrabajo.Duration.Hours);
+			if (auxTrabajo.Duration.Minutes > 0)
+				auxElapsed.AppendFormat(" y {0} min", auxTrabajo.Duration.Minutes);
+
+			return string.Format("{0}-{1} ({2})",
+			Sapphire2025Models.Utils.autoInterval(auxTrabajo.StartTime, true),
+			Sapphire2025Models.Utils.autoInterval(auxTrabajo.EndTime, true),
+			Sapphire2025Models.Utils.autoInterval(auxTrabajo.Duration, false));
+		}
+		return string.Empty;
+	}
+	private string GetCellText(WorkShiftTemplateModel? rhs)
+	{
+		if (null == rhs) return string.Empty;
+		return rhs.Name ?? string.Empty;
+	}
+	private async Task PrintPage()
+	{
+		await JS.InvokeVoidAsync("window.print");
+	}
+}

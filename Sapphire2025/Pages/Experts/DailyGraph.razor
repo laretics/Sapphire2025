@@ -6,102 +6,18 @@
 <PageTitle>Gráfico diario de Tracción</PageTitle>
 <ModalDialog @ref="mvarModal" />
 
-@if (isImporting)
-{
-    <LoadingTab ElementText="Importando archivo" />
-}
-else
-{
-    <CascadingValue Value="mcolUsers">
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <label for="xmlFile" class="form-label">Cargar Gráfico</label>
-                <InputFile id="xmlFile" OnChange="OnXmlFileSelected" accept=".xlsx" class="form-control" />
-            </div>
-            <div class="col-md-6">
-                <label for="datePicker" class="form-label">Seleccionar día</label>
-                <InputDate id="datePicker"
-                           Value="selectedDate"
-                           ValueChanged="@(async (DateTime newValue) => await OnDaySelectedChange(newValue))"
-                           ValueExpression="() => selectedDate"
-                           class="form-control" />
-                <div class="form-check form-switch mt-3">
-                    <input class="form-check-input" type="checkbox" id="festiveSwitch" checked="@isFestive" @onchange="OnFestiveChanged" />
-                    <label class="form-check-label" for="festiveSwitch">
-                        ¿Es festivo?
-                    </label>
-                </div>
-            </div>
-        </div>
-        <Sapphire2025.Layout.Expert.AssignationDayCalendar 
-             CTCView="false"
-             ColAssignations="mcolAssignations"
-             TimeSlice="mvarTimeSlice"
-        />
-    </CascadingValue>
-}
-
+<Sapphire2025.Layout.Expert.ExpertDayContext>
+    <Sapphire2025.Layout.Expert.AssignationDayCalendar/>
+</Sapphire2025.Layout.Expert.ExpertDayContext>
 
 @code {
-    private ModalDialog mvarModal { get; set; } = new ModalDialog();    
-    private DateTime selectedDate = DateTime.Today;
-    private bool isFestive = false;
-    private bool isImporting = false;
-    private Dictionary<Guid, UserModelBase>? mcolUsers;
-    private List<AssignationContentModel>? mcolAssignations;
-    private Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? mvarTimeSlice;
+    private ModalDialog mvarModal { get; set; } = new ModalDialog();
 
-    protected async override Task OnInitializedAsync()
-    {
-        mcolUsers = await mvarAuthClient.cachedUserList();
-        await UpdateData();
-    }
+    [CascadingParameter]
+    public Dictionary<Guid, UserModelBase>? mcolUsers{ get; set; }
+    [CascadingParameter]
+    private List<AssignationContentModel>? mcolAssignations{ get; set; }
+    [CascadingParameter]
+    private Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? mvarTimeSlice { get; set; }
 
-    private async Task UpdateData()
-    {
-        isImporting = true;
-        StateHasChanged();
-        mvarTimeSlice = await mvarExpertClient.PlansTimeSlice(selectedDate); //Rodaja de tiempos
-        if(null!=mvarTimeSlice)
-            isFestive = mvarTimeSlice.GetFestive(0);
-        mcolAssignations = await mvarExpertClient.Assignations(selectedDate); //Asignaciones del día
-        isImporting = false;
-        StateHasChanged();
-    }
-
-    private async Task OnFestiveChanged (ChangeEventArgs e)
-    {
-        if(null!=e.Value)
-        {
-            isFestive = (bool)e.Value;
-            await mvarExpertClient.SetFestive(selectedDate, isFestive);
-            await UpdateData();
-        }
-    }
-    private async Task OnDaySelectedChange(DateTime newValue)
-    {
-        selectedDate = newValue;
-        await UpdateData();
-    }
-
-    private async Task OnXmlFileSelected(InputFileChangeEventArgs e)
-    {
-        isImporting = true;
-        StateHasChanged();
-        try
-        {
-            // Aquí puedes manejar el archivo XML seleccionado
-            var file = e.File;
-            // Lógica de procesamiento...
-            await Task.Delay(3000);
-
-            //TODO: Añadir importación de asignaciones aquí.
-
-        }
-        finally
-        {
-            isImporting = false;
-            StateHasChanged();
-        }
-    }
 }

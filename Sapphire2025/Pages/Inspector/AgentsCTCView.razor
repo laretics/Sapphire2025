@@ -11,178 +11,33 @@
 }
 else
 {
-    <CascadingValue Value="mcolUsers">
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <button Type="button" class="btn btn-secondary" @onclick="() => TriggerFileInputBlazor(mvarCBExcelInputRef)">Importar gráfico</button>
-            </div>
-            <div class="col-md-6">
-                <label for="datePicker" class="form-label">Fecha</label>
-                <InputDate id="datePicker"
-                           Value="selectedDate"
-                           ValueChanged="@(async (DateTime newValue) => await OnDaySelectedChange(newValue))"
-                           ValueExpression="() => selectedDate"
-                           class="form-control" />
-            </div>
+    <Sapphire2025.Layout.Expert.ExpertDayContext>
+        <div class="col-md-6">
+            <button Type="button" class="btn btn-secondary" @onclick="() => TriggerFileInputBlazor(mvarCBExcelInputRef)">Importar gráfico</button>
         </div>
-        <div class="card mb-4 shadow-sm">
-            <div class="card-body">
-                <div class="row g-3 align-items-center">
-                    <!-- Inspector -->
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-primary">CF Inspector</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" maxlength="8"
-                                   @bind="mvarCFInspector"
-                                   @bind:event="oninput"
-                                   placeholder="Introduce CF del Inspector" />
-                            <span class="input-group-text bg-light">
-                                <i class="bi bi-search"></i>
-                            </span>
-                        </div>
-                        @if (InspectorUser != null)
-                        {
-                            <div class="mt-2 p-2 rounded bg-light border">
-                                <div class="fw-semibold text-dark">@InspectorUser.Name</div>
-                                <div class="text-muted small">
-                                    <i class="bi bi-telephone"></i> @InspectorUser.PhoneNumber
-                                    @if (!string.IsNullOrWhiteSpace(InspectorUser.ShortPhoneNumber))
-                                    {
-                                        <span class="ms-2">Ext: @InspectorUser.ShortPhoneNumber</span>
-                                    }
-                                </div>
-                            </div>
-                        }
-                        else if (!string.IsNullOrWhiteSpace(mvarCFInspector))
-                        {
-                            <div class="mt-2 text-danger small">No se ha encontrado ningún usuario con ese CF.</div>
-                        }
-                    </div>
-                    <!-- Jefe de Maquinistas 1-->
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-success">CF Jefe de Maquinistas</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" maxlength="8"
-                                   @bind="mvarCFCap1"
-                                   @bind:event="oninput"
-                                   placeholder="Introduce CF del Jefe de Maquinistas" />
-                            <span class="input-group-text bg-light">
-                                <i class="bi bi-search"></i>
-                            </span>
-                        </div>
-                        @if (CapUser1 != null)
-                        {
-                            <div class="mt-2 p-2 rounded bg-light border">
-                                <div class="fw-semibold text-dark">@CapUser1.Name</div>
-                                <div class="text-muted small">
-                                    <i class="bi bi-telephone"></i> @CapUser1.PhoneNumber
-                                    @if (!string.IsNullOrWhiteSpace(CapUser1.ShortPhoneNumber))
-                                    {
-                                        <span class="ms-2">Ext: @CapUser1.ShortPhoneNumber</span>
-                                    }
-                                </div>
-                            </div>
-                        }
-                        else if (!string.IsNullOrWhiteSpace(mvarCFCap1))
-                        {
-                            <div class="mt-2 text-danger small">No se ha encontrado ningún usuario con ese CF.</div>
-                        }
-                    </div>
-                    <!-- Jefe de Maquinistas 2-->
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-success">CF Jefe de Maquinistas</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" maxlength="8"
-                                   @bind="mvarCFCap2"
-                                   @bind:event="oninput"
-                                   placeholder="Introduce CF del Jefe de Maquinistas" />
-                            <span class="input-group-text bg-light">
-                                <i class="bi bi-search"></i>
-                            </span>
-                        </div>
-                        @if (CapUser2 != null)
-                        {
-                            <div class="mt-2 p-2 rounded bg-light border">
-                                <div class="fw-semibold text-dark">@CapUser2.Name</div>
-                                <div class="text-muted small">
-                                    <i class="bi bi-telephone"></i> @CapUser2.PhoneNumber
-                                    @if (!string.IsNullOrWhiteSpace(CapUser2.ShortPhoneNumber))
-                                    {
-                                        <span class="ms-2">Ext: @CapUser2.ShortPhoneNumber</span>
-                                    }
-                                </div>
-                            </div>
-                        }
-                        else if (!string.IsNullOrWhiteSpace(mvarCFCap2))
-                        {
-                            <div class="mt-2 text-danger small">No se ha encontrado ningún usuario con ese CF.</div>
-                        }
-                    </div>
-                </div>
-                <!-- Condiciones del servicio -->
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <label class="form-label fw-bold text-secondary">Condiciones del servicio</label>
-                        <textarea class="form-control" rows="4"
-                                  @bind="mvarComment"
-                                  placeholder="Escribe aquí las condiciones especiales del servicio..."></textarea>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <Sapphire2025.Layout.Expert.AssignationDayCalendar CTCView="true"
-                                                           ColAssignations="mcolAssignations"
-                                                           TimeSlice="mvarTimeSlice"
-                                                           InspectorId="@(InspectorUser?.guid ?? Guid.Empty)"
-                                                           ExpertId1="@(CapUser1?.guid ?? Guid.Empty)"
-                                                           ExpertId2="@(CapUser2?.guid ?? Guid.Empty)"
-                                                           Comments="@mvarComment"
-                                                           />
-    </CascadingValue>
+        <Sapphire2025.Layout.Inspector.AgentsListCTL>
+
+        </Sapphire2025.Layout.Inspector.AgentsListCTL>
+    </Sapphire2025.Layout.Expert.ExpertDayContext>
 }
 @code {
     private ModalDialog mvarModal { get; set; } = new ModalDialog();
     private InputFile? mvarCBExcelInputRef;
     private bool isImporting = false;
-    private DateTime selectedDate = DateTime.Today;
-    private Dictionary<Guid, UserModelBase>? mcolUsers;
-    private List<AssignationContentModel>? mcolAssignations;
-    private string? mvarCFInspector;
-    private string? mvarCFCap1;
-    private string? mvarCFCap2;
-    private string? mvarComment;
+    //TODO: Modificar esto... la importación debería ir en un control embebido en ExpertDayContext
+    private DateTime mvarSelectedDate = DateTime.Today.AddDays(4); //Lo normal es que me interese el informe de mañana.
+    private DateTime selectedDate
+    {
+        get => mvarSelectedDate;
+        set
+        {
+            mvarSelectedDate = value;
+        }
+    }
+
     private Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? mvarTimeSlice;
     private int mvarNumDay = 4;
-    private UserModelBase? InspectorUser => FindUserByCF(mvarCFInspector);
-    private UserModelBase? CapUser1 => FindUserByCF(mvarCFCap1);
-    private UserModelBase? CapUser2 => FindUserByCF(mvarCFCap2);
 
-    private UserModelBase? FindUserByCF(string? cf)
-    {
-        if (string.IsNullOrWhiteSpace(cf) || mcolUsers == null)
-            return null;
-        return mcolUsers.Values.FirstOrDefault(u => u.CF.Equals(cf.Trim(), StringComparison.OrdinalIgnoreCase));
-    }
-
-    protected async override Task OnInitializedAsync()
-    {
-        mcolUsers = await mvarAuthClient.cachedUserList();
-        await UpdateData();
-    }
-    private async Task OnDaySelectedChange(DateTime newValue)
-    {
-        selectedDate = newValue;
-        await UpdateData();
-    }
-    private async Task UpdateData()
-    {
-        isImporting = true;
-        StateHasChanged();
-        mvarTimeSlice = await mvarExpertClient.PlansTimeSlice(selectedDate); //Rodaja de tiempos
-        mcolAssignations = await mvarExpertClient.Assignations(selectedDate); //Asignaciones del día
-        isImporting = false;
-        StateHasChanged();
-    }
     private async Task onExcelImport(InputFileChangeEventArgs e)
     {        
         isImporting = true;

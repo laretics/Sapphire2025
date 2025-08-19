@@ -1,0 +1,60 @@
+﻿<div class="input-group">
+    <button type="button"
+            class="btn btn-outline-secondary dtp-print-hide"
+            style="height: 100%;"
+            @onclick="SetToday">
+        Hoy
+    </button>
+    <button type="button"
+            class="btn btn-outline-secondary dtp-print-hide"
+            style="height: 100%;"
+            @onclick="SetTomorrow">
+        Mañana
+    </button>
+    <InputDate id="datePicker"
+               Value="SelectedDate"
+               ValueChanged="@(async (DateTime newValue) => await OnDaySelectedChange(newValue))"
+               ValueExpression="() => SelectedDate"
+               class="form-control" />
+    @if(null!=GetDateLabel())
+    {
+        <span class="input-group-text" style="min-width: 80px;">
+            @GetDateLabel()
+        </span>
+    }
+</div>
+@code {
+    [Parameter]
+    public DateTime SelectedDate { get; set; }
+    [Parameter]
+    public EventCallback<DateTime> SelectedDateChanged { get; set; }
+    private async Task OnDaySelectedChange(DateTime newValue)
+    {
+        SelectedDate = newValue;
+        StateHasChanged();
+        await SelectedDateChanged.InvokeAsync(newValue);
+    }
+    private async Task SetToday()
+    {
+        await OnDaySelectedChange(DateTime.Today);
+    }
+
+    private async Task SetTomorrow()
+    {
+        await OnDaySelectedChange(DateTime.Today.AddDays(1));
+    }
+    private string? GetDateLabel()
+    {
+        if (SelectedDate.Date == DateTime.Today)
+            return "Hoy";
+        if (SelectedDate.Date == DateTime.Today.AddDays(1))
+            return "Mañana";
+        if (SelectedDate.Date == DateTime.Today.AddDays(2))
+            return "Pasado mañana";
+        if (SelectedDate.Date == DateTime.Today.AddDays(-1))
+            return "Ayer";
+        if (SelectedDate.Date == DateTime.Today.AddDays(-1))
+            return "Anteayer";
+        return null;
+    }
+}

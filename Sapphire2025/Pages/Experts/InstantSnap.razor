@@ -8,6 +8,18 @@
 @code {
     private Dictionary<Guid, UserModelBase>? mcolUsers;
     private List<AssignationContentModel>? mcolAssignations;
+    private WorkShiftTemplateCollectionModel? mvarPlan;
+    private Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? mvarTimeSlice;
+    private DateTime mvarCurrentDate = DateTime.Today;
+    private DateTime selectedDate
+    {
+        get => mvarCurrentDate;
+        set
+        {
+            mvarCurrentDate = value;
+            //_ = UpdateData(); //Fire and forget.
+        }
+    }
 
     protected async override Task OnInitializedAsync()
     {
