@@ -81,6 +81,10 @@ else
 	public List<WorkShiftTemplateModel>? SortedTemplates{ get; set; }
 	[CascadingParameter]
 	public TimeSpan mvarNow { get; set; }
+	[CascadingParameter(Name = "WipeOff")]
+	public bool WipeOff { get; set; }
+	[CascadingParameter(Name = "FollowingMode")]
+	public bool FollowingMode { get; set; }
 	[Parameter]
 	public int MinutesBeforeWorksheet { get; set; }
 	[Parameter]
@@ -108,6 +112,12 @@ else
 		return salida;
 	}
 
+
+	private bool IsToday()
+	{
+		return (null != TimeSlice && TimeSlice.InitialDate.Date == DateTime.Today);
+	}
+
 	private string GetCellStyle(WorkShiftTemplateModel? rhs)
 	{
 		string auxColor = "black";
@@ -122,9 +132,8 @@ else
 	private string GetAssignationStyle(WorkShiftTemplateModel? rhs)
 	{
 		string salida = "transparent";
-		if(null!=TimeSlice && TimeSlice.InitialDate.Date==DateTime.Today)
+		if (IsToday() && FollowingMode)
 		{
-
 			if(rhs is AttTemplateModel AttTurno)
 			{
 				TimeSpan horaComienzo = AttTurno.StartTime.Add(new TimeSpan(0, MinutesBeforeWorksheet, 0));

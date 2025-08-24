@@ -17,63 +17,30 @@ else if (mcolCirculations.Length<1)
 }
 else
 {
-	for (int i = 0;i< mcolCirculations.GetUpperBound(1);i++)
-	{
-		<div class="row">
-			@if(null==mcolCirculations[0,i])
-			{
-				<div class="col-3"></div>
-			}
-			else
-			{
-				<div class="col-1 border border-secondary rounded" style="@CirculationCellStyle(mcolCirculations[0, i])">
-					@CirculationCellString(mcolCirculations[0,i])
-				</div>
-				<div class="col-2 border border-secondary rounded" style="@AssignationCellStyle(mcolCirculations[0, i])">
-					@AssignationString(mcolCirculations[0,i])
-				</div>
-			}
-			@if (null == mcolCirculations[1, i])
-			{
-				<div class="col-3"></div>
-			}
-			else
-			{
-				<div class="col-1 border border-secondary rounded" style="@CirculationCellStyle(mcolCirculations[1, i])">
-					@CirculationCellString(mcolCirculations[1, i])
-				</div>
-				<div class="col-2 border border-secondary rounded" style="@AssignationCellStyle(mcolCirculations[1, i])">
-					@AssignationString(mcolCirculations[1, i])
-				</div>
-			}
-			@if (null == mcolCirculations[2, i])
-			{
-				<div class="col-3"></div>
-			}
-			else
-			{
-				<div class="col-1 border border-secondary rounded" style="@CirculationCellStyle(mcolCirculations[2, i])">
-					@CirculationCellString(mcolCirculations[2, i])
-				</div>
-				<div class="col-2 border border-secondary rounded" style="@AssignationCellStyle(mcolCirculations[2,i])">
-					@AssignationString(mcolCirculations[2, i])
-				</div>
-			}
-			@if (null == mcolCirculations[3, i])
-			{
-				<div class="col-3"></div>
-			}
-			else
-			{
-				<div class="col-1 border border-secondary rounded" style="@CirculationCellStyle(mcolCirculations[3, i])">
-					@CirculationCellString(mcolCirculations[3, i])
-				</div>
-				<div class="col-2 border border-secondary rounded" style="@AssignationCellStyle(mcolCirculations[3, i])">
-					@AssignationString(mcolCirculations[3, i])
-				</div>
-			}
-		</div>
-	}
+	<div class="row g-3">
+		@for (int col = 0; col< 4;col++)
+		{
+			<div class="col-md-3">
+				@for (int row = 0; row < mcolCirculations.GetUpperBound(1); row++)
+				{
+					if (MustShowCell(mcolCirculations[col, row]))
+					{
+						<div class="row">
+							<div class="col-5 border border-secondary rounded" style="@CirculationCellStyle(mcolCirculations[col, row])">
+								@CirculationCellString(mcolCirculations[col, row])
+								<span class="small ms-2">@CirculationCellTimeString(mcolCirculations[col, row])</span>
+							</div>
+							<div class="col-6 border border-secondary rounded" style="@AssignationCellStyle(mcolCirculations[col, row])">
+								<div class="small ms-2">
+									@AssignationString(mcolCirculations[col, row])
+								</div>								
+							</div>
+						</div>
+					}
+				}
+			</div>
+		}
+	</div>
 }
 
 @code {
@@ -87,6 +54,10 @@ else
 	public List<AssignationContentModel>? ColAssignations { get; set; }
 	[CascadingParameter]
 	public List<WorkShiftTemplateModel>? SortedTemplates { get; set; }
+	[CascadingParameter(Name = "WipeOff")]
+	public bool WipeOff { get; set; }
+	[CascadingParameter(Name = "FollowingMode")]
+	public bool FollowingMode { get; set; }
 	[Parameter]
 	public int MinutesBeforeTrain { get; set; } = 10; //Minutos antes de la salida en que el Maquinista tendría que estar en el tren
 	[Parameter]
@@ -98,7 +69,7 @@ else
 
 	private TrainWorkShiftContentModel[,] mcolCirculations = new TrainWorkShiftContentModel[4, 0];
 
-	
+
 
 	protected override void OnParametersSet()
 	{
@@ -184,7 +155,14 @@ else
 	}
 	private string CirculationCellString(TrainWorkShiftContentModel circulation)
 	{
-		return string.Format("{0} {1}", circulation.TrainId, Sapphire2025Models.Utils.autoInterval(circulation.StartTime, true));
+		return string.Format("{0}", circulation.TrainId);
+	}
+	private string CirculationCellTimeString(TrainWorkShiftContentModel circulation)
+	{
+		return string.Format("{0}-{1}",
+		Sapphire2025Models.Utils.autoInterval(circulation.StartTime, true),
+		Sapphire2025Models.Utils.autoInterval(circulation.EndTime, true)
+		);
 	}
 	private string AssignationString(TrainWorkShiftContentModel circulation)
 	{
@@ -235,7 +213,7 @@ else
 	private string AssignationCellStyle(TrainWorkShiftContentModel circulation)
 	{
 		string salida = "transparent";
-		if(null!=TimeSlice && TimeSlice.InitialDate.Date==DateTime.Today)
+		if(IsToday()&&FollowingMode)
 		{
 			if(mvarNow>circulation.StartTime && mvarNow<circulation.EndTime)
 				salida = "#8B9DFF"; //Tren en marcha (Azul)
@@ -250,5 +228,20 @@ else
 				salida = "#FC92AC"; // Rojo
 		}
 		return string.Format("background: linear-gradient(to right, {0}, transparent);", salida);
+	}
+
+	private bool MustShowCell(TrainWorkShiftContentModel? train)
+	{
+		if (null == train) return false;
+		if (!IsToday()) return true;
+		if (WipeOff)
+		{
+			if (train.EndTime < mvarNow) return false;
+		}
+		return true;
+	}
+	private bool IsToday()
+	{
+		return (null != TimeSlice && TimeSlice.InitialDate.Date == DateTime.Today);
 	}
 }

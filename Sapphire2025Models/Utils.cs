@@ -197,7 +197,7 @@ namespace Sapphire2025Models
                 int auxNumero = ExtractCirculationNumber(rhs);
                 if (auxNumero > 3999)
                 {
-                    if (rhs.StartsWith("40") || rhs.StartsWith("41")) return SFMIniteraryAsimilation.Material;
+                    if (rhs.StartsWith("40") || rhs.StartsWith("41") || rhs.StartsWith("70")) return SFMIniteraryAsimilation.Material;
                     if (rhs.StartsWith("42")) return SFMIniteraryAsimilation.Type42;
                     if (rhs.StartsWith("43")) return SFMIniteraryAsimilation.Marratxi;
                     if (rhs.StartsWith("44")) return SFMIniteraryAsimilation.ManacorFestive;

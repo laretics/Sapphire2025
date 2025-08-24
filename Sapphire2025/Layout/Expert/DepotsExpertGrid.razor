@@ -17,56 +17,29 @@ else if (mcolDepots.Length < 1)
 }
 else
 {
-	for(int i = 0; i< mcolDepots.GetUpperBound(1);i++)
-	{
-		<div class="row">
-			@if(null==mcolDepots[0,i])
-			{
-				<div class="col-4"></div>
-			}
-			else
-			{
-				<div class="col-4 border border-secondary rounded" >
-					<div class="card shadow-sm h-100" style="@DepotCellStyle(mcolDepots[0, i])">
-						<div class="card-body p-2">
-							<h6 class="card-title mb-1">@DepotCellString(mcolDepots[0, i])</h6>
-							<p class="card-text mb-0">@AssignationString(mcolDepots[0, i])</p>
+	<div class="row g-3">
+		@for (int col = 0; col < 3; col++)
+		{
+			<div class="col-md-4">
+				@for (int row=0;row < mcolDepots.GetUpperBound(1);row++)
+				{
+					if(MustShowCell(mcolDepots[col,row]))
+					{
+						<div class="row">
+							<div class="col-10 border border-secondary rounded">
+								<div class="card shadow-sm h-100" style="@DepotCellStyle(mcolDepots[col, row])">
+									<div class="card-body p-2">
+										<h6 class="card-title mb-1">@DepotCellString(mcolDepots[col, row])</h6>
+										<p class="card-text mb-0">@AssignationString(mcolDepots[col, row])</p>
+									</div>
+								</div>
+							</div>
 						</div>
-					</div>
-				</div>
-			}
-			@if (null == mcolDepots[1, i])
-			{
-				<div class="col-4"></div>
-			}
-			else
-			{
-				<div class="col-4 border border-secondary rounded">
-					<div class="card shadow-sm h-100" style="@DepotCellStyle(mcolDepots[1, i])">
-						<div class="card-body p-2">
-							<h6 class="card-title mb-1">@DepotCellString(mcolDepots[1, i])</h6>
-							<p class="card-text mb-0">@AssignationString(mcolDepots[1, i])</p>
-						</div>
-					</div>
-				</div>
-			}
-			@if (null == mcolDepots[2, i])
-			{
-				<div class="col-4"></div>
-			}
-			else
-			{
-				<div class="col-4 border border-secondary rounded">
-					<div class="card shadow-sm h-100" style="@DepotCellStyle(mcolDepots[2, i])">
-						<div class="card-body p-2">
-							<h6 class="card-title mb-1">@DepotCellString(mcolDepots[2, i])</h6>
-							<p class="card-text mb-0">@AssignationString(mcolDepots[2, i])</p>
-						</div>
-					</div>
-				</div>
-			}
-		</div>
-	}
+					}
+				}
+			</div>			
+		}
+	</div>
 }
 @code
 {
@@ -78,10 +51,10 @@ else
 	public List<AssignationContentModel>? ColAssignations { get; set; }
 	[CascadingParameter]
 	public List<WorkShiftTemplateModel>? SortedTemplates { get; set; }
-	[Parameter]
-	public int MinutesBeforeTrain { get; set; } = 10; //Minutos antes de la salida en que el Maquinista tendría que estar en el tren
-	[Parameter]
-	public int MinutesAfterTrain { get; set; } = 15; //Minutos tras la llegada en que el tren se colorea.
+	[CascadingParameter(Name = "WipeOff")]
+	public bool WipeOff { get; set; }
+	[CascadingParameter(Name = "FollowingMode")]
+	public bool FollowingMode { get; set; }
 	[CascadingParameter]
 	public TimeSpan mvarNow { get; set; }
 	[Parameter]
@@ -155,6 +128,20 @@ else
 			.ToList();
 
 		return salida;
+	}
+	private bool MustShowCell(AttWorkShiftContentModel? depot)
+	{
+		if (null == depot) return false;
+		if (!IsToday()) return true;
+		if (FollowingMode && WipeOff)
+		{
+			if (depot.EndTime < mvarNow) return false;
+		}		
+		return true;
+	}
+	private bool IsToday()
+	{
+		return (null != TimeSlice && TimeSlice.InitialDate.Date == DateTime.Today);
 	}
 
 	private string DepotCellString(AttWorkShiftContentModel depot)

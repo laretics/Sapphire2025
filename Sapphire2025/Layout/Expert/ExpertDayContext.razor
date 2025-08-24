@@ -15,11 +15,25 @@ else
                             <div class="col-md-6">
                                 <Sapphire2025.Layout.Expert.DateTimePicker @bind-SelectedDate="selectedDate">
                                 </Sapphire2025.Layout.Expert.DateTimePicker>
-                                <div class="form-check form-switch mt-3">
-                                    <input class="form-check-input" type="checkbox" id="festiveSwitch" checked="@isFestive" @onchange="OnFestiveChanged" />
-                                    <label class="form-check-label" for="festiveSwitch">
-                                        Festivo
-                                    </label>
+                                <div class="mb-3 d-flex gap-3 align-items-center">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="wipeoffSwitch" checked="@WipeOff" @onchange="OnWipeOffChanged" />
+                                        <label class="form-check-label" for="wipeoffSwitch">
+                                            Desaparecer contenido
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="followingSwitch" checked="@FollowingMode" @onchange="OnFollowingModeChanged" />
+                                        <label class="form-check-label" for="followingSwitch">
+                                            Modo seguimiento
+                                        </label>
+                                    </div>
+@*                                     <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="festiveSwitch" checked="@isFestive" @onchange="OnFestiveChanged" />
+                                        <label class="form-check-label" for="festiveSwitch">
+                                            Festivo
+                                        </label>
+                                    </div> *@
                                 </div>
                             </div>
                             @if(null!=Plan)
@@ -45,7 +59,11 @@ else
                     <CascadingValue Value="Plan">
                         <CascadingValue Value="SortedTemplates">
                             <CascadingValue Value="mvarNow">
-                                @ChildContent
+                                <CascadingValue Value="FollowingMode" Name="FollowingMode">
+                                    <CascadingValue Value="WipeOff" Name="WipeOff">
+                                        @ChildContent
+                                    </CascadingValue>
+                                </CascadingValue>
                             </CascadingValue>                            
                         </CascadingValue>                        
                     </CascadingValue>
@@ -57,6 +75,8 @@ else
 @code {
     [Parameter]
     public RenderFragment? ChildContent { get; set; } //Contenido de este control.
+    public bool WipeOff{get;set;} //Activa la desaparición del contenido a medida que se consume.
+    public bool FollowingMode { get; set; } //Activa el modo de seguimiento (coloreado de casillas a medida que se van activando.)
     public Dictionary<Guid, UserModelBase>? Users;
     public List<AssignationContentModel>? Assignations;
     private WorkShiftTemplateCollectionModel? Plan;
@@ -82,7 +102,8 @@ else
     protected async override Task OnInitializedAsync()
     {
         mvarNow = DateTime.Now.TimeOfDay;
-
+        WipeOff = true;
+        FollowingMode = true;
 
         Users = await mvarAuthClient.cachedUserList();
         Assignations = await mvarExpertClient.Assignations(selectedDate);
@@ -153,6 +174,25 @@ else
             .ThenBy(xx => xx.Name)
             .ToList();
 
+        }
+    }
+    private async Task OnWipeOffChanged(ChangeEventArgs e)
+    {
+        if (e.Value is bool value)
+        {
+            WipeOff = value;
+            StateHasChanged();
+            // Si necesitas lógica adicional, añádela aquí
+        }
+    }
+
+    private async Task OnFollowingModeChanged(ChangeEventArgs e)
+    {
+        if (e.Value is bool value)
+        {
+            FollowingMode = value;
+            StateHasChanged();
+            // Si necesitas lógica adicional, añádela aquí
         }
     }
 }
