@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Http.Headers;
@@ -73,8 +75,6 @@ namespace Sapphire2025Models
 				return salida.ToString();
 			}
 		}
-		
-
 		public static string autoDate(DateTime rhs)
 		{
 			DateTime ahora = DateTime.Now;
@@ -140,6 +140,113 @@ namespace Sapphire2025Models
 				if (!getBit(pattern, 0) && !getBit(pattern, 6)) return false; //Si es festivo y el turno no es de sábado ni de domingo NO concuerda.
 			}				
 			return (pattern & (1 << (byte)today))!=0;
+		}
+
+		/// <summary>
+		/// Dada una circulación, obtiene el número de orden de la misma buscando el número en la cadena
+		/// </summary>
+		/// <param name="circulationId">Nombre completo de la circulación</param>
+		/// <returns>Número de la circulación</returns>
+		public static int ExtractCirculationNumber(string circulationId)
+		{
+            if (string.IsNullOrWhiteSpace(circulationId))
+                return -1;
+
+            // Busca el primer grupo de dígitos en la cadena
+            var match = System.Text.RegularExpressions.Regex.Match(circulationId, @"\d+");
+            if (match.Success)
+            {
+                if (int.TryParse(match.Value, out int result))
+                    return result;
+            }
+            return -1;
+        }
+
+		/// <summary>
+		/// Dado el número de una circulación, obtiene la paridad. Even es par. Odd impar.
+		/// </summary>
+		/// <param name="circulationId">Número de la circulación en formato int</param>
+		/// <returns>True si es par o nulo</returns>
+		public static bool IsEven(int circulationId)
+		{
+			return circulationId % 2 == 0;
+		}
+
+		public enum SFMIniteraryAsimilation:byte
+		{
+			Unknown=0,
+			Material=1,
+			Type42=2,
+			Marratxi=3,
+			ManacorFestive=4,
+			Inca=5,
+			SaPoblaTram=6,
+			SaPobla=7,
+			SaPoblaFestive=8,
+			Manacor=9,
+			ParcBit=10,
+			ParcBitFestive=11,
+			Other=255
+		}
+
+		public static SFMIniteraryAsimilation GetAsimilation(string? circulationId)
+		{
+			if (null!= circulationId)
+			{
+                string rhs = circulationId.ToUpper();
+                int auxNumero = ExtractCirculationNumber(rhs);
+                if (auxNumero > 3999)
+                {
+                    if (rhs.StartsWith("40") || rhs.StartsWith("41")) return SFMIniteraryAsimilation.Material;
+                    if (rhs.StartsWith("42")) return SFMIniteraryAsimilation.Type42;
+                    if (rhs.StartsWith("43")) return SFMIniteraryAsimilation.Marratxi;
+                    if (rhs.StartsWith("44")) return SFMIniteraryAsimilation.ManacorFestive;
+                    if (rhs.StartsWith("45")) return SFMIniteraryAsimilation.Inca;
+                    if (rhs.StartsWith("46")) return SFMIniteraryAsimilation.SaPoblaTram;
+                    if (rhs.StartsWith("47")) return SFMIniteraryAsimilation.SaPobla;
+                    if (rhs.StartsWith("48")) return SFMIniteraryAsimilation.SaPoblaFestive;
+                    if (rhs.StartsWith("49")) return SFMIniteraryAsimilation.Manacor;
+                    if (rhs.StartsWith("50")) return SFMIniteraryAsimilation.ParcBit;
+                    if (rhs.StartsWith("51") || rhs.StartsWith("55")) return SFMIniteraryAsimilation.ParcBitFestive;
+                }
+                else
+                {
+                    if (rhs.Contains("SP")) return SFMIniteraryAsimilation.SaPobla;
+                    if (rhs.Contains("I")) return SFMIniteraryAsimilation.Inca;
+                    if (rhs.Contains("MT")) return SFMIniteraryAsimilation.Marratxi;
+                    if (rhs.Contains("M")) return SFMIniteraryAsimilation.Manacor;
+                    if (rhs.Contains("UI")) return SFMIniteraryAsimilation.ParcBit;
+                    if (rhs.Contains("PB")) return SFMIniteraryAsimilation.ParcBit;
+                }
+            }
+            return SFMIniteraryAsimilation.Unknown;
+		}
+
+		public static string AsimilationColor(SFMIniteraryAsimilation rhs)
+		{
+			switch(rhs)
+			{
+				case SFMIniteraryAsimilation.Unknown: return "#C387F0";
+                case SFMIniteraryAsimilation.Material: return "#E6D7E0";
+
+                case SFMIniteraryAsimilation.Marratxi: return "#FF9999";
+
+                case SFMIniteraryAsimilation.Inca: return "#C0DBA8";
+
+                case SFMIniteraryAsimilation.SaPobla: return "#ABD9F2";
+                case SFMIniteraryAsimilation.SaPoblaTram: return "#B4E5FF";
+                case SFMIniteraryAsimilation.SaPoblaFestive: return "#9FC9E0";
+
+                case SFMIniteraryAsimilation.Manacor: return "#FFE781";
+                case SFMIniteraryAsimilation.ManacorFestive: return "#EDD778";
+
+                case SFMIniteraryAsimilation.ParcBit: return "#FFCC99";
+                case SFMIniteraryAsimilation.ParcBitFestive: return "#E3B688";
+
+                case SFMIniteraryAsimilation.Type42: return "#BFF0E1";                
+                           
+                default: return "transparent";
+            }			
 		}
 
 	}

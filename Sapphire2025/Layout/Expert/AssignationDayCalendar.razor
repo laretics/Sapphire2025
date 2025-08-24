@@ -1,4 +1,4 @@
-﻿@using Sapphire2025Models.Expert.WorkshiftTemplates;
+﻿
 
 @if(null==Users)
 {
@@ -46,15 +46,14 @@ else
 													<div class="cell-bar"
 															style="@GetBarStyle(mcolTemplates[col, row])" />
 												</div>
-
-
 											</td>
-											<td>
-												<table>
+											<td style="@GetAssignationStyle(mcolTemplates[col, row])">
+												<table >
 													@foreach (AssignationContentModel assignation in AssignationsByTemplate(mcolTemplates[col, row].Name))
 													{
 														<tr>
-															<td>@GetUserString(assignation.AgentId)</td>
+															<td>
+																@GetUserString(assignation.AgentId)</td>
 														</tr>
 													}
 												</table>
@@ -80,6 +79,12 @@ else
 	public List<AssignationContentModel>? ColAssignations { get; set; }
 	[CascadingParameter]
 	public List<WorkShiftTemplateModel>? SortedTemplates{ get; set; }
+	[CascadingParameter]
+	public TimeSpan mvarNow { get; set; }
+	[Parameter]
+	public int MinutesBeforeWorksheet { get; set; }
+	[Parameter]
+	public int MinutesAfterWorksheet { get; set; }
 
 	private WorkShiftTemplateModel[,] mcolTemplates { get; set; } = new WorkShiftTemplateModel[0, 0];
 
@@ -92,10 +97,10 @@ else
 		ComposeArray();
 	}
 
-	private List<AssignationContentModel> AssignationsByTemplate(string? assignationText)
+	public List<AssignationContentModel> AssignationsByTemplate(string? assignationText)
 	{
 		List<AssignationContentModel> salida = new List<AssignationContentModel>();
-		if(null!=ColAssignations && null!=assignationText)
+		if (null != ColAssignations && null != assignationText)
 			salida = ColAssignations
 			.Where(xx => xx.Definitive == assignationText)
 			.ToList();
@@ -113,6 +118,34 @@ else
 			auxFondo = rhs.BgColor ?? "transparent";
 		}
 		return string.Format("background: {1}; color: {0};", auxColor, auxFondo);
+	}
+	private string GetAssignationStyle(WorkShiftTemplateModel? rhs)
+	{
+		string salida = "transparent";
+		if(null!=TimeSlice && TimeSlice.InitialDate.Date==DateTime.Today)
+		{
+
+			if(rhs is AttTemplateModel AttTurno)
+			{
+				TimeSpan horaComienzo = AttTurno.StartTime.Add(new TimeSpan(0, MinutesBeforeWorksheet, 0));
+				TimeSpan horaDeje = AttTurno.EndTime.Add(new TimeSpan(0, -1 * MinutesAfterWorksheet, 0));
+
+				if(mvarNow >= AttTurno.StartTime && 
+					mvarNow < horaComienzo)
+				{
+					salida = salida = "#A8F0AD"; // Verde
+				}
+				else if(mvarNow>=horaComienzo && mvarNow< horaDeje)
+				{
+					salida = "#8B9DFF"; //Tren en marcha (Azul)
+				}
+				else if(mvarNow>=horaDeje && mvarNow < AttTurno.EndTime)
+				{
+					salida = "#FC92AC"; // Rojo
+				}
+			}
+		}
+		return string.Format("background: linear-gradient(to right, {0}, transparent);", salida);
 	}
 	private string GetCellText(WorkShiftTemplateModel? rhs)
 	{

@@ -7,17 +7,53 @@
 <ModalDialog @ref="mvarModal" />
 
 <Sapphire2025.Layout.Expert.ExpertDayContext>
-    <Sapphire2025.Layout.Expert.AssignationDayCalendar/>
+    <div>
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab1-tab" data-bs-toggle="tab" data-bs-target="#tab1"
+                        type="button" role="tab" aria-controls="tab1" aria-selected="true">
+                    Asignaciones
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab2-tab" data-bs-toggle="tab" data-bs-target="#tab2"
+                        type="button" role="tab" aria-controls="tab2" aria-selected="false">
+                    Circulaciones
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab3-tab" data-bs-toggle="tab" data-bs-target="#tab3"
+                        type="button" role="tab" aria-controls="tab3" aria-selected="false">
+                    Depósitos
+                </button>
+            </li>
+        </ul>
+        <div class="tab-content mt-3" id="myTabContent">
+            <div class="tab-pane fade show active" id="tab1" role="tabpanel" aria-labelledby="tab1-tab">
+                <Sapphire2025.Layout.Expert.AssignationDayCalendar 
+                MinutesBeforeWorksheet="25" MinutesAfterWorksheet="10"/>
+            </div>
+            <div class="tab-pane fade" id="tab2" role="tabpanel" aria-labelledby="tab2-tab">                
+                <Sapphire2025.Layout.Expert.CirculationsExpertGrid 
+                MinutesAfterTrain="15" MinutesBeforeTrain="10"/>
+            </div>
+            <div class="tab-pane fade" id="tab3" role="tabpanel" aria-labelledby="tab3-tab">
+                 <Sapphire2025.Layout.Expert.DepotsExpertGrid
+                 MinutesShortAtt="25"
+                 MinutesLongAtt="60"/>
+            </div>
+        </div>
+    </div>
 </Sapphire2025.Layout.Expert.ExpertDayContext>
 
 @code {
     private ModalDialog mvarModal { get; set; } = new ModalDialog();
 
-    [CascadingParameter]
-    public Dictionary<Guid, UserModelBase>? mcolUsers{ get; set; }
-    [CascadingParameter]
-    private List<AssignationContentModel>? mcolAssignations{ get; set; }
-    [CascadingParameter]
-    private Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? mvarTimeSlice { get; set; }
+    // [CascadingParameter]
+    // public Dictionary<Guid, UserModelBase>? mcolUsers{ get; set; }
+    // [CascadingParameter]
+    // private List<AssignationContentModel>? mcolAssignations{ get; set; }
+    // [CascadingParameter]
+    // private Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? mvarTimeSlice { get; set; }
 
 }

@@ -1,0 +1,38 @@
+﻿.custom-card {
+    transition: box-shadow 0.2s;
+}
+
+    .custom-card:hover {
+        box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+    }
+
+.custom-title {
+    font-size: 1.3rem;
+    letter-spacing: 0.5px;
+}
+
+.custom-comment {
+    font-size: 1.05rem;
+    font-style: italic;
+}
+
+.badge-animate {
+    animation: badge-pulse 1.2s infinite;
+}
+
+@keyframes badge-pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(220,53,69,0.7);
+    }
+
+    70% {
+        transform: scale(1.15);
+        box-shadow: 0 0 8px 8px rgba(220,53,69,0.2);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(220,53,69,0.0);
+    }
+}

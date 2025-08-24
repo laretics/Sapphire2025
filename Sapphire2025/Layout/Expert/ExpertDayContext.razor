@@ -44,7 +44,9 @@ else
                         </div>
                     <CascadingValue Value="Plan">
                         <CascadingValue Value="SortedTemplates">
-                            @ChildContent
+                            <CascadingValue Value="mvarNow">
+                                @ChildContent
+                            </CascadingValue>                            
                         </CascadingValue>                        
                     </CascadingValue>
                 </CascadingValue>
@@ -59,6 +61,7 @@ else
     public List<AssignationContentModel>? Assignations;
     private WorkShiftTemplateCollectionModel? Plan;
     private List<WorkShiftTemplateModel> SortedTemplates = new List<WorkShiftTemplateModel>();
+    public TimeSpan mvarNow;
     private bool isFestive = false;
     private bool mvarDataProcessing = false;
     private Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice;
@@ -73,12 +76,37 @@ else
         }
     }
 
+    private System.Threading.Timer? mvarRefreshTimer;
+
+
     protected async override Task OnInitializedAsync()
     {
+        mvarNow = DateTime.Now.TimeOfDay;
+
+
         Users = await mvarAuthClient.cachedUserList();
         Assignations = await mvarExpertClient.Assignations(selectedDate);
+        mvarRefreshTimer = new System.Threading.Timer(
+            async _ =>
+            {
+                await InvokeAsync(() =>
+                {
+                    mvarNow = DateTime.Now.TimeOfDay;
+                    StateHasChanged();
+                });
+            },
+            null,
+            TimeSpan.Zero,
+            TimeSpan.FromSeconds(20)
+        );
+
         await UpdateData();
     }
+    public void Dispose()
+    {
+        mvarRefreshTimer?.Dispose();
+    }
+
     private async Task OnFestiveChanged(ChangeEventArgs e)
     {
         if (null != e.Value)

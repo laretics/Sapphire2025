@@ -1,0 +1,254 @@
+﻿@if (null == Users)
+{
+	<LoadingTab ElementText="Cargando lista de usuarios"/>
+}
+else if (null == TimeSlice)
+{
+	<LoadingTab ElementText="Cargando información de fecha" />
+}
+else if (null == ColAssignations)
+{
+	<LoadingTab ElementText="Cargando asignaciones de turnos" />
+}
+else if (mcolCirculations.Length<1)
+{
+	<ErrorTab Description="No se han cargado circulaciones: La colección está vacía"
+	Instructions="Asegúrese de tener definido al menos un plan de explotación en una fecha anterior a la mostrada" />
+}
+else
+{
+	for (int i = 0;i< mcolCirculations.GetUpperBound(1);i++)
+	{
+		<div class="row">
+			@if(null==mcolCirculations[0,i])
+			{
+				<div class="col-3"></div>
+			}
+			else
+			{
+				<div class="col-1 border border-secondary rounded" style="@CirculationCellStyle(mcolCirculations[0, i])">
+					@CirculationCellString(mcolCirculations[0,i])
+				</div>
+				<div class="col-2 border border-secondary rounded" style="@AssignationCellStyle(mcolCirculations[0, i])">
+					@AssignationString(mcolCirculations[0,i])
+				</div>
+			}
+			@if (null == mcolCirculations[1, i])
+			{
+				<div class="col-3"></div>
+			}
+			else
+			{
+				<div class="col-1 border border-secondary rounded" style="@CirculationCellStyle(mcolCirculations[1, i])">
+					@CirculationCellString(mcolCirculations[1, i])
+				</div>
+				<div class="col-2 border border-secondary rounded" style="@AssignationCellStyle(mcolCirculations[1, i])">
+					@AssignationString(mcolCirculations[1, i])
+				</div>
+			}
+			@if (null == mcolCirculations[2, i])
+			{
+				<div class="col-3"></div>
+			}
+			else
+			{
+				<div class="col-1 border border-secondary rounded" style="@CirculationCellStyle(mcolCirculations[2, i])">
+					@CirculationCellString(mcolCirculations[2, i])
+				</div>
+				<div class="col-2 border border-secondary rounded" style="@AssignationCellStyle(mcolCirculations[2,i])">
+					@AssignationString(mcolCirculations[2, i])
+				</div>
+			}
+			@if (null == mcolCirculations[3, i])
+			{
+				<div class="col-3"></div>
+			}
+			else
+			{
+				<div class="col-1 border border-secondary rounded" style="@CirculationCellStyle(mcolCirculations[3, i])">
+					@CirculationCellString(mcolCirculations[3, i])
+				</div>
+				<div class="col-2 border border-secondary rounded" style="@AssignationCellStyle(mcolCirculations[3, i])">
+					@AssignationString(mcolCirculations[3, i])
+				</div>
+			}
+		</div>
+	}
+}
+
+@code {
+	//Esto es un control que contiene una tabla con las circulaciones programadas o una malla
+	//en ella aparecerán los Maquinistas encargados de ellas por turno.
+	[CascadingParameter] //Diccionario de usuarios a representar
+	public Dictionary<Guid, UserModelBase>? Users { get; set; }
+	[CascadingParameter] //Rodaja de días.
+	public Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice { get; set; }
+	[CascadingParameter] //Asignaciones del gráfico
+	public List<AssignationContentModel>? ColAssignations { get; set; }
+	[CascadingParameter]
+	public List<WorkShiftTemplateModel>? SortedTemplates { get; set; }
+	[Parameter]
+	public int MinutesBeforeTrain { get; set; } = 10; //Minutos antes de la salida en que el Maquinista tendría que estar en el tren
+	[Parameter]
+	public int MinutesAfterTrain { get; set; } = 15; //Minutos tras la llegada en que el tren se colorea.
+	[CascadingParameter]
+	public TimeSpan mvarNow{ get; set; }
+
+	private WorkShiftTemplateCollectionModel? mvarPlan;
+
+	private TrainWorkShiftContentModel[,] mcolCirculations = new TrainWorkShiftContentModel[4, 0];
+
+	
+
+	protected override void OnParametersSet()
+	{
+		base.OnParametersSet();
+		ComposeCirculations();
+	}
+
+	private void ComposeCirculations()
+	{
+		if (null == SortedTemplates) return;
+		List<TrainWorkShiftContentModel> auxImpares = new List<TrainWorkShiftContentModel>();
+		List<TrainWorkShiftContentModel> auxMetrosImpares = new List<TrainWorkShiftContentModel>();
+		List<TrainWorkShiftContentModel> auxMetrosPares = new List<TrainWorkShiftContentModel>();
+		List<TrainWorkShiftContentModel> auxPares = new List<TrainWorkShiftContentModel>();
+		foreach (WorkShiftTemplateModel turno in SortedTemplates)
+		{
+			if(turno is WorkTemplateModel workTemplate)
+			{
+				if(null!=workTemplate.Content)
+				{
+					foreach (WorkShiftContentModel contenido in workTemplate.Content)
+					{
+						if(contenido is TrainWorkShiftContentModel auxCirculation)
+						{
+							if(null!=auxCirculation.TrainId && !auxCirculation.Discrectional)
+							{
+								string auxTren = auxCirculation.TrainId;
+								Sapphire2025Models.Utils.SFMIniteraryAsimilation asimilation = Sapphire2025Models.Utils.GetAsimilation(auxTren);
+
+								int circulationSequence = Sapphire2025Models.Utils.ExtractCirculationNumber(auxTren);
+								switch(asimilation)
+								{
+									case Sapphire2025Models.Utils.SFMIniteraryAsimilation.ParcBit:
+									case Sapphire2025Models.Utils.SFMIniteraryAsimilation.ParcBitFestive:
+										if (Sapphire2025Models.Utils.IsEven(circulationSequence))
+											auxMetrosPares.Add(auxCirculation);
+										else
+											auxMetrosImpares.Add(auxCirculation);
+										break;
+									default:
+										if (Sapphire2025Models.Utils.IsEven(circulationSequence))
+											auxPares.Add(auxCirculation);
+										else
+											auxImpares.Add(auxCirculation);
+										break;
+								}
+							}
+						}
+					}
+				}
+				int auxMayor = auxPares.Count();
+				if (auxImpares.Count() > auxMayor) auxMayor = auxImpares.Count();
+				if (auxMetrosPares.Count() > auxMayor) auxMayor = auxMetrosPares.Count();
+				if (auxMetrosImpares.Count() > auxMayor) auxMayor = auxMetrosImpares.Count();
+				mcolCirculations = new TrainWorkShiftContentModel[4, auxMayor+1];
+				int auxIndex = 0;
+				foreach(TrainWorkShiftContentModel tren in auxImpares.OrderBy(xx=>xx.StartTime))
+					mcolCirculations[0, auxIndex++] = tren;
+
+				auxIndex = 0;
+				foreach (TrainWorkShiftContentModel tren in auxPares.OrderBy(xx => xx.StartTime))
+					mcolCirculations[1, auxIndex++] = tren;
+
+				auxIndex = 0;
+				foreach (TrainWorkShiftContentModel tren in auxMetrosImpares.OrderBy(xx => xx.StartTime))
+					mcolCirculations[2, auxIndex++] = tren;
+
+				auxIndex = 0;
+				foreach (TrainWorkShiftContentModel tren in auxMetrosPares.OrderBy(xx => xx.StartTime))
+					mcolCirculations[3, auxIndex++] = tren;
+			}
+		}
+	}
+	private List<AssignationContentModel> AssignationsByTemplate(string? assignationText)
+	{
+		List<AssignationContentModel> salida = new List<AssignationContentModel>();
+		if (null != ColAssignations && null != assignationText)
+			salida = ColAssignations
+			.Where(xx => xx.Definitive == assignationText)
+			.ToList();
+
+		return salida;
+	}
+	private string CirculationCellString(TrainWorkShiftContentModel circulation)
+	{
+		return string.Format("{0} {1}", circulation.TrainId, Sapphire2025Models.Utils.autoInterval(circulation.StartTime, true));
+	}
+	private string AssignationString(TrainWorkShiftContentModel circulation)
+	{
+		if(null!=circulation.Parent && null!=Users)
+		{
+			List<AssignationContentModel> auxAssignations = AssignationsByTemplate(circulation.Parent.Name);			
+			if(auxAssignations.Count>0)
+			{
+				System.Text.StringBuilder salida = new System.Text.StringBuilder();
+				salida.AppendFormat("{0}: ", circulation.Parent.Name);
+
+				if(1==auxAssignations.Count)
+				{
+					if (Users.ContainsKey(auxAssignations[0].AgentId))
+						salida.Append(Users[auxAssignations[0].AgentId].Name);
+					else
+						salida.Append("desconocido");
+				}
+				else
+				{
+					for (int i = 0; i < auxAssignations.Count; i++)
+					{
+						if (i == (auxAssignations.Count - 1))
+							salida.Append(" y ");
+						else if (i > 0)
+							salida.Append(" , ");
+
+						if (Users.ContainsKey(auxAssignations[i].AgentId))
+							salida.Append(Users[auxAssignations[i].AgentId].Name);
+						else
+							salida.Append("desconocido");
+					}
+				}
+				return salida.ToString();
+			}			
+			else
+				return string.Format("Turno {0} descubierto!", circulation.Parent.Name);
+		}
+		return string.Empty;
+	}
+	private string CirculationCellStyle(TrainWorkShiftContentModel circulation)
+	{
+		string salida = "transparent";
+		Sapphire2025Models.Utils.SFMIniteraryAsimilation asimilationId = Sapphire2025Models.Utils.GetAsimilation(circulation.TrainId);
+		salida = Sapphire2025Models.Utils.AsimilationColor(asimilationId);
+		return string.Format("background: linear-gradient(to right, {0}, transparent);",salida);
+	}
+	private string AssignationCellStyle(TrainWorkShiftContentModel circulation)
+	{
+		string salida = "transparent";
+		if(null!=TimeSlice && TimeSlice.InitialDate.Date==DateTime.Today)
+		{
+			if(mvarNow>circulation.StartTime && mvarNow<circulation.EndTime)
+				salida = "#8B9DFF"; //Tren en marcha (Azul)
+									// Tren preparado para salir
+			else if (mvarNow >= circulation.StartTime.Subtract(new TimeSpan(0, MinutesBeforeTrain, 0)) &&
+					 mvarNow < circulation.StartTime)
+				salida = "#A8F0AD"; // Verde
+
+			// Tren finalizado recientemente
+			else if (mvarNow >= circulation.EndTime &&
+					 mvarNow < circulation.EndTime.Add(new TimeSpan(0, MinutesAfterTrain, 0)))
+				salida = "#FC92AC"; // Rojo
+		}
+		return string.Format("background: linear-gradient(to right, {0}, transparent);", salida);
+	}
+}

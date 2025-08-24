@@ -1,4 +1,4 @@
-﻿@inject ExpertClient mvarExpertClient
+﻿
 <CascadingValue Value="Session">
     <NexusNavOption Selected="@(0==SelectedNavItem)"
     onclick="@(()=>SelectNavItem(0))"
@@ -21,53 +21,20 @@
                     Tooltip="Gestión de turnos de trabajo."
                     Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Root}" />
 
-    <NexusNavOption Selected="@(3==SelectedNavItem)"
-    onclick="@(()=>SelectNavItem(3))"
-    Link="trainFlow" Caption="Flujo"    
-    Image="bi bi-train-diagram-nav-menu" 
-    Tooltip="Flujograma de unidades tren y resto de vehículos"/>
-
-
-    <NexusNavOption Selected="@(4== SelectedNavItem)"
-        OnClick="@(()=>SelectNavItem(4))"
-        Link="dailyGraph" Caption="Maquinistas D."
-        Image="bi bi-expert-day-nav-menu"
-        Tooltip="Gráfico diario"
-        Roles=
-        "new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Expert, 
-            Sapphire2025Models.Common.UserRole.Inspector}" />
-
     <NexusNavOption Selected ="@(5== SelectedNavItem)"
-                    OnClick="@(()=>SelectNavItem(5))" 
-                    Link="instantsnap" Caption="Actual"
+                    OnClick="@(()=>SelectNavItem(3))" 
+                    Link="submenu/caps" Caption="J.Maquinista"
                     Image="bi bi-expert-day-nav-menu"
-                    Tooltip="Situación actual"
-                    Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Expert,
-                                Sapphire2025Models.Common.UserRole.Inspector}" />
+                    Tooltip="Opciones para Jefes de Maquinistas"
+                    Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Expert}" />
     
     <NexusNavOption Selected="@(6 == SelectedNavItem)"
-                    Badge="Nuevo"
-                    OnClick="@(()=>SelectNavItem(6))"
-                    Link="agentsctc" Caption="Agentes CTC"
+                    OnClick="@(()=>SelectNavItem(4))"
+                    Link="submenu/inspector" Caption="Inspector"
                     Image="bi bi-expert-day-nav-menu"
-                    Tooltip="Listado de Agentes para el personal del CTC"
-                    Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Expert,
-                                                    Sapphire2025Models.Common.UserRole.Inspector}" />
+                    Tooltip="Opciones para Inspectores"
+                    Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Inspector}" />
     
-
-    @if (null!=mcolAgentsViews)
-    {
-        for(int n=0;n<mcolAgentsViews.Count;n++)
-        {
-            <NexusNavOption Selected="@((7+n) == SelectedNavItem)"
-                            onclick="@(()=>SelectNavItem(7+n))"
-                            Link="@string.Format("monthGraph/{0}",mcolAgentsViews[n])" Caption="@mcolAgentsViews[n]"
-                            Image="bi bi-expert-month-view-nav-menu"
-                            Tooltip="Gráfico mensual"
-                            Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Root,
-                                        Sapphire2025Models.Common.UserRole.Expert, Sapphire2025Models.Common.UserRole.Inspector}" />
-        }
-    }    
 
 </CascadingValue>
 <div class="sfmlogo-bg">
@@ -81,12 +48,9 @@
     public SessionModel? Session { get; set; }
     [Parameter]
     public int SelectedNavItem{ get; set; }
-    private List<string>? mcolAgentsViews;
+    
 
-    protected async override Task OnInitializedAsync()
-    {
-        mcolAgentsViews = await mvarExpertClient.AgentsListsCatalog();        
-    }
+    
 
     private void SelectNavItem(int id){SelectedNavItem = id;}
 }

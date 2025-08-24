@@ -1,0 +1,252 @@
+﻿@if (null == Users)
+{
+	<LoadingTab ElementText="Cargando lista de usuarios"/>
+}
+else if (null == TimeSlice)
+{
+	<LoadingTab ElementText="Cargando información de fecha" />
+}
+else if (null == ColAssignations)
+{
+	<LoadingTab ElementText="Cargando asignaciones de turnos" />
+}
+else if (mcolDepots.Length < 1)
+{
+	<ErrorTab Description="No se han cargado depósitos: La colección está vacía"
+	Instructions="Asegúrese de tener definido al menos un plan de explotación en una fecha anterior a la mostrada" />
+}
+else
+{
+	for(int i = 0; i< mcolDepots.GetUpperBound(1);i++)
+	{
+		<div class="row">
+			@if(null==mcolDepots[0,i])
+			{
+				<div class="col-4"></div>
+			}
+			else
+			{
+				<div class="col-4 border border-secondary rounded" >
+					<div class="card shadow-sm h-100" style="@DepotCellStyle(mcolDepots[0, i])">
+						<div class="card-body p-2">
+							<h6 class="card-title mb-1">@DepotCellString(mcolDepots[0, i])</h6>
+							<p class="card-text mb-0">@AssignationString(mcolDepots[0, i])</p>
+						</div>
+					</div>
+				</div>
+			}
+			@if (null == mcolDepots[1, i])
+			{
+				<div class="col-4"></div>
+			}
+			else
+			{
+				<div class="col-4 border border-secondary rounded">
+					<div class="card shadow-sm h-100" style="@DepotCellStyle(mcolDepots[1, i])">
+						<div class="card-body p-2">
+							<h6 class="card-title mb-1">@DepotCellString(mcolDepots[1, i])</h6>
+							<p class="card-text mb-0">@AssignationString(mcolDepots[1, i])</p>
+						</div>
+					</div>
+				</div>
+			}
+			@if (null == mcolDepots[2, i])
+			{
+				<div class="col-4"></div>
+			}
+			else
+			{
+				<div class="col-4 border border-secondary rounded">
+					<div class="card shadow-sm h-100" style="@DepotCellStyle(mcolDepots[2, i])">
+						<div class="card-body p-2">
+							<h6 class="card-title mb-1">@DepotCellString(mcolDepots[2, i])</h6>
+							<p class="card-text mb-0">@AssignationString(mcolDepots[2, i])</p>
+						</div>
+					</div>
+				</div>
+			}
+		</div>
+	}
+}
+@code
+{
+	[CascadingParameter] //Diccionario de usuarios a representar
+	public Dictionary<Guid, UserModelBase>? Users { get; set; }
+	[CascadingParameter] //Rodaja de días.
+	public Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice { get; set; }
+	[CascadingParameter] //Asignaciones del gráfico
+	public List<AssignationContentModel>? ColAssignations { get; set; }
+	[CascadingParameter]
+	public List<WorkShiftTemplateModel>? SortedTemplates { get; set; }
+	[Parameter]
+	public int MinutesBeforeTrain { get; set; } = 10; //Minutos antes de la salida en que el Maquinista tendría que estar en el tren
+	[Parameter]
+	public int MinutesAfterTrain { get; set; } = 15; //Minutos tras la llegada en que el tren se colorea.
+	[CascadingParameter]
+	public TimeSpan mvarNow { get; set; }
+	[Parameter]
+	public int MinutesShortAtt { get; set; } = 25;
+	[Parameter]
+	public int MinutesLongAtt { get; set; } = 120;
+
+	private WorkShiftTemplateCollectionModel? mvarPlan;
+
+	private AttWorkShiftContentModel[,] mcolDepots = new AttWorkShiftContentModel[3, 0];
+
+	protected override void OnParametersSet()
+	{
+		base.OnParametersSet();
+		ComposeAtts();
+	}
+
+	private void ComposeAtts()
+	{
+		List<AttWorkShiftContentModel> auxMuyLargos = new List<AttWorkShiftContentModel>();
+		List<AttWorkShiftContentModel> auxLargos = new List<AttWorkShiftContentModel>();
+		List<AttWorkShiftContentModel> auxCortos = new List<AttWorkShiftContentModel>();
+		if (null == SortedTemplates) return;
+		foreach (WorkShiftTemplateModel turno in SortedTemplates)
+		{
+			if (AssignationsByTemplate(turno.Name).Count() > 0)
+			{
+				if (turno is AttTemplateModel attTemplate)
+				{
+					if (null != attTemplate.Content)
+					{
+						foreach(WorkShiftContentModel contenido in attTemplate.Content)
+						{
+							if(contenido is AttWorkShiftContentModel deposito)
+							{
+								if (deposito.Duration.TotalMinutes > MinutesLongAtt)
+									auxMuyLargos.Add(deposito);
+								else if (deposito.Duration.TotalMinutes > MinutesShortAtt)
+									auxLargos.Add(deposito);
+								else
+									auxCortos.Add(deposito);
+							}
+						}
+					}
+				}
+			}
+		}
+		int auxMayor = auxCortos.Count();
+		if (auxLargos.Count() > auxMayor) auxMayor = auxLargos.Count();
+		if (auxMuyLargos.Count() > auxMayor) auxMayor = auxMuyLargos.Count();
+		mcolDepots = new AttWorkShiftContentModel[3, auxMayor + 1];
+		int auxIndex = 0;
+		foreach (AttWorkShiftContentModel deposito in auxCortos.OrderBy(xx => xx.StartTime))
+			mcolDepots[0, auxIndex++] = deposito;
+
+		auxIndex = 0;
+		foreach (AttWorkShiftContentModel deposito in auxLargos.OrderBy(xx => xx.StartTime))
+			mcolDepots[1, auxIndex++] = deposito;
+
+		auxIndex = 0;
+		foreach (AttWorkShiftContentModel deposito in auxMuyLargos.OrderBy(xx => xx.StartTime))
+			mcolDepots[2, auxIndex++] = deposito;
+	}
+
+	private List<AssignationContentModel> AssignationsByTemplate(string? assignationText)
+	{
+		List<AssignationContentModel> salida = new List<AssignationContentModel>();
+		if (null != ColAssignations && null != assignationText)
+			salida = ColAssignations
+			.Where(xx => xx.Definitive == assignationText)
+			.ToList();
+
+		return salida;
+	}
+
+	private string DepotCellString(AttWorkShiftContentModel depot)
+	{
+		if(depot.StartTime<mvarNow && RemainingTime(depot)>TimeSpan.Zero)
+		{
+			return string.Format("Hasta las {0} (queda {1})",
+			Sapphire2025Models.Utils.autoInterval(depot.EndTime, true),
+			Sapphire2025Models.Utils.autoInterval(RemainingTime(depot),false)			
+			);
+		}
+		else
+		{
+			return string.Format("De {0} a {1} ({2})",
+			Sapphire2025Models.Utils.autoInterval(depot.StartTime, true),
+			Sapphire2025Models.Utils.autoInterval(depot.EndTime, true),
+			Sapphire2025Models.Utils.autoInterval(depot.Duration, false)
+			);
+		}
+	}
+	private string AssignationString(AttWorkShiftContentModel depot)
+	{
+		if (null != depot.Parent && null != Users)
+		{
+			List<AssignationContentModel> auxAssignations = AssignationsByTemplate(depot.Parent.Name);
+			if (auxAssignations.Count > 0)
+			{
+				System.Text.StringBuilder salida = new System.Text.StringBuilder();
+				salida.AppendFormat("{0}: ", depot.Parent.Name);
+
+				if (1 == auxAssignations.Count)
+				{
+					if (Users.ContainsKey(auxAssignations[0].AgentId))
+						salida.Append(Users[auxAssignations[0].AgentId].Name);
+					else
+						salida.Append("desconocido");
+				}
+				else
+				{
+					for (int i = 0; i < auxAssignations.Count; i++)
+					{
+						if (i == (auxAssignations.Count - 1))
+							salida.Append(" y ");
+						else if (i > 0)
+							salida.Append(" , ");
+
+						if (Users.ContainsKey(auxAssignations[i].AgentId))
+							salida.Append(Users[auxAssignations[i].AgentId].Name);
+						else
+							salida.Append("desconocido");
+					}
+				}
+				return salida.ToString();
+			}
+			else
+				return string.Format("Turno {0} descubierto!", depot.Parent.Name);
+		}
+		return string.Empty;
+	}
+	/// <summary>
+	/// Devuelve el tiempo que le queda a un depósito para terminar.
+	/// </summary>
+	/// <param name="depot"></param>
+	/// <returns></returns>
+	private TimeSpan RemainingTime(AttWorkShiftContentModel depot)
+	{
+		if (null != TimeSlice && TimeSlice.InitialDate.Date == DateTime.Today)
+		{
+			TimeSpan salida = depot.EndTime.Subtract(mvarNow);
+			return new TimeSpan(salida.Hours, salida.Minutes, 0);
+		}
+		
+		return TimeSpan.Zero;
+	}
+
+	private string DepotCellStyle(AttWorkShiftContentModel depot)
+	{
+		string salida = "transparent"; //Depósito no activado.
+		if (null != TimeSlice && TimeSlice.InitialDate.Date == DateTime.Today)
+		{
+			TimeSpan IntervaloCorto = new TimeSpan(0, MinutesShortAtt, 0);
+			int remaining = (int)RemainingTime(depot).TotalMinutes;
+			if(mvarNow>depot.StartTime.Subtract(IntervaloCorto)&&mvarNow<depot.StartTime)
+				salida = "#A8F0AD"; // Verde
+			else if(mvarNow>depot.StartTime)
+			{
+				if (remaining > IntervaloCorto.TotalMinutes)
+					salida = "#8B9DFF"; //Tren en marcha (Azul)
+				else if (remaining > 0)
+					salida = "#FC92AC"; // Rojo
+			}
+		}
+		return string.Format("background: linear-gradient(to right, {0}, transparent);", salida);
+	}
+}

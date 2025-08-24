@@ -1,0 +1,131 @@
+﻿@page "/submenu/{Page}"
+@inject ExpertClient mvarExpertClient
+@if(null!=Page)
+{
+    @if (Page.Equals("inspector"))
+    {
+        <div class="container py-4">
+            <h2 class="display-5 fw-semibold text-primary mb-2 text-center">Inspector</h2>
+            <p class="lead text-secondary text-center mb-4">
+                Esta página contiene todo lo necesario para las tareas que un inspector de operaciones requiere de la gestión del personal de movimiento y tracción.
+            </p>
+            <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
+                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
+                    <img src="img/diaInspector.png" class="card-img-top" alt="Agentes Diario" style="object-fit: cover; height: 180px;">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Agentes de Tracción</h5>
+                        <p class="card-text text-muted custom-comment">
+                            Informe con la lista de los Agentes de Tracción para uso diario del CTC
+                        </p>
+                        <a href="/agentsctc" class="btn btn-outline-primary w-100">Abrir</a>
+                    </div>
+                </div>
+                @if(null!=mcolAgentsViews)
+                {
+                    for(int n=0; n<mcolAgentsViews.Count;n++)
+                    {
+                        string encodedName = Uri.EscapeDataString(mcolAgentsViews[n]);
+                        <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
+                            <img src="img/grExcel.png" class="card-img-top" alt="Gráfico de Maquinistas" style="object-fit: cover; height: 180px;">
+                            <div class="card-body">
+                                <h5 class="card-title fw-bold text-dark mb-2 custom-title">@mcolAgentsViews[n]</h5>
+                                <p class="card-text text-muted custom-comment">
+                                    Gráfico de Maquinistas.
+                                </p>
+                                <a href="@($"/monthGraph/{encodedName}")" class="btn btn-outline-primary w-100">Abrir</a>
+                            </div>
+                        </div>
+                    }
+                }
+                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
+                    <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span>
+                    <img src="img/diaMaquinistas.png" class="card-img-top" alt="Maquinistas Diario" style="object-fit: cover; height: 180px;">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Hoja de Maquinistas</h5>
+                        <p class="card-text text-muted custom-comment">
+                            Este es el documento de trabajo de los Jefes de Maquinistas para cubrir turnos y saber en todo momento qué Agentes están de Atención a Trenes o conduciendo.
+                        </p>
+                        <a href="/dailyGraph" class="btn btn-outline-primary w-100">Abrir</a>
+                    </div>
+                </div>
+                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
+                    <img src="img/flujoTaller.png" class="card-img-top" alt="Aeneas" style="object-fit: cover; height: 180px;">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">AENEAS</h5>
+                        <p class="card-text text-muted custom-comment">
+                            Estado del material móvil y talleres.
+                        </p>
+                        <a href="/trainFlow" class="btn btn-outline-primary w-100">Abrir</a>
+                    </div>
+                </div>
+
+
+                @* Añade más cards aquí si lo necesitas *@
+            </div>
+        </div>
+    }
+    else if (Page.Equals("caps"))
+    {
+        <div class="container py-4">
+            <h2 class="display-5 fw-semibold text-primary mb-2 text-center">Jefe de Maquinistas</h2>
+            <p class="lead text-secondary text-center mb-4">
+                Conjunto de herramientas para responsables del colectivo de tracción y supervisión técnica del material móvil.
+            </p>
+            <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
+                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
+                    <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span>
+                    <img src="img/diaMaquinistas.png" class="card-img-top" alt="Maquinistas Diario" style="object-fit: cover; height: 180px;">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Hoja de Maquinistas</h5>
+                        <p class="card-text text-muted custom-comment">
+                            Seguimiento de jornada. (Hoja diaria)
+                        </p>
+                        <a href="/dailyGraph" class="btn btn-outline-primary w-100">Abrir</a>
+                    </div>
+                </div>
+                @if (null != mcolAgentsViews)
+                {
+                    for (int n = 0; n < mcolAgentsViews.Count; n++)
+                    {
+                        string encodedName = Uri.EscapeDataString(mcolAgentsViews[n]);
+                        <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
+                            <img src="img/grExcel.png" class="card-img-top" alt="Gráfico de Maquinistas" style="object-fit: cover; height: 180px;">
+                            <div class="card-body">
+                                <h5 class="card-title fw-bold text-dark mb-2 custom-title">@mcolAgentsViews[n]</h5>
+                                <p class="card-text text-muted custom-comment">
+                                    Gráfico de Maquinistas.
+                                </p>
+                                <a href="@($"/monthGraph/{encodedName}")" class="btn btn-outline-primary w-100">Abrir</a>
+                            </div>
+                        </div>
+                    }
+                }
+                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
+                    <img src="img/flujoTaller.png" class="card-img-top" alt="Aeneas" style="object-fit: cover; height: 180px;">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">AENEAS</h5>
+                        <p class="card-text text-muted custom-comment">
+                            Estado del material móvil y talleres.
+                        </p>
+                        <a href="/trainFlow" class="btn btn-outline-primary w-100">Abrir</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    //Página que contiene un determinado submenú con opciones.
+    [Parameter]
+    public string? Page { get; set; }
+    
+    private List<string>? mcolAgentsViews;
+
+    protected async override Task OnInitializedAsync()
+    {
+        mcolAgentsViews = await mvarExpertClient.AgentsListsCatalog();
+    }
+
+
+}
