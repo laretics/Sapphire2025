@@ -5,18 +5,31 @@
 @inject AuthenticationClient mvarAuthClient
 <PageTitle>Gráfico mensual de Tracción</PageTitle>
 <ModalDialog></ModalDialog>
+<InputFile style="display:none" @ref="mvarCBExcelInputRef" OnChange="onExcelImport" MaxAllowedSize="5242880" accept=".xlsx" />
 <div style="max-height: 80vh; overflow-y: auto;">
-<CascadingValue Value="mcolUsers">
-    <Sapphire2025.Layout.Expert.AssignationCalendar 
-        ColAssignations="@mcolAsignations"        
-        AgentsList="@mvarAgentsCol"
-        TimeSlice="@mvarTimeSlice"
-        
-        WholeAssignations="@mvarWholeAssignations"
-    />
-</CascadingValue>
+    @if (mvarLoading)
+    {
+        <LoadingTab ElementText="Importando gráfico desde Excel" />
+    }
+    else
+    {
+        <CascadingValue Value="mcolUsers">
+            <Sapphire2025.Layout.Expert.AssignationCalendar ColAssignations="@mcolAsignations"
+                                                            AgentsList="@mvarAgentsCol"
+                                                            TimeSlice="@mvarTimeSlice"
+                                                            WholeAssignations="@mvarWholeAssignations" />
+        </CascadingValue>
+    }
 </div>
-<InputFile Onchange="onExcelImport" MaxAllowedSize="5242880" accept=".xlsx,.xls" />
+<div class="btn-toolbar mb-3" role="toolbar" aria-label="Barra de herramientas">
+    <div class="btn-group" role="group" aria-label="Grupo 3">
+        <button Type="button" class="btn btn-secondary" @onclick="() => TriggerFileInputBlazor(mvarCBExcelInputRef)">Importar</button>
+    </div>
+    <div class="input-group" style="width: 120px;">
+        <span class="input-group-text">Días</span>
+        <InputNumber @bind-Value="dayCount" class="form-control" />
+    </div>
+</div>
 
 
 @code {
@@ -25,6 +38,8 @@
     private Sapphire2025Models.Expert.AgentsViewContainer? mvarAgentsCol;
     private Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? mvarTimeSlice;
     private List<AssignationContentModel>? mcolAsignations;
+    private InputFile? mvarCBExcelInputRef;
+    private bool mvarLoading; //Flag para mostrar el diálogo de carga.
     private bool mvarWholeAssignations{ get; set; }
     [Parameter]
     public string? AgentsViewId { get; set; }
@@ -35,14 +50,25 @@
     {
         mvarTimeSlice = await mvarExpertClient.PlansTimeSlice(DateTime.Today, dayCount); //Rodaja de tiempos
         mcolUsers = await mvarAuthClient.cachedUserList(); //Tabla de usuarios
-        mcolAsignations = await mvarExpertClient.Assignations(DateTime.Today, dayCount); //Asignaciones
-        mvarAgentsCol = await mvarExpertClient.AgentsView(AgentsViewId ?? ""); //Columna de Agentes        
+        await RefreshGraph();
     }
-
+    private async Task RefreshGraph()
+    {
+        mcolAsignations = await mvarExpertClient.Assignations(DateTime.Today, dayCount); //Asignaciones
+        mvarAgentsCol = await mvarExpertClient.AgentsView(AgentsViewId ?? ""); //Columna de Agentes
+    }
+    private async Task TriggerFileInputBlazor(InputFile? rhs)
+    {
+        if (null != rhs)
+            await mvarJSRuntime.InvokeVoidAsync("triggerFileInputClick", rhs.Element);
+    }
 
 
     private async Task onExcelImport(InputFileChangeEventArgs e)
     {
+        mvarLoading = true;
+        StateHasChanged();
+
         Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
 
         if (null != archivo)
@@ -51,15 +77,21 @@
             using MemoryStream ms = new MemoryStream();
             await corriente.CopyToAsync(ms);
             byte[] buffer = ms.ToArray();
-            DateTime fecha = DateTime.Now.AddDays(-1);
-            int days = 10;
-            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day, days);
-            string? salidaCompilacion = await mvarExpertClient.UploadDailyWorkShift(salida, fecha, days,0);
-            if(null!=salidaCompilacion && salidaCompilacion.Length>0)
+            //Ahora pasamos esto a JavaScript
+            DateTime fecha = DateTime.Today;
+            int localZoneOffset = await GetTimezoneOffsetMinutes();
+            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day, dayCount);
+            string? salidaCompilacion = await mvarExpertClient.UploadDailyWorkShift(salida, fecha, dayCount, localZoneOffset);
+            if (null != salidaCompilacion && salidaCompilacion.Length > 0)
                 await mvarModal.show("Error de importación", salidaCompilacion, "Salir");
-
-            StateHasChanged();
         }
+        await RefreshGraph();
+        mvarLoading = false;
+        StateHasChanged();
+    }
+    private async Task<int> GetTimezoneOffsetMinutes()
+    {
+        return await mvarJSRuntime.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
     }
 
 }
