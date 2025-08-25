@@ -28,6 +28,12 @@ else
                                             Modo seguimiento
                                         </label>
                                     </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="progressSwitch" checked="@HasProgressBar" @onchange="OnProgressBarChanged" />
+                                        <label class="form-check-label" for="progressSwitch">
+                                            Barras de progreso
+                                        </label>
+                                    </div>
 @*                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="festiveSwitch" checked="@isFestive" @onchange="OnFestiveChanged" />
                                         <label class="form-check-label" for="festiveSwitch">
@@ -61,7 +67,9 @@ else
                             <CascadingValue Value="mvarNow">
                                 <CascadingValue Value="FollowingMode" Name="FollowingMode">
                                     <CascadingValue Value="WipeOff" Name="WipeOff">
-                                        @ChildContent
+                                        <CascadingValue Value="HasProgressBar" Name="HasProgressBar">
+                                            @ChildContent
+                                        </CascadingValue>                                        
                                     </CascadingValue>
                                 </CascadingValue>
                             </CascadingValue>                            
@@ -77,6 +85,7 @@ else
     public RenderFragment? ChildContent { get; set; } //Contenido de este control.
     public bool WipeOff{get;set;} //Activa la desaparición del contenido a medida que se consume.
     public bool FollowingMode { get; set; } //Activa el modo de seguimiento (coloreado de casillas a medida que se van activando.)
+    public bool HasProgressBar { get; set; } //Barras de progreso en seguimiento
     public Dictionary<Guid, UserModelBase>? Users;
     public List<AssignationContentModel>? Assignations;
     private WorkShiftTemplateCollectionModel? Plan;
@@ -193,6 +202,14 @@ else
             FollowingMode = value;
             StateHasChanged();
             // Si necesitas lógica adicional, añádela aquí
+        }
+    }
+    private async Task OnProgressBarChanged(ChangeEventArgs e)
+    {
+        if(e.Value is bool value)
+        {
+            HasProgressBar = value;
+            StateHasChanged();
         }
     }
 }

@@ -34,7 +34,7 @@ namespace Sapphire2025Models
 		/// </summary>
 		/// <param name="rhs">Intervalo</param>
 		/// <returns></returns>
-		public static string autoInterval(TimeSpan rhs, bool timeFormat)
+		public static string autoInterval(TimeSpan rhs, bool timeFormat, bool addSeconds = false)
 		{
 			if(timeFormat)
 				return string.Format("{0:00}:{1:00}", rhs.Hours, rhs.Minutes);
@@ -63,7 +63,7 @@ namespace Sapphire2025Models
 					else
 						salida.AppendFormat("{0} min",rhs.Minutes);
 				}
-				if(rhs.Seconds>0)
+				if(rhs.Seconds>0 && addSeconds)
 				{
 					if (salida.Length > 0)
 						salida.Append(" y ");

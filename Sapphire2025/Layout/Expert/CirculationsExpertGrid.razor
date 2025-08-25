@@ -29,6 +29,17 @@ else
 							<div class="col-5 border border-secondary rounded" style="@CirculationCellStyle(mcolCirculations[col, row])">
 								@CirculationCellString(mcolCirculations[col, row])
 								<span class="small ms-2">@CirculationCellTimeString(mcolCirculations[col, row])</span>
+								@if(HasProgressBar && CirculationActiveTimeString(mcolCirculations[col,row])!=string.Empty)
+								{
+									<div class="progress position-relative" style="height: 1.4rem; background-color: #e9ecef; color:#AEB6FB">
+										<div class="progress-bar bg-info" role="progressbar"
+											 style="width: @GetCirculationProgress(mcolCirculations[col, row])%; opacity: 0.7;">
+										</div>
+										<span class="position-absolute w-100 text-center fw-bold" style="top: 0; left: 0; line-height: 1.3rem; color: #212529;">
+											@CirculationActiveTimeString(mcolCirculations[col, row])
+										</span>
+									</div>
+								}
 							</div>
 							<div class="col-6 border border-secondary rounded" style="@AssignationCellStyle(mcolCirculations[col, row])">
 								<div class="small ms-2">
@@ -58,6 +69,8 @@ else
 	public bool WipeOff { get; set; }
 	[CascadingParameter(Name = "FollowingMode")]
 	public bool FollowingMode { get; set; }
+	[CascadingParameter(Name ="HasProgressBar")]
+	public bool HasProgressBar { get; set; } //Barras de progreso en seguimiento
 	[Parameter]
 	public int MinutesBeforeTrain { get; set; } = 10; //Minutos antes de la salida en que el Maquinista tendría que estar en el tren
 	[Parameter]
@@ -164,6 +177,14 @@ else
 		Sapphire2025Models.Utils.autoInterval(circulation.EndTime, true)
 		);
 	}
+	private string CirculationActiveTimeString(TrainWorkShiftContentModel circulation)
+	{
+		if (IsToday() && FollowingMode && mvarNow >= circulation.StartTime && mvarNow <= circulation.EndTime)
+		{
+			return Sapphire2025Models.Utils.autoInterval(circulation.EndTime.Subtract(mvarNow), false);
+		}
+		return string.Empty;
+	}
 	private string AssignationString(TrainWorkShiftContentModel circulation)
 	{
 		if(null!=circulation.Parent && null!=Users)
@@ -217,17 +238,25 @@ else
 		{
 			if(mvarNow>circulation.StartTime && mvarNow<circulation.EndTime)
 				salida = "#8B9DFF"; //Tren en marcha (Azul)
-									// Tren preparado para salir
+			// Tren preparado para salir
 			else if (mvarNow >= circulation.StartTime.Subtract(new TimeSpan(0, MinutesBeforeTrain, 0)) &&
-					 mvarNow < circulation.StartTime)
+						mvarNow < circulation.StartTime)
 				salida = "#A8F0AD"; // Verde
 
 			// Tren finalizado recientemente
 			else if (mvarNow >= circulation.EndTime &&
-					 mvarNow < circulation.EndTime.Add(new TimeSpan(0, MinutesAfterTrain, 0)))
+						mvarNow < circulation.EndTime.Add(new TimeSpan(0, MinutesAfterTrain, 0)))
 				salida = "#FC92AC"; // Rojo
 		}
 		return string.Format("background: linear-gradient(to right, {0}, transparent);", salida);
+	}
+	private double GetCirculationProgress(TrainWorkShiftContentModel circulation)
+	{
+		if (mvarNow <= circulation.StartTime) return 0;
+		if (mvarNow >= circulation.EndTime) return 100;
+
+		TimeSpan elapsed = mvarNow.Subtract(circulation.StartTime);
+		return Math.Round(100* elapsed.TotalSeconds / circulation.Duration.TotalSeconds);
 	}
 
 	private bool MustShowCell(TrainWorkShiftContentModel? train)
@@ -236,7 +265,8 @@ else
 		if (!IsToday()) return true;
 		if (WipeOff)
 		{
-			if (train.EndTime < mvarNow) return false;
+			TimeSpan horaFin = train.EndTime.Add(new TimeSpan(0, MinutesAfterTrain, 0));
+			if (horaFin < mvarNow) return false;
 		}
 		return true;
 	}
