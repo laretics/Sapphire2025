@@ -66,13 +66,27 @@
 }
 
 @media print {
-    @page {
-        size: A4 portrait;
-        margin: 12mm;
+    body * {
+        visibility: hidden !important;
+    }
+    .print-area, .print-area * {
+        font-size: 8.5pt !important;
+        visibility: visible !important;
     }
 
-    .print-area, .print-area * {
-        font-size: 9pt !important;
+    .print-area th,
+    .print-area td {
+            padding-top: 1px !important;
+            padding-bottom: 1px !important;
+            padding-left: 2px !important;
+            padding-right: 2px !important;
+            line-height: 1.1 !important;
+            vertical-align: middle !important;
+        }
+
+    @page {
+        size: A4 portrait;
+        margin: 8mm;
     }
 
     .print-logo {
@@ -87,14 +101,6 @@
             margin: 0 auto;
             display: inline-block;
         }
-
-    body * {
-        visibility: hidden !important;
-    }
-
-    .print-area, .print-area * {
-        visibility: visible !important;
-    }
 
     .print-area {
         position: absolute !important;
@@ -113,7 +119,7 @@
     .print-title {
         display: block !important;
         text-align: center;
-        margin-bottom: 18px;
+        margin-bottom: 12px;
         font-size: 14pt !important;
         font-weight: bold;
         color: #321D71;
@@ -133,7 +139,7 @@
     .print-area .row.g-3.align-items-center {
         display: flex !important;
         flex-direction: row !important;
-        gap: 1.5rem !important;
+        gap: 1rem !important;
         align-items: flex-start !important;
     }
 

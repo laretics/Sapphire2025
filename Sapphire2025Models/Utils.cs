@@ -199,7 +199,7 @@ namespace Sapphire2025Models
                 {
                     if (rhs.StartsWith("40") || rhs.StartsWith("41") || rhs.StartsWith("70")) return SFMIniteraryAsimilation.Material;
                     if (rhs.StartsWith("42")) return SFMIniteraryAsimilation.Type42;
-                    if (rhs.StartsWith("43")) return SFMIniteraryAsimilation.Marratxi;
+                    if (rhs.StartsWith("43") || rhs.StartsWith("53")) return SFMIniteraryAsimilation.Marratxi;
                     if (rhs.StartsWith("44")) return SFMIniteraryAsimilation.ManacorFestive;
                     if (rhs.StartsWith("45")) return SFMIniteraryAsimilation.Inca;
                     if (rhs.StartsWith("46")) return SFMIniteraryAsimilation.SaPoblaTram;
