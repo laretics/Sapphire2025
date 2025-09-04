@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.SignalR.Protocol;
+using Microsoft.EntityFrameworkCore;
 using Sapphire2025Server.Models;
 using Sapphire2025Server.Models.Turnos;
 using System.Text;
@@ -96,25 +97,57 @@ namespace Sapphire2025Server.Expert
                         else if (grupo.Count>2)
                         {
                             //Cambio a tres, cuatro o más bandas.
-                            Dictionary<Guid, string?> auxColTurnosOriginales = new Dictionary<Guid, string?>();
+                            //Voy a crear una base de datos de turnos disponibles en el cambio
+                            //es una especie de "montón común"
+                            //Al montón común añado todas las asignaciones (no sólo la última)
+                            Dictionary<string,Guid> auxMontonComun = new Dictionary<string, Guid>();
                             foreach(WorkshiftAssignation elemento in grupo)
                             {
-                                //Guardo la asignación definitiva de este agente en un diccionario.
-                                auxColTurnosOriginales.Add(elemento.Agent, elemento.Definitive);
-                                if(null!= elemento.Annotation)
+                                if(null!=elemento.Assignation)
                                 {
-                                    //Obtengo el id de Agente que hará realmente este turno tras el cambio.
-                                    WorkshiftAssignation? otro = auxGetTurnoByString(grupo, GetOnlyNumbers(elemento.Annotation));
-                                    if (null != otro)
-                                    {
-				        				elemento.SwappingAgent = otro.Agent;
-                                       elemento.Annotation = string.Format("Cambio a {0} bandas", grupo.Count());
-		        					}                                        
-                                }                                   
+                                    string[] auxAsignaciones = elemento.Assignation.Split('/');
+                                    foreach(string auxAsignacion in auxAsignaciones)
+									auxMontonComun.Add(auxAsignacion, elemento.Agent);
+								}                                    
                             }
-                            //Asigno los turnos cambiados a los agentes en lugar del que tenían.
+                            //Ahora voy a recorrer los mismos elementos con la anotación
                             foreach(WorkshiftAssignation elemento in grupo)
-                                elemento.Definitive = auxColTurnosOriginales[elemento.SwappingAgent];
+                            {
+                                foreach(string clave in auxMontonComun.Keys)
+                                {
+                                    if(null!=elemento.Annotation)
+                                    {
+										if (elemento.Annotation.Contains(clave))
+                                        {
+                                            elemento.SwappingAgent = auxMontonComun[clave];
+                                            elemento.Annotation = string.Format("Cambio a {0} bandas.", grupo.Count());
+                                            elemento.Definitive = clave;
+                                            auxMontonComun.Remove(clave);
+                                        }                                           
+									}                                    
+                                }
+                            }
+
+               //             //Cambio a tres, cuatro o más bandas.
+               //             Dictionary<Guid, string?> auxColTurnosOriginales = new Dictionary<Guid, string?>();
+               //             foreach(WorkshiftAssignation elemento in grupo)
+               //             {
+               //                 //Guardo la asignación definitiva de este agente en un diccionario.
+               //                 auxColTurnosOriginales.Add(elemento.Agent, elemento.Definitive);
+               //                 if(null!= elemento.Annotation)
+               //                 {
+               //                     //Obtengo el id de Agente que hará realmente este turno tras el cambio.
+               //                     WorkshiftAssignation? otro = auxGetTurnoByString(grupo,elemento.Annotation);
+               //                     if (null != otro)
+               //                     {
+				        			//	elemento.SwappingAgent = otro.Agent;
+               //                        elemento.Annotation = string.Format("Cambio a {0} bandas", grupo.Count());
+		        					//}                                        
+               //                 }                                   
+               //             }
+               //             //Asigno los turnos cambiados a los agentes en lugar del que tenían.
+               //             foreach(WorkshiftAssignation elemento in grupo)
+               //                 elemento.Definitive = auxColTurnosOriginales[elemento.SwappingAgent];
                         }
                     }
                 }
@@ -140,10 +173,16 @@ namespace Sapphire2025Server.Expert
 
         private WorkshiftAssignation? auxGetTurnoByString(List<WorkshiftAssignation> grupo, string turnoId)
         {
+            string onlyNumbers = GetOnlyNumbers(turnoId);
+            string auxTurno = turnoId;
+            if(onlyNumbers.Length>0)
+            {
+                auxTurno = onlyNumbers;
+            }
+                foreach (WorkshiftAssignation elemento in grupo)
+                    if (auxTurno.Equals(elemento.Definitive)) return elemento;
             foreach (WorkshiftAssignation elemento in grupo)
-                if (turnoId.Equals(elemento.Definitive)) return elemento;
-            foreach (WorkshiftAssignation elemento in grupo)
-                if (elemento.Definitive!.Contains(turnoId)) return elemento;
+                if (elemento.Definitive!.Contains(auxTurno)) return elemento;
             return null;
         }
         /// <summary>
@@ -226,7 +265,18 @@ namespace Sapphire2025Server.Expert
             if (rhs.Contains('/'))
             {
                 string[] asignaciones = rhs.Split('/');
-                salida = asignaciones.Last();
+                string ultima = asignaciones.Last();
+                if (asignaciones.Length > 1)
+                {
+                    if (ultima.ToUpper().Contains("RJ") || ultima.ToUpper().Contains("SJ")) //Reducción de jornada / salida justificada.
+                    {
+                        salida = asignaciones[asignaciones.Length - 2];
+                    }
+                    else
+                        salida = ultima;
+                }
+                else
+                    salida = ultima;
             }
             return filterLastAssignation(salida);
         }

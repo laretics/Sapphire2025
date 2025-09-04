@@ -1,11 +1,12 @@
 ﻿@page "/agentsctc"
 @inject IJSRuntime mvarJSRuntime
 @inject ExpertClient mvarExpertClient
+@inject IntStorageService mvarIntStorage
 @inject AuthenticationClient mvarAuthClient
 <PageTitle>Lista de Agentes</PageTitle>
 <ModalDialog @ref="mvarModal" />
 <InputFile style="display:none" @ref="mvarCBExcelInputRef" OnChange="onExcelImport" MaxAllowedSize="5242880" accept=".xlsx" />
-@if (isImporting)
+@if (mvarLoading)
 {
 	<LoadingTab ElementText="Importando archivo" />
 }
@@ -23,7 +24,7 @@ else
 @code {
     private ModalDialog mvarModal { get; set; } = new ModalDialog();
     private InputFile? mvarCBExcelInputRef;
-    private bool isImporting = false;
+    private bool mvarLoading = false;
     //TODO: Modificar esto... la importación debería ir en un control embebido en ExpertDayContext
     private DateTime mvarSelectedDate = DateTime.Today.AddDays(4); //Lo normal es que me interese el informe de mañana.
     private DateTime selectedDate
@@ -32,15 +33,28 @@ else
         set
         {
             mvarSelectedDate = value;
+            _ = mvarIntStorage.SetInspectorReportDate(value);
         }
     }
+    /// <summary>
+    /// TODO: No está entrando por aquí... hay que examinar el código!!!    
+    /// </summary>
 
     private Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? mvarTimeSlice;
-    private int mvarNumDay = 4;
+    private int dayCount { get; set; } = 4;
 
+    protected override async Task OnInitializedAsync()
+    {
+        selectedDate = await mvarIntStorage.GetInspectorReportDate();
+    }
+    private async Task TriggerFileInputBlazor(InputFile? rhs)
+    {
+        if (null != rhs)
+            await mvarJSRuntime.InvokeVoidAsync("triggerFileInputClick", rhs.Element);
+    }
     private async Task onExcelImport(InputFileChangeEventArgs e)
-    {        
-        isImporting = true;
+    {
+        mvarLoading = true;
         StateHasChanged();
 
         Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
@@ -53,19 +67,14 @@ else
             byte[] buffer = ms.ToArray();
             //Ahora pasamos esto a JavaScript
             DateTime fecha = DateTime.Today;
-            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day, mvarNumDay);
-            int zoneOffset = await GetTimezoneOffsetMinutes();
-            string? salidaCompilacion = await mvarExpertClient.UploadDailyWorkShift(salida, fecha, mvarNumDay,zoneOffset);
+            int localZoneOffset = await GetTimezoneOffsetMinutes();
+            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day, dayCount);
+            string? salidaCompilacion = await mvarExpertClient.UploadDailyWorkShift(salida, fecha, dayCount, localZoneOffset);
             if (null != salidaCompilacion && salidaCompilacion.Length > 0)
                 await mvarModal.show("Error de importación", salidaCompilacion, "Salir");
         }
-        isImporting = false;
+        mvarLoading = false;
         StateHasChanged();
-    }
-    private async Task TriggerFileInputBlazor(InputFile? rhs)
-    {
-        if (null != rhs)
-            await mvarJSRuntime.InvokeVoidAsync("triggerFileInputClick", rhs.Element);
     }
     private async Task<int> GetTimezoneOffsetMinutes()
     {

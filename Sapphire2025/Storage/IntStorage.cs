@@ -1,6 +1,8 @@
 ﻿using Microsoft.JSInterop;
 using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
+using Sapphire2025Models.Expert;
+using Sapphire2025Models.Expert.WorkshiftTemplates;
 using System.Text.Json;
 namespace Sapphire2025.Storage
 {
@@ -157,18 +159,116 @@ namespace Sapphire2025.Storage
 
 		#endregion "Caché de usuarios"
 
+		#region "Página de Inspectores"
+        public async Task SetInspectorReportDate(DateTime rhs)
+        {
+            string cadena = JsonSerializer.Serialize(rhs);
+            await SetStringValue("inspectorreportdate", cadena, false);
+        }
+        public async Task<DateTime> GetInspectorReportDate()
+        {
+            string? cadena = await GetStringValue("inspectorreportdate", false);
+            DateTime salida = DateTime.Today;
+            if(null != cadena)
+				salida = JsonSerializer.Deserialize<DateTime>(cadena);
+
+            if (DateTime.MinValue == salida)
+                salida = DateTime.Today;
+
+            return salida;
+        }
+        /// <summary>
+        /// Guardamos los tres agentes implicados en la explotación...
+        /// [0] -> Inspector de mañana
+        /// [1] -> JMaqu de mañana
+        /// [2] -> JMaqu de tarde
+        /// </summary>
+        /// <param name="rhs">Array siguiendo este formato</param>
+        /// <returns>Nada</returns>
+        public async Task SetInspectorAgentsTable(Guid[] rhs)
+        {
+            string cadena = JsonSerializer.Serialize(rhs);
+            await SetStringValue("inspectoragentstable", cadena, false);
+        }
+        public async Task<Guid[]> GetInspectorAgentsTable(DateTime day)
+        {
+            DateTime auxDate = await GetInspectorReportDate();
+            
+            if (auxDate.Equals(day))
+            {
+                Guid[]? auxSalida;
+                string? cadena = await GetStringValue("inspectoragentstable", false);
+                if (null != cadena)
+                {
+					auxSalida = JsonSerializer.Deserialize<Guid[]>(cadena);
+					if (null != auxSalida)
+						return auxSalida;
+				}
+            }
+			Guid[] salida = new Guid[3];
+			for (int i = 0; i < 3; i++)
+				salida[i] = Guid.Empty;
+            return salida;
+        }
+
+        public async Task SetInspectorCommentsField(string? rhs)
+        {
+            string cadena = JsonSerializer.Serialize(rhs);
+            await SetStringValue("inspectorcommentsfield", cadena, false);
+        }
+        public async Task<string?> GetInspectoCommentsField()
+        {
+            string? cadena = await GetStringValue("inspectorcommentsfield", false);
+            if (null != cadena)
+                return JsonSerializer.Deserialize<string?>(cadena);
+
+            return null;
+        }
+
+        public async Task SetInspectorReportAssignations(List<AssignationContentModel>? rhs)
+        {
+            string cadena = JsonSerializer.Serialize(rhs);
+            await SetStringValue("inspectorassignations", cadena, false);
+        }
+        public async Task<List<AssignationContentModel>?> GetInspectorReportAssignations()
+        {
+            string? cadena = await GetStringValue("inspectorassignations", false);
+            if(null!=cadena)
+            {
+                List<AssignationContentModel>? salida = JsonSerializer.Deserialize<List<AssignationContentModel>>(cadena);
+                return salida;
+            }
+            return null;
+        }
+
+        public async Task SetInspectorReportSortedTemplates(List<WorkShiftTemplateModel>? rhs)
+        {
+            string cadena = JsonSerializer.Serialize(rhs);
+            await SetStringValue("inspectorreportsortedtemplates", cadena,false);
+        }
+        public async Task<List<WorkShiftTemplateModel>?> GetInspectorSortedTemplates()
+        {
+            string? cadena = await GetStringValue("inspectorreportsortedtemplates", false);
+            if(null!=cadena)
+            {
+                List<WorkShiftTemplateModel>? salida = JsonSerializer.Deserialize<List<WorkShiftTemplateModel>>(cadena);
+                return salida;
+            }
+            return null;
+        }
 
 
 
 
+		#endregion
 
 		#region "Valores"
-        /// <summary>
-        /// Elimina un valor del almacenamiento interno
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        public async Task ResetValue(string key, bool session)
+		/// <summary>
+		/// Elimina un valor del almacenamiento interno
+		/// </summary>
+		/// <param name="key"></param>
+		/// <returns></returns>
+		public async Task ResetValue(string key, bool session)
         {
             string auxStorageId = internalRequestString(session, "removeItem");
             await mvarJsRuntime.InvokeVoidAsync(auxStorageId, key);

@@ -197,29 +197,39 @@ namespace Sapphire2025Models
                 int auxNumero = ExtractCirculationNumber(rhs);
                 if (auxNumero > 3999)
                 {
-                    if (rhs.StartsWith("40") || rhs.StartsWith("41") || rhs.StartsWith("70")) return SFMIniteraryAsimilation.Material;
-                    if (rhs.StartsWith("42")) return SFMIniteraryAsimilation.Type42;
-                    if (rhs.StartsWith("43") || rhs.StartsWith("53")) return SFMIniteraryAsimilation.Marratxi;
-                    if (rhs.StartsWith("44")) return SFMIniteraryAsimilation.ManacorFestive;
-                    if (rhs.StartsWith("45")) return SFMIniteraryAsimilation.Inca;
-                    if (rhs.StartsWith("46")) return SFMIniteraryAsimilation.SaPoblaTram;
-                    if (rhs.StartsWith("47")) return SFMIniteraryAsimilation.SaPobla;
-                    if (rhs.StartsWith("48")) return SFMIniteraryAsimilation.SaPoblaFestive;
-                    if (rhs.StartsWith("49")) return SFMIniteraryAsimilation.Manacor;
-                    if (rhs.StartsWith("50")) return SFMIniteraryAsimilation.ParcBit;
-                    if (rhs.StartsWith("51") || rhs.StartsWith("55")) return SFMIniteraryAsimilation.ParcBitFestive;
+					if (auxMatchAsimilation("40,41,70",rhs,true)) return SFMIniteraryAsimilation.Material;
+					if (auxMatchAsimilation("42", rhs,true)) return SFMIniteraryAsimilation.Type42;
+					if (auxMatchAsimilation("43,53", rhs,true)) return SFMIniteraryAsimilation.Marratxi;
+					if (auxMatchAsimilation("44", rhs,true)) return SFMIniteraryAsimilation.ManacorFestive;
+					if (auxMatchAsimilation("45", rhs,true)) return SFMIniteraryAsimilation.Inca;
+					if (auxMatchAsimilation("46,67", rhs,true)) return SFMIniteraryAsimilation.SaPoblaTram;
+					if (auxMatchAsimilation("47", rhs,true)) return SFMIniteraryAsimilation.SaPobla;
+					if (auxMatchAsimilation("48", rhs,true)) return SFMIniteraryAsimilation.SaPoblaFestive;
+					if (auxMatchAsimilation("49", rhs,true)) return SFMIniteraryAsimilation.Manacor;
+					if (auxMatchAsimilation("50", rhs,true)) return SFMIniteraryAsimilation.ParcBit;
+					if (auxMatchAsimilation("51,55", rhs,true)) return SFMIniteraryAsimilation.ParcBitFestive;
                 }
                 else
                 {
                     if (rhs.Contains("SP")) return SFMIniteraryAsimilation.SaPobla;
-                    if (rhs.Contains("I")) return SFMIniteraryAsimilation.Inca;
-                    if (rhs.Contains("MT")) return SFMIniteraryAsimilation.Marratxi;
-                    if (rhs.Contains("M")) return SFMIniteraryAsimilation.Manacor;
+					if (auxMatchAsimilation("INC,IN,I", rhs,false)) return SFMIniteraryAsimilation.Inca;
+					if (auxMatchAsimilation("MTX,MT", rhs,false)) return SFMIniteraryAsimilation.Marratxi;
+					if (auxMatchAsimilation("MAN,MNC,M", rhs,false)) return SFMIniteraryAsimilation.Manacor;
                     if (rhs.Contains("UI")) return SFMIniteraryAsimilation.ParcBit;
                     if (rhs.Contains("PB")) return SFMIniteraryAsimilation.ParcBit;
                 }
             }
             return SFMIniteraryAsimilation.Unknown;
+		}
+		private static bool auxMatchAsimilation(string asimilationString, string rhs, bool start)
+		{
+			string[] matches = asimilationString.Split(',');
+			foreach(string match in matches)
+			{
+				if (start && rhs.StartsWith(match)) return true;
+				if (!start && rhs.Contains(match)) return true;
+			}
+			return false;
 		}
 
 		public static string AsimilationColor(SFMIniteraryAsimilation rhs)
