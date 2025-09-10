@@ -1,0 +1,167 @@
+﻿@inject IntStorageService mvarLocalStorage;
+<div class="card mb-4 shadow-sm">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <!-- Inspector -->
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-primary">CF Inspector</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" maxlength="8"
+                           @bind="mvarCFInspector"
+                           @oninput="OnCFInspectorChanged"
+                           placeholder="CF del Inspector" />
+                    <span class="input-group-text bg-light">
+                        <i class="bi bi-search"></i>
+                    </span>
+                </div>
+                @if (InspectorUser != null)
+                {
+                    <div class="mt-2 p-2 rounded bg-light border">
+                        <div class="fw-semibold text-dark">@InspectorUser.Name</div>
+                        <div class="text-muted small">
+                            <i class="bi bi-telephone"></i> @InspectorUser.PhoneNumber
+                            @if (!string.IsNullOrWhiteSpace(InspectorUser.ShortPhoneNumber))
+                            {
+                                <span class="ms-2">Ext: @InspectorUser.ShortPhoneNumber</span>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(mvarCFInspector))
+                {
+                    <div class="mt-2 text-danger small">No se ha encontrado ningún usuario con ese CF.</div>
+                }
+            </div>
+            <!-- Jefe de Maquinistas 1-->
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-success">CF Jefe de Maquinistas</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" maxlength="8"
+                           @bind="mvarCFCap1"
+                           @oninput="OnCFExpert1Changed"
+                           placeholder="Introduce CF del Jefe de Maquinistas" />
+                    <span class="input-group-text bg-light">
+                        <i class="bi bi-search"></i>
+                    </span>
+                </div>
+                @if (CapUser1 != null)
+                {
+                    <div class="mt-2 p-2 rounded bg-light border">
+                        <div class="fw-semibold text-dark">@CapUser1.Name</div>
+                        <div class="text-muted small">
+                            <i class="bi bi-telephone"></i> @CapUser1.PhoneNumber
+                            @if (!string.IsNullOrWhiteSpace(CapUser1.ShortPhoneNumber))
+                            {
+                                <span class="ms-2">Ext: @CapUser1.ShortPhoneNumber</span>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(mvarCFCap1))
+                {
+                    <div class="mt-2 text-danger small">No se ha encontrado ningún usuario con ese CF.</div>
+                }
+            </div>
+            <!-- Jefe de Maquinistas 2-->
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-success">CF Jefe de Maquinistas</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" maxlength="8"
+                           @bind="mvarCFCap2"
+                           @oninput="OnCFExpert2Changed"
+                           placeholder="Introduce CF del Jefe de Maquinistas" />
+                    <span class="input-group-text bg-light">
+                        <i class="bi bi-search"></i>
+                    </span>
+                </div>
+                @if (CapUser2 != null)
+                {
+                    <div class="mt-2 p-2 rounded bg-light border">
+                        <div class="fw-semibold text-dark">@CapUser2.Name</div>
+                        <div class="text-muted small">
+                            <i class="bi bi-telephone"></i> @CapUser2.PhoneNumber
+                            @if (!string.IsNullOrWhiteSpace(CapUser2.ShortPhoneNumber))
+                            {
+                                <span class="ms-2">Ext: @CapUser2.ShortPhoneNumber</span>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(mvarCFCap2))
+                {
+                    <div class="mt-2 text-danger small">No se ha encontrado ningún usuario con ese CF.</div>
+                }
+            </div>
+        </div>
+        <!-- Condiciones del servicio -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <label class="form-label fw-bold text-secondary">Condiciones del servicio</label>
+                <textarea class="form-control" rows="4"
+                          @bind="mvarComment"
+                          @oninput="OnCommentsChanged"
+                          placeholder="Escribe aquí las condiciones especiales del servicio..."></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    public Dictionary<Guid, UserModelBase>? Users { get; set; }
+    private UserModelBase? InspectorUser;
+    private UserModelBase? CapUser1;// => FindUserByCF(mvarCFCap1);
+    private UserModelBase? CapUser2;// => FindUserByCF(mvarCFCap2);
+
+    private string? mvarCFInspector;
+    private string? mvarCFCap1;
+    private string? mvarCFCap2;
+    private string? mvarComment;
+
+    private async Task OnCFInspectorChanged(ChangeEventArgs e)
+    {
+        mvarCFInspector = e.Value?.ToString();
+        InspectorUser = await FindUserByCF(mvarCFInspector);
+        StateHasChanged();
+    }
+    private async Task OnCFExpert1Changed(ChangeEventArgs e)
+    {
+        mvarCFCap1 = e.Value?.ToString();
+        CapUser1 = await FindUserByCF(mvarCFCap1);
+        StateHasChanged();
+    }
+    private async Task OnCFExpert2Changed(ChangeEventArgs e)
+    {
+        mvarCFCap2 = e.Value?.ToString();
+        CapUser2 = await FindUserByCF(mvarCFCap2);
+        StateHasChanged();
+    }
+    private async Task OnCommentsChanged(ChangeEventArgs e)
+    {
+        mvarComment = e.Value?.ToString();
+        await mvarLocalStorage.SetInspectorCommentsField(mvarComment);
+        StateHasChanged();
+    }
+
+    private async Task<UserModelBase?> FindUserByCF(string? cf)
+    {
+        if (string.IsNullOrWhiteSpace(cf) || Users == null)
+            return null;
+        UserModelBase? salida = Users.Values.FirstOrDefault(u => u.CF.Equals(cf.Trim(), StringComparison.OrdinalIgnoreCase));
+        await UpdateLocalStorage();
+        return salida;
+    }
+
+    private async Task UpdateLocalStorage()
+    {
+        Guid[] colUsers = new Guid[3];
+        colUsers[0] = null == InspectorUser ? Guid.Empty : InspectorUser.guid;
+        colUsers[1] = null == CapUser1 ? Guid.Empty : CapUser1.guid;
+        colUsers[2] = null == CapUser2 ? Guid.Empty : CapUser2.guid;
+        await mvarLocalStorage.SetInspectorAgentsTable(colUsers);        
+    }
+
+
+
+
+}

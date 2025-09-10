@@ -20,6 +20,12 @@ body {
     -webkit-text-fill-color: transparent;
     transition: opacity 0.3s ease;
 }
+.logo-subtext {
+    background: linear-gradient(45deg, #B2C0FF, #E3DBFF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    transition: opacity 0.2s ease;
+}
 
 .notification-badge {
     background: #ff6b6b;

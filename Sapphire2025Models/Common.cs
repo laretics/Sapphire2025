@@ -8,9 +8,11 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
+		public const string SapphireSoftwareVersion = "25.09.11";
+
 		/// <summary>
 		/// Estados posibles en los que puede encontrarse un tren
-		/// </summary>
+		/// </summary>		
 		public enum TrainStatus : byte
 		{
 			Unknown = 0,             //Estado desconocido

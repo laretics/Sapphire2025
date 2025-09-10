@@ -3,6 +3,7 @@ using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
 using Sapphire2025Models.Expert;
 using Sapphire2025Models.Expert.WorkshiftTemplates;
+using System.Text;
 using System.Text.Json;
 namespace Sapphire2025.Storage
 {
@@ -305,7 +306,26 @@ namespace Sapphire2025.Storage
             Guid.TryParse(entrada, out salida);
             return salida;
         }
-		#endregion "Valores"
+		public async Task SetSwitchesArray(string key, bool[] rhs, bool session)
+        {
+            StringBuilder cadena = new StringBuilder();
+            for (int n = 0; n < rhs.Length; n++)
+                cadena.Append(rhs[n] ? "1" : "0");
+            await SetStringValue(key, cadena.ToString(), session);
+        }
+        public async Task<bool[]> GetSwitchesArray(string key, bool session)
+        {
+            string? cadena = await GetStringValue(key, session);
+            if(null!=cadena)
+            {
+                bool[] salida = new bool[cadena.Length];
+                for (int n = 0; n < cadena.Length; n++)
+                    salida[n] = ('1' == cadena[n]);
+                return salida;
+            }
+            return new bool[0];
+        }
+        #endregion "Valores"
 
 		
 	}

@@ -1,111 +1,8 @@
 ﻿@using Sapphire2025Models.Expert.WorkshiftTemplates;
 @inject IJSRuntime JS
 @inject IntStorageService mvarLocalStorage;
-<div class="card mb-4 shadow-sm">
-    <div class="card-body">
-        <div class="row g-3 align-items-center">
-            <!-- Inspector -->
-            <div class="col-md-4">
-                <label class="form-label fw-bold text-primary">CF Inspector</label>
-                <div class="input-group">
-                    <input type="text" class="form-control" maxlength="8"
-                           @bind="mvarCFInspector"
-                           @bind:event="oninput"
-                           placeholder="Introduce CF del Inspector" />
-                    <span class="input-group-text bg-light">
-                        <i class="bi bi-search"></i>
-                    </span>
-                </div>
-                @if (InspectorUser != null)
-                {
-                    <div class="mt-2 p-2 rounded bg-light border">
-                        <div class="fw-semibold text-dark">@InspectorUser.Name</div>
-                        <div class="text-muted small">
-                            <i class="bi bi-telephone"></i> @InspectorUser.PhoneNumber
-                            @if (!string.IsNullOrWhiteSpace(InspectorUser.ShortPhoneNumber))
-                            {
-                                <span class="ms-2">Ext: @InspectorUser.ShortPhoneNumber</span>
-                            }
-                        </div>
-                    </div>
-                }
-                else if (!string.IsNullOrWhiteSpace(mvarCFInspector))
-                {
-                    <div class="mt-2 text-danger small">No se ha encontrado ningún usuario con ese CF.</div>
-                }
-            </div>
-            <!-- Jefe de Maquinistas 1-->
-            <div class="col-md-4">
-                <label class="form-label fw-bold text-success">CF Jefe de Maquinistas</label>
-                <div class="input-group">
-                    <input type="text" class="form-control" maxlength="8"
-                           @bind="mvarCFCap1"
-                           @bind:event="oninput"
-                           placeholder="Introduce CF del Jefe de Maquinistas" />
-                    <span class="input-group-text bg-light">
-                        <i class="bi bi-search"></i>
-                    </span>
-                </div>
-                @if (CapUser1 != null)
-                {
-                    <div class="mt-2 p-2 rounded bg-light border">
-                        <div class="fw-semibold text-dark">@CapUser1.Name</div>
-                        <div class="text-muted small">
-                            <i class="bi bi-telephone"></i> @CapUser1.PhoneNumber
-                            @if (!string.IsNullOrWhiteSpace(CapUser1.ShortPhoneNumber))
-                            {
-                                <span class="ms-2">Ext: @CapUser1.ShortPhoneNumber</span>
-                            }
-                        </div>
-                    </div>
-                }
-                else if (!string.IsNullOrWhiteSpace(mvarCFCap1))
-                {
-                    <div class="mt-2 text-danger small">No se ha encontrado ningún usuario con ese CF.</div>
-                }
-            </div>
-            <!-- Jefe de Maquinistas 2-->
-            <div class="col-md-4">
-                <label class="form-label fw-bold text-success">CF Jefe de Maquinistas</label>
-                <div class="input-group">
-                    <input type="text" class="form-control" maxlength="8"
-                           @bind="mvarCFCap2"
-                           @bind:event="oninput"
-                           placeholder="Introduce CF del Jefe de Maquinistas" />
-                    <span class="input-group-text bg-light">
-                        <i class="bi bi-search"></i>
-                    </span>
-                </div>
-                @if (CapUser2 != null)
-                {
-                    <div class="mt-2 p-2 rounded bg-light border">
-                        <div class="fw-semibold text-dark">@CapUser2.Name</div>
-                        <div class="text-muted small">
-                            <i class="bi bi-telephone"></i> @CapUser2.PhoneNumber
-                            @if (!string.IsNullOrWhiteSpace(CapUser2.ShortPhoneNumber))
-                            {
-                                <span class="ms-2">Ext: @CapUser2.ShortPhoneNumber</span>
-                            }
-                        </div>
-                    </div>
-                }
-                else if (!string.IsNullOrWhiteSpace(mvarCFCap2))
-                {
-                    <div class="mt-2 text-danger small">No se ha encontrado ningún usuario con ese CF.</div>
-                }
-            </div>
-        </div>
-        <!-- Condiciones del servicio -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <label class="form-label fw-bold text-secondary">Condiciones del servicio</label>
-                <textarea class="form-control" rows="4"
-                          @bind="mvarComment"
-                          placeholder="Escribe aquí las condiciones especiales del servicio..."></textarea>
-            </div>
-        </div>
-    </div>
-</div>
+<AgentsListHeaderCtl></AgentsListHeaderCtl>
+
 <!--Ahora viene la lista de Agentes-->
 <button class="btn btn-outline-primary mb-3" @onclick="PrintPage">
 	<i class="bi bi-printer"></i> Imprimir lista
@@ -121,20 +18,6 @@
     [CascadingParameter] //Rodaja de días.
     public Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice { get; set; }
 
-    private string? mvarCFInspector;
-    private string? mvarCFCap1;
-    private string? mvarCFCap2;
-    private string? mvarComment;
-    private UserModelBase? InspectorUser => FindUserByCF(mvarCFInspector);
-    private UserModelBase? CapUser1 => FindUserByCF(mvarCFCap1);
-    private UserModelBase? CapUser2 => FindUserByCF(mvarCFCap2);
-
-    private UserModelBase? FindUserByCF(string? cf)
-    {
-        if (string.IsNullOrWhiteSpace(cf) || Users == null)
-            return null;
-        return Users.Values.FirstOrDefault(u => u.CF.Equals(cf.Trim(), StringComparison.OrdinalIgnoreCase));
-    }
     private string GetCellStyle(WorkShiftTemplateModel? rhs)
     {
         string auxColor = "black";
@@ -175,12 +58,7 @@
         //Para imprimir vamos a tener que trabajar ahora un poco más...
         //Lo primero es transferir al almacenamiento local la información que estamos
         //intentando imprimir.
-        Guid[] colUsers = new Guid[3];
-        colUsers[0] = null == InspectorUser ? Guid.Empty : InspectorUser.guid;
-        colUsers[1] = null == CapUser1 ? Guid.Empty : CapUser1.guid;
-        colUsers[2] = null == CapUser2 ? Guid.Empty : CapUser2.guid;
-        await mvarLocalStorage.SetInspectorAgentsTable(colUsers);
-        await mvarLocalStorage.SetInspectorCommentsField(mvarComment);
+
         await mvarLocalStorage.SetInspectorReportAssignations(ColAssignations);
         await mvarLocalStorage.SetInspectorReportSortedTemplates(SortedTemplates);
 

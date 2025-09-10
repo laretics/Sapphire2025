@@ -6,7 +6,7 @@
 <PageTitle>Gráfico diario de Tracción</PageTitle>
 <ModalDialog @ref="mvarModal" />
 
-<Sapphire2025.Layout.Expert.ExpertDayContext>
+<Sapphire2025.Layout.Expert.ExpertDayContext ExcelImportDayCount="4" ExcelImportFeature=true>
     <div>
         <ul class="nav nav-tabs" id="myTab" role="tablist">
             <li class="nav-item" role="presentation">
@@ -47,12 +47,5 @@
 
 @code {
     private ModalDialog mvarModal { get; set; } = new ModalDialog();
-
-    // [CascadingParameter]
-    // public Dictionary<Guid, UserModelBase>? mcolUsers{ get; set; }
-    // [CascadingParameter]
-    // private List<AssignationContentModel>? mcolAssignations{ get; set; }
-    // [CascadingParameter]
-    // private Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? mvarTimeSlice { get; set; }
 
 }
