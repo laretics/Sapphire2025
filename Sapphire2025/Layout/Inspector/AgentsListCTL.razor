@@ -2,7 +2,33 @@
 @inject IJSRuntime JS
 @inject IntStorageService mvarLocalStorage;
 <AgentsListHeaderCtl></AgentsListHeaderCtl>
-
+@if(null==Users)
+{
+    <LoadingTab ElementText="Cargando lista de usuarios"/>
+}
+else if(null==TimeSlice)
+{
+    <LoadingTab ElementText="Cargando información de fecha" />
+}
+else if (null == ColAssignations)
+{
+    <LoadingTab ElementText="Cargando asignaciones de turnos" />
+}
+else if (null== SortedTemplates)
+{
+    <LoadingTab ElementText="Cargando turnos" />
+}
+else
+{
+    foreach(WorkShiftTemplateModel turno in SortedTemplates)
+    {
+        auxAsigna = GetAssignation(turno);
+        if(null!=auxAsigna || turno is WorkTemplateModel)
+        {
+            <AgentsListRecordCTL workShiftTemplate="turno" assignation="auxAsigna"/> 
+        }
+    }
+}
 <!--Ahora viene la lista de Agentes-->
 <button class="btn btn-outline-primary mb-3" @onclick="PrintPage">
 	<i class="bi bi-printer"></i> Imprimir lista
@@ -17,6 +43,19 @@
     public List<WorkShiftTemplateModel>? SortedTemplates { get; set; }
     [CascadingParameter] //Rodaja de días.
     public Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice { get; set; }
+
+    private AssignationContentModel? auxAsigna;
+
+    private AssignationContentModel? GetAssignation(WorkShiftTemplateModel turno)
+    {
+        if (null == ColAssignations) return null; //No hay nada que buscar
+        foreach (AssignationContentModel candidato in ColAssignations)
+        {
+            if (turno.Match(candidato.Definitive ?? ""))
+                return candidato;
+        }
+        return null; //No ha encontrado asignación para este turno
+    }
 
     private string GetCellStyle(WorkShiftTemplateModel? rhs)
     {

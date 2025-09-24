@@ -88,76 +88,8 @@
 			}
 		</div>
 	</div>
-	<div class="table-responsive my-3">
-		<table class="table table-bordered table-sm align-middle">
-			<thead class="table-light">
-				<tr>
-					<th>T</th>
-					<th>Turno</th>
-					<th>Horario</th>
-					<th>CF</th>
-					<th>Asignación inicial</th>
-					<th>CF</th>
-					<th>Asignación definitiva</th>
-					<th>Teléfono</th>
-					<th>Extensión</th>
-				</tr>
-			</thead>
-			<tbody>
-				@if (null != Users && null != SortedTemplates)
-				{
-					for (int i = 0; i < SortedTemplates.Count; i++)
-					{
-						WorkShiftTemplateModel template = SortedTemplates[i];
-						if (template is AttTemplateModel attModel)
-						{
-							//Buscar asignación principal
-							List<AssignationContentModel>? assignations = ColAssignations?.Where(a => a.Definitive == attModel.Name).ToList();
-							if (null != assignations)
-							{
-								foreach (AssignationContentModel auxAsigna in assignations)
-								{
-									UserModelBase? swapUser = null;
-									UserModelBase? mainUser = null;
-									if (auxAsigna.SwappingAgent != Guid.Empty && Users.ContainsKey(auxAsigna.SwappingAgent))
-									{
-										swapUser = Users[auxAsigna.SwappingAgent];
-									}
+	<Sapphire2025.Layout.Inspector.AgentsListTableCTL/>
 
-									if (null != Users && Users.ContainsKey(auxAsigna.AgentId))
-									{
-										mainUser = Users[auxAsigna.AgentId];
-									}
-									<tr class="@(i % 2 == 0 ? "table-light" : "table-white")">
-										<td class="text-center align-middle">
-											@if (attModel is WorkTemplateModel)
-											{
-												<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#321D71">
-													<path d="M160-340v-380q0-53 27.5-84.5t72.5-48q45-16.5 102.5-22T480-880q66 0 124.5 5.5t102 22q43.5 16.5 68.5 48t25 84.5v380q0 59-40.5 99.5T660-200l60 60v20h-80l-80-80H400l-80 80h-80v-20l60-60q-59 0-99.5-40.5T160-340Zm320-460q-106 0-155 12.5T258-760h448q-15-17-64.5-28.5T480-800ZM240-560h200v-120H240v120Zm420 80H240h480-60Zm-140-80h200v-120H520v120ZM340-320q26 0 43-17t17-43q0-26-17-43t-43-17q-26 0-43 17t-17 43q0 26 17 43t43 17Zm280 0q26 0 43-17t17-43q0-26-17-43t-43-17q-26 0-43 17t-17 43q0 26 17 43t43 17Zm-320 40h360q26 0 43-17t17-43v-140H240v140q0 26 17 43t43 17Zm180-480h226-448 222Z" />
-												</svg>
-											}
-											else
-											{
-												<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#314D1C"><path d="M200-120q-17 0-28.5-11.5T160-160v-40q-50 0-85-35t-35-85v-200q0-50 35-85t85-35v-80q0-50 35-85t85-35h400q50 0 85 35t35 85v80q50 0 85 35t35 85v200q0 50-35 85t-85 35v40q0 17-11.5 28.5T760-120q-17 0-28.5-11.5T720-160v-40H240v40q0 17-11.5 28.5T200-120Zm-40-160h640q17 0 28.5-11.5T840-320v-200q0-17-11.5-28.5T800-560q-17 0-28.5 11.5T760-520v160H200v-160q0-17-11.5-28.5T160-560q-17 0-28.5 11.5T120-520v200q0 17 11.5 28.5T160-280Zm120-160h400v-80q0-27 11-49t29-39v-112q0-17-11.5-28.5T680-760H280q-17 0-28.5 11.5T240-720v112q18 17 29 39t11 49v80Zm200 0Zm0 160Zm0-80Z" /></svg>
-											}
-										</td>
-										<td class="turno-cell" style="@GetCellStyle(template)">@GetCellText(template)</td>
-										<td class="smallest-text">@GetCellTime(template)</td>
-										<td>@(swapUser?.CF ?? "")</td>
-										<td>@(swapUser?.Name ?? "")</td>
-										<td>@(mainUser?.CF ?? "")</td>
-										<td>@(mainUser?.Name?.ToUpper() ?? "")</td>
-										<td>@(mainUser?.PhoneNumber ?? "")</td>
-										<td>@(mainUser?.ShortPhoneNumber ?? "")</td>
-									</tr>
-								}
-							}
-						}
-					}
-				}
-			</tbody>
-		</table>
-	</div>
 </div>
 
 
