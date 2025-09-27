@@ -1,45 +1,61 @@
-﻿<div class="table-responsive my-3">
-	<table class="table table-bordered table-sm align-middle">
-		<thead class="table-light">
-			<tr>
-				<th>T</th>
-				<th>Turno</th>
-				<th>Horario</th>
-				<th>CF</th>
-				<th>Asignación inicial</th>
-				<th>CF</th>
-				<th>Asignación definitiva</th>
-				<th>Teléfono</th>
-				<th>Extensión</th>
-			</tr>
-		</thead>
-		<tbody>
-			@if (null != Users && null != SortedTemplates)
-			{
-				for (int i = 0; i < SortedTemplates.Count; i++)
+﻿@if (null == Users)
+{
+	<LoadingTab ElementText="Cargando lista de usuarios" />
+}
+else if (null == TimeSlice)
+{
+	<LoadingTab ElementText="Cargando información de fecha" />
+}
+else if (null == ColAssignations)
+{
+	<LoadingTab ElementText="Cargando asignaciones de turnos" />
+}
+else
+{
+	<div class="table-responsive my-3">
+		<table class="table table-bordered table-sm align-middle">
+			<thead class="table-light">
+				<tr>
+					<th>Turno</th>
+					<th>Horario</th>
+					<th>CF</th>
+					<th>Asignación inicial</th>
+					<th>CF</th>
+					<th>Asignación definitiva</th>
+					<th>Teléfono</th>
+					<th>Extensión</th>
+				</tr>
+			</thead>
+			<tbody>
+				@if (null != Users && null != SortedTemplates)
 				{
-					WorkShiftTemplateModel template = SortedTemplates[i];
-					if (template is AttTemplateModel attModel)
+					for (int i = 0; i < SortedTemplates.Count; i++)
 					{
-						//Buscar asignación principal
-						List<AssignationContentModel> assignations = auxAssignationsByWorkshift(template);
-						if (assignations.Count>0 || template is WorkTemplateModel) 
-						//Sólo mostramos turnos att con maquinista o turnos de conducción (aunque no tengan asignación)
+						WorkShiftTemplateModel template = SortedTemplates[i];
+						if (template is AttTemplateModel attModel)
 						{
-							<AgentsListRecordCTL assignations="assignations" workShiftTemplate="template" rowId="i"/>
+							//Buscar asignación principal
+							List<AssignationContentModel> assignations = auxAssignationsByWorkshift(template);
+							if (assignations.Count > 0 || template is WorkTemplateModel)
+							//Sólo mostramos turnos att con maquinista o turnos de conducción (aunque no tengan asignación)
+							{
+								<AgentsListRecordCTL assignations="assignations" workShiftTemplate="template" rowId="i" />
+							}
 						}
 					}
 				}
-			}
-		</tbody>
-	</table>
-</div>
+			</tbody>
+		</table>
+	</div>
+}
 @code {
 	[CascadingParameter]
 	public Dictionary<Guid,UserModelBase>? Users { get; set; }
-	[Parameter]
+	[CascadingParameter] //Rodaja de días.
+	public Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice { get; set; }
+	[CascadingParameter]
 	public List<WorkShiftTemplateModel>? SortedTemplates { get; set; }
-	[Parameter]
+	[CascadingParameter]
 	public List<AssignationContentModel>? ColAssignations { get; set; }
 
 	/// <summary>
@@ -50,10 +66,13 @@
 	private List<AssignationContentModel> auxAssignationsByWorkshift(WorkShiftTemplateModel rhs)
 	{
 		List<AssignationContentModel> salida = new List<AssignationContentModel>();
-		foreach(AssignationContentModel candidato in ColAssignations)
+		if(null!=ColAssignations)
 		{
-			if (rhs.Match(candidato.Definitive ?? "wrong"))
-				salida.Add(candidato);
+			foreach (AssignationContentModel candidato in ColAssignations)
+			{
+				if (rhs.Match(candidato.Definitive ?? "wrong"))
+					salida.Add(candidato);
+			}
 		}
 		return salida;
 	}

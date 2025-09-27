@@ -138,39 +138,8 @@
 
 	}
 
-	private string GetCellText(WorkShiftTemplateModel? rhs)
-	{
-		if (null == rhs) return string.Empty;
-		return rhs.Name ?? string.Empty;
-	}
-	private string GetCellStyle(WorkShiftTemplateModel? rhs)
-	{
-		string auxColor = "black";
-		string auxFondo = "transparent";
-		if (null != rhs)
-		{
-			auxColor = rhs.Color ?? "black";
-			auxFondo = rhs.BgColor ?? "transparent";
-		}
-		return string.Format("background: {1}; color: {0};", auxColor, auxFondo);
-	}
-	private string GetCellTime(WorkShiftTemplateModel? rhs)
-	{
-		if (null == rhs) return string.Empty;
 
-		if (rhs is AttTemplateModel auxTrabajo)
-		{
-			System.Text.StringBuilder auxElapsed = new System.Text.StringBuilder();
-			auxElapsed.AppendFormat("{0} h", auxTrabajo.Duration.Hours);
-			if (auxTrabajo.Duration.Minutes > 0)
-				auxElapsed.AppendFormat(" y {0} min", auxTrabajo.Duration.Minutes);
 
-			return string.Format("{0}-{1} ({2})",
-			Sapphire2025Models.Utils.autoInterval(auxTrabajo.StartTime, true),
-			Sapphire2025Models.Utils.autoInterval(auxTrabajo.EndTime, true),
-			Sapphire2025Models.Utils.autoInterval(auxTrabajo.Duration, false));
-		}
-		return string.Empty;
-	}
+
 
 }

@@ -7,33 +7,10 @@
 <ModalDialog @ref="mvarModal" />
 
 <Sapphire2025.Layout.Expert.ExpertDayContext ExcelImportDayCount="4" ExcelImportFeature="true">
-    <Sapphire2025.Layout.Inspector.AgentsListCTL>
-    </Sapphire2025.Layout.Inspector.AgentsListCTL>
+    <Sapphire2025.Layout.Inspector.AgentsListHeaderCtl/>
+    <Sapphire2025.Layout.Inspector.AgentsListTableCTL  />
 </Sapphire2025.Layout.Expert.ExpertDayContext>
 
 @code {
     private ModalDialog mvarModal { get; set; } = new ModalDialog();
-    private InputFile? mvarCBExcelInputRef;
-    private bool mvarLoading = false;
-    //TODO: Modificar esto... la importación debería ir en un control embebido en ExpertDayContext
-    private DateTime mvarSelectedDate = DateTime.Today.AddDays(4); //Lo normal es que me interese el informe de mañana.
-    private DateTime selectedDate
-    {
-        get => mvarSelectedDate;
-        set
-        {
-            mvarSelectedDate = value;
-            _ = mvarIntStorage.SetInspectorReportDate(value);
-        }
-    }
-    /// <summary>
-    /// TODO: No está entrando por aquí... hay que examinar el código!!!    
-    /// </summary>
-
-    //private Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? mvarTimeSlice;
-
-    protected override async Task OnInitializedAsync()
-    {
-        selectedDate = await mvarIntStorage.GetInspectorReportDate();
-    }
 }

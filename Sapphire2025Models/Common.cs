@@ -275,6 +275,19 @@ namespace Sapphire2025Models
 			return string.Format(cadenaFormato, secc);
 		}
 	
+		static public string phoneString(string? rhs)
+		{
+			if (string.IsNullOrEmpty(rhs))
+				return string.Empty;
+
+			//Eliminamos caracteres que no sean dígitos
+			string soloDigitos = new string(rhs.Where(char.IsDigit).ToArray());
+			if (9 == soloDigitos.Length)
+				return $"{soloDigitos.Substring(0, 3)} {soloDigitos.Substring(3, 3)} {soloDigitos.Substring(6, 3)}";
+
+			return rhs; //Si no tiene nueve dígitos, devolvemos lo que teníamos.
+		}
+
 		static public DateTime? parseSapphireDate(string? rhs)
 		{
 			if (null == rhs) return null;
