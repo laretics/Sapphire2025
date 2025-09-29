@@ -30,39 +30,37 @@ else
                                         <button class="btn btn-outline-secondary" title="Importar gráfico"
                                             @onclick="() => TriggerFileInputBlazor(mvarCBExcelInputRef)"
                                         >
-                                            <!-- upload icon -->
-                                            <svg width="1.2em" height="1.2em" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M28.781,4.405H18.651V2.018L2,4.588V27.115l16.651,2.868V26.445H28.781A1.162,1.162,0,0,0,30,25.349V5.5A1.162,1.162,0,0,0,28.781,4.405Zm.16,21.126H18.617L18.6,23.642h2.487v-2.2H18.581l-.012-1.3h2.518v-2.2H18.55l-.012-1.3h2.549v-2.2H18.53v-1.3h2.557v-2.2H18.53v-1.3h2.557v-2.2H18.53v-2H28.941Z" style="fill:#20744a;fill-rule:evenodd" /><rect x="22.487" y="7.439" width="4.323" height="2.2" style="fill:#20744a" /><rect x="22.487" y="10.94" width="4.323" height="2.2" style="fill:#20744a" /><rect x="22.487" y="14.441" width="4.323" height="2.2" style="fill:#20744a" /><rect x="22.487" y="17.942" width="4.323" height="2.2" style="fill:#20744a" /><rect x="22.487" y="21.443" width="4.323" height="2.2" style="fill:#20744a" /><polygon points="6.347 10.673 8.493 10.55 9.842 14.259 11.436 10.397 13.582 10.274 10.976 15.54 13.582 20.819 11.313 20.666 9.781 16.642 8.248 20.513 6.163 20.329 8.585 15.666 6.347 10.673" style="fill:#ffffff;fill-rule:evenodd" />
-                                            </svg>
+                                            <Sapphire2025.Icons.Actions.Upload/>
                                         </button>
                                     }
-                                    <button type="button"
-                                            class="btn @(WipeOff ? "btn-secondary active" : "btn-outline-secondary")"
-                                            @onclick="() => auxToggleOption(nameof(WipeOff))"
-                                            title="Desaparecer contenido">
-                                        <!-- eye-off icon -->
-                                        <svg xmlns="http://www.w3.org/2000/svg" height="1.2em" viewBox="0 0 24 24" width="1.2em" fill="currentColor">
-                                            <path d="M12 6a9.77 9.77 0 0 1 8.94 6A9.77 9.77 0 0 1 12 18a9.77 9.77 0 0 1-8.94-6A9.77 9.77 0 0 1 12 6m0-2C6.48 4 2 8.48 2 12s4.48 8 10 8 10-4.48 10-8-4.48-8-10-8zm0 4a4 4 0 0 1 4 4c0 .88-.36 1.68-.93 2.25l1.42 1.42A5.98 5.98 0 0 0 18 12c0-3.31-2.69-6-6-6zm-4.93 2.25A3.98 3.98 0 0 1 6 12c0 3.31 2.69 6 6 6 1.31 0 2.52-.42 3.5-1.13l-1.42-1.42A3.98 3.98 0 0 1 12 16a4 4 0 0 1-4-4c0-.88.36-1.68.93-2.25z" />
-                                        </svg>
-                                    </button>
-                                    <button type="button"
-                                            class="btn @(FollowingMode ? "btn-secondary active" : "btn-outline-secondary")"
-                                            @onclick="() => auxToggleOption(nameof(FollowingMode))"
-                                            title="Modo seguimiento">
-                                        <!-- bolt icon -->
-                                        <svg xmlns="http://www.w3.org/2000/svg" height="1.2em" viewBox="0 0 24 24" width="1.2em" fill="currentColor">
-                                            <path d="M7 2v11h3v9l7-12h-4l4-8z" />
-                                        </svg>
-                                    </button>
-                                    <button type="button"
-                                            class="btn @(HasProgressBar ? "btn-secondary active" : "btn-outline-secondary")"
-                                            @onclick="() => auxToggleOption(nameof(HasProgressBar))"
-                                            title="Barras de progreso">
-                                        <!-- bar chart icon -->
-                                        <svg xmlns="http://www.w3.org/2000/svg" height="1.2em" viewBox="0 0 24 24" width="1.2em" fill="currentColor">
-                                            <path d="M5 9.2V19h2V9.2H5zm6 3.6V19h2v-6.2h-2zm6-7.2V19h2V5.6h-2z" />
-                                        </svg>
-                                    </button>
+                                    @if(RealTimeFollowFeature)
+                                    {
+                                        <button type="button"
+                                                class="btn @(WipeOff ? "btn-secondary active" : "btn-outline-secondary")"
+                                                @onclick="() => auxToggleOption(nameof(WipeOff))"
+                                                title="Desaparecer contenido">
+                                            <Sapphire2025.Icons.Actions.Eye color="currentColor" />
+                                        </button>
+                                        <button type="button"
+                                                class="btn @(FollowingMode ? "btn-secondary active" : "btn-outline-secondary")"
+                                                @onclick="() => auxToggleOption(nameof(FollowingMode))"
+                                                title="Modo seguimiento">
+                                            <Sapphire2025.Icons.Actions.Exec color="currentColor" />
+                                        </button>
+                                        <button type="button"
+                                                class="btn @(HasProgressBar ? "btn-secondary active" : "btn-outline-secondary")"
+                                                @onclick="() => auxToggleOption(nameof(HasProgressBar))"
+                                                title="Barras de progreso">
+                                            <Sapphire2025.Icons.Actions.TimeValue Color="currentColor" />
+                                        </button>
+                                    }
+                                    @if(PrintFeature)
+                                    {
+                                        <button class="btn btn-outline-secondary" title="Imprimir"
+                                                @onclick="() => TriggerFileInputBlazor(mvarCBExcelInputRef)">
+                                            <Sapphire2025.Icons.Actions.Printer Color="currentColor" />
+                                        </button>
+                                    }
                                 </div>
 @*                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="festiveSwitch" checked="@isFestive" @onchange="OnFestiveChanged" />
@@ -115,6 +113,10 @@ else
     public RenderFragment? ChildContent { get; set; } //Contenido de este control.
     [Parameter]
     public bool ExcelImportFeature{ get; set; } //Este control tiene la posibilidad de importar Excel
+    [Parameter]
+    public bool RealTimeFollowFeature{ get; set; } //Este control permite seguir en vivo la evolución
+    [Parameter]
+    public bool PrintFeature{ get; set; } //Este control se puede imprimir
     [Parameter]
     public int ExcelImportDayCount { get; set; } = 4; //Número de días que va a importar del excel.
     public bool WipeOff{get;set;} //Activa la desaparición del contenido a medida que se consume.
