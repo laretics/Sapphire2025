@@ -148,6 +148,8 @@
         if (string.IsNullOrWhiteSpace(cf) || Users == null)
             return null;
         UserModelBase? salida = Users.Values.FirstOrDefault(u => u.CF.Equals(cf.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (null == salida)
+            salida = Users.Values.FirstOrDefault(u => null!=u.Name && u.Name.Contains(cf.Trim(), StringComparison.OrdinalIgnoreCase));
         await UpdateLocalStorage();
         return salida;
     }
@@ -158,10 +160,6 @@
         colUsers[0] = null == InspectorUser ? Guid.Empty : InspectorUser.guid;
         colUsers[1] = null == CapUser1 ? Guid.Empty : CapUser1.guid;
         colUsers[2] = null == CapUser2 ? Guid.Empty : CapUser2.guid;
-        await mvarLocalStorage.SetInspectorAgentsTable(colUsers);        
+        await mvarLocalStorage.SetInspectorChiefsTable(colUsers);        
     }
-
-
-
-
 }

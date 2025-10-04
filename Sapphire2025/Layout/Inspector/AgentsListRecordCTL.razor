@@ -1,111 +1,64 @@
-﻿@if(null!=assignations)
+﻿@if(null!=Model)
 {
-	if (assignations.Count<1)
-	{
-		<tr class="@(rowId % 2 == 0 ? "table-light" : "table-white")">
+	<tr class="@(Model.Even ? "table-light" : "table.white")">
+		@if(null==Model.ScheduleId)
+		{
+			<td class="text-center align-middle turno-cell" style="@GetCellStyle()"/>
+		}
+		else
+		{
 			<td class="text-center align-middle turno-cell" style="@GetCellStyle()">
-				@if (workShiftTemplate is WorkTemplateModel)
-				{<Sapphire2025.Icons.Headers.UT color="#321D71" />}
+				@if (Model.Att)
+				{
+					<Sapphire2025.Icons.Inspector.Att color="#314D1C" size="16px" />
+				}
 				else
-				{<Sapphire2025.Icons.Inspector.Att color="#314D1C" />}
+				{
+
+					<Sapphire2025.Icons.Headers.UT color="#321D71" size="16px"/>
+				}
 				<span class="ms-2">@GetCellText()</span>
 			</td>
-			<td class="smallest-text">@GetCellTime()</td>
-			<td></td>
-			<td>[Sin asignar]</td>
-			@for (int u = 0; u < 4; u++) {<td></td>}			
-		</tr>
-	}
-	else
-	{
-		for (int i = 0; i < assignations.Count; i++)
+		}		
+		@if(Model.Covered)
 		{
-			AssignationContentModel auxAsigna = assignations[i];
-			UserModelBase? swapUser = null;
-			UserModelBase? mainUser = null;
-			<tr class="@(rowId % 2 == 0 ? "table-light" : "table-white")">
-				@if (0 == i)
-				{
-					<td class="text-center align-middle turno-cell" style="@GetCellStyle()">
-						@if (workShiftTemplate is WorkTemplateModel)
-						{<Sapphire2025.Icons.Headers.UT color="#321D71" />}
-						else
-						{<Sapphire2025.Icons.Inspector.Att color="#314D1C" />}
-						<span class="ms-2">@GetCellText()</span>
-					</td>
-					<td class="smallest-text">@GetCellTime()</td>
-				}
-				else
-				{
-					<td class="turno-cell" style="@GetCellStyle()"></td>
-					<td></td>
-				}
-				@if (null != Users)
-				{
-					if (auxAsigna.SwappingAgent != Guid.Empty && Users.ContainsKey(auxAsigna.SwappingAgent))
-					{
-						swapUser = Users[auxAsigna.SwappingAgent];
-					}
-					if (null != Users && Users.ContainsKey(auxAsigna.AgentId))
-					{
-						mainUser = Users[auxAsigna.AgentId];
-					}
-					<td>@(swapUser?.CF ?? "")</td>
-					<td>@(swapUser?.Name ?? "")</td>
-					<td>@(mainUser?.CF ?? "")</td>
-					<td>@(mainUser?.Name?.ToUpper() ?? "")</td>
-					<td>@(Sapphire2025Models.Common.phoneString(mainUser?.PhoneNumber))</td>
-					<td>@(mainUser?.ShortPhoneNumber ?? "")</td>
-				}
-			</tr>
+			<td class="smallest-text">@Model.ScheduleTime</td>
+			<td>@Model.ChangedCF</td>
+			<td>@Model.ChangedAgentName</td>
+			<td>@Model.CF</td>
+			<td>@Model.AgentName</td>
+			<td>@Model.Phone</td>
+			<td>@Model.Extension</td>
 		}
-	}
+		else
+		{
+			<td class="smallest-text noncovered-cell">@Model.ScheduleTime</td>
+			for(int i=0; i<6;i++)
+			{
+				<td class="noncovered-cell"></td>
+			}
+		}
+	</tr>
+
 }
 
 @code {
-	[CascadingParameter] //Colección compartida de usuarios
-	public Dictionary<Guid,UserModelBase>? Users { get; set; }
-	[Parameter] //Turno
-	public WorkShiftTemplateModel? workShiftTemplate { get; set; }
-	[Parameter] //Agentes que lo cubren
-	public List<AssignationContentModel>? assignations { get; set; }
 	[Parameter]
-	public int rowId { get; set; }
-
+	public Sapphire2025Models.Inspector.AgentsListRecordModel? Model{ get; set; }
 	private string GetCellStyle()
 	{
 		string auxColor = "black";
 		string auxFondo = "transparent";
-		if (null != workShiftTemplate)
+		if(null!=Model)
 		{
-			auxColor = workShiftTemplate.Color ?? "black";
-			auxFondo = workShiftTemplate.BgColor ?? "transparent";
+			auxColor = Model.Color ?? "black";
+			auxFondo = Model.BgColor ?? "transparent";
 		}
 		return string.Format("background: {1}; color: {0};", auxColor, auxFondo);
 	}
-
 	private string GetCellText()
 	{
-		if (null == workShiftTemplate) return string.Empty;
-		return workShiftTemplate.Name ?? string.Empty;
-	}
-
-	private string GetCellTime()
-	{
-		if (null == workShiftTemplate) return string.Empty;
-
-		if (workShiftTemplate is AttTemplateModel auxTrabajo)
-		{
-			System.Text.StringBuilder auxElapsed = new System.Text.StringBuilder();
-			auxElapsed.AppendFormat("{0} h", auxTrabajo.Duration.Hours);
-			if (auxTrabajo.Duration.Minutes > 0)
-				auxElapsed.AppendFormat(" y {0} min", auxTrabajo.Duration.Minutes);
-
-			return string.Format("{0}-{1} ({2})",
-			Sapphire2025Models.Utils.autoInterval(auxTrabajo.StartTime, true),
-			Sapphire2025Models.Utils.autoInterval(auxTrabajo.EndTime, true),
-			Sapphire2025Models.Utils.autoInterval(auxTrabajo.Duration, false));
-		}
-		return string.Empty;
+		if (null == Model) return string.Empty;
+		return Model.ScheduleId ?? string.Empty;
 	}
 }

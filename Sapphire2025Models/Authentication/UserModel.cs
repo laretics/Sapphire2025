@@ -42,6 +42,7 @@ namespace Sapphire2025Models.Authentication
 		[Required(ErrorMessage = "El correo electrónico es obligatorio.")]
 		[EmailAddress(ErrorMessage = "Formato de correo electrónico no válido.")]
 		public string? Email { get; set; }
+		public bool UserEnabled { get; set; } //Usuario habilitado (o deshabilitado)
 		public int AccessFailedCount {  get; set; }
 		public bool NullPassword { get; set; } //Si es true, el usuario no tiene el password activo
 		public bool TelegramEnabled { get; set; } //Si es true, el usuario tiene el telegram habilitado

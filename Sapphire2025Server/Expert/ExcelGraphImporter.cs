@@ -241,7 +241,7 @@ namespace Sapphire2025Server.Expert
                 if(encabezado.Length>0)
                 {
                     string auxCF = encabezado[0].Trim();
-                    User? agente = await almacen.Users.Where(x => x.CF == auxCF).FirstOrDefaultAsync();
+                    User? agente = await almacen.Users.Where(x => x.UserEnabled && x.CF == auxCF).FirstOrDefaultAsync();
                     if (null != agente) return agente;
                 }               
             }

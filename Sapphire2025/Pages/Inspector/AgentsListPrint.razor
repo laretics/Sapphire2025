@@ -1,6 +1,7 @@
 ﻿@page "/agentsprintview"
+@layout EmptyLayout
 @inject IJSRuntime mvarJSRuntime
-@inject IntStorageService mvarLocalStorage;
+@inject IntStorageService mvarLocalStorage
 
 <div class="print-area">
 	<div class="print-title">
@@ -88,10 +89,32 @@
 			}
 		</div>
 	</div>
-	<Sapphire2025.Layout.Inspector.AgentsListTableCTL/>
-
+	@if(null!=mcolAgents)
+	{
+		<div class="table-responsive my-3">
+			<table class="table table-bordered table-sm align-middle">
+				<thead class="table-light">
+					<tr>
+						<th>Turno</th>
+						<th>Horario</th>
+						<th>CF</th>
+						<th>Asignación inicial</th>
+						<th>CF</th>
+						<th>Asignación definitiva</th>
+						<th>Teléfono</th>
+						<th>Extensión</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (Sapphire2025Models.Inspector.AgentsListRecordModel register in mcolAgents)
+					{
+						<Sapphire2025.Layout.Inspector.AgentsListRecordCTL Model="register" />
+					}
+				</tbody>
+			</table>
+		</div>
+	}
 </div>
-
 
 @code {
 	private DateTime mvarCurrentDate { get; set; }
@@ -102,14 +125,22 @@
 	private UserModelBase? CapUser1 = null;
 	private UserModelBase? CapUser2 = null;
 	private string? mvarComment = null;
+	private List<Sapphire2025Models.Inspector.AgentsListRecordModel>? mcolAgents;
+	private bool mvarReadyToPrint = false;
 
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
-		await RetrieveLocalData();
-		if(firstRender)
+		if(mvarReadyToPrint)
 		{
+			mvarReadyToPrint = false; //Evitamos que imprima varias veces.
+			await Task.Delay(500); // Espera medio segundo antes de imprimir
 			await mvarJSRuntime.InvokeVoidAsync("window.print");
-		}
+		}		
+	}
+	protected async override Task OnParametersSetAsync()
+	{
+		await RetrieveLocalData();
+		mvarReadyToPrint = true;
 	}
 
 	/// <summary>
@@ -117,9 +148,10 @@
 	/// </summary>
 	private async Task RetrieveLocalData()
 	{
+		mcolAgents = await mvarLocalStorage.GetInspectorAgentsTable();
 		Users = await mvarLocalStorage.GetUsersCache();
 		mvarCurrentDate = await mvarLocalStorage.GetInspectorReportDate();
-		Guid[] colUsers = await mvarLocalStorage.GetInspectorAgentsTable(mvarCurrentDate);
+		Guid[] colUsers = await mvarLocalStorage.GetInspectorChiefsTable(mvarCurrentDate);
 
 		if(null!=Users)
 		{

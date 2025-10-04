@@ -3,8 +3,10 @@ using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
 using Sapphire2025Models.Expert;
 using Sapphire2025Models.Expert.WorkshiftTemplates;
+using System.Security.AccessControl;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks.Dataflow;
 namespace Sapphire2025.Storage
 {
 	/// <summary>
@@ -161,6 +163,13 @@ namespace Sapphire2025.Storage
 		#endregion "Caché de usuarios"
 
 		#region "Página de Inspectores"
+        public async Task DeleteInspectorReportValues()
+            //Elimina todo lo que había en la caché sobre la tabla de Agentes.
+        {
+            await SetStringValue("inspectorreportdate", null, false);
+            await SetStringValue("inspectorchiefstable", null, false);
+			await SetStringValue("inspectorcommentsfield", null, false);
+		}
         public async Task SetInspectorReportDate(DateTime rhs)
         {
             string cadena = JsonSerializer.Serialize(rhs);
@@ -186,19 +195,24 @@ namespace Sapphire2025.Storage
         /// </summary>
         /// <param name="rhs">Array siguiendo este formato</param>
         /// <returns>Nada</returns>
-        public async Task SetInspectorAgentsTable(Guid[] rhs)
+        public async Task SetInspectorChiefsTable(Guid[] rhs)
         {
             string cadena = JsonSerializer.Serialize(rhs);
+            await SetStringValue("inspectorchiefstable", cadena, false);
+        }
+        public async Task SetInspectorAgentsTable(List<Sapphire2025Models.Inspector.AgentsListRecordModel> agents)
+        {
+            string cadena = JsonSerializer.Serialize(agents);
             await SetStringValue("inspectoragentstable", cadena, false);
         }
-        public async Task<Guid[]> GetInspectorAgentsTable(DateTime day)
+        public async Task<Guid[]> GetInspectorChiefsTable(DateTime day)
         {
             DateTime auxDate = await GetInspectorReportDate();
             
             if (auxDate.Equals(day))
             {
                 Guid[]? auxSalida;
-                string? cadena = await GetStringValue("inspectoragentstable", false);
+                string? cadena = await GetStringValue("inspectorchiefstable", false);
                 if (null != cadena)
                 {
 					auxSalida = JsonSerializer.Deserialize<Guid[]>(cadena);
@@ -209,6 +223,17 @@ namespace Sapphire2025.Storage
 			Guid[] salida = new Guid[3];
 			for (int i = 0; i < 3; i++)
 				salida[i] = Guid.Empty;
+            return salida;
+        }
+        public async Task<List<Sapphire2025Models.Inspector.AgentsListRecordModel>> GetInspectorAgentsTable()
+        {
+            List<Sapphire2025Models.Inspector.AgentsListRecordModel>? salida = new List<Sapphire2025Models.Inspector.AgentsListRecordModel>();
+            string? cadena = await GetStringValue("inspectoragentstable", false);
+            if(null!=cadena)
+            {
+                salida = JsonSerializer.Deserialize<List<Sapphire2025Models.Inspector.AgentsListRecordModel>>(cadena);
+                if (null == salida) return new List<Sapphire2025Models.Inspector.AgentsListRecordModel>();
+            }
             return salida;
         }
 
@@ -274,7 +299,7 @@ namespace Sapphire2025.Storage
             string auxStorageId = internalRequestString(session, "removeItem");
             await mvarJsRuntime.InvokeVoidAsync(auxStorageId, key);
         }
-		public async Task SetStringValue(string key, string value, bool session)
+		public async Task SetStringValue(string key, string? value, bool session)
         {            
             string auxStorageId = internalRequestString(session, "setItem");
 			await mvarJsRuntime.InvokeVoidAsync(auxStorageId, key, value);

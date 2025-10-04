@@ -1,4 +1,5 @@
-﻿@if (null == Users)
+﻿@inject IntStorageService mvarIntStorage
+@if (null == Users)
 {
 	<LoadingTab ElementText="Cargando lista de usuarios" />
 }
@@ -27,21 +28,11 @@ else
 				</tr>
 			</thead>
 			<tbody>
-				@if (null != Users && null != SortedTemplates)
+				@if(null!=mcolAgents)
 				{
-					for (int i = 0; i < SortedTemplates.Count; i++)
+					foreach (Sapphire2025Models.Inspector.AgentsListRecordModel register in mcolAgents)
 					{
-						WorkShiftTemplateModel template = SortedTemplates[i];
-						if (template is AttTemplateModel attModel)
-						{
-							//Buscar asignación principal
-							List<AssignationContentModel> assignations = auxAssignationsByWorkshift(template);
-							if (assignations.Count > 0 || template is WorkTemplateModel)
-							//Sólo mostramos turnos att con maquinista o turnos de conducción (aunque no tengan asignación)
-							{
-								<AgentsListRecordCTL assignations="assignations" workShiftTemplate="template" rowId="i" />
-							}
-						}
+						<AgentsListRecordCTL Model="register"/>
 					}
 				}
 			</tbody>
@@ -58,6 +49,104 @@ else
 	[CascadingParameter]
 	public List<AssignationContentModel>? ColAssignations { get; set; }
 
+	private List<Sapphire2025Models.Inspector.AgentsListRecordModel>? mcolAgents;
+
+	/// <summary>
+	/// Genera mcolAgents para pasársela a la lista de Agentes.
+	/// </summary>
+	/// <returns></returns>
+	private List<Sapphire2025Models.Inspector.AgentsListRecordModel> auxComposeList()
+	{
+		List<Sapphire2025Models.Inspector.AgentsListRecordModel>  salida = new List<Sapphire2025Models.Inspector.AgentsListRecordModel>();
+		bool even = false;
+		UserModelBase? swapUser;
+		UserModelBase? mainUser;
+		if(null!=Users && null!=SortedTemplates)
+		{
+			for(int i=0; i< SortedTemplates.Count; i++)
+			{
+				WorkShiftTemplateModel template = SortedTemplates[i];
+				if(template is AttTemplateModel attTemplateModel)
+				{
+					List<AssignationContentModel> assignations = auxAssignationsByWorkshift(template);
+					if(assignations.Count>0)
+					{
+						even = !even; //Cambiamos estilo de paridad.
+						bool primera = true;
+						foreach (AssignationContentModel auxAsigna in assignations)
+						{
+							Sapphire2025Models.Inspector.AgentsListRecordModel registro = new Sapphire2025Models.Inspector.AgentsListRecordModel();
+							registro.Even = even;
+							registro.Covered = true;
+							if(primera)
+							{
+								registro.Att = !(template is WorkTemplateModel);
+								registro.ScheduleId = template.Name;
+								registro.ScheduleTime = auxGetTemplateTime(template);
+							}
+							registro.Color = template.Color;
+							registro.BgColor = template.BgColor;
+							swapUser = null;
+							mainUser = null;
+							if (Guid.Empty != auxAsigna.SwappingAgent && Users.ContainsKey(auxAsigna.SwappingAgent))
+								swapUser = Users[auxAsigna.SwappingAgent];
+							if (Users.ContainsKey(auxAsigna.AgentId))
+								mainUser = Users[auxAsigna.AgentId];
+							if(null!=swapUser)
+							{
+								registro.ChangedCF = swapUser.CF;
+								registro.ChangedAgentName = swapUser.Name;
+							}
+							if(null!=mainUser)
+							{
+								registro.CF = mainUser.CF;
+								registro.AgentName = mainUser.Name;
+								registro.Phone = Sapphire2025Models.Common.phoneString(mainUser.PhoneNumber);
+								registro.Extension = mainUser.ShortPhoneNumber;
+							}
+							primera = false;
+							salida.Add(registro);
+						}
+					}
+					else //Turno sin cubrir
+					{
+						if(template is WorkTemplateModel) //El turno sin cubrir es de conducción!
+						{
+							Sapphire2025Models.Inspector.AgentsListRecordModel registro = new Sapphire2025Models.Inspector.AgentsListRecordModel();
+							registro.Even = even;
+							registro.Att = false;
+							registro.ScheduleId = template.Name;
+							registro.ScheduleTime = auxGetTemplateTime(template);
+							registro.Color = template.Color;
+							registro.BgColor = template.BgColor;
+							registro.Covered = false;
+							salida.Add(registro);
+						}
+					}
+				}
+			}			
+		}
+		return salida;
+	}
+	private string auxGetTemplateTime(WorkShiftTemplateModel template)
+	{
+		if(template is AttTemplateModel auxTrabajo)
+		{
+			return string.Format("{0}-{1} ({2})",
+			Sapphire2025Models.Utils.autoInterval(auxTrabajo.StartTime, true),
+			Sapphire2025Models.Utils.autoInterval(auxTrabajo.EndTime, true),
+			Sapphire2025Models.Utils.autoInterval(auxTrabajo.Duration, false));
+		}
+		return string.Empty;
+	}
+
+	protected override async Task OnParametersSetAsync()
+	{
+		mcolAgents = auxComposeList();
+		//Guardamos en el almacenamiento local esta lista por si hay que imprimir.
+		await mvarIntStorage.SetInspectorAgentsTable(mcolAgents);
+	}
+
 	/// <summary>
 	/// Asignaciones de un turno concreto
 	/// </summary>
@@ -66,7 +155,7 @@ else
 	private List<AssignationContentModel> auxAssignationsByWorkshift(WorkShiftTemplateModel rhs)
 	{
 		List<AssignationContentModel> salida = new List<AssignationContentModel>();
-		if(null!=ColAssignations)
+		if (null != ColAssignations)
 		{
 			foreach (AssignationContentModel candidato in ColAssignations)
 			{
@@ -76,5 +165,4 @@ else
 		}
 		return salida;
 	}
-
 }

@@ -2,6 +2,7 @@
 @inject ExpertClient mvarExpertClient
 @inject AuthenticationClient mvarAuthClient
 @inject IntStorageService mvarIntStorage
+@inject NavigationManager mvarNavigationManager
 @inject IJSRuntime mvarJSRuntime
 <ModalDialog></ModalDialog>
 <InputFile style="display:none" @ref="mvarCBExcelInputRef" OnChange="onExcelImport" MaxAllowedSize="5242880" accept=".xlsx" />
@@ -57,7 +58,7 @@ else
                                     @if(PrintFeature)
                                     {
                                         <button class="btn btn-outline-secondary" title="Imprimir"
-                                                @onclick="() => TriggerFileInputBlazor(mvarCBExcelInputRef)">
+                                                @onclick="OnReportPrint">
                                             <Sapphire2025.Icons.Actions.Printer Color="currentColor" />
                                         </button>
                                     }
@@ -200,6 +201,7 @@ else
             isFestive = TimeSlice.GetFestive(0);
         LoadPlan();
         await auxRefresh();
+        await mvarIntStorage.SetInspectorReportDate(selectedDate);
         mvarDataProcessing = false;
         StateHasChanged();
     }
@@ -296,6 +298,24 @@ else
         mvarExcelImporting = false;
         StateHasChanged();
     }
+    private async Task OnReportPrint()
+    {
+        //TODO: Es posible que haya más documentos que necesiten impresión... de momento
+        //sólo la vista del Inspector.
+        //mvarNavigationManager.NavigateTo("agentsprintview");
+
+        //Primero copiamos la información de la tabla de Agentes al almacenamiento de sesión
+        await CopyAgentsReportToLocale();
+        //Después mostramos esa misma información en el informe de Inspectores
+        await mvarJSRuntime.InvokeVoidAsync("window.open", "/agentsprintview", "_blank");
+    }
+
+    private async Task CopyAgentsReportToLocale()
+    {
+        
+        
+    }
+
     private async Task<int> GetTimezoneOffsetMinutes()
     {
         return await mvarJSRuntime.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");

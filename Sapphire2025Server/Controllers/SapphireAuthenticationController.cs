@@ -207,6 +207,7 @@ namespace Sapphire2025Server.Controllers
 							User nuevoUsuario = new User();
 							nuevoUsuario.guid = Guid.NewGuid();
 							nuevoUsuario.CF = request.CF;
+							nuevoUsuario.UserEnabled = true;
 							nuevoUsuario.UserName = request.UserName;
 							nuevoUsuario.NormalizedUserName = request.UserName.ToUpper();
 							almacen.Users.Add(nuevoUsuario);
@@ -295,6 +296,7 @@ namespace Sapphire2025Server.Controllers
 					{
 						auxUsuario = auxUsuarioNulo;
 						salida.CF = auxUsuario.CF;
+						salida.UserEnabled = auxUsuario.UserEnabled;
 						if (null != auxUsuario.UserName)
 							salida.Name = auxUsuario.UserName;
 						if (null != auxUsuario.PhoneNumber)
@@ -435,6 +437,7 @@ namespace Sapphire2025Server.Controllers
 							//Pero si hemos llegado aquí, entonces sí que podemos hacerlo.
 							usuario.CF = message.CF;
 						}
+						usuario.UserEnabled = message.UserEnabled;
 						if(null!=message.Email)
 						{
 							usuario.Email = message.Email;

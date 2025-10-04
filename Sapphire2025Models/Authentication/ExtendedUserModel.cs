@@ -83,6 +83,7 @@ namespace Sapphire2025Models.Authentication
 		public UpdateUserPersonalDataMessage() : base() { }
 		public string? UserName { get; set; }
 		public string? CF { get; set; }
+		public bool UserEnabled { get; set; }
 		public string? Email { get; set; }
 		public string? Phone { get; set; }
 		public string? ShortPhone { get; set; }

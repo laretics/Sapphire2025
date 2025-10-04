@@ -1,8 +1,8 @@
 ﻿@page "/agentsctc"
 @inject IJSRuntime mvarJSRuntime
 @inject ExpertClient mvarExpertClient
-@inject IntStorageService mvarIntStorage
 @inject AuthenticationClient mvarAuthClient
+@inject IntStorageService mvarLocalStorage
 <PageTitle>Lista de Agentes</PageTitle>
 <ModalDialog @ref="mvarModal" />
 
@@ -15,4 +15,8 @@
 
 @code {
     private ModalDialog mvarModal { get; set; } = new ModalDialog();
+    protected override async Task OnInitializedAsync()
+    {
+        await mvarLocalStorage.DeleteInspectorReportValues();
+    }    
 }

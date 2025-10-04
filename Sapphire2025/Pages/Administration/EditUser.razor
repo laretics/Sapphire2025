@@ -44,6 +44,13 @@ else
                         <InputText id="CF" @bind-Value="userModel.CF" class="form-control"  aria-describedby="cfHelp"/>
                         <div id="cfHelp" class="form-text">Todos los usuarios de este programa disponen de un carnet ferroviario si son de SFM o una identificación externa si pertenecen a una subcontrata.</div>
                     </div>
+
+                    <div class="mb-3">
+                        <InputCheckbox @bind-Value="userModel.UserEnabled" class="form-check-input" id="userEnabledSwitch" />
+                        <label class="form-check-label" for="telegramEnabledSwitch">
+                            Usuario en activo
+                        </label>
+                    </div>
                     <div class="mb-3">
                         <label for="name" class="form-label">Nombre y apellidos</label>
                         <InputText id="name" class="form-control" @bind-Value="userModel.Name"/>
@@ -275,6 +282,7 @@ else
             new UpdateUserPersonalDataMessage(mvarUserToken,userModel.guid);
             paquete.CF = userModel.CF;
             paquete.UserName = userModel.Name;
+            paquete.UserEnabled = userModel.UserEnabled;
             paquete.Phone = userModel.PhoneNumber;
             paquete.ShortPhone = userModel.ShortPhoneNumber;
             paquete.Email = userModel.Email;
