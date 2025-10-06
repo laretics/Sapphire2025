@@ -10,6 +10,12 @@
 .turno-cell {
     background: #321D71;
     color: #fff;
+    font-size: 1.0rem;
+    font-weight: bold;
+}
+
+.phone-cell {
+    font-size: 1.1rem;
     font-weight: bold;
 }
 

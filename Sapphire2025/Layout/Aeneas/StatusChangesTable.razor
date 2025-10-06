@@ -1,27 +1,29 @@
 ﻿@if(null!=StatusChanges)
 {
-	<div class="row border-bottom border-top bg-secondary text-light ">
-		<div class="col-1 border-end justify-content-center align-items-center"
-		onclick="@(()=>sortFields(1))"
-		style="min-width: 100px;">
-			<Sapphire2025.Icons.Headers.TrainStatus color="white" />
-		</div>
-		<div class="col-4 border-end justify-content-center align-items-center"
-		onclick="@(()=>sortFields(0))"
-		style="min-width: 200px;">
-			<Sapphire2025.Icons.Headers.EventDateTime color="white" />
-		</div>
-		<div class="col-2 border-end justify-content-center align-items-center"
-		onclick="@(()=>sortFields(0))"
-		style="min-width: 200px;">
-			<Sapphire2025.Icons.Headers.User color="white" />
-		</div>
-	</div>
 	<div class="overflow-auto" style="max-height:@(Height-10)vh;">
-		@foreach(StatusChangeModel changeModel in StatusChanges)
-		{
-			<StatusChangeRow changeModel="changeModel" userModel="@userFromStatus(changeModel)"/>
-		}
+		<table class="table table-bordered table-sm align-middle mb-0">
+			<thead class="table-secondary text-light">
+				<tr>
+					<th class ="col-1" style="min-width: 64px; cursor:pointer;" @onclick="@(() => sortFields(0))">
+						<Sapphire2025.Icons.Headers.TrainStatus color="white" />
+					</th>
+					<th class="col-2" style="min-width: 160px; cursor:pointer;" @onclick="@(() => sortFields(1))">
+						<Sapphire2025.Icons.Headers.EventDateTime color="white" />
+					</th>
+					<th class="col-2" style="min-width: 160px; cursor:pointer;" @onclick="@(() => sortFields(2))">
+						<Sapphire2025.Icons.Headers.User color="white" />
+					</th>
+					<th class="col-2" style="cursor:pointer;" @onclick="@(() => sortFields(3))">						
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+				@foreach (StatusChangeModel changeModel in StatusChanges)
+				{
+					<StatusChangeRow changeModel="changeModel" userModel="@userFromStatus(changeModel)" />
+				}
+			</tbody>
+		</table>
 	</div>
 }
 @code {

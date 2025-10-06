@@ -4,13 +4,16 @@
 @inject IntStorageService mvarLocalStorage
 
 <div class="print-area">
-	<div class="print-title">
-		<div class="print-logo">
-			<img src="img/sfmImg.png" alt="Logotipo SFM" />
+	<div class="print-title d-flex align-items-center" style="gap: 1.0rem; max-width: 100%; flex-wrap: nowrap;">
+		<div class="print-logo" style="margin-bottom:0; flex: 0 0 auto;">
+			<img src="img/sfmImg.png" alt="Logotipo SFM" style="max-width: 90px; height: auto;" />
 		</div>
-		<h2>
-			Agentes de Tracción - @mvarCurrentDate.ToString("dd/MM/yyyy")
+		<h2 class="mb-0 flex-grow-1" style="font-size: 1.3em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+			Tracción - @mvarCurrentDate.ToString("dd/MM/yyyy")
 		</h2>
+		<h1 class="mb-0 flex-grow-1" style="font-size: 2.0em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+			@GetDiaSemana(mvarCurrentDate)
+		</h1>
 	</div>
 	<div class="card mb-4 shadow-sm print-only">
 		<div class="card-body">
@@ -94,15 +97,15 @@
 		<div class="table-responsive my-3">
 			<table class="table table-bordered table-sm align-middle">
 				<thead class="table-light">
-					<tr>
-						<th>Turno</th>
+					<tr>						
 						<th>Horario</th>
 						<th>CF</th>
 						<th>Asignación inicial</th>
 						<th>CF</th>
 						<th>Asignación definitiva</th>
+						<th>Turno</th>
 						<th>Teléfono</th>
-						<th>Extensión</th>
+						<th>Ext</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -169,7 +172,20 @@
 
 
 	}
-
+	private static string GetDiaSemana(DateTime fecha)
+	{
+		return fecha.DayOfWeek switch
+		{
+			DayOfWeek.Monday => "LUNES",
+			DayOfWeek.Tuesday => "MARTES",
+			DayOfWeek.Wednesday => "MIÉRCOLES",
+			DayOfWeek.Thursday => "JUEVES",
+			DayOfWeek.Friday => "VIERNES",
+			DayOfWeek.Saturday => "SÁBADO",
+			DayOfWeek.Sunday => "DOMINGO",
+			_ => ""
+		};
+	}
 
 
 

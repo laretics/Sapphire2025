@@ -74,13 +74,18 @@ namespace Sapphire2025Server.Expert
                     Dictionary<string, List<WorkshiftAssignation>> cambios = new Dictionary<string, List<WorkshiftAssignation>>();
                     for (int fila = 0;fila<sheet.Count;fila++)
                     {
-                        string? auxColor = colSalida[col, fila].BgColor;
-                        if (auxColor!="transparent" && null!=auxColor)
+                        //Los Agentes que no entran en la importación tienen el array con
+                        //valores nulos... tengo que descartarlos.
+                        if (null != colSalida[col,fila])
                         {
-                            if (!cambios.ContainsKey(auxColor))
-                                cambios.Add(auxColor, new List<WorkshiftAssignation>());
-                            cambios[auxColor].Add(colSalida[col, fila]);
-                        }
+							string? auxColor = colSalida[col, fila].BgColor;
+							if (auxColor != "transparent" && null != auxColor)
+							{
+								if (!cambios.ContainsKey(auxColor))
+									cambios.Add(auxColor, new List<WorkshiftAssignation>());
+								cambios[auxColor].Add(colSalida[col, fila]);
+							}
+						}
                     }
                     //Ya tenemos la colección de turnos a cambiar.
                     foreach (List<WorkshiftAssignation> grupo in cambios.Values)
@@ -127,27 +132,6 @@ namespace Sapphire2025Server.Expert
 									}                                    
                                 }
                             }
-
-               //             //Cambio a tres, cuatro o más bandas.
-               //             Dictionary<Guid, string?> auxColTurnosOriginales = new Dictionary<Guid, string?>();
-               //             foreach(WorkshiftAssignation elemento in grupo)
-               //             {
-               //                 //Guardo la asignación definitiva de este agente en un diccionario.
-               //                 auxColTurnosOriginales.Add(elemento.Agent, elemento.Definitive);
-               //                 if(null!= elemento.Annotation)
-               //                 {
-               //                     //Obtengo el id de Agente que hará realmente este turno tras el cambio.
-               //                     WorkshiftAssignation? otro = auxGetTurnoByString(grupo,elemento.Annotation);
-               //                     if (null != otro)
-               //                     {
-				        			//	elemento.SwappingAgent = otro.Agent;
-               //                        elemento.Annotation = string.Format("Cambio a {0} bandas", grupo.Count());
-		        					//}                                        
-               //                 }                                   
-               //             }
-               //             //Asigno los turnos cambiados a los agentes en lugar del que tenían.
-               //             foreach(WorkshiftAssignation elemento in grupo)
-               //                 elemento.Definitive = auxColTurnosOriginales[elemento.SwappingAgent];
                         }
                     }
                 }
@@ -159,7 +143,11 @@ namespace Sapphire2025Server.Expert
                         //Elimino las asignaciones anteriores para esta fecha
                         await removeAssignations(date.AddDays(col), almacen);
                         for (int fila = 0; fila < sheet.Count; fila++)
-                            almacen.WorkShiftAssignations.Add(colSalida[col, fila]);
+                        {
+                            if (null != colSalida[col,fila])
+							    almacen.WorkShiftAssignations.Add(colSalida[col, fila]);
+						}
+                            
                         await almacen.SaveChangesAsync();
                     }
                 }

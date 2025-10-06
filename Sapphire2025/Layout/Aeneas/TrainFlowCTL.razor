@@ -166,27 +166,29 @@
 	public Sapphire2025Models.Common.TrainStatus Status{ get; set; }
 	[Parameter]
 	public EventCallback<Sapphire2025Models.Common.TrainStatus> OnStatusSelected{ get; set; }
+	[Parameter]
+	public EventCallback<Guid> OnOpenTrain{ get; set; }
 
 	private bool mvarInitialized = false;
 
-	private Dictionary<Sapphire2025Models.Common.TrainStatus, int> mcolCounters = new Dictionary<Sapphire2025Models.Common.TrainStatus, int>();
+	private Dictionary<Sapphire2025Models.Common.TrainStatus, List<TrainModel>> mcolTrains = new Dictionary<Sapphire2025Models.Common.TrainStatus, List<TrainModel>>();
 
 	private void HandleStatusSelected(Sapphire2025Models.Common.TrainStatus status)
 	{
 		//Primero tengo que ver si hay algún tren en este estado...
-		if(ItemCount(status)>0)
+		int numTrenes = 0;
+		if (mcolTrains.ContainsKey(status))
+			numTrenes = mcolTrains[status].Count();
+
+		if(numTrenes>0)
 		{
-			OnStatusSelected.InvokeAsync(status);
+			if (1 == numTrenes)
+				OnOpenTrain.InvokeAsync(mcolTrains[status].First().id);
+			else //Hay más de un tren... cargo la tabla
+				OnStatusSelected.InvokeAsync(status);
 		}
 	}
-	private int ItemCount(Sapphire2025Models.Common.TrainStatus status)
-	{
-		if(mcolCounters.ContainsKey(status))
-		{
-			return mcolCounters[status];
-		}
-		return 0;
-	}
+
 	protected async override Task OnInitializedAsync()
 	{
 		//Distribuye los trenes en el diagrama
@@ -194,14 +196,10 @@
 		{
 			foreach (TrainModel auxTrain in Trains)
 			{
-				if (mcolCounters.ContainsKey(auxTrain.lastStatus))
-				{
-					mcolCounters[auxTrain.lastStatus] = mcolCounters[auxTrain.lastStatus] + 1;
-				}
-				else
-				{
-					mcolCounters.Add(auxTrain.lastStatus, 1);
-				}
+				if (!mcolTrains.ContainsKey(auxTrain.lastStatus))
+					mcolTrains.Add(auxTrain.lastStatus, new List<TrainModel>());
+
+				mcolTrains[auxTrain.lastStatus].Add(auxTrain);
 			}
 		}
 		mvarInitialized = true;

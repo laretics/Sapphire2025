@@ -1,25 +1,7 @@
 ﻿@if(null!=Model)
 {
 	<tr class="@(Model.Even ? "table-light" : "table.white")">
-		@if(null==Model.ScheduleId)
-		{
-			<td class="text-center align-middle turno-cell" style="@GetCellStyle()"/>
-		}
-		else
-		{
-			<td class="text-center align-middle turno-cell" style="@GetCellStyle()">
-				@if (Model.Att)
-				{
-					<Sapphire2025.Icons.Inspector.Att color="#314D1C" size="16px" />
-				}
-				else
-				{
 
-					<Sapphire2025.Icons.Headers.UT color="#321D71" size="16px"/>
-				}
-				<span class="ms-2">@GetCellText()</span>
-			</td>
-		}		
 		@if(Model.Covered)
 		{
 			<td class="smallest-text">@Model.ScheduleTime</td>
@@ -27,13 +9,55 @@
 			<td>@Model.ChangedAgentName</td>
 			<td>@Model.CF</td>
 			<td>@Model.AgentName</td>
-			<td>@Model.Phone</td>
+			@if (null == Model.ScheduleId)
+			{
+				<td class="text-center align-middle turno-cell" style="@GetCellStyle()" />
+			}
+			else
+			{
+				<td class="text-center align-middle turno-cell" style="@GetCellStyle()">
+					@if (Model.Att)
+					{
+						<Sapphire2025.Icons.Inspector.Att color="#314D1C" size="16px" />
+					}
+					else
+					{
+
+						<Sapphire2025.Icons.Headers.UT color="#321D71" size="16px" />
+					}
+					<span class="ms-2">@GetCellText()</span>
+				</td>
+			}
+			<td class="phone-cell">@Model.Phone</td>
 			<td>@Model.Extension</td>
 		}
 		else
 		{
 			<td class="smallest-text noncovered-cell">@Model.ScheduleTime</td>
-			for(int i=0; i<6;i++)
+			for (int i = 0; i < 4; i++)
+			{
+				<td class="noncovered-cell"></td>
+			}
+			@if (null == Model.ScheduleId)
+			{
+				<td class="text-center align-middle turno-cell" style="@GetCellStyle()" />
+			}
+			else
+			{
+				<td class="text-center align-middle turno-cell" style="@GetCellStyle()">
+					@if (Model.Att)
+					{
+						<Sapphire2025.Icons.Inspector.Att color="#314D1C" size="16px" />
+					}
+					else
+					{
+
+						<Sapphire2025.Icons.Headers.UT color="#321D71" size="16px" />
+					}
+					<span class="ms-2">@GetCellText()</span>
+				</td>
+			}
+			for (int i = 0; i < 2; i++)
 			{
 				<td class="noncovered-cell"></td>
 			}

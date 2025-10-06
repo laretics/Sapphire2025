@@ -9,16 +9,16 @@
 }		
 @if(isExpert&&currentStatus== Sapphire2025Models.Common.TrainStatus.RequestToDiagnose)
 {
-	<Button Class="btn btn-outline-secondary" @onclick="@diagnoseToAvailable">No Se Retira</Button>
-	<Button Class="btn btn-outline-secondary" @onclick="@diagnoseToFault">Retirar de Circulación</Button>
+	<Button Class="btn btn-outline-secondary" @onclick="@diagnoseToAvailable">Sigue circulando</Button>
+	<Button Class="btn btn-outline-secondary" @onclick="@diagnoseToFault">Retirar</Button>
 }
 @if(isInspector&&currentStatus== Sapphire2025Models.Common.TrainStatus.RequestToRepair)
 {
-	<Button Class="btn btn-outline-secondary" @onclick="@sendToCorrective">Entrar a Reparar</Button>
+	<Button Class="btn btn-outline-secondary" @onclick="@sendToCorrective">Entrar a Taller</Button>
 }
 @if(isMechanic&&currentStatus== Sapphire2025Models.Common.TrainStatus.Repairing)
 {
-	<Button Class="btn btn-outline-secondary" @onclick="@sendToAvailable">Terminar Reparación</Button>
+	<Button Class="btn btn-outline-secondary" @onclick="@sendToAvailable">Devolver a circulación</Button>
 }
 @if(isOfficial&&currentStatus== Sapphire2025Models.Common.TrainStatus.Available)
 {
@@ -30,16 +30,16 @@
 }
 @if(isInspector&&currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested)
 {
-	<Button Class="btn btn-outline-secondary" @onclick="@acceptSendToMaintenance">Enviar a Mantenimiento</Button>
+	<Button Class="btn btn-outline-secondary" @onclick="@acceptSendToMaintenance">Enviar a Depósito</Button>
 }
 @if(isOfficial&&currentStatus== Sapphire2025Models.Common.TrainStatus.DepotAvailable)
 {
 	<Button Class="btn btn-outline-warning" @onclick="@rescueFromMaintenance">Rescatar de depósito</Button>
-	<Button Class="btn btn-outline-secondary" @onclick="@sendToMaintenance">Entrar a Mantenimiento</Button>
+	<Button Class="btn btn-outline-secondary" @onclick="@sendToMaintenance">Entrar a Taller</Button>
 }
 @if(isMechanic&&currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance)
 {
-	<Button Class="btn btn-outline-secondary" @onclick="@endMaintenance">Terminar Mantenimiento</Button>
+	<Button Class="btn btn-outline-secondary" @onclick="@endMaintenance">Devolver a circulación</Button>
 }
 @if (isOfficial && currentStatus == Sapphire2025Models.Common.TrainStatus.Unknown)
 {

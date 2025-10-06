@@ -23,7 +23,7 @@ text-anchor="middle" dominant-baseline="middle">@Name</text>
 {
 	<foreignObject x="@(x+18)%" y="@(y+11)%" width="10%" height="10%">
 		<div xmlns="http://www.w3.org/1999/xhtml">
-			<span class="badge rounded-pill bg-primary">@string.Format("{0}",itemCount)</span>
+			<span class="badge rounded-pill bg-primary">@pillContent()</span>
 		</div>
 	</foreignObject>
 }
@@ -57,6 +57,16 @@ text-anchor="middle" dominant-baseline="middle">@Name</text>
 	/// </summary>
 	[Parameter]
 	public EventCallback<Sapphire2025Models.Common.TrainStatus> OnStatusSelected { get; set; }
+
+	private string pillContent()
+	{
+		if (null == Trains) return string.Empty;
+		List<TrainModel> auxLista = Trains.Where(x => x.lastStatus.Equals(MyStatus)).ToList();
+		if (auxLista.Count() > 1)
+			return string.Format("{0}", auxLista.Count());
+		else
+			return auxLista.First().name;
+	}
 
 	private int itemCount
 	{

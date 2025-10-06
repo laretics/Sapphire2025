@@ -1,6 +1,7 @@
 ﻿@page "/trainFlow"
 @inject AeneasClient mvarAeneasClient
 @inject AuthenticationClient mvarAuthClient
+@inject NavigationManager mvarNavigator
 @inject IntStorageService mvarInternalStorage
 @if(null==mcolTrains)
 {
@@ -26,6 +27,7 @@ else
 						<div class="col">
 							<Sapphire2025.Layout.Aeneas.TrainFlowCTL
 							OnStatusSelected="HandleStatusSelected"
+							OnOpenTrain="HandleOpenTrain"
 							width="100" height="50" />
 						</div>
 						<div class="col">
@@ -70,6 +72,10 @@ else
 	{
 		Status = status;
 		StateHasChanged();
+	}
+	private void HandleOpenTrain(Guid id)
+	{
+		mvarNavigator.NavigateTo(string.Format("/train/{0}", id));
 	}
 	private void changeExtended()
 	{
