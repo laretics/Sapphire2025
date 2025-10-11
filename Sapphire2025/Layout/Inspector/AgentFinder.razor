@@ -1,0 +1,94 @@
+﻿<label class="form-label fw-bold text-@Color">@string.Format("Id {0}",AgentRole)</label>
+<div class="input-group">
+    <input type="text" class="form-control" maxlength="@maxIdLenght"
+           @bind="mvarSearchField"
+           @oninput="OnSearchFieldChanged"
+           placeholder="@string.Format("Id del {0}",AgentRole)"/>
+    <span class="input-group-text bg-light">
+        <i class="bi bi-search"></i>
+    </span>
+	@if (mcolUserCandidates?.Count > 1)
+	{
+		<ul class="dropdown-menu show w-100" style="position: absolute; top: 100%; left: 0; z-index: 1000;">
+			@foreach (UserModelBase user in mcolUserCandidates)
+			{
+				<li>
+					<a class="dropdown-item d-flex flex-column" @onclick="() => OnUserSelectFromList(user.CF)">
+						<span class="fw-semibold">@user.Name</span>
+						<small class="text-muted">@user.CF - @user.PhoneNumber</small>
+					</a>
+				</li>
+			}
+		</ul>
+	}
+</div>
+
+@if (SelectedUser != null)
+{
+	<div class="mt-2 p-2 rounded bg-light border">
+		<div class="fw-semibold text-dark">@SelectedUser.Name</div>
+		<div class="text-muted small">
+			<i class="bi bi-telephone"></i> @SelectedUser.PhoneNumber
+			@if (!string.IsNullOrWhiteSpace(SelectedUser.ShortPhoneNumber))
+			{
+				<span class="ms-2">Ext: @SelectedUser.ShortPhoneNumber</span>
+			}
+		</div>
+	</div>
+}
+else if (!string.IsNullOrWhiteSpace(mvarSearchField))
+{
+	<div class="mt-2 text-danger small">No se ha encontrado ningún usuario con ese CF.</div>
+}
+
+@code {
+	///Buscador de un Agente en la base de datos para poner sus datos.
+	[CascadingParameter]
+	public Dictionary<Guid,UserModelBase>? Users { get; set; }
+	private List<UserModelBase> mcolUserCandidates { get; set; } = new List<UserModelBase>();
+	[Parameter]
+	public UserModelBase? SelectedUser { get; set; }
+	[Parameter]
+	public string AgentRole { get; set; } = "agente"; //Nombre de la categoría (sólo para que aparezca en el formulario)
+	[Parameter]
+	public int maxIdLenght { get; set; } = 8;
+	[Parameter]
+	public string Color { get; set; } = "primary";
+
+	private string? mvarSearchField { get; set; }
+
+	private void OnSearchFieldChanged(ChangeEventArgs e)
+	{
+		mvarSearchField = e.Value?.ToString();
+		mcolUserCandidates = SearchUsers(mvarSearchField);
+		if (1 == mcolUserCandidates.Count())
+		{
+			SelectedUser = mcolUserCandidates.First();
+			StateHasChanged();
+		}		
+		else
+			SelectedUser = null;
+	}
+	private void OnUserSelectFromList(string cf)
+	{
+		UserModelBase? candidato = Users.Values.FirstOrDefault(x => x.CF.Equals(cf.Trim()));
+		SelectedUser = null;
+		mcolUserCandidates.Clear();
+		if(null!=candidato)
+		{
+			SelectedUser = candidato;
+		}
+	}
+
+	private List<UserModelBase> SearchUsers(string? cf,int maxAgents = 5)
+	{
+		List<UserModelBase> salida = new List<UserModelBase>();
+		if(!string.IsNullOrWhiteSpace(cf) && null!=Users)
+		{
+			salida = Users.Values.Where(x => x.CF.Equals(cf.Trim(), StringComparison.OrdinalIgnoreCase)).Take(maxAgents).ToList();
+			if(salida.Count<1)
+				salida = Users.Values.Where(x => null!=x.Name && x.Name.Contains(cf.Trim(), StringComparison.OrdinalIgnoreCase)).Take(maxAgents).ToList();
+		}
+		return salida;
+	}
+}
