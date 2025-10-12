@@ -9,7 +9,6 @@
 				<path d="@userIcon" />
 			</svg>
 		</div>
-		<!--<img src="https://randomuser.me/api/portraits/women/70.jpg" style="height:60px" class="rounded-circle" alt="Profile">-->
 
 		<div class="ms-3 profile-info">
 			<h6 class="text-white mb-0">@userString</h6>
@@ -21,7 +20,6 @@
 			{
 				<a href="/auth/login" class="text-white mb-1">Abrir Sesión</a>
 			}
-			<!--<small class="text-muted">Admin</small>-->
 		</div>
 	</div>
 </div>
@@ -31,11 +29,6 @@
 	//el almacenamiento interno.	
 	[CascadingParameter]
 	public SessionModel? Session{ get; set; }
-
-	protected async override Task OnInitializedAsync()
-	{
-
-	}
 
 	private bool activeSession { get => null != Session; }
 

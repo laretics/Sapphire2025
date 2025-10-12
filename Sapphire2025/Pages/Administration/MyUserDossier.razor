@@ -1,0 +1,28 @@
+﻿@page "/admin/myuserdossier"
+@inject IntStorageService mvarLocalStorage
+@if(null==mvarUser)
+{
+	
+}
+else
+{
+	<h3>@mvarUser.Name</h3>
+	<span>@mvarUser.CF</span>
+	
+}
+
+
+	@code {
+	//En esta página aparecerá toda la información sobre el usuario actual.
+	//Desde aquí se podrán editar los datos que el usuario quiera cambiar, especialmente los de Telegram.
+	private UserModelBase? mvarUser { get; set; }
+
+	protected override async Task OnInitializedAsync()
+	{
+		SessionModel? auxSesion = await mvarLocalStorage.GetSessionInfo();
+		if (null != auxSesion)
+			mvarUser = auxSesion.User;
+
+	}
+
+}

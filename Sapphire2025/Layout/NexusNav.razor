@@ -21,6 +21,13 @@
                     Tooltip="Gestión de turnos de trabajo."
                     Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Root}" />
 
+    <NexusNavOption Selected="@(3 == SelectedNavItem)"
+                    onclick="@(()=>SelectNavItem(3))"
+                    Link="admin/myuserdossier" Caption="Yo"
+                    Image="bi bi-my-user-nav-menu"
+                    Tooltip="Mi página de información."
+                    Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Engineer, Sapphire2025Models.Common.UserRole.Expert, Sapphire2025Models.Common.UserRole.Inspector, Sapphire2025Models.Common.UserRole.Mechanic, Sapphire2025Models.Common.UserRole.Oficial, Sapphire2025Models.Common.UserRole.Root}" />    
+
     <NexusNavOption Selected ="@(5== SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(3))" 
                     Link="submenu/caps" Caption="J.Maquinista"
@@ -33,8 +40,7 @@
                     Link="submenu/inspector" Caption="Inspector"
                     Image="bi bi-expert-day-nav-menu"
                     Tooltip="Opciones para Inspectores"
-                    Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Inspector}" />
-    
+                    Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Inspector}" />    
 
 </CascadingValue>
 <div class="sfmlogo-bg">

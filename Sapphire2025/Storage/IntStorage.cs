@@ -187,43 +187,10 @@ namespace Sapphire2025.Storage
 
             return salida;
         }
-        /// <summary>
-        /// Guardamos los tres agentes implicados en la explotación...
-        /// [0] -> Inspector de mañana
-        /// [1] -> JMaqu de mañana
-        /// [2] -> JMaqu de tarde
-        /// </summary>
-        /// <param name="rhs">Array siguiendo este formato</param>
-        /// <returns>Nada</returns>
-        public async Task SetInspectorChiefsTable(Guid[] rhs)
-        {
-            string cadena = JsonSerializer.Serialize(rhs);
-            await SetStringValue("inspectorchiefstable", cadena, false);
-        }
         public async Task SetInspectorAgentsTable(List<Sapphire2025Models.Inspector.AgentsListRecordModel> agents)
         {
             string cadena = JsonSerializer.Serialize(agents);
             await SetStringValue("inspectoragentstable", cadena, false);
-        }
-        public async Task<Guid[]> GetInspectorChiefsTable(DateTime day)
-        {
-            DateTime auxDate = await GetInspectorReportDate();
-            
-            if (auxDate.Equals(day))
-            {
-                Guid[]? auxSalida;
-                string? cadena = await GetStringValue("inspectorchiefstable", false);
-                if (null != cadena)
-                {
-					auxSalida = JsonSerializer.Deserialize<Guid[]>(cadena);
-					if (null != auxSalida)
-						return auxSalida;
-				}
-            }
-			Guid[] salida = new Guid[3];
-			for (int i = 0; i < 3; i++)
-				salida[i] = Guid.Empty;
-            return salida;
         }
         public async Task<List<Sapphire2025Models.Inspector.AgentsListRecordModel>> GetInspectorAgentsTable()
         {

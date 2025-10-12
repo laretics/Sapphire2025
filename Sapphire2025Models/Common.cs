@@ -8,8 +8,9 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public const string SapphireSoftwareVersion = "25.10.07";
-		public const string LastChangesText = "Formulario de Maquinistas remodelado|Histórico de intervenciones en material móvil";
+		public const string SapphireSoftwareVersion = "25.10.12";
+		public const string LastChangesText = "Página 'YO'|Color de versión|Selector de Agentes con memoria en lista de Maquinistas";
+		public const string VersionColor = "#6FB559"; //Color de la versión para diferenciar una de otra.
 
 		/// <summary>
 		/// Estados posibles en los que puede encontrarse un tren

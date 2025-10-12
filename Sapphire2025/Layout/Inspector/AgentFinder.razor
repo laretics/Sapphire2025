@@ -1,4 +1,5 @@
-﻿<label class="form-label fw-bold text-@Color">@string.Format("Id {0}",AgentRole)</label>
+﻿@inject IntStorageService mvarLocalStorage;
+<label class="form-label fw-bold text-@Color">@string.Format("Id {0}",AgentRole)</label>
 <div class="input-group">
     <input type="text" class="form-control" maxlength="@maxIdLenght"
            @bind="mvarSearchField"
@@ -13,7 +14,7 @@
 			@foreach (UserModelBase user in mcolUserCandidates)
 			{
 				<li>
-					<a class="dropdown-item d-flex flex-column" @onclick="() => OnUserSelectFromList(user.CF)">
+					<a class="dropdown-item d-flex flex-column" @onclick="() => OnUserSelectFromList(user.guid)">
 						<span class="fw-semibold">@user.Name</span>
 						<small class="text-muted">@user.CF - @user.PhoneNumber</small>
 					</a>
@@ -49,6 +50,8 @@ else if (!string.IsNullOrWhiteSpace(mvarSearchField))
 	[Parameter]
 	public UserModelBase? SelectedUser { get; set; }
 	[Parameter]
+	public string LocalKey { get; set; } = "undefined";
+	[Parameter]
 	public string AgentRole { get; set; } = "agente"; //Nombre de la categoría (sólo para que aparezca en el formulario)
 	[Parameter]
 	public int maxIdLenght { get; set; } = 8;
@@ -56,27 +59,53 @@ else if (!string.IsNullOrWhiteSpace(mvarSearchField))
 	public string Color { get; set; } = "primary";
 
 	private string? mvarSearchField { get; set; }
-
-	private void OnSearchFieldChanged(ChangeEventArgs e)
+	protected override async Task OnParametersSetAsync()
 	{
-		mvarSearchField = e.Value?.ToString();
+		SelectedUser = await auxRetrieveUserFromLocal(LocalKey);
+	}
+
+	private async Task<UserModelBase?> auxRetrieveUserFromLocal(string key)
+	{
+		if (null != Users)
+		{
+			Guid auxCF = await mvarLocalStorage.GetGuidValue(key, false);
+			if (Users.ContainsKey(auxCF))
+			{
+				return Users[auxCF];
+			}
+		}
+		return null;
+	}
+
+	private async Task OnSearchFieldChanged(ChangeEventArgs e)
+	{
+		await OnSearchFieldChangedEx(e.Value?.ToString());
+	}
+
+	private async Task OnSearchFieldChangedEx(string? rhs)
+	{
+		mvarSearchField = rhs;
 		mcolUserCandidates = SearchUsers(mvarSearchField);
 		if (1 == mcolUserCandidates.Count())
-		{
-			SelectedUser = mcolUserCandidates.First();
-			StateHasChanged();
-		}		
+			await updateStorage(mcolUserCandidates.First());
 		else
-			SelectedUser = null;
+			await updateStorage(null);
 	}
-	private void OnUserSelectFromList(string cf)
+	private async Task updateStorage(UserModelBase? rhs)
 	{
-		UserModelBase? candidato = Users.Values.FirstOrDefault(x => x.CF.Equals(cf.Trim()));
-		SelectedUser = null;
-		mcolUserCandidates.Clear();
-		if(null!=candidato)
+		SelectedUser = rhs;
+		if (null == SelectedUser)
+			await mvarLocalStorage.ResetValue(LocalKey, false);
+		else
+			await mvarLocalStorage.SetGuidValue(LocalKey, SelectedUser.guid, false);
+	}
+
+	private async Task OnUserSelectFromList(Guid id)
+	{
+		if(null!=Users)
 		{
-			SelectedUser = candidato;
+			UserModelBase? candidato = Users.Values.FirstOrDefault(x => x.guid == id);
+			await OnSearchFieldChangedEx(candidato?.CF);
 		}
 	}
 

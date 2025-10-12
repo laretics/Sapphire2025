@@ -154,24 +154,27 @@
 		mcolAgents = await mvarLocalStorage.GetInspectorAgentsTable();
 		Users = await mvarLocalStorage.GetUsersCache();
 		mvarCurrentDate = await mvarLocalStorage.GetInspectorReportDate();
-		Guid[] colUsers = await mvarLocalStorage.GetInspectorChiefsTable(mvarCurrentDate);
-
-		if(null!=Users)
-		{
-			if (Users.ContainsKey(colUsers[0]))
-				InspectorUser = Users[colUsers[0]];
-			if (Users.ContainsKey(colUsers[1]))
-				CapUser1 = Users[colUsers[1]];
-			if (Users.ContainsKey(colUsers[2]))
-				CapUser2 = Users[colUsers[2]];
-		}
-
+		InspectorUser = await auxRetrieveUserFromLocal("Ins1Cf");
+		CapUser1 = await auxRetrieveUserFromLocal("Cap1Cf");
+		CapUser2 = await auxRetrieveUserFromLocal("Cap2Cf");
 		mvarComment = await mvarLocalStorage.GetInspectoCommentsField();
 		ColAssignations = await mvarLocalStorage.GetInspectorReportAssignations();
 		SortedTemplates = await mvarLocalStorage.GetInspectorSortedTemplates();
-
-
 	}
+
+	private async Task<UserModelBase?> auxRetrieveUserFromLocal(string key)
+	{
+		if(null!=Users)
+		{
+			Guid auxCF = await mvarLocalStorage.GetGuidValue(key, false);
+			if (Users.ContainsKey(auxCF))
+			{
+				return Users[auxCF];
+			}
+		}
+		return null;
+	}
+
 	private static string GetDiaSemana(DateTime fecha)
 	{
 		return fecha.DayOfWeek switch

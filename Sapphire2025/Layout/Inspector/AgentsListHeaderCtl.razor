@@ -4,15 +4,27 @@
         <div class="row g-3 align-items-center">
             <!-- Inspector -->
             <div class="col-md-4">
-                <AgentFinder AgentRole="Inspector" SelectedUser="InspectorUser" Color="primary"/>
+                <AgentFinder 
+                    AgentRole="Inspector" 
+                    SelectedUser="InspectorUser"
+                    LocalKey="Ins1Cf"
+                    Color="primary"/>
             </div>
             <!-- Jefe de Maquinistas 1-->
             <div class="col-md-4">
-                <AgentFinder AgentRole="Jefe de Maquinistas 1" SelectedUser="CapUser1" Color="success"/>
+                <AgentFinder 
+                    AgentRole="Jefe de Maquinistas 1" 
+                    SelectedUser="CapUser1"
+                    LocalKey="Cap1Cf"
+                    Color="success"/>
             </div>
             <!-- Jefe de Maquinistas 2-->
             <div class="col-md-4">
-                <AgentFinder AgentRole="Jefe de Maquinistas 2" SelectedUser="CapUser2" Color="success" />
+                <AgentFinder 
+                    AgentRole="Jefe de Maquinistas 2" 
+                    SelectedUser="CapUser2" 
+                    LocalKey="Cap2Cf"
+                    Color="success" />
             </div>
         </div>
         <!-- Condiciones del servicio -->
@@ -42,25 +54,5 @@
         mvarComment = e.Value?.ToString();
         await mvarLocalStorage.SetInspectorCommentsField(mvarComment);
         StateHasChanged();
-    }
-
-    private async Task<UserModelBase?> FindUserByCF(string? cf)
-    {
-        if (string.IsNullOrWhiteSpace(cf) || Users == null)
-            return null;
-        UserModelBase? salida = Users.Values.FirstOrDefault(u => u.CF.Equals(cf.Trim(), StringComparison.OrdinalIgnoreCase));
-        if (null == salida)
-            salida = Users.Values.FirstOrDefault(u => null!=u.Name && u.Name.Contains(cf.Trim(), StringComparison.OrdinalIgnoreCase));
-        await UpdateLocalStorage();
-        return salida;
-    }
-
-    private async Task UpdateLocalStorage()
-    {
-        Guid[] colUsers = new Guid[3];
-        colUsers[0] = null == InspectorUser ? Guid.Empty : InspectorUser.guid;
-        colUsers[1] = null == CapUser1 ? Guid.Empty : CapUser1.guid;
-        colUsers[2] = null == CapUser2 ? Guid.Empty : CapUser2.guid;
-        await mvarLocalStorage.SetInspectorChiefsTable(colUsers);        
     }
 }
