@@ -1,15 +1,42 @@
-﻿<div class="btn-group" role="group">
-
+﻿@if(Classic)
+{
+	<ul class="nav nav-tabs mb-3" style="--bs-nav-tabs-link-active-bg: #f8f9fa;">
 	@foreach (TabPage tabPage in Pages)
-	{
-		<button type="button"
-				class="btn @GetButtonClass(tabPage)"
-				@onclick=@( () => ActivatePage(tabPage) )>
-			@tabPage.Text
-		</button>
-	}
+		{
+			<li class="nav-item" role="presentation">
+				<button type="button"
+						class="nav-link @(tabPage == ActivePage ? "active" : "")"
+						@onclick="() => ActivatePage(tabPage)"
+						style="display: flex; align-items: center; gap: 0.5rem;">
+					@if (tabPage.Icon != null)
+					{
+						<span class="me-1">@tabPage.Icon</span>
+					}
+					<span>@tabPage.Text</span>
+				</button>
+			</li>
+		}
+	</ul>
+}
+else
+{
+	<div class="btn-group" role="group">
 
-</div>
+		@foreach (TabPage tabPage in Pages)
+		{
+			<button type="button"
+					class="btn @GetButtonClass(tabPage)"
+					@onclick=@(() => ActivatePage(tabPage))>
+				@if (tabPage.Icon != null)
+				{
+					<span class="me-1">@tabPage.Icon</span>
+				}
+				<span>@tabPage.Text</span>
+			</button>
+		}
+	</div>
+	<hr class="mt-0 mb-3 border-primary" style="height:3px;opacity:0.5;" />
+}
 <CascadingValue Value="this">
 	@ChildContent
 </CascadingValue>
@@ -20,6 +47,8 @@
 	//Hace falta este parámetro para añadir componentes <TabPage> dentro.
 	[Parameter]
 	public RenderFragment? ChildContent { get; set; }
+	[Parameter]
+	public bool Classic { get; set; }
 
 	public TabPage? ActivePage { get; set; }
 	List<TabPage> Pages = new List<TabPage>();

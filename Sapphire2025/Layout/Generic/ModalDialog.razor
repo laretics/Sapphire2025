@@ -13,7 +13,8 @@
 			</div>
 
 			<div class="modal-footer">
-				<button type="button" class="btn btn-danger" data-bs-dismiss="modal">@mvarButtonLabel</button>
+				<button type="button" class="btn btn-danger" data-bs-dismiss="modal" @onclick="() => Close(true)">@mvarButtonLabel</button>
+				<button type="button" class="btn btn-primary" data-bs-dismiss="modal" @onclick="() => Close(false)">@mvarCancelLabel</button>
 			</div>
 		</div>
 	</div>
@@ -23,13 +24,25 @@
 	private string? mvarText{ get; set; }
 	private string? mvarTitle{ get; set; }
 	private string? mvarButtonLabel{ get; set; }
+	private string? mvarCancelLabel{ get; set; }
+	[Parameter]
+	public EventCallback<bool> OnClose { get; set; }
+	[Parameter]
+	public bool Result { get; set; }
 
-	public async Task show(string title, string text, string buttonContent)
+	public async Task show(string title, string text, string buttonContent , string cancelLabel = "Cancelar")
 	{
 		this.mvarText = text;
 		this.mvarButtonLabel = buttonContent;
+		this.mvarCancelLabel = cancelLabel;
 		this.mvarTitle = title;
 		StateHasChanged();
 		await mvarJs.InvokeVoidAsync("showModal", "myModal");
+	}
+	private async Task Close(bool rhs)
+	{
+		Result = rhs;
+		if (OnClose.HasDelegate)
+			await OnClose.InvokeAsync(rhs);
 	}
 }

@@ -417,6 +417,34 @@ namespace Sapphire2025Server.Controllers
 			return false;
 		}
 
+		/// <summary>
+		/// Fuerza una desconexión de Telegram de este usuario.
+		/// </summary>
+		/// <param name="message">Lo único importante del mensaje es el ID del usuario</param>
+		/// <returns></returns>
+		[HttpPut("unpairtelegram")]		
+		public async Task<bool> UnpairTelegram(UpdateUserPersonalDataMessage message)
+		{
+			if (await hasBasicPermission(message, Common.UserRole.Root))
+			{
+				using (DataStorage almacen = new DataStorage(mvarConfig))
+				{
+					//Recuperamos el usuario
+					User? usuario = await almacen.Users.Where(x => x.Id == message.UserId.ToString()).FirstOrDefaultAsync();
+					if (null != usuario)
+					{
+						//Tenemos que comprobar que el CF que vamos a cambiar NO exista en la base de datos.
+						List<User> duplicates = await almacen.Users.Where(x => x.Id != message.UserId.ToString() && x.CF.Equals(message.CF)).ToListAsync();
+						if (duplicates.Any()) return false; //No podemos hacer el cambio.
+						usuario.TelegramId = 0; //Anulamos la sesión
+						usuario.TelegramEnabled = false; //Damos de baja Telegram
+						return await almacen.SaveChangesAsync() > 0;
+					}
+				}				
+			}
+			return false;
+		}
+
 		[HttpPut("modifyuser")]
 		public async Task<bool> EditUser(UpdateUserPersonalDataMessage message)
 		{
@@ -428,40 +456,45 @@ namespace Sapphire2025Server.Controllers
 					User? usuario = await almacen.Users.Where(x => x.Id == message.UserId.ToString()).FirstOrDefaultAsync();
 					if(null!=usuario)
 					{
-						if(null!=message.CF)
+						if(message.UpdateUserStatus)
 						{
-							//Tenemos que comprobar que el CF que vamos a cambiar NO exista en la base de datos.
-							List<User> duplicates = await almacen.Users.Where(x => x.Id != message.UserId.ToString() && x.CF.Equals(message.CF)).ToListAsync();
-							if (duplicates.Any()) return false; //No podemos hacer el cambio.
-
-							//Pero si hemos llegado aquí, entonces sí que podemos hacerlo.
-							usuario.CF = message.CF;
-						}
-						usuario.UserEnabled = message.UserEnabled;
-						if(null!=message.Email)
-						{
-							usuario.Email = message.Email;
-							usuario.NormalizedEmail = message.Email.ToUpper();
-						}
-						if(null!=message.UserName)
-						{
-							usuario.UserName = message.UserName;
-							usuario.NormalizedUserName = message.UserName.ToUpper();
-						}
-						if(null!=message.Phone)
-                            usuario.PhoneNumber = message.Phone;
-
-						if (null != message.ShortPhone)
-							usuario.ShortPhoneNumber = message.ShortPhone;
-						
-						usuario.TelegramEnabled = message.TelegramEnabled;
-						if (null != message.TelegramRules)
-						{
-							Guid auxGuid = Guid.Empty;
-							if(Guid.TryParse(usuario.Id, out auxGuid))
+							if (null != message.CF)
 							{
-								await almacen.SetRegisterValue(auxGuid, "TGRULES", message.TelegramRules);
-							}							
+								//Tenemos que comprobar que el CF que vamos a cambiar NO exista en la base de datos.
+								List<User> duplicates = await almacen.Users.Where(x => x.Id != message.UserId.ToString() && x.CF.Equals(message.CF)).ToListAsync();
+								if (duplicates.Any()) return false; //No podemos hacer el cambio.
+
+								//Pero si hemos llegado aquí, entonces sí que podemos hacerlo.
+								usuario.CF = message.CF;
+							}
+							usuario.UserEnabled = message.UserEnabled;
+							if (null != message.Email)
+							{
+								usuario.Email = message.Email;
+								usuario.NormalizedEmail = message.Email.ToUpper();
+							}
+							if (null != message.UserName)
+							{
+								usuario.UserName = message.UserName;
+								usuario.NormalizedUserName = message.UserName.ToUpper();
+							}
+							if (null != message.Phone)
+								usuario.PhoneNumber = message.Phone;
+
+							if (null != message.ShortPhone)
+								usuario.ShortPhoneNumber = message.ShortPhone;
+						}
+						if(message.UpdateTelegramStatus)
+						{
+							usuario.TelegramEnabled = message.TelegramEnabled;
+							if (null != message.TelegramRules)
+							{
+								Guid auxGuid = Guid.Empty;
+								if (Guid.TryParse(usuario.Id, out auxGuid))
+								{
+									await almacen.SetRegisterValue(auxGuid, "TGRULES", message.TelegramRules);
+								}
+							}
 						}
 						return await almacen.SaveChangesAsync() > 0;
 					}

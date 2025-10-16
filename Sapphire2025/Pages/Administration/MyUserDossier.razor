@@ -1,28 +1,89 @@
 ﻿@page "/admin/myuserdossier"
 @inject IntStorageService mvarLocalStorage
+@inject AuthenticationClient mvarAuthClient
 @if(null==mvarUser)
 {
-	
+	<ErrorTab Description="Usuario no encontrado" Instructions="Compruebe la base de datos" />	
 }
 else
 {
-	<h3>@mvarUser.Name</h3>
-	<span>@mvarUser.CF</span>
-	
+	<CascadingValue Value="mvarUserToken">
+		<div>
+			<div class="card mb-4 shadow-sm">
+				<div class="card-body">
+					<h5 class="card-title mb-1">@mvarUser.Name</h5>
+					<div class="card-text text-muted d-flex flex-row gap-4 mb-0" style="white-space:nowrap;">
+						<span>CF: @mvarUser.CF</span>
+						@if (!string.IsNullOrEmpty(mvarUser.Email))
+						{
+							<span>Email: @mvarUser.Email</span>
+						}
+						@if (!string.IsNullOrEmpty(mvarUser.PhoneNumber))
+						{
+							<span>Teléfono: @mvarUser.PhoneNumber</span>
+						}
+						@if (!string.IsNullOrEmpty(mvarUser.ShortPhoneNumber))
+						{
+							<span>Extensión: @mvarUser.ShortPhoneNumber</span>
+						}
+						<span>
+							Estado:
+							@if (mvarUser.UserEnabled)
+							{
+								<span class="text-success">Activo</span>
+							}
+							else
+							{
+								<span class="text-danger">Desactivado</span>
+							}
+						</span>
+					</div>
+				</div>
+			</div>
+			<TabControl Classic=true>
+				<TabPage Text="Info">
+					<Icon>
+						<Sapphire2025.Icons.Headers.User color="#2020A0" />
+					</Icon>
+					<ChildContent>
+						<Sapphire2025.Layout.Users.UserActivityCTL UserId="@mvarUserId" />
+					</ChildContent>
+				</TabPage>
+				<TabPage Text="Telegram">
+					<Icon>
+						<Sapphire2025.Icons.Fields.Telegram color="#2020A0" />
+					</Icon>
+					<ChildContent>
+						<Sapphire2025.Layout.Users.TelegramConsoleCTL UserModel="mvarUser" />
+					</ChildContent>
+				</TabPage>
+			</TabControl>
+		</div>
+	</CascadingValue>	
 }
 
-
-	@code {
+@code {
 	//En esta página aparecerá toda la información sobre el usuario actual.
 	//Desde aquí se podrán editar los datos que el usuario quiera cambiar, especialmente los de Telegram.
-	private UserModelBase? mvarUser { get; set; }
+	private ExtendedUserModel? mvarUser { get; set; }
+	private Guid mvarUserId { get; set; }
+	private Guid mvarUserToken { get; set; }
+
 
 	protected override async Task OnInitializedAsync()
-	{
-		SessionModel? auxSesion = await mvarLocalStorage.GetSessionInfo();
+	{		
+		SessionModel? auxSesion = await mvarLocalStorage.GetSessionInfo();		
 		if (null != auxSesion)
-			mvarUser = auxSesion.User;
-
+		{
+			UserModelBase? auxUserBase = auxSesion.User;
+			mvarUserToken = auxSesion.Token;
+			if(null!= auxUserBase)
+			{
+				mvarUser = await mvarAuthClient.userInfo(auxUserBase.guid);
+				if (null!=mvarUser)
+					mvarUserId = mvarUser.guid;
+			}			
+		}	
 	}
 
 }

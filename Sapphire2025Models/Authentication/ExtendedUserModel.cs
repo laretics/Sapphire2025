@@ -81,12 +81,14 @@ namespace Sapphire2025Models.Authentication
 		public UpdateUserPersonalDataMessage(Guid tokenId, Guid userId) : base(tokenId, userId)
 		{ }
 		public UpdateUserPersonalDataMessage() : base() { }
+		public bool UpdateUserStatus { get; set; } //Modifica o no los ajustes del usuario
 		public string? UserName { get; set; }
 		public string? CF { get; set; }
 		public bool UserEnabled { get; set; }
 		public string? Email { get; set; }
 		public string? Phone { get; set; }
 		public string? ShortPhone { get; set; }
+		public bool UpdateTelegramStatus { get; set; } //Modifica o no los ajustes de Telegram
 		public string? TelegramRules { get; set; }
 		public bool TelegramEnabled { get; set; } //true si el usuario tiene habilitado el telegram
 	}

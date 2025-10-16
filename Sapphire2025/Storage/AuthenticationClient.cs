@@ -172,6 +172,27 @@ namespace Sapphire2025.Storage
             string jsonString = JsonSerializer.Serialize(message);
             return await sendPutRequest("modifyuser", jsonString);
         }
+
+        internal async Task <bool> UnpairTelegram(Guid tokenId, Guid userId)
+        {
+            UpdateUserPersonalDataMessage message = new UpdateUserPersonalDataMessage();
+            message.SessionToken = tokenId;
+            message.UserId = userId;
+            string jsonString = JsonSerializer.Serialize(message);
+            HttpResponseMessage respuesta = await sendPutRequest("unpairtelegram",jsonString);
+            string? contenido = await respuesta.Content.ReadAsStringAsync();
+            if(respuesta.IsSuccessStatusCode)
+            {
+                JsonSerializerOptions opciones = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                return JsonSerializer.Deserialize<bool>(contenido, opciones);                
+            }
+            return false;                
+        }
+
+
 		/// <summary>
 		/// Solicita al servidor añadir un nuevo usuario a la base de datos.
 		/// </summary>

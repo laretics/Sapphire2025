@@ -6,189 +6,100 @@
 
 @if (null == userModel)
 {
-    <div class="d-flex justify-content-center">
-        <div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
-            <span class="visually-hidden">Cargando...</span>
-        </div>
-    </div>
+    <LoadingTab ElementText="Cargando usuario..."/>
 }
 else
 {
-    <div class="container-md">
-
-        <h3>Usuario @userModel.Name (@userModel.CF)</h3>
-
-        <ul class="nav nav-tabs">
-            <li class="nav-item">
-                <p class="nav-link" @onclick="() => selectTab(0)">Personal</p>
-            </li>
-            <li class="nav-item">
-                <p class="nav-link" @onclick="() => selectTab(1)">Roles</p>
-            </li>
-            <li class="nav-item">
-                <p class="nav-link" @onclick="() => selectTab(2)">Actividad</p>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" @onclick="() => selectTab(3)" >Telegram</a>
-            </li>
-        </ul>
-
+    <CascadingValue Value="mvarUserToken">
         <div class="container-md">
-            @if (0 == mvarSelectedTab && null != userModel)
-            {
-                <EditForm Model="@userModel" OnValidSubmit="OnSendPersonalDataChanges">
-                    <DataAnnotationsValidator/>
-                    <ValidationSummary/>
-                    <div class="mb-3">
-                        <label for="CF" class="form-label">Carnet</label>
-                        <InputText id="CF" @bind-Value="userModel.CF" class="form-control"  aria-describedby="cfHelp"/>
-                        <div id="cfHelp" class="form-text">Todos los usuarios de este programa disponen de un carnet ferroviario si son de SFM o una identificación externa si pertenecen a una subcontrata.</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <InputCheckbox @bind-Value="userModel.UserEnabled" class="form-check-input" id="userEnabledSwitch" />
-                        <label class="form-check-label" for="telegramEnabledSwitch">
-                            Usuario en activo
-                        </label>
-                    </div>
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Nombre y apellidos</label>
-                        <InputText id="name" class="form-control" @bind-Value="userModel.Name"/>
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Dirección de correo</label>
-                        <InputText id="email" class="form-control" @bind-Value="userModel.Email"/>
-                        <ValidationMessage For="@(() => userModel.Email)"/>
-                    </div>
-                    <div class="mb-3">
-                        <label for="phone" class="form-label">Teléfono</label>
-                        <InputText id="phone" class="form-control" @bind-Value="userModel.PhoneNumber"/>
-                    </div>
-                    <div class="mb-3">
-                        <label for="shortPhone" class="form-label">Extensión de empresa</label>
-                        <InputText id="shortPhone" class="form-control" @bind-Value="userModel.ShortPhoneNumber" />
-                    </div>
-                    <Button class="btn btn-primary" @onclick="OnSendPersonalDataChanges">Enviar</Button>
-                    <Button Class="btn btn-primary" Disabled="@userModel.NullPassword" @onclick="OnPasswordReset">Reset Password</Button>
-                </EditForm>
-            }
-            else if (1 == mvarSelectedTab)
-            {
-                <Grid TItem="ExtendedUserModel.RoleInfo"
-                Class="table table-hover table-bordered table-stripped"
-                DataProvider="RoleInfoProvider"
-                AllowSelection="true"
-                Responsive="true"
-                SelectionMode="GridSelectionMode.Multiple"
-                SelectedItemsChanged="OnSelectionChanged"
-                SelectedItems="@mcolOriginalSelectedRoles">
-                    <GridColumns>
-                        <GridColumn TItem="ExtendedUserModel.RoleInfo" PropertyName="Name">
-                            <HeaderContent>
-                                <h4>Rol</h4>
-                            </HeaderContent>
-                            <ChildContent>
-                                @roleIcon(context.roleId) @context.Name
-                            </ChildContent>
-                        </GridColumn>
-                        <GridColumn TItem="ExtendedUserModel.RoleInfo" PropertyName="Comment">
-                            <HeaderContent>
-                                <h4>Comentarios</h4>
-                            </HeaderContent>
-                            <ChildContent>
-                                @context.Comment
-                            </ChildContent>
-                        </GridColumn>
-                    </GridColumns>
-                </Grid>
-                <Button class ="btn btn-primary" @onclick="OnSendRolesChanges">Enviar</Button>
-            }
-            else if (2== mvarSelectedTab) //Actividad del usuario
-            {
-                if(null == userActivityModel)
-                {
-                    <div class="d-flex justify-content-center">
-                        <div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
-                            <span class="visually-hidden">Cargando...</span>
-                        </div>
-                    </div>
-                }
-                else
-                {
-                    <div class="row border-bottom border-top bg-secondary text-light">
-                        <div class="col border-end">
-                            <Sapphire2025.Icons.Actions.TimeValue Color="white" />
-                        </div>
-                        <div class="col">
-                            <Sapphire2025.Icons.Actions.WriteNote Color="white"/>
-                        </div>
-                    </div>
-                    <div class="overflow-auto" style="height: 80vh; overflow-y: auto; width: 100%">
-                        @foreach(UserActivityModel.UserActivityAtom atom in userActivityModel.activity)
-                        {
-                            <div class="row border-top">
-                                <div class="col border-right">
-                                    <p>@Sapphire2025Models.Common.timeString(atom.timeStamp)</p>
-                                </div>
-                                <div class="col">
-                                    <p>@operationName(atom)</p>
-                                </div>
+            <h3>Usuario @userModel.Name (@userModel.CF)</h3>
+            <TabControl>
+                <TabPage Text="Personal">                
+                        <EditForm Model="@userModel" OnValidSubmit="OnSendPersonalDataChanges">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+                            <div class="mb-3">
+                                <label for="CF" class="form-label">Carnet</label>
+                                <InputText id="CF" @bind-Value="userModel.CF" class="form-control" aria-describedby="cfHelp" />
+                                <div id="cfHelp" class="form-text">Todos los usuarios de este programa disponen de un carnet ferroviario si son de SFM o una identificación externa si pertenecen a una subcontrata.</div>
                             </div>
-                        }
-                    </div>
-                }                
-            }
-            else if (3 == mvarSelectedTab) //Telegram
-            {
-                @if (userModel.TelegramPaired)
-                {
-                    <EditForm Model="userModel" OnValidSubmit="OnSendPersonalDataChanges">
-                        <div class="mb-3 form-check form-switch">
-                            <InputCheckbox @bind-Value="userModel.TelegramEnabled" class="form-check-input" id="telegramEnabledSwitch" />
-                            <label class="form-check-label" for="telegramEnabledSwitch">
-                                Telegram habilitado
-                            </label>
-                        </div>
-                        <div class="mb-3">
-                            <label for="telegramRules" class="form-label">Reglas del bot</label>
-                            <InputTextArea @bind-Value="userModel.TelegramRules"
-                            id="telegramRules"
-                            class="form-control"
-                            style="font-family: 'Fira Mono', 'Consolas', 'Courier New', monospace; background-color: #222; color: #0f0; min-height: 120px;" />
-                            <div class="form-text">Puedes editar las reglas en formato texto, como si fuera una terminal.</div>
-                        </div>
-                        <Button class="btn btn-primary" @onclick="OnSendPersonalDataChanges">Enviar</Button>
-                    </EditForm>
-                }
-                else
-                {
-                    <div class="alert alert-warning d-flex align-items-center" role="alert">
-                        <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Warning:" fill="currentColor" viewBox="0 0 16 16">
-                            <use xlink:href="#exclamation-triangle-fill" />
-                            <symbol id="exclamation-triangle-fill" fill="currentColor" viewBox="0 0 16 16">
-                                <path d="M8.982 1.566a1.13 1.13 0 0 0-1.964 0L.165 13.233c-.457.778.091 1.767.982 1.767h13.707c.89 0 1.438-.99.982-1.767L8.982 1.566zm-.982 4.905a.905.905 0 1 1 1.81 0l-.35 3.507a.552.552 0 0 1-1.11 0L8 6.47zm.002 6a1 1 0 1 1-2 0 1 1 0 0 1 2 0z" />
-                            </symbol>
-                        </svg>
-                        <div>
-                            <strong>Telegram no emparejado</strong><br />
-                            No se pueden configurar las opciones del bot para este usuario hasta que el programa tenga acceso a la sesión privada del bot.
-                        </div>
-                    </div>
-                }
-            }
+
+                            <div class="mb-3">
+                                <InputCheckbox @bind-Value="userModel.UserEnabled" class="form-check-input" id="userEnabledSwitch" />
+                                <label class="form-check-label" for="telegramEnabledSwitch">
+                                    Usuario en activo
+                                </label>
+                            </div>
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Nombre y apellidos</label>
+                                <InputText id="name" class="form-control" @bind-Value="userModel.Name" />
+                            </div>
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Dirección de correo</label>
+                                <InputText id="email" class="form-control" @bind-Value="userModel.Email" />
+                                <ValidationMessage For="@(() => userModel.Email)" />
+                            </div>
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Teléfono</label>
+                                <InputText id="phone" class="form-control" @bind-Value="userModel.PhoneNumber" />
+                            </div>
+                            <div class="mb-3">
+                                <label for="shortPhone" class="form-label">Extensión de empresa</label>
+                                <InputText id="shortPhone" class="form-control" @bind-Value="userModel.ShortPhoneNumber" />
+                            </div>
+                            <Button class="btn btn-primary" @onclick="OnSendPersonalDataChanges">Enviar</Button>
+                            <Button Class="btn btn-primary" Disabled="@userModel.NullPassword" @onclick="OnPasswordReset">Reset Password</Button>
+                        </EditForm>
+                
+                </TabPage>
+                <TabPage Text="Roles">
+                    <Grid TItem="ExtendedUserModel.RoleInfo"
+                          Class="table table-hover table-bordered table-stripped"
+                          DataProvider="RoleInfoProvider"
+                          AllowSelection="true"
+                          Responsive="true"
+                          SelectionMode="GridSelectionMode.Multiple"
+                          SelectedItemsChanged="OnSelectionChanged"
+                          SelectedItems="@mcolOriginalSelectedRoles">
+                        <GridColumns>
+                            <GridColumn TItem="ExtendedUserModel.RoleInfo" PropertyName="Name">
+                                <HeaderContent>
+                                    <h4>Rol</h4>
+                                </HeaderContent>
+                                <ChildContent>
+                                    @roleIcon(context.roleId) @context.Name
+                                </ChildContent>
+                            </GridColumn>
+                            <GridColumn TItem="ExtendedUserModel.RoleInfo" PropertyName="Comment">
+                                <HeaderContent>
+                                    <h4>Comentarios</h4>
+                                </HeaderContent>
+                                <ChildContent>
+                                    @context.Comment
+                                </ChildContent>
+                            </GridColumn>
+                        </GridColumns>
+                    </Grid>
+                    <Button class="btn btn-primary" @onclick="OnSendRolesChanges">Enviar</Button>
+                </TabPage>
+                <TabPage Text="Actividad">                
+                    <Sapphire2025.Layout.Users.UserActivityCTL UserId="@userId" />                
+                </TabPage>
+                <TabPage Text="Telegam">
+                    <Sapphire2025.Layout.Users.TelegramConsoleCTL UserModel="userModel"/>
+                </TabPage>
+            </TabControl>
         </div>
-    </div>
+    </CascadingValue>
 }
 
 @code {
     [Parameter]
     public Guid userId{ get; set; }
-
     private Guid mvarUserToken { get; set; }
-
     private List<uint> mcolNewSelectedRoles { get; set; } = new List<uint>();
-    private HashSet<ExtendedUserModel.RoleInfo> mcolOriginalSelectedRoles { get; set; } = new HashSet<ExtendedUserModel.RoleInfo>();
-    private UserActivityModel? userActivityModel { get; set; } = null;
+    private HashSet<ExtendedUserModel.RoleInfo> mcolOriginalSelectedRoles { get; set; } = new HashSet<ExtendedUserModel.RoleInfo>();    
+    private ExtendedUserModel? userModel { get; set; }
 
     protected async override Task OnInitializedAsync()
     {
@@ -203,39 +114,7 @@ else
                     mcolOriginalSelectedRoles.Add(roleInfo);
             }
         }
-        userActivityModel = await mvarCliente.getUserActivity(mvarUserToken,userId, 40);
     }
-
-    private string operationName(UserActivityModel.UserActivityAtom atom)
-    {
-        Sapphire2025Models.Common.sessionEventType evento = (Sapphire2025Models.Common.sessionEventType)atom.type;
-        switch(evento)
-        {
-            case Sapphire2025Models.Common.sessionEventType.login:
-                return "Inicio de sesión";
-            case Sapphire2025Models.Common.sessionEventType.logout:
-                return "Cierre de sesión";
-            case Sapphire2025Models.Common.sessionEventType.sessionExpiry:
-                return "Sesión expirada";
-            case Sapphire2025Models.Common.sessionEventType.banned:
-                return "Usuario expulsado";
-            case Sapphire2025Models.Common.sessionEventType.badPassword:
-                return "Error de password";          
-            default:
-                return "¿?";
-        }
-    }
-
-    private ExtendedUserModel? userModel { get; set; }
-
-    private byte mvarSelectedTab = 0;
-
-    private void selectTab(byte index)
-    {
-        mvarSelectedTab = index;
-    }
-
-
 
     private async Task<GridDataProviderResult<ExtendedUserModel.RoleInfo>> RoleInfoProvider (GridDataProviderRequest<ExtendedUserModel.RoleInfo> request)
     {
@@ -280,14 +159,13 @@ else
         {
             UpdateUserPersonalDataMessage paquete = 
             new UpdateUserPersonalDataMessage(mvarUserToken,userModel.guid);
+            paquete.UpdateUserStatus = true;
             paquete.CF = userModel.CF;
             paquete.UserName = userModel.Name;
             paquete.UserEnabled = userModel.UserEnabled;
             paquete.Phone = userModel.PhoneNumber;
             paquete.ShortPhone = userModel.ShortPhoneNumber;
             paquete.Email = userModel.Email;
-			paquete.TelegramEnabled = userModel.TelegramEnabled;
-			paquete.TelegramRules = userModel.TelegramRules;
             await mvarCliente.sendModifyUser(paquete);
         }
     }
