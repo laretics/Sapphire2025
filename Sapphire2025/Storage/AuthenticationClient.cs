@@ -15,6 +15,34 @@ namespace Sapphire2025.Storage
 	{       
         public AuthenticationClient(HttpClient httpClient, IntStorageService intStorage): base(httpClient, intStorage, "sapphireauthentication") {}
 
+        public async Task<bool> SetRegister(string key, string value)
+        {
+			Guid auxToken = await mvarIntStorage.getToken();
+			CommandModel request = new CommandModel();
+            request.CommandId = key;
+            request.Parameter = value;
+            request.SessionToken = auxToken;
+            string jsonString = JsonSerializer.Serialize(request);
+            HttpResponseMessage respuesta = await sendPutRequest("setregister", jsonString);
+            bool salida = await respuesta.Content.ReadFromJsonAsync<bool>();
+            return salida;
+        }
+        public async Task<string?> GetRegister(string key, string defaultValue = "")
+        {
+			Guid auxToken = await mvarIntStorage.getToken();
+			CommandModel request = new CommandModel();
+			request.CommandId = key;
+			request.Parameter = defaultValue;
+			request.SessionToken = auxToken;
+			string jsonString = JsonSerializer.Serialize(request);
+			HttpResponseMessage respuesta = await sendPutRequest("getregister", jsonString);
+            CommandModel? response = await respuesta.Content.ReadFromJsonAsync<CommandModel>();
+            if(null!=response)
+				return response.Parameter;
+
+            return null;
+		}
+
         public async Task<bool> Logout(string tokenId)
         {
             try

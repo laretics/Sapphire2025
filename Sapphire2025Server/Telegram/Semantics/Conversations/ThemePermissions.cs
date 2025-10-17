@@ -2,7 +2,7 @@
 using Sapphire2025Server.Models;
 using Sapphire2025Server.Telegram.Semantics;
 using Sapphire2025Server.Telegram.Semantics.Responses;
-namespace Sapphire2025Server.Telegram
+namespace Sapphire2025Server.Telegram.Semantics.Conversations
 {
 	internal class ThemePermissions:BotTheme
 	{
@@ -15,11 +15,12 @@ namespace Sapphire2025Server.Telegram
 			if(null==mvarUser)
 			{
 				//No tenemos usuario... hay que emparejar
-				child = new ThemePairing(mvarParent);				
+				//child = new ThemePairing(mvarParent);				
 			}
 			else
 			{
-				mvarParent.user = mvarUser;
+				mvarParent = new BotTask(mvarParent.user.TelegramId);
+				await mvarParent.InitializeAsync();
 				//Remplazamos el usuario vacío por el de la base de datos.
 				child = new ThemeMenu(mvarParent);
 			}
@@ -35,23 +36,24 @@ namespace Sapphire2025Server.Telegram
 				await child.InitializeAsync();
 			}
 
-			if (child.GetType() == typeof(ThemePairing))
-			{
-				//Para emparejar NO necesitamos comprobar permisos.
-				return await child.ResponseFromBot();
-			}
-			else
-			{
-				//Si hemos llegado hasta aquí, es porque el tema hijo es algún tipo que necesita permisos.
-				Response? check = await checkPermissions();
-				if (null == check)
-					return await child.ResponseFromBot();
-				else
-				{
-					return check;
-				}
-					
-			}
+			//if (child.GetType() == typeof(ThemePairing))
+			//{
+			//	//Para emparejar NO necesitamos comprobar permisos.
+			//	return await child.ResponseFromBot();
+			//}
+			//else
+			//{
+			//	//Si hemos llegado hasta aquí, es porque el tema hijo es algún tipo que necesita permisos.
+			//	Response? check = await checkPermissions();
+			//	if (null == check)
+			//		return await child.ResponseFromBot();
+			//	else
+			//	{
+			//		return check;
+			//	}
+
+			//}
+			return null;
 		}
 		internal override async Task textToBot(string text)
 		{

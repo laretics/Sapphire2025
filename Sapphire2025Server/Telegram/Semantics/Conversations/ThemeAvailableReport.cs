@@ -6,7 +6,7 @@ using Sapphire2025Server.Telegram.Semantics;
 using Sapphire2025Server.Telegram.Semantics.Concepts;
 using Sapphire2025Server.Telegram.Semantics.Responses;
 
-namespace Sapphire2025Server.Telegram
+namespace Sapphire2025Server.Telegram.Semantics.Conversations
 {
 	internal class ThemeAvailableReport:BotTheme
 	{
@@ -48,7 +48,7 @@ namespace Sapphire2025Server.Telegram
 		{
 			using (DataStorage almacen = new DataStorage(BotTask.config))
 			{
-				Models.Train? auxTren = await almacen.Trains.Where(x => x.Guid == trainId).FirstOrDefaultAsync();
+				Train? auxTren = await almacen.Trains.Where(x => x.Guid == trainId).FirstOrDefaultAsync();
 				if(null!=auxTren)
 				{
 					TrainModel salida = await SapphireAeneasController.trainFromTrain(auxTren,BotTask.config);

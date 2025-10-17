@@ -1,9 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Sapphire2025Server.Telegram.Semantics;
 using Sapphire2025Server.Telegram.Semantics.Responses;
 
 
-namespace Sapphire2025Server.Telegram
+namespace Sapphire2025Server.Telegram.Semantics.Conversations
 {
 	/// <summary>
 	/// Tema inicial de una conversación con el bot de Zafiro.

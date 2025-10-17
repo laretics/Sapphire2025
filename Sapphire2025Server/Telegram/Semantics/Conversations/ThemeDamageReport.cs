@@ -7,7 +7,7 @@ using Sapphire2025Server.Telegram.Semantics.Responses;
 using System.Diagnostics;
 using static System.Net.Mime.MediaTypeNames;
 
-namespace Sapphire2025Server.Telegram
+namespace Sapphire2025Server.Telegram.Semantics.Conversations
 {
 	internal class ThemeDamageReport:BotTheme
 	{

@@ -121,6 +121,37 @@ namespace Sapphire2025Server.Controllers
 			return salida;
 		}
 
+		[HttpPut("setregister")]
+		public async Task<bool> SetRegister(CommandModel? request)
+		{
+			if(null!=request && null!=request.CommandId && null!=request.Parameter)
+			{
+				using (DataStorage almacen = new DataStorage(mvarConfig))
+				{
+					await almacen.SetRegisterValue(request.CommandId, request.Parameter);
+					return true;
+				}
+			}
+			return false;
+		}
+
+		[HttpPut("getregister")]
+		public async Task<CommandModel?> GetRegister(CommandModel? request)
+		{
+			if (null != request && null != request.CommandId && null != request.Parameter)
+			{
+				using (DataStorage almacen = new DataStorage(mvarConfig))
+				{
+					string? auxValor = await almacen.GetRegisterValue(request.CommandId, request.Parameter);
+					CommandModel salida = new CommandModel();
+					salida.CommandId = request.CommandId;
+					salida.Parameter = auxValor;
+					return salida;
+				}
+			}
+			return null;
+		}
+
 		[HttpPut("logout")]
 		public async Task<bool> LogoutRequest(BasicRequestModel? request)
 		{
@@ -326,6 +357,14 @@ namespace Sapphire2025Server.Controllers
 				}				
 			}
 			return salida;
+		}
+
+		public async Task<string> getTelegramRules(Guid userId)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				return await almacen.GetRegisterValue(userId, "TGRULES", string.Empty);
+			}
 		}
 
 		/// <summary>

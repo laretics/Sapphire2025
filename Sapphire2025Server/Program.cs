@@ -33,11 +33,11 @@ BotSoul instancia = app.Services.GetRequiredService<BotSoul>(); //De esta forma 
 mvarLifeTime.ApplicationStopping.Register(() =>
 {
 	// Aquí tu lógica de parada, por ejemplo:
-	instancia.Broadcast("Mensaje desde el servidor: \"¡Sistema detenido!\"", new Sapphire2025Models.Common.UserRole[] { Sapphire2025Models.Common.UserRole.Root }).GetAwaiter().GetResult();
+	instancia.BroadcastByRole("Mensaje desde el servidor: \"¡Sistema detenido!\"",true, new Sapphire2025Models.Common.UserRole[] { Sapphire2025Models.Common.UserRole.Root }).GetAwaiter().GetResult();
 });
 
 await instancia.InitUsers();
-await instancia.Broadcast("Mensaje desde el servidor: \"¡Sistema iniciado!\"", new Sapphire2025Models.Common.UserRole[] { Sapphire2025Models.Common.UserRole.Root });
+await instancia.BroadcastByRole("Mensaje desde el servidor: \"¡Sistema iniciado!\"",true, new Sapphire2025Models.Common.UserRole[] { Sapphire2025Models.Common.UserRole.Root });
 
 
 // Configure the HTTP request pipeline.

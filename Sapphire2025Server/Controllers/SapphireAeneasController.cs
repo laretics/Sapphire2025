@@ -228,30 +228,30 @@ namespace Sapphire2025Server.Controllers
 			switch(statusChange.Operation)
 			{
 				case Common.OperationType.EndMaintenance:
-					await mvarTelegramBot.Broadcast(string.Format("La UT {0} acaba de reincorporarse a la circulación tras terminar {1} los trabajos planificados.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Inspector }); break;
+					await mvarTelegramBot.BroadcastByRole(string.Format("La UT {0} acaba de reincorporarse a la circulación tras terminar {1} los trabajos planificados.", train.Name, nombreUsuario), false,new Common.UserRole[] { Common.UserRole.Inspector }); break;
 				case Common.OperationType.EndCorrective:
-					await mvarTelegramBot.Broadcast(string.Format("La UT {0} acaba de reincorporarse a la circulación tras dar {1} por terminada la reparación.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Inspector }); break;
+					await mvarTelegramBot.BroadcastByRole(string.Format("La UT {0} acaba de reincorporarse a la circulación tras dar {1} por terminada la reparación.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector }); break;
 				case Common.OperationType.CorrectiveRequest:
-					await mvarTelegramBot.Broadcast(string.Format("{1} acaba de hacer un parte de avería sobre la UT {0}.", train.Name, nombreUsuario), new Common.UserRole[]{ Common.UserRole.Inspector, Common.UserRole.Expert, Common.UserRole.Oficial, Common.UserRole.Mechanic }); break;
+					await mvarTelegramBot.BroadcastByRole(string.Format("{1} acaba de hacer un parte de avería sobre la UT {0}.", train.Name, nombreUsuario), false,new Common.UserRole[]{ Common.UserRole.Inspector, Common.UserRole.Expert, Common.UserRole.Oficial, Common.UserRole.Mechanic }); break;
 				case Common.OperationType.DiagnoseToFault:
-					await mvarTelegramBot.Broadcast(string.Format("{1} acaba de declarar una avería. La UT {0} debe ser retirada de la circulación.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Inspector }); break;
+					await mvarTelegramBot.BroadcastByRole(string.Format("{1} acaba de declarar una avería. La UT {0} debe ser retirada de la circulación.", train.Name, nombreUsuario),false, new Common.UserRole[] { Common.UserRole.Inspector }); break;
 				case Common.OperationType.DiagnoseToAvailable:
-					await mvarTelegramBot.Broadcast(string.Format("{1} considera que la UT {0} puede seguir en servicio.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Inspector }); break;
+					await mvarTelegramBot.BroadcastByRole(string.Format("{1} considera que la UT {0} puede seguir en servicio.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector }); break;
 				case Common.OperationType.BeginCorrective:
-					await mvarTelegramBot.Broadcast(string.Format("{1} ha dado entrada en taller a la UT {0} para correctivo.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Oficial, Common.UserRole.Engineer }); break;
+					await mvarTelegramBot.BroadcastByRole(string.Format("{1} ha dado entrada en taller a la UT {0} para correctivo.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Oficial, Common.UserRole.Engineer }); break;
 				case Common.OperationType.DepotRequest:
-					await mvarTelegramBot.Broadcast(string.Format("{1} solicita apartar la UT {0} para mantenimiento planificado.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Inspector }); break;
+					await mvarTelegramBot.BroadcastByRole(string.Format("{1} solicita apartar la UT {0} para mantenimiento planificado.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector }); break;
 				case Common.OperationType.DepotRequestAccept:
-					await mvarTelegramBot.Broadcast(string.Format("{1} acaba de apartar la UT {0} para mantenimiento planificado.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Oficial, Common.UserRole.Mechanic }); break;
+					await mvarTelegramBot.BroadcastByRole(string.Format("{1} acaba de apartar la UT {0} para mantenimiento planificado.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Oficial, Common.UserRole.Mechanic }); break;
 				case Common.OperationType.MaintenanceRescue:
 				case Common.OperationType.DiferMaintenance:
-					await mvarTelegramBot.Broadcast(string.Format("{1} devuelve a la circulación la UT {0} que había solicitado taller para mantenimiento planificado.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Inspector }); break;
+					await mvarTelegramBot.BroadcastByRole(string.Format("{1} devuelve a la circulación la UT {0} que había solicitado taller para mantenimiento planificado.", train.Name, nombreUsuario),false, new Common.UserRole[] { Common.UserRole.Inspector }); break;
 				case Common.OperationType.SendToStandStill:
-					await mvarTelegramBot.Broadcast(string.Format("{1} envía la UT {0} al estado \"Stand-Still\" .", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Engineer, Common.UserRole.Oficial }); break;
+					await mvarTelegramBot.BroadcastByRole(string.Format("{1} envía la UT {0} al estado \"Stand-Still\" .", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Engineer, Common.UserRole.Oficial }); break;
 				case Common.OperationType.Activate:
-					await mvarTelegramBot.Broadcast(string.Format("{1} acaba de activar la UT {0} en el sistema.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Engineer, Common.UserRole.Oficial }); break;
+					await mvarTelegramBot.BroadcastByRole(string.Format("{1} acaba de activar la UT {0} en el sistema.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Engineer, Common.UserRole.Oficial }); break;
 				case Common.OperationType.RescueFromStandStill:
-					await mvarTelegramBot.Broadcast(string.Format("{1} ha reactivado la UT {0} desde el estado de Stand-Still. Ahora está asignada a taller para revisión.", train.Name, nombreUsuario), new Common.UserRole[] { Common.UserRole.Engineer, Common.UserRole.Oficial, Common.UserRole.Mechanic }); break;
+					await mvarTelegramBot.BroadcastByRole(string.Format("{1} ha reactivado la UT {0} desde el estado de Stand-Still. Ahora está asignada a taller para revisión.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Engineer, Common.UserRole.Oficial, Common.UserRole.Mechanic }); break;
 			}	
 		}
 

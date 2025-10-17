@@ -18,11 +18,11 @@
 			switch (mvarType)
 			{
 				case PermissionType.ZafiroDisabled:
-					return "Zafiro está deshabilitado para este usuario. Ponte en contacto con el administrador para habilitarlo.";
+					return "Tienes Zafiro deshabilitado en tu cuenta de usuario. Debes entrar en la sección \"YO\" y conectarlo.";
 				case PermissionType.ZafiroScript:
-					return "No tienes permisos definidos en el script de configuración por usuario. Ponte en contacto con el administrador para cambiar la configuración.";
+					return "No tienes permisos definidos en el script de configuración de la sección \"YO\" de la web de Zafiro. Inicia sesión y cambia este ajuste.";
 				default:
-					return "No tienes permisos para acceder a Zafiro a través de Telegram. Ponte en contacto con el administrador para habilitarlo.";
+					return "No tienes permisos para acceder a Zafiro a través de Telegram. Inicia sesión y cambia este ajuste en la sección \"YO\" de la web de Zafiro.";
 			}
 		}
 	}

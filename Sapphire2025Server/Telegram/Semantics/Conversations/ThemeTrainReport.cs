@@ -8,7 +8,7 @@ using Sapphire2025Server.Telegram.Semantics.Concepts;
 using Sapphire2025Server.Telegram.Semantics.Responses;
 using System.Diagnostics;
 
-namespace Sapphire2025Server.Telegram
+namespace Sapphire2025Server.Telegram.Semantics.Conversations
 {
 	internal class ThemeTrainReport:BotTheme
 	{

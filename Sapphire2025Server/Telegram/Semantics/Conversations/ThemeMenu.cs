@@ -5,7 +5,7 @@ using Sapphire2025Server.Telegram.Semantics;
 using Sapphire2025Server.Telegram.Semantics.Concepts;
 using Sapphire2025Server.Telegram.Semantics.Responses;
 
-namespace Sapphire2025Server.Telegram
+namespace Sapphire2025Server.Telegram.Semantics.Conversations
 {
 	/// <summary>
 	/// Este tema es el menú inicial de opciones

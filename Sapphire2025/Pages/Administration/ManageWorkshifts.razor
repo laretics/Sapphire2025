@@ -1,6 +1,7 @@
 ﻿@page "/admin/manageworkshifts"
 @using Microsoft.AspNetCore.Components.Forms;
 @inject ExpertClient mvarExpertClient
+@inject AuthenticationClient mvarAuthClient
 @inject IntStorageService mvarStorage
 @inject IJSRuntime mvarJSRuntime
 <PageTitle>Turnos de Trabajo</PageTitle>
@@ -31,6 +32,12 @@ else
             </div>
             <div class="btn-group" role="group" aria-label="Grupo 3">
                 <button type="button" class="btn btn-danger">Acción 5</button>
+                <div class="form-check form-switch ms-3 align-self-center">
+                    <InputCheckbox @bind-Value="TelegramServerEnabled" class="form-check-input" id="telegramServerSwitch" />
+                    <label class="form-check-label" for="telegramServerSwitch">
+                        Telegram
+                    </label>
+                </div>
             </div>
             <div class="input-group" style="width: 120px;">
                 <span class="input-group-text">Días</span>
@@ -93,6 +100,20 @@ else
     private bool mvarLoading; //Flag para mostrar el diálogo de carga.
     private string mvarLoadingString = "Procesando solicitud";
     private int mvarNumDay { get; set; } = 4;
+    private bool mvarTelegramServerEnabled;
+
+    private bool TelegramServerEnabled 
+    {
+        get => mvarTelegramServerEnabled;
+        set
+        {
+            if(value!=mvarTelegramServerEnabled)
+            {
+                mvarTelegramServerEnabled = value;
+                _ = mvarAuthClient.SetRegister("Telegram", mvarTelegramServerEnabled?"true":"false");
+            }            
+        }
+    }
 
     private string ownerName(Guid userId)
     {
@@ -169,6 +190,11 @@ else
     {
         mcolPlanes = await mvarExpertClient.Plans();
         mcolUsers = await mvarStorage.GetUsersCache();
+        string? cadena = await mvarAuthClient.GetRegister("Telegram", "false");
+        if (null == cadena)
+            mvarTelegramServerEnabled = false;
+        else
+            mvarTelegramServerEnabled = cadena.Equals("true");
     } 
     private async Task TriggerFileInputBlazor(InputFile? rhs)
     {

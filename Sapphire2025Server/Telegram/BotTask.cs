@@ -1,5 +1,7 @@
-﻿using Sapphire2025Server.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using Sapphire2025Server.Models;
 using Sapphire2025Server.Telegram.Semantics;
+using Sapphire2025Server.Telegram.Semantics.Conversations;
 
 namespace Sapphire2025Server.Telegram
 {
@@ -8,21 +10,28 @@ namespace Sapphire2025Server.Telegram
 	/// </summary>
 	internal class BotTask
 	{
+		private User? mvarUser;
+		private long mvarTelegramId;
+		internal User? user { get => mvarUser;} //Referencia al usuario que tiene esta conversación
+		internal BotTheme theme { get; set; } //Tema de la conversación actual.
+		internal static IConfiguration config { get; set; } //Para acceso a las DB
 		internal BotTask(long chatId)
 		{
-			user = new User(); //Creamos un nuevo usuario al iniciar la conversación.
-							   //Luego, este usuario se cargará con un valor real desde la base de datos.
-							   
-			user.TelegramId = chatId;
+			//Tenemos que recuperar el usuario de la base de datos.
+			mvarTelegramId = chatId;
 		}
 		internal async Task InitializeAsync()
 		{
+			//Tenemos que cargar al usuario en este momento... no podemos quedarnos
+			//con la última versión porque no podremos conocer los cambios en su consola
+			//de telegram ni su estado de activación real.
+			using (DataStorage almacen = new DataStorage(config))
+			{
+				mvarUser = await almacen.Users.Where(x => x.TelegramId == mvarTelegramId).FirstOrDefaultAsync();
+			}
 			theme = new ThemeInitial(this);
 			await theme.InitializeAsync();
 		}
-		internal User user { get; set; } //Referencia al usuario que tiene esta conversación
-		internal BotTheme theme { get; set; } //Tema de la conversación actual.
-		internal static IConfiguration config { get; set; } //Para acceso a las DB
 
 		/// <summary>
 		/// Obtiene el texto que el bot va a enviar al usuario.
