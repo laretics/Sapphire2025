@@ -21,7 +21,8 @@ namespace Sapphire2025Server.Telegram
 	{
 		private TelegramBotClient mvarBot;
 		private IConfiguration mvarConfig;
-		private Dictionary<long,BotTask> mcolTasks = new Dictionary<long, BotTask>(); //Contenedor de conversaciones activas.				
+		private Dictionary<long,BotTask> mcolTasks = new Dictionary<long, BotTask>(); //Contenedor de conversaciones activas.	
+		private PairingQuew mvarPairingQuew = new PairingQuew();			
 
 		public BotSoul (IConfiguration configuration)
 		{
@@ -54,10 +55,36 @@ namespace Sapphire2025Server.Telegram
 				Message mensaje = update.Message;
 				if (await GetTelegramEnabled())//Compruebo el estado del servidor en el registro de la base de datos.
 				{
-					BotTask tarea = await (getTask(mensaje.Chat.Id));
-					await tarea.toBot(mensaje.Text);
-					Response respuesta = await tarea.fromBot();
-					await botClient.SendMessage(mensaje.Chat.Id, respuesta.text);
+					BotTask? tarea = await (getTask(mensaje.Chat.Id));
+					if(null==tarea) //Posible emparejamiento.
+					{
+						if(null!=mensaje && null!=mensaje.Text)
+						{
+							if (await PairTelegramChat(mensaje.Chat.Id, mensaje.Text.ToUpper().Trim()))
+							{
+								//Usuario emparejado. Respondemos a la petición
+								BotTask nueva = new BotTask(mensaje.Chat.Id);
+								BotTask.config = mvarConfig;
+								await nueva.InitializeAsync();
+								mcolTasks.Add(mensaje.Chat.Id, nueva);
+								await botClient.SendMessage(mensaje.Chat.Id, "¡Ya te tengo! Tu cuenta de Telegram está ahora emparejada con tu usuario en Zafiro.");
+							}
+							else
+							{
+								await botClient.SendMessage(mensaje.Chat.Id, "Ha ocurrido algún error. Esta cuenta de Telegram no se pudo vincular con ningún usuario de Zafiro.");
+							}
+						}
+						else
+						{
+							await botClient.SendMessage(mensaje.Chat.Id, "Ha ocurrido algún error importante. Esta cuenta de Telegram no se pudo vincular con ningún usuario de Zafiro.");
+						}
+					}
+					else
+					{
+						await tarea.toBot(mensaje.Text);
+						Response respuesta = await tarea.fromBot();
+						await botClient.SendMessage(mensaje.Chat.Id, respuesta.text);
+					}
 				}
 				else
 				{
@@ -131,16 +158,12 @@ namespace Sapphire2025Server.Telegram
 			return false;
 		}
 
-		private async Task<BotTask> getTask(long telegramId)
+		private async Task<BotTask?> getTask(long telegramId)
 		{
-			if(!mcolTasks.ContainsKey(telegramId))				
-			{
-				BotTask salida = new BotTask(telegramId);
-				BotTask.config = mvarConfig;
-				await salida.InitializeAsync();
-				mcolTasks.Add(telegramId, salida);
-			}
-			return mcolTasks[telegramId];
+			if (mcolTasks.ContainsKey(telegramId))
+				return mcolTasks[telegramId];
+
+			return null;
 		}
 		/// <summary>
 		/// Envía el mensaje a todos los usuarios, independientemente de los permisos y el rol que tengan
@@ -153,7 +176,7 @@ namespace Sapphire2025Server.Telegram
 		{
 			List<Models.User> auxUsers = new List<Models.User>();
 			List<Models.User> auxOrigin = await auxAvailableUsers();
-			SapphireAuthenticationController auxController = new SapphireAuthenticationController(mvarConfig);
+			SapphireAuthenticationController auxController = new SapphireAuthenticationController(mvarConfig, this);
 			string[] auxFilters = filters.ToUpper().Split(',');
 			foreach (Models.User candidato in auxOrigin)
 			{
@@ -175,7 +198,7 @@ namespace Sapphire2025Server.Telegram
 		{
 			List<Models.User> auxUsers = new List<Models.User>();
 			List<Models.User> auxOrigin = await auxAvailableUsers();
-			SapphireAuthenticationController auxController = new SapphireAuthenticationController(mvarConfig);
+			SapphireAuthenticationController auxController = new SapphireAuthenticationController(mvarConfig, this);
 			foreach (Models.User candidato in auxOrigin)
 			{
 				if(priority || candidato.TelegramEnabled)
@@ -292,77 +315,32 @@ namespace Sapphire2025Server.Telegram
 
 		#endregion"Script de políticas de Telegram"
 
-		#region "Pairing"
 		///El emparejamiento ahora se hace mediante unos tickets de emparejamiento.
 		///Un ticket de emparejamiento es una variable temporal que consiste en un número y el
 		///guid de un usuario activo.
 		///Si el sistema lee alguno de estos números detectará que es un emparejamiento y hará
 		///el vínculo entre el el código de Telegram y el guid del usuario.
-		
-		public async Task<bool> IsPairing(string rhs, long sessionId)
+		public string GenerateTicket (Guid userId)
 		{
-			purgePairing();
-			string comparer = rhs.Trim().ToUpper();
-			foreach(PairingIntent candidato in mcolPairingIntents)
+			return mvarPairingQuew.GenerateNew(userId);
+		}
+		public async Task<bool> PairTelegramChat(long telegramChatId, string pairId)
+		{
+			Guid auxUserPairingId = mvarPairingQuew.getPairingUserId(pairId);
+			if(Guid.Empty!=auxUserPairingId)
 			{
-				if(null!=candidato.pairingString)
-				{
-					if (candidato.pairingString.Equals(comparer))
-					{
-						//Hemos hecho un match.
-						using (DataStorage almacen = new DataStorage(mvarConfig))
-						{
-							Models.User? auxUser = await almacen.Users.Where(x => x.guid == candidato.userId).FirstOrDefaultAsync();
-							if(null!=auxUser)
-							{
-
-
-							}
-						}
-					}
-				}				
+				//Tenemos un emparejamiento. Buscamos el usuario en la base de datos
+				SapphireAuthenticationController auxController = new SapphireAuthenticationController(mvarConfig, this);
+				return await auxController.pairUser(auxUserPairingId, telegramChatId);
 			}
 			return false;
 		}
-		
-		public string SetNewPairing(Guid userId)
-		{
-			PairingIntent nuevo = new PairingIntent();
-			nuevo.expiry = DateTime.Now.AddMinutes(10); //Expira en 10 minutos.
-			nuevo.userId = userId;
-			nuevo.pairingString = createPairingId();
-			purgePairing();
-			mcolPairingIntents.Add(nuevo);
-			return nuevo.pairingString;
-		}
-		/// <summary>
-		/// Elimina códigos de emparejamiento caducados.
-		/// </summary>
-		private void purgePairing()
-		{
-			List<PairingIntent> nueva = new List<PairingIntent>();
-			foreach(PairingIntent candidato in mcolPairingIntents)
-			{
-				if (candidato.expiry > DateTime.Now)
-					nueva.Add(candidato);
-			}
-			mcolPairingIntents = nueva;
-		}
-		private string createPairingId()
-		{
-			const string caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-			var random = new Random();
-			return new string(Enumerable.Range(0, 4)
-				.Select(_ => caracteres[random.Next(caracteres.Length)]).ToArray());
-		}
-		private List<PairingIntent> mcolPairingIntents = new List<PairingIntent>();		
-		public class PairingIntent
-		{
-			public Guid userId { get; set; }
-			public DateTime expiry { get; set; }
-			public string? pairingString { get; set; }
-		}
 
-		#endregion "Pairing"
+
+
+		
+		
+
+		
 	}
 }

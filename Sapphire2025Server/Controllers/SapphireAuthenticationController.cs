@@ -10,6 +10,7 @@ using Sapphire2025Models;
 using System.Text.Json;
 using System.Reflection.Metadata.Ecma335;
 using System.Diagnostics.CodeAnalysis;
+using Sapphire2025Server.Telegram;
 
 
 namespace Sapphire2025Server.Controllers
@@ -17,9 +18,10 @@ namespace Sapphire2025Server.Controllers
 	[ApiController]
 	[Route("[controller]")]
 	public class SapphireAuthenticationController:SapphireBaseController
-	{			
-		public SapphireAuthenticationController(IConfiguration configuration):
-			base(configuration) { }
+	{
+		private readonly BotSoul mvarBotSoul;
+		public SapphireAuthenticationController(IConfiguration configuration, BotSoul botSoul):
+			base(configuration) { mvarBotSoul = botSoul; }
 		[HttpGet("ping")]
 		public IActionResult GetPing()
 		{
@@ -150,6 +152,15 @@ namespace Sapphire2025Server.Controllers
 				}
 			}
 			return null;
+		}
+		[HttpPut("gettelegrampairingcode")]
+		public async Task<string> GetTelegramPairingCode(TelegramPairingRequestModel? request)
+		{
+			if(null!=request)
+			{
+				return mvarBotSoul.GenerateTicket(request.UserId);
+			}
+			return string.Empty;
 		}
 
 		[HttpPut("logout")]
@@ -365,6 +376,21 @@ namespace Sapphire2025Server.Controllers
 			{
 				return await almacen.GetRegisterValue(userId, "TGRULES", string.Empty);
 			}
+		}
+
+		public async Task<bool> pairUser(Guid userId, long telegramId)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				User? candidato = await almacen.Users.Where(x => x.Id == userId.ToString()).FirstOrDefaultAsync();
+				if(null!=candidato)
+				{
+					candidato.TelegramEnabled = true;
+					candidato.TelegramId = telegramId;
+					return await almacen.SaveChangesAsync() > 0;
+				}
+			}
+			return false;
 		}
 
 		/// <summary>
@@ -708,8 +734,7 @@ namespace Sapphire2025Server.Controllers
 				return salida;		
 			}
 		}
-					
-
+				
 	}	
 }
 

@@ -23,7 +23,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
-builder.Services.AddSingleton<Sapphire2025Server.Telegram.BotSoul>();
+builder.Services.AddSingleton<BotSoul>();
 
 var app = builder.Build();
 

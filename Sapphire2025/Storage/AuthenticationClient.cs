@@ -42,6 +42,17 @@ namespace Sapphire2025.Storage
 
             return null;
 		}
+        public async Task<string?> GetTelegramPairingCode(Guid userId)
+        {
+            Guid auxToken = await mvarIntStorage.getToken();
+            TelegramPairingRequestModel request = new TelegramPairingRequestModel();
+            request.UserId = userId;
+            request.SessionToken = auxToken;
+            string jsonString = JsonSerializer.Serialize(request);
+            HttpResponseMessage respuesta = await sendPutRequest("gettelegrampairingcode", jsonString);
+            string? response = await respuesta.Content.ReadAsStringAsync();
+            return response;
+        }
 
         public async Task<bool> Logout(string tokenId)
         {

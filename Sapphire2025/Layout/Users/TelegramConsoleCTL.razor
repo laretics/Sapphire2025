@@ -34,6 +34,15 @@ else
             Instructions="No se pueden configurar las opciones del bot para este usuario hasta que el programa tenga acceso a la sesión privada del bot."
             AlertColor="warning"
             />
+        <div class="mt-3">
+            <Button class="btn btn-success" @onclick="OnGeneratePairingTicket">Generar ticket de emparejado</Button>
+            @if (!string.IsNullOrEmpty(mvarPairingCode))
+            {
+                <div class="alert alert-info mt-2">
+                    <strong>Código de emparejamiento:</strong> @mvarPairingCode
+                </div>
+            }
+        </div>
     }
 }
 @code {
@@ -43,6 +52,17 @@ else
     public ExtendedUserModel? UserModel { get; set; }
 
     private ModalDialog? mvarModal { get; set; }
+
+    private string? mvarPairingCode { get; set; }
+
+    private async Task OnGeneratePairingTicket()
+    {
+        if(null!=UserModel)
+        {
+            mvarPairingCode = await mvarAuthClient.GetTelegramPairingCode(UserModel.guid);
+            StateHasChanged();
+        }
+    }
 
     private async void OnSendPersonalDataChanges()
     {

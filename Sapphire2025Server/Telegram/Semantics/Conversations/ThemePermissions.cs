@@ -23,8 +23,8 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 				await mvarParent.InitializeAsync();
 				//Remplazamos el usuario vacío por el de la base de datos.
 				child = new ThemeMenu(mvarParent);
-			}
-			await child.InitializeAsync();
+				await child.InitializeAsync();
+			}			
 		}
 
 		internal override async Task<Response> ResponseFromBot()
