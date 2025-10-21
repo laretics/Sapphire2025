@@ -8,7 +8,7 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public const string SapphireSoftwareVersion = "25.10.20";
+		public const string SapphireSoftwareVersion = "25.10.22";
 		public const string LastChangesText = "Telegram|Importador de Excel";
 		public const string VersionColor = "#6FB5E3"; //Color de la versión para diferenciar una de otra.
 

@@ -1,4 +1,5 @@
-﻿namespace Sapphire2025Server.Telegram.Semantics
+﻿using Telegram.Bot;
+namespace Sapphire2025Server.Telegram.Semantics
 {
 	/// <summary>
 	/// Una respuesta es un objeto semántico que contiene información para responder al usuario
@@ -9,18 +10,76 @@
 	public abstract class Response
 	{
 		protected static Random generador = new Random(); //Generador de números aleatorios para las respuestas.
-		public string text
-		{
-			get
-			{
-				byte indice = (byte)generador.Next(0, maxResponses);
-				return internalResponse(indice);
-			}
 
-		} //Texto de la respuesta, si no se ha definido, se devuelve una cadena vacía.
-
-		protected abstract string internalResponse(byte id);
-		protected virtual byte maxResponses { get => 1; } //Número máximo de respuestas que puede devolver el objeto. Por defecto es 1, pero se puede sobreescribir en las clases hijas.
+		internal virtual async Task Send(ITelegramBotClient client, long telegramId) { }
 
 	}
+
+	/// <summary>
+	/// Respuesta de texto con diferentes respuestas que dar. Se genera en el momento.
+	/// </summary>
+	public class TextResponse: Response
+	{
+		private Dictionary<string, string> mcolParameters = new Dictionary<string, string>(); //Conjunto de parámetros para articular una contestación.
+		private List<string> mcolPhrases = new List<string>(); //Conjunto de diferentes formas de dar el mensaje.
+
+		public void addText(string rhs)
+		{
+			mcolPhrases.Add(rhs);
+		}
+		public void addKey(string key, string value)
+		{
+			//Añade o modifica una clave.
+			if (mcolParameters.ContainsKey(key))
+				mcolParameters[key] = value;
+			else
+				mcolParameters.Add(key, value);
+		}
+		/// <summary>
+		/// Devuelve una de las posibles cadenas a mostrar.
+		/// </summary>
+		/// <returns>Cadena mostrada</returns>
+		protected string internalResponse()
+		{
+			int max = mcolPhrases.Count;
+			if (max < 1)
+				return string.Empty;
+			int aleatorio = Random.Shared.Next(max);
+			string frase = mcolPhrases[aleatorio];
+			foreach (KeyValuePair<string,string> pareja in mcolParameters)
+				frase = frase.Replace("#" + pareja.Key, pareja.Value);
+			return frase;			
+		}
+
+		protected virtual byte maxResponses { get => 1; } //Número máximo de respuestas que puede devolver el objeto. Por defecto es 1, pero se puede sobreescribir en las clases hijas.
+		internal override async Task Send(ITelegramBotClient client, long telegramId)
+		{
+			byte indice = (byte)generador.Next(0, maxResponses);
+			await client.SendMessage(telegramId, internalResponse());
+		}
+	}
+	public class ImageResponse:TextResponse
+	{
+		public string? ImageUrl { get; set; }
+		internal override async Task Send(ITelegramBotClient client, long telegramId)
+		{
+			if(null==ImageUrl)
+				await base.Send(client, telegramId);
+			else
+			{
+				string rutaRelativa = Path.Combine("Resources", "Images", ImageUrl);
+				string rutaFisica = Path.Combine(Directory.GetCurrentDirectory(), rutaRelativa);
+				using (FileStream cadena = File.OpenRead(rutaFisica))
+				{
+					await client.SendPhoto(
+						chatId: telegramId,
+						photo: cadena,
+						caption: internalResponse());
+				}
+			}
+		}
+
+
+	}
+
 }

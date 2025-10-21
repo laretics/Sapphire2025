@@ -1,6 +1,6 @@
 ﻿using Google.Protobuf.WellKnownTypes;
 using Org.BouncyCastle.Pqc.Crypto.Picnic;
-using Sapphire2025Server.Telegram.Semantics.Responses;
+using Sapphire2025Server.Telegram.Semantics.Concepts;
 using System.Reflection.Metadata.Ecma335;
 
 namespace Sapphire2025Server.Telegram.Semantics
@@ -10,41 +10,41 @@ namespace Sapphire2025Server.Telegram.Semantics
 	public class SemanticAnalyzer
 	{
 		public VerbConcept? Concept { get; set; } //Aquí se extrae el concepto pedido.
-		public List<Concept> availableConcepts { get; set; } //Lista de conceptos que se pueden reconocer en el texto
-		public Response response
-		{
-			get
-			{
-				if (null == Concept)
-					return new NullConceptErrorResponse();
-				else
-					return Concept.response;
-			}
-		}
-		public async Task<List<VerbConcept>> setQuestion(string rhs)
-		{
-			//Aquí es donde se hace el análisis de la cadena de texto
-			//Primero buscamos un verbo en la cadena de texto
-			string[] origen = normalize(rhs);
-			List<VerbConcept> conceptos = new List<VerbConcept>();
-			foreach (VerbConcept ppp in availableConcepts)
-			{
-				if (await ppp.match(origen)) //Hemos encontrado una palabra clave
-					conceptos.Add(ppp);
-			}
-			return conceptos;
-		}
-		public async Task<List<Concept>> setQuestionForObjects(string rhs)
-		{
-			string[] origen = normalize(rhs);
-			List<Concept> conceptos = new List<Concept>();
-			foreach (Concept ppp in availableConcepts)
-			{
-				if (await ppp.match(origen)) //Hemos encontrado un objeto
-					conceptos.Add(ppp);
-			}
-			return conceptos;
-		}
+		public List<GeneralConcept> availableConcepts { get; set; } //Lista de conceptos que se pueden reconocer en el texto
+		//public Response response
+		//{
+		//	get
+		//	{
+		//		if (null == Concept)
+		//			return new NullConceptErrorResponse();
+		//		else
+		//			return Concept.response;
+		//	}
+		//}
+		//public async Task<List<VerbConcept>> setQuestion(string rhs)
+		//{
+		//	//Aquí es donde se hace el análisis de la cadena de texto
+		//	//Primero buscamos un verbo en la cadena de texto
+		//	string[] origen = normalize(rhs);
+		//	List<VerbConcept> conceptos = new List<VerbConcept>();
+		//	foreach (VerbConcept ppp in availableConcepts)
+		//	{
+		//		if (await ppp.match(origen)) //Hemos encontrado una palabra clave
+		//			conceptos.Add(ppp);
+		//	}
+		//	return conceptos;
+		//}
+		//public async Task<List<GeneralConcept>> setQuestionForObjects(string rhs)
+		//{
+		//	string[] origen = normalize(rhs);
+		//	List<GeneralConcept> conceptos = new List<GeneralConcept>();
+		//	foreach (GeneralConcept ppp in availableConcepts)
+		//	{
+		//		if (await ppp.match(origen)) //Hemos encontrado un objeto
+		//			conceptos.Add(ppp);
+		//	}
+		//	return conceptos;
+		//}
 
 		private string[] normalize(string text)
 		{

@@ -1,6 +1,6 @@
 ﻿using Sapphire2025Server.Telegram.Semantics;
 using Sapphire2025Server.Telegram.Semantics.Concepts;
-using Sapphire2025Server.Telegram.Semantics.Responses;
+using Telegram.Bot;
 
 namespace Sapphire2025Server.Telegram
 {
@@ -22,51 +22,50 @@ namespace Sapphire2025Server.Telegram
 		internal BotTask mvarParent { get; set; } //Contenedor con la info del chat 
 		internal BotTheme? child { get; set; } //Tema hijo (Las conversaciones funcionan como pilas)
 		internal virtual async Task InitializeAsync(){}
-		internal virtual async Task<Response> ResponseFromBot() {return new NonImplementedResponse();}
-		internal virtual async Task textToBot(string text){}
-		public async Task<Response> fromBot()
-		{			
-			if (null == child||child.isEnded)
-			{
-				child = null;
-				return await this.ResponseFromBot();
-			}				
-			else
-				return await child.ResponseFromBot();
-		}
-		public async Task ToBot(string? text)
+		internal virtual async Task InternalResponseFromBot(ITelegramBotClient client) {}
+		internal virtual async Task InternalTextToBot(string text){}
+		public async Task ResponseFromBot(ITelegramBotClient client)
 		{
+			if (null != child && child.isEnded)
+				child = null;
+
+			if (null == child)
+				await InternalResponseFromBot(client);
+			else
+				await child.InternalResponseFromBot(client);			
+		}
+		public async Task TextToBot(string? text)
+		{
+			if (null != child && child.isEnded)
+				child = null;
 			string auxTexto = string.Empty;
 			if (null != text)
 				auxTexto = text;
 
-			if (null == child||child.isEnded)
-			{
-				child = null;
-				await this.textToBot(auxTexto);
-			}				
+			if (null == child)
+				await this.InternalTextToBot(auxTexto);
 			else
-				await child.textToBot(auxTexto);
+				await child.InternalTextToBot(auxTexto);
 		}
 
 		internal async Task<TrainConcept?> seekTrainConcept(string text)
 		{
 			SemanticAnalyzer analizador = new SemanticAnalyzer();
-			analizador.availableConcepts = new List<Concept>
+			analizador.availableConcepts = new List<GeneralConcept>
 			{
-				new TrainConcept()
+				//new TrainConcept()
 				};
-			List<Concept> conceptosEncontrados = await analizador.setQuestionForObjects(text);
-			if (conceptosEncontrados.Count > 0)
-			{
-				foreach (Concept concepto in conceptosEncontrados)
-				{
-					if (concepto.GetType() == typeof(TrainConcept))
-					{
-						return (TrainConcept)concepto;
-					}
-				}
-			}
+			//List<GeneralConcept> conceptosEncontrados = await analizador.setQuestionForObjects(text);
+			//if (conceptosEncontrados.Count > 0)
+			//{
+			//	foreach (GeneralConcept concepto in conceptosEncontrados)
+			//	{
+			//		if (concepto.GetType() == typeof(TrainConcept))
+			//		{
+			//			return (TrainConcept)concepto;
+			//		}
+			//	}
+			//}
 			return null;
 		}
 

@@ -19,4 +19,10 @@
     <ProjectReference Include="..\Sapphire2025Models\Sapphire2025Models.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Resources\Images\PairingScreen.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

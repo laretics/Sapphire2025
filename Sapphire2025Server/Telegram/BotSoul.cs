@@ -19,10 +19,10 @@ namespace Sapphire2025Server.Telegram
 {
 	public class BotSoul
 	{
-		private TelegramBotClient mvarBot;
-		private IConfiguration mvarConfig;
-		private Dictionary<long,BotTask> mcolTasks = new Dictionary<long, BotTask>(); //Contenedor de conversaciones activas.	
-		private PairingQuew mvarPairingQuew = new PairingQuew();			
+		internal TelegramBotClient mvarBot;
+		internal IConfiguration mvarConfig;
+		private Dictionary<long,BotTask> mcolTasks = new Dictionary<long, BotTask>(); //Contenedor de conversaciones activas. Las conversaciones van por ID de telegram.	
+		internal PairingQuew mvarPairingQuew = new PairingQuew();			
 
 		public BotSoul (IConfiguration configuration)
 		{
@@ -46,125 +46,123 @@ namespace Sapphire2025Server.Telegram
 			}
 		}
 
-		private async Task HandleUpdateAsync(ITelegramBotClient botClient,		
+		private async Task HandleUpdateAsync(ITelegramBotClient botClient,
 			Update update,
 			CancellationToken cancellationToken)
-		{					
-			if (update.Type == UpdateType.Message && update.Message is Message message)
+		{
+			if (await GetTelegramEnabled()) //Sólo sigo si está habilitado el servidor
 			{
-				Message mensaje = update.Message;
-				if (await GetTelegramEnabled())//Compruebo el estado del servidor en el registro de la base de datos.
+				switch (update.Type)
 				{
-					BotTask? tarea = await (getTask(mensaje.Chat.Id));
-					if(null==tarea) //Posible emparejamiento.
-					{
-						if(null!=mensaje && null!=mensaje.Text)
+					case UpdateType.Message:
+					case UpdateType.EditedMessage:
+						if (update.Message is Message auxMensaje)
 						{
-							if (await PairTelegramChat(mensaje.Chat.Id, mensaje.Text.ToUpper().Trim()))
-							{
-								//Usuario emparejado. Respondemos a la petición
-								BotTask nueva = new BotTask(mensaje.Chat.Id);
-								BotTask.config = mvarConfig;
-								await nueva.InitializeAsync();
-								mcolTasks.Add(mensaje.Chat.Id, nueva);
-								await botClient.SendMessage(mensaje.Chat.Id, "¡Ya te tengo! Tu cuenta de Telegram está ahora emparejada con tu usuario en Zafiro.");
-							}
-							else
-							{
-								await botClient.SendMessage(mensaje.Chat.Id, "Ha ocurrido algún error. Esta cuenta de Telegram no se pudo vincular con ningún usuario de Zafiro.");
-							}
-						}
-						else
-						{
-							await botClient.SendMessage(mensaje.Chat.Id, "Ha ocurrido algún error importante. Esta cuenta de Telegram no se pudo vincular con ningún usuario de Zafiro.");
-						}
-					}
-					else
-					{
-						await tarea.toBot(mensaje.Text);
-						Response respuesta = await tarea.fromBot();
-						await botClient.SendMessage(mensaje.Chat.Id, respuesta.text);
-					}
+							Debug.Assert(null != auxMensaje);
+							await HandleIncomingMessage(botClient, auxMensaje);
+						}			
+						break;
+					case UpdateType.ChannelPost:
+
+						break;
+					case UpdateType.EditedChannelPost:
+
+						break;
+					case UpdateType.MessageReaction:
+
+						break;
+					case UpdateType.Poll:
+					default:
+
+						break;
 				}
-				else
-				{
-					await botClient.SendMessage(mensaje.Chat.Id, "Servidor desconectado.");
-				}
+
 			}
 		}
-		/// <summary>
-		/// Al iniciar la aplicación, el bot carga la tabla de sesiones abiertas desde la
-		/// base de datos.
-		/// </summary>
-		/// <returns></returns>
-		public async Task InitUsers()
+		private async Task HandleIncomingMessage(ITelegramBotClient botClient, Message message)
 		{
-			using (DataStorage almacen = new DataStorage(mvarConfig))
+			long telegramId = message.Chat.Id;
+			if (string.IsNullOrEmpty(message.Text))
+				await botClient.SendMessage(telegramId, "Error interno: Mensaje vacío");
+			else
 			{
-				IEnumerable<ActiveSessionModel> sessions = await almacen.ActiveSessions.ToListAsync();
-				foreach (ActiveSessionModel session in sessions)
-				{
-					await OpenTask(session.UserId);
-				}
+				BotTask auxTarea = OpenTask(telegramId);
+				await auxTarea.TextToBot(message.Text);
+				await auxTarea.ResponseFromBot();
 			}
 		}
 
+			//if (update.Type == UpdateType.Message && update.Message is Message message)
+			//{
+			//	//Me llega un mensaje desde Telegram
+			//	Message mensaje = update.Message;
+			//	if (await GetTelegramEnabled())//Compruebo el estado del servidor en el registro de la base de datos.
+			//	{
+			//		BotTask tarea = OpenTask(mensaje.Chat.Id);
+			//		if (null != mensaje && null != mensaje.Text)
+			//		{
+			//			if (await PairTelegramChat(mensaje.Chat.Id, mensaje.Text.ToUpper().Trim()))
+			//			{
+			//				//Usuario emparejado. Respondemos a la petición
+			//				BotTask nueva = new BotTask(mensaje.Chat.Id, mvarPairingQuew);
+			//				BotTask.config = mvarConfig;
+			//				await nueva.InitializeAsync();
+			//				mcolTasks.Add(mensaje.Chat.Id, nueva);
+			//				await botClient.SendMessage(mensaje.Chat.Id, "¡Ya te tengo! Tu cuenta de Telegram está ahora emparejada con tu usuario en Zafiro.");
+			//			}
+			//			else
+			//			{
+			//				await botClient.SendMessage(mensaje.Chat.Id, "Ha ocurrido algún error. Esta cuenta de Telegram no se pudo vincular con ningún usuario de Zafiro.");
+			//			}
+			//		}
+			//		else
+			//		{
+			//			await botClient.SendMessage(mensaje.Chat.Id, "Ha ocurrido algún error importante. Esta cuenta de Telegram no se pudo vincular con ningún usuario de Zafiro.");
+			//		}					
+			//	}
+			//	else
+			//	{
+			//		await botClient.SendMessage(mensaje.Chat.Id, "Servidor desconectado.");
+			//	}
+			//}		
+
+
+
 		/// <summary>
-		/// Abre el usuario de Telegram asociado a una cuenta determinada.
-		/// Esto hace que se inicie la suscripción a los mensajes del bot.
+		/// Abre una conversación en base a una cuenta de Telegram
 		/// </summary>
-		/// <param name="userId"></param>
-		public async Task<bool> OpenTask(Guid userId)
+		/// <param name="telegramId">Id de diálogo de telegram</param>
+		/// <returns>La conversación aludida</returns>
+		internal BotTask OpenTask(long telegramId)
 		{
-			return await OpenTask(userId.ToString());
-		}
-		public async Task<bool> OpenTask(string userId)
-		{
-			using (DataStorage almacen = new DataStorage(mvarConfig))
+			if(!mcolTasks.ContainsKey(telegramId))
 			{
-				//Obtenemos el usuario a partir del guid.
-				Sapphire2025Server.Models.User? usuario = await almacen.Users.Where(x => x.Id == userId).FirstOrDefaultAsync();
-				if (usuario != null)
-				{
-					if (usuario.TelegramEnabled && 0 != usuario.TelegramId)
-					{
-						BotTask auxTarea = await getTask(usuario.TelegramId); //Ya con esto inicio el chat y abro las notificaciones broadcast.
-						return true;
-					}
-				}
+				BotTask nueva = new BotTask(telegramId, this);
+
+				mcolTasks.Add(telegramId, nueva);
 			}
-			return false;
+			Debug.Assert(mcolTasks.ContainsKey(telegramId));
+			return mcolTasks[telegramId];
 		}
 		/// <summary>
 		/// Cierra las notificaciones para este usuario. Se suele hacer en cierres de sesión.
 		/// </summary>
 		/// <param name="userId"></param>
 		/// <returns></returns>
-		public async Task<bool> CloseTask(Guid userId)
-		{
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{
-				//Obtenemos el usuario a partir del guid.
-				Sapphire2025Server.Models.User? usuario = await almacen.Users.Where(x => x.Id == userId.ToString()).FirstOrDefaultAsync();
-				if (usuario != null)
-				{
-					if(mcolTasks.ContainsKey(usuario.TelegramId))
-					{
-						mcolTasks.Remove(usuario.TelegramId);
-						return true;
-					}
-				}
-			}
-			return false;
-		}
-
-		private async Task<BotTask?> getTask(long telegramId)
+		internal void CloseTask(long telegramId)
 		{
 			if (mcolTasks.ContainsKey(telegramId))
-				return mcolTasks[telegramId];
-
-			return null;
+				mcolTasks.Remove(telegramId);
 		}
+
+		internal async Task EndTask(long telegramId)
+		{
+			//Elimina el diálogo porque vamos a desconectar al usuario.
+			await mvarBot.SendMessage(telegramId, "Has desconectado tu usuario de este bot.");
+			if (mcolTasks.ContainsKey(telegramId))
+				mcolTasks.Remove(telegramId);
+		}
+
 		/// <summary>
 		/// Envía el mensaje a todos los usuarios, independientemente de los permisos y el rol que tengan
 		/// </summary>

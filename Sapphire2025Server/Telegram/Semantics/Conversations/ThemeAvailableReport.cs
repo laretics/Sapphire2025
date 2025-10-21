@@ -4,7 +4,6 @@ using Sapphire2025Server.Controllers;
 using Sapphire2025Server.Models;
 using Sapphire2025Server.Telegram.Semantics;
 using Sapphire2025Server.Telegram.Semantics.Concepts;
-using Sapphire2025Server.Telegram.Semantics.Responses;
 
 namespace Sapphire2025Server.Telegram.Semantics.Conversations
 {
@@ -15,35 +14,35 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 		{
 			this.concept = concept;
 		}
-		internal async override Task<Response> ResponseFromBot()
-		{
-			if(null==concept.target) //Disponibilidad de toda la flota
-			{
-				List<TrainModel> trenes = await availableTrains();
-				endTheme();
-				return new TrainsAvailableResponse(trenes);
-			}
-			else //Disponibilidad de un tren en concreto
-			{
-				if(concept.target.GetType() == typeof(TrainConcept))
-				{
-					TrainConcept concepto = (TrainConcept)concept.target;
-					if (null!=concepto)
-					{
-						if(null!=concepto.mvarTren)
-						{
-							TrainModel? tren = await trainFromBase(concepto.mvarTren.Guid);
-							if (null != tren)
-							{
-								endTheme();
-								return new TrainAvailabilityResponse(tren);
-							}
-						}
-					}									
-				}				
-			}
-			return await base.ResponseFromBot();
-		}
+		//internal async override Task<Response> ResponseFromBot()
+		//{
+		//	if(null==concept.target) //Disponibilidad de toda la flota
+		//	{
+		//		List<TrainModel> trenes = await availableTrains();
+		//		endTheme();
+		//		return new TrainsAvailableResponse(trenes);
+		//	}
+		//	else //Disponibilidad de un tren en concreto
+		//	{
+		//		if(concept.target.GetType() == typeof(TrainConcept))
+		//		{
+		//			TrainConcept concepto = (TrainConcept)concept.target;
+		//			if (null!=concepto)
+		//			{
+		//				if(null!=concepto.mvarTren)
+		//				{
+		//					TrainModel? tren = await trainFromBase(concepto.mvarTren.Guid);
+		//					if (null != tren)
+		//					{
+		//						endTheme();
+		//						return new TrainAvailabilityResponse(tren);
+		//					}
+		//				}
+		//			}									
+		//		}				
+		//	}
+		//	return await base.ResponseFromBot();
+		//}
 		private async Task<TrainModel?> trainFromBase(Guid trainId)
 		{
 			using (DataStorage almacen = new DataStorage(BotTask.config))

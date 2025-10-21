@@ -3,7 +3,6 @@ using Sapphire2025Server.Controllers;
 using Sapphire2025Server.Models;
 using Sapphire2025Server.Telegram.Semantics;
 using Sapphire2025Server.Telegram.Semantics.Concepts;
-using Sapphire2025Server.Telegram.Semantics.Responses;
 using System.Diagnostics;
 using static System.Net.Mime.MediaTypeNames;
 
@@ -17,35 +16,35 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 		{
 			this.concept = concept;
 		}
-		internal async override Task<Response> ResponseFromBot()
-		{
-			if (null == concept.ToTrain)
-				return new NoTrainSelectedResponse();				
-			if(string.Empty == damageDescription)
-				return new DamageReportDataRequestResponse(concept.ToTrain);
-			if(damageDescription.Length>0 && null!=concept && null!=concept.ToTrain && null!=concept.ToTrain.mvarTren)				
-			{
-				endTheme();
-				return new DamageReportSucessfullResponse(concept.ToTrain.mvarTren);				
-			}
+		//internal async override Task<Response> ResponseFromBot()
+		//{
+		//	if (null == concept.ToTrain)
+		//		return new NoTrainSelectedResponse();				
+		//	if(string.Empty == damageDescription)
+		//		return new DamageReportDataRequestResponse(concept.ToTrain);
+		//	if(damageDescription.Length>0 && null!=concept && null!=concept.ToTrain && null!=concept.ToTrain.mvarTren)				
+		//	{
+		//		endTheme();
+		//		return new DamageReportSucessfullResponse(concept.ToTrain.mvarTren);				
+		//	}
 
-			return await base.ResponseFromBot();
-		}
-		internal async override Task textToBot(string text)
-		{
-			if(null == concept.ToTrain)
-			{
-				concept.ToTrain = await seekTrainConcept(text);
-			}
-			else //Lo que queda es el texto... aquí damos de alta el informe
-			{
-				damageDescription = text.Trim();
-				if(damageDescription.Length > 0)
-				{
-					await createDamageReport(); //Damos de alta el informe					
-				}
-			}
-		}
+		//	return await base.ResponseFromBot();
+		//}
+		//internal async override Task textToBot(string text)
+		//{
+		//	if(null == concept.ToTrain)
+		//	{
+		//		concept.ToTrain = await seekTrainConcept(text);
+		//	}
+		//	else //Lo que queda es el texto... aquí damos de alta el informe
+		//	{
+		//		damageDescription = text.Trim();
+		//		if(damageDescription.Length > 0)
+		//		{
+		//			await createDamageReport(); //Damos de alta el informe					
+		//		}
+		//	}
+		//}
 
 		internal async Task createDamageReport()
 		{

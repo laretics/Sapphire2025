@@ -11,40 +11,79 @@ namespace Sapphire2025Server.Telegram
 	internal class BotTask
 	{
 		private User? mvarUser;
-		private long mvarTelegramId;
+		internal long mvarTelegramId;
+		private bool mvarFirstMessage;
 		internal User? user { get => mvarUser;} //Referencia al usuario que tiene esta conversación
 		internal BotTheme theme { get; set; } //Tema de la conversación actual.
+		internal BotSoul parent { get; set; } // Alma de bot que posee todas las tareas
 		internal static IConfiguration config { get; set; } //Para acceso a las DB
-		internal BotTask(long chatId)
+		internal BotTask(long chatId, BotSoul parent)
 		{
 			//Tenemos que recuperar el usuario de la base de datos.
+			this.parent = parent;
+			mvarFirstMessage = true;
 			mvarTelegramId = chatId;
+			theme = new InitialTheme(this);
 		}
-		internal async Task InitializeAsync()
+
+		/// <summary>
+		/// Asignación del ID del usuario una vez tenemos el emparejado.
+		/// </summary>
+		/// <param name="userId"></param>
+		/// <returns></returns>
+		internal async Task<bool> PairUser(Guid userId)
 		{
-			//Tenemos que cargar al usuario en este momento... no podemos quedarnos
-			//con la última versión porque no podremos conocer los cambios en su consola
-			//de telegram ni su estado de activación real.
-			using (DataStorage almacen = new DataStorage(config))
+			using (DataStorage almacen = new DataStorage(parent.mvarConfig))
 			{
-				mvarUser = await almacen.Users.Where(x => x.TelegramId == mvarTelegramId).FirstOrDefaultAsync();
+				Models.User? auxUser = await almacen.Users.Where(x => x.Id == userId.ToString()).FirstOrDefaultAsync();
+				if(null!=auxUser)
+				{
+					mvarUser = auxUser;
+					auxUser.TelegramEnabled = true;
+					auxUser.TelegramId = mvarTelegramId;
+					return await almacen.SaveChangesAsync() > 0;
+				}				
 			}
-			theme = new ThemeInitial(this);
-			await theme.InitializeAsync();
+			return false;
+		}
+		internal async Task<bool> FetchUser()
+		{
+			using (DataStorage almacen = new DataStorage(parent.mvarConfig))
+			{
+				Models.User? auxUser = await almacen.Users.Where(x => x.TelegramId == mvarTelegramId).FirstOrDefaultAsync();
+				mvarUser = auxUser;
+			}
+			return (null != mvarUser);
 		}
 
 		/// <summary>
 		/// Obtiene el texto que el bot va a enviar al usuario.
 		/// </summary>
-		public async Task<Response> fromBot()
-		{return await theme.fromBot();}
+		public async Task ResponseFromBot()
+		{
+			//Capturamos el pairing.
+			if(null==user)
+			{
+				if (!await FetchUser())
+					theme.child = new PairingTheme(this);
+			}
+
+			//Aquí cargaré el usuario (si es que no lo tenía todavía)
+			await theme.ResponseFromBot(parent.mvarBot);
+		}
 		/// <summary>
 		/// Envía al bot el texto que ha escrito el usuario.
 		/// </summary>
 		/// <param name="text"></param>
 		/// <returns></returns>
-		public async Task toBot(string? text)
-		{await theme.ToBot(text);}
+		public async Task TextToBot(string? text)
+		{
+			if(!mvarFirstMessage) //Ignora el primer mensaje para preparar respuesta.
+			{
+				await theme.TextToBot(text);
+			}			
+			mvarFirstMessage = false;
+		}
 
 	}
 }

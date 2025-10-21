@@ -501,8 +501,9 @@ namespace Sapphire2025Server.Controllers
 						//Tenemos que comprobar que el CF que vamos a cambiar NO exista en la base de datos.
 						List<User> duplicates = await almacen.Users.Where(x => x.Id != message.UserId.ToString() && x.CF.Equals(message.CF)).ToListAsync();
 						if (duplicates.Any()) return false; //No podemos hacer el cambio.
+						await mvarBotSoul.EndTask(usuario.TelegramId);
 						usuario.TelegramId = 0; //Anulamos la sesión
-						usuario.TelegramEnabled = false; //Damos de baja Telegram
+						usuario.TelegramEnabled = false; //Damos de baja Telegram						
 						return await almacen.SaveChangesAsync() > 0;
 					}
 				}				

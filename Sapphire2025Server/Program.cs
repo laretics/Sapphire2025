@@ -1,3 +1,4 @@
+using Microsoft.Extensions.FileProviders;
 using Sapphire2025Server.Telegram;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,7 +37,7 @@ mvarLifeTime.ApplicationStopping.Register(() =>
 	instancia.BroadcastByRole("Mensaje desde el servidor: \"¡Sistema detenido!\"",true, new Sapphire2025Models.Common.UserRole[] { Sapphire2025Models.Common.UserRole.Root }).GetAwaiter().GetResult();
 });
 
-await instancia.InitUsers();
+//await instancia.InitUsers();
 await instancia.BroadcastByRole("Mensaje desde el servidor: \"¡Sistema iniciado!\"",true, new Sapphire2025Models.Common.UserRole[] { Sapphire2025Models.Common.UserRole.Root });
 
 
@@ -48,6 +49,12 @@ if (app.Environment.IsDevelopment())
 	//app.UseHttpsRedirection();
 }
 
+app.UseStaticFiles(new StaticFileOptions
+{
+	FileProvider = new PhysicalFileProvider(
+		Path.Combine(Directory.GetCurrentDirectory(), "Resources", "Images")),
+	RequestPath = "/images"
+});
 
 app.UseAuthorization();
 
