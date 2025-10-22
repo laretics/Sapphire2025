@@ -37,7 +37,7 @@ namespace Sapphire2025Server.Telegram.Semantics.Concepts
 		private async Task initializeTrainCollection()
 		{
 			mcolTrains = new Dictionary<string, Train>();
-			using (DataStorage almacen = new DataStorage(BotTask.config))
+			using (DataStorage almacen = new DataStorage(BotSoul.config))
 			{
 				foreach (Train tren in await almacen.Trains.ToListAsync())
 				{

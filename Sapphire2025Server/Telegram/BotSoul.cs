@@ -20,15 +20,15 @@ namespace Sapphire2025Server.Telegram
 	public class BotSoul
 	{
 		internal TelegramBotClient mvarBot;
-		internal IConfiguration mvarConfig;
+		internal static IConfiguration config;
 		private Dictionary<long,BotTask> mcolTasks = new Dictionary<long, BotTask>(); //Contenedor de conversaciones activas. Las conversaciones van por ID de telegram.	
 		internal PairingQuew mvarPairingQuew = new PairingQuew();			
 
 		public BotSoul (IConfiguration configuration)
 		{
-			mvarConfig = configuration;
-			string? auxToken = mvarConfig["Telegram:Secret"];
-			bool auxMainEnabled = mvarConfig["Telegram:Enabled"] == "true"; //Este valor está en el archivo config.
+			config = configuration;
+			string? auxToken = config["Telegram:Secret"];
+			bool auxMainEnabled = config["Telegram:Enabled"] == "true"; //Este valor está en el archivo config.
 			//Este valor nos dice si arranca el demonio en esta instancia del servidor. Es útil cuando tengo el servidor en producción
 			//y al mismo tiempo tengo el servidor de desarrollo en pruebas. (Sólo uno debería funcionar al mismo tiempo.
 			Debug.Assert(null != auxToken,"Valor nulo en token de Telegram desde Config");
@@ -174,7 +174,7 @@ namespace Sapphire2025Server.Telegram
 		{
 			List<Models.User> auxUsers = new List<Models.User>();
 			List<Models.User> auxOrigin = await auxAvailableUsers();
-			SapphireAuthenticationController auxController = new SapphireAuthenticationController(mvarConfig, this);
+			SapphireAuthenticationController auxController = new SapphireAuthenticationController(config, this);
 			string[] auxFilters = filters.ToUpper().Split(',');
 			foreach (Models.User candidato in auxOrigin)
 			{
@@ -196,7 +196,7 @@ namespace Sapphire2025Server.Telegram
 		{
 			List<Models.User> auxUsers = new List<Models.User>();
 			List<Models.User> auxOrigin = await auxAvailableUsers();
-			SapphireAuthenticationController auxController = new SapphireAuthenticationController(mvarConfig, this);
+			SapphireAuthenticationController auxController = new SapphireAuthenticationController(config, this);
 			foreach (Models.User candidato in auxOrigin)
 			{
 				if(priority || candidato.TelegramEnabled)
@@ -267,7 +267,7 @@ namespace Sapphire2025Server.Telegram
 
 		private async Task<List<Models.User>> auxAvailableUsers()
 		{
-			using (DataStorage almacen = new DataStorage(mvarConfig))
+			using (DataStorage almacen = new DataStorage(config))
 			{
 				return await almacen.Users.Where(x => x.TelegramEnabled).ToListAsync();
 			}				
@@ -284,7 +284,7 @@ namespace Sapphire2025Server.Telegram
 		private Task HandleErrorAsync(ITelegramBotClient botClient,
 			Exception exception,
 			CancellationToken cancellationToken)
-		{
+		{		
 			Debug.Assert(false, "Error en el bot de Telegram: " + exception.Message);
 			return Task.CompletedTask;
 		}
@@ -302,7 +302,7 @@ namespace Sapphire2025Server.Telegram
 
 		private async Task<bool> GetTelegramEnabled()
 		{
-			using (DataStorage almacen = new DataStorage(mvarConfig))
+			using (DataStorage almacen = new DataStorage(config))
 			{
 				string? auxCadena = await almacen.GetRegisterValue("Telegram", "false");
 				if (null != auxCadena)
@@ -328,7 +328,7 @@ namespace Sapphire2025Server.Telegram
 			if(Guid.Empty!=auxUserPairingId)
 			{
 				//Tenemos un emparejamiento. Buscamos el usuario en la base de datos
-				SapphireAuthenticationController auxController = new SapphireAuthenticationController(mvarConfig, this);
+				SapphireAuthenticationController auxController = new SapphireAuthenticationController(config, this);
 				return await auxController.pairUser(auxUserPairingId, telegramChatId);
 			}
 			return false;

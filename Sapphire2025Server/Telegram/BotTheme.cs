@@ -48,26 +48,7 @@ namespace Sapphire2025Server.Telegram
 				await child.InternalTextToBot(auxTexto);
 		}
 
-		internal async Task<TrainConcept?> seekTrainConcept(string text)
-		{
-			SemanticAnalyzer analizador = new SemanticAnalyzer();
-			analizador.availableConcepts = new List<GeneralConcept>
-			{
-				//new TrainConcept()
-				};
-			//List<GeneralConcept> conceptosEncontrados = await analizador.setQuestionForObjects(text);
-			//if (conceptosEncontrados.Count > 0)
-			//{
-			//	foreach (GeneralConcept concepto in conceptosEncontrados)
-			//	{
-			//		if (concepto.GetType() == typeof(TrainConcept))
-			//		{
-			//			return (TrainConcept)concepto;
-			//		}
-			//	}
-			//}
-			return null;
-		}
+		
 
 	}
 }

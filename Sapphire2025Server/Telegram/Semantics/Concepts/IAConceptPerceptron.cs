@@ -32,7 +32,7 @@
 			// 5. Unir todo sin espacios
 			return palabrasFiltradas.ToArray();
 		}
-		public async Task<GeneralConcept?> Concept(string rhs, byte trigger=128)
+		public async Task<GeneralConcept?> Concept(string rhs, byte trigger=0)
 		{
 			string[] entrada = auxNormalize(rhs);
 			GeneralConcept? candidato=null;

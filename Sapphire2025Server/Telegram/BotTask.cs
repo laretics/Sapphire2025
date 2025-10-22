@@ -16,7 +16,6 @@ namespace Sapphire2025Server.Telegram
 		internal User? user { get => mvarUser;} //Referencia al usuario que tiene esta conversación
 		internal BotTheme theme { get; set; } //Tema de la conversación actual.
 		internal BotSoul parent { get; set; } // Alma de bot que posee todas las tareas
-		internal static IConfiguration config { get; set; } //Para acceso a las DB
 		internal BotTask(long chatId, BotSoul parent)
 		{
 			//Tenemos que recuperar el usuario de la base de datos.
@@ -33,7 +32,7 @@ namespace Sapphire2025Server.Telegram
 		/// <returns></returns>
 		internal async Task<bool> PairUser(Guid userId)
 		{
-			using (DataStorage almacen = new DataStorage(parent.mvarConfig))
+			using (DataStorage almacen = new DataStorage(BotSoul.config))
 			{
 				Models.User? auxUser = await almacen.Users.Where(x => x.Id == userId.ToString()).FirstOrDefaultAsync();
 				if(null!=auxUser)
@@ -48,7 +47,7 @@ namespace Sapphire2025Server.Telegram
 		}
 		internal async Task<bool> FetchUser()
 		{
-			using (DataStorage almacen = new DataStorage(parent.mvarConfig))
+			using (DataStorage almacen = new DataStorage(BotSoul.config))
 			{
 				Models.User? auxUser = await almacen.Users.Where(x => x.TelegramId == mvarTelegramId).FirstOrDefaultAsync();
 				mvarUser = auxUser;
