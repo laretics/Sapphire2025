@@ -49,6 +49,14 @@ namespace TimeNet2026.Auxiliar
 			Guid.TryParse(entrada, out salida);
 			return salida;
 		}
+		internal static TimeSpan TimeSpanParam(XmlNode node, string paramId)
+		{
+			string entrada = StringParam(node, paramId, "nan");
+			if ("nan" == entrada) return new TimeSpan(0);
+			TimeSpan salida = new TimeSpan(0);
+			TimeSpan.TryParse(entrada, out salida);
+			return salida;
+		}
 		internal static DateTime DateTimeParam(XmlNode node, string paramId)
 		{
 			string entrada = StringParam(node, paramId, "nan");

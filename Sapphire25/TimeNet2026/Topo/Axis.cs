@@ -571,7 +571,24 @@ namespace TimeNet2026.Topo
 
 			return (long)(distanciaPk * distanceFromBegin / auxDistancia) + segmentBegin.pk;
 		}
-
+		internal List<SpeedLimit> getTemporalLimitations(byte track=255, long pkIni=-1, long pkEnd=-1, bool onlyActives=false)
+		{
+			List<SpeedLimit> salida = new List<SpeedLimit>();
+			foreach (SpeedLimit lim in mcolSpeedLimits)
+			{
+				if((track&lim.Tracks)!=0)
+				{
+					if(pkIni==-1||pkIni<=lim.pk)
+					{
+						if(pkEnd==-1||pkEnd>=lim.pkEnd)
+						{
+							salida.Add(lim);
+						}
+					}
+				}
+			}
+			return salida;
+		}
 		internal GeoPolyline? getLimitationPolyline(SpeedLimit item)
 		{
 			List<GeoLocation> puntos = getSubSegment(item.pk, item.length);

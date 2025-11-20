@@ -20,6 +20,7 @@ namespace TimeNet2026.Timed
 		string Entity.name { get => mvarName; set => mvarName = value; }
 		string Entity.comment { get => mvarComment; set => mvarComment = value; }
 		string[] Entity.color { get => mvarColor; set => mvarColor = value; }
+		internal Guid TopoId { get; set; } //Id de compatibilidad con la topología.
 		internal List<Circulation> nextCirculationsByStation(Station station, TimeSpan time)
 		{
 			List<Circulation> salida = new List<Circulation>();

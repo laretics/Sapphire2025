@@ -4,6 +4,8 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
+using TimeNet2026.Auxiliar;
 using TimeNet2026.Topo;
 
 namespace TimeNet2026.Timed
@@ -23,7 +25,7 @@ namespace TimeNet2026.Timed
 				if (null == mvarDuration)
 				{
 					mvarDuration = TimeSpan.Zero;
-					foreach (asimilationStep step in mcolSteps)
+					foreach (AsimilationStep step in mcolSteps)
 						mvarDuration = mvarDuration + step.stopTime + step.tripTime;
 				}
 				return mvarDuration;
@@ -51,11 +53,11 @@ namespace TimeNet2026.Timed
 		public string comment { get => mvarComment; set => mvarComment = value; }
 		public int maxSpeed { get => mvarMaxSpeed; }
 		public string[] color { get => mvarColor; set => mvarColor = value; }
-		internal List<asimilationStep> mcolSteps;
+		internal List<AsimilationStep> mcolSteps;
 		internal bool containsStation(Station rhs)
 		{
 			if (rhs == origin) return true;
-			foreach (asimilationStep aux in mcolSteps)
+			foreach (AsimilationStep aux in mcolSteps)
 			{
 				if (aux.destination == rhs) return true;
 			}
@@ -64,7 +66,7 @@ namespace TimeNet2026.Timed
 		internal Station? stationByName(string name)
 		{
 			if (name.Equals(origin.name)) return origin;
-			foreach (asimilationStep aux in mcolSteps)
+			foreach (AsimilationStep aux in mcolSteps)
 			{
 				if (name.Equals(aux.destination.name)) return aux.destination;
 			}
@@ -105,7 +107,7 @@ namespace TimeNet2026.Timed
 		internal TimeSpan stationStopTime(Station rhs)
 		{
 			if (rhs == origin) return TimeSpan.Zero; //Estación de salida.
-			foreach (asimilationStep step in mcolSteps)
+			foreach (AsimilationStep step in mcolSteps)
 			{
 				if (step.destination == rhs) return step.stopTime;
 			}
@@ -145,7 +147,7 @@ namespace TimeNet2026.Timed
 				if (isAscendent)
 				{
 					if (currentPk <= origin.pk) return auxLapse; //En origen el tiempo es cero.
-					foreach (asimilationStep step in mcolSteps)
+					foreach (AsimilationStep step in mcolSteps)
 					{
 						if (step.destination.pk > currentPk)
 						{
@@ -161,7 +163,7 @@ namespace TimeNet2026.Timed
 				else
 				{
 					if (currentPk >= origin.pk) return auxLapse; //En origen el tiempo es cero.
-					foreach (asimilationStep step in mcolSteps)
+					foreach (AsimilationStep step in mcolSteps)
 					{
 						if (step.destination.pk < currentPk)
 						{
@@ -190,14 +192,23 @@ namespace TimeNet2026.Timed
 			mvarName = string.Empty;
 			mvarComment = string.Empty;
 			mvarMaxSpeed = 100;
-			mcolSteps = new List<asimilationStep>();
+			mcolSteps = new List<AsimilationStep>();
 			mvarDuration = null;
 			mvarColor = new string[2];
+		}
+		internal Asimilation(XmlNode root):this()
+		{
+			id = XMLUtil.StringParam(root, "id");
+			mvarName = XMLUtil.StringParam(root, "name");
+			mvarMaxSpeed = XMLUtil.IntParam(root, "type");
+			mvarColor[0] = XMLUtil.StringParam(root, "color");
+			mvarColor[1] = XMLUtil.StringParam(root, "darkcolor");
+			mvarComment = XMLUtil.StringParam(root, "comment");
 		}
 		internal Asimilation(Axis auxEje):this()
 		{
 			//Genera una asimilación a partir de un eje dado.
-			mcolSteps = new List<asimilationStep>();
+			mcolSteps = new List<AsimilationStep>();
 			mvarColor = new string[2];
 			mvarDuration = null;
 			mvarName = auxEje.mvarName;
@@ -215,22 +226,11 @@ namespace TimeNet2026.Timed
 					}
 					else
 					{
-						asimilationStep auxNuevo = new asimilationStep();
-						auxNuevo.destination = auxEstacion;
-						auxNuevo.axis = auxEje;
+						AsimilationStep auxNuevo = new AsimilationStep(auxEstacion,auxEje,new TimeSpan(0), new TimeSpan(0));
 						mcolSteps.Add(auxNuevo);
 					}
 				}
 			}
-		}
-		internal class asimilationStep
-		{
-			internal Station destination { get; set; }
-			internal Axis axis { get; set; } //Devuelve el eje al que pertenece este tramo
-			internal TimeSpan tripTime { get; set; }
-			internal TimeSpan stopTime { get; set; }
-			internal float auxCacheY { get; set; } //Valor cacheado para representar una malla.
-												   //IMPORTANTE: Este valor no tiene ninguna relevancia fuera de la operación de pintado.
 		}
 	}
 }
