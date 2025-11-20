@@ -1,45 +1,56 @@
 ﻿
 using MySqlX.XDevAPI;
+using Sapphire2025Server.Telegram.Semantics.Concepts;
 using Telegram.Bot;
 
 namespace Sapphire2025Server.Telegram.Semantics.Conversations
 {
 	internal class TrainDamageTheme:BotTheme
 	{
-		private List<Models.Train> mcoltrains; //Conjunto de trenes afectados por el parte.
-		private string? mvarSympthoms { get; set; } //Síntomas detectados por el informante
-		private string mvarArguments { get; set; }		
+		protected TrainIncidenceConcept? mvarConcept { get; set; } = null;
+		private string mvarMessage { get; set; }
+
+
 
 		internal TrainDamageTheme(BotTask parent, string arguments) : base(parent)
 		{
-			mcoltrains = new List<Models.Train>();
-			mvarArguments = arguments;
+			mvarMessage = arguments;
 		}
 		internal async override Task InternalTextToBot(string text)
 		{
-			this.endTheme();
+			mvarMessage = string.Concat(text, mvarMessage);
+			if (null == mvarConcept)
+			{
+				mvarConcept = new TrainIncidenceConcept();
+				await mvarConcept.match(mvarMessage.Split(' ').ToList());
+			}
+			if (mvarConcept.mcolTrains.Count>0)
+			{
+				await mvarConcept.match(text.Split(',').ToList());
+			}
+			else if(null==mvarConcept.Sympthoms)
+			{
+				mvarConcept.Sympthoms = text;
+			}
+
+
+
+
+
+				this.endTheme();
 		}
 		internal async override Task InternalResponseFromBot(ITelegramBotClient client)
 		{
-			if(null==mvarSympthoms)
+			if(null==mvarConcept)
 			{
-				TextResponse auxPideSintomas = new TextResponse();
-				auxPideSintomas.addText("¿Qué le ocurre a #ut ?");
-				auxPideSintomas.addText("¿Qué síntomas tiene #ut ?");
-				auxPideSintomas.addText("Por favor, describe la incidencia de #ut .");
-				if (mcoltrains.Count == 0)
-					auxPideSintomas.addKey("ut", "la unidad de tren");
-				else
-					auxPideSintomas.addKey("ut", string.Format("la UT {0}", mcoltrains[0].Name));
-				await auxPideSintomas.Send(client, mvarParent.mvarTelegramId);
+				TextResponse auxQueryPrompt = new TextResponse();
+				auxQueryPrompt.addText("No te he entendido. ¿Puedes preguntar otra cosa?");
+				auxQueryPrompt.addText("No estoy preparado para manejar esta pregunta. Prueba con otra.");
+				await auxQueryPrompt.Send(client, mvarParent.mvarTelegramId);
 			}
 			else
 			{
-				TextResponse auxPrompt = new TextResponse();
-				auxPrompt.addText("Has querido abrir un parte de incidencia");
-				auxPrompt.addText("Nuevo parte de incidencia");
-				auxPrompt.addText("Este es el parte de incidencia");
-				await auxPrompt.Send(client, mvarParent.mvarTelegramId);
+				await mvarConcept.Confirmation().Send(client, mvarParent.mvarTelegramId);
 			}
 		}
 	}

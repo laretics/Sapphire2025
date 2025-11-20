@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapphire2025Server", "..\Sa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapphire2025Models", "..\Sapphire2025Models\Sapphire2025Models.csproj", "{E479905E-0433-4E92-B896-F6782229618C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeNet2026", "TimeNet2026\TimeNet2026.csproj", "{CAC9A3F4-E30E-4F81-A679-224B934E4E62}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,14 @@ Global
 		{E479905E-0433-4E92-B896-F6782229618C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{E479905E-0433-4E92-B896-F6782229618C}.Release|x64.ActiveCfg = Release|Any CPU
 		{E479905E-0433-4E92-B896-F6782229618C}.Release|x64.Build.0 = Release|Any CPU
+		{CAC9A3F4-E30E-4F81-A679-224B934E4E62}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CAC9A3F4-E30E-4F81-A679-224B934E4E62}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CAC9A3F4-E30E-4F81-A679-224B934E4E62}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{CAC9A3F4-E30E-4F81-A679-224B934E4E62}.Debug|x64.Build.0 = Debug|Any CPU
+		{CAC9A3F4-E30E-4F81-A679-224B934E4E62}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CAC9A3F4-E30E-4F81-A679-224B934E4E62}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CAC9A3F4-E30E-4F81-A679-224B934E4E62}.Release|x64.ActiveCfg = Release|Any CPU
+		{CAC9A3F4-E30E-4F81-A679-224B934E4E62}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

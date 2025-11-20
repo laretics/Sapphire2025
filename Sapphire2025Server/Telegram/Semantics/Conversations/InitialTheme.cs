@@ -44,7 +44,7 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 			mvarError = false;
 			mvarPerceptron = new IAConceptPerceptron();
 			mvarPerceptron.addConcept( new GeneralConcept("InformeEstado","disponible,disponibilidad,disponibles,trenes,disposicion,informe,lista"));
-			mvarPerceptron.addConcept(new GeneralConcept("ParteAveria", "parte,averia,averias,incidencia,incidencias,tren,daño,daños,ut"));		
+			mvarPerceptron.addConcept(new TrainIncidenceConcept());		
 		}
 
 		internal async override Task InternalTextToBot(string text)
@@ -58,7 +58,7 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 				{
 
 				}
-				else if (detectado.name.Equals("ParteAveria"))
+				else if (detectado.name.Equals("Train_Incidence_Report"))
 					this.child = new TrainDamageTheme(mvarParent, text);
 				else
 					mvarError = true;

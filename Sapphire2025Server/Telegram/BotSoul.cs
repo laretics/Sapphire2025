@@ -76,7 +76,6 @@ namespace Sapphire2025Server.Telegram
 
 						break;
 				}
-
 			}
 		}
 		private async Task HandleIncomingMessage(ITelegramBotClient botClient, Message message)

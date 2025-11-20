@@ -1,0 +1,13 @@
+﻿using System.ComponentModel.DataAnnotations.Schema;
+namespace Sapphire2025Server.Models
+{
+	[Table("BotLogError")]
+	public class BotLogError
+	{
+		public DateTime TimeStamp { get; set; }
+		public long SessionId { get; set; }
+		public Guid UserId { get; set; }
+		public string? Message { get; set; }
+		public string? Reason { get; set; }
+	}
+}

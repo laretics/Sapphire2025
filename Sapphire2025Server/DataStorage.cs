@@ -110,6 +110,19 @@ namespace Sapphire2025Server
 		}
 
 		#endregion "Registro"
+		#region "Telegram"
+		public async Task<bool> AddBotLog(long sessionId, Guid userId, string? message, string? reason)
+		{
+			BotLogError nuevo = new BotLogError();
+			nuevo.TimeStamp = DateTime.UtcNow;
+			nuevo.SessionId = sessionId;
+			nuevo.UserId = userId;
+			nuevo.Message = message;
+			nuevo.Reason = reason;
+			await BotLogErrors.AddAsync(nuevo);
+			return await SaveChangesAsync() > 0;
+		}
+		#endregion
 		#region "Usuarios"
 		public async Task<User?> retrieveUser(string userName)
 		{
@@ -170,6 +183,7 @@ namespace Sapphire2025Server
 		public DbSet<RoleDictionary> RoleDictionary { get; set; }
 		public DbSet<Register> Register { get; set; } //Diccionario general del sistema
 		public DbSet<OwnerRegister> OwnerRegister { get; set; } //Diccionario de registro de los objetos del sistema.
+		public DbSet<BotLogError> BotLogErrors { get; set; } // Fallos del bot de Telegram
 
 		#endregion authentication
 		#region Aeneas
