@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using TimeNet2026.Auxiliar;
+using TimeNet2026.Storage;
 
 namespace TimeNet2026.Topo
 {
@@ -26,6 +27,16 @@ namespace TimeNet2026.Topo
 			this.Speed = XMLUtil.IntParam(root, "speed");			
 			mvarComment = XMLUtil.StringParam(root, "comment");
 			mcolColor = new string[1];
+		}
+		internal static new List<OnyxField> Descriptor()
+		{
+			List<OnyxField> salida = Lineal.Descriptor();
+			salida.Add(new OnyxField("id", "STRING", true, true, false));
+			salida.Add(new OnyxField("name", "STRING"));
+			salida.Add(new OnyxField("comment", "STRING"));
+			salida.Add(new OnyxField("color0", "STRING"));
+			salida.Add(new OnyxField("color1", "STRING"));
+			return salida;
 		}
 		public string name 
 		{

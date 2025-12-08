@@ -9,18 +9,20 @@ using TimeNet2026.Auxiliar;
 using TimeNet2026.Timed;
 namespace TimeNet2026.Topo
 {
-	internal class TopoStorage
+	public class TopoStorage
 	{
-		internal Header Header { get; set; } //Encabezado.
+		public Header Header { get; set; } //Encabezado.
 		internal Dictionary<string, Axis> mcolAxis; //Colección de ejes	
 		internal Dictionary<string, Asimilation> mcolAsimilations; //Colección de asimilaciones.
-		internal TopoStorage()
+		public TopoStorage()
 		{
 			Header = new Header();
 			mcolAsimilations = new Dictionary<string, Asimilation>();
 			mcolAxis = new Dictionary<string, Axis>();
 		}
-		internal TopoStorage(XmlNode root):this()
+		public List<Axis> ColAxis { get => mcolAxis.Values.ToList(); }
+		public List<Asimilation> ColAsimilations { get => mcolAsimilations.Values.ToList(); }
+		public TopoStorage(XmlNode root):this()
 		{
 			foreach (XmlNode hijo in root.ChildNodes)
 			{
@@ -30,14 +32,24 @@ namespace TimeNet2026.Topo
 						this.Header.deserialize(hijo);
 						break;
 					case "topo": //Ejes
-						Axis nuevo = new Axis(hijo);
-						if (mcolAxis.ContainsKey(nuevo.id))
-							mcolAxis.Remove(nuevo.id);
-						mcolAxis.Add(nuevo.id, nuevo);
+						importAxis(hijo);
 						break;
 					case "asimilation": //Asimilaciones
 						deserializeAsimilations(hijo);
 						break;
+				}
+			}
+		}
+		internal void importAxis(XmlNode root)
+		{
+			foreach (XmlNode hijo in root.ChildNodes)
+			{
+				if (hijo.Name.Equals("axis"))
+				{
+					Axis nuevo = new Axis(hijo);
+					if (mcolAxis.ContainsKey(nuevo.id))
+						mcolAxis.Remove(nuevo.id);
+					mcolAxis.Add(nuevo.id, nuevo);
 				}
 			}
 		}
@@ -74,14 +86,14 @@ namespace TimeNet2026.Topo
 			}
 			return candidate;
 		}
-		internal Axis? axisByStation(Station? rhs)
+		public Axis? axisByStation(Station? rhs)
 		{
 			if (null == rhs) return null;
 			foreach (Axis eje in mcolAxis.Values)
 				if (eje.contains(rhs)) return eje;
 			return null;
 		}
-		internal Station? stationById(string id)
+		public Station? stationById(string id)
 		{
 			Station? salida = null;
 			foreach(Axis eje in mcolAxis.Values)
@@ -96,10 +108,13 @@ namespace TimeNet2026.Topo
 			foreach(XmlNode hijo in root.ChildNodes)
 			{
 				if("item"==hijo.Name)
-					deserializeAsimilation(hijo);
+				{
+					Asimilation nueva = deserializeAsimilation(hijo);
+					mcolAsimilations.Add(nueva.id, nueva);
+				}					
 			}
 		}
-		internal void deserializeAsimilation(XmlNode root)
+		internal Asimilation deserializeAsimilation(XmlNode root)
 		{
 			Station? currentStation = null;
 			Axis? auxCurrentAxis = null;			
@@ -122,7 +137,8 @@ namespace TimeNet2026.Topo
 						currentAsimilation.mcolSteps.Add(paso);
 					}
 				}
-			}		
+			}
+			return currentAsimilation;
 		}
 	}
 }

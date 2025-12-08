@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TimeNet2026.Storage;
 
 namespace TimeNet2026.Topo
 {
-	internal class Punctual
+	public class Punctual
 	{
 		const long NEAR_FACTOR = 150;
 		internal virtual long pk { get; set; }
@@ -45,6 +46,14 @@ namespace TimeNet2026.Topo
 		public override string ToString()
 		{
 			return string.Format("{0}+{1:000}", pk / 1000, pk % 1000);
+		}
+		internal static List<OnyxField> Descriptor()
+		{
+			List<OnyxField> salida = new List<OnyxField>();
+			salida.Add(new OnyxField("id", "INTEGER", false, true, true));
+			salida.Add(new OnyxField("axisId", "STRING")); //Referencia al eje que contiene este elemento.
+			salida.Add(new OnyxField("pk", "INTEGER"));
+			return salida;
 		}
 	}
 }

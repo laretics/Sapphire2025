@@ -4,11 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using TimeNet2026.Storage;
 using TimeNet2026.Topo;
 
 namespace TimeNet2026.Timed
 {
-	internal class Circulation : Entity, IComparable<Circulation>
+	public class Circulation : Entity, IComparable<Circulation>
 	{
 		private string mvarName;
 		private string mvarComment;
@@ -44,7 +45,7 @@ namespace TimeNet2026.Timed
 		public string comment { get => mvarComment; set => mvarComment = value; }
 		public string[] color { get => mvarColor; set => mvarColor=value; }
 
-		internal void deserialize(XmlNode root, OnyxStorage storage)
+		internal void deserialize(XmlNode root, TopoStorage storage)
 		{
 			mvarName = root.Attributes["id"].Value;
 			asimilation = storage.mcolAsimilations[root.Attributes["asm"].Value];

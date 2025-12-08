@@ -10,7 +10,7 @@ using TimeNet2026.Topo;
 
 namespace TimeNet2026.Timed
 {
-	internal class Asimilation : Entity
+	public class Asimilation : Entity
 	{
 		internal string mvarName;
 		internal string mvarComment;

@@ -7,17 +7,18 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using TimeNet2026.Auxiliar;
+using TimeNet2026.Storage;
 using static System.Collections.Specialized.BitVector32;
 
 namespace TimeNet2026.Topo
 {
-	internal class Axis : Lineal, Entity
+	public class Axis : Lineal, Entity
 	{
 		internal const double BOUNDS_PERCENTAGE = 0.05;
 		internal GeoLocation[] mvarBounds = new GeoLocation[2];
 		//Utilizo el rectángulo para detectar rápidamente si un punto dado puede pertenecer a un eje.
-		internal string id { get; set; }
-		internal string mvarName { get; set; }
+		public string id { get; set; }
+		public string mvarName { get; set; }
 		internal string mvarComment { get; set; }
 		internal int searchStep { get; set; } //Valor de salto para la caché de búsqueda de puntos en el eje.
 		internal string[] mvarColor { get; set; }
@@ -25,6 +26,17 @@ namespace TimeNet2026.Topo
 		internal List<Station> mcolStations; // Estaciones en el eje
 		internal List<SpeedLimit> mcolSpeedLimits; //Limitaciones de velocidad que afectan a este eje.
 		internal List<Signal> mcolSignals; //Señales luminosas en la vía.
+		public List<Station> Stations { get => mcolStations; }
+		internal static new List<OnyxField> Descriptor()
+		{
+			List<OnyxField> salida = Lineal.Descriptor();
+			salida.Add(new OnyxField("id", "STRING", true, true, false));
+			salida.Add(new OnyxField("name", "STRING"));
+			salida.Add(new OnyxField("comment", "STRING"));
+			salida.Add(new OnyxField("color0", "STRING"));
+			salida.Add(new OnyxField("color1", "STRING"));
+			return salida;
+		}
 		private int mvarCurrentIndex { get; set; } //Lo uso para calcular bearing
 		internal bool contains(GeoLocation point)
 		{
@@ -453,7 +465,7 @@ namespace TimeNet2026.Topo
 		String[] Entity.color { get => mvarColor; set => mvarColor = value; }
 		internal int mvarMaxSpeed;
 		internal int maxSpeed { get => mvarMaxSpeed; }
-		internal Axis()
+		public Axis()
 		{
 			id = "Unnamed";
 			mvarName = "Unnamed";
@@ -466,7 +478,7 @@ namespace TimeNet2026.Topo
 			mvarColor = new string[2];
 			searchStep = 8; //En principio nos saltamos los puntos de 8 en 8 para buscar el más cercano.
 		}
-		internal Axis(XmlNode root):this()
+		public Axis(XmlNode root):this()
 		{
 			deserializeXMLHeader(root);
 			foreach(XmlNode hijo in root.ChildNodes)
@@ -515,6 +527,11 @@ namespace TimeNet2026.Topo
 					}
 				}
 			}
+			if(mcolPoints.Count>0)
+			{
+				this.pk = mcolPoints.First().pk;
+				this.length = mcolPoints.Last().pk - this.pk;
+			}			
 		}
 		private void deserializeXMLLimits(XmlNode root)
 		{

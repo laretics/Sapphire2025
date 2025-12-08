@@ -12,7 +12,7 @@ namespace TimeNet2026.Topo
 	/// <summary>
 	/// Esto es una cabecera con información sobre un topo o sobre un rauta.
 	/// </summary>
-	internal class Header
+	public class Header
 	{
 		public string Name { get; set; }
 		public string Description { get; set; }
@@ -25,7 +25,7 @@ namespace TimeNet2026.Topo
 		public string Bitmap { get; set; }
 		public Guid Id { get; set; }
 
-		internal Header()
+		public Header()
 		{
 			this.Name = string.Empty;
 			this.Description = string.Empty;

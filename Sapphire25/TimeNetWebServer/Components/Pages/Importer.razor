@@ -1,0 +1,70 @@
+﻿@page "/importer"
+@rendermode InteractiveServer
+@using TimeNetComponents.TreeView
+@inject TimeNet2026.Storage.OnyxStorage mvarStorage
+
+<div class="container-fluid">
+    <div class="row" style="height: 80vh;">
+        <!-- Panel izquierdo: TreeView con scroll -->
+        <div class="col-4 border-end d-flex flex-column p-0" style="overflow-y: auto; max-height: 80vh;">
+            <TreeView Node="new OnyxStorageNode(mvarStorage)" />
+        </div>
+        <!-- Splitter como columna estrecha -->
+        <div class="col-auto p-0" style="width:6px;cursor:col-resize;background:#e0e0e0;" id="splitter"></div>
+        <!-- Panel derecho: contenido actual -->
+        <div class="col-4 d-flex flex-column p-4">
+            <h1>Importador</h1>
+            <div class="card shadow-sm mt-4 w-100" style="max-width: 100%;">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Selecciona un archivo para importar</h5>
+                    <InputFile OnChange="HandleFileSelected" class="form-control" />
+                    @if (!string.IsNullOrEmpty(FileName))
+                    {
+                        <div class="alert alert-success mt-3 p-2">
+                            Archivo seleccionado: <strong>@FileName</strong>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    let isResizing = false;
+    let lastDownX = 0;
+    const left = document.querySelector('.col-4');
+    const splitter = document.getElementById('splitter');
+    splitter.addEventListener('mousedown', function(e) {
+        isResizing = true;
+        lastDownX = e.clientX;
+        document.body.style.cursor = 'col-resize';
+    });
+    document.addEventListener('mousemove', function(e) {
+        if (!isResizing) return;
+        let offsetRight = document.body.offsetWidth - (e.clientX);
+        left.style.flex = 'none';
+        left.style.width = (e.clientX - left.parentElement.offsetLeft) + 'px';
+    });
+    document.addEventListener('mouseup', function(e) {
+        isResizing = false;
+        document.body.style.cursor = '';
+    });
+</script>
+
+@code {
+    private string? FileName;
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        FileName = file.Name;
+        Console.WriteLine("Evento disparado");
+        TimeNetWebServer.Classes.XMLImporter importador = new Classes.XMLImporter();
+        XmlElement? elemento = await importador.ImportXML(file.OpenReadStream());
+        if (null != elemento)
+        {
+            mvarStorage.deserializeXML(elemento);
+            StateHasChanged();
+        }
+    }
+}

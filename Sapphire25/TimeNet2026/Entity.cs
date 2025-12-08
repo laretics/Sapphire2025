@@ -2,7 +2,7 @@
 
 namespace TimeNet2026
 {
-	internal interface Entity
+	public interface Entity
 	{
 		public string name { get; set; } //Nombre de la entidad
 		public string comment { get; set; } //Un comentario sobre esta entidad

@@ -5,14 +5,15 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using TimeNet2026.Auxiliar;
+using TimeNet2026.Storage;
 
 namespace TimeNet2026.Topo
 {
-	internal class Station : RefPunctual
+	public class Station : RefPunctual
 	{
 		internal string id { get; private set; }
-		internal string name { get; private set; }
-		internal string shortName { get; private set; }
+		public string name { get; private set; }
+		public string shortName { get; private set; }
 		internal Axis axis { get; private set; }
 
 		public Station(string id, string name, string shortName, Axis axis, double latitude, double longitude) : base(latitude, longitude)
@@ -35,6 +36,14 @@ namespace TimeNet2026.Topo
 			//Es una estación si el código Id comienza por mayúsculas.
 			string primeraLetra = shortName.Substring(0, 1);
 			return primeraLetra.Equals(primeraLetra.ToUpper());
+		}
+		internal static new List<OnyxField> Descriptor()
+		{
+			List<OnyxField> salida = RefPunctual.Descriptor();
+			salida.Add(new OnyxField("id", "STRING", true, true, false));
+			salida.Add(new OnyxField("name", "STRING"));
+			salida.Add(new OnyxField("shortName", "STRING"));
+			return salida;
 		}
 	}
 }

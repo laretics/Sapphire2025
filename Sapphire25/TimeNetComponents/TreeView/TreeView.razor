@@ -1,0 +1,47 @@
+﻿@using TimeNetComponents.Entity
+<ul class="list-group">
+	<li class="list-group-item">
+		@if(null!=Node)
+		{
+			<span @onclick="Toggle" style="cursor:pointer;">
+				@if(Node.Children?.Count>0)
+				{
+					<span class="me-2 fw-bold" style="font-size:1.2rem;">
+						@(mvarExpanded ? "-":"+")						
+					</span>
+				}
+				<span class="me-2 fw-bold" style="font-size:1.2rem;">
+				@(icon)
+				</span>
+				@Node.Name
+			</span>
+			@if(mvarExpanded && Node.Children?.Count>0)
+			{
+				<ul class="list-group ms-4">
+					@foreach(TreeNode child in Node.Children)
+					{
+						<TreeView Node="child"/>
+					}
+				</ul>
+			}		
+		}
+	</li>
+</ul>
+
+@code {
+		[Parameter]
+		public TreeNode? Node { get; set; } = default;
+
+		private MarkupString icon 
+			{ get => (null == Node) ? new MarkupString() : (MarkupString)Node.SvgIcon; }
+
+
+	private bool mvarExpanded = false;
+
+	private void Toggle()
+	{
+		if (Node.Children?.Count > 0)
+			mvarExpanded = !mvarExpanded;
+	}
+
+}

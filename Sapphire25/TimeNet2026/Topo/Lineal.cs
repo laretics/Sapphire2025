@@ -5,10 +5,11 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using TimeNet2026.Auxiliar;
+using TimeNet2026.Storage;
 
 namespace TimeNet2026.Topo
 {
-	internal class Lineal : Punctual
+	public class Lineal : Punctual
 	{
 		internal Lineal()
 		{
@@ -88,6 +89,12 @@ namespace TimeNet2026.Topo
 				}
 			}
 			return false;
+		}
+		internal static new List<OnyxField> Descriptor()
+		{
+			List<OnyxField> salida = Punctual.Descriptor();
+			salida.Add(new OnyxField("length", "INTEGER"));
+			return salida;
 		}
 	}
 }
