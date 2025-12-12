@@ -40,7 +40,7 @@
 
 	private void Toggle()
 	{
-		if (Node.Children?.Count > 0)
+		if (null!=Node && Node.Children?.Count > 0)
 			mvarExpanded = !mvarExpanded;
 	}
 

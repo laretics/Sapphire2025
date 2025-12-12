@@ -53,6 +53,10 @@
 
 @code {
     private string? FileName;
+    protected override async Task OnInitializedAsync()
+    {
+        await mvarStorage.Init();        
+    }
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
@@ -63,7 +67,7 @@
         XmlElement? elemento = await importador.ImportXML(file.OpenReadStream());
         if (null != elemento)
         {
-            mvarStorage.deserializeXML(elemento);
+            await mvarStorage.deserializeXML(elemento);
             StateHasChanged();
         }
     }

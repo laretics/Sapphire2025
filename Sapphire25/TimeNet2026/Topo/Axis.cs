@@ -478,6 +478,14 @@ namespace TimeNet2026.Topo
 			mvarColor = new string[2];
 			searchStep = 8; //En principio nos saltamos los puntos de 8 en 8 para buscar el más cercano.
 		}
+		public void RecalculateLinearBounds()
+		{
+			if(mcolPoints.Count>0)
+			{
+				this.pk = mcolPoints.First().pk;
+				this.length = mcolPoints.Last().pk - this.pk;
+			}
+		}
 		public Axis(XmlNode root):this()
 		{
 			deserializeXMLHeader(root);
@@ -527,11 +535,48 @@ namespace TimeNet2026.Topo
 					}
 				}
 			}
-			if(mcolPoints.Count>0)
+			
+			if (mcolPoints.Count>0)
+				recalculatePK(); //Asigno los PK de cada punto en función de las referencias
+			RecalculateLinearBounds();
+		}
+		private void recalculatePK()
+		{
+			int lastPkIndex = 0; //Índice del último punto con contenido distinto de -1
+			int nextPkIndex = auxCalculateNextPkIndex(lastPkIndex); //Índice del siguiente punto con contenido distinto de -1.
+			while (-1 != nextPkIndex)
 			{
-				this.pk = mcolPoints.First().pk;
-				this.length = mcolPoints.Last().pk - this.pk;
-			}			
+				long pkIni = mcolPoints[lastPkIndex].pk;
+				long pkFin = mcolPoints[nextPkIndex].pk;
+				long distancia = pkFin - pkIni;
+				Debug.Assert(distancia > 0);
+				double distanciaGeograficaTotal = 0;
+				//Primero tengo que calcular la distancia entre puntos geográficos
+				for(int i=lastPkIndex+1;i<nextPkIndex;i++)
+					distanciaGeograficaTotal += mcolPoints[i - 1].point.DistanceTo(mcolPoints[i].point);
+				Debug.Assert(distanciaGeograficaTotal > 0);				
+				//Ahora puedo calcular el pk.
+				double acumulado = 0;
+				for(int i=lastPkIndex+1;i<nextPkIndex;i++)
+				{
+					acumulado += mcolPoints[i - 1].point.DistanceTo(mcolPoints[i].point);
+					long resultado = (long)((acumulado * distancia) / distanciaGeograficaTotal);
+					mcolPoints[i].pk = resultado + pkIni;
+					//Console.WriteLine(string.Format("Point ({0},{1}) at pk {2}", mcolPoints[i].point.Latitude, mcolPoints[i].point.Longitude, mcolPoints[i].pk));
+				}
+
+				lastPkIndex = nextPkIndex;
+				nextPkIndex = auxCalculateNextPkIndex(lastPkIndex);
+			}
+		}
+		private int auxCalculateNextPkIndex(int lastPkIndex)
+		{
+			for (int i =lastPkIndex+1; i<mcolPoints.Count;i++)
+			{
+				if (-1 != mcolPoints[i].pk)
+					return i;
+			}
+			return -1; //Valor de error. Nos hemos salido del eje.
 		}
 		private void deserializeXMLLimits(XmlNode root)
 		{

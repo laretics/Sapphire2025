@@ -70,6 +70,7 @@ namespace TimeNet2026.Auxiliar
 			string entrada = StringParam(node, paramId, "nan");
 			if ("nan" == entrada) return defaultValue;
 			double salida = defaultValue;
+			entrada = entrada.Replace(".", ",");
 			double.TryParse(entrada, out salida);
 			return salida;
 		}
