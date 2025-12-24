@@ -1,9 +1,46 @@
 ﻿@page "/importer"
 @rendermode InteractiveServer
 @using TimeNetComponents.TreeView
+@inject IJSRuntime JS
 @inject TimeNet2026.Storage.OnyxStorage mvarStorage
 
+@if(mvarBusy)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" style="background:rgba(255,255,255,0.7);z-index:1050;">
+        <div class="d-flex justify-content-center align-items-center" style="height:100vh;">
+            <div class="spinner-border text-primary" role="status" style="width:4rem;height:4rem;">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <span class="ms-3 fs-4">Procesando, por favor espera...</span>
+        </div>
+    </div>
+}
 <div class="container-fluid">
+    <!-- Barra de herramientas -->
+    <div class="row mb-3">
+        <div class="col">
+            <div class="btn-toolbar" role="toolbar">
+                <div class="btn-group me-2" role="group">
+                    <button class="btn btn-primary" @onclick="TriggerFileInput">
+                        <i class="bi bi-upload"></i> Importar
+                    </button>
+                    <button class="btn btn-danger" @onclick="DeleteData">
+                        <i class="bi bi-trash"></i> Eliminar datos
+                    </button>
+                    <button class="btn btn-secondary" @onclick="OtherOption1">
+                        <i class="bi bi-gear"></i> Opción 1
+                    </button>
+                    <button class="btn btn-secondary" @onclick="OtherOption2">
+                        <i class="bi bi-info-circle"></i> Opción 2
+                    </button>
+                </div>
+            </div>
+            <!-- InputFile oculto para el botón Importar -->
+            <InputFile OnChange="HandleFileSelected" class="d-none" @ref="fileInput" id="fileInput" />
+        </div>
+    </div>
+
     <div class="row" style="height: 80vh;">
         <!-- Panel izquierdo: TreeView con scroll -->
         <div class="col-4 border-end d-flex flex-column p-0" style="overflow-y: auto; max-height: 80vh;">
@@ -17,7 +54,6 @@
             <div class="card shadow-sm mt-4 w-100" style="max-width: 100%;">
                 <div class="card-body">
                     <h5 class="card-title mb-3">Selecciona un archivo para importar</h5>
-                    <InputFile OnChange="HandleFileSelected" class="form-control" />
                     @if (!string.IsNullOrEmpty(FileName))
                     {
                         <div class="alert alert-success mt-3 p-2">
@@ -29,6 +65,8 @@
         </div>
     </div>
 </div>
+
+
 <script>
     let isResizing = false;
     let lastDownX = 0;
@@ -49,13 +87,24 @@
         isResizing = false;
         document.body.style.cursor = '';
     });
+    window.triggerFileInput = function (inputId) {
+        document.getElementById(inputId).click();
+    };
 </script>
 
 @code {
     private string? FileName;
+    private InputFile? fileInput;
+    private bool mvarBusy { get; set; } = false;
+
     protected override async Task OnInitializedAsync()
     {
-        await mvarStorage.Init();        
+        await mvarStorage.Init();
+    }
+
+    private async Task TriggerFileInput()
+    {
+        await JS.InvokeVoidAsync("triggerFileInput", "fileInput");
     }
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
@@ -63,12 +112,35 @@
         var file = e.File;
         FileName = file.Name;
         Console.WriteLine("Evento disparado");
+        mvarBusy = true;
+        StateHasChanged();
         TimeNetWebServer.Classes.XMLImporter importador = new Classes.XMLImporter();
         XmlElement? elemento = await importador.ImportXML(file.OpenReadStream());
         if (null != elemento)
-        {
             await mvarStorage.deserializeXML(elemento);
-            StateHasChanged();
-        }
+        mvarBusy = false;
+        StateHasChanged();
+    }
+
+    private async Task DeleteData()
+    {
+        mvarBusy = true;
+        StateHasChanged();
+        await Task.Yield(); //Para mostrar la pantalla de carga.
+        // Lógica para eliminar datos del almacén
+        await mvarStorage.EmptyDatabase();
+        FileName = null;
+        mvarBusy = false;
+        StateHasChanged();
+    }
+
+    private void OtherOption1()
+    {
+        // Lógica para la opción 1
+    }
+
+    private void OtherOption2()
+    {
+        // Lógica para la opción 2
     }
 }

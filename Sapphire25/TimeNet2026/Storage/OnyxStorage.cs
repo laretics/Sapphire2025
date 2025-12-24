@@ -28,6 +28,10 @@ namespace TimeNet2026.Storage
 			mvarStorage.Database.EnsureCreated(); //Se asegura de que existe la base de datos.
 			mcolTopoStorages = new List<TopoStorage>();			
 		}
+		public async Task EmptyDatabase()
+		{
+			await mvarStorage.TotalRemove();
+		}
 		public async Task Init()
 		{
 			//await mvarStorage.TotalRemove();

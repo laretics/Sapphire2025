@@ -228,6 +228,7 @@ namespace TimeNet2026.DBStorage
 			DBStation? candidate = await GetDBStation(rhs.origin.id, rhs.origin.axis.id);
 			System.Diagnostics.Debug.Assert(null != candidate);
 			nueva.OriginStationId = candidate.Id;
+			Asimilations.Add(nueva);
 			await SaveChangesAsync(); //Doy valor al id de la asimilación.
 			foreach (AsimilationStep paso in rhs.mcolSteps)
 				await Insert(paso,nueva.Id);
@@ -264,7 +265,6 @@ namespace TimeNet2026.DBStorage
 			}
 			return null;
 		}
-
 		internal async Task<List<Asimilation>> GetAsimilations()
 		{
 			List<Asimilation> salida = new List<Asimilation>();
