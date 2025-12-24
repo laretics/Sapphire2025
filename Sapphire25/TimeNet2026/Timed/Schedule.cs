@@ -8,7 +8,7 @@ using System.Xml;
 
 namespace TimeNet2026.Timed
 {
-	internal class Schedule:Entity
+	public class Schedule:Entity
 	{		
 		internal string name { get; set; }
 		internal string comment { get; set; }

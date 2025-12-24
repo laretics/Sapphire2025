@@ -4,22 +4,24 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 using TimeNet2026.Topo;
 
 namespace TimeNet2026.Timed
 {
-	internal class Plan : Entity
+	public class Plan : Entity
 	//Plan de explotación
 	{
-		internal string id { get; set; }
-		internal string mvarName { get; set; }
-		internal string mvarComment { get; set; }
-		internal string[] mvarColor { get; set; }
+		public Header Header { get; set; } //Encabezado del plan de explotación		
+		public string[] mvarColor { get; set; }
+		public string Color { get => mvarColor[0]; }
+		public IEnumerable<Circulation> Circulations { get => mcolCirculations.Values; }
+		public IEnumerable<Schedule> Schedules { get => mcolSchedules.Values; }
 		internal Dictionary<string, Circulation> mcolCirculations;
 		internal Dictionary<string, Schedule> mcolSchedules;
-		string Entity.name { get => mvarName; set => mvarName = value; }
-		string Entity.comment { get => mvarComment; set => mvarComment = value; }
 		string[] Entity.color { get => mvarColor; set => mvarColor = value; }
+		string Entity.name { get => Header.Name; set => Header.Name = value; }
+		string Entity.comment { get => Header.Comment; set => Header.Comment = value; }
 		internal Guid TopoId { get; set; } //Id de compatibilidad con la topología.
 		internal List<Circulation> nextCirculationsByStation(Station station, TimeSpan time)
 		{
@@ -55,7 +57,7 @@ namespace TimeNet2026.Timed
 			return candidate;
 		}
 
-		internal Circulation currentCirculation { get; set; }
+		internal Circulation? currentCirculation { get; set; }
 		internal void setCirculation(string rhs)
 		{
 			if (mcolCirculations.ContainsKey(rhs)) currentCirculation = mcolCirculations[rhs];
@@ -69,12 +71,26 @@ namespace TimeNet2026.Timed
 			}
 			return null;
 		}
-		internal Schedule currentSchedule { get; set; }
+		internal Schedule? currentSchedule { get; set; }
 
 		internal Plan()
 		{
+			Header = new Header();
+			mvarColor = new string[2];
 			mcolCirculations = new Dictionary<string, Circulation>();
 			mcolSchedules = new Dictionary<string, Schedule>();
+		}
+		internal Plan(XmlNode root):this()
+		{
+			foreach(XmlNode hijo in root.ChildNodes)
+			{
+				switch (hijo.Name)
+				{
+					case "info": //Cabecera del documento
+						this.Header.deserialize(hijo);
+						break;
+				}
+			}
 		}
 
 	}

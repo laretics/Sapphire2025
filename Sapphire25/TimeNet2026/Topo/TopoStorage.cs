@@ -15,14 +15,17 @@ namespace TimeNet2026.Topo
 		public Header Header { get; set; } //Encabezado.
 		internal Dictionary<string, Axis> mcolAxis; //Colección de ejes	
 		internal Dictionary<string, Asimilation> mcolAsimilations; //Colección de asimilaciones.
+		internal Dictionary<string, Plan> mcolPlans; //Colección de planes de explotación.
 		public TopoStorage()
 		{
 			Header = new Header();
 			mcolAsimilations = new Dictionary<string, Asimilation>();
 			mcolAxis = new Dictionary<string, Axis>();
+			mcolPlans = new Dictionary<string, Plan>();
 		}
-		public List<Axis> ColAxis { get => mcolAxis.Values.ToList(); }
-		public List<Asimilation> ColAsimilations { get => mcolAsimilations.Values.ToList(); }
+		public IEnumerable<Axis> ColAxis { get => mcolAxis.Values; }
+		public IEnumerable<Asimilation> ColAsimilations { get => mcolAsimilations.Values; }
+		public IEnumerable<Plan> ColPlans { get => mcolPlans.Values; }
 		public TopoStorage(XmlNode root):this()
 		{
 			foreach (XmlNode hijo in root.ChildNodes)

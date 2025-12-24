@@ -97,6 +97,14 @@ namespace TimeNet2026.DBStorage
 		}
 		#endregion Header
 
+		#region Plan
+		internal async Task Insert(Plan rhs)
+		{
+
+		}
+
+		#endregion Plan
+
 		#region TopoStorage
 		internal async Task<List<TopoStorage>> GetTopoStorages()
 		{

@@ -26,6 +26,7 @@ namespace TimeNetComponents.TreeView
 				List<TreeNode> salida = new List<TreeNode>();
 				salida.Add (new AxisCollectionNode(this.content));
 				salida.Add(new AsimilationCollectionNode(this.content));
+				salida.Add(new PlansNode(this.content.ColPlans));
 				return salida;
 			}
 		}
