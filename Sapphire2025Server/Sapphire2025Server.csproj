@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>AnyCPU;x64</Platforms>
+    <Configurations>Debug;Release;TimeNet</Configurations>
   </PropertyGroup>
 
   <ItemGroup>
