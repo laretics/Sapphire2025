@@ -15,19 +15,17 @@ namespace TimeNet2026.Topo
 		public Header Header { get; set; } //Encabezado.
 		internal Dictionary<string, Axis> mcolAxis; //Colección de ejes	
 		internal Dictionary<string, Asimilation> mcolAsimilations; //Colección de asimilaciones.
-		internal Dictionary<Guid,Header> mcolRauta; //Colección de paquetes de importación.
-		internal Dictionary<string, Plan> mcolPlans; //Colección de planes de explotación.
+		internal Dictionary<Guid,Rauta> mcolRauta; //Colección de paquetes de importación.
 		public TopoStorage()
 		{
 			Header = new Header();
 			mcolAsimilations = new Dictionary<string, Asimilation>();
 			mcolAxis = new Dictionary<string, Axis>();
-			mcolRauta = new Dictionary<Guid, Header>();
-			mcolPlans = new Dictionary<string, Plan>();
+			mcolRauta = new Dictionary<Guid, Rauta>();			
 		}
 		public IEnumerable<Axis> ColAxis { get => mcolAxis.Values; }
 		public IEnumerable<Asimilation> ColAsimilations { get => mcolAsimilations.Values; }
-		public IEnumerable<Plan> ColPlans { get => mcolPlans.Values; }
+		public IEnumerable<Rauta> ColRauta { get => mcolRauta.Values; }
 		public TopoStorage(XmlNode root):this()
 		{
 			foreach (XmlNode hijo in root.ChildNodes)
@@ -145,47 +143,22 @@ namespace TimeNet2026.Topo
 				}
 			}
 			return currentAsimilation;
-		}
-		
-		internal void deserializePlans(XmlNode root, Header? rautaHeader)
+		}		
+		internal Rauta deserializeRauta(XmlNode root)
 		{
-			if(null!=rautaHeader)
+			Rauta nuevo = new Rauta(root, this);
+			//Eliminamos cualquier rauta existente con el mismo Id.
+			List<Rauta> auxTemporal = new List<Rauta>();
+			foreach(Rauta candidato in mcolRauta.Values)
 			{
-                if (mcolRauta.ContainsKey(rautaHeader.Id))
-                    deleteRauta(rautaHeader.Id);
-
-                mcolRauta.Add(rautaHeader.Id, rautaHeader); //Añadimos el nuevo rauta.
-
-                foreach (XmlNode hijo in root.ChildNodes)
-                {
-                    if (hijo.Name == "plan")
-                    {
-                        Plan nuevo = new Plan(hijo, this);
-                        nuevo.Header = rautaHeader;
-                        mcolPlans.Add(nuevo.mvarName, nuevo);
-                    }
-                }
-            }
-		}
-	/// <summary>
-	/// Eliminación controlada de los planes de explotación existentes del rauta actual
-	/// </summary>
-	/// <param name="id">Guid del rauta a eliminar</param>
-		internal void deleteRauta(Guid id)
-		{
-			List<Plan> auxConserva = new List<Plan>();
-			foreach(Plan candidato in mcolPlans.Values)
-			{
-				if (candidato.Header.Id != id)
-					auxConserva.Add(candidato);
+				if(candidato.Header.Id!=nuevo.Header.Id)
+                    auxTemporal.Add(candidato);
 			}
-			//Eliminamos la colección actual de planes.
-			mcolPlans = new Dictionary<string, Plan>();
-			foreach (Plan auxPlan in auxConserva)
-				mcolPlans.Add(auxPlan.Id, auxPlan);
-			//Eliminamos la entrada del diccionario del rauta.
-			mcolRauta.Remove(id);
-			Debug.Assert(!mcolRauta.ContainsKey(id));
-		}	
+			mcolRauta = new Dictionary<Guid, Rauta>();
+			foreach(Rauta elemento in auxTemporal)
+                mcolRauta.Add(elemento.Header.Id, elemento);
+			mcolRauta.Add(nuevo.Header.Id, nuevo);
+			return nuevo;
+		}
 	}
 }

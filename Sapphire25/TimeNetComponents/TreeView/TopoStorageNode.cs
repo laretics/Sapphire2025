@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.Intrinsics.Arm;
 using System.Text;
 using System.Threading.Tasks;
+using TimeNet2026.Timed;
 using TimeNet2026.Topo;
 
 namespace TimeNetComponents.TreeView
@@ -26,7 +27,8 @@ namespace TimeNetComponents.TreeView
 				List<TreeNode> salida = new List<TreeNode>();
 				salida.Add (new AxisCollectionNode(this.content));
 				salida.Add(new AsimilationCollectionNode(this.content));
-				salida.Add(new PlansNode(this.content.ColPlans));
+				foreach(Rauta auxRauta in this.content.ColRauta)
+                    salida.Add(new RautaNode(auxRauta));
 				return salida;
 			}
 		}

@@ -19,15 +19,14 @@ namespace TimeNet2026.Storage
 	{
 		internal Dictionary<string, Plan> mcolPlans; //Colección de planes de explotación.
 		private OnyxDatabase mvarStorage;
-		private List<TopoStorage> mcolTopoStorages;
+		private Dictionary<Guid,TopoStorage> mcolTopoStorages;
 
 		public OnyxStorage(OnyxDatabase db)
 		{
 			mcolPlans = new Dictionary<string, Plan>();
-			mcolTopoStorages = new List<TopoStorage>();
+			mcolTopoStorages = new Dictionary<Guid, TopoStorage>();
 			mvarStorage = db;
 			mvarStorage.Database.EnsureCreated(); //Se asegura de que existe la base de datos.
-			mcolTopoStorages = new List<TopoStorage>();			
 		}
 		public async Task EmptyDatabase()
 		{
@@ -39,7 +38,7 @@ namespace TimeNet2026.Storage
 			mcolTopoStorages = await mvarStorage.GetTopoStorages();
 		}
 	
-		public List<TopoStorage> Storages { get => mcolTopoStorages; }
+		public Dictionary<Guid,TopoStorage> Storages { get => mcolTopoStorages; }
 
 		/// <summary>
 		/// Carga el nodo que viene y deserializa automáticamente lo que contenga.
@@ -58,7 +57,6 @@ namespace TimeNet2026.Storage
 				default:
 					break;
 			}
-
 		}
 
 		internal async Task deserializeTopo(XmlNode root)
@@ -69,27 +67,14 @@ namespace TimeNet2026.Storage
 		}
 		internal async Task deserializeRauta(XmlNode root)
 		{
-			TopoStorage? currentStorage = null;
-			Header? auxCabecera = null;
-			foreach(XmlNode hijo in root.ChildNodes)
+			//Lo primero que tenemos que hacer es buscar el TopoStorage compatible
+			Guid auxId = Rauta.TopoStorageId(root);
+			if(Guid.Empty!=auxId && mcolTopoStorages.ContainsKey(auxId))
 			{
-				switch(hijo.Name)
-				{
-					case "info": //Cabecera del hijo
-						auxCabecera = new Header();
-						auxCabecera.deserialize(hijo);
-						foreach(TopoStorage candidato in mcolTopoStorages)
-						{
-							if (candidato.Header.Id == auxCabecera.ParentId)
-								currentStorage = candidato;
-						}
-						break;
-					case "plans": //Colección de planes
-						if (null != currentStorage)
-							currentStorage.deserializePlans(hijo,auxCabecera);
-						break;
-				}
-			}
+				TopoStorage auxTopoStorage = mcolTopoStorages[auxId];
+                auxTopoStorage.deserializeRauta(root);
+            }                            
 		}
+
 	}
 }

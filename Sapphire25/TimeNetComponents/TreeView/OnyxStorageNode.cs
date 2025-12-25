@@ -22,7 +22,7 @@ namespace TimeNetComponents.TreeView
 			get
 			{
 				List<TreeNode> salida = new List<TreeNode>();
-				foreach (TopoStorage topo in content.Storages)
+				foreach (TopoStorage topo in content.Storages.Values)
 				{
 					TopoStorageNode hijo = new TopoStorageNode(topo);
 					salida.Add(hijo);

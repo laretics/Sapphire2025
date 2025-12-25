@@ -106,15 +106,15 @@ namespace TimeNet2026.DBStorage
 		#endregion Plan
 
 		#region TopoStorage
-		internal async Task<List<TopoStorage>> GetTopoStorages()
+		internal async Task<Dictionary<Guid,TopoStorage>> GetTopoStorages()
 		{
-			List<TopoStorage> salida = new List<TopoStorage>();
+			Dictionary<Guid, TopoStorage> salida = new Dictionary<Guid, TopoStorage>();
 			List<DBTopoStorage> entrada = await TopoStorages.ToListAsync();
 			foreach(DBTopoStorage auxEntrada in entrada)
 			{
 				TopoStorage? nuevo = await GetTopoStorage(auxEntrada.HeaderId);
 				if (null != nuevo)
-					salida.Add(nuevo);
+					salida.Add(auxEntrada.HeaderId, nuevo);
 			}
 			return salida;
 		}

@@ -12,14 +12,15 @@ namespace TimeNet2026.Timed
 {
 	public class Plan : Entity
 	//Plan de explotación
-	{
-		public string Id { get; set; } //Identificador del plan
-		public Header Header { get; set; } //Referencia al paquete rauta de importación
+	{		
+		internal string mvarId; //Identificador del plan
 		internal string mvarName; //Nombre del plan
 		internal string mvarComment; //Comentarios del plan
 		public string[] mvarColor { get; set; }
 		public string Color { get => mvarColor[0]; }
-		public IEnumerable<Circulation> Circulations { get => mcolCirculations.Values; }
+		public string Name { get => mvarName; }
+        public string Id { get => mvarId; } //Identificador del plan
+        public IEnumerable<Circulation> Circulations { get => mcolCirculations.Values; }
 		public IEnumerable<Schedule> Schedules { get => mcolSchedules.Values; }
 		internal Dictionary<string, Circulation> mcolCirculations;
 		internal Dictionary<string, Schedule> mcolSchedules;
@@ -43,9 +44,9 @@ namespace TimeNet2026.Timed
 			salida.Sort();
 			return salida;
 		}
-		internal Circulation proximalCirculationByStation(Station station, TimeSpan time)
+		internal Circulation? proximalCirculationByStation(Station station, TimeSpan time)
 		{
-			Circulation candidate = null;
+			Circulation? candidate = null;
 			double nearestCandidate = double.MaxValue;
 			double auxNearest = double.MaxValue;
 			foreach (Circulation auxCircula in mcolCirculations.Values)
@@ -67,7 +68,7 @@ namespace TimeNet2026.Timed
 			if (mcolCirculations.ContainsKey(rhs)) currentCirculation = mcolCirculations[rhs];
 		}
 
-		internal Schedule scheduleByCirculation(Circulation rhs)
+		internal Schedule? scheduleByCirculation(Circulation rhs)
 		{
 			foreach (Schedule auxSchedule in mcolSchedules.Values)
 			{
@@ -79,16 +80,18 @@ namespace TimeNet2026.Timed
 
 		internal Plan()
 		{
-			Header = new Header();
+			mvarId = string.Empty;
+			mvarName = string.Empty;
+			mvarComment = string.Empty;
 			mvarColor = new string[2];
 			mcolCirculations = new Dictionary<string, Circulation>();
 			mcolSchedules = new Dictionary<string, Schedule>();
 		}
 		internal Plan(XmlNode root, TopoStorage topoStorage):this()
 		{
-			this.Id = XMLUtil.StringParam(root, "id");
-			this.mvarName = XMLUtil.StringParam(root, "name");
-			this.mvarComment = XMLUtil.StringParam(root, "comment");
+			mvarId = XMLUtil.StringParam(root, "id");
+			mvarName = XMLUtil.StringParam(root, "name");
+			mvarComment = XMLUtil.StringParam(root, "comment");
 			foreach(XmlNode hijo in root.ChildNodes)
 			{
 				switch (hijo.Name)
