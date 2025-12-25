@@ -557,8 +557,5 @@ namespace TimeNet2026.DBStorage
 		#endregion RefPunctual
 
 
-
-
-
 	}
 }

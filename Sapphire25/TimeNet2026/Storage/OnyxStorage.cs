@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Drawing;
 using System.Linq;
 using System.Linq.Expressions;
@@ -69,35 +70,26 @@ namespace TimeNet2026.Storage
 		internal async Task deserializeRauta(XmlNode root)
 		{
 			TopoStorage? currentStorage = null;
+			Header? auxCabecera = null;
 			foreach(XmlNode hijo in root.ChildNodes)
 			{
 				switch(hijo.Name)
 				{
 					case "info": //Cabecera del hijo
-						Header auxCabecera = new Header();
+						auxCabecera = new Header();
 						auxCabecera.deserialize(hijo);
 						foreach(TopoStorage candidato in mcolTopoStorages)
 						{
-
+							if (candidato.Header.Id == auxCabecera.ParentId)
+								currentStorage = candidato;
 						}
 						break;
 					case "plans": //Colección de planes
-
+						if (null != currentStorage)
+							currentStorage.deserializePlans(hijo,auxCabecera);
 						break;
-
 				}
 			}
-
-
 		}
-
-
-
-
-
-
-
-
-
 	}
 }

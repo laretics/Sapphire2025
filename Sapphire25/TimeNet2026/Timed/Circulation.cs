@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using TimeNet2026.Auxiliar;
 using TimeNet2026.Storage;
 using TimeNet2026.Topo;
 
@@ -13,7 +14,19 @@ namespace TimeNet2026.Timed
 	{
 		private string mvarName;
 		private string mvarComment;
-		private string[] mvarColor = new string[2];
+		private string[] mvarColor;
+		public Circulation()
+		{
+			mvarColor = new string[2];
+			mvarName = "??";
+			mvarComment = string.Empty;
+		}
+		public Circulation(XmlNode root, TopoStorage storage):this()
+		{
+			deserialize(root, storage);
+		}
+
+
 		internal Asimilation? asimilation { get; set; }
 		internal TimeSpan departure { get; set; }
 		internal TimeSpan arrival
@@ -47,10 +60,14 @@ namespace TimeNet2026.Timed
 
 		internal void deserialize(XmlNode root, TopoStorage storage)
 		{
-			mvarName = root.Attributes["id"].Value;
-			asimilation = storage.mcolAsimilations[root.Attributes["asm"].Value];
-			departure = TimeSpan.Parse(root.Attributes["dep"].Value);
-		}
+			mvarName = XMLUtil.StringParam(root, "id");
+			string auxAsimilaId = XMLUtil.StringParam(root, "asm");
+			departure = XMLUtil.TimeSpanParam(root, "dep");
+			if (storage.mcolAsimilations.ContainsKey(auxAsimilaId))
+				asimilation = storage.mcolAsimilations[auxAsimilaId];
+			color[0] = XMLUtil.StringParam(root, "col", "black");
+            color[1] = XMLUtil.StringParam(root, "col", "white");
+        }
 		//internal View GetView(View destination, ViewGroup parent, bool isNight)
 		//{
 		//	//Mapeando controles

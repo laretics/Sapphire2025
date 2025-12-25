@@ -24,6 +24,7 @@ namespace TimeNet2026.Topo
 		public string Version { get; set; }
 		public string Bitmap { get; set; }
 		public Guid Id { get; set; }
+		public Guid ParentId { get; set; } //De momento sólo lo usan los rautatie
 
 		public Header()
 		{
@@ -46,6 +47,9 @@ namespace TimeNet2026.Topo
 			this.LastDate = XMLUtil.DateTimeParam(root, "lastdate");
 			this.Version = XMLUtil.StringParam(root, "version");
 			this.Bitmap = XMLUtil.StringParam(root, "bitmap");
+			this.ParentId = XMLUtil.GuidParam(root, "parentId");
+			if (this.ParentId.Equals(Guid.Empty))
+				this.ParentId = XMLUtil.GuidParam(root, "topoId");
 			this.Id = XMLUtil.GuidParam(root, "id");
 		}
 	}

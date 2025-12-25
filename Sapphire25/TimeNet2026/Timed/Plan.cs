@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using TimeNet2026.Auxiliar;
 using TimeNet2026.Topo;
 
 namespace TimeNet2026.Timed
@@ -12,7 +13,10 @@ namespace TimeNet2026.Timed
 	public class Plan : Entity
 	//Plan de explotación
 	{
-		public Header Header { get; set; } //Encabezado del plan de explotación		
+		public string Id { get; set; } //Identificador del plan
+		public Header Header { get; set; } //Referencia al paquete rauta de importación
+		internal string mvarName; //Nombre del plan
+		internal string mvarComment; //Comentarios del plan
 		public string[] mvarColor { get; set; }
 		public string Color { get => mvarColor[0]; }
 		public IEnumerable<Circulation> Circulations { get => mcolCirculations.Values; }
@@ -20,8 +24,8 @@ namespace TimeNet2026.Timed
 		internal Dictionary<string, Circulation> mcolCirculations;
 		internal Dictionary<string, Schedule> mcolSchedules;
 		string[] Entity.color { get => mvarColor; set => mvarColor = value; }
-		string Entity.name { get => Header.Name; set => Header.Name = value; }
-		string Entity.comment { get => Header.Comment; set => Header.Comment = value; }
+		string Entity.name { get => mvarName; set => mvarName = value; }
+		string Entity.comment { get => mvarComment; set => mvarComment = value; }
 		internal Guid TopoId { get; set; } //Id de compatibilidad con la topología.
 		internal List<Circulation> nextCirculationsByStation(Station station, TimeSpan time)
 		{
@@ -80,18 +84,28 @@ namespace TimeNet2026.Timed
 			mcolCirculations = new Dictionary<string, Circulation>();
 			mcolSchedules = new Dictionary<string, Schedule>();
 		}
-		internal Plan(XmlNode root):this()
+		internal Plan(XmlNode root, TopoStorage topoStorage):this()
 		{
+			this.Id = XMLUtil.StringParam(root, "id");
+			this.mvarName = XMLUtil.StringParam(root, "name");
+			this.mvarComment = XMLUtil.StringParam(root, "comment");
 			foreach(XmlNode hijo in root.ChildNodes)
 			{
 				switch (hijo.Name)
 				{
-					case "info": //Cabecera del documento
-						this.Header.deserialize(hijo);
+					case "circulations": //Circulaciones definidas en el plan
+						deserializeCirculations(hijo,topoStorage);
 						break;
 				}
 			}
 		}
-
+		internal void deserializeCirculations(XmlNode root, TopoStorage topoStorage)
+		{
+			foreach (XmlNode hijo in root.ChildNodes)
+			{
+				Circulation nueva = new Circulation(hijo, topoStorage);
+				mcolCirculations.Add(nueva.name, nueva);
+			}
+		}
 	}
 }

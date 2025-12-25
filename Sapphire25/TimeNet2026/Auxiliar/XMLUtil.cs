@@ -12,7 +12,7 @@ namespace TimeNet2026.Auxiliar
 	{
 		internal static string StringParam(XmlNode node, string paramId, string defaultValue ="")
 		{
-			if (null == node.Attributes) return defaultValue;
+			if (null== node || null == node.Attributes) return defaultValue;
 			XmlAttribute? auxAttribute = node.Attributes[paramId];
 			if (null == auxAttribute) return defaultValue;
 			return auxAttribute.Value;
