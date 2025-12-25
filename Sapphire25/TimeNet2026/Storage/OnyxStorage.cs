@@ -28,6 +28,10 @@ namespace TimeNet2026.Storage
 			mvarStorage.Database.EnsureCreated(); //Se asegura de que existe la base de datos.
 			mcolTopoStorages = new List<TopoStorage>();			
 		}
+		public async Task EmptyDatabase()
+		{
+			await mvarStorage.TotalRemove();
+		}
 		public async Task Init()
 		{
 			//await mvarStorage.TotalRemove();
@@ -64,14 +68,30 @@ namespace TimeNet2026.Storage
 		}
 		internal async Task deserializeRauta(XmlNode root)
 		{
+			TopoStorage? currentStorage = null;
+			foreach(XmlNode hijo in root.ChildNodes)
+			{
+				switch(hijo.Name)
+				{
+					case "info": //Cabecera del hijo
+						Header auxCabecera = new Header();
+						auxCabecera.deserialize(hijo);
+						foreach(TopoStorage candidato in mcolTopoStorages)
+						{
+
+						}
+						break;
+					case "plans": //Colección de planes
+
+						break;
+
+				}
+			}
+
 
 		}
 
 
-		private void RemoveTopo(Guid id)
-		{
-			mvarStorage.RemoveTopoStorage(id, true);
-		}
 
 
 

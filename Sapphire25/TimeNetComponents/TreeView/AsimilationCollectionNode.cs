@@ -15,7 +15,7 @@ namespace TimeNetComponents.TreeView
 		{
 			this.content = content;
 		}
-		public override string Name => string.Format("{0} Asimilaciones", content.ColAsimilations.Count);
+		public override string Name => string.Format("{0} Asimilaciones", content.ColAsimilations.Count());
 		public override List<TreeNode> Children
 		{
 			get

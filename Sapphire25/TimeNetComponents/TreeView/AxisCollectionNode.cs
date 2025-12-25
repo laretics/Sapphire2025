@@ -15,7 +15,7 @@ namespace TimeNetComponents.TreeView
 		{
 			this.content = content;			
 		}
-		public override string Name => string.Format("{0} Ejes", content.ColAxis.Count);
+		public override string Name => string.Format("{0} Ejes", content.ColAxis.Count());
 		public override List<TreeNode> Children
 		{
 			get

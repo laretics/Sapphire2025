@@ -97,6 +97,14 @@ namespace TimeNet2026.DBStorage
 		}
 		#endregion Header
 
+		#region Plan
+		internal async Task Insert(Plan rhs)
+		{
+
+		}
+
+		#endregion Plan
+
 		#region TopoStorage
 		internal async Task<List<TopoStorage>> GetTopoStorages()
 		{
@@ -127,6 +135,9 @@ namespace TimeNet2026.DBStorage
 			List<Axis> auxEjes = await getAxis();
 			foreach(Axis eje in auxEjes)
 				salida.mcolAxis.Add(eje.id, eje);
+			List<Asimilation> asimilations = await GetAsimilations();
+			foreach (Asimilation asim in asimilations)
+				salida.mcolAsimilations.Add(asim.id, asim);			
 
 			return salida;
 		}
@@ -146,7 +157,9 @@ namespace TimeNet2026.DBStorage
 			//Ahora metemos todos los ejes
 			foreach (Axis eje in rhs.ColAxis)
 				await Insert(eje);
-
+			//Metemos las asimilaciones que contiene
+			foreach (Asimilation asim in rhs.ColAsimilations)
+				await Insert(asim);
 		}
 		internal async Task RemoveTopoStorage(Guid rhs, bool update = true)
 		{
@@ -223,6 +236,7 @@ namespace TimeNet2026.DBStorage
 			DBStation? candidate = await GetDBStation(rhs.origin.id, rhs.origin.axis.id);
 			System.Diagnostics.Debug.Assert(null != candidate);
 			nueva.OriginStationId = candidate.Id;
+			Asimilations.Add(nueva);
 			await SaveChangesAsync(); //Doy valor al id de la asimilación.
 			foreach (AsimilationStep paso in rhs.mcolSteps)
 				await Insert(paso,nueva.Id);
@@ -259,7 +273,22 @@ namespace TimeNet2026.DBStorage
 			}
 			return null;
 		}
-
+		internal async Task<List<Asimilation>> GetAsimilations()
+		{
+			List<Asimilation> salida = new List<Asimilation>();
+			if(null!=mvarCurrentTopoStorage)
+			{
+				int storageId = mvarCurrentTopoStorage.Id;
+				List<DBAsimilation> entrada = await Asimilations.Where(x => x.TopoStorageId == storageId).ToListAsync();
+				foreach(DBAsimilation asimila in entrada)
+				{
+					Asimilation? elemento = await GetAsimilation(asimila.Id);
+					if (null != elemento)
+						salida.Add(elemento);
+				}
+			}
+			return salida;
+		}
 		#endregion Asimilation
 
 		#region Axis
@@ -312,7 +341,7 @@ namespace TimeNet2026.DBStorage
 		/// <returns>Eje recuperado</returns>
 		internal async Task<Axis?> getAxis(int AxisId)
 		{
-			if(null!=CurrentTopoStorage)
+			if(null!=mvarCurrentTopoStorage)
 			{
 				if (mcolAxisCache.ContainsKey(AxisId))
 					return mcolAxisCache[AxisId];
@@ -345,7 +374,7 @@ namespace TimeNet2026.DBStorage
 		internal async Task<List<Axis>> getAxis()
 		{
 			List<Axis> salida = new List<Axis>();
-			if(null!=CurrentTopoStorage)
+			if(null!=mvarCurrentTopoStorage)
 			{
 				int storageId = mvarCurrentTopoStorage.Id;
 				List<DBAxis> entrada = await Axis.Where(x => x.StorageId == storageId).ToListAsync();
