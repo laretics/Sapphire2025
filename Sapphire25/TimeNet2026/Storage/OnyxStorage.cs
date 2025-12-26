@@ -68,11 +68,14 @@ namespace TimeNet2026.Storage
 		internal async Task deserializeRauta(XmlNode root)
 		{
 			//Lo primero que tenemos que hacer es buscar el TopoStorage compatible
+			//await Init();
 			Guid auxId = Rauta.TopoStorageId(root);
 			if(Guid.Empty!=auxId && mcolTopoStorages.ContainsKey(auxId))
 			{
 				TopoStorage auxTopoStorage = mcolTopoStorages[auxId];
-                auxTopoStorage.deserializeRauta(root);
+				Rauta auxRauta = new Rauta(root, auxTopoStorage);
+				auxTopoStorage.mcolRauta.Add(auxRauta.Header.Id, auxRauta);
+				await mvarStorage.InsertRautatie(auxTopoStorage);
             }                            
 		}
 

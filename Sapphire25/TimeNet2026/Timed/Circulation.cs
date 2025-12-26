@@ -27,9 +27,9 @@ namespace TimeNet2026.Timed
 		}
 
 
-		internal Asimilation? asimilation { get; set; }
-		internal TimeSpan departure { get; set; }
-		internal TimeSpan arrival
+		public Asimilation? asimilation { get; set; }
+		public TimeSpan departure { get; set; }
+		public TimeSpan arrival
 		{
 			get
 			{

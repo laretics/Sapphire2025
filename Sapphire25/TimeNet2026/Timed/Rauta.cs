@@ -24,6 +24,7 @@ namespace TimeNet2026.Timed
             mvarParent = parent;
         }
         public IEnumerable<Plan> Plans { get => mcolPlans.Values; }
+        public TopoStorage Parent { get => mvarParent; }
 
         public Rauta(XmlNode root, TopoStorage parent):this(parent)
         {

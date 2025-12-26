@@ -48,7 +48,7 @@ namespace TimeNet2026.Timed
 				return destination.pk > origin.pk;
 			}				
 		}
-		internal string id { get; set; }
+		public string id { get; set; }
 		public string name { get => mvarName; set => mvarName = value; }
 		public string comment { get => mvarComment; set => mvarComment = value; }
 		public int maxSpeed { get => mvarMaxSpeed; }
