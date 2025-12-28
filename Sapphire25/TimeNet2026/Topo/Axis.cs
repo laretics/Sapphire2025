@@ -556,8 +556,8 @@ namespace TimeNet2026.Topo
 					distanciaGeograficaTotal += mcolPoints[i - 1].point.DistanceTo(mcolPoints[i].point);
 				Debug.Assert(distanciaGeograficaTotal > 0);				
 				//Ahora puedo calcular el pk.
-				double acumulado = 0;
-				for(int i=lastPkIndex+1;i<nextPkIndex;i++)
+				double acumulado = mcolPoints[lastPkIndex].point.DistanceTo(mcolPoints[lastPkIndex+1].point);
+                for (int i=lastPkIndex+1;i<nextPkIndex;i++)
 				{
 					acumulado += mcolPoints[i - 1].point.DistanceTo(mcolPoints[i].point);
 					long resultado = (long)((acumulado * distancia) / distanciaGeograficaTotal);

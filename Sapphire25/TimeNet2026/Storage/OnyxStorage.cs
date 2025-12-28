@@ -34,8 +34,15 @@ namespace TimeNet2026.Storage
 		}
 		public async Task Init()
 		{
-			//await mvarStorage.TotalRemove();
-			mcolTopoStorages = await mvarStorage.GetTopoStorages();
+			//Primero sacamos los topos
+			mcolTopoStorages = await mvarStorage.DeserializeTopoStorages();
+			//Luego cargamos los rautas.
+			foreach(TopoStorage auxTopo in mcolTopoStorages.Values)
+			{
+                Dictionary<Guid,Rauta> rautatie = await mvarStorage.DeserializeRautatie(auxTopo);
+				auxTopo.mcolRauta = rautatie;
+            }
+                
 		}
 	
 		public Dictionary<Guid,TopoStorage> Storages { get => mcolTopoStorages; }
@@ -63,7 +70,7 @@ namespace TimeNet2026.Storage
 		{
 			//Root es el nodo "layout"
 			TopoStorage nuevo = new TopoStorage(root);
-			await mvarStorage.Insert(nuevo);
+			await mvarStorage.SerializeTopoStorage(nuevo);
 		}
 		internal async Task deserializeRauta(XmlNode root)
 		{
@@ -75,7 +82,7 @@ namespace TimeNet2026.Storage
 				TopoStorage auxTopoStorage = mcolTopoStorages[auxId];
 				Rauta auxRauta = new Rauta(root, auxTopoStorage);
 				auxTopoStorage.mcolRauta.Add(auxRauta.Header.Id, auxRauta);
-				await mvarStorage.InsertRautatie(auxTopoStorage);
+				await mvarStorage.SerializeRautatie(auxTopoStorage);
             }                            
 		}
 

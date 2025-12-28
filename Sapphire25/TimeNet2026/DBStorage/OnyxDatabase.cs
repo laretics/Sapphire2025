@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Sqlite.Query.Internal;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Data;
 using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Numerics;
@@ -39,8 +40,6 @@ namespace TimeNet2026.DBStorage
 		}
 		private DBTopoStorage? mvarCurrentTopoStorage { get; set; }
 		internal TopoStorage? CurrentTopoStorage {get; set; } //Para operaciones con ejes.
-		private Dictionary<int,Axis> mcolAxisCache = new Dictionary<int, Axis>(); //Estructura interna de ejes para cargar las asimilaciones.
-		private Dictionary<int, Station> mcolStationCache = new Dictionary<int, Station>(); //Estructura interna de estaciones para cargar las asimilaciones.
 		private Dictionary<int, TopoStorage> mcolTopoStorages = new Dictionary<int, TopoStorage>(); //Caché con los TopoStorages cargados
 
 		internal async Task TotalRemove()
@@ -65,9 +64,9 @@ namespace TimeNet2026.DBStorage
 		}
 
 		#region Header
-		internal async Task Insert(Header rhs)
+		internal void SerializeHeader(Header rhs)
 		{
-			await Remove(rhs); //Elimino cualquier etiqueta anterior.
+			RemoveHeader(rhs.Id); //Elimino cualquier etiqueta anterior.
 			DBHeader auxHeader = new DBHeader();
 			auxHeader.Id = rhs.Id;
 			auxHeader.Name = rhs.Name;
@@ -78,18 +77,15 @@ namespace TimeNet2026.DBStorage
 			auxHeader.LastDate = rhs.LastDate;
 			auxHeader.Version = rhs.Version;
 			auxHeader.Bitmap = rhs.Bitmap;
-			Headers.Add(auxHeader);
+			Headers.Add(auxHeader);			
 		}
-		internal async Task Remove(Header rhs, bool update = true)
+		internal void RemoveHeader(Guid id)
 		{
-			List<DBHeader> lista = Headers.Where(x => x.Id == rhs.Id).ToList();			
+			List<DBHeader> lista = Headers.Where(x => x.Id == id).ToList();			
 			if(lista.Count>0)
-			{
-				Headers.RemoveRange(lista);
-				if(update) await SaveChangesAsync();
-			}
+                Headers.RemoveRange(lista);
 		}
-		internal async Task<Header?> GetHeader(Guid id)
+		internal async Task<Header?> DeserializeHeader(Guid id)
 		{
 			DBHeader? xx = await Headers.Where(x => x.Id == id).FirstOrDefaultAsync();
 			if(null!=xx)
@@ -133,15 +129,14 @@ namespace TimeNet2026.DBStorage
 
 					//TODO: Eliminar los turnos encadenados a estas circulaciones...
 					 
-
 				}
 				Plans.RemoveRange(auxPlanes);
-
+				RemoveHeader(id);
 				Rautatie.Remove(auxRauta);
 				await SaveChangesAsync();//Transacción de una sola vez.
 			}
 		}
-		internal async Task InsertRautatie(TopoStorage topoStorage)
+		internal async Task SerializeRautatie(TopoStorage topoStorage)
 		{
 			//Elimino rautatie existentes:
 			foreach (Rauta auxRauta in topoStorage.mcolRauta.Values)
@@ -157,8 +152,8 @@ namespace TimeNet2026.DBStorage
                     nuevoRauta.HeaderId = auxRauta.Header.Id;
                     nuevoRauta.TopoStorageId = auxDBTopoStorage.Id;
                     Rautatie.Add(nuevoRauta);
-                    await SaveChangesAsync();
-					await Insert(auxRauta.Header);
+                    SerializeHeader(auxRauta.Header);
+                    await SaveChangesAsync();                    
                     foreach (Plan auxPlan in auxRauta.Plans)
                     {
                         DBPlan nuevoPlan = new DBPlan();
@@ -193,13 +188,15 @@ namespace TimeNet2026.DBStorage
                 }
             }
 		}
-		internal async Task<Dictionary<Guid,Rauta>> GetRautatie(int topoId, TopoStorage topoStorage)
+		internal async Task<Dictionary<Guid,Rauta>> DeserializeRautatie(TopoStorage topoStorage)
 		{
-			Dictionary<Guid, Rauta> salida = new Dictionary<Guid, Rauta>();			
-			List<DBRauta> entrada = await Rautatie.Where(x => x.TopoStorageId==topoId).ToListAsync();
+			Dictionary<Guid, Rauta> salida = new Dictionary<Guid, Rauta>();
+			DBTopoStorage? auxTopo = await TopoStorages.Where(x => x.HeaderId == topoStorage.Header.Id).FirstOrDefaultAsync();
+			if (null == auxTopo) return salida;
+			List<DBRauta> entrada = await Rautatie.Where(x => x.TopoStorageId==auxTopo.Id).ToListAsync();
 			foreach(DBRauta auxRauta in entrada)
 			{				
-				Header? auxCabecera = await GetHeader(auxRauta.HeaderId);
+				Header? auxCabecera = await DeserializeHeader(auxRauta.HeaderId);
 				if(null!=auxCabecera)
 				{
                     Rauta nuevoRauta = new Rauta(topoStorage);
@@ -246,475 +243,273 @@ namespace TimeNet2026.DBStorage
         #endregion Rautatie
 
         #region TopoStorage
-        internal async Task<Dictionary<Guid,TopoStorage>> GetTopoStorages()
+        internal async Task<Dictionary<Guid,TopoStorage>> DeserializeTopoStorages()
 		{
 			Dictionary<Guid, TopoStorage> salida = new Dictionary<Guid, TopoStorage>();
 			List<DBTopoStorage> entrada = await TopoStorages.ToListAsync();
 			foreach(DBTopoStorage auxEntrada in entrada)
 			{
-				TopoStorage? nuevo = await GetTopoStorage(auxEntrada.HeaderId);
+				TopoStorage? nuevo = await DeserializeTopoStorage(auxEntrada.HeaderId);
 				if (null != nuevo)
 					salida.Add(auxEntrada.HeaderId, nuevo);
 			}
 			return salida;
 		}
-		internal async Task<TopoStorage?> GetTopoStorage(Guid id)
+		internal async Task<TopoStorage?> DeserializeTopoStorage(Guid id)
 		{
-			DBTopoStorage? tablaIndice = await TopoStorages.Where(x => x.HeaderId == id).FirstOrDefaultAsync();
-			if (null == tablaIndice) return null;
-			return await GetTopoStorage(tablaIndice.Id);
-        }
-		internal async Task<TopoStorage?> GetTopoStorage(int id)
-		{
-			if (mcolTopoStorages.ContainsKey(id))
-			{
-                mvarCurrentTopoStorage = await TopoStorages.Where(x => x.Id == id).FirstOrDefaultAsync();
-				CurrentTopoStorage = mcolTopoStorages[id];
-				return CurrentTopoStorage;
-            }
-							
+			DBTopoStorage? auxTopoStorage = await TopoStorages.Where(x => x.HeaderId == id).FirstOrDefaultAsync();
+			if (null == auxTopoStorage) return null;
 			TopoStorage salida = new TopoStorage();
-            mcolAxisCache = new Dictionary<int, Axis>(); //Necesito este caché para cargar los ejes.
-            mcolStationCache = new Dictionary<int, Station>(); //Necesito este caché para cargar las estaciones.
-			mvarCurrentTopoStorage = await TopoStorages.Where(x => x.Id == id).FirstOrDefaultAsync();
-			if (null == mvarCurrentTopoStorage) return null; //No existe en la base de datos.
-            Header? auxHeader = await GetHeader(mvarCurrentTopoStorage.HeaderId);
-            System.Diagnostics.Debug.Assert(null != auxHeader, "Inconsistencia en la base de datos respecto a un Header en un TopoStorage");
-            salida.Header = auxHeader;
-            CurrentTopoStorage = salida; //Necesitamos este ajuste para recuperar los elementos de esta colección de topologías.
-
-            //Recuperamos todos los ejes.
-            List<Axis> auxEjes = await getAxis();
-            foreach (Axis eje in auxEjes)
-                salida.mcolAxis.Add(eje.id, eje);
-            List<Asimilation> asimilations = await GetAsimilations();
-            foreach (Asimilation asim in asimilations)
-                salida.mcolAsimilations.Add(asim.id, asim);
-			Dictionary<Guid,Rauta> rautatie = await GetRautatie(id, CurrentTopoStorage);			
-			salida.mcolRauta = rautatie;
-            mcolTopoStorages.Add(id, salida);
-            return salida;
-        }
-		internal async Task Insert(TopoStorage rhs)
-		{
-			await RemoveTopoStorage(rhs.Header.Id); //Elimino versiones previas.
-
-			await Insert(rhs.Header); //Metemos la cabecera.
-			DBTopoStorage nuevo = new DBTopoStorage();
-			nuevo.HeaderId = rhs.Header.Id;			
-			TopoStorages.Add(nuevo);
-			await SaveChangesAsync(); //Lo tengo que hacer aquí para que currentStorage tenga numero.
-			mvarCurrentTopoStorage = nuevo;
-			CurrentTopoStorage = rhs;
-
-			//Ahora metemos todos los ejes
-			foreach (Axis eje in rhs.ColAxis)
-				await Insert(eje);
-			//Metemos las asimilaciones que contiene
-			foreach (Asimilation asim in rhs.ColAsimilations)
-				await Insert(asim);
-		}
-		internal async Task RemoveTopoStorage(Guid rhs, bool update = true)
-		{
-			DBTopoStorage? auxCandidato = await TopoStorages.Where(x => x.HeaderId == rhs).FirstOrDefaultAsync();
-			if (null == auxCandidato) return;
-			await GetTopoStorage(rhs);
-			IEnumerable<DBAxis> ejes = await Axis.Where(x => x.StorageId == auxCandidato.Id).ToListAsync();
-			foreach(DBAxis eje in ejes)
-				await RemoveAxis(eje.AxisId, false);
-			await RemoveAsimilations(auxCandidato.Id);
-
-			System.Diagnostics.Debug.Assert(null != mvarCurrentTopoStorage);
-			await RemoveRautatie(mvarCurrentTopoStorage.Id); //Eliminar los rautas del topoStorage seleccionado.
-            Axis.RemoveRange(ejes);
-			TopoStorages.Remove(auxCandidato);
-			if(update) await SaveChangesAsync();
-			CurrentTopoStorage = null;
-			mvarCurrentTopoStorage = null;
-		}
-		#endregion TopoStorage
-
-		#region AsimilationStep
-		internal async Task Insert (AsimilationStep rhs, int internalAsimilationId)
-		{
-			DBAxis? auxEje = await Axis.Where(x => x.AxisId == rhs.axis.id).FirstOrDefaultAsync();
-			if(null!=auxEje)
+			//Cargamos todos los elementos del TopoStorage afectado.
+			//Carga del Header.
+			Header? auxHeader = await DeserializeHeader(id);
+			if (null == auxHeader) return null;
+			salida.Header = auxHeader;
+			//Carga de los ejes.
+			Dictionary<int, Station> auxAllStationsCache = new Dictionary<int, Station>();
+			Dictionary<int, Axis> auxAllAxisCache = new Dictionary<int, Axis>();
+			IEnumerable<DBAxis> auxAxises = await Axis.Where(x => x.StorageId == auxTopoStorage.Id).ToListAsync();
+			foreach(DBAxis auxAxis in auxAxises)
 			{
-				DBStation? auxEstacion = await Stations.Where(x => x.StationId == rhs.destination.id).FirstOrDefaultAsync();
-				if(null!=auxEstacion)
+				Axis nuevoAxis = new Axis();
+				nuevoAxis.id = auxAxis.AxisId;
+				nuevoAxis.mvarName = auxAxis.Name;
+				nuevoAxis.mvarComment = auxAxis.Comment;
+				nuevoAxis.mvarColor[0] = auxAxis.Color0 ?? "black";
+                nuevoAxis.mvarColor[1] = auxAxis.Color1 ?? "white";
+				Dictionary<long, Station> auxCacheStations = new Dictionary<long, Station>();
+                //Estaciones del eje
+                IEnumerable<DBStation> auxStations = await Stations.Where(x => x.AxisId == auxAxis.Id).ToListAsync();
+                foreach (DBStation auxStation in auxStations)
+                {
+					Station nuevaStation = new Station
+						(auxStation.StationId,
+						auxStation.Name,
+						auxStation.ShortName,
+						nuevoAxis,
+						0,
+						0);
+					nuevaStation.pk = auxStation.Pk;
+					auxCacheStations.Add(nuevaStation.pk, nuevaStation);
+					auxAllStationsCache.Add(auxStation.Id, nuevaStation);
+                }
+                //Puntos singulares y estaciones del eje.
+                IEnumerable<DBRefPunctual> auxPunctuals = await RefPunctuals.Where(x => x.AxisId == auxAxis.Id).ToListAsync();
+				foreach (DBRefPunctual auxPunctual in auxPunctuals)
 				{
-					DBAsimilationStep nuevo = new DBAsimilationStep();
-					nuevo.AsimilationId = internalAsimilationId;
-					nuevo.DestinationStationId = auxEstacion.Id;
-					nuevo.AxisId = auxEje.Id;
-					nuevo.stopTime = rhs.stopTime;
-					nuevo.tripTime = rhs.tripTime;
-					AsimilationSteps.Add(nuevo);
-					await SaveChangesAsync();
-				}
-			}
-		}
-		internal async Task <List<AsimilationStep>> GetAsimilationSteps(int internalAsimilationId)
-		{
-			List<AsimilationStep> salida = new List<AsimilationStep>();
-			List<DBAsimilationStep> entrada = await AsimilationSteps.Where(x => x.AsimilationId == internalAsimilationId).ToListAsync();
-			foreach(DBAsimilationStep pasoEntrada in entrada)
-			{
-				Station? auxDestino = GetStation(pasoEntrada.DestinationStationId);
-				Axis? auxEje = await getAxis(pasoEntrada.AxisId);
-				if(null!=auxDestino && null!=auxEje)
-				{
-					AsimilationStep pasoSalida = new AsimilationStep(auxDestino,auxEje,pasoEntrada.tripTime,pasoEntrada.stopTime);
-					salida.Add(pasoSalida);
-				}			
-			}
-			return salida;
-		}
-		
-
-
-		#endregion AsimilationStep
-
-		#region Asimilation
-		internal async Task Insert(Asimilation rhs)
-		{
-			System.Diagnostics.Debug.Assert(null != mvarCurrentTopoStorage);
-			System.Diagnostics.Debug.Assert(null != rhs.origin);
-			await Remove(rhs, true);
-			DBAsimilation nueva = new DBAsimilation();
-			nueva.TopoStorageId = mvarCurrentTopoStorage.Id;
-			nueva.AsimilationId = rhs.id;
-			nueva.Name = rhs.name;
-			nueva.Comment = rhs.comment;
-			nueva.Color0 = rhs.color[0];
-			nueva.Color1 = rhs.color[1];
-			nueva.MaxSpeed = rhs.maxSpeed;			
-			DBStation? candidate = await GetDBStation(rhs.origin.id, rhs.origin.axis.id);
-			System.Diagnostics.Debug.Assert(null != candidate);
-			nueva.OriginStationId = candidate.Id;
-			Asimilations.Add(nueva);
-			await SaveChangesAsync(); //Doy valor al id de la asimilación.
-			foreach (AsimilationStep paso in rhs.mcolSteps)
-				await Insert(paso,nueva.Id);
-		}		
-		internal async Task RemoveAsimilations(int topoStorageId)
-		{
-            List<DBAsimilation> asimilations = await Asimilations.Where(x => x.TopoStorageId == topoStorageId).ToListAsync();
-        }
-		internal async Task Remove(Asimilation rhs, bool update = true)
-		{
-			System.Diagnostics.Debug.Assert(null != mvarCurrentTopoStorage);
-			int topoStorage = mvarCurrentTopoStorage.Id;
-			DBAsimilation? candidato = await Asimilations.Where(x => x.TopoStorageId == topoStorage && x.AsimilationId == rhs.id).FirstOrDefaultAsync();
-			if(null!=candidato)
-			{
-				//Primero eliminamos todas las operaciones.
-				List<DBAsimilationStep> auxPasos = await AsimilationSteps.Where(x => x.AsimilationId == candidato.Id).ToListAsync();
-				AsimilationSteps.RemoveRange(auxPasos);
-				Asimilations.Remove(candidato);
-				if (update) await SaveChangesAsync();
-			}
-		}
-		internal async Task<Asimilation?> GetAsimilation(int id)
-		{
-			DBAsimilation? candidato = await Asimilations.Where(x => x.Id == id).FirstOrDefaultAsync();
-			if(null!=candidato)
-			{
-				Asimilation salida = new Asimilation();
-				salida.id = candidato.AsimilationId;
-				salida.name = candidato.Name;
-				salida.comment = candidato.Comment;
-				salida.color[0] = candidato.Color0;
-				salida.color[1] = candidato.Color1;
-				salida.mvarMaxSpeed = candidato.MaxSpeed;
-				salida.mcolSteps = await GetAsimilationSteps(candidato.Id);
-				salida.origin = GetStation(candidato.OriginStationId);
-				return salida;
-			}
-			return null;
-		}
-		internal async Task<List<Asimilation>> GetAsimilations()
-		{
-			List<Asimilation> salida = new List<Asimilation>();
-			if(null!=mvarCurrentTopoStorage)
-			{
-				int storageId = mvarCurrentTopoStorage.Id;
-				List<DBAsimilation> entrada = await Asimilations.Where(x => x.TopoStorageId == storageId).ToListAsync();
-				foreach(DBAsimilation asimila in entrada)
-				{
-					Asimilation? elemento = await GetAsimilation(asimila.Id);
-					if (null != elemento)
-						salida.Add(elemento);
-				}
-			}
-			return salida;
-		}
-		#endregion Asimilation
-
-		#region Axis
-		internal async Task Insert(Axis rhs)
-		{
-			System.Diagnostics.Debug.Assert(null != mvarCurrentTopoStorage);
-			await Remove(rhs, true); //Eliminamos cualquier eje existente con este id.
-			DBAxis nuevo = new DBAxis();
-			nuevo.AxisId = rhs.id;
-			nuevo.StorageId = mvarCurrentTopoStorage.Id;
-			nuevo.Name = rhs.mvarName;
-			nuevo.Comment = rhs.mvarComment;
-			nuevo.Color0 = rhs.mvarColor[0];
-			nuevo.Color1 = rhs.mvarColor[1];
-			Axis.Add(nuevo);
-			await SaveChangesAsync(); //Necesario para incrementar Id.
-						   //Ahora vamos con las entidades de este eje.
-			foreach (Station station in rhs.mcolStations)
-				await Insert(station, nuevo.Id);
-			foreach (RefPunctual refe in rhs.mcolPoints)
-				await Insert(refe, nuevo.Id);
-			//TODO: Añadir el resto del contenido del eje
-
-
-			await SaveChangesAsync();
-		}
-		internal async Task Remove(Axis rhs, bool update = true) {await RemoveAxis(rhs.id, update);}
-		internal async Task RemoveAxis(string AxisId, bool update = true)
-		{
-			if(null!=CurrentTopoStorage)
-			{ //Tengo al menos un storage donde buscar.
-				int StorageId = mvarCurrentTopoStorage.Id;
-				DBAxis? auxEje = await Axis.Where(x => x.StorageId == StorageId && x.AxisId == AxisId).FirstOrDefaultAsync();
-				if(null!=auxEje)
-				{
-					//Eliminamos las estaciones
-					await RemoveStations(auxEje.StorageId);
-					//eliminamos todos los elementos del eje.
-					await RemovePunctuals(auxEje.StorageId);
-					//Ahora ya podemos eliminar el eje.
-					Axis.Remove(auxEje);
-					if (update) await SaveChangesAsync();
-				}		
-			}
-		}
-		/// <summary>
-		/// Recuperamos un solo eje.
-		/// </summary>
-		/// <param name="AxisId">Nombre del eje</param>
-		/// <returns>Eje recuperado</returns>
-		internal async Task<Axis?> getAxis(int AxisId)
-		{
-			if(null!=mvarCurrentTopoStorage)
-			{
-				if (mcolAxisCache.ContainsKey(AxisId))
-					return mcolAxisCache[AxisId];
-				else
-				{
-					int storageId = mvarCurrentTopoStorage.Id;
-					DBAxis? entrada = await Axis.Where(x => x.StorageId == storageId && x.Id == AxisId).FirstOrDefaultAsync();
-					if (null != entrada)
+					if(auxCacheStations.ContainsKey(auxPunctual.Pk))
 					{
-						Axis salida = new Axis();
-						salida.id = entrada.AxisId;
-						salida.mvarName = entrada.Name;
-						salida.mvarComment = entrada.Comment;
-						salida.mvarColor[0] = entrada.Color0;
-						salida.mvarColor[1] = entrada.Color1;
-						salida.mcolPoints = await GetRefPunctual(entrada.Id);
-						salida.mcolStations = await GetStations(entrada, salida);
-						salida.RecalculateLinearBounds();
-						//TODO: Añadir el resto del contenido del eje.
-
-						//Añado a la caché para agilizar operaciones futuras.
-						mcolAxisCache.Add(AxisId, salida);
-						return salida;
+						Station auxxStation = auxCacheStations[auxPunctual.Pk];
+						auxxStation.point = new GeoLocation(auxPunctual.Latitude, auxPunctual.Longitude);
+						nuevoAxis.mcolPoints.Add(auxxStation);
+						nuevoAxis.mcolStations.Add(auxxStation);
 					}
-				}			
-			}
-			return null;
-		}
-		//Recuperamos la colección completa de ejes
-		internal async Task<List<Axis>> getAxis()
-		{
-			List<Axis> salida = new List<Axis>();
-			if(null!=mvarCurrentTopoStorage)
-			{
-				int storageId = mvarCurrentTopoStorage.Id;
-				List<DBAxis> entrada = await Axis.Where(x => x.StorageId == storageId).ToListAsync();
-				foreach(DBAxis eje in entrada)
-				{
-					Axis? elemento = await getAxis(eje.Id);
-					if (null != elemento) 
-						salida.Add(elemento);
+					else
+					{
+                        RefPunctual nuevoPunctual = new RefPunctual(auxPunctual.Latitude, auxPunctual.Longitude);
+                        nuevoPunctual.pk = auxPunctual.Pk;
+                        nuevoAxis.mcolPoints.Add(nuevoPunctual);
+                    }
 				}
-			}		
+                #region todos
+                // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                //TODO:  Limitaciones de velocidad
+                // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+
+                // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                //TODO:  Señales
+                // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                #endregion todos
+
+                auxAllAxisCache.Add(auxAxis.Id, nuevoAxis);
+                salida.mcolAxis.Add(nuevoAxis.id, nuevoAxis);
+            }
+
+			//Carga de las asimilaciones
+			IEnumerable<DBAsimilation> auxAsimilations = await Asimilations.Where(x => x.TopoStorageId == auxTopoStorage.Id).ToListAsync();
+			foreach(DBAsimilation auxAsimilation in auxAsimilations)
+			{
+				if(auxAllStationsCache.ContainsKey(auxAsimilation.OriginStationId))
+				{
+                    Asimilation nuevaAsimilation = new Asimilation();
+                    nuevaAsimilation.id = auxAsimilation.AsimilationId;
+                    nuevaAsimilation.mvarName = auxAsimilation.Name;
+                    nuevaAsimilation.mvarComment = auxAsimilation.Comment;
+                    nuevaAsimilation.color[0] = auxAsimilation.Color0 ?? "white";
+                    nuevaAsimilation.color[1] = auxAsimilation.Color1 ?? "black";
+                    nuevaAsimilation.mvarMaxSpeed = auxAsimilation.MaxSpeed;
+					nuevaAsimilation.origin = auxAllStationsCache[auxAsimilation.OriginStationId];
+					//Carga de los pasos de cada asimilación
+					IEnumerable<DBAsimilationStep> auxAsimilationSteps = await AsimilationSteps.Where(x => x.AsimilationId == auxAsimilation.Id).ToListAsync();
+					foreach(DBAsimilationStep auxAsimilationStep in auxAsimilationSteps)
+					{
+						if(auxAllStationsCache.ContainsKey(auxAsimilationStep.DestinationStationId)&&
+							auxAllAxisCache.ContainsKey(auxAsimilationStep.AxisId))
+						{
+							AsimilationStep nuevoPaso = new AsimilationStep
+								(
+								auxAllStationsCache[auxAsimilationStep.DestinationStationId],
+								auxAllAxisCache[auxAsimilationStep.AxisId],
+								auxAsimilationStep.tripTime,
+								auxAsimilationStep.stopTime
+								);
+							nuevaAsimilation.mcolSteps.Add(nuevoPaso);
+						}
+					}
+					salida.mcolAsimilations.Add(nuevaAsimilation.id, nuevaAsimilation);
+                }
+            }
 			return salida;
-		}
-		#endregion Axis
+        }
+        internal async Task RemoveTopoStorage(Guid id)
+        {
+            DBTopoStorage? auxTopoStorage = await TopoStorages.Where(x => x.HeaderId == id).FirstOrDefaultAsync();
+            if (null != auxTopoStorage)
+			{
+				//Primero elimino todos los rautatie relacionados.
+				await RemoveRautatie(auxTopoStorage.Id);
+				//Ahora ya puedo eliminar toda la jerarquía.
+				RemoveHeader(id);
 
-		#region Station
-		internal async Task Insert(Station rhs, int axisId)
+                IEnumerable<DBAxis> auxAxises = await Axis.Where(x => x.StorageId == auxTopoStorage.Id).ToListAsync();
+                foreach (DBAxis auxAxis in auxAxises)
+                {
+                    IEnumerable<DBStation> auxStations = await Stations.Where(x => x.AxisId == auxAxis.Id).ToListAsync();
+					Stations.RemoveRange(auxStations);
+                    //Puntos singulares y estaciones del eje.
+                    IEnumerable<DBRefPunctual> auxPunctuals = await RefPunctuals.Where(x => x.AxisId == auxAxis.Id).ToListAsync();
+					RefPunctuals.RemoveRange(auxPunctuals);
+
+                    // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                    // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                    // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                    //TODO:  Limitaciones de velocidad
+                    // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                    // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                    // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+
+                    // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                    // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                    // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                    //TODO:  Señales
+                    // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                    // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+                    // ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+
+                }
+
+                IEnumerable<DBAsimilation> auxAsimilations = await Asimilations.Where(x => x.TopoStorageId == auxTopoStorage.Id).ToListAsync();
+                foreach (DBAsimilation auxAsimilation in auxAsimilations)
+                {
+                    IEnumerable<DBAsimilationStep> auxAsimilationSteps = await AsimilationSteps.Where(x => x.AsimilationId == auxAsimilation.Id).ToListAsync();
+					AsimilationSteps.RemoveRange(auxAsimilationSteps);
+                }
+				Asimilations.RemoveRange(auxAsimilations);
+                TopoStorages.Remove(auxTopoStorage);
+				await SaveChangesAsync();
+            }		
+        }
+
+        internal async Task SerializeTopoStorage(TopoStorage rhs)
 		{
-			await Remove(rhs, axisId); //Elimino cualquier instancia que pudiera haber de antes.
-
-			DBStation nueva = new DBStation();
-			nueva.StationId = rhs.id;
-			nueva.AxisId = axisId;
-			nueva.Pk = rhs.pk;
-			nueva.Name = rhs.name;
-			nueva.ShortName = rhs.shortName;
-			Stations.Add(nueva);
-			//Insert((RefPunctual)rhs, axisId);
+			await RemoveTopoStorage(rhs.Header.Id);			
+			DBTopoStorage nuevo = new DBTopoStorage();
+            SerializeHeader(rhs.Header);
+            nuevo.HeaderId = rhs.Header.Id;			
+			TopoStorages.Add(nuevo);
 			await SaveChangesAsync();
-		}
-		internal async Task Remove(Station rhs, int axisId, bool update = true)
-		{
-			//Elimino la entidad puntual.
-			await Remove(rhs.pk,axisId,false);
-			//Elimino la entrada de la estación.
-			DBStation? auxEstacion = await Stations.Where(x => x.AxisId == axisId && x.StationId == rhs.id).FirstOrDefaultAsync();
-			if(null!=auxEstacion)
+			Dictionary<Station, int> auxColStations = new Dictionary<Station, int>();
+			Dictionary<Axis, int> auxColAxis = new Dictionary<Axis, int>();
+			foreach (Axis eje in rhs.mcolAxis.Values)
 			{
-				Stations.Remove(auxEstacion);
-				if (update) await SaveChangesAsync();
-			}				
-		}
-		internal async Task RemoveStations(int axisId, bool update = true)
-		{
-			List<DBStation> entrada = await Stations.Where(x => x.AxisId == axisId).ToListAsync();
-			foreach(DBStation estacion in entrada)
-				await Remove(estacion.Pk, axisId, false);
-			RemoveRange(entrada);
-			if (update) await SaveChangesAsync();
-		}
-		internal async Task<List<Station>> GetStations(DBAxis eje, Axis oniceAxis)
-		{
-			List<DBStation> entrada = await Stations.Where(x => x.AxisId == eje.Id).ToListAsync();
-			List<Station> salida = new List<Station>();
-			foreach(DBStation estacion in entrada)
-			{
-				Station? auxSalida = await GetStation(estacion.StationId, eje,oniceAxis);
-				if (null != auxSalida)
-					salida.Add(auxSalida);
-			}
-			return salida;
-		}
-		internal async Task<Station?> GetStation(string stationId, DBAxis eje, Axis oniceAxis)
-		{
-			System.Diagnostics.Debug.Assert(null != eje);
-			DBStation? entrada = await Stations.Where(x => x.AxisId == eje.Id && x.StationId == stationId).FirstOrDefaultAsync();
-			if (null == entrada) return null;
-			return await GetStation(entrada.Id,oniceAxis, entrada.AxisId);
-		}
-		internal Station? GetStation(int id)
-		{
-			if (mcolStationCache.ContainsKey(id))
-				return mcolStationCache[id];
-			return null;
-		}
-		internal async Task<Station?> GetStation(int id, Axis oniceAxis, int dbAxisId)
-		{
-			if (mcolStationCache.ContainsKey(id))
-				return mcolStationCache[id];
-			else
-			{
-				DBStation? entrada = await Stations.Where(x => x.Id == id).FirstOrDefaultAsync();
-				if(null!=entrada)
+				DBAxis nuevoEje = new DBAxis();
+                nuevoEje.AxisId = eje.id;
+                nuevoEje.StorageId = nuevo.Id;				
+				nuevoEje.Name = eje.mvarName;
+				nuevoEje.Comment = eje.mvarComment;
+				nuevoEje.Color0 = eje.mvarColor[0];
+                nuevoEje.Color1 = eje.mvarColor[1];
+				Axis.Add(nuevoEje);
+				auxColAxis.Add(eje, nuevoEje.Id);
+				await SaveChangesAsync();
+                //Estaciones
+                foreach	(Station estacion in eje.Stations)
 				{
-					DBRefPunctual? auxPunto = await RefPunctuals.Where(x => x.AxisId == dbAxisId && x.Pk == entrada.Pk).FirstOrDefaultAsync();
-					System.Diagnostics.Debug.Assert(null != auxPunto);
-					Station salida = new Station(
-						entrada.StationId,
-						entrada.Name,
-						entrada.ShortName,
-						oniceAxis,
-						auxPunto.Latitude,
-						auxPunto.Longitude);
-					mcolStationCache.Add(id, salida);
-					return salida;
-				}
-			}
-			return null;
-		}
-
-		internal async Task<DBStation?> GetDBStation(string id, string axisId)
-		{
-			if(null!=mvarCurrentTopoStorage)
-			{
-				int storageId = mvarCurrentTopoStorage.Id;
-				DBAxis? auxEje = await Axis.Where(x => x.AxisId == axisId && x.StorageId ==storageId).FirstOrDefaultAsync();
-				if(null!=auxEje)
-				{
-					DBStation? auxSalida = await Stations.Where(x => x.AxisId == auxEje.Id && x.StationId == id).FirstOrDefaultAsync();
-					if (null != auxSalida) return auxSalida;
-				}
-			}
-			return null;
-		}
-		#endregion Station
-
-		#region RefPunctual
-		internal async Task Insert(RefPunctual rhs, int axisId)
-		{
-			await Remove(rhs.pk, axisId,false); //Primero quito algún elemento previo en esta posición.			
-			DBRefPunctual nuevo = new DBRefPunctual();
-			nuevo.AxisId = axisId;
-			nuevo.Latitude = rhs.point.Latitude;
-			nuevo.Longitude = rhs.point.Longitude;
-			nuevo.Pk = rhs.pk;
-			if(!(nuevo.Pk<0))
-			{
-				try
-				{
-					RefPunctuals.Add(nuevo);
+					DBStation nuevaEstacion = new DBStation();
+					nuevaEstacion.StationId = estacion.id;
+					nuevaEstacion.AxisId = nuevoEje.Id;
+					nuevaEstacion.Pk = estacion.pk;
+					nuevaEstacion.Name = estacion.name;
+					nuevaEstacion.ShortName = estacion.shortName;
+					Stations.Add(nuevaEstacion);
 					await SaveChangesAsync();
+					auxColStations.Add(estacion, nuevaEstacion.Id);
 				}
-				catch (System.InvalidOperationException ex)
+				//Referencias puntuales
+				foreach(RefPunctual punto in eje.mcolPoints)
 				{
-					Console.WriteLine(string.Format("Error al añadir punto en eje {0} con Pk {1} (Coordenadas {2},{3})", nuevo.AxisId, nuevo.Pk, nuevo.Latitude, nuevo.Longitude));
+					DBRefPunctual nuevoPunto = new DBRefPunctual();
+					nuevoPunto.AxisId = nuevoEje.Id;
+					nuevoPunto.Pk = punto.pk;
+					nuevoPunto.Latitude = punto.point.Latitude;
+					nuevoPunto.Longitude = punto.point.Longitude;
+					RefPunctuals.Add(nuevoPunto);
 				}
-			}
-		}
-		internal async Task Remove(long pk, int axisId, bool update = true)
-		{
-			DBRefPunctual? elemento = await RefPunctuals.Where(x => x.AxisId == axisId && x.Pk == pk).FirstOrDefaultAsync();
-			if (null != elemento)
+				#region todos
+				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+				//TODO:  Limitaciones de velocidad
+				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+
+				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+				//TODO:  Señales
+				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+				#endregion todos
+				await SaveChangesAsync();
+            }
+			foreach (Asimilation asimilacion in rhs.ColAsimilations)
 			{
-				RefPunctuals.Remove(elemento);
-				if(update) await SaveChangesAsync();
-			}				
-		}
-		/// <summary>
-		/// Elimina todas las entidades puntuales de un determinado eje
-		/// </summary>
-		/// <param name="axisId">Id del Eje</param>
-		internal async Task RemovePunctuals(int axisId)
-		{
-			List<DBRefPunctual> xx = await RefPunctuals.Where(x => x.AxisId == axisId).ToListAsync();
-			RefPunctuals.RemoveRange(xx);
-			await SaveChangesAsync();
-		}
-		internal async Task<RefPunctual?> GetRefPunctual(long pk, int axisId)
-		{
-			DBRefPunctual? xx = await RefPunctuals.Where(x => x.AxisId == axisId && x.Pk == pk).FirstOrDefaultAsync();
-			if(null!=xx)
-			{
-				RefPunctual salida = new RefPunctual(xx.Latitude,xx.Longitude);
-				salida.pk = xx.Pk;
-				return salida;
-			}
-			return null;
-		}
-		internal async Task<List<RefPunctual>> GetRefPunctual(int axisId)
-		{
-			List<DBRefPunctual> xx = await RefPunctuals.Where(x => x.AxisId == axisId).ToListAsync();
-			List<RefPunctual> salida = new List<RefPunctual>();
-			foreach (DBRefPunctual ppp in xx)
-			{
-				RefPunctual nuevo = new RefPunctual(ppp.Latitude, ppp.Longitude);
-				nuevo.pk = ppp.Pk;
-				salida.Add(nuevo);
-			}
-			return salida;
-		}
-		#endregion RefPunctual
+				DBAsimilation nuevaAsimilacion = new DBAsimilation();
+				nuevaAsimilacion.TopoStorageId = nuevo.Id;
+				nuevaAsimilacion.AsimilationId = asimilacion.id;
+				nuevaAsimilacion.Name = asimilacion.name;
+				nuevaAsimilacion.Comment = asimilacion.comment;
+				nuevaAsimilacion.Color0 = asimilacion.mvarColor[0];
+                nuevaAsimilacion.Color1 = asimilacion.mvarColor[1];
+				nuevaAsimilacion.MaxSpeed = asimilacion.maxSpeed;
+				System.Diagnostics.Debug.Assert(null != asimilacion.origin);
+				nuevaAsimilacion.OriginStationId = auxColStations[asimilacion.origin];
+				Asimilations.Add(nuevaAsimilacion);
+				await SaveChangesAsync();
+				foreach(AsimilationStep paso in asimilacion.mcolSteps)
+				{
+					DBAsimilationStep nuevoPaso = new DBAsimilationStep();
+					nuevoPaso.AsimilationId = nuevaAsimilacion.Id;
+					nuevoPaso.DestinationStationId = auxColStations[paso.destination];
+					nuevoPaso.AxisId = auxColAxis[paso.destination.axis];
+					nuevoPaso.tripTime = paso.tripTime;
+					nuevoPaso.stopTime = paso.stopTime;
+					AsimilationSteps.Add(nuevoPaso);
+				}
+				await SaveChangesAsync();
+            }
+        }
+		#endregion TopoStorage
 
 
 	}
