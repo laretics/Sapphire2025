@@ -339,7 +339,7 @@ namespace TimeNet2026.DBStorage
 			{
 				if(auxAllStationsCache.ContainsKey(auxAsimilation.OriginStationId))
 				{
-                    Asimilation nuevaAsimilation = new Asimilation();
+                    Asimilation nuevaAsimilation = new Asimilation(salida);
                     nuevaAsimilation.id = auxAsimilation.AsimilationId;
                     nuevaAsimilation.mvarName = auxAsimilation.Name;
                     nuevaAsimilation.mvarComment = auxAsimilation.Comment;

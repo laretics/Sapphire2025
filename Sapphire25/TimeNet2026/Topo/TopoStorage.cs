@@ -26,6 +26,13 @@ namespace TimeNet2026.Topo
 		public IEnumerable<Axis> ColAxis { get => mcolAxis.Values; }
 		public IEnumerable<Asimilation> ColAsimilations { get => mcolAsimilations.Values; }
 		public IEnumerable<Rauta> ColRauta { get => mcolRauta.Values; }
+		public Asimilation? GetAsimilation(string? id)
+		{
+			if (null == id) return null;
+			if (mcolAsimilations.ContainsKey(id))
+				return mcolAsimilations[id];
+			return null;
+		}
 		public TopoStorage(XmlNode root):this()
 		{
 			foreach (XmlNode hijo in root.ChildNodes)
@@ -39,7 +46,7 @@ namespace TimeNet2026.Topo
 						importAxis(hijo);
 						break;
 					case "asimilation": //Asimilaciones
-						deserializeAsimilations(hijo);
+						deserializeAsimilations(hijo, this);
 						break;
 				}
 			}
@@ -107,24 +114,24 @@ namespace TimeNet2026.Topo
 			}
 			return null;
 		}
-		internal void deserializeAsimilations(XmlNode root)
+		internal void deserializeAsimilations(XmlNode root, TopoStorage parent)
 		{
 			foreach(XmlNode hijo in root.ChildNodes)
 			{
 				if("item"==hijo.Name)
 				{
-					Asimilation nueva = deserializeAsimilation(hijo);
+					Asimilation nueva = deserializeAsimilation(hijo, parent);
 					mcolAsimilations.Add(nueva.id, nueva);
 				}					
 			}
 		}
-		internal Asimilation deserializeAsimilation(XmlNode root)
+		internal Asimilation deserializeAsimilation(XmlNode root, TopoStorage parent)
 		{
 			Station? currentStation = null;
 			Axis? auxCurrentAxis = null;			
 			currentStation = stationById(XMLUtil.StringParam(root, "origin"));
 			auxCurrentAxis = axisByStation(currentStation);
-			Asimilation currentAsimilation = new Asimilation(root);
+			Asimilation currentAsimilation = new Asimilation(root,parent);
 			currentAsimilation.origin = currentStation;			
 			foreach(XmlNode hijo in root.ChildNodes)
 			{

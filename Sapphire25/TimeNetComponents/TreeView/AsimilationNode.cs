@@ -42,5 +42,6 @@ namespace TimeNetComponents.TreeView
 				return salida;
 			}
 		}
+        public override string? Url => $"/asimilationvw/{content.Parent.Header.Id}/{content.id}";
 	}
 }

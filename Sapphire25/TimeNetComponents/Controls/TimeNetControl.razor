@@ -1,0 +1,102 @@
+﻿@using TimeNet2026.Timed
+@using TimeNet2026.Topo
+
+@if(null==Asimilation ||null==Storage || null==Asimilation.origin)
+{
+    <div>No hay datos!</div>
+}
+else
+{
+    <svg width="@Width" height="@Height" style="background:#f8f9fa;border:1px solid #ccc;">
+        <!--Ejes cartesianos-->
+        <line x1="@(mvarMarginX)" y1="@(mvarMarginY)" x2="@(mvarMarginX)" y2="@(mvarMaxY)" stroke="black" stroke-width="1"/>
+        <line x1="@(mvarMarginX)" y1="@(mvarMaxY)" x2="@(mvarMaxX)" y2="@(mvarMaxY)" stroke="black" stroke-width="1" />
+
+        <!--Estaciones-->
+        @for(int i=0;i<mcolCurrentStations.Count();i++)
+        {
+            double y = GetY(i);
+            @((MarkupString)$"<text x=\"45\" y=\"@(y+5)\" font-size=\"12\" text-anchor=\"end\" >@mcolCurrentStations[i].name</text>")
+            @((MarkupString)$"<line x1=\"@(mvarMarginX)\" y1=\"@y\" x2=\"@(mvarMaxX)\" y2=\"@y\"  stroke=\"#eee\" stroke-width=\"1\" />")
+        }
+        <!--Regla horaria-->
+        @for(int h=0;h<mvarTotalHours;h++)
+        {
+            double x = GetX(h * 60);
+            @((MarkupString)$"<text x=\"@x\" y=\"@(mvarMaxY+15)\" font-size=\"12\" text-anchor=\"middle\" >@($\"{h}:00\")</text>")
+            @((MarkupString)$"<line x1=\"@x\" y1=\"@(mvarMarginY))\" x2=\"@x\" y2=\"@(mvarMaxY)\"  stroke=\"#eee\" stroke-width=\"1\" />")
+        }
+        <!--Trayectoria-->
+        <polyline
+            fill="none"
+            stroke="@Asimilation.color[0]"
+            stroke-width="3"
+            points="@GetPolylineSVG(Asimilation)"/>
+
+    </svg>
+}
+@code {
+    [Parameter] 
+    public Asimilation? Asimilation { get; set; }
+    [Parameter]
+    public TopoStorage? Storage { get; set; }
+    [Parameter]
+    public int Width { get; set; }
+    [Parameter]
+    public int Height{ get; set; }
+
+    private List<Station> mcolCurrentStations = new List<Station>();
+
+    private int mvarMaxY => Height - 40;
+    private int mvarMaxX => Width - 20;
+
+    private int mvarMarginX = 50;
+    private int mvarMarginY = 20;
+
+    private int mvarTotalMinutes = 0;
+    private int mvarTotalHours = 0;
+
+    protected override void OnParametersSet()
+    {
+        if (null == Asimilation || null==Storage) return;
+        if (null == Asimilation.origin) return;
+
+        mcolCurrentStations = new List<Station>();
+        mcolCurrentStations.Add(Asimilation.origin);
+        foreach (AsimilationStep paso in Asimilation.Steps)
+            mcolCurrentStations.Add(paso.destination);
+
+        //Ajustamos la duración del intervalo al tiempo de esta asimilación
+        //Más adelante lo cambiaremos.
+        mvarTotalMinutes = (int)(Asimilation.duration?.TotalMinutes ?? 60);
+        mvarTotalHours = (int)Math.Ceiling(mvarTotalMinutes / 60.0);
+    }
+
+    private double GetY(int stationIndex)
+    {
+        int auxCuenta = mcolCurrentStations.Count;
+        if (auxCuenta <= 1) return mvarMaxY;
+        return mvarMarginY + ((mvarMaxY - mvarMarginY) * stationIndex) / (auxCuenta - 1);
+
+    }
+    private double GetX(int minutes)
+    {
+        if (mvarTotalMinutes == 0) return mvarMarginX;
+        return mvarMarginX + ((mvarMaxX - mvarMarginX) * minutes) / mvarTotalMinutes;
+    }
+
+    private string GetPolylineSVG(Asimilation asimila)
+    {
+        List<string> points = new List<string>();
+        int minutes = 0;
+        points.Add($"{GetX(0)},{GetY(0)}");
+        int index = 0;
+        foreach(AsimilationStep paso in asimila.Steps)
+        {
+            minutes += (int)paso.tripTime.TotalMinutes;
+            points.Add($"{GetX(minutes)},{GetY(++index)}");
+            minutes += (int)paso.stopTime.TotalMinutes;            
+        }
+        return string.Join(" ", points);
+    }
+}

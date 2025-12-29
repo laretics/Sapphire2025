@@ -16,8 +16,9 @@ namespace TimeNet2026.Timed
 		internal string mvarComment;
 		internal string[] mvarColor; //Colores nocturno y diurno
 		internal int mvarMaxSpeed; //Velocidad máxima de la asimilación.
+		public TopoStorage Parent { get; private set; }
 		private TimeSpan? mvarDuration;
-		internal TimeSpan? duration
+		public TimeSpan? duration
 		//Duración total del viaje.
 		{
 			get
@@ -31,8 +32,8 @@ namespace TimeNet2026.Timed
 				return mvarDuration;
 			}
 		}
-		internal Station? origin { get; set; }
-		internal Station? destination
+		public Station? origin { get; set; }
+		public Station? destination
 		{
 			get
 			{
@@ -40,7 +41,7 @@ namespace TimeNet2026.Timed
 				return mcolSteps[mcolSteps.Count - 1].destination;
 			}
 		}
-		internal bool isAscendent 
+		public bool isAscendent 
 		{ 
 			get
 			{
@@ -54,6 +55,8 @@ namespace TimeNet2026.Timed
 		public int maxSpeed { get => mvarMaxSpeed; }
 		public string[] color { get => mvarColor; set => mvarColor = value; }
 		internal List<AsimilationStep> mcolSteps;
+
+		public IEnumerable<AsimilationStep> Steps { get => mcolSteps; }
 		internal bool containsStation(Station rhs)
 		{
 			if (rhs == origin) return true;
@@ -186,7 +189,7 @@ namespace TimeNet2026.Timed
 		{
 			return string.Format("{0}-{1}", origin.name, destination.name);
 		}
-		internal Asimilation()
+		internal Asimilation(TopoStorage parent)
 		{
 			id = string.Empty;
 			mvarName = string.Empty;
@@ -195,8 +198,9 @@ namespace TimeNet2026.Timed
 			mcolSteps = new List<AsimilationStep>();
 			mvarDuration = null;
 			mvarColor = new string[2];
+			this.Parent = parent;
 		}
-		internal Asimilation(XmlNode root):this()
+		internal Asimilation(XmlNode root, TopoStorage parent):this(parent)
 		{
 			id = XMLUtil.StringParam(root, "id");
 			mvarName = XMLUtil.StringParam(root, "name");
@@ -205,7 +209,7 @@ namespace TimeNet2026.Timed
 			mvarColor[1] = XMLUtil.StringParam(root, "darkcolor");
 			mvarComment = XMLUtil.StringParam(root, "comment");
 		}
-		internal Asimilation(Axis auxEje):this()
+		internal Asimilation(Axis auxEje, TopoStorage parent):this(parent)
 		{
 			//Genera una asimilación a partir de un eje dado.
 			mcolSteps = new List<AsimilationStep>();

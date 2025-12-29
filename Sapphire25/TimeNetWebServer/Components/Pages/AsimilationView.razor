@@ -1,0 +1,28 @@
+﻿@page "/asimilationvw/{TopoStorageId:guid}/{AsimilationId}"
+@using TimeNet2026.Timed
+@using TimeNet2026.Topo
+@using TimeNet2026.Storage
+@inject OnyxStorage mvarStorage
+
+<TimeNetComponents.Controls.TimeNetControl Width="400" Height="400" Storage="@mvarTopoStorage" Asimilation="@mvarAsimilation"/>
+
+@code {
+    [Parameter]
+    public Guid TopoStorageId { get; set; }
+    [Parameter]
+    public string? AsimilationId { get; set; }
+
+    private Asimilation? mvarAsimilation {get;set;}
+
+    private TopoStorage? mvarTopoStorage {get;set;}
+
+    protected async override Task OnInitializedAsync()
+    {
+        await mvarStorage.Init();
+        if(mvarStorage.Storages.ContainsKey(TopoStorageId))
+        {
+            mvarTopoStorage = mvarStorage.Storages[TopoStorageId];
+            mvarAsimilation = mvarTopoStorage.GetAsimilation(AsimilationId);
+        }              
+    }
+}
