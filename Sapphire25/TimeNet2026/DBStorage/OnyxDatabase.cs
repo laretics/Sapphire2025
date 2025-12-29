@@ -437,11 +437,11 @@ namespace TimeNet2026.DBStorage
 				nuevoEje.Comment = eje.mvarComment;
 				nuevoEje.Color0 = eje.mvarColor[0];
                 nuevoEje.Color1 = eje.mvarColor[1];
-				Axis.Add(nuevoEje);
-				auxColAxis.Add(eje, nuevoEje.Id);
+				Axis.Add(nuevoEje);				
 				await SaveChangesAsync();
-                //Estaciones
-                foreach	(Station estacion in eje.Stations)
+				auxColAxis.Add(eje, nuevoEje.Id);
+				//Estaciones
+				foreach	(Station estacion in eje.Stations)
 				{
 					DBStation nuevaEstacion = new DBStation();
 					nuevaEstacion.StationId = estacion.id;

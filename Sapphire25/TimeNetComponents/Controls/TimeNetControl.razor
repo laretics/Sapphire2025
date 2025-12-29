@@ -1,5 +1,6 @@
 ﻿@using TimeNet2026.Timed
 @using TimeNet2026.Topo
+@namespace TimeNetComponents.Controls
 
 @if(null==Asimilation ||null==Storage || null==Asimilation.origin)
 {
@@ -16,22 +17,27 @@ else
         @for(int i=0;i<mcolCurrentStations.Count();i++)
         {
             double y = GetY(i);
-            @((MarkupString)$"<text x=\"45\" y=\"@(y+5)\" font-size=\"12\" text-anchor=\"end\" >@mcolCurrentStations[i].name</text>")
-            @((MarkupString)$"<line x1=\"@(mvarMarginX)\" y1=\"@y\" x2=\"@(mvarMaxX)\" y2=\"@y\"  stroke=\"#eee\" stroke-width=\"1\" />")
+            @((MarkupString)$"<text x='45' y='{y + 5}' font-size='12' text-anchor='end'>{mcolCurrentStations[i].name}</text>")
+            <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" stroke="#eee" stroke-width="1" />
         }
         <!--Regla horaria-->
         @for(int h=0;h<mvarTotalHours;h++)
         {
-            double x = GetX(h * 60);
-            @((MarkupString)$"<text x=\"@x\" y=\"@(mvarMaxY+15)\" font-size=\"12\" text-anchor=\"middle\" >@($\"{h}:00\")</text>")
-            @((MarkupString)$"<line x1=\"@x\" y1=\"@(mvarMarginY))\" x2=\"@x\" y2=\"@(mvarMaxY)\"  stroke=\"#eee\" stroke-width=\"1\" />")
+            double x = GetX(h * 3600);
+            @((MarkupString)$"<text x='{x}' y='{mvarMaxY + 15}' font-size='12' text-anchor='middle'>{h}:00</text>")
+            <line x1="@x" y1="@mvarMarginY" x2="@x" y2="@mvarMaxY" stroke="#eee" stroke-width="1" />
         }
         <!--Trayectoria-->
-        <polyline
+@*         <polyline
             fill="none"
             stroke="@Asimilation.color[0]"
             stroke-width="3"
-            points="@GetPolylineSVG(Asimilation)"/>
+            points="@GetPolylineSVG(Asimilation)"/> *@
+
+        <path fill="none"
+              stroke="@Asimilation.color[0]"
+              stroke-width="3"
+              d="@GetSplinePathSVG(Asimilation)" />
 
     </svg>
 }
@@ -44,6 +50,8 @@ else
     public int Width { get; set; }
     [Parameter]
     public int Height{ get; set; }
+    [Parameter]
+    public bool PkMode{ get; set; }
 
     private List<Station> mcolCurrentStations = new List<Station>();
 
@@ -53,6 +61,7 @@ else
     private int mvarMarginX = 50;
     private int mvarMarginY = 20;
 
+    private int mvarTotalSeconds = 0;
     private int mvarTotalMinutes = 0;
     private int mvarTotalHours = 0;
 
@@ -68,35 +77,103 @@ else
 
         //Ajustamos la duración del intervalo al tiempo de esta asimilación
         //Más adelante lo cambiaremos.
-        mvarTotalMinutes = (int)(Asimilation.duration?.TotalMinutes ?? 60);
-        mvarTotalHours = (int)Math.Ceiling(mvarTotalMinutes / 60.0);
+        mvarTotalSeconds = (int)(Asimilation.duration?.TotalSeconds ?? 3600);
+        mvarTotalHours = (int)Math.Ceiling(mvarTotalSeconds / 3600.0);
     }
 
     private double GetY(int stationIndex)
     {
-        int auxCuenta = mcolCurrentStations.Count;
-        if (auxCuenta <= 1) return mvarMaxY;
-        return mvarMarginY + ((mvarMaxY - mvarMarginY) * stationIndex) / (auxCuenta - 1);
-
+        if(PkMode)
+        {
+            if (mcolCurrentStations.Count == 0) return mvarMaxY;
+            var minPk = mcolCurrentStations.Min(s => s.pk);
+            var maxPk = mcolCurrentStations.Max(s => s.pk);
+            if (maxPk == minPk) return mvarMaxY; // Evitar división por cero
+            var pk = mcolCurrentStations[stationIndex].pk;
+            return mvarMarginY + ((mvarMaxY - mvarMarginY) * (pk - minPk)) / (maxPk - minPk);
+        }
+        else
+        {
+            int auxCuenta = mcolCurrentStations.Count;
+            if (auxCuenta <= 1) return mvarMaxY;
+            return mvarMarginY + ((mvarMaxY - mvarMarginY) * stationIndex) / (auxCuenta - 1);
+        }
     }
-    private double GetX(int minutes)
+    private double GetX(int seconds)
     {
-        if (mvarTotalMinutes == 0) return mvarMarginX;
-        return mvarMarginX + ((mvarMaxX - mvarMarginX) * minutes) / mvarTotalMinutes;
+        if (mvarTotalSeconds == 0) return mvarMarginX;
+        return mvarMarginX + ((mvarMaxX - mvarMarginX) * seconds) / mvarTotalSeconds;
     }
 
     private string GetPolylineSVG(Asimilation asimila)
     {
         List<string> points = new List<string>();
-        int minutes = 0;
+        int seconds = 0;
         points.Add($"{GetX(0)},{GetY(0)}");
         int index = 0;
         foreach(AsimilationStep paso in asimila.Steps)
         {
-            minutes += (int)paso.tripTime.TotalMinutes;
-            points.Add($"{GetX(minutes)},{GetY(++index)}");
-            minutes += (int)paso.stopTime.TotalMinutes;            
+            seconds += (int)paso.tripTime.TotalSeconds;
+            points.Add($"{GetX(seconds)},{GetY(++index)}");
+            if(paso.stopTime.Ticks>0)
+            {
+                seconds += (int)paso.stopTime.TotalSeconds;
+                points.Add($"{GetX(seconds)},{GetY(index)}");
+            }
         }
         return string.Join(" ", points);
+    }
+    private string GetSplinePathSVG(Asimilation asimila)
+    {
+        var points = new List<(double x, double y)>();
+        int seconds = 0;
+        points.Add((GetX(0), GetY(0)));
+        int index = 0;
+        foreach (AsimilationStep paso in asimila.Steps)
+        {
+            seconds += (int)paso.tripTime.TotalSeconds;
+            points.Add((GetX(seconds), GetY(++index)));
+            if (paso.stopTime.Ticks > 0)
+            {
+                seconds += (int)paso.stopTime.TotalSeconds;
+                points.Add((GetX(seconds), GetY(index)));
+            }
+        }
+
+        if (points.Count < 2)
+            return "";
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"M {points[0].x},{points[0].y} ");
+
+        for (int i = 0; i < points.Count - 1; i++)
+        {
+            var (x0, y0) = points[i];
+            var (x1, y1) = points[i + 1];
+            double dx = x1 - x0;
+            double dy = y1 - y0;
+
+            // Si el tramo es horizontal, puntos de control alineados en Y
+            if (Math.Abs(dy) < 1e-6)
+            {
+                double c1x = x0 + dx / 3.0;
+                double c1y = y0;
+                double c2x = x1 - dx / 3.0;
+                double c2y = y1;
+                sb.Append($"C {c1x},{c1y} {c2x},{c2y} {x1},{y1} ");
+            }
+            else
+            {
+                // Para tramos no horizontales, puntos de control con tangente horizontal pero limitando la distancia
+                double alpha = Math.Min(Math.Abs(dx) * 0.5, 40); // máximo 40 px de control
+                double sign = Math.Sign(dx);
+                double c1x = x0 + sign * alpha;
+                double c1y = y0;
+                double c2x = x1 - sign * alpha;
+                double c2y = y1;
+                sb.Append($"C {c1x},{c1y} {c2x},{c2y} {x1},{y1} ");
+            }
+        }
+        return sb.ToString();
     }
 }

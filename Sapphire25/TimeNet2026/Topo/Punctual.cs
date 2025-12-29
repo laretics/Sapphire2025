@@ -10,7 +10,7 @@ namespace TimeNet2026.Topo
 	public class Punctual
 	{
 		const long NEAR_FACTOR = 150;
-		internal virtual long pk { get; set; }
+		public virtual long pk { get; set; }
 		internal bool isNear(long pk)
 		{
 			return Math.Abs(pk - this.pk) < NEAR_FACTOR;
