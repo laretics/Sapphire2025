@@ -140,6 +140,13 @@ else
             }
         }
 
+        // --- CORRECCIÓN: invertir puntos si PKMode es false y la asimilación es descendente ---
+        if (!PkMode && asimila.isAscendent == false)
+        {
+            points.Reverse();
+        }
+        // -------------------------------------------------------------------
+
         if (points.Count < 2)
             return "";
 
