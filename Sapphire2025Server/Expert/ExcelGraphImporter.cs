@@ -21,6 +21,7 @@ namespace Sapphire2025Server.Expert
 
         public async Task<string> ProcessExcel(List<List<AssignationCell>>? sheet, DateTime dateutc, int days, int localOffset)
         {
+            StringBuilder salida = new StringBuilder();
             try
             {
                 if (null == sheet) return "La hoja está vacía. No hay datos que importar.";
@@ -33,9 +34,10 @@ namespace Sapphire2025Server.Expert
                 //Cabecera-m,dia1,dia2,...,dia-n
                 //Gracias a los datos que pasamos como parámetros es posible acelerar el proceso.
                 DateTime date = dateutc.AddMinutes(-localOffset);
-
-                using (DataStorage almacen = new DataStorage(mvarConfig))
+				using (DataStorage almacen = new DataStorage(mvarConfig))
                 {
+                    string? auxCadena = await almacen.GetRegisterValue("ImplCol", "0");
+
                     int filaId = 0;
                     foreach (List<AssignationCell> fila in sheet)
                     {
@@ -161,6 +163,7 @@ namespace Sapphire2025Server.Expert
                             {
                                 //Detectado un grupo con repetición chunga.
                                 int cuenta = grupo.Count;
+                                salida.AppendFormat("Grupo de {0} agentes con información incompleta.", cuenta);
                             }
                         }
                     }
@@ -180,7 +183,7 @@ namespace Sapphire2025Server.Expert
                         await almacen.SaveChangesAsync();
                     }
                 }
-                return string.Empty;
+                return salida.ToString();
             }
             catch (Exception ex)
             {

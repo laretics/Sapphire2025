@@ -4,10 +4,8 @@
 @using TimeNet2026.Storage
 @inject OnyxStorage mvarStorage
 
-<div>Antes del control</div>
-<TimeNetControl Width="400" Height="400" Storage="@mvarTopoStorage" Asimilation="@mvarAsimilation"/>
-<TimeNetControl Width="800" Height="300" Storage="@mvarTopoStorage" Asimilation="@mvarAsimilation" PkMode="true"/>
-<div>Después del control</div>
+<TimeNetControl Width="800" Height="800" Storage="@mvarTopoStorage" Asimilation="@mvarAsimilation" PkMode="true"/>
+<TimeNetControl Width="800" Height="800" Storage="@mvarTopoStorage" Asimilation="@mvarAsimilation" Splines="true" PkMode="true" />
 
 @code {
     [Parameter]

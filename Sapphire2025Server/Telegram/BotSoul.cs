@@ -28,13 +28,10 @@ namespace Sapphire2025Server.Telegram
 		{
 			config = configuration;
 			string? auxToken = config["Telegram:Secret"];
-			bool auxMainEnabled = config["Telegram:Enabled"] == "true"; //Este valor está en el archivo config.
-			//Este valor nos dice si arranca el demonio en esta instancia del servidor. Es útil cuando tengo el servidor en producción
-			//y al mismo tiempo tengo el servidor de desarrollo en pruebas. (Sólo uno debería funcionar al mismo tiempo.
 			Debug.Assert(null != auxToken,"Valor nulo en token de Telegram desde Config");
 			mvarBot = new TelegramBotClient(auxToken);
 			CancellationTokenSource cts = new CancellationTokenSource();
-			if (auxMainEnabled)
+			if (IsTelegramEnabled)
 			{
 				mvarBot.StartReceiving
 					(
@@ -45,6 +42,13 @@ namespace Sapphire2025Server.Telegram
 					);
 			}
 		}
+
+		/// <summary>
+		/// Este valor está en el archivo config. Me dice si arranca el bot al arrancar el servicio.
+		/// Lo uso, sobre todo, cuando tengo el servidor en producción y quiero desarrollar en pruebas.
+		/// Si quiero trabajar con el bot en pruebas pongo este valor a "false" en el servicio y lo reinicio. Si quiero trabajar en algo que no sea el bot, pondré "false" en la configuración del equipo de pruebas.
+		/// </summary>
+		private bool IsTelegramEnabled { get => config["Telegram:Enabled"] == "true"; }		
 
 		private async Task HandleUpdateAsync(ITelegramBotClient botClient,
 			Update update,
@@ -171,55 +175,61 @@ namespace Sapphire2025Server.Telegram
 		/// <param name="filters">Sólo lo envía a aquellos que tengan alguno de estos parámetros en el campo "filter" de su consola Telegram
 		public async Task BroadcastToAll(string message, bool priority, string filters="")
 		{
-			List<Models.User> auxUsers = new List<Models.User>();
-			List<Models.User> auxOrigin = await auxAvailableUsers();
-			SapphireAuthenticationController auxController = new SapphireAuthenticationController(config, this);
-			string[] auxFilters = filters.ToUpper().Split(',');
-			foreach (Models.User candidato in auxOrigin)
+			if(await GetTelegramEnabled())
 			{
-				if(candidato.TelegramEnabled || priority)
+				List<Models.User> auxUsers = new List<Models.User>();
+				List<Models.User> auxOrigin = await auxAvailableUsers();
+				SapphireAuthenticationController auxController = new SapphireAuthenticationController(config, this);
+				string[] auxFilters = filters.ToUpper().Split(',');
+				foreach (Models.User candidato in auxOrigin)
 				{
-					if (filters.Length > 0)
+					if (candidato.TelegramEnabled || priority)
 					{
-						string auxConfig = await auxController.getTelegramRules(candidato.guid);
-						if (auxHasFilterActive(auxConfig, auxFilters))
-							auxUsers.Add(candidato);
+						if (filters.Length > 0)
+						{
+							string auxConfig = await auxController.getTelegramRules(candidato.guid);
+							if (auxHasFilterActive(auxConfig, auxFilters))
+								auxUsers.Add(candidato);
+						}
+						else
+							auxUsers.Add(candidato); //Si no hay filtros meto a todos los usuarios.
 					}
-					else
-						auxUsers.Add(candidato); //Si no hay filtros meto a todos los usuarios.
 				}
+				await Broadcast(message, auxUsers);
 			}
-			await Broadcast(message, auxUsers);
 		}
 		public async Task BroadcastByRole(string message, bool priority, Common.UserRole[] roles)
 		{
-			List<Models.User> auxUsers = new List<Models.User>();
-			List<Models.User> auxOrigin = await auxAvailableUsers();
-			SapphireAuthenticationController auxController = new SapphireAuthenticationController(config, this);
-			foreach (Models.User candidato in auxOrigin)
+			if(await GetTelegramEnabled())
 			{
-				if(priority || candidato.TelegramEnabled)
+				List<Models.User> auxUsers = new List<Models.User>();
+				List<Models.User> auxOrigin = await auxAvailableUsers();
+				SapphireAuthenticationController auxController = new SapphireAuthenticationController(config, this);
+				foreach (Models.User candidato in auxOrigin)
 				{
-					List<uint> auxColRoles = await auxController.retrieveUserRoles(candidato.guid);
-					bool notificate = false;
-					foreach (Common.UserRole role in roles)
+					if (priority || candidato.TelegramEnabled)
 					{
-						if (auxColRoles.Contains((uint)role))
+						List<uint> auxColRoles = await auxController.retrieveUserRoles(candidato.guid);
+						bool notificate = false;
+						foreach (Common.UserRole role in roles)
 						{
-							notificate = true;
-							break;
+							if (auxColRoles.Contains((uint)role))
+							{
+								notificate = true;
+								break;
+							}
 						}
+						if (!notificate)
+						{
+							string auxConfig = await auxController.getTelegramRules(candidato.guid);
+							notificate = auxHasRolesInConfig(auxConfig, roles);
+						}
+						if (notificate)
+							auxUsers.Add(candidato);
 					}
-					if (!notificate)
-					{
-						string auxConfig = await auxController.getTelegramRules(candidato.guid);
-						notificate = auxHasRolesInConfig(auxConfig, roles);
-					}
-					if (notificate)
-						auxUsers.Add(candidato);
 				}
-			}		
-			await Broadcast(message, auxUsers);
+				await Broadcast(message, auxUsers);
+			}
 		}
 		private bool auxHasFilterActive(string config, string[] filters)
 		{
@@ -273,7 +283,7 @@ namespace Sapphire2025Server.Telegram
 		}
 		private async Task Broadcast(string message, List<Models.User> users)
 		{
-			if (!await GetTelegramEnabled()) return; //No voy a enviar mensajes si el bot no está habilitado.
+			//Llamamos a esta función desde algún sitio donde comprobemos que el bot de Telegram está activo.
 			foreach (Models.User usuario in users)
 			{
 				if(0!=usuario.TelegramId)
@@ -301,11 +311,14 @@ namespace Sapphire2025Server.Telegram
 
 		private async Task<bool> GetTelegramEnabled()
 		{
-			using (DataStorage almacen = new DataStorage(config))
+			if(IsTelegramEnabled)
 			{
-				string? auxCadena = await almacen.GetRegisterValue("Telegram", "false");
-				if (null != auxCadena)
-					return auxCadena.Equals("true");
+				using (DataStorage almacen = new DataStorage(config))
+				{
+					string? auxCadena = await almacen.GetRegisterValue("Telegram", "false");
+					if (null != auxCadena)
+						return auxCadena.Equals("true");
+				}
 			}
 			return false;
 		}

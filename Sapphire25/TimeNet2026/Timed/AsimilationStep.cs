@@ -17,7 +17,7 @@ namespace TimeNet2026.Timed
 			this.stopTime = stopTime;
 		}
 		public Station destination { get; set; }
-		internal Axis axis { get; set; } //Devuelve el eje al que pertenece este tramo
+		public Axis axis { get; set; } //Devuelve el eje al que pertenece este tramo
 		public TimeSpan tripTime { get; set; }
 		public TimeSpan stopTime { get; set; }
 		internal float auxCacheY { get; set; } //Valor cacheado para representar una malla.

@@ -42,6 +42,20 @@
                     Tooltip="Opciones para Inspectores"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Inspector}" />    
 
+    <NexusNavOption Selected="@(7 == SelectedNavItem)"
+                    OnClick="@(()=>SelectNavItem(5))"
+                    Link="submenu/mechanic" Caption="Mecánico"
+                    Image="bi bi-mechanic-nav-menu"
+                    Tooltip="Opciones para Personal de los Talleres"
+                    Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Oficial,Sapphire2025Models.Common.UserRole.Mechanic}" />
+
+    <NexusNavOption Selected="@(8 == SelectedNavItem)"
+                    OnClick="@(()=>SelectNavItem(5))"
+                    Link="submenu/engineer" Caption="Ingeniero"
+                    Image="bi bi-engineer-nav-menu"
+                    Tooltip="Opciones para Análisis de Información"
+                    Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Engineer}" />
+
 </CascadingValue>
 <div class="sfmlogo-bg">
     <Image Src="img/sfmImg.png" Style="width:75%; margin:5%;" />

@@ -9,6 +9,19 @@
 else
 {
     <svg width="@Width" height="@Height" style="background:#f8f9fa;border:1px solid #ccc;">
+        <defs>
+            @if(null!=Storage)
+            {
+                foreach(Asimilation asimilation in Storage.ColAsimilations)
+                {
+                    <path id="asi-@asimilation.id"
+                        fill="none"
+                        stroke="@asimilation.color[0]"
+                        stroke-width="3"
+                        d="@GetTrace(asimilation)" />
+                }
+            }
+        </defs>
         <!--Ejes cartesianos-->
         <line x1="@(mvarMarginX)" y1="@(mvarMarginY)" x2="@(mvarMarginX)" y2="@(mvarMaxY)" stroke="black" stroke-width="1"/>
         <line x1="@(mvarMarginX)" y1="@(mvarMaxY)" x2="@(mvarMaxX)" y2="@(mvarMaxY)" stroke="black" stroke-width="1" />
@@ -17,8 +30,8 @@ else
         @for(int i=0;i<mcolCurrentStations.Count();i++)
         {
             double y = GetY(i);
-            @((MarkupString)$"<text x='45' y='{y + 5}' font-size='12' text-anchor='end'>{mcolCurrentStations[i].name}</text>")
-            <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" stroke="#eee" stroke-width="1" />
+            @* @((MarkupString)$"<text x='45' y='{y + 5}' font-size='12' text-anchor='end'>{mcolCurrentStations[i].name}</text>")
+            <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" stroke="#eee" stroke-width="1" /> *@
         }
         <!--Regla horaria-->
         @for(int h=0;h<mvarTotalHours;h++)
@@ -27,18 +40,15 @@ else
             @((MarkupString)$"<text x='{x}' y='{mvarMaxY + 15}' font-size='12' text-anchor='middle'>{h}:00</text>")
             <line x1="@x" y1="@mvarMarginY" x2="@x" y2="@mvarMaxY" stroke="#eee" stroke-width="1" />
         }
-        <!--Trayectoria-->
-@*         <polyline
-            fill="none"
-            stroke="@Asimilation.color[0]"
-            stroke-width="3"
-            points="@GetPolylineSVG(Asimilation)"/> *@
 
-        <path fill="none"
-              stroke="@Asimilation.color[0]"
-              stroke-width="3"
-              d="@GetSplinePathSVG(Asimilation)" />
-
+        @if(null!=Asimilation)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                double xOffset = GetY(i * 1800);
+                <use href="#asi-@Asimilation.id" transform="translate(@xOffset,0)" />
+            }
+        }       
     </svg>
 }
 @code {
@@ -52,8 +62,13 @@ else
     public int Height{ get; set; }
     [Parameter]
     public bool PkMode{ get; set; }
+    [Parameter]
+    public bool Splines { get; set; }
 
-    private List<Station> mcolCurrentStations = new List<Station>();
+    private Dictionary<Station, StationViewRef> mcolCurrentStations = new Dictionary<Station, StationViewRef>();
+
+    private long mvarMinPk;
+    private long mvarMaxPk;
 
     private int mvarMaxY => Height - 40;
     private int mvarMaxX => Width - 20;
@@ -69,11 +84,34 @@ else
     {
         if (null == Asimilation || null==Storage) return;
         if (null == Asimilation.origin) return;
+        mcolCurrentStations = new Dictionary<Station, StationViewRef>();
 
-        mcolCurrentStations = new List<Station>();
-        mcolCurrentStations.Add(Asimilation.origin);
+        StationViewRef nuevo = new StationViewRef();
+        AsimilationStep? lastStep = null;
+        long lastPk = Asimilation.origin.pk;
+        nuevo.Index = 0;
+        mcolCurrentStations.Add(Asimilation.origin,nuevo);
+        int index = 1;
         foreach (AsimilationStep paso in Asimilation.Steps)
-            mcolCurrentStations.Add(paso.destination);
+        {
+            nuevo = new StationViewRef();
+            nuevo.Index = index++;
+            if(null!=lastStep || lastStep.axis==paso.axis)
+            {
+
+            }
+
+
+
+
+            //mcolCurrentStations.Add(paso.destination,index++);
+            //{
+
+
+            //}
+
+        }
+
 
         //Ajustamos la duración del intervalo al tiempo de esta asimilación
         //Más adelante lo cambiaremos.
@@ -86,11 +124,13 @@ else
         if(PkMode)
         {
             if (mcolCurrentStations.Count == 0) return mvarMaxY;
-            var minPk = mcolCurrentStations.Min(s => s.pk);
-            var maxPk = mcolCurrentStations.Max(s => s.pk);
-            if (maxPk == minPk) return mvarMaxY; // Evitar división por cero
-            var pk = mcolCurrentStations[stationIndex].pk;
-            return mvarMarginY + ((mvarMaxY - mvarMarginY) * (pk - minPk)) / (maxPk - minPk);
+
+            // var minPk = mcolCurrentStations.Min(s => s.pk);
+            // var maxPk = mcolCurrentStations.Max(s => s.pk);
+            // if (maxPk == minPk) return mvarMaxY; // Evitar división por cero
+            // var pk = mcolCurrentStations[stationIndex].pk;
+            // return mvarMarginY + ((mvarMaxY - mvarMarginY) * (pk - minPk)) / (maxPk - minPk);
+            return -1; //Para quitar errores.
         }
         else
         {
@@ -105,20 +145,28 @@ else
         return mvarMarginX + ((mvarMaxX - mvarMarginX) * seconds) / mvarTotalSeconds;
     }
 
+    private string GetTrace(Asimilation asimila)
+    {
+        if (PkMode && Splines)
+            return GetSplinePathSVG(asimila);
+
+        return GetPolylineSVG(asimila);
+    }
+   
     private string GetPolylineSVG(Asimilation asimila)
     {
         List<string> points = new List<string>();
         int seconds = 0;
-        points.Add($"{GetX(0)},{GetY(0)}");
+        points.Add($"M {GetX(0)},{GetY(0)}");
         int index = 0;
         foreach(AsimilationStep paso in asimila.Steps)
         {
             seconds += (int)paso.tripTime.TotalSeconds;
-            points.Add($"{GetX(seconds)},{GetY(++index)}");
+            points.Add($"L {GetX(seconds)},{GetY(++index)}");
             if(paso.stopTime.Ticks>0)
             {
                 seconds += (int)paso.stopTime.TotalSeconds;
-                points.Add($"{GetX(seconds)},{GetY(index)}");
+                points.Add($"L {GetX(seconds)},{GetY(index)}");
             }
         }
         return string.Join(" ", points);
@@ -140,16 +188,10 @@ else
             }
         }
 
-        // --- CORRECCIÓN: invertir puntos si PKMode es false y la asimilación es descendente ---
-        if (!PkMode && asimila.isAscendent == false)
-        {
-            points.Reverse();
-        }
-        // -------------------------------------------------------------------
-
         if (points.Count < 2)
             return "";
 
+        const double minDxForSpline = 30.0; // Distancia mínima en X para permitir spline
         var sb = new System.Text.StringBuilder();
         sb.Append($"M {points[0].x},{points[0].y} ");
 
@@ -160,25 +202,16 @@ else
             double dx = x1 - x0;
             double dy = y1 - y0;
 
-            // Si el tramo es horizontal, puntos de control alineados en Y
-            if (Math.Abs(dy) < 1e-6)
-            {
-                double c1x = x0 + dx / 3.0;
-                double c1y = y0;
-                double c2x = x1 - dx / 3.0;
-                double c2y = y1;
-                sb.Append($"C {c1x},{c1y} {c2x},{c2y} {x1},{y1} ");
-            }
+            // Si no hay avance en X o el avance es muy pequeño, trazo recto
+            if (dx < minDxForSpline)
+                sb.Append($"L {x1},{y1} ");
             else
             {
-                // Para tramos no horizontales, puntos de control con tangente horizontal pero limitando la distancia
-                double alpha = Math.Min(Math.Abs(dx) * 0.5, 40); // máximo 40 px de control
-                double sign = Math.Sign(dx);
-                double c1x = x0 + sign * alpha;
-                double c1y = y0;
-                double c2x = x1 - sign * alpha;
-                double c2y = y1;
-                sb.Append($"C {c1x},{c1y} {c2x},{c2y} {x1},{y1} ");
+                // Calcula los puntos de control, asegurando que no sobrepasen x1
+                double c1x = x0 + (minDxForSpline/2);
+                double c2x = x1 - (minDxForSpline / 2);
+
+                sb.Append($"C {c1x},{y0} {c2x},{y1} {x1},{y1} ");
             }
         }
         return sb.ToString();

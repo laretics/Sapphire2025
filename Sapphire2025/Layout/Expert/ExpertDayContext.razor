@@ -289,7 +289,10 @@ else
             //Ahora pasamos esto a JavaScript
             DateTime fecha = DateTime.Today;
             int localZoneOffset = await GetTimezoneOffsetMinutes();
-            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day, ExcelImportDayCount);
+            string? auxCadena = await mvarAuthClient.GetRegister("ImplCol", "0");
+            int excelBeginCol = 0;
+            int.TryParse(auxCadena, out excelBeginCol);
+            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day, ExcelImportDayCount,excelBeginCol);
             string? salidaCompilacion = await mvarExpertClient.UploadDailyWorkShift(salida, fecha, ExcelImportDayCount, localZoneOffset);
             if (null != salidaCompilacion && salidaCompilacion.Length > 0)
                 await mvarModal.show("Error de importación", salidaCompilacion, "Salir");

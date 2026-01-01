@@ -1,9 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 namespace Sapphire2025Server.Models
 {
 	[Table("BotLogError")]
 	public class BotLogError
 	{
+		[Key]
 		public DateTime TimeStamp { get; set; }
 		public long SessionId { get; set; }
 		public Guid UserId { get; set; }

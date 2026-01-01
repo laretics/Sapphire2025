@@ -28,7 +28,7 @@ window.excelInterop = {
     //month: Mes de la fecha.
     //day: día de la fecha
     //days: Número de días (o columnas) a procesar.
-    extractWorksheetData: async function (bytes, month, day, days) {
+    extractWorksheetData: async function (bytes, month, day, days, startCol) {
         var datosEntrada = new Uint8Array(bytes);
         var libro = XLSX.read(datosEntrada, { type: "array", cellStyles: true, cellComments: true });        
         var hoja = libro.Sheets[libro.SheetNames[0]];
@@ -41,7 +41,8 @@ window.excelInterop = {
         var colMes = -1;
         var colDia = -1;
 
-        for (var col = rango.s.c; col < rango.e.c; ++col) {
+        //for (var col = rango.s.c; col < rango.e.c; ++col) {
+        for (var col = (typeof startCol === "number" && startCol >= 0 ? startCol : rango.s.c); col < rango.e.c; ++col) {
             var refBusca = XLSX.utils.encode_cell({ r: 1, c: col });
             var celdaBusca = hoja[refBusca];
             var textoCandidato = celdaBusca && celdaBusca.v ? celdaBusca.v.toString().trim().toUpperCase() : "";
@@ -64,6 +65,7 @@ window.excelInterop = {
         if (-1 != colMes && -1 != colDia) {
             //Límites del bucle de extracción.
             var colStart = Math.max(rango.s.c, colDia || 0);
+
             var colEnd = days ? Math.min(rango.e.c, colDia + days - 1) : rango.e.c;
 
             var filasVacias = 0;
@@ -107,7 +109,7 @@ window.excelInterop = {
                         salida.push(fila);
                     }                                       
                 }
-                if (filasVacias > 3) break; //Evitamos importar muchas filas vacías.                
+                if (filasVacias > 5) break; //Evitamos importar muchas filas vacías.                
             }
         }
         return JSON.stringify(salida); //Esto es lo que voy a recibir en C#
