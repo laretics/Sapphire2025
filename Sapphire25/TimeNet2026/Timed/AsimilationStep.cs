@@ -20,7 +20,5 @@ namespace TimeNet2026.Timed
 		public Axis axis { get; set; } //Devuelve el eje al que pertenece este tramo
 		public TimeSpan tripTime { get; set; }
 		public TimeSpan stopTime { get; set; }
-		internal float auxCacheY { get; set; } //Valor cacheado para representar una malla.
-											   //IMPORTANTE: Este valor no tiene ninguna relevancia fuera de la operación de pintado.
 	}
 }

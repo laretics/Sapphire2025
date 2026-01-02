@@ -27,11 +27,23 @@ else
         <line x1="@(mvarMarginX)" y1="@(mvarMaxY)" x2="@(mvarMaxX)" y2="@(mvarMaxY)" stroke="black" stroke-width="1" />
 
         <!--Estaciones-->
-        @for(int i=0;i<mcolCurrentStations.Count();i++)
+        @if(true)
         {
-            double y = GetY(i);
-            @* @((MarkupString)$"<text x='45' y='{y + 5}' font-size='12' text-anchor='end'>{mcolCurrentStations[i].name}</text>")
-            <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" stroke="#eee" stroke-width="1" /> *@
+            double y = GetY(Asimilation.origin);
+            if(y>=0)
+            {
+                @((MarkupString)$"<text x='45' y='{y + 5}' font-size='12' text-anchor='end'>{Asimilation.origin.name}</text>")
+                <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" stroke="#eee" stroke-width="1" />
+            }
+        }
+        @foreach(AsimilationStep paso in Asimilation.Steps)
+        {
+            double y = GetY(paso.destination);
+            if(y>=0)
+            {
+                @((MarkupString)$"<text x='45' y='{y + 5}' font-size='12' text-anchor='end'>{paso.destination.name}</text>")
+                <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" stroke="#eee" stroke-width="1" />
+            }
         }
         <!--Regla horaria-->
         @for(int h=0;h<mvarTotalHours;h++)
@@ -45,7 +57,7 @@ else
         {
             for (int i = 0; i < 8; i++)
             {
-                double xOffset = GetY(i * 1800);
+                double xOffset = GetX(i * 1800);
                 <use href="#asi-@Asimilation.id" transform="translate(@xOffset,0)" />
             }
         }       
@@ -65,7 +77,7 @@ else
     [Parameter]
     public bool Splines { get; set; }
 
-    private Dictionary<Station, StationViewRef> mcolCurrentStations = new Dictionary<Station, StationViewRef>();
+    private AsimilationView? mvarView;
 
     private long mvarMinPk;
     private long mvarMaxPk;
@@ -83,35 +95,7 @@ else
     protected override void OnParametersSet()
     {
         if (null == Asimilation || null==Storage) return;
-        if (null == Asimilation.origin) return;
-        mcolCurrentStations = new Dictionary<Station, StationViewRef>();
-
-        StationViewRef nuevo = new StationViewRef();
-        AsimilationStep? lastStep = null;
-        long lastPk = Asimilation.origin.pk;
-        nuevo.Index = 0;
-        mcolCurrentStations.Add(Asimilation.origin,nuevo);
-        int index = 1;
-        foreach (AsimilationStep paso in Asimilation.Steps)
-        {
-            nuevo = new StationViewRef();
-            nuevo.Index = index++;
-            if(null!=lastStep || lastStep.axis==paso.axis)
-            {
-
-            }
-
-
-
-
-            //mcolCurrentStations.Add(paso.destination,index++);
-            //{
-
-
-            //}
-
-        }
-
+        mvarView = new AsimilationView(Asimilation, Storage);
 
         //Ajustamos la duración del intervalo al tiempo de esta asimilación
         //Más adelante lo cambiaremos.
@@ -119,25 +103,20 @@ else
         mvarTotalHours = (int)Math.Ceiling(mvarTotalSeconds / 3600.0);
     }
 
-    private double GetY(int stationIndex)
+    private double GetY(Station? station)
     {
-        if(PkMode)
+        if (null != mvarView && null != station && mvarView.MaxPk > 0 && mvarView.MaxIndex > 0)
         {
-            if (mcolCurrentStations.Count == 0) return mvarMaxY;
-
-            // var minPk = mcolCurrentStations.Min(s => s.pk);
-            // var maxPk = mcolCurrentStations.Max(s => s.pk);
-            // if (maxPk == minPk) return mvarMaxY; // Evitar división por cero
-            // var pk = mcolCurrentStations[stationIndex].pk;
-            // return mvarMarginY + ((mvarMaxY - mvarMarginY) * (pk - minPk)) / (maxPk - minPk);
-            return -1; //Para quitar errores.
+            if (mvarView.Elements.ContainsKey(station))
+            {
+                StationViewRef punto = mvarView.Elements[station];
+                if (PkMode)
+                    return mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.ViewPk) / mvarView.MaxPk;
+                else
+                    return mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.Index) / mvarView.MaxIndex;
+            }
         }
-        else
-        {
-            int auxCuenta = mcolCurrentStations.Count;
-            if (auxCuenta <= 1) return mvarMaxY;
-            return mvarMarginY + ((mvarMaxY - mvarMarginY) * stationIndex) / (auxCuenta - 1);
-        }
+        return -1;
     }
     private double GetX(int seconds)
     {
@@ -152,22 +131,36 @@ else
 
         return GetPolylineSVG(asimila);
     }
-   
+
     private string GetPolylineSVG(Asimilation asimila)
     {
         List<string> points = new List<string>();
         int seconds = 0;
-        points.Add($"M {GetX(0)},{GetY(0)}");
-        int index = 0;
+        bool lastTrace = true;
+        double auxY = -1;
+        double auxX = -1;
+        points.Add($"M {GetX(0)},{GetY(asimila.origin)}");
         foreach(AsimilationStep paso in asimila.Steps)
         {
             seconds += (int)paso.tripTime.TotalSeconds;
-            points.Add($"L {GetX(seconds)},{GetY(++index)}");
-            if(paso.stopTime.Ticks>0)
+            auxY = GetY(paso.destination);
+            if (auxY >= 0)
             {
-                seconds += (int)paso.stopTime.TotalSeconds;
-                points.Add($"L {GetX(seconds)},{GetY(index)}");
+                auxX = GetX(seconds);
+                if(lastTrace)
+                    points.Add($"L {auxX},{auxY}");
+                else
+                    points.Add($"M {auxX},{auxY}");
+
+                lastTrace = true; //Habiendo pintado, seguimos la línea.
+                if (paso.stopTime.Ticks > 0)
+                {
+                    seconds += (int)paso.stopTime.TotalSeconds;
+                    points.Add($"L {auxX},{auxY}");
+                }
             }
+            else
+                lastTrace = false;
         }
         return string.Join(" ", points);
     }
@@ -175,16 +168,19 @@ else
     {
         var points = new List<(double x, double y)>();
         int seconds = 0;
-        points.Add((GetX(0), GetY(0)));
-        int index = 0;
+        bool lastTrace = true;
+        double auxY = -1;
+        double auxX = -1;
+        points.Add((GetX(0), GetY(asimila.origin)));
         foreach (AsimilationStep paso in asimila.Steps)
         {
             seconds += (int)paso.tripTime.TotalSeconds;
-            points.Add((GetX(seconds), GetY(++index)));
+            auxY = GetY(paso).destinacio
+            points.Add((GetX(seconds), GetY(paso.destination)));
             if (paso.stopTime.Ticks > 0)
             {
                 seconds += (int)paso.stopTime.TotalSeconds;
-                points.Add((GetX(seconds), GetY(index)));
+                points.Add((GetX(seconds), GetY(paso.destination)));
             }
         }
 
