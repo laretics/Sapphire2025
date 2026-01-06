@@ -41,7 +41,7 @@ namespace TimeNetComponents.Controls
 				Elements.Add(lastStation, nueva);
 				foreach (AsimilationStep paso in Parent.Steps)
 				{
-					if(paso.axis!=currentAxis)
+					if(paso.axis==currentAxis)
 						cumulPk += Math.Abs(paso.destination.pk - lastStation.pk);
 
 					nueva = new StationViewRef(paso.axis, auxIndex++, cumulPk);

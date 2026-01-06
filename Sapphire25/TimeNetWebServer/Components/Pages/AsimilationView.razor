@@ -4,7 +4,7 @@
 @using TimeNet2026.Storage
 @inject OnyxStorage mvarStorage
 
-<TimeNetControl Width="800" Height="800" Storage="@mvarTopoStorage" Asimilation="@mvarAsimilation" PkMode="true"/>
+@* <TimeNetControl Width="800" Height="800" Storage="@mvarTopoStorage" Asimilation="@mvarAsimilation" PkMode="false"/> *@
 <TimeNetControl Width="800" Height="800" Storage="@mvarTopoStorage" Asimilation="@mvarAsimilation" Splines="true" PkMode="true" />
 
 @code {

@@ -57,7 +57,7 @@ else
         {
             for (int i = 0; i < 8; i++)
             {
-                double xOffset = GetX(i * 1800);
+                double xOffset = GetX(i * 600);
                 <use href="#asi-@Asimilation.id" transform="translate(@xOffset,0)" />
             }
         }       
@@ -105,16 +105,13 @@ else
 
     private double GetY(Station? station)
     {
-        if (null != mvarView && null != station && mvarView.MaxPk > 0 && mvarView.MaxIndex > 0)
+        if (null != mvarView && null != station && mvarView.Elements.ContainsKey(station))
         {
-            if (mvarView.Elements.ContainsKey(station))
-            {
-                StationViewRef punto = mvarView.Elements[station];
-                if (PkMode)
-                    return mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.ViewPk) / mvarView.MaxPk;
-                else
-                    return mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.Index) / mvarView.MaxIndex;
-            }
+            StationViewRef punto = mvarView.Elements[station];
+            if (PkMode && mvarView.MaxPk > 0)
+                return mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.ViewPk) / mvarView.MaxPk;
+            else if (mvarView.MaxIndex > 0)
+                return mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.Index) / mvarView.MaxIndex;
         }
         return -1;
     }
@@ -175,12 +172,13 @@ else
         foreach (AsimilationStep paso in asimila.Steps)
         {
             seconds += (int)paso.tripTime.TotalSeconds;
-            auxY = GetY(paso).destinacio
-            points.Add((GetX(seconds), GetY(paso.destination)));
+            auxY = GetY(paso.destination); ;
+            auxX = GetX(seconds);
+            points.Add((auxX, auxY));
             if (paso.stopTime.Ticks > 0)
             {
                 seconds += (int)paso.stopTime.TotalSeconds;
-                points.Add((GetX(seconds), GetY(paso.destination)));
+                points.Add((auxX, auxY));
             }
         }
 
