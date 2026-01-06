@@ -3,6 +3,7 @@
 @using TimeNet2026.Topo
 @using TimeNet2026.Storage
 @inject OnyxStorage mvarStorage
+@rendermode InteractiveServer
 
 @* <TimeNetControl Width="800" Height="800" Storage="@mvarTopoStorage" Asimilation="@mvarAsimilation" PkMode="false"/> *@
 <TimeNetControl Width="800" Height="800" Storage="@mvarTopoStorage" Asimilation="@mvarAsimilation" Splines="true" PkMode="true" />

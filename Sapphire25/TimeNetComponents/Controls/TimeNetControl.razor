@@ -1,5 +1,6 @@
 ﻿@using TimeNet2026.Timed
 @using TimeNet2026.Topo
+@using System.Globalization
 @namespace TimeNetComponents.Controls
 
 @if(null==Asimilation ||null==Storage || null==Asimilation.origin)
@@ -9,60 +10,82 @@
 else
 {
     <svg width="@Width" height="@Height" style="background:#f8f9fa;border:1px solid #ccc;">
-        <defs>
-            @if(null!=Storage)
-            {
-                foreach(Asimilation asimilation in Storage.ColAsimilations)
+        <g transform="translate(@DisplayOffsetX.ToString(CultureInfo.InvariantCulture),0)">
+            <defs>
+                @if (null != Storage)
                 {
-                    <path id="asi-@asimilation.id"
-                        fill="none"
-                        stroke="@asimilation.color[0]"
-                        stroke-width="3"
-                        d="@GetTrace(asimilation)" />
+                    foreach (Asimilation asimilation in Storage.ColAsimilations)
+                    {
+                        <path id="asi-@asimilation.id"
+                                fill="none"
+                                stroke="@asimilation.color[0]"
+                                stroke-width="3"
+                                d="@GetTrace(asimilation)" />
+                    }
+                }
+            </defs>
+        
+            <!--Ejes cartesianos-->
+            <line x1="@(mvarMarginX)" y1="@(mvarMarginY)" x2="@(mvarMarginX)" y2="@(mvarMaxY)" stroke="black" stroke-width="1" />
+            <line x1="@(mvarMarginX)" y1="@(mvarMaxY)" x2="@(mvarMaxX)" y2="@(mvarMaxY)" stroke="black" stroke-width="1" />
+
+            <!--Estaciones-->
+            @if (true)
+            {
+                double y = GetY(Asimilation.origin);
+                if (y >= 0)
+                {
+                    @((MarkupString)$"<text x='45' y='{y + 5}' font-size='12' text-anchor='end'>{Asimilation.origin.name}</text>")
+                    <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" stroke="#eee" stroke-width="1" />
                 }
             }
-        </defs>
-        <!--Ejes cartesianos-->
-        <line x1="@(mvarMarginX)" y1="@(mvarMarginY)" x2="@(mvarMarginX)" y2="@(mvarMaxY)" stroke="black" stroke-width="1"/>
-        <line x1="@(mvarMarginX)" y1="@(mvarMaxY)" x2="@(mvarMaxX)" y2="@(mvarMaxY)" stroke="black" stroke-width="1" />
+            @foreach (AsimilationStep paso in Asimilation.Steps)
+            {
+                double y = GetY(paso.destination);
+                if (y >= 0)
+                {
+                    @((MarkupString)$"<text x='45' y='{y + 5}' font-size='12' text-anchor='end'>{paso.destination.name}</text>")
+                    <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" stroke="#eee" stroke-width="1" />
+                }
+            }
+            <!--Regla horaria-->
+            @{
+                double segundosVisibles = mvarTotalSeconds / ZoomX;
+                double fin = OffsetX + segundosVisibles;
+                //Calculamos la primera y la última hora completa visible
+                int horaInicio = (int)Math.Ceiling(OffsetX / 3600.0);
+                int horaFin = (int)Math.Floor(fin / 3600.0);
 
-        <!--Estaciones-->
-        @if(true)
-        {
-            double y = GetY(Asimilation.origin);
-            if(y>=0)
-            {
-                @((MarkupString)$"<text x='45' y='{y + 5}' font-size='12' text-anchor='end'>{Asimilation.origin.name}</text>")
-                <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" stroke="#eee" stroke-width="1" />
+                    var svgText = new System.Text.StringBuilder();
+                    for (int h = horaInicio; h <= horaFin; h++)
+                    {
+                        double x = GetX(h * 3600);
+                        svgText.Append($"<text x='{x}' y='{mvarMaxY + 15}' font-size='14' text-anchor='middle'>{h}:00</text>");
+                        svgText.Append($"<line x1='{x}' y1='{mvarMarginY}' x2='{x}' y2='{mvarMaxY}' stroke='#0ee' stroke-width='1' />");
+                    }                
             }
-        }
-        @foreach(AsimilationStep paso in Asimilation.Steps)
-        {
-            double y = GetY(paso.destination);
-            if(y>=0)
-            {
-                @((MarkupString)$"<text x='45' y='{y + 5}' font-size='12' text-anchor='end'>{paso.destination.name}</text>")
-                <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" stroke="#eee" stroke-width="1" />
-            }
-        }
-        <!--Regla horaria-->
-        @for(int h=0;h<mvarTotalHours;h++)
-        {
-            double x = GetX(h * 3600);
-            @((MarkupString)$"<text x='{x}' y='{mvarMaxY + 15}' font-size='12' text-anchor='middle'>{h}:00</text>")
-            <line x1="@x" y1="@mvarMarginY" x2="@x" y2="@mvarMaxY" stroke="#eee" stroke-width="1" />
-        }
+            @((MarkupString)svgText.ToString())
 
-        @if(null!=Asimilation)
-        {
-            for (int i = 0; i < 8; i++)
+            @if (null != Asimilation)
             {
-                double xOffset = GetX(i * 600);
-                <use href="#asi-@Asimilation.id" transform="translate(@xOffset,0)" />
+                for (int i = 0; i < 8; i++)
+                {
+                    double xOffset = GetX(i * 600);
+                    <use href="#asi-@Asimilation.id" transform="translate(@xOffset,0)" />
+                }
             }
-        }       
+        </g>
     </svg>
 }
+<div class="mb-2">
+    <button @onclick="ZoomOut">-</button>
+    <button @onclick="ZoomIn">+</button>
+    <input type="range" min="0" max="@((TotalHours * 3600 * ZoomX) - (mvarMaxX - mvarMarginX))"
+           step="10"
+           style="width:200px"
+           @bind="OffsetX"
+           />
+</div>
 @code {
     [Parameter] 
     public Asimilation? Asimilation { get; set; }
@@ -79,6 +102,11 @@ else
 
     private AsimilationView? mvarView;
 
+    private double ZoomX { get; set; } = 1.0; //Escala de tiempos.
+    private double OffsetX { get; set; } = 0.0; //Inicio de la representación
+    private double DisplayOffsetX => -OffsetX;
+    private const int TotalHours = 24;
+
     private long mvarMinPk;
     private long mvarMaxPk;
 
@@ -90,7 +118,6 @@ else
 
     private int mvarTotalSeconds = 0;
     private int mvarTotalMinutes = 0;
-    private int mvarTotalHours = 0;
 
     protected override void OnParametersSet()
     {
@@ -99,8 +126,7 @@ else
 
         //Ajustamos la duración del intervalo al tiempo de esta asimilación
         //Más adelante lo cambiaremos.
-        mvarTotalSeconds = (int)(Asimilation.duration?.TotalSeconds ?? 3600);
-        mvarTotalHours = (int)Math.Ceiling(mvarTotalSeconds / 3600.0);
+        mvarTotalSeconds = TotalHours * 3600;
     }
 
     private double GetY(Station? station)
@@ -117,8 +143,24 @@ else
     }
     private double GetX(int seconds)
     {
-        if (mvarTotalSeconds == 0) return mvarMarginX;
-        return mvarMarginX + ((mvarMaxX - mvarMarginX) * seconds) / mvarTotalSeconds;
+        return mvarMarginX + ((mvarMaxX - mvarMarginX) * seconds * ZoomX) / mvarTotalSeconds;
+    }
+
+    private void ZoomIn()
+    {
+        ZoomX = Math.Min(ZoomX * 1.25, 10.0);
+        StateHasChanged();
+    }
+    private void ZoomOut()
+    {
+        ZoomX = Math.Max(ZoomX / 1.25, 1.0);
+        StateHasChanged();
+    }
+    private void OnScrollChanged(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out var val))
+            OffsetX = val;
+        StateHasChanged();
     }
 
     private string GetTrace(Asimilation asimila)
