@@ -60,8 +60,8 @@ else
                     for (int h = horaInicio; h <= horaFin; h++)
                     {
                         double x = GetX(h * 3600);
-                        svgText.Append($"<text x='{x}' y='{mvarMaxY + 15}' font-size='14' text-anchor='middle'>{h}:00</text>");
-                        svgText.Append($"<line x1='{x}' y1='{mvarMarginY}' x2='{x}' y2='{mvarMaxY}' stroke='#0ee' stroke-width='1' />");
+                    svgText.Append($"<text x='{x.ToString(CultureInfo.InvariantCulture)}' y='{(mvarMaxY + 15).ToString(CultureInfo.InvariantCulture)}' font-size='14' text-anchor='middle'>{h}:00</text>");
+                    svgText.Append($"<line x1='{x.ToString(CultureInfo.InvariantCulture)}' y1='{mvarMarginY.ToString(CultureInfo.InvariantCulture)}' x2='{x.ToString(CultureInfo.InvariantCulture)}' y2='{mvarMaxY.ToString(CultureInfo.InvariantCulture)}' stroke='#0ee' stroke-width='1' />");
                     }                
             }
             @((MarkupString)svgText.ToString())
@@ -129,7 +129,7 @@ else
         mvarTotalSeconds = TotalHours * 3600;
     }
 
-    private double GetY(Station? station)
+    private string GetY(Station? station, double offset = 0)
     {
         if (null != mvarView && null != station && mvarView.Elements.ContainsKey(station))
         {
@@ -186,16 +186,17 @@ else
             if (auxY >= 0)
             {
                 auxX = GetX(seconds);
+                Console.WriteLine($"Paso: {paso.destination.name}, seconds: {seconds}, X: {auxX}, Y: {auxY}");
                 if(lastTrace)
-                    points.Add($"L {auxX},{auxY}");
+                    points.Add($"L {auxX.ToString(CultureInfo.InvariantCulture)},{auxY.ToString(CultureInfo.InvariantCulture)}");
                 else
-                    points.Add($"M {auxX},{auxY}");
+                    points.Add($"M {auxX.ToString(CultureInfo.InvariantCulture)},{auxY.ToString(CultureInfo.InvariantCulture)}");
 
                 lastTrace = true; //Habiendo pintado, seguimos la línea.
                 if (paso.stopTime.Ticks > 0)
                 {
                     seconds += (int)paso.stopTime.TotalSeconds;
-                    points.Add($"L {auxX},{auxY}");
+                    points.Add($"L {auxX.ToString(CultureInfo.InvariantCulture)},{auxY.ToString(CultureInfo.InvariantCulture)}");
                 }
             }
             else
@@ -229,7 +230,7 @@ else
 
         const double minDxForSpline = 30.0; // Distancia mínima en X para permitir spline
         var sb = new System.Text.StringBuilder();
-        sb.Append($"M {points[0].x},{points[0].y} ");
+        sb.Append($"M {points[0].x.ToString(CultureInfo.InvariantCulture)},{points[0].y.ToString(CultureInfo.InvariantCulture)} ");
 
         for (int i = 0; i < points.Count - 1; i++)
         {
@@ -240,14 +241,14 @@ else
 
             // Si no hay avance en X o el avance es muy pequeño, trazo recto
             if (dx < minDxForSpline)
-                sb.Append($"L {x1},{y1} ");
+                sb.Append($"L {x1.ToString(CultureInfo.InvariantCulture)},{y1.ToString(CultureInfo.InvariantCulture)} ");
             else
             {
                 // Calcula los puntos de control, asegurando que no sobrepasen x1
                 double c1x = x0 + (minDxForSpline/2);
                 double c2x = x1 - (minDxForSpline / 2);
 
-                sb.Append($"C {c1x},{y0} {c2x},{y1} {x1},{y1} ");
+                sb.Append($"C {c1x.ToString(CultureInfo.InvariantCulture)},{y0.ToString(CultureInfo.InvariantCulture)} {c2x.ToString(CultureInfo.InvariantCulture)},{y1.ToString(CultureInfo.InvariantCulture)} {x1.ToString(CultureInfo.InvariantCulture)},{y1.ToString(CultureInfo.InvariantCulture)} ");
             }
         }
         return sb.ToString();
