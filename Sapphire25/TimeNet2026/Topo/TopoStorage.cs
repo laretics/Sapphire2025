@@ -24,8 +24,8 @@ namespace TimeNet2026.Topo
 			mcolRauta = new Dictionary<Guid, Rauta>();			
 		}
 		public IEnumerable<Axis> ColAxis { get => mcolAxis.Values; }
-		public IEnumerable<Asimilation> ColAsimilations { get => mcolAsimilations.Values; }
-		public IEnumerable<Rauta> ColRauta { get => mcolRauta.Values; }
+		public Dictionary<string,Asimilation> ColAsimilations { get => mcolAsimilations; }
+		public Dictionary<Guid,Rauta> ColRauta { get => mcolRauta; }
 		public Asimilation? GetAsimilation(string? id)
 		{
 			if (null == id) return null;

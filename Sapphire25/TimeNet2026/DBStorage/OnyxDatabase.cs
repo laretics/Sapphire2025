@@ -154,7 +154,7 @@ namespace TimeNet2026.DBStorage
                     Rautatie.Add(nuevoRauta);
                     SerializeHeader(auxRauta.Header);
                     await SaveChangesAsync();                    
-                    foreach (Plan auxPlan in auxRauta.Plans)
+                    foreach (Plan auxPlan in auxRauta.Plans.Values)
                     {
                         DBPlan nuevoPlan = new DBPlan();
                         nuevoPlan.RautaId = nuevoRauta.Id;
@@ -206,7 +206,7 @@ namespace TimeNet2026.DBStorage
                     List < DBPlan > planes = await Plans.Where(x => x.RautaId == auxRauta.Id).ToListAsync();
                     foreach (DBPlan auxPlan in planes)
                     {
-						Plan nuevoPlan = new Plan();
+						Plan nuevoPlan = new Plan(topoStorage);
 						nuevoPlan.mvarId = auxPlan.PlanId;
 						nuevoPlan.mvarName = auxPlan.Name;
 						nuevoPlan.mvarComment = auxPlan.Comment;
@@ -482,7 +482,7 @@ namespace TimeNet2026.DBStorage
 				#endregion todos
 				await SaveChangesAsync();
             }
-			foreach (Asimilation asimilacion in rhs.ColAsimilations)
+			foreach (Asimilation asimilacion in rhs.ColAsimilations.Values)
 			{
 				DBAsimilation nuevaAsimilacion = new DBAsimilation();
 				nuevaAsimilacion.TopoStorageId = nuevo.Id;

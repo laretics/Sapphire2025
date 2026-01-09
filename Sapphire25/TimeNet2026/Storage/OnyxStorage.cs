@@ -17,13 +17,11 @@ namespace TimeNet2026.Storage
 {
 	public class OnyxStorage
 	{
-		internal Dictionary<string, Plan> mcolPlans; //Colección de planes de explotación.
 		private OnyxDatabase mvarStorage;
 		private Dictionary<Guid,TopoStorage> mcolTopoStorages;
 
 		public OnyxStorage(OnyxDatabase db)
 		{
-			mcolPlans = new Dictionary<string, Plan>();
 			mcolTopoStorages = new Dictionary<Guid, TopoStorage>();
 			mvarStorage = db;
 			mvarStorage.Database.EnsureCreated(); //Se asegura de que existe la base de datos.

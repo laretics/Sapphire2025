@@ -1,30 +1,58 @@
-﻿@page "/asimilationvw/{TopoStorageId:guid}/{AsimilationId}"
+﻿@page "/asimilationview/{TopoStorageId}/{RautatieId}/{PlanId}/{AsimilationId}"
 @using TimeNet2026.Timed
 @using TimeNet2026.Topo
 @using TimeNet2026.Storage
 @inject OnyxStorage mvarStorage
+
 @rendermode InteractiveServer
 
-@* <TimeNetControl Width="800" Height="800" Storage="@mvarTopoStorage" Asimilation="@mvarAsimilation" PkMode="false"/> *@
-<TimeNetControl Width="800" Height="800" Storage="@mvarTopoStorage" Asimilation="@mvarAsimilation" Splines="true" PkMode="true" />
-
+<TimeNetControl Width="800" Height="800"
+                TopoStorage="@mvarTopoStorage"
+                Rauta="@mvarRauta"
+                Plan="@mvarPlan"     
+                Asimilation="@mvarAsimilation" 
+                Splines="false" PkMode="true" />
 @code {
+    //https://localhost:7211/asimilationvw/fst2025/44x1L
     [Parameter]
-    public Guid TopoStorageId { get; set; }
+    public string? TopoStorageId{ get; set; }
+    [Parameter]
+    public string? RautatieId{ get; set; }
+    [Parameter]
+    public string? PlanId { get; set; }
     [Parameter]
     public string? AsimilationId { get; set; }
 
+    private TopoStorage? mvarTopoStorage { get; set; }
+    private Rauta? mvarRauta { get; set; }
     private Asimilation? mvarAsimilation {get;set;}
+    private Plan? mvarPlan { get; set; }
 
-    private TopoStorage? mvarTopoStorage {get;set;}
 
     protected async override Task OnInitializedAsync()
     {
         await mvarStorage.Init();
-        if(mvarStorage.Storages.ContainsKey(TopoStorageId))
+        if(null!=PlanId && null!=AsimilationId && null !=TopoStorageId && null!=RautatieId)
         {
-            mvarTopoStorage = mvarStorage.Storages[TopoStorageId];
-            mvarAsimilation = mvarTopoStorage.GetAsimilation(AsimilationId);
-        }              
+            Guid auxTopoStorageId = Guid.Empty;
+            Guid auxRautaId = Guid.Empty;
+            if(Guid.TryParse(TopoStorageId,out auxTopoStorageId) && Guid.TryParse(RautatieId, out auxRautaId))
+            {
+                if (mvarStorage.Storages.ContainsKey(auxTopoStorageId))
+                {
+                    mvarTopoStorage = mvarStorage.Storages[auxTopoStorageId];
+                    if (mvarTopoStorage.ColAsimilations.ContainsKey(AsimilationId))
+                    {
+                        mvarAsimilation = mvarTopoStorage.ColAsimilations[AsimilationId];
+                        if (mvarTopoStorage.ColRauta.ContainsKey(auxRautaId))
+                        {
+                            mvarRauta = mvarTopoStorage.ColRauta[auxRautaId];
+                            if (mvarRauta.Plans.ContainsKey(PlanId))
+                                mvarPlan = mvarRauta.Plans[PlanId];
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -20,6 +20,7 @@ namespace TimeNet2026.Timed
 		public string Color { get => mvarColor[0]; }
 		public string Name { get => mvarName; }
         public string Id { get => mvarId; } //Identificador del plan
+		public TopoStorage Parent { get; private set; }
         public IEnumerable<Circulation> Circulations { get => mcolCirculations.Values; }
 		public IEnumerable<Schedule> Schedules { get => mcolSchedules.Values; }
 		internal Dictionary<string, Circulation> mcolCirculations;
@@ -78,8 +79,9 @@ namespace TimeNet2026.Timed
 		}
 		internal Schedule? currentSchedule { get; set; }
 
-		internal Plan()
+		internal Plan(TopoStorage parent)
 		{
+			this.Parent = parent;
 			mvarId = string.Empty;
 			mvarName = string.Empty;
 			mvarComment = string.Empty;
@@ -87,7 +89,7 @@ namespace TimeNet2026.Timed
 			mcolCirculations = new Dictionary<string, Circulation>();
 			mcolSchedules = new Dictionary<string, Schedule>();
 		}
-		internal Plan(XmlNode root, TopoStorage topoStorage):this()
+		internal Plan(XmlNode root, TopoStorage topoStorage):this(topoStorage)
 		{
 			mvarId = XMLUtil.StringParam(root, "id");
 			mvarName = XMLUtil.StringParam(root, "name");
@@ -97,7 +99,7 @@ namespace TimeNet2026.Timed
 				switch (hijo.Name)
 				{
 					case "circulations": //Circulaciones definidas en el plan
-						deserializeCirculations(hijo,topoStorage);
+						deserializeCirculations(hijo,Parent);
 						break;
 				}
 			}

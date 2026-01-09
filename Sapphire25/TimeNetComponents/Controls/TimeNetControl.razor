@@ -3,37 +3,55 @@
 @using System.Globalization
 @namespace TimeNetComponents.Controls
 
-@if(null==Asimilation ||null==Storage || null==Asimilation.origin)
+@if(null==TopoStorage)
 {
-    <div>No hay datos!</div>
+    <div>No está definido el Storage</div>
+}
+else if(null==Rauta)
+{
+    <div>No está definido el contenedor de planes de explotación</div>
+}
+else if(null==Plan)
+{
+    <div>No está definido el plan de explotación</div>
+}
+else if(null==Asimilation)
+{
+    <div>No está definida la asimilación de la vista de la malla</div>
+}
+else if(null==Asimilation.origin)
+{
+    <div>La asimilación de la vista de la malla no tiene un origen especificado</div>
 }
 else
 {
     <svg width="@Width" height="@Height" style="background:#f8f9fa;border:1px solid #ccc;">
-        <g transform="translate(@DisplayOffsetX.ToString(CultureInfo.InvariantCulture),0)">
-            <defs>
-                @if (null != Storage)
-                {
-                    foreach (Asimilation asimilation in Storage.ColAsimilations)
-                    {
-                        <path id="asi-@asimilation.id"
-                                fill="none"
-                                stroke="@asimilation.color[0]"
-                                stroke-width="3"
-                                d="@GetTrace(asimilation)" />
-                    }
-                }
-            </defs>
         
-            <!--Ejes cartesianos-->
-            <line x1="@(mvarMarginX)" y1="@(mvarMarginY)" x2="@(mvarMarginX)" y2="@(mvarMaxY)" stroke="black" stroke-width="1" />
-            <line x1="@(mvarMarginX)" y1="@(mvarMaxY)" x2="@(mvarMaxX)" y2="@(mvarMaxY)" stroke="black" stroke-width="1" />
+        <defs>
+            <clipPath id="clip-right">
+                <rect x="@mvarMarginX" y="0" 
+                    width="@((Width-mvarMarginX).ToString(CultureInfo.InvariantCulture))"
+                    height="@Height"/>
+            </clipPath>
+            @if (null != Plan)
+            {
+                foreach (Asimilation asimilation in TopoStorage.ColAsimilations.Values)
+                {
+                    <path id="asi-@asimilation.id"
+                            fill="none"
+                            stroke="@asimilation.color[0]"
+                            stroke-width="3"
+                            d="@GetTrace(asimilation)" />
+                }
+            }
+        </defs>
 
-            <!--Estaciones-->
+        <!--Estaciones-->
+        <g>
             @if (true)
             {
-                double y = GetY(Asimilation.origin);
-                if (y >= 0)
+                string y = GetY(Asimilation.origin);
+                if (y.Length > 0)
                 {
                     @((MarkupString)$"<text x='45' y='{y + 5}' font-size='12' text-anchor='end'>{Asimilation.origin.name}</text>")
                     <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" stroke="#eee" stroke-width="1" />
@@ -41,13 +59,22 @@ else
             }
             @foreach (AsimilationStep paso in Asimilation.Steps)
             {
-                double y = GetY(paso.destination);
-                if (y >= 0)
+                string y = GetY(paso.destination);
+                if (y.Length > 0)
                 {
                     @((MarkupString)$"<text x='45' y='{y + 5}' font-size='12' text-anchor='end'>{paso.destination.name}</text>")
                     <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" stroke="#eee" stroke-width="1" />
                 }
             }
+        </g>
+
+        <!--Contenido desplazable-->
+        <g transform="translate(@DisplayOffsetX.ToString(CultureInfo.InvariantCulture),0)" clip-path="url(#clip-right)">        
+
+            <!--Ejes cartesianos-->
+            <line x1="@(mvarMarginX)" y1="@(mvarMarginY)" x2="@(mvarMarginX)" y2="@(mvarMaxY)" stroke="black" stroke-width="1" />
+            <line x1="@(mvarMarginX)" y1="@(mvarMaxY)" x2="@(mvarMaxX)" y2="@(mvarMaxY)" stroke="black" stroke-width="1" />
+
             <!--Regla horaria-->
             @{
                 double segundosVisibles = mvarTotalSeconds / ZoomX;
@@ -55,23 +82,30 @@ else
                 //Calculamos la primera y la última hora completa visible
                 int horaInicio = (int)Math.Ceiling(OffsetX / 3600.0);
                 int horaFin = (int)Math.Floor(fin / 3600.0);
+                string yt = (mvarMaxY + 15).ToString(CultureInfo.InvariantCulture);
+                string yf0 = mvarMarginY.ToString(CultureInfo.InvariantCulture);
+                string yff = mvarMaxY.ToString(CultureInfo.InvariantCulture);
 
                     var svgText = new System.Text.StringBuilder();
                     for (int h = horaInicio; h <= horaFin; h++)
                     {
-                        double x = GetX(h * 3600);
-                    svgText.Append($"<text x='{x.ToString(CultureInfo.InvariantCulture)}' y='{(mvarMaxY + 15).ToString(CultureInfo.InvariantCulture)}' font-size='14' text-anchor='middle'>{h}:00</text>");
-                    svgText.Append($"<line x1='{x.ToString(CultureInfo.InvariantCulture)}' y1='{mvarMarginY.ToString(CultureInfo.InvariantCulture)}' x2='{x.ToString(CultureInfo.InvariantCulture)}' y2='{mvarMaxY.ToString(CultureInfo.InvariantCulture)}' stroke='#0ee' stroke-width='1' />");
+                        string x = GetX(h * 3600);                        
+                        svgText.Append($"<text x='{x}' y='{yt}' font-size='14' text-anchor='middle'>{h}:00</text>");
+                        svgText.Append($"<line x1='{x}' y1='{yf0}' x2='{x}' y2='{yff}' stroke='#0ee' stroke-width='1' />");
                     }                
             }
             @((MarkupString)svgText.ToString())
 
             @if (null != Asimilation)
             {
-                for (int i = 0; i < 8; i++)
+                System.Diagnostics.Debug.Assert(null != Plan);
+                foreach(Circulation circulation in Plan.Circulations)
                 {
-                    double xOffset = GetX(i * 600);
-                    <use href="#asi-@Asimilation.id" transform="translate(@xOffset,0)" />
+                    string xOffset = GetX((int)circulation.departure.TotalSeconds, 0);
+                    if(null!=circulation.asimilation)
+                    {
+                        <use href="#asi-@circulation.asimilation.id" transform="translate(@xOffset,0)" />
+                    }                    
                 }
             }
         </g>
@@ -80,17 +114,22 @@ else
 <div class="mb-2">
     <button @onclick="ZoomOut">-</button>
     <button @onclick="ZoomIn">+</button>
-    <input type="range" min="0" max="@((TotalHours * 3600 * ZoomX) - (mvarMaxX - mvarMarginX))"
-           step="10"
+    <input type="range" min="0" max="@(mvarMaxOffset.ToString(CultureInfo.InvariantCulture))"
+           step="@(mvarSliderStep.ToString(CultureInfo.InvariantCulture))"
            style="width:200px"
            @bind="OffsetX"
            />
 </div>
 @code {
+    [Parameter]
+    public TopoStorage? TopoStorage { get; set; }
+    [Parameter]
+    public Rauta? Rauta{ get; set; }
+    [Parameter]
+    public Plan? Plan { get; set; }
     [Parameter] 
     public Asimilation? Asimilation { get; set; }
-    [Parameter]
-    public TopoStorage? Storage { get; set; }
+
     [Parameter]
     public int Width { get; set; }
     [Parameter]
@@ -119,14 +158,31 @@ else
     private int mvarTotalSeconds = 0;
     private int mvarTotalMinutes = 0;
 
+    double mvarVisibleSeconds;
+    double mvarMaxOffset;
+    double mvarSliderStep = 1;
+
     protected override void OnParametersSet()
     {
-        if (null == Asimilation || null==Storage) return;
-        mvarView = new AsimilationView(Asimilation, Storage);
+        if (null == Asimilation || null==Plan) return;
+        mvarView = new AsimilationView(Asimilation, Plan.Parent);
 
         //Ajustamos la duración del intervalo al tiempo de esta asimilación
         //Más adelante lo cambiaremos.
         mvarTotalSeconds = TotalHours * 3600;
+
+        updateSliderParams();
+
+        // Corrige OffsetX si está fuera de rango tras un cambio de zoom o datos
+        if (OffsetX > mvarMaxOffset)
+            OffsetX = mvarMaxOffset;
+    }
+
+    private void updateSliderParams()
+    {
+        mvarVisibleSeconds = mvarTotalSeconds / ZoomX;
+        mvarMaxOffset = Math.Max(0, mvarTotalSeconds - mvarVisibleSeconds);
+        mvarSliderStep = Math.Max(1, mvarVisibleSeconds / (mvarMaxX - mvarMarginX));        
     }
 
     private string GetY(Station? station, double offset = 0)
@@ -134,16 +190,22 @@ else
         if (null != mvarView && null != station && mvarView.Elements.ContainsKey(station))
         {
             StationViewRef punto = mvarView.Elements[station];
+            double auxValor=-1;
             if (PkMode && mvarView.MaxPk > 0)
-                return mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.ViewPk) / mvarView.MaxPk;
+                auxValor= (mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.ViewPk) / mvarView.MaxPk)+offset;
             else if (mvarView.MaxIndex > 0)
-                return mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.Index) / mvarView.MaxIndex;
+                auxValor = (mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.Index) / mvarView.MaxIndex)+offset;
+
+            if(auxValor>=0)
+                return auxValor.ToString(CultureInfo.InvariantCulture);
         }
-        return -1;
+        return string.Empty;
     }
-    private double GetX(int seconds)
+    private string GetX(int seconds, double offset = 0)
     {
-        return mvarMarginX + ((mvarMaxX - mvarMarginX) * seconds * ZoomX) / mvarTotalSeconds;
+        double relativeSeconds = seconds - OffsetX;
+        double salida = mvarMarginX + ((mvarMaxX - mvarMarginX) * relativeSeconds * ZoomX) / mvarTotalSeconds+offset;
+        return salida.ToString(CultureInfo.InvariantCulture);
     }
 
     private void ZoomIn()
@@ -176,14 +238,14 @@ else
         List<string> points = new List<string>();
         int seconds = 0;
         bool lastTrace = true;
-        double auxY = -1;
-        double auxX = -1;
+        string auxY = string.Empty;
+        string auxX = string.Empty;
         points.Add($"M {GetX(0)},{GetY(asimila.origin)}");
         foreach(AsimilationStep paso in asimila.Steps)
         {
             seconds += (int)paso.tripTime.TotalSeconds;
             auxY = GetY(paso.destination);
-            if (auxY >= 0)
+            if (auxY.Length>0)
             {
                 auxX = GetX(seconds);
                 Console.WriteLine($"Paso: {paso.destination.name}, seconds: {seconds}, X: {auxX}, Y: {auxY}");
@@ -206,11 +268,11 @@ else
     }
     private string GetSplinePathSVG(Asimilation asimila)
     {
-        var points = new List<(double x, double y)>();
+        var points = new List<(string x, string y)>();
         int seconds = 0;
         bool lastTrace = true;
-        double auxY = -1;
-        double auxX = -1;
+        string auxY = string.Empty;
+        string auxX = string.Empty;
         points.Add((GetX(0), GetY(asimila.origin)));
         foreach (AsimilationStep paso in asimila.Steps)
         {
@@ -232,25 +294,25 @@ else
         var sb = new System.Text.StringBuilder();
         sb.Append($"M {points[0].x.ToString(CultureInfo.InvariantCulture)},{points[0].y.ToString(CultureInfo.InvariantCulture)} ");
 
-        for (int i = 0; i < points.Count - 1; i++)
-        {
-            var (x0, y0) = points[i];
-            var (x1, y1) = points[i + 1];
-            double dx = x1 - x0;
-            double dy = y1 - y0;
+        // for (int i = 0; i < points.Count - 1; i++)
+        // {
+        //     var (x0, y0) = points[i];
+        //     var (x1, y1) = points[i + 1];
+        //     double dx = x1 - x0;
+        //     double dy = y1 - y0;
 
-            // Si no hay avance en X o el avance es muy pequeño, trazo recto
-            if (dx < minDxForSpline)
-                sb.Append($"L {x1.ToString(CultureInfo.InvariantCulture)},{y1.ToString(CultureInfo.InvariantCulture)} ");
-            else
-            {
-                // Calcula los puntos de control, asegurando que no sobrepasen x1
-                double c1x = x0 + (minDxForSpline/2);
-                double c2x = x1 - (minDxForSpline / 2);
+        //     // Si no hay avance en X o el avance es muy pequeño, trazo recto
+        //     if (dx < minDxForSpline)
+        //         sb.Append($"L {x1.ToString(CultureInfo.InvariantCulture)},{y1.ToString(CultureInfo.InvariantCulture)} ");
+        //     else
+        //     {
+        //         // Calcula los puntos de control, asegurando que no sobrepasen x1
+        //         double c1x = x0 + (minDxForSpline/2);
+        //         double c2x = x1 - (minDxForSpline / 2);
 
-                sb.Append($"C {c1x.ToString(CultureInfo.InvariantCulture)},{y0.ToString(CultureInfo.InvariantCulture)} {c2x.ToString(CultureInfo.InvariantCulture)},{y1.ToString(CultureInfo.InvariantCulture)} {x1.ToString(CultureInfo.InvariantCulture)},{y1.ToString(CultureInfo.InvariantCulture)} ");
-            }
-        }
+        //         sb.Append($"C {c1x.ToString(CultureInfo.InvariantCulture)},{y0.ToString(CultureInfo.InvariantCulture)} {c2x.ToString(CultureInfo.InvariantCulture)},{y1.ToString(CultureInfo.InvariantCulture)} {x1.ToString(CultureInfo.InvariantCulture)},{y1.ToString(CultureInfo.InvariantCulture)} ");
+        //     }
+        // }
         return sb.ToString();
     }
 }
