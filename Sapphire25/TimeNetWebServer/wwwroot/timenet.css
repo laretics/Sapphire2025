@@ -1,0 +1,30 @@
+﻿.timenet-hour-line-thick {
+    stroke: #d1e7f0;
+    stroke-width: 5;
+}
+
+.timenet-hour-line-thin {
+    stroke: #8fa3ad;
+    stroke-width: 3;
+}
+
+.timenet-half-hour-line {
+    stroke: #b0c4cc;
+    stroke-width: 2;
+}
+
+.timenet-quarter-hour-line {
+    stroke: #d1e7f0;
+    stroke-width: 1;
+}
+
+.timenet-five-minute-line {
+    stroke: #e8f4f8;
+    stroke-width: 1;
+}
+
+.timenet-station-name-label {
+    font-size: 12px;
+    text-anchor:end;
+    fill:teal;
+}
