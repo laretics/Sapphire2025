@@ -36,14 +36,46 @@ else
                     width="@(Width - mvarMarginX- mvarMarginXRight)"
                     height="@Height"/>
             </clipPath>
-            <linearGradient id="dawn-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#333" />
-                <stop offset="100%" stop-color="#f8f9fa" />
-            </linearGradient>
-            <linearGradient id="dusk-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#f8f9fa" />
-                <stop offset="100%" stop-color="#333" />
-            </linearGradient>
+            @{
+
+                var stops = new List<string>();
+                double ancho = mvarMaxX - mvarMarginX;
+                for (double t = Math.Ceiling(OffsetXSeconds / 900.0) * 900; t <= OffsetXSeconds + ZoomXSeconds; t += 300)
+                {
+                    int totalMinutes = (int)(t / 60);
+                    int hour = totalMinutes / 60;
+                    int minutes = totalMinutes % 60;
+                    if (minutes == 0)
+                    {
+                        double xVal = GetX((int)t);
+                        DateTime hourDT = DateTime.Today.AddSeconds(t);
+                        bool isDay = hourDT >= sunrise && hourDT <= sunset;
+                        TimeSpan toSunrise = sunrise - hourDT;
+                        TimeSpan toSunset = sunset - hourDT;
+                        bool isDawn = Math.Abs(toSunrise.TotalMinutes) <= 30;
+                        bool isDusk = Math.Abs(toSunset.TotalMinutes) <= 30;
+                        double startOffset = (xVal / ancho) * 100;
+                        double endOffset = (GetX((int)t + 3600) / ancho) * 100;
+                        if (isDawn)
+                        {
+                            stops.Add($"<stop offset='{startOffset}%' stop-color='#333' />");
+                            stops.Add($"<stop offset='{endOffset}%' stop-color='#f8f9fa' />");
+                        }
+                        else if (isDusk)
+                        {
+                            stops.Add($"<stop offset='{startOffset}%' stop-color='#f8f9fa' />");
+                            stops.Add($"<stop offset='{endOffset}%' stop-color='#333' />");
+                        }
+                        else
+                        {
+                            string color = isDay ? "#f8f9fa" : "#333";
+                            stops.Add($"<stop offset='{startOffset}%' stop-color='{color}' />");
+                            stops.Add($"<stop offset='{endOffset}%' stop-color='{color}' />");
+                        }
+                    }
+                }
+            }
+            <linearGradient id="time-gradient" x1="0%" y1="0%" x2="100%" y2="0%">@string.Join("", stops)</linearGradient>
             @{
                 var traces = new Dictionary<string, TraceInfo>();
             }
@@ -112,6 +144,8 @@ else
         <g transform="translate(@mvarMarginX,0)" clip-path="url(#clip-right)">
             <!--Contenido desplazable-->
             <g transform="translate(@DisplayOffsetXPx,0)">
+                <rect x="0" y="0" width="@(mvarMaxX - mvarMarginX)" height="@mvarMarginY" fill="url(#time-gradient)" />
+                <rect x="0" y="@mvarMaxY" width="@(mvarMaxX - mvarMarginX)" height="@(Height - mvarMaxY)" fill="url(#time-gradient)" />
                 <!--Regla horaria-->
                 @{
                     double fin = OffsetXSeconds + ZoomXSeconds;
@@ -148,8 +182,6 @@ else
                             double topHeight = mvarMarginY;
                             double bottomY = mvarMaxY;
                             double bottomHeight = Height - mvarMaxY;
-                            svgText.Append($"<rect x='{xVal - rectWidth / 2}' y='0' width='{rectWidth}' height='{topHeight}' fill='{bgFill}' />");
-                            svgText.Append($"<rect x='{xVal - rectWidth / 2}' y='{bottomY}' width='{rectWidth}' height='{bottomHeight}' fill='{bgFill}' />");
                             svgText.Append($"<text x='{x}' y='{yTop}' class='timenet-hour-text-up' dominant-baseline='text-bottom' fill='{textColor}'>{hour}</text>");
                             svgText.Append($"<text x='{x}' y='{yt}' class='timenet-hour-text-down' dominant-baseline='text-top' fill='{textColor}'>{hour}</text>");
                             svgText.Append($"<line x1='{x}' y1='{yf0}' x2='{x}' y2='{yff}' stroke='{hourLineColor}' stroke-width='5' />");
