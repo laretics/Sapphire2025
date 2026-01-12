@@ -37,14 +37,14 @@ namespace TimeNetComponents.Controls
 				int auxIndex = 0;
 				long cumulPk = 0;
 				Axis currentAxis = Parent.Steps.First().axis;
-				StationViewRef nueva = new StationViewRef(currentAxis, auxIndex++, cumulPk);
+				StationViewRef nueva = new StationViewRef(currentAxis, auxIndex++, cumulPk, lastStation.shortName[0] < 'a');
 				Elements.Add(lastStation, nueva);
 				foreach (AsimilationStep paso in Parent.Steps)
 				{
 					if(paso.axis==currentAxis)
 						cumulPk += Math.Abs(paso.destination.pk - lastStation.pk);
 
-					nueva = new StationViewRef(paso.axis, auxIndex++, cumulPk);
+					nueva = new StationViewRef(paso.axis, auxIndex++, cumulPk, paso.destination.shortName[0] < 'a');
 
 					Elements.Add(paso.destination, nueva);
 					currentAxis = paso.axis;

@@ -1,30 +1,96 @@
-﻿.timenet-hour-line-thick {
-    stroke: #d1e7f0;
+﻿:root {
+    /* Tema claro (por defecto, para luz intensa) */
+    /* Definición de variables en CSS*/
+    --bg-color: linear-gradient(to bottom, #f8f9fa, #e9ecef);
+    --border-color: #ccc;
+    --station-line-color: #aaa;
+    --singular-line-color: #eee;
+    --circulation-label-color: black;
+    --hour-line-color: black;
+    --hour-line-thick-color: #d1e7f0;
+    --hour-line-thin-color: #8fa3ad;
+    --half-hour-line-color: #b0c4cc;
+    --quarter-hour-line-color: #d1e7f0;
+    --five-minute-line-color: #e8f4f8;
+    --singular-name-fill: gray;
+    --station-name-fill: teal;
+    --axis-stroke-color: black;
+    --hour-text-color: black;
+    /* Agrega más variables según los colores usados en el SVG, como para las líneas de circulación, etiquetas, etc. */
+}
+
+.timenet-svg {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+}
+
+
+
+.timenet-hour-line-thick {
+    stroke: var(--hour-line-thick-color);
     stroke-width: 5;
 }
 
 .timenet-hour-line-thin {
-    stroke: #8fa3ad;
+    stroke: var(--hour-line-thin-color);
     stroke-width: 3;
 }
 
 .timenet-half-hour-line {
-    stroke: #b0c4cc;
+    stroke: var(--half-hour-line-color);
     stroke-width: 2;
 }
 
 .timenet-quarter-hour-line {
-    stroke: #d1e7f0;
+    stroke: var(--quarter-hour-line-color);
     stroke-width: 1;
 }
 
 .timenet-five-minute-line {
-    stroke: #e8f4f8;
+    stroke: var(--five-minute-line-color);
+    stroke-width: 1;
+}
+
+.timenet-singular-name-label {
+    font-size: 9px;
+    text-anchor: end;
+    fill: var(--singular-name-fill);
+}
+
+.timenet-singular-line {
+    stroke: var(--singular-line-color);
     stroke-width: 1;
 }
 
 .timenet-station-name-label {
-    font-size: 12px;
-    text-anchor:end;
-    fill:teal;
+    font-size: 13px;
+    text-anchor: end;
+    fill: var(--station-name-fill);
+}
+
+.timenet-station-line {
+    stroke: var(--station-line-color);
+    stroke-width: 2;
+}
+
+.timenet-circulation-label {
+    font-size: 9px;
+    text-anchor: middle;
+    fill: var(--circulation-label-color);
+}
+
+.timenet-axis {
+    stroke: var(--axis-stroke-color);
+    stroke-width: 1;
+}
+
+.timenet-hour-text-up {
+    fill: var(--hour-text-color);
+    font-size: 14px;
+    text-anchor: middle;
+}
+.timenet-hour-text-down {
+    fill: var(--hour-text-color);
+    font-size: 14px;
+    text-anchor: middle;
 }

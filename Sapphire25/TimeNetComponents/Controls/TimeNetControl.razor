@@ -1,7 +1,10 @@
 ﻿@using TimeNet2026.Timed
 @using TimeNet2026.Topo
+@using TimeNet2026.Enviromental
 @using System.Globalization
+@using Microsoft.JSInterop
 @namespace TimeNetComponents.Controls
+@inject IJSRuntime JSRuntime
 
 @if(null==TopoStorage)
 {
@@ -25,7 +28,7 @@ else if(null==Asimilation.origin)
 }
 else
 {
-    <svg width="@Width" height="@Height" style="background:#f8f9fa;border:1px solid #ccc;" overflow="visible">
+    <svg width="@Width" height="@Height" class="timenet-svg" overflow="visible">
         
         <defs>
             <clipPath id="clip-right">
@@ -33,20 +36,28 @@ else
                     width="@(Width - mvarMarginX- mvarMarginXRight)"
                     height="@Height"/>
             </clipPath>
+            <linearGradient id="dawn-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#333" />
+                <stop offset="100%" stop-color="#f8f9fa" />
+            </linearGradient>
+            <linearGradient id="dusk-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#f8f9fa" />
+                <stop offset="100%" stop-color="#333" />
+            </linearGradient>
+            @{
+                var traces = new Dictionary<string, TraceInfo>();
+            }
             @if (null != Plan)
             {
                 foreach (Asimilation asimilation in TopoStorage.ColAsimilations.Values)
                 {
-                    var trace = GetTrace(asimilation);                    
-                    double midX = (trace.StartX + trace.EndX) / 2;
-                    double midY = (trace.StartY + trace.EndY) / 2;
-                    double angle = Math.Atan2(trace.EndY - trace.StartY, trace.EndX - trace.StartX) * 180 / Math.PI;
+                    var trace = GetTrace(asimilation);
+                    traces[asimilation.id] = trace;
                     <g id="asi-@asimilation.id">
                         <path fill="none"
                               stroke="@asimilation.color[0]"
                               stroke-width="3"
                               d="@trace.D" />
-                        <text x="@midX.ToString(CultureInfo.InvariantCulture)" y="@(midY - 10).ToString(CultureInfo.InvariantCulture)" transform="rotate(@angle.ToString(CultureInfo.InvariantCulture), @midX.ToString(CultureInfo.InvariantCulture), @midY.ToString(CultureInfo.InvariantCulture))" class="circulation-label">@asimilation.id</text>
                     </g>
                 }
             }
@@ -56,28 +67,46 @@ else
         <g>
             @if (true)
             {
-                string y = GetXYString(GetY(Asimilation.origin));
-                if (y.Length > 0)
+                StationViewRef? auxRef = GetReference(Asimilation.origin);
+                if(null!=auxRef)
                 {
+                    string y = GetXYString(GetY(Asimilation.origin));
                     double yVal = double.Parse(y, CultureInfo.InvariantCulture);
-                    @((MarkupString)$"<text x='{mvarMarginX - 16}' y='{(yVal + 5).ToString(CultureInfo.InvariantCulture)}' class='timenet-station-name-label'>{Asimilation.origin.name}</text>")
-                    <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" stroke="#eee" stroke-width="1" />
+                    if(auxRef.IsStation)
+                    {
+                        @((MarkupString)$"<text x='{mvarMarginX - 16}' y='{(yVal + 5).ToString(CultureInfo.InvariantCulture)}' class='timenet-station-name-label'>{Asimilation.origin.name}</text>")
+                        <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" class="timenet-station-line" />
+                    }                    
+                    else
+                    {
+                        @((MarkupString)$"<text x='{mvarMarginX - 16}' y='{(yVal + 5).ToString(CultureInfo.InvariantCulture)}' class='timenet-singular-name-label'>{Asimilation.origin.name}</text>")
+                        <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" class="timenet-singular-line"/>
+                    }                    
                 }
             }
             @foreach (AsimilationStep paso in Asimilation.Steps)
             {
-                string y = GetXYString(GetY(paso.destination));
-                if (y.Length > 0)
+                StationViewRef? auxRef = GetReference(paso.destination);
+                if(null!=auxRef)
                 {
+                    string y = GetXYString(GetY(paso.destination));
                     double yVal = double.Parse(y, CultureInfo.InvariantCulture);
-                    @((MarkupString)$"<text x='{mvarMarginX - 16}' y='{(yVal + 5).ToString(CultureInfo.InvariantCulture)}' class='timenet-station-name-label'>{paso.destination.name}</text>")
-                    <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" stroke="#eee" stroke-width="1" />
+                    if (auxRef.IsStation)
+                    {
+                        @((MarkupString)$"<text x='{mvarMarginX - 16}' y='{(yVal + 5).ToString(CultureInfo.InvariantCulture)}' class='timenet-station-name-label'>{paso.destination.name}</text>")
+                        <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" class="timenet-station-line" />
+                    }
+                    else
+                    {
+                        @((MarkupString)$"<text x='{mvarMarginX - 16}' y='{(yVal + 5).ToString(CultureInfo.InvariantCulture)}' class='timenet-singular-name-label'>{paso.destination.name}</text>")
+                        <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" class="timenet-singular-line" />
+                    }
                 }
             }
             <!--Ejes cartesianos-->
-            <line x1="@(mvarMarginX)" y1="@(mvarMarginY)" x2="@(mvarMaxX)" y2="@(mvarMarginY)" stroke="black" stroke-width="1" />
-            <line x1="@(mvarMarginX)" y1="@(mvarMaxY)" x2="@(mvarMaxX)" y2="@(mvarMaxY)" stroke="black" stroke-width="1" />
-            <line x1="@(mvarMarginX)" y1="@(mvarMarginY)" x2="@(mvarMarginX)" y2="@(mvarMaxY)" stroke="black" stroke-width="1" />
+            <line x1="@(mvarMarginX)" y1="@(mvarMarginY)" x2="@(mvarMaxX)" y2="@(mvarMarginY)" class="timenet-axis" />
+            <line x1="@(mvarMarginX)" y1="@(mvarMaxY)" x2="@(mvarMaxX)" y2="@(mvarMaxY)" class="timenet-axis" />
+            <line x1="@(mvarMarginX)" y1="@(mvarMarginY)" x2="@(mvarMarginX)" y2="@(mvarMaxY)" class="timenet-axis" />
         </g>
 
         <g transform="translate(@mvarMarginX,0)" clip-path="url(#clip-right)">
@@ -103,9 +132,28 @@ else
                         if (minutes == 0)
                         {
                             // Hora completa: etiqueta y líneas gruesas
-                            svgText.Append($"<text x='{x}' y='{yt}' font-size='14' text-anchor='middle'>{hour}</text>");
-                            svgText.Append($"<line x1='{x}' y1='{yf0}' x2='{x}' y2='{yff}' class='timenet-hour-line-thick' />");
-                            svgText.Append($"<line x1='{x}' y1='{yf0}' x2='{x}' y2='{yff}' class='timenet-hour-line-thin' />");
+                            string yTop = (mvarMarginY - 7).ToString(CultureInfo.InvariantCulture);
+                            DateTime hourDT = DateTime.Today.AddSeconds(t);
+                            bool isDay = hourDT >= sunrise && hourDT <= sunset;
+                            TimeSpan toSunrise = sunrise - hourDT;
+                            TimeSpan toSunset = sunset - hourDT;
+                            bool isDawn = Math.Abs(toSunrise.TotalMinutes) <= 30;
+                            bool isDusk = Math.Abs(toSunset.TotalMinutes) <= 30;
+                            string bgFill = isDawn ? "url(#dawn-gradient)" : isDusk ? "url(#dusk-gradient)" : isDay ? "#f8f9fa" : "#333";
+                            string hourLineColor = "#d1e7f0"; // Fixed color for lines
+                            string textColor = "black"; // Fixed color for texts
+                            double rectWidth = (mvarMaxX - mvarMarginX) * 3600.0 / ZoomXSeconds;
+                            double xVal = double.Parse(x, CultureInfo.InvariantCulture);
+                            double heightVal = mvarMaxY - mvarMarginY;
+                            double topHeight = mvarMarginY;
+                            double bottomY = mvarMaxY;
+                            double bottomHeight = Height - mvarMaxY;
+                            svgText.Append($"<rect x='{xVal - rectWidth / 2}' y='0' width='{rectWidth}' height='{topHeight}' fill='{bgFill}' />");
+                            svgText.Append($"<rect x='{xVal - rectWidth / 2}' y='{bottomY}' width='{rectWidth}' height='{bottomHeight}' fill='{bgFill}' />");
+                            svgText.Append($"<text x='{x}' y='{yTop}' class='timenet-hour-text-up' dominant-baseline='text-bottom' fill='{textColor}'>{hour}</text>");
+                            svgText.Append($"<text x='{x}' y='{yt}' class='timenet-hour-text-down' dominant-baseline='text-top' fill='{textColor}'>{hour}</text>");
+                            svgText.Append($"<line x1='{x}' y1='{yf0}' x2='{x}' y2='{yff}' stroke='{hourLineColor}' stroke-width='5' />");
+                            svgText.Append($"<line x1='{x}' y1='{yf0}' x2='{x}' y2='{yff}' stroke='{hourLineColor}' stroke-width='3' />");
                         }
                         else if (minutes == 30 && ZoomXSeconds <= 8 * 3600)
                         {
@@ -131,10 +179,30 @@ else
                     System.Diagnostics.Debug.Assert(null != Plan);
                     foreach (Circulation circulation in Plan.Circulations)
                     {
-                        string xOffset = GetXYString(GetX((int)circulation.departure.TotalSeconds, 0));
-                        if (null != circulation.asimilation)
+                        double xOffsetDouble = GetX((int)circulation.departure.TotalSeconds, 0);
+                        string xOffset = GetXYString(xOffsetDouble);
+                        if (null != circulation.asimilation && traces.ContainsKey(circulation.asimilation.id))
                         {
+                            var trace = traces[circulation.asimilation.id];
+                            double midX = (trace.StartX + trace.EndX) / 2;
+                            double midY = (trace.StartY + trace.EndY) / 2;
+                            double angle = Math.Atan2(trace.EndY - trace.StartY, trace.EndX - trace.StartX) * 180 / Math.PI;
+                            double dy = angle >= 0 ? -12 : -14;
+                            double textX = midX + xOffsetDouble;
+                            double textY = midY;
+                            string textXString = textX.ToString(CultureInfo.InvariantCulture);
+                            string textYString = textY.ToString(CultureInfo.InvariantCulture);
+                            string rotAngle = angle.ToString(CultureInfo.InvariantCulture);
+                            string rotCenterX = (midX + xOffsetDouble).ToString(CultureInfo.InvariantCulture);
+                            string rotCenterY = midY.ToString(CultureInfo.InvariantCulture);
+                            string transY = dy.ToString(CultureInfo.InvariantCulture);
+                            string fillColor = circulation.asimilation.color[0];
+                            string circName = circulation.name;
                             <use href="#asi-@circulation.asimilation.id" transform="translate(@xOffset,0)" />
+                            string transStr = $"translate({textXString}, {textYString}) rotate({rotAngle}, 0, 0) translate(0, {transY})";
+                            string circText = $"<g transform='{transStr}'><rect x='-20' y='-8' width='40' height='16' fill='{fillColor}' rx='2' /><text x='0' y='0' text-anchor='middle' class='timenet-circulation-label'>{circName}</text></g>";
+                            <use href="#asi-@circulation.asimilation.id" transform="translate(@xOffset,0)" />
+                            @((MarkupString)circText)
                         }
                     }
                 }
@@ -143,6 +211,7 @@ else
     </svg>
 }
 <div class="mb-2">
+    <button @onclick="SwitchTheme">@currentTheme.Name</button>
     <button @onclick="ZoomOut">-</button>
     <button @onclick="ZoomIn">+</button>
     <TimeNetSlider  @key="ZoomXSeconds"
@@ -174,6 +243,10 @@ else
     public bool PkMode{ get; set; }
     [Parameter]
     public bool Splines { get; set; }
+    [Parameter]
+    public double Latitude { get; set; } = 40.0; // Default Madrid
+    [Parameter]
+    public double Longitude { get; set; } = -3.7;
 
     private AsimilationView? mvarView;
 
@@ -200,10 +273,15 @@ else
     private long mvarMaxPk;
 
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        if (null == Asimilation || null==Plan) return;
+        await base.OnParametersSetAsync();
+        if (null == Asimilation || null == Plan) return;
         mvarView = new AsimilationView(Asimilation, Plan.Parent);
+        // Calculate sunrise and sunset
+        var (sunriseTs, sunsetTs) = Astronomy.CalculateSunriseSunset(DateTime.Today, Latitude, Longitude);
+        sunrise = DateTime.Today + sunriseTs;
+        sunset = DateTime.Today + sunsetTs;
     }
 
     private void updateSliderParams()
@@ -217,19 +295,29 @@ else
             OffsetXSeconds = 0;
     }
 
+    private StationViewRef? GetReference(Station? station)
+    {
+        if(null!=mvarView && null!= station && mvarView.Elements.ContainsKey(station))
+            return mvarView.Elements[station];
+        return null;
+    }
+
     private double GetY(Station? station, double offset = 0)
     {
-        if (null != mvarView && null != station && mvarView.Elements.ContainsKey(station))
-        {
-            StationViewRef punto = mvarView.Elements[station];
-            double auxValor=-1;
-            if (PkMode && mvarView.MaxPk > 0)
-                auxValor= (mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.ViewPk) / mvarView.MaxPk)+offset;
-            else if (mvarView.MaxIndex > 0)
-                auxValor = (mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.Index) / mvarView.MaxIndex)+offset;
+        StationViewRef? punto = GetReference(station);
+        {            
+            if(null!=punto)
+            {
+                System.Diagnostics.Debug.Assert(null != mvarView);
+                double auxValor = -1;
+                if (PkMode && mvarView.MaxPk > 0)
+                    auxValor = (mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.ViewPk) / mvarView.MaxPk) + offset;
+                else if (mvarView.MaxIndex > 0)
+                    auxValor = (mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.Index) / mvarView.MaxIndex) + offset;
 
-            if (auxValor >= 0)
-                return auxValor;
+                if (auxValor >= 0)
+                    return auxValor;
+            }
         }
         return -1;
     }
@@ -290,6 +378,8 @@ else
         bool lastTrace = true;
         double startX = -1;
         double startY = -1;
+        double currentX = -1;
+        double currentY = -1;
         double endX = -1;
         double endY = -1;
         if(GetY(asimila.origin)>=0)
@@ -301,33 +391,38 @@ else
         foreach(AsimilationStep paso in asimila.Steps)
         {
             seconds += (int)paso.tripTime.TotalSeconds;
-            endY = GetY(paso.destination);
-            if (endY>=0)
+            currentY = GetY(paso.destination);
+            if (currentY>=0)
             {                          
-                endX = GetX(seconds);
+                currentX = GetX(seconds);
                 if(startX<0)
                 {
-                    startX = endX;
-                    startY = endY;
+                    startX = currentX;
+                    startY = currentY;
                 }
 
                 //Console.WriteLine($"Paso: {paso.destination.name}, seconds: {seconds}, X: {auxX}, Y: {auxY}");
-                if(startX==endX)
+                if(startX==currentX)
                 {
                     if (lastTrace)
-                        points.Add($"L {GetXYString(endX)},{GetXYString(endY)}");
+                    {
+                        points.Add($"L {GetXYString(currentX)},{GetXYString(currentY)}");
+                        endX = currentX; endY = currentY;
+                    }                    
                     else
-                        points.Add($"M {GetXYString(endX)},{GetXYString(endY)}");
+                        points.Add($"M {GetXYString(currentX)},{GetXYString(currentY)}");
                 }
                 else
                 {
-                    points.Add($"L {GetXYString(endX)},{GetXYString(endY)}");
+                    points.Add($"L {GetXYString(currentX)},{GetXYString(currentY)}");
+                    endX = currentX; endY = currentY;
                 }
                 lastTrace = true; //Habiendo pintado, seguimos la línea.
                 if (paso.stopTime.Ticks > 0)
                 {
                     seconds += (int)paso.stopTime.TotalSeconds;
-                    points.Add($"L {GetXYString(endX)},{GetXYString(endY)}");
+                    points.Add($"L {GetXYString(currentX)},{GetXYString(currentY)}");
+                    endX = currentX; endY = currentY;
                 }
             }
             else
@@ -384,5 +479,77 @@ else
         // }
         //return new TraceInfo { D = sb.ToString(), EndX = endX, EndY = endY };ç
         return null;
+    }
+
+    private ViewingTheme lightTheme = new ViewingTheme { Name = "Día", Variables = new() {
+        { "--bg-color", "linear-gradient(to bottom, #f8f9fa, #e9ecef)" },
+        { "--border-color", "#ccc" },
+        { "--station-line-color", "#aaa" },
+        { "--singular-line-color", "#eee" },
+        { "--circulation-label-color", "white" },
+        { "--hour-line-color", "black" },
+        { "--hour-line-thick-color", "#d1e7f0" },
+        { "--hour-line-thin-color", "#8fa3ad" },
+        { "--half-hour-line-color", "#b0c4cc" },
+        { "--quarter-hour-line-color", "#d1e7f0" },
+        { "--five-minute-line-color", "#e8f4f8" },
+        { "--singular-name-fill", "gray" },
+        { "--station-name-fill", "teal" },
+        { "--axis-stroke-color", "black" },
+        { "--hour-text-color", "black" }
+    } };
+
+    private ViewingTheme darkTheme = new ViewingTheme { Name = "Noche", Variables = new() {
+        { "--bg-color", "linear-gradient(to bottom, #333, #555)" },
+        { "--border-color", "#666" },
+        { "--station-line-color", "#777" },
+        { "--singular-line-color", "#444" },
+        { "--circulation-label-color", "black" },
+        { "--hour-line-color", "white" },
+        { "--hour-line-thick-color", "#4a6c7b" },
+        { "--hour-line-thin-color", "#5d7a8a" },
+        { "--half-hour-line-color", "#6a8b9e" },
+        { "--quarter-hour-line-color", "#4a6c7b" },
+        { "--five-minute-line-color", "#3a5a6b" },
+        { "--singular-name-fill", "#ccc" },
+        { "--station-name-fill", "#add8e6" },
+        { "--axis-stroke-color", "white" },
+        { "--hour-text-color", "white" }
+    } };
+
+    private ViewingTheme currentTheme = new ViewingTheme { Name = "Día", Variables = new() {
+        { "--bg-color", "linear-gradient(to bottom, #f8f9fa, #e9ecef)" },
+        { "--border-color", "#ccc" },
+        { "--station-line-color", "#aaa" },
+        { "--singular-line-color", "#eee" },
+        { "--circulation-label-color", "white" },
+        { "--hour-line-color", "black" },
+        { "--hour-line-thick-color", "#d1e7f0" },
+        { "--hour-line-thin-color", "#8fa3ad" },
+        { "--half-hour-line-color", "#b0c4cc" },
+        { "--quarter-hour-line-color", "#d1e7f0" },
+        { "--five-minute-line-color", "#e8f4f8" },
+        { "--singular-name-fill", "gray" },
+        { "--station-name-fill", "teal" },
+        { "--axis-stroke-color", "black" },
+        { "--hour-text-color", "black" }
+    } };
+
+    private DateTime sunrise;
+    private DateTime sunset;
+
+    private async Task ApplyTheme(ViewingTheme theme)
+    {
+        foreach (var kvp in theme.Variables)
+        {
+            await JSRuntime.InvokeVoidAsync("setCssVariable", kvp.Key, kvp.Value);
+        }
+        currentTheme = theme;
+    }
+
+    private async Task SwitchTheme()
+    {
+        var newTheme = currentTheme.Name == "Día" ? darkTheme : lightTheme;
+        await ApplyTheme(newTheme);
     }
 }

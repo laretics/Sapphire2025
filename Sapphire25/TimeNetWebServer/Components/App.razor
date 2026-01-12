@@ -17,6 +17,11 @@
 <body>
     <Routes />
     <script src="_framework/blazor.web.js"></script>
+    <script>
+        window.setCssVariable = (variable, value) => {
+            document.documentElement.style.setProperty(variable, value);
+        };
+    </script>
 </body>
 
 </html>
