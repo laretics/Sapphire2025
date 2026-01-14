@@ -102,16 +102,16 @@ else
                 StationViewRef? auxRef = GetReference(Asimilation.origin);
                 if(null!=auxRef)
                 {
-                    string y = GetXYString(GetY(Asimilation.origin));
-                    double yVal = double.Parse(y, CultureInfo.InvariantCulture);
+                    string y = GetYString(Asimilation.origin);
+                    string yLabel = GetYString(Asimilation.origin, 5);
                     if(auxRef.IsStation)
                     {
-                        @((MarkupString)$"<text x='{mvarMarginX - 16}' y='{(yVal + 5).ToString(CultureInfo.InvariantCulture)}' class='timenet-station-name-label'>{Asimilation.origin.name}</text>")
+                        @((MarkupString)$"<text x='{mvarMarginX - 16}' y='{yLabel}' class='timenet-station-name-label'>{Asimilation.origin.name}</text>")
                         <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" class="timenet-station-line" />
                     }                    
                     else
                     {
-                        @((MarkupString)$"<text x='{mvarMarginX - 16}' y='{(yVal + 5).ToString(CultureInfo.InvariantCulture)}' class='timenet-singular-name-label'>{Asimilation.origin.name}</text>")
+                        @((MarkupString)$"<text x='{mvarMarginX - 16}' y='{yLabel}' class='timenet-singular-name-label'>{Asimilation.origin.name}</text>")
                         <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" class="timenet-singular-line"/>
                     }                    
                 }
@@ -121,16 +121,16 @@ else
                 StationViewRef? auxRef = GetReference(paso.destination);
                 if(null!=auxRef)
                 {
-                    string y = GetXYString(GetY(paso.destination));
-                    double yVal = double.Parse(y, CultureInfo.InvariantCulture);
+                    string y = GetYString(paso.destination);
+                    string yLabel = GetYString(paso.destination, 5);
                     if (auxRef.IsStation)
                     {
-                        @((MarkupString)$"<text x='{mvarMarginX - 16}' y='{(yVal + 5).ToString(CultureInfo.InvariantCulture)}' class='timenet-station-name-label'>{paso.destination.name}</text>")
+                        @((MarkupString)$"<text x='{mvarMarginX - 16}' y='{yLabel}' class='timenet-station-name-label'>{paso.destination.name}</text>")
                         <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" class="timenet-station-line" />
                     }
                     else
                     {
-                        @((MarkupString)$"<text x='{mvarMarginX - 16}' y='{(yVal + 5).ToString(CultureInfo.InvariantCulture)}' class='timenet-singular-name-label'>{paso.destination.name}</text>")
+                        @((MarkupString)$"<text x='{mvarMarginX - 16}' y='{yLabel}' class='timenet-singular-name-label'>{paso.destination.name}</text>")
                         <line x1="@mvarMarginX" y1="@y" x2="@mvarMaxX" y2="@y" class="timenet-singular-line" />
                     }
                 }
@@ -162,7 +162,7 @@ else
                         int totalMinutes = (int)(t / 60);
                         int hour = totalMinutes / 60;
                         int minutes = totalMinutes % 60;
-                        string x = GetXYString(GetX((int)t));
+                        string x = GetXString((int)t);
                         if (minutes == 0)
                         {
                             // Hora completa: etiqueta y líneas gruesas
@@ -177,7 +177,6 @@ else
                             string hourLineColor = "#d1e7f0"; // Fixed color for lines
                             string textColor = "black"; // Fixed color for texts
                             double rectWidth = (mvarMaxX - mvarMarginX) * 3600.0 / ZoomXSeconds;
-                            double xVal = double.Parse(x, CultureInfo.InvariantCulture);
                             double heightVal = mvarMaxY - mvarMarginY;
                             double topHeight = mvarMarginY;
                             double bottomY = mvarMaxY;
@@ -211,8 +210,10 @@ else
                     System.Diagnostics.Debug.Assert(null != Plan);
                     foreach (Circulation circulation in Plan.Circulations)
                     {
-                        double xOffsetDouble = GetX((int)circulation.departure.TotalSeconds, 0);
-                        string xOffset = GetXYString(xOffsetDouble);
+                        //double xOffsetDouble = GetX((int)circulation.departure.TotalSeconds, 0);
+                        //string xOffset = GetXYString(xOffsetDouble);
+                        double xx = GetX((int)circulation.departure.TotalSeconds);
+                        string x = xx.ToString(CultureInfo.InvariantCulture);
                         if (null != circulation.asimilation && traces.ContainsKey(circulation.asimilation.id))
                         {
                             var trace = traces[circulation.asimilation.id];
@@ -220,20 +221,20 @@ else
                             double midY = (trace.StartY + trace.EndY) / 2;
                             double angle = Math.Atan2(trace.EndY - trace.StartY, trace.EndX - trace.StartX) * 180 / Math.PI;
                             double dy = angle >= 0 ? -12 : -14;
-                            double textX = midX + xOffsetDouble;
+                            double textX = midX + xx;
                             double textY = midY;
                             string textXString = textX.ToString(CultureInfo.InvariantCulture);
                             string textYString = textY.ToString(CultureInfo.InvariantCulture);
                             string rotAngle = angle.ToString(CultureInfo.InvariantCulture);
-                            string rotCenterX = (midX + xOffsetDouble).ToString(CultureInfo.InvariantCulture);
+                            string rotCenterX = (midX + xx).ToString(CultureInfo.InvariantCulture);
                             string rotCenterY = midY.ToString(CultureInfo.InvariantCulture);
                             string transY = dy.ToString(CultureInfo.InvariantCulture);
                             string fillColor = circulation.asimilation.color[0];
                             string circName = circulation.name;
-                            <use href="#asi-@circulation.asimilation.id" transform="translate(@xOffset,0)" />
+                            <use href="#asi-@circulation.asimilation.id" transform="translate(@x,0)" />
                             string transStr = $"translate({textXString}, {textYString}) rotate({rotAngle}, 0, 0) translate(0, {transY})";
                             string circText = $"<g transform='{transStr}'><rect x='-20' y='-8' width='40' height='16' fill='{fillColor}' rx='2' /><text x='0' y='0' text-anchor='middle' class='timenet-circulation-label'>{circName}</text></g>";
-                            <use href="#asi-@circulation.asimilation.id" transform="translate(@xOffset,0)" />
+                            <use href="#asi-@circulation.asimilation.id" transform="translate(@x,0)" />
                             @((MarkupString)circText)
                         }
                     }
@@ -334,7 +335,7 @@ else
         return null;
     }
 
-    private double GetY(Station? station, double offset = 0)
+    private double GetY(Station? station)
     {
         StationViewRef? punto = GetReference(station);
         {            
@@ -343,9 +344,9 @@ else
                 System.Diagnostics.Debug.Assert(null != mvarView);
                 double auxValor = -1;
                 if (PkMode && mvarView.MaxPk > 0)
-                    auxValor = (mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.ViewPk) / mvarView.MaxPk) + offset;
+                    auxValor = (mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.ViewPk) / mvarView.MaxPk);
                 else if (mvarView.MaxIndex > 0)
-                    auxValor = (mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.Index) / mvarView.MaxIndex) + offset;
+                    auxValor = (mvarMarginY + ((mvarMaxY - mvarMarginY) * punto.Index) / mvarView.MaxIndex);
 
                 if (auxValor >= 0)
                     return auxValor;
@@ -353,18 +354,31 @@ else
         }
         return -1;
     }
-    private double GetX(int seconds, double offset = 0)
+    private string GetYString(Station? station, double offset=0)
+    {
+        double salida = GetY(station);
+        if (salida < 0) return string.Empty;
+        salida += offset;
+        return salida.ToString(CultureInfo.InvariantCulture);
+    }
+    private double GetX(int seconds)
     {
         // seconds: Instante absoluto en segundos.
         // ZoomXSeconds: Segundos visibles en la ventana.
         // mvarMarginX: margen izquierdo en pixels.
         // mvarMaxX: ancho máximo de la ventana en pixels.
         double ancho = Math.Abs(mvarMaxX - mvarMarginX);
-        double salida = (ancho * seconds) / ZoomXSeconds + offset;
+        double salida = (ancho * seconds) / ZoomXSeconds;
         return salida;
     }
+    private string GetXString(int seconds, double offset=0)
+    {
+        double entrada = GetX(seconds);
+        if (entrada < 0) return string.Empty;
+        entrada += offset;
+        return entrada.ToString(CultureInfo.InvariantCulture);
+    }
 
-    private string GetXYString(double value) => value<0? string.Empty: value.ToString(CultureInfo.InvariantCulture);
 
     private void ZoomIn()
     {
@@ -411,22 +425,23 @@ else
         double startX = -1;
         double startY = -1;
         double currentX = -1;
+        string currentXString = string.Empty;
         double currentY = -1;
+        string currentYString = string.Empty;
         double endX = -1;
         double endY = -1;
         if(GetY(asimila.origin)>=0)
-        {
-            startX = GetX(0);
-            startY = GetY(asimila.origin);
-            points.Add($"M {GetXYString(startX)},{GetXYString(startY)}");
-        }        
+            points.Add($"M {GetXString(0)},{GetYString(asimila.origin)}");
+
         foreach(AsimilationStep paso in asimila.Steps)
         {
             seconds += (int)paso.tripTime.TotalSeconds;
             currentY = GetY(paso.destination);
+            currentYString = GetYString(paso.destination);
             if (currentY>=0)
             {                          
                 currentX = GetX(seconds);
+                currentXString = GetXString(seconds);
                 if(startX<0)
                 {
                     startX = currentX;
@@ -438,22 +453,22 @@ else
                 {
                     if (lastTrace)
                     {
-                        points.Add($"L {GetXYString(currentX)},{GetXYString(currentY)}");
+                        points.Add($"L {currentXString},{currentYString}");
                         endX = currentX; endY = currentY;
                     }                    
                     else
-                        points.Add($"M {GetXYString(currentX)},{GetXYString(currentY)}");
+                        points.Add($"M {currentXString},{currentYString}");
                 }
                 else
                 {
-                    points.Add($"L {GetXYString(currentX)},{GetXYString(currentY)}");
+                    points.Add($"L {currentXString},{currentYString}");
                     endX = currentX; endY = currentY;
                 }
                 lastTrace = true; //Habiendo pintado, seguimos la línea.
                 if (paso.stopTime.Ticks > 0)
                 {
                     seconds += (int)paso.stopTime.TotalSeconds;
-                    points.Add($"L {GetXYString(currentX)},{GetXYString(currentY)}");
+                    points.Add($"L {currentXString},{currentYString}");
                     endX = currentX; endY = currentY;
                 }
             }
