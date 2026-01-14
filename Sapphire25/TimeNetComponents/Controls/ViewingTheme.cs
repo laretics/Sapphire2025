@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace TimeNetComponents.Controls
 {
-	internal class ViewingTheme
+	public class ViewingTheme
 	{
 		public string Name { get; set; }
 		public Dictionary<string,string> Variables { get; set; }

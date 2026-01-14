@@ -6,53 +6,30 @@
 
 @rendermode InteractiveServer
 
-<TimeNetControl Width="1400" Height="800"
-                TopoStorage="@mvarTopoStorage"
-                Rauta="@mvarRauta"
-                Plan="@mvarPlan"     
-                Asimilation="@mvarAsimilation" 
+<TimeNetControl
+                Environment="@mvarEnvironment"
+                Style="@mvarStyle"
+                Selections="@mvarSelection"
                 Splines="false" PkMode="true" />
 @code {
     //https://localhost:7211/asimilationvw/fst2025/44x1L
     [Parameter]
     public string? TopoStorageId{ get; set; }
     [Parameter]
+    public string? AsimilationId { get; set; }
+    [Parameter]
     public string? RautatieId{ get; set; }
     [Parameter]
     public string? PlanId { get; set; }
-    [Parameter]
-    public string? AsimilationId { get; set; }
 
-    private TopoStorage? mvarTopoStorage { get; set; }
-    private Rauta? mvarRauta { get; set; }
-    private Asimilation? mvarAsimilation {get;set;}
-    private Plan? mvarPlan { get; set; }
-
+    private TimeNetControlEnvironment mvarEnvironment { get; set; }
+    private TimeNetControlStyle mvarStyle { get; set; } = new TimeNetControlStyle(1400,800);
+    private TimeNetControlSelection mvarSelection{ get; set; } = new TimeNetControlSelection();
 
     protected async override Task OnInitializedAsync()
     {
         await mvarStorage.Init();
-        if(null!=PlanId && null!=AsimilationId && null !=TopoStorageId && null!=RautatieId)
-        {
-            Guid auxTopoStorageId = Guid.Empty;
-            Guid auxRautaId = Guid.Empty;
-            if(Guid.TryParse(TopoStorageId,out auxTopoStorageId) && Guid.TryParse(RautatieId, out auxRautaId))
-            {
-                if (mvarStorage.Storages.ContainsKey(auxTopoStorageId))
-                {
-                    mvarTopoStorage = mvarStorage.Storages[auxTopoStorageId];
-                    if (mvarTopoStorage.ColAsimilations.ContainsKey(AsimilationId))
-                    {
-                        mvarAsimilation = mvarTopoStorage.ColAsimilations[AsimilationId];
-                        if (mvarTopoStorage.ColRauta.ContainsKey(auxRautaId))
-                        {
-                            mvarRauta = mvarTopoStorage.ColRauta[auxRautaId];
-                            if (mvarRauta.Plans.ContainsKey(PlanId))
-                                mvarPlan = mvarRauta.Plans[PlanId];
-                        }
-                    }
-                }
-            }
-        }
+        mvarEnvironment = new TimeNetControlEnvironment(mvarStorage, TopoStorageId,AsimilationId,RautatieId,PlanId);
+
     }
 }

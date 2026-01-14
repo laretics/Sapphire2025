@@ -16,6 +16,8 @@
     --station-name-fill: teal;
     --axis-stroke-color: black;
     --hour-text-color: black;
+    --unselected-time-fill: #00000090;
+    --train-color-index: 0;
     /* Agrega más variables según los colores usados en el SVG, como para las líneas de circulación, etiquetas, etc. */
 }
 
@@ -93,4 +95,9 @@
     fill: var(--hour-text-color);
     font-size: 14px;
     text-anchor: middle;
+}
+
+.timenet-unselected-rectangle-fill{
+    fill: var(--unselected-time-fill);
+
 }
