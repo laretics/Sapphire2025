@@ -1,13 +1,14 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Components;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TimeNet2026.Topo;
 using TimeNet2026.Storage;
 using TimeNet2026.Timed;
+using TimeNet2026.Topo;
 
-namespace TimeNetComponents.Controls
+namespace TimeNetComponents.Controls.TimeNetControl
 {
     /// <summary>
     /// Esta clase contiene los componentes mínimos que necesito para mostrar una malla horaria.
@@ -18,10 +19,14 @@ namespace TimeNetComponents.Controls
         internal Asimilation? ViewAsimilation { get; set; } //Asimilación que marca la vista de la malla.     
         internal Rauta? Rauta { get; set; } //Almacén donde están los planes
         internal Plan? Plan { get; set; } //Plan donde están los trenes que hay que visualizar.
-        
-        public TimeNetControlEnvironment(OnyxStorage storage, string? topoStorageId, string? viewId, string? rautaId, string? planId)
+        public TimeNetEnvironmentX XX { get; private set; } //Coordenada X.
+        public TimenetEnvironmentY YY { get; private set; } //Coordenada Y.
+              
+        public TimeNetControlEnvironment(int width, int height, OnyxStorage storage, string? topoStorageId, string? viewId, string? rautaId, string? planId)
         {
-            if(null!=topoStorageId)
+            XX = new TimeNetEnvironmentX(width);
+            YY = new TimenetEnvironmentY(height);            
+            if (null!=topoStorageId)
             {
                 Guid auxTopoStorageId = Guid.Empty;
                 Guid auxRautaId = Guid.Empty;
@@ -35,6 +40,7 @@ namespace TimeNetComponents.Controls
                             if (TopoStorage.ColAsimilations.ContainsKey(viewId))
                             {
                                 ViewAsimilation = TopoStorage.ColAsimilations[viewId];
+                                YY.mvarView = new AsimilationView(ViewAsimilation, TopoStorage);
                                 if (Guid.TryParse(rautaId, out auxRautaId))
                                 {
                                     if(TopoStorage.ColRauta.ContainsKey(auxRautaId))

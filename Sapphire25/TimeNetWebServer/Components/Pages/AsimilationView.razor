@@ -2,6 +2,7 @@
 @using TimeNet2026.Timed
 @using TimeNet2026.Topo
 @using TimeNet2026.Storage
+@using TimeNetComponents.Controls.TimeNetControl
 @inject OnyxStorage mvarStorage
 
 @rendermode InteractiveServer
@@ -10,7 +11,7 @@
                 Environment="@mvarEnvironment"
                 Style="@mvarStyle"
                 Selections="@mvarSelection"
-                Splines="false" PkMode="true" />
+                Splines="false"/>
 @code {
     //https://localhost:7211/asimilationvw/fst2025/44x1L
     [Parameter]
@@ -23,13 +24,13 @@
     public string? PlanId { get; set; }
 
     private TimeNetControlEnvironment mvarEnvironment { get; set; }
-    private TimeNetControlStyle mvarStyle { get; set; } = new TimeNetControlStyle(1400,800);
+    private TimeNetControlStyle mvarStyle { get; set; } = new TimeNetControlStyle();
     private TimeNetControlSelection mvarSelection{ get; set; } = new TimeNetControlSelection();
 
     protected async override Task OnInitializedAsync()
     {
         await mvarStorage.Init();
-        mvarEnvironment = new TimeNetControlEnvironment(mvarStorage, TopoStorageId,AsimilationId,RautatieId,PlanId);
+        mvarEnvironment = new TimeNetControlEnvironment(1400,800,mvarStorage, TopoStorageId,AsimilationId,RautatieId,PlanId);
 
     }
 }

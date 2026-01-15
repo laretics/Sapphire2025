@@ -17,6 +17,8 @@
     --axis-stroke-color: black;
     --hour-text-color: black;
     --unselected-time-fill: #00000090;
+    --current-time-color-front: #ee2222;
+    --current-time-color-fill: #ee4444;
     --train-color-index: 0;
     /* Agrega más variables según los colores usados en el SVG, como para las líneas de circulación, etiquetas, etc. */
 }

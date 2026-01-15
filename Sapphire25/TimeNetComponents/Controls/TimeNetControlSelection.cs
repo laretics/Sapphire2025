@@ -14,18 +14,23 @@ namespace TimeNetComponents.Controls
     public class TimeNetControlSelection
     {
         internal List<string> mcolCirculations; //Índices de las circulaciones seleccionadas
+        internal List<string> mcolHighCirculations; //Índices de las circulaciones especiales seleccionadas
         internal TimeLapseCollection mcolTimeSelection; //Regiones temporales seleccionadas
         public IEnumerable<string> Circulations => mcolCirculations;
+        public IEnumerable<string> HCirculations => mcolHighCirculations;
+        
         public TimeLapseCollection XSelection => mcolTimeSelection;        
 
         public TimeNetControlSelection()
         {
             mcolCirculations = new List<string>();
+            mcolHighCirculations = new List<string>();
             mcolTimeSelection = new TimeLapseCollection();
 
-            mcolTimeSelection.Add(new TimeLapse { Begin = new TimeSpan(5, 10, 0), End = new TimeSpan(6, 30, 0) });
-            mcolTimeSelection.Add(new TimeLapse { Begin = new TimeSpan(9, 00, 0), End = new TimeSpan(11, 00, 0) });
-            mcolTimeSelection.Add(new TimeLapse { Begin = new TimeSpan(21, 00, 0), End = new TimeSpan(23, 43, 0) });
+            mcolCirculations.Add("4544");
+            mcolHighCirculations.Add("4928");
+
+            mcolTimeSelection.Add(new TimeLapse { Begin = new TimeSpan(15, 30, 0), End = new TimeSpan(16, 45, 0) });
         }
 
     }
