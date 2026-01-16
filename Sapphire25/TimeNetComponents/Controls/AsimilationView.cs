@@ -30,28 +30,37 @@ namespace TimeNetComponents.Controls
 		private void calculateReferences()
 		{
 			Elements.Clear();
-			Debug.Assert(null != Parent.origin);
-			if(Parent.Steps.Count()>0)
+			if(null==Parent.origin)
 			{
-				Station lastStation = Parent.origin;
-				int auxIndex = 0;
-				long cumulPk = 0;
-				Axis currentAxis = Parent.Steps.First().axis;
-				StationViewRef nueva = new StationViewRef(currentAxis, auxIndex++, cumulPk, lastStation.shortName[0] < 'a');
-				Elements.Add(lastStation, nueva);
-				foreach (AsimilationStep paso in Parent.Steps)
+				//Asimilación vacía. Cuando se crea un objeto de este tipo y no se le ha pasado la asimilación de la vista.
+				MaxPk = 10;
+				MaxIndex = 1;
+			}
+			else
+			{
+				Debug.Assert(null != Parent.origin);
+				if (Parent.Steps.Count() > 0)
 				{
-					if(paso.axis==currentAxis)
-						cumulPk += Math.Abs(paso.destination.pk - lastStation.pk);
+					Station lastStation = Parent.origin;
+					int auxIndex = 0;
+					long cumulPk = 0;
+					Axis currentAxis = Parent.Steps.First().axis;
+					StationViewRef nueva = new StationViewRef(currentAxis, auxIndex++, cumulPk, lastStation.shortName[0] < 'a');
+					Elements.Add(lastStation, nueva);
+					foreach (AsimilationStep paso in Parent.Steps)
+					{
+						if (paso.axis == currentAxis)
+							cumulPk += Math.Abs(paso.destination.pk - lastStation.pk);
 
-					nueva = new StationViewRef(paso.axis, auxIndex++, cumulPk, paso.destination.shortName[0] < 'a');
+						nueva = new StationViewRef(paso.axis, auxIndex++, cumulPk, paso.destination.shortName[0] < 'a');
 
-					Elements.Add(paso.destination, nueva);
-					currentAxis = paso.axis;
-					lastStation = paso.destination;
+						Elements.Add(paso.destination, nueva);
+						currentAxis = paso.axis;
+						lastStation = paso.destination;
+					}
+					MaxPk = cumulPk;
+					MaxIndex = auxIndex - 1;
 				}
-				MaxPk = cumulPk;
-				MaxIndex = auxIndex-1;
 			}
 		}
 

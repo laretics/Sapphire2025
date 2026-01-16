@@ -1,0 +1,57 @@
+﻿@using System.Globalization
+
+<TimeNetLayer LayerClass="x-time-ruler-labels" Transform="@auxTransformString">
+    @((MarkupString)GenerateTimeLabels())
+</TimeNetLayer>
+
+@code {
+    [Parameter] public TimeNetControlEnvironment? Environment { get; set; }
+    [Parameter] public DateTime Sunrise { get; set; }
+    [Parameter] public DateTime Sunset { get; set; }
+    [Parameter] public double X0 { get; set; }
+    [Parameter] public double Y0 { get; set; }
+
+    private string auxTransformString => $"translate({X0},{Y0})";
+
+    private string GenerateTimeLabels()
+    {
+        if (Environment == null) return string.Empty;
+
+        double fin = Environment.XX.EndOffset;
+        double startSeconds = Math.Ceiling(Environment.XX.Offset / 900.0) * 900;
+        double endSeconds = Math.Floor(fin / 900.0) * 900;
+        string yTop = "-7";
+        string yt = (Environment.YY.MiddleSize + 15).ToString(CultureInfo.InvariantCulture);
+
+        var svgText = new System.Text.StringBuilder();
+
+        for (double t = startSeconds; t <= endSeconds; t += 300)
+        {
+            int totalMinutes = (int)(t / 60);
+            int hour = totalMinutes / 60;
+            int minutes = totalMinutes % 60;
+
+            if (minutes == 0)
+            {
+                string x = GetXString((int)t);
+                string textColor = "black";
+
+                svgText.Append($"<text x='{x}' y='{yTop}' class='timenet-hour-text-up' dominant-baseline='text-bottom' fill='{textColor}'>{hour}</text>");
+                svgText.Append($"<text x='{x}' y='{yt}' class='timenet-hour-text-down' dominant-baseline='text-top' fill='{textColor}'>{hour}</text>");
+            }
+        }
+
+        return svgText.ToString();
+    }
+
+    private string GetXString(int seconds, double offset = 0)
+    {
+        if (Environment == null) return string.Empty;
+
+        double entrada = Environment.XX.GetX(seconds);
+        if (entrada < 0) return string.Empty;
+
+        entrada += offset;
+        return entrada.ToString(CultureInfo.InvariantCulture);
+    }
+}

@@ -1,0 +1,51 @@
+@using TimeNet2026.Topo
+@using System.Globalization
+
+<TimeNetLayer LayerClass="y-column-labels-layer" Transform="@auxTransformString">
+    @if (Environment?.ViewAsimilation?.origin != null)
+    {
+        string textoX = (Environment.XX.LeftMargin - 16).ToString(CultureInfo.InvariantCulture);
+        
+        @* Estación origen *@
+        var auxRef = Environment.YY.GetReference(Environment.ViewAsimilation.origin);
+        if (auxRef != null)
+        {
+            @RenderStationLabel(Environment.ViewAsimilation.origin, auxRef, textoX)
+        }
+        
+        @* Estaciones siguientes *@
+        foreach (var paso in Environment.ViewAsimilation.Steps)
+        {
+            auxRef = Environment.YY.GetReference(paso.destination);
+            if (auxRef != null)
+            {
+                @RenderStationLabel(paso.destination, auxRef, textoX)
+            }
+        }
+    }
+</TimeNetLayer>
+
+@code {
+    [Parameter] public TimeNetControlEnvironment? Environment { get; set; }
+    [Parameter] public double X0 { get; set; }
+    [Parameter] public double Y0 { get; set; }
+    
+    private string auxTransformString => $"translate({X0},{Y0})";
+
+    private RenderFragment RenderStationLabel(Station station, StationViewRef stationRef, string textoX)
+    {
+        if (Environment == null) return builder => { };
+        
+        double y = Environment.YY.GetY(station);
+        if (y < 0) return builder => { };
+        
+        double yLabel = y + 5;
+        string yLabelStr = yLabel.ToString(CultureInfo.InvariantCulture);
+        string cssClass = stationRef.IsStation ? "timenet-station-name-label" : "timenet-singular-name-label";
+        
+        return builder =>
+        {
+            builder.AddMarkupContent(0, $"<text x='{textoX}' y='{yLabelStr}' class='{cssClass}'>{station.name}</text>");
+        };
+    }
+}

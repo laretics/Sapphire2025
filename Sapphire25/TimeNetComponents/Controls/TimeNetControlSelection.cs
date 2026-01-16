@@ -30,7 +30,7 @@ namespace TimeNetComponents.Controls
             mcolCirculations.Add("4544");
             mcolHighCirculations.Add("4928");
 
-            mcolTimeSelection.Add(new TimeLapse { Begin = new TimeSpan(15, 30, 0), End = new TimeSpan(16, 45, 0) });
+            mcolTimeSelection.Add(new TimeLapse { Begin = new TimeSpan(5, 30, 0), End = new TimeSpan(23, 00, 0) });
         }
 
     }

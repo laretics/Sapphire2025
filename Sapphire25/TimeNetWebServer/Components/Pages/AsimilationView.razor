@@ -6,14 +6,30 @@
 @inject OnyxStorage mvarStorage
 
 @rendermode InteractiveServer
+@if(null==mvarEnvironment)
+{
+        <p>Loading...</p>
+}
+else
+{
+    <div style="display:flex; flex-direction:column; gap:0; align-items:flex-start;">
+        <div style="display:flex; flex-direction:row; gap:0;">
+            <TimeNetSliderY Environment="@mvarEnvironment"
+                            StateChanged="@auxStateChanged"/>
 
-<TimeNetControl
-                Environment="@mvarEnvironment"
-                Style="@mvarStyle"
-                Selections="@mvarSelection"
-                Splines="false"/>
+            <TimeNetControl Environment="@mvarEnvironment"
+                            Style="@mvarStyle"
+                            Selections="@mvarSelection"
+                            Splines="false" />
+        </div>
+
+        <TimeNetSliderX Environment="@mvarEnvironment"
+                        StateChanged="@auxStateChanged"
+                        />
+    </div>
+}
+
 @code {
-    //https://localhost:7211/asimilationvw/fst2025/44x1L
     [Parameter]
     public string? TopoStorageId{ get; set; }
     [Parameter]
@@ -23,14 +39,17 @@
     [Parameter]
     public string? PlanId { get; set; }
 
-    private TimeNetControlEnvironment mvarEnvironment { get; set; }
+    private TimeNetControlEnvironment? mvarEnvironment { get; set; }
     private TimeNetControlStyle mvarStyle { get; set; } = new TimeNetControlStyle();
     private TimeNetControlSelection mvarSelection{ get; set; } = new TimeNetControlSelection();
+    private void auxStateChanged() { StateHasChanged(); }
+
 
     protected async override Task OnInitializedAsync()
     {
         await mvarStorage.Init();
-        mvarEnvironment = new TimeNetControlEnvironment(1400,800,mvarStorage, TopoStorageId,AsimilationId,RautatieId,PlanId);
+        mvarEnvironment = new TimeNetControlEnvironment(1400,700,mvarStorage, TopoStorageId,AsimilationId,RautatieId,PlanId);
+
 
     }
 }

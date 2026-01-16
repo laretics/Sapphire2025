@@ -182,14 +182,14 @@ namespace Sapphire2025Server.Expert
 						}                            
                         await almacen.SaveChangesAsync();
                     }
-                }
-                return salida.ToString();
+                }                
             }
             catch (Exception ex)
             {
-                return string.Format("Error interno: {0}", ex.ToString());
+                salida.Append(string.Format("Error interno: {0}", ex.ToString()));
             }
-        }
+			return salida.ToString();
+		}
 
         private WorkshiftAssignation? auxGetTurnoByString(List<WorkshiftAssignation> grupo, string turnoId)
         {

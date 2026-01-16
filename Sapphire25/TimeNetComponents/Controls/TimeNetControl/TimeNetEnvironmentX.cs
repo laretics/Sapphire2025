@@ -11,10 +11,13 @@ namespace TimeNetComponents.Controls.TimeNetControl
     {
         private const int TOTAL_HOURS = 24;
         internal const int MAX_X_OFFSET = 3600 * TOTAL_HOURS;
-        internal int RightMargin { get; set; } = 20;
+		internal const int MIN_POSITION = 0;
+        internal const int MAX_POSITION = MAX_X_OFFSET;
+		internal int RightMargin { get; set; } = 20;
         internal int LeftMargin { get; set; } = 150;
+        
 
-        public int Width { get; set; }
+		public int Width { get; set; }
         internal int Zoom { get; set; } = MAX_X_OFFSET;
         internal int Offset { get; set; } = 0; //Desplazamiento en segundos.
         public int EndOffset => Offset + Zoom; //Final de la zona representable en zoom.

@@ -189,7 +189,7 @@ namespace TimeNet2026.Timed
 		{
 			return string.Format("{0}-{1}", origin.name, destination.name);
 		}
-		internal Asimilation(TopoStorage parent)
+		public Asimilation(TopoStorage parent)
 		{
 			id = string.Empty;
 			mvarName = string.Empty;

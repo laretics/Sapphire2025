@@ -25,8 +25,8 @@ namespace TimeNetComponents.Controls.TimeNetControl
         public TimeNetControlEnvironment(int width, int height, OnyxStorage storage, string? topoStorageId, string? viewId, string? rautaId, string? planId)
         {
             XX = new TimeNetEnvironmentX(width);
-            YY = new TimenetEnvironmentY(height);            
-            if (null!=topoStorageId)
+			YY = new TimenetEnvironmentY(height,null,null);
+			if (null!=topoStorageId)
             {
                 Guid auxTopoStorageId = Guid.Empty;
                 Guid auxRautaId = Guid.Empty;
@@ -40,7 +40,7 @@ namespace TimeNetComponents.Controls.TimeNetControl
                             if (TopoStorage.ColAsimilations.ContainsKey(viewId))
                             {
                                 ViewAsimilation = TopoStorage.ColAsimilations[viewId];
-                                YY.mvarView = new AsimilationView(ViewAsimilation, TopoStorage);
+                                YY = new TimenetEnvironmentY(height, TopoStorage, ViewAsimilation);
                                 if (Guid.TryParse(rautaId, out auxRautaId))
                                 {
                                     if(TopoStorage.ColRauta.ContainsKey(auxRautaId))

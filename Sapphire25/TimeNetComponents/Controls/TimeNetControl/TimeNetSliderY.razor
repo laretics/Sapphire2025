@@ -1,0 +1,85 @@
+﻿@using System.Globalization
+@using System.Threading.Tasks
+@if (null != Environment)
+{
+    <div class="timerange-slider-y d-flex flex-column align-items-center gap-2" style="width:32px; height:@(Environment.YY.Height)px;">
+        <button @onclick="ZoomOut" class="btn btn-sm btn-outline-secondary" type="button" title="Alejar">-</button>
+
+        <div class="position-relative flex-grow-1" style="width:24px;">
+            <!--Track-->
+            <div class="bg-secondary bg-opacity-25 rounded-pill position-absolute start-50 translate-middle-x top-0 bottom-0" style="width:6px;"></div>
+
+            @if (ZoomLevel < 1.0)
+            {
+                <!--Ventana visible-->
+                <div class="bg-warning bg-opacity-50 rounded-pill position-absolute start-50 translate-middle-x"
+                     style="top:@WindowTopPercentString%; height:@WindowHeightPercentString%; width:12px; pointer-events:none;">
+                </div>
+            }
+
+            <!--Slider invisible para la interacción-->
+            <input type="range"
+                   orient="vertical"
+                   min="@Min"
+                   max="@Max"
+                   value="@Value"
+                   @oninput="OnSliderChanged"
+                   class="form-range position-absolute top-0 start-0 h-100"
+                   style="width:24px; opacity:0; cursor:pointer; writing-mode:bt-lr; -webkit-appearance:slider-vertical;" />
+        </div>
+
+        <button @onclick="ZoomIn" class="btn btn-sm btn-outline-secondary" type="button" title="Acercar">+</button>
+    </div>
+}
+
+@code {
+    [Parameter] public TimeNetControlEnvironment? Environment { get; set; }
+    [Parameter] public EventCallback<int> ValueChanged { get; set; }
+    [Parameter] public EventCallback StateChanged { get; set; }
+
+    private long Min => 0;
+    private long MaxValue => Environment?.YY?.MaxValue ?? 100;
+    private long Max => MaxValue - (Environment?.YY?.Zoom ?? MaxValue);
+    private long ZoomValue => Environment?.YY?.Zoom ?? MaxValue;
+    
+    // ✅ INVERTIDO: Slider arriba (Max) = Offset 0, Slider abajo (Min) = Offset Max
+    private long Value => Max - (Environment?.YY?.Offset ?? 0);
+
+    // La ventana representa la porción visible del rango total
+    private double ZoomLevel => (double)ZoomValue / MaxValue;
+    private double WindowHeightPercent => 100.0 * ZoomLevel;
+    
+    // ✅ Usar Offset directamente (no Value invertido)
+    private double WindowTopPercent => 100.0 * (Environment?.YY?.Offset ?? 0) / MaxValue;
+
+    private string WindowHeightPercentString => WindowHeightPercent.ToString(CultureInfo.InvariantCulture);
+    private string WindowTopPercentString => WindowTopPercent.ToString(CultureInfo.InvariantCulture);
+
+    private async Task OnSliderChanged(ChangeEventArgs e)
+    {
+        if (long.TryParse(e.Value?.ToString(), out var val))
+        {
+            if (null != Environment?.YY)
+            {
+                // ✅ INVERTIDO: Convertir valor del slider a Offset
+                Environment.YY.Offset = Max - val;
+            }
+            await StateChanged.InvokeAsync();
+            await ValueChanged.InvokeAsync((int)(Max - val));
+        }
+    }
+
+    private async Task ZoomIn()
+    {
+        System.Diagnostics.Debug.Assert(null != Environment?.YY);
+        Environment.YY.ZoomIn();
+        await StateChanged.InvokeAsync();
+    }
+
+    private async Task ZoomOut()
+    {
+        System.Diagnostics.Debug.Assert(null != Environment?.YY);
+        Environment.YY.ZoomOut();
+        await StateChanged.InvokeAsync();
+    }
+}
