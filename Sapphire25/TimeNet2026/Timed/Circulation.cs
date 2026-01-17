@@ -25,7 +25,7 @@ namespace TimeNet2026.Timed
 		{
 			deserialize(root, storage);
 		}
-
+		public TimeLapse TimeLapse => new TimeLapse { Begin = departure, End = arrival };
 
 		public Asimilation? asimilation { get; set; }
 		public TimeSpan departure { get; set; }

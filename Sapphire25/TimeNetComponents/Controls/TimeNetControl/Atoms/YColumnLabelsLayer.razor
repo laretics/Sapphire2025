@@ -2,19 +2,19 @@
 @using System.Globalization
 
 <TimeNetLayer LayerClass="y-column-labels-layer" Transform="@auxTransformString">
-    @if (Environment?.ViewAsimilation?.origin != null)
+    @if (Environment?.Environment.ViewAsimilation?.origin != null)
     {
         string textoX = (Environment.XX.LeftMargin - 16).ToString(CultureInfo.InvariantCulture);
         
         @* Estación origen *@
-        var auxRef = Environment.YY.GetReference(Environment.ViewAsimilation.origin);
+        var auxRef = Environment.YY.GetReference(Environment.Environment.ViewAsimilation.origin);
         if (auxRef != null)
         {
-            @RenderStationLabel(Environment.ViewAsimilation.origin, auxRef, textoX)
+            @RenderStationLabel(Environment.Environment.ViewAsimilation.origin, auxRef, textoX)
         }
         
         @* Estaciones siguientes *@
-        foreach (var paso in Environment.ViewAsimilation.Steps)
+        foreach (var paso in Environment.Environment.ViewAsimilation.Steps)
         {
             auxRef = Environment.YY.GetReference(paso.destination);
             if (auxRef != null)

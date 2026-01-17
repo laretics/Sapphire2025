@@ -1,17 +1,18 @@
 ﻿@using TimeNet2026.Timed
 @using TimeNet2026.Topo
+@using TimeNet2026.Production
 @using TimeNetComponents.Controls.TimeNetControl.Atoms
 @using System.Globalization
 
 <TimeNetLayer LayerClass="circulations-layer" Transform="@auxTransformString">
-    @if (Environment?.Plan != null && Traces != null)
+    @if (Environment?.Environment.Plan != null && Traces != null)
     {
         int trainColorIndex = 0;
         string? trainColorIndexString = Style?.Theme.Variables["--train-color-index"];
         if (null != trainColorIndexString)
             int.TryParse(trainColorIndexString, out trainColorIndex);
 
-        foreach (Circulation circulation in Environment.Plan.Circulations)
+        foreach (Circulation circulation in Environment.Environment.Plan.Circulations)
         {
             double xx = Environment.XX.GetX((int)circulation.departure.TotalSeconds);
             string x = xx.ToString(CultureInfo.InvariantCulture);
@@ -51,7 +52,7 @@
 @code {
     [Parameter] public TimeNetControlEnvironment? Environment { get; set; }
     [Parameter] public TimeNetControlStyle? Style { get; set; }
-    [Parameter] public TimeNetControlSelection? Selections { get; set; }
+    [Parameter] public TimeNetSelection? Selections { get; set; }
     [Parameter] public Dictionary<string, TraceInfo>? Traces { get; set; }
     [Parameter] public EventCallback<Circulation> CirculationClicked { get; set; }
     [Parameter] public double X0 { get; set; }
@@ -72,7 +73,7 @@
     private string GetAsimilationIdFromCirculation(string circulationName)
     {
         // Busca la asimilación correspondiente a la circulación
-        var circulation = Environment?.Plan?.Circulations.FirstOrDefault(c => c.name == circulationName);
+        var circulation = Environment?.Environment.Plan?.Circulations.FirstOrDefault(c => c.name == circulationName);
         return circulation?.asimilation?.id ?? string.Empty;
     }
 

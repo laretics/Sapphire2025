@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore.ValueGeneration.Internal;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -101,6 +102,9 @@ namespace TimeNet2026.Timed
 					case "circulations": //Circulaciones definidas en el plan
 						deserializeCirculations(hijo,Parent);
 						break;
+					case "schedules": //Horarios definidos en el plan
+						deserializeSchedules(hijo);
+						break;
 				}
 			}
 		}
@@ -110,6 +114,36 @@ namespace TimeNet2026.Timed
 			{
 				Circulation nueva = new Circulation(hijo, topoStorage);
 				mcolCirculations.Add(nueva.name, nueva);
+			}
+		}
+		internal void deserializeSchedules(XmlNode root)
+		{
+			foreach (XmlNode hijo in root.ChildNodes)
+			{
+				if(hijo.Name=="active")
+				{
+					foreach (XmlNode nieto in hijo.ChildNodes)
+					{
+						if (nieto.Name == "ws")
+						{
+							Schedule nuevoTurno = new Schedule();
+							nuevoTurno.deserialize(hijo, this);
+							string[] nombres = nuevoTurno.name.Split(',');
+							if(nombres.Length > 1)
+							{
+								//Varios nombres
+								foreach (string nombre in nombres)
+								{
+									Schedule turnoAux = new Schedule();
+									turnoAux.deserialize(hijo, this);
+									turnoAux.name = nombre.Trim();
+									mcolSchedules.Add(turnoAux.name, turnoAux);
+								}
+							}
+						}
+					}
+
+				}
 			}
 		}
 	}

@@ -28,5 +28,29 @@ namespace TimeNet2026.Timed
             salida.End = this.End.Add(mitad);
             return salida;
         }
-    }
+        public TimeLapse(TimeSpan begin, TimeSpan end)
+        {
+            Begin = begin;
+            End = end;
+		}
+		public TimeLapse(string? begin, string? end)
+		{
+			TimeSpan? tsBegin = parseSapphireTimeSpan(begin);
+			TimeSpan? tsEnd = parseSapphireTimeSpan(end);
+			if (null == tsBegin || null == tsEnd)
+				throw new ArgumentException("Invalid time span format");
+			Begin = tsBegin.Value;
+			End = tsEnd.Value;
+		}
+        public TimeLapse() : this(TimeSpan.Zero, TimeSpan.Zero) { }
+
+		private TimeSpan? parseSapphireTimeSpan(string? rhs)
+		{
+			if (null == rhs) return null;
+			TimeSpan salida;
+			if (TimeSpan.TryParseExact(rhs, new[] { "hh\\:mm", "h\\:mm" }, System.Globalization.CultureInfo.InvariantCulture, out salida))
+				return salida;
+			return null;
+		}
+	}
 }

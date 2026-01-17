@@ -2,6 +2,7 @@
 @using TimeNet2026.Timed
 @using TimeNet2026.Topo
 @using TimeNet2026.Storage
+@using TimeNet2026.Production
 @using TimeNetComponents.Controls.TimeNetControl
 @inject OnyxStorage mvarStorage
 
@@ -41,7 +42,7 @@ else
 
     private TimeNetControlEnvironment? mvarEnvironment { get; set; }
     private TimeNetControlStyle mvarStyle { get; set; } = new TimeNetControlStyle();
-    private TimeNetControlSelection mvarSelection{ get; set; } = new TimeNetControlSelection();
+    private TimeNetSelection mvarSelection{ get; set; } = new TimeNetSelection();
     private void auxStateChanged() { StateHasChanged(); }
 
 

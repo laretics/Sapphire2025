@@ -1,6 +1,7 @@
 ﻿@using TimeNet2026.Timed
 @using TimeNet2026.Topo
 @using TimeNet2026.Enviromental
+@using TimeNet2026.Production
 @using System.Globalization
 @using Microsoft.JSInterop
 @using TimeNetComponents.Controls.TimeNetControl.Atoms
@@ -83,7 +84,7 @@ else
 @code {
     [Parameter] public TimeNetControlEnvironment? Environment { get; set; }
     [Parameter] public TimeNetControlStyle Style { get; set; } = new();
-    [Parameter] public TimeNetControlSelection? Selections { get; set; }
+    [Parameter] public TimeNetSelection? Selections { get; set; }
     [Parameter] public EventCallback<Circulation> CirculationClicked { get; set; }
     [Parameter] public bool Splines { get; set; }
     [Parameter] public double Latitude { get; set; } = 40.0;
@@ -92,7 +93,7 @@ else
     private DateTime sunrise;
     private DateTime sunset;
     private Dictionary<string, TraceInfo> traces = new();
-        
+
     protected override async Task OnParametersSetAsync()
     {
         await base.OnParametersSetAsync();
@@ -113,17 +114,20 @@ else
 
     private RenderFragment RenderAsimilationPaths() => __builder =>
     {
-        if (Environment?.Plan == null) return;
+        if (Environment?.Environment.Plan == null) return;
         traces.Clear();
         int colorIndex = GetTrainColorIndex();
-        foreach (var asi in Environment.TopoStorage.ColAsimilations.Values)
+        if (null != Environment.Environment.TopoStorage)
         {
-            var trace = GetTrace(asi);
-            traces[asi.id] = trace;
-            var color = asi.color[colorIndex];
-            __builder.AddMarkupContent(0, $"<g id='asi-thin-{asi.id}'><path fill='none' stroke='{color}' stroke-width='1' d='{trace.D}' /></g>");
-            __builder.AddMarkupContent(0, $"<g id='asi-thick-{asi.id}'><path fill='none' stroke='{color}' stroke-width='1' d='{trace.D}' /><path fill='none' stroke='{color}' stroke-width='3' stroke-dasharray='10,10' d='{trace.D}'><animate attributeName='stroke-dashoffset' values='0;-20' dur='1s' repeatCount='indefinite' /></path></g>");
-            __builder.AddMarkupContent(0, $"<g id='asi-point-{asi.id}'><path fill='none' stroke='{color}' stroke-width='1' stroke-dasharray='5,8' d='{trace.D}' /></g>");
+            foreach (var asi in Environment.Environment.TopoStorage.ColAsimilations.Values)
+            {
+                var trace = GetTrace(asi);
+                traces[asi.id] = trace;
+                var color = asi.color[colorIndex];
+                __builder.AddMarkupContent(0, $"<g id='asi-thin-{asi.id}'><path fill='none' stroke='{color}' stroke-width='1' d='{trace.D}' /></g>");
+                __builder.AddMarkupContent(0, $"<g id='asi-thick-{asi.id}'><path fill='none' stroke='{color}' stroke-width='1' d='{trace.D}' /><path fill='none' stroke='{color}' stroke-width='3' stroke-dasharray='10,10' d='{trace.D}'><animate attributeName='stroke-dashoffset' values='0;-20' dur='1s' repeatCount='indefinite' /></path></g>");
+                __builder.AddMarkupContent(0, $"<g id='asi-point-{asi.id}'><path fill='none' stroke='{color}' stroke-width='1' stroke-dasharray='5,8' d='{trace.D}' /></g>");
+            }
         }
     };
 

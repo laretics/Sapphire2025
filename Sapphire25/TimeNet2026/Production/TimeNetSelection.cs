@@ -1,17 +1,16 @@
-﻿using Microsoft.VisualBasic;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TimeNet2026.Timed;
 
-namespace TimeNetComponents.Controls
+namespace TimeNet2026.Production
 {
     /// <summary>
     /// Esta clase contiene los datos sobre la selección de espacio, tiempo o circulaciones.
     /// </summary>
-    public class TimeNetControlSelection
+    public class TimeNetSelection
     {
         internal List<string> mcolCirculations; //Índices de las circulaciones seleccionadas
         internal List<string> mcolHighCirculations; //Índices de las circulaciones especiales seleccionadas
@@ -21,7 +20,7 @@ namespace TimeNetComponents.Controls
         
         public TimeLapseCollection XSelection => mcolTimeSelection;        
 
-        public TimeNetControlSelection()
+        public TimeNetSelection()
         {
             mcolCirculations = new List<string>();
             mcolHighCirculations = new List<string>();

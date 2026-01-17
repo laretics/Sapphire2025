@@ -31,6 +31,8 @@ namespace TimeNet2026.DBStorage
 		internal DbSet<DBRauta> Rautatie { get; set; }
 		internal DbSet<DBPlan> Plans { get; set; }
 		internal DbSet<DBCirculation> Circulations { get; set; }
+		internal DbSet<DBSchedule> Schedules { get; set; }
+		internal DbSet<DBScheduleUnit> ScheduleUnits { get; set; }
 
 		public OnyxDatabase(DbContextOptions<OnyxDatabase> opciones) : base(opciones) { }
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -52,6 +54,8 @@ namespace TimeNet2026.DBStorage
 			List<DBRauta> auxRautatie = await Rautatie.ToListAsync();
 			List<DBPlan> auxPlans = await Plans.ToListAsync();
 			List<DBCirculation> auxCirculations = await Circulations.ToListAsync();
+			List<DBSchedule> auxSchedules = await Schedules.ToListAsync();
+			List<DBScheduleUnit> auxScheduleUnits = await ScheduleUnits.ToListAsync();
 			Headers.RemoveRange(auxHeaders);
 			RefPunctuals.RemoveRange(auxRefPunctuals);
 			Stations.RemoveRange(auxStations);
@@ -60,6 +64,8 @@ namespace TimeNet2026.DBStorage
 			Rautatie.RemoveRange(auxRautatie);
 			Plans.RemoveRange(auxPlans);
 			Circulations.RemoveRange(auxCirculations);
+			Schedules.RemoveRange(auxSchedules);
+			ScheduleUnits.RemoveRange(auxScheduleUnits);
 			await SaveChangesAsync();
 		}
 
@@ -127,8 +133,13 @@ namespace TimeNet2026.DBStorage
 					List<DBCirculation> auxCirculations = await Circulations.Where(x => x.PlanId == auxPlan.Id).ToListAsync();
 					Circulations.RemoveRange(auxCirculations);
 
-					//TODO: Eliminar los turnos encadenados a estas circulaciones...
-					 
+					List<DBSchedule> auxSchedules = await Schedules.Where(x => x.PlanId == auxPlan.Id).ToListAsync();
+					foreach(DBSchedule auxSchedule in auxSchedules)
+					{
+						List<DBScheduleUnit> auxUnits = await ScheduleUnits.Where(x => x.ScheduleId == auxSchedule.Id).ToListAsync();
+						ScheduleUnits.RemoveRange(auxUnits);
+					}
+					Schedules.RemoveRange(auxSchedules);
 				}
 				Plans.RemoveRange(auxPlanes);
 				RemoveHeader(id);
@@ -182,9 +193,35 @@ namespace TimeNet2026.DBStorage
                         }
                         await SaveChangesAsync();
 
-                        //TODO: Añadir aquí los turnos.
-
-                    }
+						foreach (Schedule auxSchedule in auxPlan.Schedules)
+						{
+							DBSchedule nuevoSchedule = new DBSchedule();
+							nuevoSchedule.PlanId = nuevoPlan.Id;
+							nuevoSchedule.Name = auxSchedule.nameCloudString;
+							nuevoSchedule.Comment = auxSchedule.comment;
+							nuevoSchedule.WeekdayMask = auxSchedule.weekdayMask;
+							nuevoSchedule.Color1 = auxSchedule.color[0] ?? "black";
+							nuevoSchedule.Color2 = auxSchedule.color[1] ?? "white";
+							nuevoSchedule.CoordinateX = auxSchedule.coordinates[0];
+							nuevoSchedule.CoordinateY = auxSchedule.coordinates[1];
+							Schedules.Add(nuevoSchedule);
+							await SaveChangesAsync();
+							foreach (Schedule.ScheduleItem auxItem in auxSchedule.mcolItems)
+							{
+								DBCirculation? auxCirculation = await Circulations.Where(x => x.PlanId == nuevoPlan.Id && x.Name == auxItem.circulation.name).FirstOrDefaultAsync();
+								if(null!=auxCirculation)
+								{
+									//La circulación existe.
+									DBScheduleUnit nuevoUnit = new DBScheduleUnit();
+									nuevoUnit.ScheduleId = nuevoSchedule.Id;
+									nuevoUnit.CirculationId =  auxCirculation.Id;
+									nuevoUnit.Active = auxItem.active;
+									ScheduleUnits.Add(nuevoUnit);
+								}
+							}
+							await SaveChangesAsync();
+						}
+					}
                 }
             }
 		}
@@ -230,9 +267,44 @@ namespace TimeNet2026.DBStorage
                             }
 						}
 
-						//Cargamos los turnos del plan
-
-
+						List<DBSchedule> schedules = await Schedules.Where(x => x.PlanId == auxPlan.Id).ToListAsync();
+						foreach (DBSchedule schedule in schedules)
+						{
+							Schedule nuevoSchedule = new Schedule();
+							nuevoSchedule.name = schedule.Name;
+							nuevoSchedule.comment = schedule.Comment;
+							nuevoSchedule.weekdayMask = schedule.WeekdayMask;
+							nuevoSchedule.color[0] = schedule.Color1 ?? "black";
+							nuevoSchedule.color[1] = schedule.Color2 ?? "white";
+							nuevoSchedule.coordinates[0] = schedule.CoordinateX;
+							nuevoSchedule.coordinates[1] = schedule.CoordinateY;
+							//Cargamos las unidades del horario.
+							List<DBScheduleUnit> unidades = await ScheduleUnits.Where(x => x.ScheduleId == schedule.Id).ToListAsync();
+							foreach (DBScheduleUnit unidad in unidades)
+							{
+								if(unidad.CirculationId<0) //Turno de depósito
+								{
+									TimeLapse lapso = new TimeLapse { Begin = unidad.Begin, End = unidad.End };
+									Schedule.ScheduleItem nuevoItem = new Schedule.ScheduleItem(lapso, unidad.Active);
+									nuevoSchedule.mcolItems.Add(nuevoItem);
+								}
+								else //Tracción o acompañamiento
+								{
+									DBCirculation? auxCirculation = await Circulations.Where(x => x.Id == unidad.CirculationId).FirstOrDefaultAsync();
+									System.Diagnostics.Debug.Assert(null != auxCirculation);
+									if (null != auxCirculation)
+									{
+										if (nuevoPlan.mcolCirculations.ContainsKey(auxCirculation.Name))
+										{
+											Schedule.ScheduleItem nuevoItem = new Schedule.ScheduleItem(nuevoPlan.mcolCirculations[auxCirculation.Name], unidad.Active);
+											nuevoItem.active = unidad.Active;
+											nuevoSchedule.mcolItems.Add(nuevoItem);
+										}
+									}
+								}
+							}
+							nuevoPlan.mcolSchedules.Add(nuevoSchedule.name,nuevoSchedule);
+						}
 						nuevoRauta.mcolPlans.Add(nuevoPlan.Id, nuevoPlan);
                     }
 					salida.Add(auxCabecera.Id, nuevoRauta);
