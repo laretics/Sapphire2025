@@ -15,7 +15,7 @@ namespace TimeNet2026.Timed
     {                                                          
         public Header Header { get; set; }
         internal Dictionary<string, Plan> mcolPlans;
-        internal TopoStorage mvarParent;
+        internal TopoStorage mvarParent;        
     
         public Rauta(TopoStorage parent)
         {

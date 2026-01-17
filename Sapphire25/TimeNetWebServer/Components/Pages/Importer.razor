@@ -1,8 +1,9 @@
 ﻿@page "/importer"
 @rendermode InteractiveServer
+@using TimeNet2026.Storage
 @using TimeNetComponents.TreeView
 @inject IJSRuntime JS
-@inject TimeNet2026.Storage.OnyxStorage mvarStorage
+@inject OnyxStorage mvarStorage
 
 @if(mvarBusy)
 {

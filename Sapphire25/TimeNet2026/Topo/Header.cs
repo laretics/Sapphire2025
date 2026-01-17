@@ -20,7 +20,7 @@ namespace TimeNet2026.Topo
 		public string License { get; set; }
 		public string Author { get; set; }
 		public DateTime FirstDate { get; set; }
-		public DateTime LastDate { get; set; }
+		public DateTime LastDate { get; set; } //Esta será la fecha de entrada en vigor de este conjunto de planes.
 		public string Version { get; set; }
 		public string Bitmap { get; set; }
 		public Guid Id { get; set; }
