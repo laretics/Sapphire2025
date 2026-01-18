@@ -208,16 +208,25 @@ namespace TimeNet2026.DBStorage
 							await SaveChangesAsync();
 							foreach (Schedule.ScheduleItem auxItem in auxSchedule.mcolItems)
 							{
-								DBCirculation? auxCirculation = await Circulations.Where(x => x.PlanId == nuevoPlan.Id && x.Name == auxItem.circulation.name).FirstOrDefaultAsync();
-								if(null!=auxCirculation)
+								DBScheduleUnit nuevoUnit = new DBScheduleUnit();
+								nuevoUnit.ScheduleId = nuevoSchedule.Id;
+								nuevoUnit.Begin = auxItem.timeLapse.Begin;
+								nuevoUnit.End = auxItem.timeLapse.End;
+								if (null != auxItem.circulation) //Esto es un tren
 								{
-									//La circulación existe.
-									DBScheduleUnit nuevoUnit = new DBScheduleUnit();
-									nuevoUnit.ScheduleId = nuevoSchedule.Id;
-									nuevoUnit.CirculationId =  auxCirculation.Id;
-									nuevoUnit.Active = auxItem.active;
-									ScheduleUnits.Add(nuevoUnit);
+									DBCirculation? auxCirculation = await Circulations.Where(x => x.PlanId == nuevoPlan.Id && x.Name == auxItem.circulation.name).FirstOrDefaultAsync();
+									if (null == auxCirculation)
+									{
+										Console.WriteLine(string.Format("Error: Incoherencia de datos en el turno {0} con la circulación {1}.", nuevoSchedule.Name, auxItem.circulation.name));
+									}
+									else
+									{
+										//La circulación existe.
+										nuevoUnit.CirculationId = auxCirculation.Id;
+										nuevoUnit.Active = auxItem.active;
+									}
 								}
+								ScheduleUnits.Add(nuevoUnit);
 							}
 							await SaveChangesAsync();
 						}
@@ -303,7 +312,7 @@ namespace TimeNet2026.DBStorage
 									}
 								}
 							}
-							nuevoPlan.mcolSchedules.Add(nuevoSchedule.name,nuevoSchedule);
+							nuevoPlan.mcolSchedules.Add(nuevoSchedule);
 						}
 						nuevoRauta.mcolPlans.Add(nuevoPlan.Id, nuevoPlan);
                     }

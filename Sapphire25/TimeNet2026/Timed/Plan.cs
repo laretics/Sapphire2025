@@ -23,9 +23,24 @@ namespace TimeNet2026.Timed
         public string Id { get => mvarId; } //Identificador del plan
 		public TopoStorage Parent { get; private set; }
         public IEnumerable<Circulation> Circulations { get => mcolCirculations.Values; }
-		public IEnumerable<Schedule> Schedules { get => mcolSchedules.Values; }
+		public IEnumerable<Schedule> Schedules { get => mcolSchedules; }
+		public IEnumerable<Schedule> SchedulesByDay(byte dayOfWeek)
+		{
+			foreach (Schedule auxSchedule in mcolSchedules)
+			{
+				if ((auxSchedule.weekdayMask & (1 << (dayOfWeek - 1))) != 0) yield return auxSchedule;
+			}
+		}
 		internal Dictionary<string, Circulation> mcolCirculations;
-		internal Dictionary<string, Schedule> mcolSchedules;
+		internal List<Schedule> mcolSchedules; //No puedo hacer un diccionario porque puede haber varios turnos con el mismo nombre en días diferentes.
+		internal Schedule? Schedule(string name,byte dayOfWeek)
+		{
+			foreach (Schedule auxSchedule in mcolSchedules)
+			{
+				if ((auxSchedule.name == name) && ((auxSchedule.weekdayMask & (1 << (dayOfWeek - 1))) != 0)) return auxSchedule;
+			}
+			return null;
+		}
 		string[] Entity.color { get => mvarColor; set => mvarColor = value; }
 		string Entity.name { get => mvarName; set => mvarName = value; }
 		string Entity.comment { get => mvarComment; set => mvarComment = value; }
@@ -72,7 +87,7 @@ namespace TimeNet2026.Timed
 
 		internal Schedule? scheduleByCirculation(Circulation rhs)
 		{
-			foreach (Schedule auxSchedule in mcolSchedules.Values)
+			foreach (Schedule auxSchedule in mcolSchedules)
 			{
 				if (auxSchedule.containsCirculation(rhs)) return auxSchedule;
 			}
@@ -88,7 +103,7 @@ namespace TimeNet2026.Timed
 			mvarComment = string.Empty;
 			mvarColor = new string[2];
 			mcolCirculations = new Dictionary<string, Circulation>();
-			mcolSchedules = new Dictionary<string, Schedule>();
+			mcolSchedules = new List<Schedule>();
 		}
 		internal Plan(XmlNode root, TopoStorage topoStorage):this(topoStorage)
 		{
@@ -127,19 +142,8 @@ namespace TimeNet2026.Timed
 						if (nieto.Name == "ws")
 						{
 							Schedule nuevoTurno = new Schedule();
-							nuevoTurno.deserialize(hijo, this);
-							string[] nombres = nuevoTurno.name.Split(',');
-							if(nombres.Length > 1)
-							{
-								//Varios nombres
-								foreach (string nombre in nombres)
-								{
-									Schedule turnoAux = new Schedule();
-									turnoAux.deserialize(hijo, this);
-									turnoAux.name = nombre.Trim();
-									mcolSchedules.Add(turnoAux.name, turnoAux);
-								}
-							}
+							nuevoTurno.deserialize(nieto, this);
+							mcolSchedules.Add(nuevoTurno);
 						}
 					}
 
