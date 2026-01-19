@@ -158,23 +158,5 @@ namespace TimeNet2026.Timed
 			}
 			return null;
 		}
-
-		internal struct ScheduleItem
-		{
-			internal Circulation? circulation { get; set; }
-			internal TimeLapse timeLapse { get; set; }
-			internal bool active { get; set; } //Indica si el maquinista trabaja en esta parte
-			internal ScheduleItem(TimeLapse timeLapse, bool active)
-			{
-				this.timeLapse = timeLapse;
-				this.active = active;
-			}
-			internal ScheduleItem(Circulation circulation, bool active):this(circulation.TimeLapse, active)
-			{
-				this.circulation = circulation;
-			}
-		}
-
-
 	}
 }
