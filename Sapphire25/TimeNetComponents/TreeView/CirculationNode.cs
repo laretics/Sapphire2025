@@ -14,8 +14,8 @@ namespace TimeNetComponents.TreeView
         internal Rauta Rauta { get; private set; }
         internal Plan Plan { get; private set; }
         internal Circulation Circulation { get; private set; }
-        internal CirculationNode(TopoStorage topoStorage, Rauta rauta, Plan plan, Circulation circulation)
-        {
+        internal CirculationNode(TreeViewEnvironment parent, TopoStorage topoStorage, Rauta rauta, Plan plan, Circulation circulation):base(parent)
+		{
             this.TopoStorage = topoStorage;
             this.Rauta = rauta;
             this.Plan = plan;

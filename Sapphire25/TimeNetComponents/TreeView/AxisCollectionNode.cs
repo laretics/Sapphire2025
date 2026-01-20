@@ -11,23 +11,10 @@ namespace TimeNetComponents.TreeView
 	internal class AxisCollectionNode:TreeNode
 	{
 		internal TopoStorage TopoStorage { get; private set; }
-		internal AxisCollectionNode(TopoStorage content)
+		internal AxisCollectionNode(TreeViewEnvironment parent, TopoStorage content):base(parent)
 		{
 			this.TopoStorage = content;			
 		}
 		public override string Name => string.Format("{0} Ejes", TopoStorage.ColAxis.Count());
-		public override List<TreeNode> Children
-		{
-			get
-			{
-				List<TreeNode> salida = new List<TreeNode>();
-				foreach (Axis eje in TopoStorage.ColAxis)
-				{
-					AxisNode nuevo = new AxisNode(eje, TopoStorage);
-					salida.Add(nuevo);
-				}
-				return salida;
-			}
-		}
 	}
 }

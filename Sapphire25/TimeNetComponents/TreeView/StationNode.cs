@@ -12,7 +12,7 @@ namespace TimeNetComponents.TreeView
 		internal TopoStorage TopoStorage { get; private set; }
 		internal Axis Axis { get; set; }
 		internal Station Station { get; private set; }
-		internal StationNode (TopoStorage topo, Axis axis, Station station)
+		internal StationNode (TreeViewEnvironment parent, TopoStorage topo, Axis axis, Station station):base(parent)
 		{
 			this.TopoStorage = topo;
 			this.Axis = axis;

@@ -20,4 +20,8 @@
     <ProjectReference Include="..\TimeNet2026\TimeNet2026.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="TreeView\Browser\" />
+  </ItemGroup>
+
 </Project>

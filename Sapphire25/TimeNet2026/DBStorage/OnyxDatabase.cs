@@ -206,12 +206,13 @@ namespace TimeNet2026.DBStorage
 							nuevoSchedule.CoordinateY = auxSchedule.coordinates[1];
 							Schedules.Add(nuevoSchedule);
 							await SaveChangesAsync();
-							foreach (Schedule.ScheduleItem auxItem in auxSchedule.mcolItems)
+							foreach (ScheduleItem auxItem in auxSchedule.mcolItems)
 							{
 								DBScheduleUnit nuevoUnit = new DBScheduleUnit();
 								nuevoUnit.ScheduleId = nuevoSchedule.Id;
 								nuevoUnit.Begin = auxItem.timeLapse.Begin;
 								nuevoUnit.End = auxItem.timeLapse.End;
+								nuevoUnit.Active = auxItem.active;
 								if (null != auxItem.circulation) //Esto es un tren
 								{
 									DBCirculation? auxCirculation = await Circulations.Where(x => x.PlanId == nuevoPlan.Id && x.Name == auxItem.circulation.name).FirstOrDefaultAsync();
@@ -226,7 +227,11 @@ namespace TimeNet2026.DBStorage
 										nuevoUnit.Active = auxItem.active;
 									}
 								}
-								ScheduleUnits.Add(nuevoUnit);
+								else //Esto es un turno de depósito
+								{
+									nuevoUnit.CirculationId = -1;
+								}
+									ScheduleUnits.Add(nuevoUnit);
 							}
 							await SaveChangesAsync();
 						}
@@ -294,18 +299,18 @@ namespace TimeNet2026.DBStorage
 								if(unidad.CirculationId<0) //Turno de depósito
 								{
 									TimeLapse lapso = new TimeLapse { Begin = unidad.Begin, End = unidad.End };
-									Schedule.ScheduleItem nuevoItem = new Schedule.ScheduleItem(lapso, unidad.Active);
+									ScheduleItem nuevoItem = new ScheduleItem(lapso, unidad.Active);
 									nuevoSchedule.mcolItems.Add(nuevoItem);
 								}
 								else //Tracción o acompañamiento
 								{
 									DBCirculation? auxCirculation = await Circulations.Where(x => x.Id == unidad.CirculationId).FirstOrDefaultAsync();
-									System.Diagnostics.Debug.Assert(null != auxCirculation);
+									//System.Diagnostics.Debug.Assert(null != auxCirculation);
 									if (null != auxCirculation)
 									{
 										if (nuevoPlan.mcolCirculations.ContainsKey(auxCirculation.Name))
 										{
-											Schedule.ScheduleItem nuevoItem = new Schedule.ScheduleItem(nuevoPlan.mcolCirculations[auxCirculation.Name], unidad.Active);
+											ScheduleItem nuevoItem = new ScheduleItem(nuevoPlan.mcolCirculations[auxCirculation.Name], unidad.Active);
 											nuevoItem.active = unidad.Active;
 											nuevoSchedule.mcolItems.Add(nuevoItem);
 										}

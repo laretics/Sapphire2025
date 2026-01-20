@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore.Storage.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -111,52 +112,11 @@ namespace TimeNet2026.Timed
 					}
 					foreach (XmlNode node in root.ChildNodes)
 					{
-						ScheduleItem? nuevoItem = null;
-						switch(node.Name)
-						{
-							case "depot":
-								nuevoItem = parseDepot(node);
-								break;
-							case "train":
-								nuevoItem = parseCirculation(node, parent);
-								break;
-							default:
-								nuevoItem = null;
-								break;
-						}
-						if(null!=nuevoItem)
-							mcolItems.Add((ScheduleItem)nuevoItem);
+						ScheduleItem nuevoItem = new ScheduleItem(node,parent);
+						mcolItems.Add(nuevoItem);
 					}
 				}				
 			}
-		}
-		private ScheduleItem? parseDepot(XmlNode node)
-		{
-			if (null != node.Attributes)
-			{
-				string? auxStart = node.Attributes["start"]?.Value;
-				string? auxEnd = node.Attributes["end"]?.Value;
-				string? auxActive = node.Attributes["active"]?.Value;
-				return new ScheduleItem(new TimeLapse(auxStart, auxEnd), true);
-			}
-			return null;
-		}
-		private ScheduleItem? parseCirculation(XmlNode node, Plan parent)
-		{
-			if(null!=node.Attributes)
-			{
-				string? auxId = node.Attributes["id"]?.Value;
-				string? auxActive = node.Attributes["active"]?.Value;
-				if(null!=auxId && parent.mcolCirculations.ContainsKey(auxId))
-				{
-					Circulation circulation = parent.mcolCirculations[auxId];
-					bool active = true;
-					if(null!=auxActive)
-						active = bool.Parse(auxActive);
-					return new ScheduleItem(circulation, active);
-				}
-			}
-			return null;
 		}
 	}
 }

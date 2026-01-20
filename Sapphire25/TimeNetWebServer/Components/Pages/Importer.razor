@@ -45,7 +45,7 @@
     <div class="row" style="height: 80vh;">
         <!-- Panel izquierdo: TreeView con scroll -->
         <div class="col-4 border-end d-flex flex-column p-0" style="overflow-y: auto; max-height: 80vh;">
-            <TreeView Node="new OnyxStorageNode(mvarStorage)" />
+            <TreeView Node="new OnyxStorageNode(entorno,mvarStorage)" />
         </div>
         <!-- Splitter como columna estrecha -->
         <div class="col-auto p-0" style="width:6px;cursor:col-resize;background:#e0e0e0;" id="splitter"></div>
@@ -93,7 +93,8 @@
     };
 </script>
 
-@code {
+@code {   
+    private TreeViewEnvironment entorno = new TreeViewEnvironment();
     private string? FileName;
     private InputFile? fileInput;
     private bool mvarBusy { get; set; } = false;

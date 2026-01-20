@@ -16,8 +16,8 @@ namespace TimeNetComponents.TreeView
         internal Rauta Rauta { get; private set; }
         internal Plan Plan { get; private set; }
         internal bool foldered { get; private set; }
-        internal CirculationsNode(Plan plan, TopoStorage topoStorage, Rauta rauta, bool foldered = true)
-        {
+        internal CirculationsNode(TreeViewEnvironment parent,Plan plan, TopoStorage topoStorage, Rauta rauta, bool foldered = true):base(parent)
+		{
             this.Plan = plan;
             this.TopoStorage = topoStorage;
             this.Rauta = rauta;
@@ -25,35 +25,5 @@ namespace TimeNetComponents.TreeView
         }
         public override string Name => string.Format("{0} circulaciones",Plan.Circulations.Count());
         public override string SvgIcon => "<svg xmlns=\"http://www.w3.org/2000/svg\" enable-background=\"new 0 0 20 20\" height=\"16px\" viewBox=\"0 0 20 20\" width=\"16px\" fill=\"grey\"><g><rect fill=\"none\" height=\"20\" width=\"20\" x=\"0\"/></g><g><path d=\"M16.5,6H10L8,4H3.5C2.67,4,2,4.67,2,5.5v9C2,15.33,2.67,16,3.5,16h13c0.83,0,1.5-0.67,1.5-1.5v-7C18,6.67,17.33,6,16.5,6z M3.5,14.5v-9h3.88l2,2h4.12V9H12v1.5h1.5V12H12v1.5h1.5V12H15v-1.5h-1.5V9H15V7.5h1.5v7H3.5z\"/></g></svg>";
-        public override List<TreeNode> Children
-        {
-            get
-            {
-                List<TreeNode> salida = new List<TreeNode>();
-                if (foldered)
-                {
-                    Dictionary<Asimilation, List<Circulation>> circulations = new Dictionary<Asimilation, List<Circulation>>();
-                    foreach(Circulation tren in Plan.Circulations)
-                    {
-                        if(null!=tren.asimilation)
-                        {
-                            if (!circulations.ContainsKey(tren.asimilation))
-                                circulations.Add(tren.asimilation, new List<Circulation>());
-                            circulations[tren.asimilation].Add(tren);
-                        }                            
-                    }
-                    foreach(KeyValuePair<Asimilation,List<Circulation>> auxPar in circulations)
-                        salida.Add(new AsimilationNode(auxPar.Key,TopoStorage,Rauta, Plan));
-                }
-                else
-                {
-                    foreach (Circulation tren in Plan.Circulations)
-                        salida.Add(new CirculationNode(TopoStorage,Rauta,Plan, tren));
-                }                 
-                return salida;
-            }
-        }
-
-
     }
 }

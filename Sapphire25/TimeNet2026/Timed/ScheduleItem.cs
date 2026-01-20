@@ -26,17 +26,29 @@ namespace TimeNet2026.Timed
 		}		
 		private void ParseDepot(XmlNode node)
 		{
-
+			if(null!=node.Attributes)
+			{
+				string? auxStart = node.Attributes["start"]?.Value;
+				string? auxEnd = node.Attributes["end"]?.Value;
+				string? auxActive = node.Attributes["active"]?.Value;
+				this.active = true;
+				if(null!=auxActive && auxActive.ToUpper().Contains('F')) this.active = false;
+				this.timeLapse = new TimeLapse(auxStart, auxEnd);				
+			}
 		}
 		private void ParseCirculation(XmlNode node, Plan parent)
 		{
-			XmlAttribute? attrCirculation = node.Attributes?["id"];
-			if (attrCirculation != null)
+			if(null!=node.Attributes)
 			{
-				
-
-
-
+				XmlAttribute? auxCirculation = node.Attributes?["id"];
+				if (null != auxCirculation && parent.mcolCirculations.ContainsKey(auxCirculation.Value))
+				{
+					Circulation circ = parent.mcolCirculations[auxCirculation.Value];
+					this.circulation = circ;
+					this.active = true;
+					string? auxActive = node.Attributes["active"]?.Value;
+					if (null != auxActive && auxActive.ToUpper().Contains('F')) this.active = false;
+				}
 			}
 		}
 
