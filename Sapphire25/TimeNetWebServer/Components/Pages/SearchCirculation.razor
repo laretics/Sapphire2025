@@ -110,7 +110,8 @@
     [Parameter]
     public string? TopoStorageId { get; set; }
     private void auxStateChanged() { StateHasChanged(); }
-    private TreeViewEnvironment entorno = new TreeViewEnvironment();
+    private TimeNetEnvironment entornoTN;
+    private TreeViewEnvironment entorno;
 
     private TimeNetControlEnvironment? mvarEnvironment { get; set; }
     private TimeNetControlStyle mvarStyle { get; set; } = new TimeNetControlStyle();
@@ -118,6 +119,8 @@
     protected override async Task OnInitializedAsync()
     {
         await mvarStorage.Init();
+        entornoTN = new TimeNetEnvironment(mvarStorage);
+        entorno = new TreeViewEnvironment(entornoTN);  
     }
 
 }

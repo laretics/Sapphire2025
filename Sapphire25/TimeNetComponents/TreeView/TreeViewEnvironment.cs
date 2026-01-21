@@ -4,6 +4,9 @@ using System.Linq;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
+using TimeNet2026.DBStorage;
+using TimeNet2026.Production;
+using TimeNet2026.Storage;
 using TimeNet2026.Timed;
 using TimeNet2026.Topo;
 
@@ -14,102 +17,142 @@ namespace TimeNetComponents.TreeView
     /// </summary>
     public class TreeViewEnvironment
     {
-        internal List<TreeNode> Children(TreeNode element)
+		public TreeNode Root { get; private set; }
+
+		public TreeViewEnvironment(TimeNetEnvironment tnEnvironment)
+		{	
+			if(null==tnEnvironment.TopoStorage)
+				//No hay un almacenamiento seleccionado. El árbol se muestra entero
+				Root = new TreeNode(this, TreeNode.NodeType.OnyxStorage, tnEnvironment);
+			else
+				//Tenemos un almacenamiento seleccionado. Modo normal de Tourmaline
+				Root = new TreeNode(this, TreeNode.NodeType.TopoStorage, tnEnvironment);
+		}
+
+		internal List<TreeNode> Children(TreeNode element)
         {
             List<TreeNode> children = new List<TreeNode>();
-			if (element.GetType() == typeof(OnyxStorageNode))
+			TimeNetEnvironment enviro = element.NetEnvironment;
+			TreeNode nuevo;
+			switch (element.Type)
 			{
-				OnyxStorageNode onice = (OnyxStorageNode)element;
-				foreach (TopoStorage topo in onice.content.Storages.Values)
-				{
-					TopoStorageNode hijo = new TopoStorageNode(this,topo);
-					children.Add(hijo);
-				}
-			}
-			else if (element.GetType()==typeof(TopoStorageNode))
-            {
-                TopoStorageNode tsNode = (TopoStorageNode)element;
-				children.Add(new AxisCollectionNode(this,tsNode.TopoStorage));
-				children.Add(new AsimilationCollectionNode(this,tsNode.TopoStorage));
-				foreach (Rauta auxRauta in tsNode.TopoStorage.ColRauta.Values)
-					children.Add(new RautaNode(this,auxRauta, tsNode.TopoStorage));
-			}
-            else if (element.GetType() == typeof(AxisCollectionNode))
-            {
-                AxisCollectionNode acNode = (AxisCollectionNode)element;
-				foreach (Axis eje in acNode.TopoStorage.ColAxis)
-				{
-					AxisNode nuevo = new AxisNode(this,eje, acNode.TopoStorage);
-					children.Add(nuevo);
-				}
-			}
-			else if (element.GetType() == typeof(AsimilationCollectionNode))
-            {
-                AsimilationCollectionNode ascNode = (AsimilationCollectionNode)element;
-				foreach (Asimilation asimila in ascNode.TopoStorage.ColAsimilations.Values)
-				{
-					AsimilationNode nuevo = new AsimilationNode(this,asimila, ascNode.TopoStorage, ascNode.Rauta, ascNode.Plan);
-					children.Add(nuevo);
-				}
-			}
-			else if (element.GetType() == typeof(AxisNode))
-			{
-				AxisNode axisNode = (AxisNode)element;
-				foreach (Station estacion in axisNode.Axis.Stations)
-				{
-					StationNode nuevo = new StationNode(this,axisNode.TopoStorage, axisNode.Axis, estacion);
-					children.Add(nuevo);
-				}
-			}
-			else if (element.GetType() == typeof(AsimilationNode))
-			{
-				AsimilationNode asim = (AsimilationNode)element;
-				if (null != asim.Plan && null != asim.Rauta)
-				{
-					foreach (Circulation candidato in asim.Plan.Circulations)
-						children.Add(new CirculationNode(this,asim.TopoStorage, asim.Rauta, asim.Plan, candidato));
-				}
-			}
-			else if (element.GetType() == typeof(RautaNode))
-			{
-				RautaNode rautaNode = (RautaNode)element;
-				foreach (Plan elemento in rautaNode.Rauta.Plans.Values)
-				{
-					PlanNode nuevo = new PlanNode(this,elemento, rautaNode.TopoStorage, rautaNode.Rauta);
-					children.Add(nuevo);
-				}
-			}
-			else if (element.GetType() == typeof(PlanNode))
-			{
-				PlanNode planNode = (PlanNode)element;
-				children.Add(new CirculationsNode(this, planNode.Plan, planNode.TopoStorage, planNode.Rauta, true));
-			}
-			else if (element.GetType() == typeof(CirculationsNode))
-			{
-				CirculationsNode circa = (CirculationsNode)element;
-				if (circa.foldered)
-				{
-					Dictionary<Asimilation, List<Circulation>> circulations = new Dictionary<Asimilation, List<Circulation>>();
-					foreach (Circulation tren in circa.Plan.Circulations)
+				case TreeNode.NodeType.OnyxStorage:
+					foreach (TopoStorage topo in enviro.OnyxStorage.Storages.Values)
 					{
-						if (null != tren.asimilation)
+						nuevo = new TreeNode(this, null, TreeNode.NodeType.TopoStorage);
+						nuevo.NetEnvironment.TopoStorage = topo;
+						children.Add(nuevo);
+					}
+					break;
+				case TreeNode.NodeType.TopoStorage:
+					children.Add(new TreeNode(this,element, TreeNode.NodeType.AxisCollection));
+					children.Add(new TreeNode(this,element, TreeNode.NodeType.AsimilationCollection));
+					if(null!=enviro.TopoStorage)
+					{
+						foreach (Rauta auxRauta in enviro.TopoStorage.ColRauta.Values)
 						{
-							if (!circulations.ContainsKey(tren.asimilation))
-								circulations.Add(tren.asimilation, new List<Circulation>());
-							circulations[tren.asimilation].Add(tren);
+							nuevo = new TreeNode(this,element, TreeNode.NodeType.Rautatie);
+							nuevo.NetEnvironment.Rauta = auxRauta;
+							children.Add(nuevo);
 						}
 					}
-					foreach (KeyValuePair<Asimilation, List<Circulation>> auxPar in circulations)
-						children.Add(new AsimilationNode(this,auxPar.Key, circa.TopoStorage, circa.Rauta, circa.Plan));
-				}
-				else
-				{
-					foreach (Circulation tren in circa.Plan.Circulations)
-						children.Add(new CirculationNode(this, circa.TopoStorage, circa.Rauta, circa.Plan, tren));
-				}
+					break;
+				case TreeNode.NodeType.AxisCollection:
+					if(null!=enviro.TopoStorage)
+					{
+						foreach(Axis eje in enviro.TopoStorage.ColAxis)
+						{
+							nuevo = new TreeNode(this,element, TreeNode.NodeType.Axis);
+							nuevo.NetEnvironment.Axis = eje;
+							children.Add(nuevo);
+						}
+					}
+					break;
+				case TreeNode.NodeType.AsimilationCollection:
+					if(null!=enviro.TopoStorage)
+					{
+						foreach(Asimilation asimila in enviro.TopoStorage.ColAsimilations.Values)
+						{
+							nuevo = new TreeNode(this,element, TreeNode.NodeType.Asimilation);
+							nuevo.NetEnvironment.Asimilation = asimila;
+							nuevo.NetEnvironment.Rauta = enviro.Rauta;
+							if (null!=enviro.Rauta && null!=enviro.Plan)
+								nuevo.Url = $"/asimilationview/{enviro.TopoStorage.Header.Id}/{enviro.Rauta.Header.Id}/{enviro.Plan.Id}/{asimila.id}";														
+							children.Add(nuevo);
+						}
+					}
+					break;
+				case TreeNode.NodeType.Asimilation:	//La asimilación devuelve las circulaciones asimiladas que la usan.
+					if(null!=enviro.Asimilation && null!=enviro.Plan)
+					{
+						foreach(Circulation candidato in enviro.Plan.Circulations)
+						{
+							if(candidato.asimilation==enviro.Asimilation)
+							{
+								nuevo = new TreeNode(this,element, TreeNode.NodeType.Circulations);
+								nuevo.NetEnvironment.Circulation = candidato;
+								children.Add(nuevo);
+							}
+						}
+					}
+					break;
 
+				case TreeNode.NodeType.Axis:
+					if(null!=enviro.Axis)
+					{
+						foreach(Station estacion in enviro.Axis.Stations)
+						{
+							nuevo = new TreeNode(this,element, TreeNode.NodeType.Station);
+							nuevo.NetEnvironment.Axis = enviro.Axis;
+							nuevo.ContentId = estacion.id;
+							children.Add(nuevo);
+						}
+					}
+					break;
+				case TreeNode.NodeType.Rautatie:
+					if(null!=enviro.Rauta)
+					{
+						foreach(Plan plan in enviro.Rauta.Plans.Values)
+						{
+							nuevo = new TreeNode(this,element, TreeNode.NodeType.Plan);
+							nuevo.NetEnvironment.Rauta = enviro.Rauta;
+							nuevo.NetEnvironment.Plan = plan;
+							children.Add(nuevo);
+						}
+					}
+					break;
+				case TreeNode.NodeType.Plan:
+					if(null!=enviro.Plan && null!=enviro.Rauta && null!=enviro.TopoStorage)
+					{
+						children.Add(new TreeNode(this,element, TreeNode.NodeType.Circulations));
+						//TODO: Añadir nodo de turnos de trabajo asociados.
+					}
+					break;
+				case TreeNode.NodeType.Circulations:
+					if(null!=enviro.Plan)
+					{
+						Dictionary<Asimilation, List<Circulation>> circulations = new Dictionary<Asimilation, List<Circulation>>();
+						foreach (Circulation tren in enviro.Plan.Circulations)
+						{
+							if (null != tren.asimilation)
+							{
+								if (!circulations.ContainsKey(tren.asimilation))
+									circulations.Add(tren.asimilation, new List<Circulation>());
+								circulations[tren.asimilation].Add(tren);
+							}
+						}
+						foreach (KeyValuePair<Asimilation, List<Circulation>> auxPar in circulations)
+						{
+							nuevo = new TreeNode(this,element, TreeNode.NodeType.Asimilation);
+							nuevo.NetEnvironment.Rauta = enviro.Rauta;
+							nuevo.NetEnvironment.Asimilation = auxPar.Key;
+							nuevo.NetEnvironment.ViewAsimilation = auxPar.Key;
+							children.Add(nuevo);							
+						}
+					}
+					break;
 			}
-				return children;
+			return children;
 		}
     }
 }

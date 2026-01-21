@@ -11,7 +11,7 @@ namespace TimeNet2026.Topo
 {
 	public class Station : RefPunctual
 	{
-		internal string id { get; private set; }
+		public string id { get; private set; }
 		public string name { get; private set; }
 		public string shortName { get; private set; }
 		internal Axis axis { get; private set; }

@@ -15,12 +15,48 @@ namespace TimeNet2026.Production
     /// </summary>
     public class TimeNetEnvironment
     {
-        internal OnyxStorage OnyxStorage { get; private set; }
-        public TopoStorage? TopoStorage { get; internal set; }
-        public Asimilation? ViewAsimilation { get; internal set; } //Asimilación que marca la vista de la malla.     
-        public Rauta? Rauta { get; internal set; } //Almacén donde están los planes
-        public Plan? Plan { get; internal set; } //Plan donde están los trenes que hay que visualizar.
-        public string? TopoStorageId 
+        public OnyxStorage OnyxStorage { get; private set; }
+        public TopoStorage? TopoStorage { get; set; }
+        public Axis? Axis { get; set; } //El eje se necesita para los nodos de los árboles.
+		public Asimilation? ViewAsimilation { get; set; } //Asimilación que marca la vista de la malla.
+        public Asimilation? Asimilation { get; set; }//Asimilación a mostrar o asimilación vigente.
+        public Rauta? Rauta { get; set; } //Almacén donde están los planes
+        public Plan? Plan { get; set; } //Plan donde están los trenes que hay que visualizar.
+        public Circulation? Circulation { get; set; } //Circulación que se está editando.
+		public TimeNetEnvironment(TimeNetEnvironment original) 
+        { 
+            this.OnyxStorage = original.OnyxStorage;
+            this.TopoStorage = original.TopoStorage;
+            this.Axis = original.Axis;
+            this.ViewAsimilation = original.ViewAsimilation;
+            this.Asimilation = original.Asimilation;
+			this.Rauta = original.Rauta;
+            this.Plan = original.Plan;
+            this.Circulation = original.Circulation;
+		}
+		public TimeNetEnvironment(OnyxStorage storage, string? topoStorageId = null, string? viewId = null, string? rautaId = null, string? planId = null)
+		{
+			this.OnyxStorage = storage;
+			this.TopoStorageId = topoStorageId ?? string.Empty;
+			this.ViewId = viewId ?? string.Empty;
+			this.RautaId = rautaId ?? string.Empty;
+			this.PlanId = planId ?? string.Empty;
+		}
+        public TimeNetEnvironment(OnyxStorage storage, 
+            TopoStorage topoStorage , 
+            Axis? axis = null, 
+            Asimilation? viewAsimilation = null, 
+            Rauta? rauta = null, 
+            Plan? plan = null)
+        {
+            this.OnyxStorage = storage;
+            this.TopoStorage = topoStorage;
+            this.Axis = axis;
+            this.ViewAsimilation = viewAsimilation;
+            this.Rauta = rauta;
+            this.Plan = plan;
+        }
+		public string? TopoStorageId 
         {
             get => null==TopoStorage? null: TopoStorage.Header.Id.ToString();
             set
@@ -77,14 +113,7 @@ namespace TimeNet2026.Production
             }
         }
               
-        public TimeNetEnvironment(OnyxStorage storage, string? topoStorageId=null, string? viewId=null, string? rautaId= null, string? planId = null)
-        {
-            this.OnyxStorage = storage;            
-            this.TopoStorageId = topoStorageId??string.Empty;
-            this.ViewId = viewId??string.Empty;
-            this.RautaId = rautaId ?? string.Empty;
-            this.PlanId = planId ?? string.Empty;
-        }
+
 
         public bool IsViewComplete => null != TopoStorage && null != ViewAsimilation && null != Rauta && null != Plan;
         public string ViewError

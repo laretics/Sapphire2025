@@ -13,7 +13,7 @@ namespace TimeNetWebServer.Classes
 				string contenido = await lector.ReadToEndAsync();
 				documento.LoadXml(contenido);
 			}
-			catch (Exception ex){}
+			catch (Exception ex){ Console.WriteLine(ex.Message); }
 			
 			if (null != documento.DocumentElement)
 				return documento.DocumentElement;
