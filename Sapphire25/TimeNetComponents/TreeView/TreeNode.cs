@@ -22,7 +22,6 @@ namespace TimeNetComponents.TreeView
 		{ 
 			get
 			{
-				TopoStorage? storage;
 				switch (Type)
 				{
 					case NodeType.OnyxStorage:
@@ -31,23 +30,33 @@ namespace TimeNetComponents.TreeView
 						return NetEnvironment.TopoStorage != null ? NetEnvironment.TopoStorage.Header.Name : "[Unknown Storage]";
 					case NodeType.AxisCollection:
 						return NetEnvironment.TopoStorage != null ? string.Format("{0} Ejes", NetEnvironment.TopoStorage.ColAxis.Count()) : "Ejes";
-					case NodeType.AsimilationCollection:
-						return NetEnvironment.TopoStorage != null ? string.Format("{0} asimilaciones", NetEnvironment.TopoStorage.ColAsimilations.Count()) : "Asimilaciones";
-					case NodeType.Asimilation:
-						if(null==NetEnvironment.Plan)
-							return string.Format("{0}/{1} ({2})", NetEnvironment.ViewAsimilation.id, NetEnvironment.Asimilation.name, NetEnvironment.Asimilation.comment);
+					case NodeType.Axis:
+						if(null!=NetEnvironment.Axis)
+							return NetEnvironment.Axis.mvarName;
 						else
-							return string.Format("{0}/{1} ({2})", NetEnvironment.ViewAsimilation.id, NetEnvironment.Asimilation.name, NetEnvironment.Plan.Circulations.Count());
-					case NodeType.Station:
-						if(null!=NetEnvironment.TopoStorage)
+							return "[Unknown Axis]";
+					case NodeType.AsimilationCollection:
+								return NetEnvironment.TopoStorage != null ? string.Format("{0} asimilaciones", NetEnvironment.TopoStorage.ColAsimilations.Count()) : "Asimilaciones";
+					case NodeType.Asimilation:
+						if(null == NetEnvironment.Asimilation || null==NetEnvironment.ViewAsimilation)
+							return "[Unknown Asimilation]";
+						else
 						{
-							Station? auxStation = NetEnvironment.TopoStorage.stationById(ContentId);	
-							if(null!=auxStation)
+							if (null == NetEnvironment.Plan)
+								return string.Format("{0}/{1} ({2})", NetEnvironment.ViewAsimilation.id, NetEnvironment.Asimilation.name, NetEnvironment.Asimilation.comment);
+							else
+								return string.Format("{0}/{1} ({2})", NetEnvironment.ViewAsimilation.id, NetEnvironment.Asimilation.name, NetEnvironment.Plan.Circulations.Count());
+						}
+					case NodeType.Station:
+						if (null != NetEnvironment.TopoStorage)
+						{
+							Station? auxStation = NetEnvironment.TopoStorage.stationById(ContentId);
+							if (null != auxStation)
 								return string.Format("{0} ({1})", auxStation.name, auxStation.shortName);
 						}
 						return "[Unknown Station]";
 					case NodeType.Rautatie:
-						if(null!=NetEnvironment.Rauta)
+						if (null != NetEnvironment.Rauta)
 							return string.Format("{0}({1},{2}) {3} planes",
 							NetEnvironment.Rauta.Header.Name,
 							NetEnvironment.Rauta.Header.Version,
@@ -55,24 +64,22 @@ namespace TimeNetComponents.TreeView
 							NetEnvironment.Rauta.Plans.Count());
 						return "[Unknown Rautatie]";
 					case NodeType.Plan:
-						if(null!=NetEnvironment.Plan)
+						if (null != NetEnvironment.Plan)
 							return string.Format("{0} {2} ({1} circulaciones)", NetEnvironment.Plan.Name, NetEnvironment.Plan.Circulations.Count(), NetEnvironment.Plan.Id);
 						return "[Unknown Plan]";
 					case NodeType.Circulations:
-						if(null!=NetEnvironment.Plan)
+						if (null != NetEnvironment.Plan)
 							return string.Format("{0} circulaciones", NetEnvironment.Plan.Circulations.Count());
 						return "[Unknown Circulations]";
 					case NodeType.Circulation:
-						if(null!=NetEnvironment.Circulation)
+						if (null != NetEnvironment.Circulation)
 							return string.Format("{0} ({1}-{2})",
 								NetEnvironment.Circulation.name,
 								NetEnvironment.Circulation.departure.ToString(@"hh\:mm"),
 								NetEnvironment.Circulation.arrival.ToString(@"hh\:mm"));
 						return "[Unknown Circulation]";
-				}
-
-
-				return string.Empty;
+					}
+				return "[Unknown Element]";
 			}
 		}
 		public virtual string SvgIcon 
@@ -86,6 +93,13 @@ namespace TimeNetComponents.TreeView
 						return "<svg xmlns=\"http://www.w3.org/2000/svg\" height=\"16px\" viewBox=\"0 -960 960 960\" width=\"16px\" fill=\"grey\"><path d=\"M480-120q-151 0-255.5-46.5T120-280v-400q0-66 105.5-113T480-840q149 0 254.5 47T840-680v400q0 67-104.5 113.5T480-120Zm0-479q89 0 179-25.5T760-679q-11-29-100.5-55T480-760q-91 0-178.5 25.5T200-679q14 30 101.5 55T480-599Zm0 199q42 0 81-4t74.5-11.5q35.5-7.5 67-18.5t57.5-25v-120q-26 14-57.5 25t-67 18.5Q600-528 561-524t-81 4q-42 0-82-4t-75.5-11.5Q287-543 256-554t-56-25v120q25 14 56 25t66.5 18.5Q358-408 398-404t82 4Zm0 200q46 0 93.5-7t87.5-18.5q40-11.5 67-26t32-29.5v-98q-26 14-57.5 25t-67 18.5Q600-328 561-324t-81 4q-42 0-82-4t-75.5-11.5Q287-343 256-354t-56-25v99q5 15 31.5 29t66.5 25.5q40 11.5 88 18.5t94 7Z\"/></svg>";
 					case NodeType.TopoStorage:
 						return "<svg xmlns=\"http://www.w3.org/2000/svg\" height=\"16px\" viewBox=\"0 -960 960 960\" width=\"16px\" fill=\"gray\"><path d = \"m600-120-240-84-186 72q-20 8-37-4.5T120-170v-560q0-13 7.5-23t20.5-15l212-72 240 84 186-72q20-8 37 4.5t17 33.5v560q0 13-7.5 23T812-192l-212 72Zm-40-98v-468l-160-56v468l160 56Zm80 0 120-40v-474l-120 46v468Zm-440-10 120-46v-468l-120 40v474Zm440-458v468-468Zm-320-56v468-468Z\"/></svg>";
+					case NodeType.Axis:
+						if(null!=NetEnvironment.Axis)
+						{
+							Axis auxEje = NetEnvironment.Axis;
+							auxColor = ((TimeNet2026.Entity)auxEje).color[0];
+						}							
+						return string.Format("<svg xmlns=\"http://www.w3.org/2000/svg\" height=\"16px\" viewBox=\"0 -960 960 960\" width=\"16px\" fill=\"{0}\"><path d=\"M600-80v-100L320-320H120v-240h172l108-124v-196h240v240H468L360-516v126l240 120v-50h240v240H600ZM480-720h80v-80h-80v80ZM200-400h80v-80h-80v80Zm480 240h80v-80h-80v80ZM520-760ZM240-440Zm480 240Z\"/></svg>", auxColor);
 					case NodeType.Asimilation:						
 						if(null!=NetEnvironment.Asimilation)
 							auxColor = NetEnvironment.Asimilation.color[0];

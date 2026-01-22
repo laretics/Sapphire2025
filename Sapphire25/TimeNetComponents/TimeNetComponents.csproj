@@ -7,6 +7,13 @@
     <Configurations>Debug;Release;TimeNet</Configurations>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="TreeView\Browser\**" />
+    <Content Remove="TreeView\Browser\**" />
+    <EmbeddedResource Remove="TreeView\Browser\**" />
+    <None Remove="TreeView\Browser\**" />
+  </ItemGroup>
+
 
   <ItemGroup>
     <SupportedPlatform Include="browser" />
@@ -18,10 +25,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TimeNet2026\TimeNet2026.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="TreeView\Browser\" />
   </ItemGroup>
 
 </Project>
