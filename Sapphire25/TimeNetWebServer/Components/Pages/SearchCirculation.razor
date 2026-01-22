@@ -12,7 +12,7 @@
     <div class="row g-0 h-100">
         <!-- Panel izquierdo: TreeView (25% del ancho) -->
         <div class="col-3 h-100 border-end bg-light shadow-sm">
-            <TreeView Node="new OnyxStorageNode(entorno,mvarStorage)" />
+            <TreeView Environment="entornoArbol" />
         </div>
 
         <!-- Panel derecho: Contenido principal (75% del ancho) -->
@@ -111,7 +111,7 @@
     public string? TopoStorageId { get; set; }
     private void auxStateChanged() { StateHasChanged(); }
     private TimeNetEnvironment entornoTN;
-    private TreeViewEnvironment entorno;
+    private TreeViewEnvironment entornoArbol;
 
     private TimeNetControlEnvironment? mvarEnvironment { get; set; }
     private TimeNetControlStyle mvarStyle { get; set; } = new TimeNetControlStyle();
@@ -120,7 +120,7 @@
     {
         await mvarStorage.Init();
         entornoTN = new TimeNetEnvironment(mvarStorage);
-        entorno = new TreeViewEnvironment(entornoTN);  
+        entornoArbol = new TreeViewEnvironment(entornoTN);  
     }
 
 }

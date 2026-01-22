@@ -1,0 +1,8 @@
+﻿@if (null != Environment)
+{
+    <SubTreeView Node="@Environment.Root" />
+}
+@code {
+    [Parameter]
+    public TreeViewEnvironment? Environment { get; set; }
+}
