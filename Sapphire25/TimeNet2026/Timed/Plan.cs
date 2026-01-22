@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
@@ -22,7 +23,6 @@ namespace TimeNet2026.Timed
 		public string Name { get => mvarName; }
         public string Id { get => mvarId; } //Identificador del plan
 		public TopoStorage Parent { get; private set; }
-        public IEnumerable<Circulation> Circulations { get => mcolCirculations.Values; }
 		public IEnumerable<Schedule> Schedules { get => mcolSchedules; }
 		public IEnumerable<Schedule> SchedulesByDay(byte dayOfWeek)
 		{
@@ -31,7 +31,7 @@ namespace TimeNet2026.Timed
 				if ((auxSchedule.weekdayMask & (1 << (dayOfWeek - 1))) != 0) yield return auxSchedule;
 			}
 		}
-		internal Dictionary<string, Circulation> mcolCirculations;
+		internal List<CirculationBlock> CirculationBlocks { get; private set; }
 		internal List<Schedule> mcolSchedules; //No puedo hacer un diccionario porque puede haber varios turnos con el mismo nombre en días diferentes.
 		internal Schedule? Schedule(string name,byte dayOfWeek)
 		{
@@ -49,13 +49,16 @@ namespace TimeNet2026.Timed
 		{
 			List<Circulation> salida = new List<Circulation>();
 			//Obtiene el próximo tren en partir a partir de esta hora...
-			foreach (Circulation auxCircula in mcolCirculations.Values)
+			foreach(CirculationBlock bloque in CirculationBlocks)
 			{
-				TimeSpan auxTime = auxCircula.departureFrom(station);
-				if ((auxTime < TimeSpan.MaxValue) && (auxTime >= time))
+				foreach(Circulation auxCircula in bloque.mcolCirculations)
 				{
-					auxCircula.cacheDeparture = auxTime;
-					salida.Add(auxCircula);
+					TimeSpan auxTime = auxCircula.departureFrom(station);
+					if ((auxTime < TimeSpan.MaxValue) && (auxTime >= time))
+					{
+						auxCircula.cacheDeparture = auxTime;
+						salida.Add(auxCircula);
+					}
 				}
 			}
 			salida.Sort();
@@ -66,14 +69,17 @@ namespace TimeNet2026.Timed
 			Circulation? candidate = null;
 			double nearestCandidate = double.MaxValue;
 			double auxNearest = double.MaxValue;
-			foreach (Circulation auxCircula in mcolCirculations.Values)
+			foreach(CirculationBlock bloque in CirculationBlocks)
 			{
-				TimeSpan auxTime = auxCircula.departureFrom(station);
-				auxNearest = Math.Abs(time.TotalMilliseconds - auxTime.TotalMilliseconds);
-				if (auxNearest < nearestCandidate)
+				foreach (Circulation auxCircula in bloque.mcolCirculations)
 				{
-					nearestCandidate = auxNearest;
-					candidate = auxCircula;
+					TimeSpan auxTime = auxCircula.departureFrom(station);
+					auxNearest = Math.Abs(time.TotalMilliseconds - auxTime.TotalMilliseconds);
+					if (auxNearest < nearestCandidate)
+					{
+						nearestCandidate = auxNearest;
+						candidate = auxCircula;
+					}
 				}
 			}
 			return candidate;
@@ -82,9 +88,16 @@ namespace TimeNet2026.Timed
 		internal Circulation? currentCirculation { get; set; }
 		internal void setCirculation(string rhs)
 		{
-			if (mcolCirculations.ContainsKey(rhs)) currentCirculation = mcolCirculations[rhs];
+			foreach(CirculationBlock bloque in CirculationBlocks)
+			{
+				Circulation? salida = bloque.GetCirculation(rhs);
+				if (null != salida)
+				{
+					currentCirculation = salida;
+					return;
+				}
+			}
 		}
-
 		internal Schedule? scheduleByCirculation(Circulation rhs)
 		{
 			foreach (Schedule auxSchedule in mcolSchedules)
@@ -102,7 +115,7 @@ namespace TimeNet2026.Timed
 			mvarName = string.Empty;
 			mvarComment = string.Empty;
 			mvarColor = new string[2];
-			mcolCirculations = new Dictionary<string, Circulation>();
+			CirculationBlocks = new List<CirculationBlock>();			
 			mcolSchedules = new List<Schedule>();
 		}
 		internal Plan(XmlNode root, TopoStorage topoStorage):this(topoStorage)
@@ -127,8 +140,11 @@ namespace TimeNet2026.Timed
 		{
 			foreach (XmlNode hijo in root.ChildNodes)
 			{
-				Circulation nueva = new Circulation(hijo, topoStorage);
-				mcolCirculations.Add(nueva.name, nueva);
+				if (hijo.Name == "block" || hijo.Name=="cir")
+				{
+					CirculationBlock nuevoBloque = new CirculationBlock(hijo, topoStorage);
+					CirculationBlocks.Add(nuevoBloque);
+				}
 			}
 		}
 		internal void deserializeSchedules(XmlNode root)

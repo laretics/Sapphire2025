@@ -30,6 +30,7 @@ namespace TimeNet2026.DBStorage
 		internal DbSet<DBTopoStorage> TopoStorages { get; set; }
 		internal DbSet<DBRauta> Rautatie { get; set; }
 		internal DbSet<DBPlan> Plans { get; set; }
+		internal DbSet<DBCirculationBlock> CirculationBlocks { get; set; }
 		internal DbSet<DBCirculation> Circulations { get; set; }
 		internal DbSet<DBSchedule> Schedules { get; set; }
 		internal DbSet<DBScheduleUnit> ScheduleUnits { get; set; }
@@ -53,7 +54,8 @@ namespace TimeNet2026.DBStorage
 			List<DBTopoStorage> auxStorages = await TopoStorages.ToListAsync();
 			List<DBRauta> auxRautatie = await Rautatie.ToListAsync();
 			List<DBPlan> auxPlans = await Plans.ToListAsync();
-			List<DBCirculation> auxCirculations = await Circulations.ToListAsync();
+			List<DBCirculationBlock> auxBlocks = await CirculationBlocks.ToListAsync();
+			List<DBCirculation> auxCirculations = await Circulations.ToListAsync();			
 			List<DBSchedule> auxSchedules = await Schedules.ToListAsync();
 			List<DBScheduleUnit> auxScheduleUnits = await ScheduleUnits.ToListAsync();
 			Headers.RemoveRange(auxHeaders);
@@ -63,6 +65,7 @@ namespace TimeNet2026.DBStorage
 			TopoStorages.RemoveRange(auxStorages);
 			Rautatie.RemoveRange(auxRautatie);
 			Plans.RemoveRange(auxPlans);
+			CirculationBlocks.RemoveRange(auxBlocks);
 			Circulations.RemoveRange(auxCirculations);
 			Schedules.RemoveRange(auxSchedules);
 			ScheduleUnits.RemoveRange(auxScheduleUnits);
@@ -130,8 +133,13 @@ namespace TimeNet2026.DBStorage
 				foreach(DBPlan auxPlan in auxPlanes)
 				{
 					//Se eliminan circulaciones y turnos de los planes afectados..
-					List<DBCirculation> auxCirculations = await Circulations.Where(x => x.PlanId == auxPlan.Id).ToListAsync();
-					Circulations.RemoveRange(auxCirculations);
+					List<DBCirculationBlock> auxBlocks = await CirculationBlocks.Where(x => x.PlanId == auxPlan.Id).ToListAsync();
+					foreach(DBCirculationBlock auxBlock in auxBlocks)
+					{
+						List<DBCirculation> auxCirculationsInBlock = await Circulations.Where(x => x.BlockId == auxBlock.Id).ToListAsync();
+						Circulations.RemoveRange(auxCirculationsInBlock);
+					}
+					CirculationBlocks.RemoveRange(auxBlocks);
 
 					List<DBSchedule> auxSchedules = await Schedules.Where(x => x.PlanId == auxPlan.Id).ToListAsync();
 					foreach(DBSchedule auxSchedule in auxSchedules)
@@ -176,21 +184,30 @@ namespace TimeNet2026.DBStorage
                         nuevoPlan.Color1 = auxPlan.mvarColor[1] ?? "white";
                         Plans.Add(nuevoPlan);
                         await SaveChangesAsync();
-                        foreach (Circulation auxCircula in auxPlan.mcolCirculations.Values)
-                        {
-                            if (null != auxCircula.asimilation)
-                            {
-                                DBCirculation nuevaCircula = new DBCirculation();
-                                nuevaCircula.PlanId = nuevoPlan.Id;
-                                nuevaCircula.AsimilationId = auxCircula.asimilation.id;
-                                nuevaCircula.Name = auxCircula.name;
-                                nuevaCircula.Departure = auxCircula.departure;
-                                nuevaCircula.Comment = auxCircula.comment;
-                                nuevaCircula.Color0 = auxCircula.color[0] ?? "black";
-                                nuevaCircula.Color1 = auxCircula.color[1] ?? "white";
-                                Circulations.Add(nuevaCircula);
-                            }
-                        }
+						foreach(CirculationBlock auxBlock in auxPlan.CirculationBlocks)
+						{
+							if(null!=auxBlock.asimilation)
+							{
+								DBCirculationBlock nuevoBlock = new DBCirculationBlock();
+								nuevoBlock.PlanId = nuevoPlan.Id;
+								nuevoBlock.AsimilationId = auxBlock.asimilation.id;
+								nuevoBlock.WeekdayMask = auxBlock.weekdayMask;
+								nuevoBlock.Pattern = auxBlock.pattern;
+								CirculationBlocks.Add(nuevoBlock);
+								await SaveChangesAsync();
+								foreach (Circulation auxCircula in auxBlock.mcolCirculations)
+								{
+									DBCirculation nuevaCircula = new DBCirculation();
+									nuevaCircula.BlockId = nuevoBlock.Id;
+									nuevaCircula.Name = auxCircula.name;
+									nuevaCircula.Departure =  auxCircula.departure;
+									nuevaCircula.Comment = auxCircula.comment;
+									nuevaCircula.Color0 = auxCircula.color[0] ?? "black";
+									nuevaCircula.Color1 = auxCircula.color[1] ?? "white";
+									Circulations.Add(nuevaCircula);
+								}
+							}
+						}
                         await SaveChangesAsync();
 
 						foreach (Schedule auxSchedule in auxPlan.Schedules)
@@ -215,6 +232,27 @@ namespace TimeNet2026.DBStorage
 								nuevoUnit.Active = auxItem.active;
 								if (null != auxItem.circulation) //Esto es un tren
 								{
+									//Tenemos que encontrar el registro correspondiente a esta circulación en la base de datos.
+									IEnumerable<DBCirculationBlock> listaCirculaciones = await CirculationBlocks.Where(x => x.PlanId == nuevoPlan.Id).ToListAsync();
+									foreach(DBCirculationBlock bloque in listaCirculaciones)
+									{
+										List<DBCirculation> auxCirculacionesEnBloque = await Circulations.Where(x => x.BlockId == bloque.Id).ToListAsync();
+										foreach(DBCirculation circulacionEnBloque in auxCirculacionesEnBloque)
+										{
+											if(circulacionEnBloque.Name==auxItem.circulation.name)
+											{
+												nuevoUnit.CirculationId = circulacionEnBloque.Id;
+												break;
+											}
+										}
+										if(nuevoUnit.CirculationId>0)
+											break;
+									}
+
+
+
+
+
 									DBCirculation? auxCirculation = await Circulations.Where(x => x.PlanId == nuevoPlan.Id && x.Name == auxItem.circulation.name).FirstOrDefaultAsync();
 									if (null == auxCirculation)
 									{

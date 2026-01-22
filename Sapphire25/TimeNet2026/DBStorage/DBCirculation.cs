@@ -11,8 +11,7 @@ namespace TimeNet2026.DBStorage
     {
         [Key]
         public int Id { get; set; } //Código interno de la circulación
-        public int PlanId { get; set; } //Referencia al plan de explotación al que pertenece esta circulación
-        public string AsimilationId { get; set; } = string.Empty;//Código TimeNet de la asimilación        
+        public int BlockId { get; set; } //Referencia al bloque que contiene esta circulación
         public string Name { get; set; } = string.Empty;
         public TimeSpan Departure { get; set; }
         public string Comment { get; set; } = string.Empty;

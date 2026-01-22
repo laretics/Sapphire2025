@@ -19,7 +19,7 @@ namespace TimeNet2026.Timed
 		internal List<Circulation> mcolCirculations;
 		public Asimilation? asimilation { get; set; }
 		public byte weekdayMask { get; set; }
-		public string pattern { get; set; }
+		public string pattern { get; set; } = "####";
 		public bool Ready => null != asimilation && null !=asimilation.duration;
 		internal TimeSpan Duration
 		{
@@ -47,6 +47,16 @@ namespace TimeNet2026.Timed
 		{
 			mcolCirculations = new List<Circulation>();
 		}
+		public CirculationBlock(XmlNode node, TopoStorage storage) :this()
+		{
+			deserializeBlock(node, storage);
+		}
+		public Circulation? GetCirculation(string id)
+		{
+			foreach(Circulation aux in mcolCirculations)
+				if (aux.name == id) return aux;
+			return null;
+		}
 
 		internal void deserialize(XmlNode root, TopoStorage storage)
 		{
@@ -70,13 +80,14 @@ namespace TimeNet2026.Timed
 		{
 			if("cir"==root.Name)
 			{
+				deserializeCommon(root, storage);
 				Circulation nuevaCirculacion = new Circulation(this);
 				string auxTexto = XMLUtil.StringParam(root, "id", "");
 				if (auxTexto.Length>0) nuevaCirculacion.name = auxTexto;
-				nuevaCirculacion.departure= XMLUtil.TimeSpanParam(root, "dep");
-				deserializeCommon(root,storage);
+				nuevaCirculacion.departure= XMLUtil.TimeSpanParam(root, "dep");				
 				nuevaCirculacion.color[0] = XMLUtil.StringParam(root, "col", "black");
 				nuevaCirculacion.color[1] = XMLUtil.StringParam(root, "col", "white");
+				mcolCirculations.Add(nuevaCirculacion);
 			}
 			return null;
 		}
