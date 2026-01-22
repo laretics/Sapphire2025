@@ -51,11 +51,13 @@ namespace TimeNet2026.Timed
 		}
 		public string id { get; set; }
 		public string name { get => mvarName; set => mvarName = value; }
+		string Entity.name { get => mvarName; set => mvarName=value; }
 		public string comment { get => mvarComment; set => mvarComment = value; }
+		string Entity.comment { get => mvarComment; set => mvarComment = value; }
 		public int maxSpeed { get => mvarMaxSpeed; }
 		public string[] color { get => mvarColor; set => mvarColor = value; }
+		string[] Entity.color { get => mvarColor; set => mvarColor = value; }	
 		internal List<AsimilationStep> mcolSteps;
-
 		public IEnumerable<AsimilationStep> Steps { get => mcolSteps; }
 		internal bool containsStation(Station rhs)
 		{
@@ -215,7 +217,7 @@ namespace TimeNet2026.Timed
 			mcolSteps = new List<AsimilationStep>();
 			mvarColor = new string[2];
 			mvarDuration = null;
-			mvarName = auxEje.mvarName;
+			mvarName = auxEje.name;
 			mvarColor[0] = auxEje.mvarColor[0];
 			mvarColor[1] = auxEje.mvarColor[1];
 			mvarMaxSpeed = auxEje.mvarMaxSpeed;

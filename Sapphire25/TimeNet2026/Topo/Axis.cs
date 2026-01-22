@@ -17,9 +17,14 @@ namespace TimeNet2026.Topo
 		internal const double BOUNDS_PERCENTAGE = 0.05;
 		internal GeoLocation[] mvarBounds = new GeoLocation[2];
 		//Utilizo el rectángulo para detectar rápidamente si un punto dado puede pertenecer a un eje.
+		string Entity.name { get => mvarName; set => mvarName = value; }
+		public string name { get => mvarName; set => mvarName = value; }
+		public string comment { get => mvarComment; set => mvarComment = value; }
+		string Entity.comment { get => mvarComment; set => mvarComment = value; }
+		String[] Entity.color { get => mvarColor; set => mvarColor = value; }
 		public string id { get; set; }
-		public string mvarName { get; set; }
-		internal string mvarComment { get; set; }
+		protected string mvarName { get; set; }
+		protected string mvarComment { get; set; }
 		internal int searchStep { get; set; } //Valor de salto para la caché de búsqueda de puntos en el eje.
 		internal string[] mvarColor { get; set; }
 		internal List<RefPunctual> mcolPoints; //Polilínea
@@ -460,9 +465,7 @@ namespace TimeNet2026.Topo
 			}
 			return salida;
 		}
-		string Entity.name { get => mvarName; set => mvarName = value; }
-		string Entity.comment { get => mvarComment; set => mvarComment = value; }
-		String[] Entity.color { get => mvarColor; set => mvarColor = value; }
+
 		internal int mvarMaxSpeed;
 		internal int maxSpeed { get => mvarMaxSpeed; }
 		public Axis()

@@ -1,64 +1,68 @@
-﻿@using TimeNetComponents.Entity
+﻿@using System.Threading.Tasks
+@using TimeNetComponents.Entity
 @inject NavigationManager Navigator
-<ul class="list-group">
-	<li class="list-group-item">
-		@if(null!=Node)
-		{
-			<span @onclick="OnNodeClick" @oncontextmenu:preventDefault="true" @oncontextmenu="OnRightClick" style="cursor:pointer;">
-				@if(Node.Children?.Count>0)
-				{
-					<span class="me-2 fw-bold" style="font-size:1.2rem;">
-						@(mvarExpanded ? "-":"+")						
-					</span>
-				}
-				<span class="me-2 fw-bold" style="font-size:1.2rem;">
-				@(icon)
-				</span>
-				@Node.Name
-			</span>
-			@if(mvarExpanded && Node.Children?.Count>0)
-			{
-				<ul class="list-group ms-4">
-					@foreach(TreeNode child in Node.Children)
-					{
-						<SubTreeView Node="child"/>
-					}
-				</ul>
-			}		
-		}
-	</li>
-</ul>
+
+<li class="list-group-item">
+    @if (null != Node)
+    {
+        <span @onclick="OnNodeClick" @oncontextmenu:preventDefault="true" @oncontextmenu="OnRightClick" style="cursor:pointer;">
+            @if (Node.Children?.Count > 0)
+            {
+                <span class="me-2 fw-bold" style="font-size:1.2rem;">
+                    @(mvarExpanded ? "−" : "+")
+                </span>
+            }
+            <span class="me-2 fw-bold" style="font-size:1.2rem;">
+                @icon
+            </span>
+            @Node.Name
+        </span>
+
+        @if (mvarExpanded && Node.Children?.Count > 0)
+        {
+            <ul class="list-group list-unstyled ms-4 mt-2">
+                @foreach (TreeNode child in Node.Children)
+                {
+                    <SubTreeView Node="@child" OnNodeSelected="@OnNodeSelected" />
+                }
+            </ul>
+        }
+    }
+</li>
 
 @code {
-	[Parameter]
-	public TreeNode? Node { get; set; } = default;
+    [Parameter]
+    public TreeNode? Node { get; set; }
+    [Parameter]
+    public EventCallback<TreeNode> OnNodeSelected { get; set; }
 
-	private MarkupString icon 
-	{ get => (null == Node) ? new MarkupString() : (MarkupString)Node.SvgIcon; }
+    private MarkupString icon =>
+        (null == Node) ? new MarkupString() : (MarkupString)Node.SvgIcon;
 
+    private bool mvarExpanded = false;
 
-	private bool mvarExpanded = false;
+    private async Task OnNodeClick()
+    {
+        if (null != Node && Node.Children?.Count > 0)
+            mvarExpanded = !mvarExpanded;
+        else if (null != Node?.Url)
+            Navigator.NavigateTo(Node.Url);
 
-	private void OnNodeClick()
-	{		
-		if (null != Node && Node.Children?.Count > 0)
-			mvarExpanded = !mvarExpanded;
-		else if (null != Node?.Url)
-			Navigator.NavigateTo(Node.Url);
-	}
-	private void OnRightClick()
-	{
-		if(null!=Node)
-		{
-			if (null == Node.Url)
-			{
-				if (Node.Children?.Count > 0)
-					mvarExpanded = !mvarExpanded;
-			}
-			else
-				Navigator.NavigateTo(Node.Url);
-		}
+        //Evento de selección.
+        await OnNodeSelected.InvokeAsync(Node);
+    }
 
-
-	}
+    private void OnRightClick()
+    {
+        if (null != Node)
+        {
+            if (null == Node.Url)
+            {
+                if (Node.Children?.Count > 0)
+                    mvarExpanded = !mvarExpanded;
+            }
+            else
+                Navigator.NavigateTo(Node.Url);
+        }
+    }
 }

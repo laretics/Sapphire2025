@@ -359,8 +359,8 @@ namespace TimeNet2026.DBStorage
 			{
 				Axis nuevoAxis = new Axis();
 				nuevoAxis.id = auxAxis.AxisId;
-				nuevoAxis.mvarName = auxAxis.Name;
-				nuevoAxis.mvarComment = auxAxis.Comment;
+				nuevoAxis.name = auxAxis.Name;
+				nuevoAxis.comment = auxAxis.Comment;
 				nuevoAxis.mvarColor[0] = auxAxis.Color0 ?? "black";
                 nuevoAxis.mvarColor[1] = auxAxis.Color1 ?? "white";
 				Dictionary<long, Station> auxCacheStations = new Dictionary<long, Station>();
@@ -519,8 +519,8 @@ namespace TimeNet2026.DBStorage
 				DBAxis nuevoEje = new DBAxis();
                 nuevoEje.AxisId = eje.id;
                 nuevoEje.StorageId = nuevo.Id;				
-				nuevoEje.Name = eje.mvarName;
-				nuevoEje.Comment = eje.mvarComment;
+				nuevoEje.Name = eje.name;
+				nuevoEje.Comment = eje.comment;
 				nuevoEje.Color0 = eje.mvarColor[0];
                 nuevoEje.Color1 = eje.mvarColor[1];
 				Axis.Add(nuevoEje);				

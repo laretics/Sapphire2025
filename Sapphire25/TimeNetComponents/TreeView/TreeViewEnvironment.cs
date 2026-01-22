@@ -75,9 +75,8 @@ namespace TimeNetComponents.TreeView
 						{
 							nuevo = new TreeNode(this,element, TreeNode.NodeType.Asimilation);
 							nuevo.NetEnvironment.Asimilation = asimila;
-							nuevo.NetEnvironment.Rauta = enviro.Rauta;
-							if (null!=enviro.Rauta && null!=enviro.Plan)
-								nuevo.Url = $"/asimilationview/{enviro.TopoStorage.Header.Id}/{enviro.Rauta.Header.Id}/{enviro.Plan.Id}/{asimila.id}";														
+							nuevo.NetEnvironment.ViewAsimilation = asimila;
+							nuevo.NetEnvironment.Rauta = enviro.Rauta;			
 							children.Add(nuevo);
 						}
 					}

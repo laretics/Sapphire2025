@@ -9,12 +9,15 @@ using TimeNet2026.Storage;
 
 namespace TimeNet2026.Topo
 {
-	public class Station : RefPunctual
+	public class Station : RefPunctual, Entity
 	{
 		public string id { get; private set; }
 		public string name { get; private set; }
 		public string shortName { get; private set; }
 		internal Axis axis { get; private set; }
+		string Entity.name { get => this.name; set => this.name = value; }
+		string Entity.comment { get => this.name; set => this.name = value; }
+		string[] Entity.color { get =>	new string[2]; set => throw new NotImplementedException(); }
 
 		public Station(string id, string name, string shortName, Axis axis, double latitude, double longitude) : base(latitude, longitude)
 		{

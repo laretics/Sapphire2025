@@ -18,6 +18,25 @@ namespace TimeNetComponents.TreeView
 		internal TreeNode? ParentNode { get; private set;  }
 		internal string ContentId { get; set; } = string.Empty; //ID de la referencia que contiene este nodo.
 		internal string? Url { get; set; } //URL a la que debe saltar cuando se pulse el nodo.
+		public TimeNet2026.Entity? EntityLinked
+		{
+			get
+			{
+				switch(Type)
+				{
+					case NodeType.Axis: return NetEnvironment.Axis;
+					case NodeType.Asimilation: return NetEnvironment.Asimilation;
+					case NodeType.Station:
+						if (null != NetEnvironment.TopoStorage)
+							return NetEnvironment.TopoStorage.stationById(ContentId);
+						else
+							return null;
+					case NodeType.Circulation: return NetEnvironment.Circulation;
+					default:
+						return null;
+				}
+			}
+		}
 		public string Name 
 		{ 
 			get
@@ -32,7 +51,7 @@ namespace TimeNetComponents.TreeView
 						return NetEnvironment.TopoStorage != null ? string.Format("{0} Ejes", NetEnvironment.TopoStorage.ColAxis.Count()) : "Ejes";
 					case NodeType.Axis:
 						if(null!=NetEnvironment.Axis)
-							return NetEnvironment.Axis.mvarName;
+							return NetEnvironment.Axis.name;
 						else
 							return "[Unknown Axis]";
 					case NodeType.AsimilationCollection:

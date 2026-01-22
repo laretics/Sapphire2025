@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using TimeNet2026.Auxiliar;
+using TimeNet2026.DBStorage;
 using TimeNet2026.Storage;
 using TimeNet2026.Topo;
 
@@ -14,60 +15,46 @@ namespace TimeNet2026.Timed
 	{
 		private string mvarName;
 		private string mvarComment;
-		private string[] mvarColor;
-		public Circulation()
+		private string[] mvarColor;		
+		public Circulation(CirculationBlock parent)
 		{
 			mvarColor = new string[2];
 			mvarName = "??";
 			mvarComment = string.Empty;
+			this.Parent = parent;
 		}
-		public Circulation(XmlNode root, TopoStorage storage):this()
-		{
-			deserialize(root, storage);
-		}
+		public CirculationBlock Parent { get; private set; }
 		public TimeLapse TimeLapse => new TimeLapse { Begin = departure, End = arrival };
 
-		public Asimilation? asimilation { get; set; }
+		internal bool ParentReady => null != Parent && Parent.Ready;
 		public TimeSpan departure { get; set; }
 		public TimeSpan arrival
 		{
 			get
 			{
-				if (null==asimilation || null == asimilation.duration)
-					return departure;
+				if (ParentReady)
+					return departure.Add(Parent.Duration);				
 				else
-					return departure.Add((TimeSpan)asimilation.duration);
+					return departure;
 			}
 		}
 		internal TimeSpan calculateDelay(long currentPk, TimeSpan currentTime)
 		{
-			if (null == asimilation) return new TimeSpan(0);
-			return asimilation.calculateDelay(currentPk, currentTime.Subtract(departure));
+			if(!ParentReady) return new TimeSpan(0);			
+			return Parent.CalculateDelay(currentPk, currentTime.Subtract(departure));
 		}
 		public int CompareTo(Circulation other) { return cacheDeparture.CompareTo(other.cacheDeparture); }
 		internal bool contained(TimeSpan begin, TimeSpan end) { return !((departure > end) || (arrival < begin)); }
 		internal TimeSpan departureFrom(Station station)
 		{
-			TimeSpan auxValue = asimilation.departureFrom(station);
-			if (auxValue == TimeSpan.MaxValue) return auxValue;
-			else
-				return departure.Add(auxValue);
+			if (!ParentReady) return TimeSpan.MaxValue;
+			return Parent.departureFrom(station).Add(departure);
 		}
 		internal TimeSpan cacheDeparture { get; set; } //Valor usado para ordenar los trenes por hora de salida.
 		public string name { get => mvarName; set => mvarName = value; }
 		public string comment { get => mvarComment; set => mvarComment = value; }
 		public string[] color { get => mvarColor; set => mvarColor=value; }
 
-		internal void deserialize(XmlNode root, TopoStorage storage)
-		{
-			mvarName = XMLUtil.StringParam(root, "id");
-			string auxAsimilaId = XMLUtil.StringParam(root, "asm");
-			departure = XMLUtil.TimeSpanParam(root, "dep");
-			if (storage.mcolAsimilations.ContainsKey(auxAsimilaId))
-				asimilation = storage.mcolAsimilations[auxAsimilaId];
-			color[0] = XMLUtil.StringParam(root, "col", "black");
-            color[1] = XMLUtil.StringParam(root, "col", "white");
-        }
 		//internal View GetView(View destination, ViewGroup parent, bool isNight)
 		//{
 		//	//Mapeando controles

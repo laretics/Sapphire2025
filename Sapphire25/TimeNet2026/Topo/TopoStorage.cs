@@ -10,12 +10,16 @@ using TimeNet2026.Auxiliar;
 using TimeNet2026.Timed;
 namespace TimeNet2026.Topo
 {
-	public class TopoStorage
+	public class TopoStorage: Entity
 	{
 		public Header Header { get; set; } //Encabezado.
 		internal Dictionary<string, Axis> mcolAxis; //Colección de ejes	
 		internal Dictionary<string, Asimilation> mcolAsimilations; //Colección de asimilaciones.
 		internal Dictionary<Guid,Rauta> mcolRauta; //Colección de paquetes de importación.
+		string Entity.name { get => Header.Name; set => Header.Name=value; }
+		string Entity.comment { get => Header.Comment; set => Header.Comment=value; }
+		string[] Entity.color { get => mcolColor; set => mcolColor=value; }
+		private string[] mcolColor = new string[2] { "#000000", "#FFFFFF" };
 		public TopoStorage()
 		{
 			Header = new Header();
