@@ -35,12 +35,20 @@ namespace TimeNet2026.Timed
 		}
 		public TimeLapse(string? begin, string? end)
 		{
-			TimeSpan? tsBegin = parseSapphireTimeSpan(begin);
-			TimeSpan? tsEnd = parseSapphireTimeSpan(end);
-			if (null == tsBegin || null == tsEnd)
-				throw new ArgumentException("Invalid time span format");
-			Begin = tsBegin.Value;
-			End = tsEnd.Value;
+            if(null==begin || null==end)
+            {
+                this.Begin = new TimeSpan(0);
+                this.End = new TimeSpan(0);
+			}
+            else
+            {
+				TimeSpan? tsBegin = parseSapphireTimeSpan(begin);
+				TimeSpan? tsEnd = parseSapphireTimeSpan(end);
+				if (null == tsBegin || null == tsEnd)
+					throw new ArgumentException("Invalid time span format");
+				Begin = tsBegin.Value;
+				End = tsEnd.Value;
+			}               
 		}
         public TimeLapse() : this(TimeSpan.Zero, TimeSpan.Zero) { }
 

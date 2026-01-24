@@ -12,37 +12,37 @@
         if (null != trainColorIndexString)
             int.TryParse(trainColorIndexString, out trainColorIndex);
 
-        foreach (Circulation circulation in Environment.Environment.Plan.Circulations)
+        foreach (CirculationBlock block in Environment.Environment.Plan.CirculationBlocks)
         {
-            double xx = Environment.XX.GetX((int)circulation.departure.TotalSeconds);
-            string x = xx.ToString(CultureInfo.InvariantCulture);
-            
-            if (null != circulation.asimilation && Traces.ContainsKey(circulation.asimilation.id))
+            if(null!=block.asimilation && Traces.ContainsKey(block.asimilation.id))
             {
-                var trace = Traces[circulation.asimilation.id];
-                double midX = (trace.StartX + trace.EndX) / 2;
-                double midY = (trace.StartY + trace.EndY) / 2;
-                double angle = Math.Atan2(trace.EndY - trace.StartY, trace.EndX - trace.StartX) * 180 / Math.PI;
-                double dy = angle >= 0 ? -12 : -14;
-                double textX = midX + xx;
-                double textY = midY;
-                string textXString = textX.ToString(CultureInfo.InvariantCulture);
-                string textYString = textY.ToString(CultureInfo.InvariantCulture);
-                string rotAngle = angle.ToString(CultureInfo.InvariantCulture);
-                string transY = dy.ToString(CultureInfo.InvariantCulture);
-                string fillColor = circulation.asimilation.color[trainColorIndex];
-                string circName = circulation.name;
-                string asiId = GetAsimilationId(circName);
-
-                <use href="#@asiId" transform="translate(@x,0)" />
-                
-                @if (ShouldShowLabel(circName))
+                string fillColor = block.asimilation.color[trainColorIndex];                
+                foreach (Circulation circulation in block.Circulations)
                 {
-                    string transStr = $"translate({textXString}, {textYString}) rotate({rotAngle}, 0, 0) translate(0, {transY})";
-                    <g transform="@transStr" @onclick="() => OnCirculationClick(circulation)">
-                        <rect x="-20" y="-8" width="40" height="16" fill="@fillColor" rx="2" />
-                        <text x="0" y="0" text-anchor="middle" class="timenet-circulation-label">@circName</text>
-                    </g>
+                    double xx = Environment.XX.GetX((int)circulation.departure.TotalSeconds);
+                    string x = xx.ToString(CultureInfo.InvariantCulture);
+                    string circName = circulation.name;
+                    string asiId = GetTraceId(block.asimilation, circName);
+                    var trace = Traces[block.asimilation.id];
+                    <use href="#@asiId" transform="translate(@x,0)" />
+                    double midX = (trace.StartX + trace.EndX) / 2;
+                    double midY = (trace.StartY + trace.EndY) / 2;
+                    double angle = Math.Atan2(trace.EndY - trace.StartY, trace.EndX - trace.StartX) * 180 / Math.PI;
+                    double dy = angle >= 0 ? -12 : -14;
+                    double textX = midX + xx;
+                    double textY = midY;
+                    string textXString = textX.ToString(CultureInfo.InvariantCulture);
+                    string textYString = textY.ToString(CultureInfo.InvariantCulture);
+                    string rotAngle = angle.ToString(CultureInfo.InvariantCulture);
+                    string transY = dy.ToString(CultureInfo.InvariantCulture);                                                       
+                    @if (ShouldShowLabel(circName))
+                    {
+                        string transStr = $"translate({textXString}, {textYString}) rotate({rotAngle}, 0, 0) translate(0, {transY})";
+                        <g transform="@transStr" @onclick="() => OnCirculationClick(circulation)">
+                            <rect x="-20" y="-8" width="40" height="16" fill="@fillColor" rx="2" />
+                            <text x="0" y="0" text-anchor="middle" class="timenet-circulation-label">@circName</text>
+                        </g>
+                    }                    
                 }
             }
         }
@@ -60,21 +60,14 @@
 
     private string auxTransformString => $"translate({X0},{Y0})";
 
-    private string GetAsimilationId(string circulationName)
+    private string GetTraceId(Asimilation asimilation, string circulationId)
     {
-        if (Selections?.HCirculations.Contains(circulationName) ?? false)
-            return $"asi-thick-{GetAsimilationIdFromCirculation(circulationName)}";
-        else if (Selections?.Circulations.Contains(circulationName) ?? false)
-            return $"asi-thin-{GetAsimilationIdFromCirculation(circulationName)}";
+        if (Selections?.HCirculations.Contains(circulationId) ?? false)
+            return $"asi-thick-{asimilation.id}";
+        else if (Selections?.Circulations.Contains(circulationId) ?? false)
+            return $"asi-thin-{asimilation.id}";
         else
-            return $"asi-point-{GetAsimilationIdFromCirculation(circulationName)}";
-    }
-
-    private string GetAsimilationIdFromCirculation(string circulationName)
-    {
-        // Busca la asimilación correspondiente a la circulación
-        var circulation = Environment?.Environment.Plan?.Circulations.FirstOrDefault(c => c.name == circulationName);
-        return circulation?.asimilation?.id ?? string.Empty;
+            return $"asi-point-{asimilation.id}";
     }
 
     private bool ShouldShowLabel(string circulationId)

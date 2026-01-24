@@ -52,6 +52,7 @@ namespace TimeNet2026.Timed
 		}
 		internal TimeSpan cacheDeparture { get; set; } //Valor usado para ordenar los trenes por hora de salida.
 		public string name { get => mvarName; set => mvarName = value; }
+		public override string ToString() {return this.name;}
 		public string comment { get => mvarComment; set => mvarComment = value; }
 		public string[] color { get => mvarColor; set => mvarColor=value; }
 

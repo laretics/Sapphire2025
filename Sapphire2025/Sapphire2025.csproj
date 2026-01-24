@@ -24,7 +24,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Icons\Commands\" />
     <Folder Include="wwwroot\lib\" />
   </ItemGroup>
 

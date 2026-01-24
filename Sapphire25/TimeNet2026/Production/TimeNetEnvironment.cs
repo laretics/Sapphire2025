@@ -22,7 +22,8 @@ namespace TimeNet2026.Production
         public Asimilation? Asimilation { get; set; }//Asimilación a mostrar o asimilación vigente.
         public Rauta? Rauta { get; set; } //Almacén donde están los planes
         public Plan? Plan { get; set; } //Plan donde están los trenes que hay que visualizar.
-        public Circulation? Circulation { get; set; } //Circulación que se está editando.
+        public CirculationBlock? CirculationBlock { get; set; } //Bloque de circulaciones que se está editando.
+		public Circulation? Circulation { get; set; } //Circulación que se está editando.
 		public TimeNetEnvironment(TimeNetEnvironment original) 
         { 
             this.OnyxStorage = original.OnyxStorage;
@@ -32,7 +33,8 @@ namespace TimeNet2026.Production
             this.Asimilation = original.Asimilation;
 			this.Rauta = original.Rauta;
             this.Plan = original.Plan;
-            this.Circulation = original.Circulation;
+			this.CirculationBlock = original.CirculationBlock;
+			this.Circulation = original.Circulation;            
 		}
 		public TimeNetEnvironment(OnyxStorage storage, string? topoStorageId = null, string? viewId = null, string? rautaId = null, string? planId = null)
 		{

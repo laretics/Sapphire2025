@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using TimeNet2026.Auxiliar;
 
 namespace TimeNet2026.Timed
 {
@@ -27,12 +28,12 @@ namespace TimeNet2026.Timed
 		private void ParseDepot(XmlNode node)
 		{
 			if(null!=node.Attributes)
-			{
-				string? auxStart = node.Attributes["start"]?.Value;
-				string? auxEnd = node.Attributes["end"]?.Value;
+			{				
+				TimeSpan auxStart = XMLUtil.TimeSpanParam(node, "start");
+				TimeSpan auxEnd = XMLUtil.TimeSpanParam(node, "end");				
 				string? auxActive = node.Attributes["active"]?.Value;
+				this.active = !(XMLUtil.StringParam(node, "active", "T").ToUpper().Contains('F'));
 				this.active = true;
-				if(null!=auxActive && auxActive.ToUpper().Contains('F')) this.active = false;
 				this.timeLapse = new TimeLapse(auxStart, auxEnd);				
 			}
 		}
@@ -40,14 +41,16 @@ namespace TimeNet2026.Timed
 		{
 			if(null!=node.Attributes)
 			{
-				XmlAttribute? auxCirculation = node.Attributes?["id"];
-				if (null != auxCirculation && parent.mcolCirculations.ContainsKey(auxCirculation.Value))
+				string auxCirculationId = XMLUtil.StringParam(node, "id", "");
+				if(auxCirculationId.Length>0)
 				{
-					Circulation circ = parent.mcolCirculations[auxCirculation.Value];
-					this.circulation = circ;
-					this.active = true;
-					string? auxActive = node.Attributes["active"]?.Value;
-					if (null != auxActive && auxActive.ToUpper().Contains('F')) this.active = false;
+					Circulation? circula = parent.getCirculationById(auxCirculationId);
+					if(null!=circula)
+					{
+						this.circulation = circula;
+						this.timeLapse = circula.TimeLapse;
+						this.active = !(XMLUtil.StringParam(node, "active", "T").ToUpper().Contains('F'));
+					}
 				}
 			}
 		}

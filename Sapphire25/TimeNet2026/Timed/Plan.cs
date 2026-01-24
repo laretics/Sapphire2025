@@ -23,6 +23,16 @@ namespace TimeNet2026.Timed
 		public string Name { get => mvarName; }
         public string Id { get => mvarId; } //Identificador del plan
 		public TopoStorage Parent { get; private set; }
+		public int CirculationCount
+		{
+			get
+			{
+				int cuenta = 0;
+				foreach(CirculationBlock bloque in CirculationBlocks)
+					cuenta += bloque.mcolCirculations.Count;
+				return cuenta;
+			}
+		}
 		public IEnumerable<Schedule> Schedules { get => mcolSchedules; }
 		public IEnumerable<Schedule> SchedulesByDay(byte dayOfWeek)
 		{
@@ -31,7 +41,7 @@ namespace TimeNet2026.Timed
 				if ((auxSchedule.weekdayMask & (1 << (dayOfWeek - 1))) != 0) yield return auxSchedule;
 			}
 		}
-		internal List<CirculationBlock> CirculationBlocks { get; private set; }
+		public List<CirculationBlock> CirculationBlocks { get; private set; }
 		internal List<Schedule> mcolSchedules; //No puedo hacer un diccionario porque puede haber varios turnos con el mismo nombre en días diferentes.
 		internal Schedule? Schedule(string name,byte dayOfWeek)
 		{
@@ -86,17 +96,18 @@ namespace TimeNet2026.Timed
 		}
 
 		internal Circulation? currentCirculation { get; set; }
-		internal void setCirculation(string rhs)
+		internal void setCurrentCirculation(string rhs)
 		{
-			foreach(CirculationBlock bloque in CirculationBlocks)
+			currentCirculation = getCirculationById(rhs);
+		}
+		internal Circulation? getCirculationById(string rhs)
+		{
+			foreach (CirculationBlock bloque in CirculationBlocks)
 			{
 				Circulation? salida = bloque.GetCirculation(rhs);
-				if (null != salida)
-				{
-					currentCirculation = salida;
-					return;
-				}
+				if (null != salida) return salida;
 			}
+			return null;
 		}
 		internal Schedule? scheduleByCirculation(Circulation rhs)
 		{

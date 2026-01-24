@@ -30,6 +30,13 @@ namespace Sapphire2025Models
 			NoneSelected=255	      //Sin estado seleccionado (para el modelo)
 		}
 
+		public static string TrainStatusToString(TrainStatus status)
+		{
+			if ((byte)status < TrainStatusString.Length)
+				return TrainStatusString[(byte)status];
+			return "Desconocido";
+		}
+
 		public static readonly string[] TrainStatusString =
 		{
 			"Desconocido",

@@ -91,36 +91,8 @@ else
 			return "primary";
 		}
 	}
-	private string statusDesciption
-	{
-		get
-		{
-			if (null == mvarTrain) return "[Sin información]";
-			switch (mvarTrain.lastStatus)
-			{
-				case Sapphire2025Models.Common.TrainStatus.Available:
-					return "Material disponible";
-				case Sapphire2025Models.Common.TrainStatus.DepotAvailable:
-					return "Retirado para mantenimiento";
-				case Sapphire2025Models.Common.TrainStatus.DepotRequested:
-					return "Disponible (solicitado para mantenimiento)";
-				case Sapphire2025Models.Common.TrainStatus.RequestToDiagnose:
-					return "Disponible, pendiente de diagnóstico";
-				case Sapphire2025Models.Common.TrainStatus.Repairing:
-					return "En reparación.";
-				case Sapphire2025Models.Common.TrainStatus.Maintenance:
-					return "En mantenimiento.";
-				case Sapphire2025Models.Common.TrainStatus.RequestToRepair:
-					return "¡Solicitado para reparación!";
-				case Sapphire2025Models.Common.TrainStatus.StandStill:
-					return "StandStill";
-				case Sapphire2025Models.Common.TrainStatus.Disabled:
-					return "Material de baja o desmantelado";
+    private string statusDesciption => null == mvarTrain ? "Cargando..." : Sapphire2025Models.Common.TrainStatusToString(mvarTrain.lastStatus);
 
-			}
-			return "[Sin información]";
-		}
-	}
 	private Dictionary<Guid, UserModelBase>? Users = new Dictionary<Guid, UserModelBase>();
 	private IEnumerable<StatusChangeModel>? mcolChanges = new List<StatusChangeModel>();
 	private TrainModel? mvarTrain = null;

@@ -6,6 +6,7 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using TimeNet2026.Auxiliar;
 
 namespace TimeNet2026.Timed
 {
@@ -73,7 +74,7 @@ namespace TimeNet2026.Timed
 					this.color = new string[2];
 					this.color[0] = auxColor0 ?? "#000000";
 					this.color[1] = auxColor1 ?? "#FFFFFF";
-					this.weekdayMask = parseWeekDays(auxWeek);
+					this.weekdayMask = TNUtil.parseWeekDays(auxWeek);
 
 					if(null!=auxCoordinates)
 					{

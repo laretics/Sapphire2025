@@ -32,6 +32,15 @@ namespace TimeNet2026.Timed
 
 			}
 		}
+		public int Count => mcolCirculations.Count;
+		public List<Circulation> Circulations => mcolCirculations;
+		public override string ToString()
+		{
+			if(null==asimilation)
+				return "?? (No asimilación)";
+			else
+				return string.Format("{0} ({1} circulaciones)", asimilation.name, mcolCirculations.Count);
+		}
 		internal TimeSpan CalculateDelay(long pk, TimeSpan currentTime)
 		{
 			if (null == asimilation)
@@ -107,6 +116,5 @@ namespace TimeNet2026.Timed
 			if (auxTexto.Length > 0)
 				asimilation = storage.GetAsimilation(auxTexto);
 		}
-
 	}
 }

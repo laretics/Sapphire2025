@@ -15,20 +15,23 @@ namespace Sapphire2025.Storage
 	{       
         public AuthenticationClient(HttpClient httpClient, IntStorageService intStorage): base(httpClient, intStorage, "sapphireauthentication") {}
 
-        public async Task<bool> SetRegister(string key, string value)
-        {
+		#region Register
+		public async Task<bool> SetRegister(string key, string value)
+		{
 			Guid auxToken = await mvarIntStorage.getToken();
 			CommandModel request = new CommandModel();
-            request.CommandId = key;
-            request.Parameter = value;
-            request.SessionToken = auxToken;
-            string jsonString = JsonSerializer.Serialize(request);
-            HttpResponseMessage respuesta = await sendPutRequest("setregister", jsonString);
-            bool salida = await respuesta.Content.ReadFromJsonAsync<bool>();
-            return salida;
-        }
-        public async Task<string?> GetRegister(string key, string defaultValue = "")
-        {
+			request.CommandId = key;
+			request.Parameter = value;
+			request.SessionToken = auxToken;
+			string jsonString = JsonSerializer.Serialize(request);
+			HttpResponseMessage respuesta = await sendPutRequest("setregister", jsonString);
+			bool salida = await respuesta.Content.ReadFromJsonAsync<bool>();
+			return salida;
+		}
+        public async Task<bool> SetRegister(string key, int value)
+        {return await SetRegister(key, value.ToString());}
+		public async Task<string?> GetRegister(string key, string defaultValue = "")
+		{
 			Guid auxToken = await mvarIntStorage.getToken();
 			CommandModel request = new CommandModel();
 			request.CommandId = key;
@@ -36,13 +39,23 @@ namespace Sapphire2025.Storage
 			request.SessionToken = auxToken;
 			string jsonString = JsonSerializer.Serialize(request);
 			HttpResponseMessage respuesta = await sendPutRequest("getregister", jsonString);
-            CommandModel? response = await respuesta.Content.ReadFromJsonAsync<CommandModel>();
-            if(null!=response)
+			CommandModel? response = await respuesta.Content.ReadFromJsonAsync<CommandModel>();
+			if (null != response)
 				return response.Parameter;
 
-            return null;
+			return null;
 		}
-        public async Task<string?> GetTelegramPairingCode(Guid userId)
+        public async Task<int> GetRegisterInt(string key, int defaultValue = 0)
+        {
+            string? auxString = await GetRegister(key, defaultValue.ToString());
+            if (null != auxString && int.TryParse(auxString, out int salida))
+                return salida;
+            return defaultValue;
+		}
+		#endregion Register
+
+
+		public async Task<string?> GetTelegramPairingCode(Guid userId)
         {
             Guid auxToken = await mvarIntStorage.getToken();
             TelegramPairingRequestModel request = new TelegramPairingRequestModel();

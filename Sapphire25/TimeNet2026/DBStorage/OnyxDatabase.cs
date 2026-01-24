@@ -248,28 +248,11 @@ namespace TimeNet2026.DBStorage
 										if(nuevoUnit.CirculationId>0)
 											break;
 									}
-
-
-
-
-
-									DBCirculation? auxCirculation = await Circulations.Where(x => x.PlanId == nuevoPlan.Id && x.Name == auxItem.circulation.name).FirstOrDefaultAsync();
-									if (null == auxCirculation)
-									{
-										Console.WriteLine(string.Format("Error: Incoherencia de datos en el turno {0} con la circulación {1}.", nuevoSchedule.Name, auxItem.circulation.name));
-									}
-									else
-									{
-										//La circulación existe.
-										nuevoUnit.CirculationId = auxCirculation.Id;
-										nuevoUnit.Active = auxItem.active;
-									}
 								}
 								else //Esto es un turno de depósito
-								{
 									nuevoUnit.CirculationId = -1;
-								}
-									ScheduleUnits.Add(nuevoUnit);
+								
+								ScheduleUnits.Add(nuevoUnit);
 							}
 							await SaveChangesAsync();
 						}
@@ -303,20 +286,28 @@ namespace TimeNet2026.DBStorage
                         nuevoPlan.mvarColor[1] = auxPlan.Color1 ?? "white";
 						nuevoPlan.TopoId = topoStorage.Header.Id;
                         //Cargamos las circulaciones del plan.
-                        List<DBCirculation> circulaciones = await Circulations.Where(x => x.PlanId == auxPlan.Id).ToListAsync();
-						foreach (DBCirculation auxCirculation in circulaciones)
+						List<DBCirculationBlock> blocks = await CirculationBlocks.Where(x => x.PlanId == auxPlan.Id).ToListAsync();
+						foreach(DBCirculationBlock block in blocks)
 						{
-							if(topoStorage.mcolAsimilations.ContainsKey(auxCirculation.AsimilationId))
+							if(topoStorage.mcolAsimilations.ContainsKey(block.AsimilationId))
 							{
-								Circulation nuevaCirculation = new Circulation();
-								nuevaCirculation.departure = auxCirculation.Departure;
-								nuevaCirculation.color[0] = auxCirculation.Color0;
-                                nuevaCirculation.color[1] = auxCirculation.Color1;
-								nuevaCirculation.comment = auxCirculation.Comment;
-								nuevaCirculation.name = auxCirculation.Name;
-								nuevaCirculation.asimilation = topoStorage.mcolAsimilations[auxCirculation.AsimilationId];
-								nuevoPlan.mcolCirculations.Add(nuevaCirculation.name, nuevaCirculation);
-                            }
+								CirculationBlock nuevoBlock = new CirculationBlock();
+								nuevoBlock.asimilation = topoStorage.mcolAsimilations[block.AsimilationId];
+								nuevoBlock.weekdayMask = block.WeekdayMask;
+								nuevoBlock.pattern = block.Pattern;
+								nuevoPlan.CirculationBlocks.Add(nuevoBlock);
+								List<DBCirculation> circulacionesEnBloque = await Circulations.Where(x => x.BlockId == block.Id).ToListAsync();
+								foreach (DBCirculation auxCirculation in circulacionesEnBloque)
+								{
+									Circulation nuevaCirculation = new Circulation(nuevoBlock);
+									nuevaCirculation.departure = auxCirculation.Departure;
+									nuevaCirculation.color[0] = auxCirculation.Color0;
+									nuevaCirculation.color[1] = auxCirculation.Color1;
+									nuevaCirculation.comment = auxCirculation.Comment;
+									nuevaCirculation.name = auxCirculation.Name;
+									nuevoBlock.mcolCirculations.Add(nuevaCirculation);
+								}
+							}
 						}
 
 						List<DBSchedule> schedules = await Schedules.Where(x => x.PlanId == auxPlan.Id).ToListAsync();
@@ -346,9 +337,10 @@ namespace TimeNet2026.DBStorage
 									//System.Diagnostics.Debug.Assert(null != auxCirculation);
 									if (null != auxCirculation)
 									{
-										if (nuevoPlan.mcolCirculations.ContainsKey(auxCirculation.Name))
+										Circulation? auxTNCirculation = nuevoPlan.getCirculationById(auxCirculation.Name);
+										if(null != auxTNCirculation)
 										{
-											ScheduleItem nuevoItem = new ScheduleItem(nuevoPlan.mcolCirculations[auxCirculation.Name], unidad.Active);
+											ScheduleItem nuevoItem = new ScheduleItem(auxTNCirculation, unidad.Active);
 											nuevoItem.active = unidad.Active;
 											nuevoSchedule.mcolItems.Add(nuevoItem);
 										}

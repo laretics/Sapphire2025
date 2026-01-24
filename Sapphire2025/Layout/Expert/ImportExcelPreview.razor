@@ -1,0 +1,105 @@
+﻿<h3>ImportExcelPreview</h3>
+Esto es lo que se ve cuando le das al botón.
+
+<div class="container-fluid">
+    <div class="alert alert-info mb-3">
+        <i class="bi bi-info-circle"></i>
+        Configuración de importación: <strong>@DayCount días</strong> a partir del día <strong>@StartDay</strong>
+    </div>
+    
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Día inicial</label>
+            <input type="number" class="form-control" @bind="StartDay" min="1" max="31" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Número de días</label>
+            <input type="number" class="form-control" @bind="DayCount" min="1" max="7" />
+        </div>
+    </div>
+    
+    <div class="card mb-3">
+        <div class="card-header">
+            <i class="bi bi-file-earmark-excel"></i> Vista previa de datos (@PreviewData?.Count ?? 0 filas)
+        </div>
+        <div class="card-body p-0">
+            <div style="max-height: 400px; overflow-y: auto; overflow-x: auto;">
+                @if (PreviewData != null && PreviewData.Count > 0)
+                {
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead class="sticky-top bg-light">
+                            <tr>
+                                <th style="min-width: 200px;">Agente</th>
+                                @for (int i = 1; i < PreviewData[0].Count; i++)
+                                {
+                                    <th style="min-width: 100px;">Día @(StartDay + i - 1)</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in PreviewData)
+                            {
+                                <tr>
+                                    @for (int col = 0; col < row.Count; col++)
+                                    {
+                                        var cell = row[col];
+                                        <td style="background-color: @cell.Bg; white-space: nowrap;"
+                                            title="@(!string.IsNullOrEmpty(cell.Comment) ? cell.Comment : "")">
+                                            @cell.Text
+                                            @if (!string.IsNullOrEmpty(cell.Comment))
+                                            {
+                                                <i class="bi bi-chat-left-text-fill text-warning ms-1" 
+                                                   style="font-size: 0.8rem;" 
+                                                   title="@cell.Comment"></i>
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="p-3 text-center text-muted">
+                        <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                        <p class="mt-2">No hay datos para mostrar. Seleccione un archivo Excel para previsualizar.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    
+    <div class="d-flex gap-2 justify-content-end">
+        <button class="btn btn-secondary" @onclick="OnCancel">
+            <i class="bi bi-x-circle"></i> Cancelar
+        </button>
+        <button class="btn btn-primary" @onclick="OnConfirm" disabled="@(PreviewData == null || PreviewData.Count == 0)">
+            <i class="bi bi-check-circle"></i> Confirmar Importación
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int StartDay { get; set; } = 1;
+
+    [Parameter]
+    public int DayCount { get; set; } = 4;
+
+    [Parameter]
+    public List<List<CellData>>? PreviewData { get; set; }
+
+    [Parameter]
+    public EventCallback OnConfirm { get; set; }
+    
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    public class CellData
+    {
+        public string Text { get; set; } = "";
+        public string Bg { get; set; } = "transparent";
+        public string Comment { get; set; } = "";
+    }
+}

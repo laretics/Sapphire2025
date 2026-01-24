@@ -84,12 +84,12 @@ namespace TimeNetComponents.TreeView
 				case TreeNode.NodeType.Asimilation:	//La asimilación devuelve las circulaciones asimiladas que la usan.
 					if(null!=enviro.Asimilation && null!=enviro.Plan)
 					{
-						foreach(Circulation candidato in enviro.Plan.Circulations)
+						foreach(CirculationBlock candidato in enviro.Plan.CirculationBlocks)
 						{
 							if(candidato.asimilation==enviro.Asimilation)
 							{
-								nuevo = new TreeNode(this,element, TreeNode.NodeType.Circulations);
-								nuevo.NetEnvironment.Circulation = candidato;
+								nuevo = new TreeNode(this,element, TreeNode.NodeType.CirculationBlock);
+								nuevo.NetEnvironment.CirculationBlock = candidato;
 								children.Add(nuevo);
 							}
 						}
@@ -130,23 +130,34 @@ namespace TimeNetComponents.TreeView
 				case TreeNode.NodeType.Circulations:
 					if(null!=enviro.Plan)
 					{
-						Dictionary<Asimilation, List<Circulation>> circulations = new Dictionary<Asimilation, List<Circulation>>();
-						foreach (Circulation tren in enviro.Plan.Circulations)
+						Dictionary<Asimilation, List<CirculationBlock>> blocks = new Dictionary<Asimilation, List<CirculationBlock>>();
+						foreach (CirculationBlock bloque in enviro.Plan.CirculationBlocks)
 						{
-							if (null != tren.asimilation)
+							if (null != bloque.asimilation)
 							{
-								if (!circulations.ContainsKey(tren.asimilation))
-									circulations.Add(tren.asimilation, new List<Circulation>());
-								circulations[tren.asimilation].Add(tren);
+								if (!blocks.ContainsKey(bloque.asimilation))
+									blocks.Add(bloque.asimilation, new List<CirculationBlock>());
+								blocks[bloque.asimilation].Add(bloque);
 							}
 						}
-						foreach (KeyValuePair<Asimilation, List<Circulation>> auxPar in circulations)
+						foreach (KeyValuePair<Asimilation, List<CirculationBlock>> auxPar in blocks)
 						{
 							nuevo = new TreeNode(this,element, TreeNode.NodeType.Asimilation);
 							nuevo.NetEnvironment.Rauta = enviro.Rauta;
 							nuevo.NetEnvironment.Asimilation = auxPar.Key;
 							nuevo.NetEnvironment.ViewAsimilation = auxPar.Key;
-							children.Add(nuevo);							
+							children.Add(nuevo);											
+						}
+					}
+					break;
+				case TreeNode.NodeType.CirculationBlock:
+					if(null!=enviro.CirculationBlock)
+					{
+						foreach(Circulation circulacion in enviro.CirculationBlock.Circulations)
+						{
+							nuevo = new TreeNode(this,element, TreeNode.NodeType.Circulation);
+							nuevo.NetEnvironment.Circulation = circulacion;
+							children.Add(nuevo);
 						}
 					}
 					break;

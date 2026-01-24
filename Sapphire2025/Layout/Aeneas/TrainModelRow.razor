@@ -4,8 +4,9 @@
     <div class="row border-bottom" >    
         @if(ShowStatus)
         {
-            <div @onclick="OnTrainClick"  class="col-1 border-end text-center d-flex justify-content-center align-items-center" style="min-width: 64px;">
+            <div @onclick="OnTrainClick"  class="col-2 border-end text-center d-flex justify-content-center align-items-center" style="min-width: 64px;">
                 <Sapphire2025.Icons.Status.IcoStatus status="@Train.lastStatus" color="black" />
+                @Sapphire2025Models.Common.TrainStatusToString(Train.lastStatus)
             </div>
             <div @onclick="OnTrainClick" class="col-2 border-end text-center d-flex justify-content-center align-items-center" style="min-width: 100px; background-color: @trainColor;">
                 @Train.name

@@ -6,13 +6,9 @@
 @inject IJSRuntime mvarJSRuntime
 <ModalDialog></ModalDialog>
 <InputFile style="display:none" @ref="mvarCBExcelInputRef" OnChange="onExcelImport" MaxAllowedSize="5242880" accept=".xlsx" />
-@if(mvarExcelImporting)
+@if(mvarDataProcessing)
 {
-    <LoadingTab ElementText="Importando Gráfico Excel" />
-}
-else if(mvarDataProcessing)
-{
-    <LoadingTab ElementText="Procesando Información" />
+    <LoadingTab ElementText="@mvarProcessBarText" />
 }
 else
 {
@@ -33,6 +29,33 @@ else
                                         >
                                             <Sapphire2025.Icons.Actions.Upload/>
                                         </button>
+                                        
+                                        @if(ShowAdvancedButtons)
+                                        {
+                                            <input type="number" 
+                                                   class="form-control form-control-sm" 
+                                                   style="width: 80px;" 
+                                                   @bind="StartCol" 
+                                                   min="0" 
+                                                   max="1024"
+                                                   placeholder="Col" 
+                                                   title="Columna Inicial de la hoja Excel" />
+                                            
+                                            <input type="number" 
+                                                   class="form-control form-control-sm" 
+                                                   style="width: 80px;" 
+                                                   @bind="DayCount" 
+                                                   min="1" 
+                                                   max="16"
+                                                   placeholder="Días a importar" 
+                                                   title="Número de días" />
+                                            
+                                            <button class="btn btn-sm btn-outline-primary" 
+                                                    @onclick="OnAdvancedImport"
+                                                    title="Vista previa">
+                                                <Sapphire2025.Icons.Actions.Upload Color="#a0a0ff"/>
+                                            </button>
+                                        }
                                     }
                                     @if(RealTimeFollowFeature)
                                     {
@@ -62,13 +85,17 @@ else
                                             <Sapphire2025.Icons.Actions.Printer Color="currentColor" />
                                         </button>
                                     }
+                                    
+                                    @if(ExcelImportFeature)
+                                    {
+                                        <button type="button"
+                                                class="btn @(ShowAdvancedButtons ? "btn-secondary active" : "btn-outline-secondary")"
+                                                @onclick="() => auxToggleOption(nameof(ShowAdvancedButtons))"
+                                                title="Opciones avanzadas de importación">
+                                            <Sapphire2025.Icons.Commands.ThreeDots Color="currentColor" />
+                                        </button>
+                                    }
                                 </div>
-@*                                     <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="festiveSwitch" checked="@isFestive" @onchange="OnFestiveChanged" />
-                                        <label class="form-check-label" for="festiveSwitch">
-                                            Festivo
-                                        </label>
-                                    </div> *@
                                 </div>
                             </div>
                             @if(null!=Plan)
@@ -109,21 +136,50 @@ else
         </CascadingValue>
     </CascadingValue>
 }
+
+@* NUEVO: Modal de ImportExcelPreview *@
+@if(ShowExcelImportPreview)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Vista Previa de Importación Excel</h5>
+                    <button type="button" class="btn-close" @onclick="CloseImportPreview"></button>
+                </div>
+                <div class="modal-body">
+                    <ImportExcelPreview StartDay="@StartCol" 
+                                       DayCount="@DayCount"
+                                       PreviewData="@previewData"
+                                       OnConfirm="@OnImportConfirmed" 
+                                       OnCancel="@CloseImportPreview" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter]
-    public RenderFragment? ChildContent { get; set; } //Contenido de este control.
+    public RenderFragment? ChildContent { get; set; }
     [Parameter]
-    public bool ExcelImportFeature{ get; set; } //Este control tiene la posibilidad de importar Excel
+    public bool ExcelImportFeature{ get; set; }
     [Parameter]
-    public bool RealTimeFollowFeature{ get; set; } //Este control permite seguir en vivo la evolución
+    public bool RealTimeFollowFeature{ get; set; }
     [Parameter]
-    public bool PrintFeature{ get; set; } //Este control se puede imprimir
+    public bool PrintFeature{ get; set; }
     [Parameter]
-    public int ExcelImportDayCount { get; set; } = 4; //Número de días que va a importar del excel.
-    public bool WipeOff{get;set;} //Activa la desaparición del contenido a medida que se consume.
-    public bool FollowingMode { get; set; } //Activa el modo de seguimiento (coloreado de casillas a medida que se van activando.)
-    public bool HasProgressBar { get; set; } //Barras de progreso en seguimiento
-    private bool[] mcolSwitches = new bool[3];
+    public int ExcelImportDayCount { get; set; } = 4;
+
+    public bool WipeOff{get;set;}
+    public bool FollowingMode { get; set; }
+    public bool HasProgressBar { get; set; }
+    public bool ShowAdvancedButtons { get; set; } = false;
+    private bool ShowExcelImportPreview { get; set; } = false;
+    public int StartCol { get; set; } = 1;
+    public int DayCount { get; set; } = 4;
+    private List<List<ImportExcelPreview.CellData>>? previewData;
+
     public Dictionary<Guid, UserModelBase>? Users;
     public List<AssignationContentModel>? Assignations;
     private WorkShiftTemplateCollectionModel? Plan;
@@ -131,30 +187,21 @@ else
     public TimeSpan mvarNow;
     private bool isFestive = false;
     private bool mvarDataProcessing = false;
-    private bool mvarExcelImporting = false; //Flag para el importador del gráfico de Agentes.
+    private string mvarProcessBarText = string.Empty;
     private InputFile? mvarCBExcelInputRef;
     private ModalDialog mvarModal { get; set; } = new ModalDialog();
     private Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice;
     private DateTime mvarCurrentDate = DateTime.Today;
-    private DateTime selectedDate
-    {
-        get => mvarCurrentDate;
-        set
-        {
-            mvarCurrentDate = value;
-            _ = mvarIntStorage.SetInspectorReportDate(value);
-            _ = UpdateData(); //Fire and forget.
-        }
-    }
 
-    private System.Threading.Timer? mvarRefreshTimer;
-
+    private string mvarExcelImportData = string.Empty;
+    private DateTime mvarExcelImportDate = DateTime.Today;
 
     protected async override Task OnInitializedAsync()
     {
         mvarNow = DateTime.Now.TimeOfDay;
         WipeOff = true;
         FollowingMode = true;
+        StartCol = await mvarAuthClient.GetRegisterInt("ImplCol", 0);     
 
         Users = await mvarAuthClient.cachedUserList();
         await auxRefresh();
@@ -174,10 +221,25 @@ else
 
         await UpdateData();
     }
+
+    private DateTime selectedDate
+    {
+        get => mvarCurrentDate;
+        set
+        {
+            mvarCurrentDate = value;
+            _ = mvarIntStorage.SetInspectorReportDate(value);
+            _ = UpdateData();
+        }
+    }
+
+    private System.Threading.Timer? mvarRefreshTimer;
+
     private async Task auxRefresh()
     {
         Assignations = await mvarExpertClient.Assignations(selectedDate);
     }
+
     public void Dispose()
     {
         mvarRefreshTimer?.Dispose();
@@ -192,19 +254,23 @@ else
             await UpdateData();
         }
     }
+
     protected async Task UpdateData()
     {
         mvarDataProcessing = true;
-        StateHasChanged();
-        TimeSlice = await mvarExpertClient.PlansTimeSlice(selectedDate); //Rodaja de tiempos
+        mvarProcessBarText = "Cargando Asignaciones de Turnos";
+        StateHasChanged();        
+        TimeSlice = await mvarExpertClient.PlansTimeSlice(selectedDate);
         if (null != TimeSlice)
             isFestive = TimeSlice.GetFestive(0);
         LoadPlan();
         await auxRefresh();
+        mvarProcessBarText = "Cargando hoja de inspección";
         await mvarIntStorage.SetInspectorReportDate(selectedDate);
         mvarDataProcessing = false;
         StateHasChanged();
     }
+
     private void LoadPlan()
     {
         if (null != TimeSlice)
@@ -218,20 +284,17 @@ else
             .OrderBy(xx =>
             {
                 var name = xx.Name ?? "";
-                // Si termina en 'F', intenta parsear el número anterior
                 if (name.EndsWith("F", StringComparison.OrdinalIgnoreCase) && int.TryParse(name[..^1], out int festNum))
                     return festNum;
-                // Si es solo número
                 if (int.TryParse(name, out int num))
                     return num;
-                // Si no es número, lo pone al final
                 return int.MaxValue;
             })
             .ThenBy(xx => xx.Name)
             .ToList();
-
         }
     }
+
     private async Task auxToggleOption(string option)
     {
         switch (option)
@@ -239,90 +302,98 @@ else
             case nameof(WipeOff): WipeOff = !WipeOff; break;
             case nameof(FollowingMode): FollowingMode = !FollowingMode; break;
             case nameof(HasProgressBar): HasProgressBar = !HasProgressBar; break;
+            case nameof(ShowAdvancedButtons): ShowAdvancedButtons = !ShowAdvancedButtons; break; // NUEVO
         }
-        bool[] auxEstados = new bool[3];
-
-
-
     }
 
-    private async Task OnWipeOffChanged(ChangeEventArgs e)
+
+
+    private async Task OnAdvancedImport()
     {
-        if (e.Value is bool value)
-        {
-            WipeOff = value;
-            StateHasChanged();
-            // Si necesitas lógica adicional, añádela aquí
-        }
+        // Mostrar el modal
+        ShowExcelImportPreview = true;
+        await TriggerFileInputBlazor(mvarCBExcelInputRef);
     }
 
-    private async Task OnFollowingModeChanged(ChangeEventArgs e)
+    private void CloseImportPreview()
     {
-        if (e.Value is bool value)
-        {
-            FollowingMode = value;
-            StateHasChanged();
-            // Si necesitas lógica adicional, añádela aquí
-        }
+        ShowExcelImportPreview = false;
+        StateHasChanged();
     }
-    private async Task OnProgressBarChanged(ChangeEventArgs e)
-    {
-        if(e.Value is bool value)
-        {
-            HasProgressBar = value;
-            StateHasChanged();
-        }
-    }
+
+
+
     private async Task onExcelImport(InputFileChangeEventArgs e)
     {
-        mvarExcelImporting = true;
+        mvarDataProcessing = true;
+        mvarProcessBarText = "Importando de Excel";
         StateHasChanged();
 
         Microsoft.AspNetCore.Components.Forms.IBrowserFile archivo = e.File;
 
         if (null != archivo)
         {
-            using Stream corriente = archivo.OpenReadStream(maxAllowedSize: 5242880); // 5 MB
+            mvarProcessBarText = "Abriendo el archivo";
+            StateHasChanged();
+            using Stream corriente = archivo.OpenReadStream(maxAllowedSize: 5242880);
             using MemoryStream ms = new MemoryStream();
-            await corriente.CopyToAsync(ms);
-            byte[] buffer = ms.ToArray();
-            //Ahora pasamos esto a JavaScript
             DateTime fecha = DateTime.Today;
-            int localZoneOffset = await GetTimezoneOffsetMinutes();
-            string? auxCadena = await mvarAuthClient.GetRegister("ImplCol", "0");
-            int excelBeginCol = 0;
-            int.TryParse(auxCadena, out excelBeginCol);
-            string salida = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day, ExcelImportDayCount,excelBeginCol);
-            string? salidaCompilacion = await mvarExpertClient.UploadDailyWorkShift(salida, fecha, ExcelImportDayCount, localZoneOffset);
-            if (null != salidaCompilacion && salidaCompilacion.Length > 0)
-                await mvarModal.show("Error de importación", salidaCompilacion, "Salir");
+            await corriente.CopyToAsync(ms);
+            byte[] buffer = ms.ToArray();                        
+            mvarProcessBarText = "Extrayendo información de Excel";            
+            StateHasChanged();
+            mvarExcelImportData = await mvarJSRuntime.InvokeAsync<string>("excelInterop.extractWorksheetData", buffer, fecha.Month, fecha.Day, ExcelImportDayCount, StartCol);
+            previewData = System.Text.Json.JsonSerializer.Deserialize<List<List<ImportExcelPreview.CellData>>>(mvarExcelImportData);            
+            if(!ShowExcelImportPreview)
+            {
+                await OnUploadExcelToServer();
+                ShowExcelImportPreview = false;
+                mvarProcessBarText = "Finalizando";
+                StateHasChanged();
+                await auxRefresh();
+                mvarDataProcessing = false;
+                StateHasChanged();
+            }            
         }
+    }
+    private async Task OnImportConfirmed()
+    {
+        DateTime fecha = DateTime.Today;
+        ShowExcelImportPreview = false;
+        StateHasChanged();
+        await OnUploadExcelToServer();
+        mvarProcessBarText = "Finalizando";
+        StateHasChanged();
         await auxRefresh();
-        mvarExcelImporting = false;
+        mvarDataProcessing = false;
         StateHasChanged();
     }
+
+    private async Task OnUploadExcelToServer()
+    {        
+        int localZoneOffset = await GetTimezoneOffsetMinutes();
+        mvarProcessBarText = "Subiendo gráfico al servidor";
+        StateHasChanged();
+        string? salidaCompilacion = await mvarExpertClient.UploadDailyWorkShift(mvarExcelImportData, mvarExcelImportDate, ExcelImportDayCount, localZoneOffset);
+        if (null != salidaCompilacion && salidaCompilacion.Length > 0)
+            await mvarModal.show("Error de importación", salidaCompilacion, "Salir");
+    }
+    
     private async Task OnReportPrint()
     {
-        //TODO: Es posible que haya más documentos que necesiten impresión... de momento
-        //sólo la vista del Inspector.
-        //mvarNavigationManager.NavigateTo("agentsprintview");
-
-        //Primero copiamos la información de la tabla de Agentes al almacenamiento de sesión
         await CopyAgentsReportToLocale();
-        //Después mostramos esa misma información en el informe de Inspectores
         await mvarJSRuntime.InvokeVoidAsync("window.open", "/agentsprintview", "_blank");
     }
 
     private async Task CopyAgentsReportToLocale()
     {
-        
-        
     }
 
     private async Task<int> GetTimezoneOffsetMinutes()
     {
         return await mvarJSRuntime.InvokeAsync<int>("eval", "new Date().getTimezoneOffset()");
     }
+    
     private async Task TriggerFileInputBlazor(InputFile? rhs)
     {
         if (null != rhs)
