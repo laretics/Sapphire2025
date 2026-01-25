@@ -94,6 +94,21 @@ namespace TimeNet2026.Timed
 			}
 			return candidate;
 		}
+		internal TimeLapseCollection TotalTimeLapse
+		{
+			get
+			{
+				TimeLapseCollection salida = new TimeLapseCollection();
+				foreach (CirculationBlock bloque in CirculationBlocks)
+				{
+					foreach (Circulation cir in bloque.mcolCirculations)
+					{
+						salida.Add(cir.TimeLapse);
+					}
+				}
+				return salida;
+			}
+		}
 
 		internal Circulation? currentCirculation { get; set; }
 		internal void setCurrentCirculation(string rhs)

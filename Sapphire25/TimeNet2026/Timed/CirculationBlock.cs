@@ -21,6 +21,25 @@ namespace TimeNet2026.Timed
 		public byte weekdayMask { get; set; }
 		public string pattern { get; set; } = "####";
 		public bool Ready => null != asimilation && null !=asimilation.duration;
+
+		public TimeLapseCollection? TimeLapse
+		{
+			get
+			{
+				
+				if(mcolCirculations.Count>0)
+				{
+					TimeLapseCollection salida = new TimeLapseCollection();
+					foreach (Circulation cir in mcolCirculations)
+						salida.Add(cir.TimeLapse);
+
+					
+				}
+
+
+				return null;
+			}
+		}
 		internal TimeSpan Duration
 		{
 			get

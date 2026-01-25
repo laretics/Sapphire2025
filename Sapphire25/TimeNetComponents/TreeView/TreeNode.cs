@@ -14,7 +14,7 @@ namespace TimeNetComponents.TreeView
 	{
 		public NodeType Type { get; protected set; }
 		internal TreeViewEnvironment Parent { get; private set; }
-		internal TimeNetEnvironment NetEnvironment { get; private set; }
+		public TimeNetEnvironment NetEnvironment { get; private set; }
 		internal TreeNode? ParentNode { get; private set;  }
 		internal string ContentId { get; set; } = string.Empty; //ID de la referencia que contiene este nodo.
 		internal string? Url { get; set; } //URL a la que debe saltar cuando se pulse el nodo.

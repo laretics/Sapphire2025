@@ -56,6 +56,8 @@ namespace TimeNet2026.Timed
 		public string comment { get => mvarComment; set => mvarComment = value; }
 		public string[] color { get => mvarColor; set => mvarColor=value; }
 
+		
+
 		//internal View GetView(View destination, ViewGroup parent, bool isNight)
 		//{
 		//	//Mapeando controles

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Schema;
 using TimeNet2026.Storage;
 using TimeNet2026.Timed;
 using TimeNet2026.Topo;
@@ -36,9 +37,12 @@ namespace TimeNet2026.Production
 			this.CirculationBlock = original.CirculationBlock;
 			this.Circulation = original.Circulation;            
 		}
-		public TimeNetEnvironment(OnyxStorage storage, string? topoStorageId = null, string? viewId = null, string? rautaId = null, string? planId = null)
+        public TimeNetEnvironment(OnyxStorage storage)
+        {
+            this.OnyxStorage = storage;
+		}
+		public TimeNetEnvironment(OnyxStorage storage, string? topoStorageId = null, string? viewId = null, string? rautaId = null, string? planId = null):this(storage)
 		{
-			this.OnyxStorage = storage;
 			this.TopoStorageId = topoStorageId ?? string.Empty;
 			this.ViewId = viewId ?? string.Empty;
 			this.RautaId = rautaId ?? string.Empty;
@@ -49,9 +53,8 @@ namespace TimeNet2026.Production
             Axis? axis = null, 
             Asimilation? viewAsimilation = null, 
             Rauta? rauta = null, 
-            Plan? plan = null)
+            Plan? plan = null):this(storage)
         {
-            this.OnyxStorage = storage;
             this.TopoStorage = topoStorage;
             this.Axis = axis;
             this.ViewAsimilation = viewAsimilation;
@@ -114,21 +117,55 @@ namespace TimeNet2026.Production
                 }
             }
         }
-              
+            
+        /// <summary>
+        /// Devuelve el lapso de tiempo que define la selección de la vista.
+        /// </summary>
+        /// <returns></returns>
+        public TimeLapseCollection ViewLapse()
+        {
+            //Por defecto, el lapso de la vista es todo el lapso de representación.
+            TimeLapseCollection salida = new TimeLapseCollection();
+            if (null != Plan && null != Rauta)
+            {
+                if (null != Circulation)
+                {
+                    salida.Add(Circulation.TimeLapse);
+                }
+                if (null != CirculationBlock)
+                { 
+                    foreach (Circulation circ in CirculationBlock.Circulations)
+                        salida.Add(circ.TimeLapse);
+                }
+                else if (null != Asimilation)
+                {
+                    foreach (CirculationBlock block in Plan.CirculationBlocks)
+                    {
+                        if (block.asimilation == Asimilation)
+                        {
+                            foreach (Circulation circ in block.Circulations)
+                                salida.Add(circ.TimeLapse);
+                        }
+                    }
+                }
+                else
+                    salida = Plan.TotalTimeLapse;
+			}           
+                return salida;
+		}
 
-
-        public bool IsViewComplete => null != TopoStorage && null != ViewAsimilation && null != Rauta && null != Plan;
+		public bool IsViewComplete => null != TopoStorage && null != ViewAsimilation && null != Rauta && null != Plan;
         public string ViewError
         {
             get
             {
                 if (IsViewComplete) return "Todo está correcto";
                 StringBuilder salida = new StringBuilder();
-                salida.Append("Falta asignar valor a :");
-                if (null != TopoStorage) salida.Append(" la base de datos de TimeNet");
+                salida.Append("Falta asignar valor a");
+                if (null != TopoStorage) salida.Append(" la topología");
                 if (null != ViewAsimilation) salida.Append(" la asimilación que define la vista");
-                if (null != Rauta) salida.Append(" el componente de horarios");
-                if (null != Plan) salida.Append(" el plan de asimilación");
+                if (null != Rauta) salida.Append("l componente de horarios");
+                if (null != Plan) salida.Append("l plan de asimilación");
                 return salida.ToString();
             }
         }

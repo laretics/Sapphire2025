@@ -41,7 +41,23 @@ namespace TimeNetComponents.Controls.TimeNetControl
             Zoom = Math.Min(MAX_X_OFFSET, Zoom * 2);
             updateSliderParams();
         }
-        internal void OnScrollChanged(int position)
+        internal void FitToLapse(TimeLapse lapse)
+        {
+            int lapseSeconds = (int)lapse.Duration.TotalSeconds;
+            if (lapseSeconds > MAX_X_OFFSET)
+            {
+                Zoom = MAX_X_OFFSET;
+                Offset = 0;
+            }
+            else
+            {
+                Zoom = lapseSeconds;
+                Offset = (int)lapse.Begin.TotalSeconds;
+            }
+            updateSliderParams();
+		}
+
+		internal void OnScrollChanged(int position)
         {
             Offset = position;
         }

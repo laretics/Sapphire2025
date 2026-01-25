@@ -49,8 +49,10 @@ else
     protected async override Task OnInitializedAsync()
     {
         await mvarStorage.Init();
-        mvarEnvironment = new TimeNetControlEnvironment(1400,700,mvarStorage, TopoStorageId,AsimilationId,RautatieId,PlanId);
+        mvarEnvironment = new TimeNetControlEnvironment(1400,700);
 
+        TimeNetEnvironment enviro = new TimeNetEnvironment(mvarStorage, TopoStorageId, AsimilationId, RautatieId, PlanId);
+        mvarEnvironment.Environment = enviro;
 
     }
 }

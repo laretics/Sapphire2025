@@ -13,13 +13,11 @@
     [Parameter]
     public TreeViewEnvironment? Environment { get; set; }
     [Parameter]
-    public EventCallback<TimeNet2026.Entity> OnEntitySelected { get; set; }
+    public EventCallback<TreeNode> OnEntitySelected { get; set; }
 
     private async Task OnNodeClicked(TreeNode node)
     {
         if (null!= node.EntityLinked)
-        {
-            await OnEntitySelected.InvokeAsync(node.EntityLinked);
-        }
+            await OnEntitySelected.InvokeAsync(node);
     }
 }

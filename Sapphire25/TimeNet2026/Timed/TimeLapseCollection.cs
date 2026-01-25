@@ -36,7 +36,11 @@ namespace TimeNet2026.Timed
                 return mcolLapse.Last().Begin;
             }
         }
-
+        public TimeLapse? Envolvent ()
+        {
+            if(mcolLapse.Count<1) return null;
+            return new TimeLapse { Begin = this.Begin, End = this.End };
+		}
         public void Add(TimeLapse rhs)
         {
             mcolLapse.Add(rhs);
@@ -60,17 +64,24 @@ namespace TimeNet2026.Timed
             }
             mcolLapse = nueva;
         }
-        public static TimeLapseCollection Unión(params TimeLapseCollection[] collections)
+        public static TimeLapseCollection Union(params TimeLapseCollection[] collections)
         {
             var result = new TimeLapseCollection();
             foreach (var col in collections)
             {
                 foreach (var interval in col.mcolLapse)
-                {
-                    result.Add(interval);
-                }
+					result.Add(interval);
             }
+            result.MergeIntervals();
             return result;
+        }
+        public static TimeLapseCollection Union(params TimeLapse[] intervals)
+        {
+            var result = new TimeLapseCollection();
+            foreach (var interval in intervals)
+				result.Add(interval);
+			result.MergeIntervals();
+			return result;
         }
 
         public static TimeLapseCollection Interseccion(params TimeLapseCollection[] collections)
@@ -80,8 +91,8 @@ namespace TimeNet2026.Timed
             salida.mcolLapse.AddRange(collections[0].mcolLapse); // Copy first
             for (int k = 1; k < collections.Length; k++)
                 salida = salida.Intersection(collections[k]);
-
-            return salida;
+			salida.MergeIntervals();
+			return salida;
         }
 
         private TimeLapseCollection Intersection(TimeLapseCollection other)
@@ -101,6 +112,7 @@ namespace TimeNet2026.Timed
                 else
                     j++;
             }
+            salida.MergeIntervals();
             return salida;
         }
         
@@ -115,6 +127,7 @@ namespace TimeNet2026.Timed
             TimeLapseCollection salida = new TimeLapseCollection();
             foreach (TimeLapse lapso in mcolLapse)
                 salida.Add(lapso.Inflate(amount));
+            salida.MergeIntervals();
             return salida;
         }
         /// <summary>

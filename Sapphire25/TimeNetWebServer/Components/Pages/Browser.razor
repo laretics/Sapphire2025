@@ -2,9 +2,12 @@
 @rendermode InteractiveServer
 @using TimeNet2026.Storage
 @using TimeNet2026.Production
+@using TimeNet2026.Timed
 @using TimeNetComponents.TreeView
 @using TimeNetComponents.Controls.TimeNetControl
 @inject OnyxStorage mvarStorage
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <div class="container-fluid p-0 h-100">
     <div class="row g-0 h-100">
@@ -67,7 +70,9 @@
             </div>
 
             <!-- TimeNetControl (3/4 vertical) -->
-            <div class="flex-grow-1 bg-light d-flex align-items-center justify-content-center" style="overflow: hidden;">
+            <div @ref="timenetContainer" 
+                class="flex-grow-1 bg-light d-flex align-items-center justify-content-center" 
+                style="overflow: hidden;">
                 @if (null != entornoMalla)
                 {
                     <TimeNetControl Environment="@entornoMalla"
@@ -90,49 +95,14 @@
     </div>
 </div>
 
-<script>
-    let isResizing = false;
-    const splitter = document.getElementById('splitter');
-    const leftPanel = document.getElementById('leftPanel');
-    const container = leftPanel?.parentElement;
-
-    if (splitter && leftPanel && container) {
-        splitter.addEventListener('mousedown', function(e) {
-            isResizing = true;
-            document.body.style.cursor = 'col-resize';
-            document.body.style.userSelect = 'none';
-        });
-
-        document.addEventListener('mousemove', function(e) {
-            if (!isResizing) return;
-
-            // Obtener el offset del contenedor relativo al viewport
-            const containerRect = container.getBoundingClientRect();
-            const relativeX = e.clientX - containerRect.left;
-            const containerWidth = containerRect.width;
-            const newWidth = (relativeX / containerWidth) * 100;
-
-            // Limitar entre 15% y 50%
-            if (newWidth >= 15 && newWidth <= 50) {
-                leftPanel.style.flex = 'none';
-                leftPanel.style.width = newWidth + '%';
-            }
-        });
-
-        document.addEventListener('mouseup', function(e) {
-            isResizing = false;
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
-        });
-    }
-</script>
-
 @code {
+    private IJSObjectReference? jsModulo;
     private TimeNetEnvironment? entornoTN;
     private TreeViewEnvironment? entornoArbol;
     private TimeNetControlEnvironment? entornoMalla;
     private TimeNetSelection? mvarSelection;
     private TimeNetControlStyle controlStyle = new();
+    private ElementReference timenetContainer;
 
     private bool showCurrentTime = true;
     private string? startTime;
@@ -143,12 +113,21 @@
         await mvarStorage.Init();
         entornoTN = new TimeNetEnvironment(mvarStorage);
         entornoArbol = new TreeViewEnvironment(entornoTN);
-
         controlStyle.CurrentTime = showCurrentTime;
 
         // Valores por defecto para selección de tiempo
         startTime = "00:00";
         endTime = "23:59";
+    }
+    protected async override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender)
+        {
+            jsModulo = await JS.InvokeAsync<IJSObjectReference>("import", "./routines.js");
+            await jsModulo.InvokeVoidAsync("initializeSplitter", "splitter", "leftpanel");
+
+            await InitializeTimeNetControl();
+        }
     }
 
     protected override void OnParametersSet()
@@ -158,9 +137,57 @@
             controlStyle.CurrentTime = showCurrentTime;
         }
     }
-    private void OnEntitySelected(TimeNet2026.Entity entity)
+    public async ValueTask DisposeAsync()
     {
-        Console.WriteLine(entity.name);
+        if (jsModulo != null)
+        {
+            await jsModulo.DisposeAsync();
+        }
+    }
+
+    private void OnEntitySelected(TimeNetComponents.TreeView.TreeNode node)
+    {
+        TimeNet2026.Entity? entidad = node.EntityLinked;
+        if (null != entornoMalla && null!=entidad)
+        {
+            entornoTN = node.NetEnvironment;
+            entornoMalla.Environment = entornoTN;
+            TimeLapseCollection lapso = entornoMalla.Environment.ViewLapse();
+            TimeLapse? envolvente = lapso.Envolvent();
+            if(null!=envolvente)
+                entornoMalla.XX.LapseX = envolvente.Inflate(new TimeSpan(0, 15, 0));
+                     
+            if (entidad.GetType() == typeof(TimeNet2026.Timed.Asimilation))
+                mvarSelection?.SelectAsimilation(node.NetEnvironment, entidad as TimeNet2026.Timed.Asimilation);
+            else if (entidad.GetType() == typeof(TimeNet2026.Timed.CirculationBlock))
+                mvarSelection?.SelectCirculationBlock(node.NetEnvironment, entidad as TimeNet2026.Timed.CirculationBlock);
+            else if (entidad.GetType() == typeof(TimeNet2026.Timed.Circulation))
+                mvarSelection?.SelectCirculation(node.NetEnvironment, entidad as TimeNet2026.Timed.Circulation);
+        }
+        StateHasChanged();
+    }
+    private async Task InitializeTimeNetControl()
+    {
+        if(null!=jsModulo && null!=entornoTN?.TopoStorage)
+        {
+            try
+            {
+                Dictionary<string,int> dimensions = await jsModulo.InvokeAsync<Dictionary<string, int>>("getElementDimensions", timenetContainer);
+                if(dimensions["width"]>0 && dimensions["height"]>0)
+                {
+                    entornoMalla = new TimeNetControlEnvironment(
+                        dimensions["width"],
+                        dimensions["height"]
+                    );
+                    mvarSelection = new TimeNetSelection();
+                    StateHasChanged();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error initializing TimeNetControl: " + ex.Message);
+            }
+        }
     }
 
     private void ZoomIn()
@@ -181,5 +208,10 @@
     private void PrintDiagram()
     {
         // TODO: Implementar impresión
+    }
+    private class ElementDimensions
+    {
+        public int Width { get; set; }
+        public int Height { get; set; }
     }
 }

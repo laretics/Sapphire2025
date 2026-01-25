@@ -16,20 +16,45 @@ namespace TimeNetComponents.Controls.TimeNetControl
     /// </summary>
     public class TimeNetControlEnvironment
     {
-        internal TimeNetEnvironment Environment {get;set; } //Entorno de TimeNet asociado.
+		//Entorno de TimeNet asociado.
+		public TimeNetEnvironment? Environment 
+        {
+            get => mvarEnvironment;
+            set
+            {
+                mvarEnvironment = value;
+                initView();
+			}
+        }
 		public TimeNetEnvironmentX XX { get; private set; } //Coordenada X.
         public TimenetEnvironmentY YY { get; private set; } //Coordenada Y.
-              
-        public TimeNetControlEnvironment(int width, int height, OnyxStorage storage, string? topoStorageId, string? viewId, string? rautaId, string? planId)
+        private int mvarWidth;
+        private int mvarHeight;
+        private TimeNetEnvironment? mvarEnvironment = null;
+
+		public TimeNetControlEnvironment(int width, int height)
         {
+            mvarWidth = width;
+            mvarHeight = height;
+
+			initView();
             XX = new TimeNetEnvironmentX(width);			
-            this.Environment = new TimeNetEnvironment(storage, topoStorageId, viewId, rautaId, planId);
-            if(null!=this.Environment.ViewAsimilation)
+            if(null!=this.Environment && null!= this.Environment.ViewAsimilation)
 				YY = new TimenetEnvironmentY(height, Environment.TopoStorage, Environment.ViewAsimilation);
             else
 				YY = new TimenetEnvironmentY(height, null, null);
 		}
-        internal bool IsViewComplete => Environment.IsViewComplete;
-        internal string ViewError => Environment.ViewError;
+        //Esta función se invoca cada vez que ha cambiado algo importante en la malla.
+        internal void initView()
+        {
+            XX = new TimeNetEnvironmentX(mvarWidth);
+            if(null==this.Environment?.ViewAsimilation)
+                YY = new TimenetEnvironmentY(mvarHeight, null, null);
+            else
+                YY = new TimenetEnvironmentY(mvarHeight, Environment.TopoStorage, Environment.ViewAsimilation);
+		}
+
+        internal bool IsViewComplete => null==Environment?false:Environment.IsViewComplete;
+        internal string ViewError => null==Environment?"": Environment.ViewError;
     }
 }

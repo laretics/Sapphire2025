@@ -52,11 +52,12 @@
                 string rightXStr = rightX.ToString(CultureInfo.InvariantCulture);
                 svgText.Append($"<rect fill='url(#right-fade-gradient)' x='{rightXStr}' y='0' width='{fadeWidthStr}' height='{heightStr}'></rect>");
             }
-            else
-            {
+            //else
+            //{
+                //Si es demasiado estrecho, NO dibujamos nada.
                 // If too narrow, just solid
-                svgText.Append($"<rect fill='var(--unselected-time-fill)' x='{x0Str}' y='0' width='{anchoXStr}' height='{heightStr}'></rect>");
-            }
+                //svgText.Append($"<rect fill='var(--unselected-time-fill)' x='{x0Str}' y='0' width='{anchoXStr}' height='{heightStr}'></rect>");
+            //}
         }
 
         return svgText.ToString();
