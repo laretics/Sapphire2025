@@ -58,9 +58,9 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseAuthorization();
 
-app.MapControllers();
-
 app.UseCors("TodoVale");
+
+app.MapControllers();
 
 app.Run();
 
