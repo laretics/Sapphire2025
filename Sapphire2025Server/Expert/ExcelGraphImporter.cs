@@ -90,33 +90,189 @@ namespace Sapphire2025Server.Expert
 						}
                     }
                     //Ya tenemos la colección de turnos a cambiar.
-                    foreach (List<WorkshiftAssignation> grupo in cambios.Values)
+                    foreach(List<WorkshiftAssignation> grupo in cambios.Values)
+						SolveChanges(grupo);
+
+
+
+					/*
+										foreach (List<WorkshiftAssignation> grupo in cambios.Values)
+										{
+											if(grupo.Count==2)
+											{
+												//Cambio simple.
+												if (null!=grupo[0].Definitive && null != grupo[1].Definitive)
+												{
+													//Eliminamos la manía de Peñarrustria de poner dos agentes con
+													//el mismo turno en el gráfico
+													if (!(grupo[0].Definitive.Equals(grupo[1].Definitive,StringComparison.InvariantCultureIgnoreCase)))
+													{
+														grupo[0].SwappingAgent = grupo[1].Agent;
+														grupo[1].SwappingAgent = grupo[0].Agent;
+														string? turnoDefinitivo = grupo[0].Definitive;
+														grupo[0].Definitive = grupo[1].Definitive;
+														grupo[1].Definitive = turnoDefinitivo;
+													}
+												}
+												else
+												{
+													//Fallo Peñarrustria
+													int cuenta = grupo.Count;
+												}
+											}
+											else if (grupo.Count>2)
+											{
+												int annotations = 0;
+												foreach(WorkshiftAssignation asignacion in grupo)
+												{
+													if (null != asignacion.Annotation && asignacion.Annotation.Length > 0)
+														annotations++;
+												}
+												if(annotations==grupo.Count) //Evito selecciones múltiples que no son cambios a múltiples bandas
+												{
+													//Cambio a tres, cuatro o más bandas.
+													//Voy a crear una base de datos de turnos disponibles en el cambio
+													//es una especie de "montón común"
+													//Al montón común añado todas las asignaciones (no sólo la última)
+													Dictionary<string, Guid> auxMontonComun = new Dictionary<string, Guid>();
+													foreach (WorkshiftAssignation elemento in grupo)
+													{
+														if (null != elemento.Assignation)
+														{
+															string[] auxAsignaciones = elemento.Assignation.Split('/');
+															foreach (string auxAsignacion in auxAsignaciones)
+															{
+																if(!(auxMontonComun.ContainsKey(auxAsignacion)))
+																	auxMontonComun.Add(auxAsignacion, elemento.Agent);
+															}											
+														}
+													}
+													//Ahora voy a recorrer los mismos elementos con la anotación
+													foreach (WorkshiftAssignation elemento in grupo)
+													{
+														foreach (string clave in auxMontonComun.Keys)
+														{
+															if (null != elemento.Annotation && elemento.Annotation.Length > 0)
+															{
+																if (elemento.Annotation.Contains(clave))
+																{
+																	elemento.SwappingAgent = auxMontonComun[clave];
+																	elemento.Annotation = string.Format("Cambio a {0} bandas.", grupo.Count());
+																	elemento.Definitive = clave;
+																	auxMontonComun.Remove(clave);
+																}
+															}
+														}
+													}
+												}
+												else
+												{
+													//Detectado un grupo con repetición chunga.
+													int cuenta = grupo.Count;
+													salida.AppendFormat("Grupo de {0} agentes con información incompleta.", cuenta);
+												}
+											}
+										}
+					*/
+				}
+
+				//Escribo las asignaciones en la base de datos.
+				using (DataStorage almacen = new DataStorage(mvarConfig))
+                {
+                    for (int col=0;col<days;col++)
                     {
-                        if(grupo.Count==2)
+                        //Elimino las asignaciones anteriores para esta fecha
+                        await removeAssignations(date.AddDays(col), almacen);
+                        for (int fila = 0; fila < sheet.Count; fila++)
                         {
-                            //Cambio normal.
-                            if (null!=grupo[0].Definitive && null != grupo[1].Definitive)
+                            if (null != colSalida[col,fila])
+							    almacen.WorkShiftAssignations.Add(colSalida[col, fila]);
+						}                            
+                        await almacen.SaveChangesAsync();
+                    }
+                }                
+            }
+            catch (Exception ex)
+            {
+                salida.Append(string.Format("Error interno: {0}", ex.ToString()));
+            }
+			return salida.ToString();
+		}
+
+        private void SolveChanges(List<WorkshiftAssignation> grupo)
+        {
+            List<WorkshiftAssignation> entrada = new List<WorkshiftAssignation>();
+            foreach(WorkshiftAssignation elemento in grupo)
+            {
+                if(null!=elemento.Definitive)
+                    entrada.Add(elemento);
+			}
+            //Ahora sabemos que todos los elementos tienen asignación definitiva.
+            if (entrada.Count > 2)
+                SolveMultipleWayChange(entrada);
+            else if (2 == entrada.Count)
+				SolveTwoWayChange(entrada);
+		}
+		private void SolveMultipleWayChange(List<WorkshiftAssignation> grupo)
+		{
+            //Filtramos los nulos
+            System.Diagnostics.Debug.Assert(grupo.Count > 2);
+            List<WorkshiftAssignation> entrada = new List<WorkshiftAssignation>();
+            foreach (WorkshiftAssignation elemento in grupo)
+            {
+                if (null != elemento.Definitive)
+                    entrada.Add(elemento);
+			}
+            if (2 == entrada.Count)
+                SolveTwoWayChange(entrada);
+            else
+            {
+                //Filtramos sólo los elementos con anotación
+                List<WorkshiftAssignation> anotados = new List<WorkshiftAssignation>();
+				List<WorkshiftAssignation> descartados = new List<WorkshiftAssignation>();
+				foreach (WorkshiftAssignation elemento in entrada)
+                {
+                    if (null != elemento.Annotation && elemento.Annotation.Length > 0)
+                        anotados.Add(elemento);
+                    else
+                        descartados.Add(elemento);
+				}
+				if (2 == descartados.Count)
+					SolveTwoWayChange(descartados);
+				if (2 == anotados.Count)
+                    SolveTwoWayChange(anotados);
+                else
+                {
+                    //Creamos el montón común.
+					Dictionary<string, Guid> MontonComun = new Dictionary<string, Guid>();
+					foreach (WorkshiftAssignation elemento in anotados)
+					{
+                        foreach (string auxAsigna in elemento.Assignations)
+                        {
+                            if(!(MontonComun.ContainsKey(auxAsigna)))
+                                MontonComun.Add(auxAsigna, elemento.Agent);
+						}
+					}
+					//Asignamos directamente según anotaciones extrayendo del montón común.
+					foreach (WorkshiftAssignation asignacion in anotados)
+                    {
+                        foreach(string clave in MontonComun.Keys)
+                        {
+                            if (asignacion.Annotation!.Contains(clave))
                             {
-                                //Eliminamos la manía de Peñarrustria de poner dos agentes con
-                                //el mismo turno en el gráfico
-                                if (!(grupo[0].Definitive.Equals(grupo[1].Definitive,StringComparison.InvariantCultureIgnoreCase)))
-                                {
-									grupo[0].SwappingAgent = grupo[1].Agent;
-									grupo[1].SwappingAgent = grupo[0].Agent;
-									string? turnoDefinitivo = grupo[0].Definitive;
-									grupo[0].Definitive = grupo[1].Definitive;
-									grupo[1].Definitive = turnoDefinitivo;
-								}
-							}
-                            else
-                            {
-                                //Fallo Peñarrustria
-                                int cuenta = grupo.Count;
+                                asignacion.SwappingAgent = MontonComun[clave];
+                                asignacion.Definitive = clave;
+                                MontonComun.Remove(clave);
+                                break;
                             }
-                        }
-                        else if (grupo.Count>2)
-                        {
-                            int annotations = 0;
+						}
+					}
+				}
+			}
+		}
+
+		/*
+                           int annotations = 0;
                             foreach(WorkshiftAssignation asignacion in grupo)
                             {
                                 if (null != asignacion.Annotation && asignacion.Annotation.Length > 0)
@@ -165,33 +321,31 @@ namespace Sapphire2025Server.Expert
                                 int cuenta = grupo.Count;
                                 salida.AppendFormat("Grupo de {0} agentes con información incompleta.", cuenta);
                             }
-                        }
-                    }
-                }
-                //Escribo las asignaciones en la base de datos.
-                using (DataStorage almacen = new DataStorage(mvarConfig))
-                {
-                    for (int col=0;col<days;col++)
-                    {
-                        //Elimino las asignaciones anteriores para esta fecha
-                        await removeAssignations(date.AddDays(col), almacen);
-                        for (int fila = 0; fila < sheet.Count; fila++)
-                        {
-                            if (null != colSalida[col,fila])
-							    almacen.WorkShiftAssignations.Add(colSalida[col, fila]);
-						}                            
-                        await almacen.SaveChangesAsync();
-                    }
-                }                
-            }
-            catch (Exception ex)
+        */
+		private void SolveTwoWayChange(List<WorkshiftAssignation> grupo)
+        {
+            System.Diagnostics.Debug.Assert(grupo.Count==2);
+			WorkshiftAssignation primero = grupo[0];
+			WorkshiftAssignation segundo = grupo[1];
+            if(null!=primero.Definitive && null!=segundo.Definitive)
             {
-                salida.Append(string.Format("Error interno: {0}", ex.ToString()));
-            }
-			return salida.ToString();
+                //No hay cambio. Simplemente hay dos Agentes con el mismo turno.
+                if (!primero.Definitive.Equals(segundo.Definitive, StringComparison.InvariantCultureIgnoreCase))
+                {
+					//Intercambio los turnos
+					string? auxTurno = primero.Definitive;
+					primero.Definitive = segundo.Definitive;
+					segundo.Definitive = auxTurno;
+					primero.SwappingAgent = segundo.Agent;
+					segundo.SwappingAgent = primero.Agent;
+				}
+			}
 		}
 
-        private WorkshiftAssignation? auxGetTurnoByString(List<WorkshiftAssignation> grupo, string turnoId)
+
+
+
+		private WorkshiftAssignation? auxGetTurnoByString(List<WorkshiftAssignation> grupo, string turnoId)
         {
             string onlyNumbers = GetOnlyNumbers(turnoId);
             string auxTurno = turnoId;

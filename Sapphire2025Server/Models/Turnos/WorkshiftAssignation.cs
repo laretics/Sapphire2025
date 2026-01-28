@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sapphire2025Server.Models.Turnos
 {
@@ -21,5 +22,40 @@ namespace Sapphire2025Server.Models.Turnos
         [NotMapped]                                      
         public string? BgColor { get; set; } //La necesito para resolver los cambios entre Agentes        
         public string? Annotation { get; set; } //La necesito para gestionar los cambios a tres o más bandas
+        [NotMapped]
+        public string[] Assignations 
+        { 
+            get
+            {
+                if(null == Assignation || Assignation.Length<1)
+					return Array.Empty<string>();
+                return Assignation.Split('/');
+			}                
+            set
+            {
+                this.Assignation = string.Join('/',value);
+			}
+        }
+        [NotMapped]
+        public string? LastAssignation
+        {
+            get
+            {
+                string[] assigns = Assignations;
+                if(assigns.Length>0)
+                {
+					for (int i = assigns.Length - 1; i >= 0; i--)
+					{
+						if (assigns[i].Trim().Length > 0)
+						{
+							string auxAsigna = assigns[i].ToUpper();
+							if (!auxAsigna.Contains("RJ") && !auxAsigna.Contains("SJ"))
+								return auxAsigna;
+						}
+					}
+				}
+                return null;
+			}
+        }
     }
 }
