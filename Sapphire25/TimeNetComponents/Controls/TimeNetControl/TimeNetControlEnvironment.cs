@@ -54,7 +54,7 @@ namespace TimeNetComponents.Controls.TimeNetControl
                 YY = new TimenetEnvironmentY(mvarHeight, Environment.TopoStorage, Environment.ViewAsimilation);
 		}
 
-        internal bool IsViewComplete => null==Environment?false:Environment.IsViewComplete;
+        public bool IsViewComplete => null==Environment?false:Environment.IsViewComplete;
         internal string ViewError => null==Environment?"": Environment.ViewError;
     }
 }

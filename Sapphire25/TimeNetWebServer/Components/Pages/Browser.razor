@@ -42,52 +42,39 @@
         <div class="col d-flex flex-column">
             <!-- Encabezado contextual (1/4 vertical) -->
             <div class="border-bottom bg-white p-3" style="max-height: 20vh; overflow-y: auto;">
-                <h6 class="text-muted mb-3">Menú Contextual</h6>
-                <div class="btn-toolbar mb-2" role="toolbar">
-                    <div class="btn-group me-2" role="group">
-                        <button class="btn btn-sm btn-outline-primary" @onclick="ZoomIn">
-                            <i class="bi bi-zoom-in"></i> Zoom +
-                        </button>
-                        <button class="btn btn-sm btn-outline-primary" @onclick="ZoomOut">
-                            <i class="bi bi-zoom-out"></i> Zoom -
-                        </button>
-                    </div>
-                    <div class="btn-group me-2" role="group">
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportImage">
-                            <i class="bi bi-download"></i> Exportar
-                        </button>
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="PrintDiagram">
-                            <i class="bi bi-printer"></i> Imprimir
-                        </button>
-                    </div>
-                </div>
-                <div class="form-check form-switch mb-2">
-                    <input class="form-check-input" type="checkbox" id="showCurrentTime" @bind="showCurrentTime">
-                    <label class="form-check-label" for="showCurrentTime">
-                        Mostrar hora actual
-                    </label>
-                </div>
+
+
             </div>
 
-            <!-- TimeNetControl (3/4 vertical) -->
+            <!-- TimeNetControl + Slider (3/4 vertical) -->
             <div @ref="timenetContainer" 
-                class="flex-grow-1 bg-light d-flex align-items-center justify-content-center" 
-                style="overflow: hidden;">
-                @if (null != entornoMalla)
+                class="flex-grow-1 bg-light d-flex flex-column" 
+                style="overflow: auto; position: relative;">
+                @if (null != entornoMalla && entornoMalla.IsViewComplete)
                 {
-                    <TimeNetControl Environment="@entornoMalla"
-                                    Style="@controlStyle"
-                                    Selections="@mvarSelection"
-                                    Latitude="40.4168"
-                                    Longitude="-3.7038" />
+                    <div class="d-flex flex-column p-3" style="min-width: fit-content;">
+                        <div class="mb-2" style="overflow-x: auto;">    
+                            <TimeNetControl Environment="@entornoMalla"
+                                            Style="@controlStyle"
+                                            Selections="@mvarSelection"
+                                            Latitude="40.4168"
+                                            Longitude="-3.7038" />
+                        </div>
+                        <div class="d-flex justify-content-center">
+                            <TimeNetSliderX Environment="@entornoMalla"
+                                            StateChanged="@OnSliderStateChanged" />
+                        </div>
+                    </div>
                 }
                 else
                 {
-                    <div class="text-center text-muted">
-                        <div class="spinner-border mb-3" role="status">
-                            <span class="visually-hidden">Cargando...</span>
+                    <div class="d-flex align-items-center justify-content-center w-100 h-100">
+                        <div class="text-center text-muted">
+                            <div class="spinner-border mb-3" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p>Cargando diagrama...</p>
                         </div>
-                        <p>Cargando diagrama...</p>
                     </div>
                 }
             </div>
@@ -126,6 +113,8 @@
             jsModulo = await JS.InvokeAsync<IJSObjectReference>("import", "./routines.js");
             await jsModulo.InvokeVoidAsync("initializeSplitter", "splitter", "leftpanel");
 
+            // Dar tiempo al splitter para inicializarse
+            await Task.Delay(100);
             await InitializeTimeNetControl();
         }
     }
@@ -175,9 +164,13 @@
                 Dictionary<string,int> dimensions = await jsModulo.InvokeAsync<Dictionary<string, int>>("getElementDimensions", timenetContainer);
                 if(dimensions["width"]>0 && dimensions["height"]>0)
                 {
+                    // Restar padding y espacio para el slider
+                    int availableWidth = dimensions["width"] - 24; // padding horizontal
+                    int availableHeight = dimensions["height"] - 80; // padding + espacio para slider
+                    
                     entornoMalla = new TimeNetControlEnvironment(
-                        dimensions["width"],
-                        dimensions["height"]
+                        availableWidth,
+                        availableHeight
                     );
                     mvarSelection = new TimeNetSelection();
                     StateHasChanged();
@@ -188,6 +181,12 @@
                 Console.WriteLine("Error initializing TimeNetControl: " + ex.Message);
             }
         }
+    }
+
+    private async Task OnSliderStateChanged()
+    {
+        // Forzar re-renderizado del TimeNetControl cuando el slider cambia
+        StateHasChanged();
     }
 
     private void ZoomIn()
