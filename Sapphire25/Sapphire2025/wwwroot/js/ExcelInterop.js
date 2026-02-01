@@ -1,5 +1,5 @@
-Ôªø//Librer√≠a de funciones para la importaci√≥n de gr√°ficos de personal en Excel.
-//El ordenador cliente deber√≠a tener instalado Excel.
+//LibrerÌa de funciones para la importaciÛn de gr·ficos de personal en Excel.
+//El ordenador cliente deberÌa tener instalado Excel.
 
 //Auxiliar para obtener el color de una celda sin el flag de transparencia
 function getCellColor(rgb) {
@@ -28,9 +28,9 @@ function getMontString(month) {
 window.excelInterop = {
     //bytes: Entrada en bruto del importador.
     //month: Mes de la fecha.
-    //day: d√≠a de la fecha
-    //days: N√∫mero de d√≠as (o columnas) a procesar.
-    //startCol: √çndice de columna VISIBLE donde empieza el proceso (0-based)
+    //day: dÌa de la fecha
+    //days: N˙mero de dÌas (o columnas) a procesar.
+    //startCol: Õndice de columna VISIBLE donde empieza el proceso (0-based)
     extractWorksheetData: async function (bytes, month, day, days, startCol) {
         var datosEntrada = new Uint8Array(bytes);
         var libro = XLSX.read(datosEntrada, { type: "array", cellStyles: true, cellComments: true });
@@ -39,7 +39,7 @@ window.excelInterop = {
 
         var rango = XLSX.utils.decode_range(hoja['!ref']);
 
-        // MEJORADA: Verifica si una columna est√° oculta O tiene ancho m√≠nimo
+        // MEJORADA: Verifica si una columna est· oculta O tiene ancho mÌnimo
         function isColumnHidden(colIndex) {
             if (!hoja['!cols'] || !hoja['!cols'][colIndex]) {
                 return false;
@@ -47,28 +47,28 @@ window.excelInterop = {
 
             var colInfo = hoja['!cols'][colIndex];
 
-            // Verificar si est√° marcada como oculta
+            // Verificar si est· marcada como oculta
             if (colInfo.hidden === true) {
                 return true;
             }
 
             // NUEVO: Verificar ancho de columna
-            // wch = ancho en caracteres, wpx = ancho en p√≠xeles
-            // Consideramos oculta si el ancho es menor a 1 car√°cter o menor a 8 p√≠xeles
+            // wch = ancho en caracteres, wpx = ancho en pÌxeles
+            // Consideramos oculta si el ancho es menor a 1 car·cter o menor a 8 pÌxeles
             if (colInfo.wch !== undefined && colInfo.wch < 1) {
                 console.log(`Columna ${colIndex} considerada oculta por ancho (${colInfo.wch} caracteres)`);
                 return true;
             }
 
             if (colInfo.wpx !== undefined && colInfo.wpx < 8) {
-                console.log(`Columna ${colIndex} considerada oculta por ancho (${colInfo.wpx} p√≠xeles)`);
+                console.log(`Columna ${colIndex} considerada oculta por ancho (${colInfo.wpx} pÌxeles)`);
                 return true;
             }
 
             return false;
         }
 
-        // NUEVA FUNCI√ìN: Convierte √≠ndice de columna visible a √≠ndice absoluto
+        // NUEVA FUNCI”N: Convierte Ìndice de columna visible a Ìndice absoluto
         function getAbsoluteColumnIndex(visibleIndex) {
             if (visibleIndex < 0) return rango.s.c; // Si es negativo, empezar desde el inicio
 
@@ -82,12 +82,12 @@ window.excelInterop = {
                     visibleCount++;
                 }
             }
-            // Si el √≠ndice visible es mayor que el n√∫mero de columnas visibles, devolver la √∫ltima columna
-            console.warn(`√çndice visible ${visibleIndex} fuera de rango, usando √∫ltima columna visible`);
+            // Si el Ìndice visible es mayor que el n˙mero de columnas visibles, devolver la ˙ltima columna
+            console.warn(`Õndice visible ${visibleIndex} fuera de rango, usando ˙ltima columna visible`);
             return rango.e.c;
         }
 
-        // MODIFICADO: Convertir startCol de √≠ndice visible a √≠ndice absoluto
+        // MODIFICADO: Convertir startCol de Ìndice visible a Ìndice absoluto
         var startColAbsolute = (typeof startCol === "number" && startCol >= 0)
             ? getAbsoluteColumnIndex(startCol)
             : rango.s.c;
@@ -102,9 +102,9 @@ window.excelInterop = {
 
         // MODIFICADO: Empezar desde la columna absoluta calculada
         for (var col = startColAbsolute; col <= rango.e.c; ++col) {
-            // Saltar columnas ocultas durante la b√∫squeda
+            // Saltar columnas ocultas durante la b˙squeda
             if (isColumnHidden(col)) {
-                console.log("Saltando columna oculta en b√∫squeda:", col);
+                console.log("Saltando columna oculta en b˙squeda:", col);
                 continue;
             }
 
@@ -116,21 +116,21 @@ window.excelInterop = {
             if (textoCandidato.includes(mesBuscado)) {
                 colMes = col;
                 console.log("Mes encontrado en columna:", col, "Texto:", textoCandidato);
-                continue; //El mes nunca va a contener el n√∫mero del d√≠a, as√≠ que saltamos a la celda siguiente.
+                continue; //El mes nunca va a contener el n˙mero del dÌa, asÌ que saltamos a la celda siguiente.
             }
             if (-1 != colMes) {
-                //Buscando el d√≠a
+                //Buscando el dÌa
                 if (textoCandidato && isNaN(Number(textoCandidato))) {
                     // Verificar si es otro mes (3 letras consecutivas)
                     if (textoCandidato.length >= 3 && /^[A-Z]{3}/.test(textoCandidato)) {
-                        console.log("Detectado nuevo mes, finalizando b√∫squeda");
+                        console.log("Detectado nuevo mes, finalizando b˙squeda");
                         break;
                     }
                 }
-                //Si el valor de la columna coincide con el d√≠a buscado, ya tenemos el √≠ndice.
+                //Si el valor de la columna coincide con el dÌa buscado, ya tenemos el Ìndice.
                 if (Number(textoCandidato) === day) {
                     colDia = col;
-                    console.log("D√≠a encontrado en columna:", col);
+                    console.log("DÌa encontrado en columna:", col);
                 }
             }
         }
@@ -139,7 +139,7 @@ window.excelInterop = {
 
         if (-1 != colMes && -1 != colDia) {
             console.log("Extrayendo datos desde colMes:", colMes, "colDia:", colDia);
-            //L√≠mites del bucle de extracci√≥n.
+            //LÌmites del bucle de extracciÛn.
             var colStart = Math.max(rango.s.c, colDia || 0);
             var colEnd = days ? Math.min(rango.e.c, colDia + days - 1) : rango.e.c;
             var filasVacias = 0;
@@ -150,21 +150,21 @@ window.excelInterop = {
                 var celdaAgente = hoja[refAgente];
                 var textoAgente = celdaAgente ? (celdaAgente.v !== undefined && celdaAgente.v !== null ? celdaAgente.v.toString() : "") : "";
 
-                // Verificar si es fila vac√≠a o contiene el nombre del mes
+                // Verificar si es fila vacÌa o contiene el nombre del mes
                 var esFilaVacia = ("" == textoAgente) || textoAgente.toUpperCase().includes(mesBuscado);
 
                 if (esFilaVacia) {
                     filasVacias++;
                 } else {
-                    filasVacias = 0; //Reseteamos el contador de filas vac√≠as.
+                    filasVacias = 0; //Reseteamos el contador de filas vacÌas.
                     fila.push({ Text: textoAgente, Bg: "transparent", Comment: "" }); //La primera columna siempre va a ser el Agente.
                     var filaVacia = true;
                     var auxColEnd = colEnd;
 
                     for (var col = colStart; col <= auxColEnd; ++col) {
-                        // Saltar columnas ocultas durante la extracci√≥n
+                        // Saltar columnas ocultas durante la extracciÛn
                         if (isColumnHidden(col)) {
-                            console.log("Saltando columna oculta en extracci√≥n:", col);
+                            console.log("Saltando columna oculta en extracciÛn:", col);
                             continue;
                         }
 
@@ -176,7 +176,7 @@ window.excelInterop = {
                             //Cambiamos de mes.
                             auxColEnd++;
                         } else {
-                            if ("" != texto) filaVacia = false; //Lo hago para evitar procesar m√°s filas de las necesarias sin especificar un tama√±o concreto.                        
+                            if ("" != texto) filaVacia = false; //Lo hago para evitar procesar m·s filas de las necesarias sin especificar un tamaÒo concreto.                        
                             var color = "transparent";
                             if (celdaInfo && celdaInfo.s && celdaInfo.s.fgColor && celdaInfo.s.fgColor.rgb) {
                                 color = getCellColor(celdaInfo.s.fgColor.rgb);
@@ -195,10 +195,10 @@ window.excelInterop = {
                         salida.push(fila);
                     }
                 }
-                if (filasVacias > 5) break; //Evitamos importar muchas filas vac√≠as.                
+                if (filasVacias > 5) break; //Evitamos importar muchas filas vacÌas.                
             }
         } else {
-            console.warn("No se encontr√≥ el mes o el d√≠a. colMes:", colMes, "colDia:", colDia);
+            console.warn("No se encontrÛ el mes o el dÌa. colMes:", colMes, "colDia:", colDia);
         }
         return JSON.stringify(salida); //Esto es lo que voy a recibir en C#
     },
@@ -219,14 +219,14 @@ window.excelInterop = {
         }
     },
 
-    // MEJORADA: Funci√≥n auxiliar para debugging - Ver columnas ocultas y anchos
+    // MEJORADA: FunciÛn auxiliar para debugging - Ver columnas ocultas y anchos
     showHiddenColumns: function (bytes) {
         var datosEntrada = new Uint8Array(bytes);
         var libro = XLSX.read(datosEntrada, { type: "array", cellStyles: true });
         var hoja = libro.Sheets[libro.SheetNames[0]];
 
         if (hoja['!cols']) {
-            console.log("Informaci√≥n de columnas:");
+            console.log("InformaciÛn de columnas:");
             hoja['!cols'].forEach((col, index) => {
                 if (col) {
                     var status = col.hidden ? 'OCULTA' : 'visible';
@@ -234,18 +234,18 @@ window.excelInterop = {
 
                     if (col.wch !== undefined) {
                         width += ` ancho: ${col.wch.toFixed(2)} caracteres`;
-                        if (col.wch < 1) status = 'OCULTA (ancho m√≠nimo)';
+                        if (col.wch < 1) status = 'OCULTA (ancho mÌnimo)';
                     }
                     if (col.wpx !== undefined) {
                         width += ` (${col.wpx}px)`;
-                        if (col.wpx < 8 && status !== 'OCULTA') status = 'OCULTA (ancho m√≠nimo)';
+                        if (col.wpx < 8 && status !== 'OCULTA') status = 'OCULTA (ancho mÌnimo)';
                     }
 
                     console.log(`Columna ${index}: ${status}${width}`);
                 }
             });
         } else {
-            console.log("No hay informaci√≥n de columnas ocultas/visibles");
+            console.log("No hay informaciÛn de columnas ocultas/visibles");
         }
     }
 }

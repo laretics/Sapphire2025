@@ -9,7 +9,7 @@ using Sapphire2025Server.Telegram;
 namespace Sapphire2025Server.Controllers
 {
 	[ApiController]
-	[Route("[controller]")]
+	[Route("api/[controller]")]
 	public class SapphireAeneasController:SapphireBaseController
 	{
 		internal static BotSoul mvarTelegramBot { get; set; }

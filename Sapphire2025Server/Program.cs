@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.FileProviders;
 using Sapphire2025Server.Telegram;
 
@@ -11,16 +12,27 @@ builder.Configuration
 // Accede a la cadena de conexión remota
 var remoteConnectionString = builder.Configuration.GetConnectionString("RemoteConnection");
 
+// Configuración de CORS para permitir solicitudes tanto en modo desarrollo como en producción
+builder.Services.AddCors(options =>
+{
+	options.AddPolicy("AllowAll", policy =>
+	{
+		policy.AllowAnyOrigin()
+			  .AllowAnyHeader()
+			  .AllowAnyMethod();
+	});
+});
+
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-builder.Services.AddCors(options =>
+// Configuración de Forwaded Headers para Nginx
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-	options.AddPolicy("TodoVale", builder => 
-		builder.AllowAnyOrigin().
-		AllowAnyHeader().
-		AllowAnyMethod());
+	options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+	options.KnownNetworks.Clear(); // Limpia las redes conocidas para aceptar cualquier red
+	options.KnownProxies.Clear();  // Limpia los proxies conocidos para aceptar cualquier proxy
 });
 
 builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
@@ -37,16 +49,16 @@ mvarLifeTime.ApplicationStopping.Register(() =>
 	instancia.BroadcastByRole("Mensaje desde el servidor: \"¡Sistema detenido!\"",true, new Sapphire2025Models.Common.UserRole[] { Sapphire2025Models.Common.UserRole.Root }).GetAwaiter().GetResult();
 });
 
-//await instancia.InitUsers();
 await instancia.BroadcastByRole("Mensaje desde el servidor: \"¡Sistema iniciado!\"",true, new Sapphire2025Models.Common.UserRole[] { Sapphire2025Models.Common.UserRole.Root });
 
+app.UseForwardedHeaders();
+
+app.UseCors("AllowAll");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
 	app.MapOpenApi();
-	//Esto lo he tenido que comentar porque no me va el servidor desde fuera de local.
-	//app.UseHttpsRedirection();
 }
 
 app.UseStaticFiles(new StaticFileOptions
@@ -57,8 +69,6 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseAuthorization();
-
-app.UseCors("TodoVale");
 
 app.MapControllers();
 
