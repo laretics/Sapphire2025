@@ -95,40 +95,6 @@ namespace Sapphire2025Server.Telegram
 			}
 		}
 
-			//if (update.Type == UpdateType.Message && update.Message is Message message)
-			//{
-			//	//Me llega un mensaje desde Telegram
-			//	Message mensaje = update.Message;
-			//	if (await GetTelegramEnabled())//Compruebo el estado del servidor en el registro de la base de datos.
-			//	{
-			//		BotTask tarea = OpenTask(mensaje.Chat.Id);
-			//		if (null != mensaje && null != mensaje.Text)
-			//		{
-			//			if (await PairTelegramChat(mensaje.Chat.Id, mensaje.Text.ToUpper().Trim()))
-			//			{
-			//				//Usuario emparejado. Respondemos a la petición
-			//				BotTask nueva = new BotTask(mensaje.Chat.Id, mvarPairingQuew);
-			//				BotTask.config = mvarConfig;
-			//				await nueva.InitializeAsync();
-			//				mcolTasks.Add(mensaje.Chat.Id, nueva);
-			//				await botClient.SendMessage(mensaje.Chat.Id, "¡Ya te tengo! Tu cuenta de Telegram está ahora emparejada con tu usuario en Zafiro.");
-			//			}
-			//			else
-			//			{
-			//				await botClient.SendMessage(mensaje.Chat.Id, "Ha ocurrido algún error. Esta cuenta de Telegram no se pudo vincular con ningún usuario de Zafiro.");
-			//			}
-			//		}
-			//		else
-			//		{
-			//			await botClient.SendMessage(mensaje.Chat.Id, "Ha ocurrido algún error importante. Esta cuenta de Telegram no se pudo vincular con ningún usuario de Zafiro.");
-			//		}					
-			//	}
-			//	else
-			//	{
-			//		await botClient.SendMessage(mensaje.Chat.Id, "Servidor desconectado.");
-			//	}
-			//}		
-
 
 
 		/// <summary>
@@ -228,7 +194,19 @@ namespace Sapphire2025Server.Telegram
 							auxUsers.Add(candidato);
 					}
 				}
-				await Broadcast(message, auxUsers);
+				await Broadcast(message, auxUsers, priority);
+			}
+		}
+		private async Task Broadcast(string message, List<Models.User> users, bool includeOffline = false)
+		{
+			//Llamamos a esta función desde algún sitio donde comprobemos que el bot de Telegram está activo.
+			if(await GetTelegramEnabled())
+			{
+				foreach (Models.User usuario in users)
+				{
+					if (0 != usuario.TelegramId && (includeOffline || usuario.TelegramEnabled))
+						await mvarBot.SendMessage(usuario.TelegramId, message);
+				}
 			}
 		}
 		private bool auxHasFilterActive(string config, string[] filters)
@@ -278,18 +256,10 @@ namespace Sapphire2025Server.Telegram
 		{
 			using (DataStorage almacen = new DataStorage(config))
 			{
-				return await almacen.Users.Where(x => x.TelegramEnabled).ToListAsync();
+				return await almacen.Users.Where(x => x.TelegramEnabled && 0!=x.TelegramId).ToListAsync();
 			}				
 		}
-		private async Task Broadcast(string message, List<Models.User> users)
-		{
-			//Llamamos a esta función desde algún sitio donde comprobemos que el bot de Telegram está activo.
-			foreach (Models.User usuario in users)
-			{
-				if(0!=usuario.TelegramId)
-					await mvarBot.SendMessage(usuario.TelegramId,message);
-			}
-		}
+
 		private Task HandleErrorAsync(ITelegramBotClient botClient,
 			Exception exception,
 			CancellationToken cancellationToken)

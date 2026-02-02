@@ -10,7 +10,11 @@ else
     {
         <EditForm Model="UserModel" OnValidSubmit="OnSendPersonalDataChanges">
             <div class="mb-3 form-check form-switch">
-                <InputCheckbox @bind-Value="UserModel.TelegramEnabled" class="form-check-input" id="telegramEnabledSwitch" />
+                <InputCheckbox 
+                    @bind-Value="UserModel.TelegramEnabled" 
+                    @bind-Value:after="OnTelegramEnabledChanged"
+                    class="form-check-input" 
+                    id="telegramEnabledSwitch" />
                 <label class="form-check-label" for="telegramEnabledSwitch">
                     Telegram habilitado
                 </label>
@@ -64,7 +68,12 @@ else
         }
     }
 
-    private async void OnSendPersonalDataChanges()
+    private async Task OnTelegramEnabledChanged()
+    {
+        await OnSendPersonalDataChanges();        
+    }
+
+    private async Task OnSendPersonalDataChanges()
     {
         // Lógica para manejar la sumisión del formulario
         if (null != UserModel)
