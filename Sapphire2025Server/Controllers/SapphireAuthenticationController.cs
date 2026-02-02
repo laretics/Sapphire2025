@@ -16,7 +16,7 @@ using Sapphire2025Server.Telegram;
 namespace Sapphire2025Server.Controllers
 {
 	[ApiController]
-	[Route("[controller]")]
+	[Route("api/[controller]")]
 	public class SapphireAuthenticationController:SapphireBaseController
 	{
 		private readonly BotSoul mvarBotSoul;

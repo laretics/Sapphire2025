@@ -8,21 +8,32 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
+builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: false);
+builder.Configuration.AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: false);
+
+
 builder.Services.AddBlazorBootstrap();
 
-//Lectura de la configuración desde appsettings.json
-HttpClient http = new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
-string configJson = await http.GetStringAsync("appsettings.json");
-JsonDocument auxDoc = JsonDocument.Parse(configJson);
-string auxApiAddress = auxDoc.RootElement.GetProperty("ApiBaseAddress").GetString() ?? builder.HostEnvironment.BaseAddress;
+string auxApiAddress = builder.Configuration["ApiBaseAddress"] ?? "/api/";
 Console.WriteLine($"API Address for SFM: {auxApiAddress}");
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(auxApiAddress) });
 
-builder.Services.AddSingleton<InteractiveService>(); //Necesito este objeto sólo para que el sistema se sincronice con las operaciones de login y logout.
+Uri apiBaseUri;
+if (auxApiAddress.StartsWith("http://") || auxApiAddress.StartsWith("https://"))
+{
+	apiBaseUri = new Uri(auxApiAddress);
+}
+else
+{
+	apiBaseUri = new Uri(new Uri(builder.HostEnvironment.BaseAddress), auxApiAddress);
+}
+Console.WriteLine($"Final API URI: {apiBaseUri}");
 
-builder.Services.AddScoped<IntStorageService>(); //Acceso a los datos de sesión.
-builder.Services.AddScoped<AuthenticationClient>(); //Cliente http autenticación
-builder.Services.AddScoped<AeneasClient>(); //Cliente http Aeneas
-builder.Services.AddScoped<ExpertClient>(); //Cliente para peticiones de gráficos de Maquinistas
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBaseUri });
+
+builder.Services.AddSingleton<InteractiveService>();
+builder.Services.AddScoped<IntStorageService>();
+builder.Services.AddScoped<AuthenticationClient>();
+builder.Services.AddScoped<AeneasClient>();
+builder.Services.AddScoped<ExpertClient>();
 
 await builder.Build().RunAsync();

@@ -11,7 +11,7 @@ using System.Xml;
 namespace Sapphire2025Server.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class SapphireExpertController : SapphireBaseController
     {
 
