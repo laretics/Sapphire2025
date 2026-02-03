@@ -1,16 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Sapphire2025Server.Models;
-using System.Linq.Expressions;
+using Sapphire2026.Data.Models;
 using System.Net;
 
-using System.Text;
 using Sapphire2025Models.Authentication;
 using Sapphire2025Models;
-using System.Text.Json;
-using System.Reflection.Metadata.Ecma335;
-using System.Diagnostics.CodeAnalysis;
-using Sapphire2025Server.Telegram;
+using Sapphire2025Server.Comunications;
+using Microsoft.AspNetCore.SignalR;
 
 
 namespace Sapphire2025Server.Controllers
@@ -19,9 +15,17 @@ namespace Sapphire2025Server.Controllers
 	[Route("api/[controller]")]
 	public class SapphireAuthenticationController:SapphireBaseController
 	{
-		private readonly BotSoul mvarBotSoul;
-		public SapphireAuthenticationController(IConfiguration configuration, BotSoul botSoul):
-			base(configuration) { mvarBotSoul = botSoul; }
+		private readonly IHubContext<SignalRHub> mvarHubContext; //Referencia al hub.
+
+		//private readonly BotSoul mvarBotSoul;
+		public SapphireAuthenticationController
+			(IConfiguration configuration,
+			IHubContext<SignalRHub> hubContext):
+			base(configuration) 
+		{
+			mvarHubContext = hubContext;
+		}
+
 		[HttpGet("ping")]
 		public IActionResult GetPing()
 		{
@@ -158,7 +162,7 @@ namespace Sapphire2025Server.Controllers
 		{
 			if(null!=request)
 			{
-				return mvarBotSoul.GenerateTicket(request.UserId);
+				//return mvarBotSoul.GenerateTicket(request.UserId);
 			}
 			return string.Empty;
 		}
@@ -501,7 +505,7 @@ namespace Sapphire2025Server.Controllers
 						//Tenemos que comprobar que el CF que vamos a cambiar NO exista en la base de datos.
 						List<User> duplicates = await almacen.Users.Where(x => x.Id != message.UserId.ToString() && x.CF.Equals(message.CF)).ToListAsync();
 						if (duplicates.Any()) return false; //No podemos hacer el cambio.
-						await mvarBotSoul.EndTask(usuario.TelegramId);
+						await mvarHubContext.Clients.All.SendAsync("UnpairTelegramUser", usuario.TelegramId);
 						usuario.TelegramId = 0; //Anulamos la sesión
 						usuario.TelegramEnabled = false; //Damos de baja Telegram						
 						return await almacen.SaveChangesAsync() > 0;

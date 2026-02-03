@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.SignalR.Protocol;
 using Microsoft.EntityFrameworkCore;
-using Sapphire2025Server.Models;
-using Sapphire2025Server.Models.Turnos;
+using Sapphire2026.Data.Models;
+using Sapphire2026.Data.Models.Turnos;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;

@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Sapphire2026.Data.Models;
+using Sapphire2026.Data.Models.Turnos;
 using Sapphire2025Models;
-using Sapphire2025Server.Models.Turnos;
 using System.Diagnostics;
 using System.Xml;
 
@@ -11,7 +12,7 @@ namespace Sapphire2025Server.Expert
         protected IConfiguration mvarConfiguration;
         protected string mvarName;
         protected string? mvarComment;
-        protected Sapphire2025Server.Models.User? mvarAuthor;
+        protected Sapphire2026.Data.Models.User? mvarAuthor;
         protected DateTime mvarStart;
         protected Guid mvarGuid;
         protected Guid? mvarInclude;
@@ -72,7 +73,7 @@ namespace Sapphire2025Server.Expert
             }
             using (DataStorage almacen = new DataStorage(mvarConfiguration))
             {
-                Models.User? auxUser = await almacen.Users.Where(x => x.CF.Equals(auxAuthor)).FirstOrDefaultAsync();
+                User? auxUser = await almacen.Users.Where(x => x.CF.Equals(auxAuthor)).FirstOrDefaultAsync();
                 if (null == auxUser)
                     return string.Format("El usuario con CF {0} no existe en el sistema. Por favor, aporte un usuario válido y con permisos de administración.", auxAuthor);
                 else

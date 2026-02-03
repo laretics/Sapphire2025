@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sapphire2025Models;
-using Sapphire2025Server.Models;
+using Sapphire2026.Data.Models;
 using System.Configuration;
 
 namespace Sapphire2025Server.Controllers
