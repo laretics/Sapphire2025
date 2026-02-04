@@ -13,6 +13,10 @@
 
 # Archivos de configuración con secretos
 **/appsettings.Development.json
+**/appsettings.Production.json
+
+#Secretos a nivel desarrollo
+secrets.json
 
 # User-specific files
 *.rsuser
