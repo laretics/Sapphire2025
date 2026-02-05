@@ -2,35 +2,28 @@
 @inject NavigationManager mvarNavigator
 @if (null != Train)
 {
-    <div class="row border-bottom train-row">
+    <div class="row border-bottom train-row flex-nowrap" style="margin: 0;">
         @if (ShowStatus)
         {
-            <div @onclick="OnTrainClick" class="col-2 border-end text-center d-flex justify-content-center align-items-center train-cell" style="min-width: 64px;">
+            <div @onclick="OnTrainClick" class="col-@ColWidth[0].ToString() border-end text-center d-flex justify-content-center align-items-center train-cell" style="min-width: 64px;">
                 <Sapphire2025.Icons.Status.IcoStatus status="@Train.lastStatus" color="black" />
                 <span class="truncate">@Sapphire2025Models.Common.TrainStatusToString(Train.lastStatus)</span>
             </div>
-            <div @onclick="OnTrainClick" class="col-2 border-end text-center d-flex justify-content-center align-items-center train-cell" style="min-width: 100px; background-color: @trainColor;">
-                <span class="truncate">@Train.name</span>
-            </div>
         }
-        else
-        {
-            <div @onclick="OnTrainClick" class="col-2 border-end text-center d-flex justify-content-center align-items-center train-cell" style="min-width: 100px; background-color: @trainColor;">
-                <span class="truncate">@Train.name</span>
-            </div>
-        }
-
-        <div @onclick="OnTrainClick" class="col-3 border-end train-cell" style="min-width: 200px;">
+        <div @onclick="OnTrainClick" class="col-@ColWidth[1].ToString() border-end text-center d-flex justify-content-center align-items-center train-cell" style="min-width: 100px; background-color: @trainColor;">
+            <span class="truncate">@Train.name</span>
+        </div>
+        <div @onclick="OnTrainClick" class="col-@ColWidth[2].ToString() border-end train-cell" style="min-width: 200px;">
             <span class="truncate">@Sapphire2025Models.Utils.autoDate(Train.lastUpdateTime)</span>
         </div>
-        <div @onclick="OnUserClick" class="col-2 border-end train-cell @(IsRecentUpdate ? "recent-update" : "")" style="min-width: 200px;">
+        <div @onclick="OnUserClick" class="col-@ColWidth[3].ToString() border-end train-cell @(IsRecentUpdate ? "recent-update" : "")" style="min-width: 200px;">
             @if (null != User)
             {
                 <span class="d-inline-block align-middle">@userIcon(User.CredentialKey)</span>
                 <span class="truncate d-inline-block align-middle">@User.Name</span>
             }
         </div>
-        <div @onclick="OnTrainClick" class="col-4 border-end train-cell truncate" style="min-width:100px;" title="@(Train.lastNote ?? string.Empty)">
+        <div @onclick="OnTrainClick" class="col-@ColWidth[4].ToString() border-end train-cell truncate" style="min-width:100px;" title="@(Train.lastNote ?? string.Empty)">
             @(Train.lastNote ?? string.Empty)
         </div>
     </div>
@@ -42,7 +35,9 @@
     public bool ShowStatus{ get; set; }
     [Parameter]
     public UserModelBase? User{ get; set; }
-   
+    [Parameter]
+    public int[] ColWidth { get; set; } = new int[4];
+
     private Timer? mvarTimer;
 
     protected override void OnInitialized()

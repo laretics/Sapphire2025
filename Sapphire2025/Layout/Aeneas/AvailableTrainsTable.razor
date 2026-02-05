@@ -1,40 +1,45 @@
 ﻿@inherits TrainModelTable
 @if(null!=base.Trains)
 {
-	<div class="row border-bottom border-top bg-secondary text-light ">
-		<div class="col-1 border-end justify-content-center align-items-center"
+	<div class="row border-bottom border-top bg-secondary text-light flex-nowrap" style="margin: 0;">
+		<div class="col-@anchos[0].ToString() border-end justify-content-center align-items-center"
 		onclick="@(()=>sortFields(2))" style="min-width: 64px;">
 			<Sapphire2025.Icons.Headers.TrainStatus color="white" />
 		</div>
-		<div class="col-1 border-end justify-content-center align-items-center"
+		<div class="col-@anchos[1].ToString() border-end justify-content-center align-items-center"
 		onclick="@(()=>sortFields(1))"
 		style="min-width: 100px;">
 			<Sapphire2025.Icons.Headers.UT color="white" />
 		</div>
-		<div class="col-1 border-end justify-content-center align-items-center"
+		<div class="col-@anchos[2].ToString() border-end justify-content-center align-items-center"
 		onclick="@(()=>sortFields(0))"
 		style="min-width: 200px;">
 			<Sapphire2025.Icons.Headers.EventDateTime color="white" />
 		</div>
-		<div class="col-2 border-end justify-content-center align-items-center"
+		<div class="col-@anchos[3].ToString() border-end justify-content-center align-items-center"
 			 onclick="@(()=>sortFields(0))"
 			 style="min-width: 200px;">
 			<Sapphire2025.Icons.Headers.User color="white" />
 		</div>
-		<div class="col-4 border-end justify-content-center align-items-center"
+		<div class="col-@anchos[4].ToString() border-end justify-content-center align-items-center"
 			 style="min-width: 100px;">
 			 <Sapphire2025.Icons.Actions.AddReport Color="white"/>
 		</div>
 	</div>
-	<div class="overflow-auto" style="height:@(Height-10)vh; overflow-y: auto; width: @Width %">
+	<div class="overflow-auto flex-nowrap" style="height:@(Height - 10)vh; overflow-y: auto; width: @Width%">
 		@foreach (TrainModel train in mcolTrains)
 		{
-			<TrainModelRow Train="@train" User="@userFromTrain(train)" ShowStatus="true" />
+			<TrainModelRow Train="@train" 
+				User="@userFromTrain(train)" 
+				ShowStatus="true" 
+				ColWidth="@anchos" />
 		}
 	</div>
 }
 
 @code {
+	private int[] anchos = { 2, 1, 2, 2, 5 };
+
 	protected override void OnParametersSet()
 	{
 		base.OnParametersSet();
