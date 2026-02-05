@@ -13,9 +13,9 @@ namespace Sapphire2025Server.Telegram.Semantics.Concepts
 	public class TrainConcept: GeneralConcept
 	{
 		internal List<Train> mcolTrains;
-		public TrainConcept(string name,string rhs):base(name,string.Concat(rhs,",ut,tren,material,movil,unidad,coche,remolque,vehículo,convoy")){ mcolTrains = new List<Train>(); }
+		public TrainConcept(string name,string rhs, IConfiguration config):base(name,string.Concat(rhs,",ut,tren,material,movil,unidad,coche,remolque,vehículo,convoy"),config){ mcolTrains = new List<Train>(); }
 
-		public async override Task<byte> match(List<string> text)
+		public async override Task<byte> match(string[] text)
 		{
 			int instancias = 0;
 			int totales = mcolTokens.Length;
@@ -26,7 +26,7 @@ namespace Sapphire2025Server.Telegram.Semantics.Concepts
 					instancias++;
 			}
 			//Ahora busca tokens relacionados con los trenes.
-			using (DataStorage almacen = new DataStorage(BotSoul.config))
+			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
 				mcolTrains = new List<Train>();
 				List<Train> colTrains = await almacen.Trains.ToListAsync();

@@ -34,18 +34,16 @@ namespace Sapphire2025Server.Telegram
 			else
 				await child.InternalResponseFromBot(client);			
 		}
-		public async Task TextToBot(string? text)
+		public async Task TextToBot(string text)
 		{
 			if (null != child && child.isEnded)
 				child = null;
 			string auxTexto = string.Empty;
-			if (null != text)
-				auxTexto = text;
 
 			if (null == child)
-				await this.InternalTextToBot(auxTexto);
+				await this.InternalTextToBot(text);
 			else
-				await child.InternalTextToBot(auxTexto);
+				await child.InternalTextToBot(text);
 		}
 
 		

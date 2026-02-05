@@ -19,10 +19,13 @@ namespace Sapphire2025Models.Aeneas
 		{
 			name = string.Empty;
 			lastUserInfo = Guid.Empty;
+			lastNote = string.Empty;
 		}
 
 		//Estado actual en el que se encuentra este tren.
 		public Common.TrainStatus lastStatus { get; set; }
+
+		public string lastNote { get; set; }
 
 		//Fecha del último cambio
 		public DateTime lastUpdateTime { get; set; }

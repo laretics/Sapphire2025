@@ -13,20 +13,32 @@ using System.Threading.Tasks;
 using Sapphire2025Models.Authentication;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.SignalR.Protocol;
+using Sapphire2026Telegram;
 
 namespace Sapphire2025Server.Telegram
 {
 	public class BotSoul
 	{
 		internal TelegramBotClient mvarBot;
-		internal static IConfiguration config;
+		internal IConfiguration config;
 		private Dictionary<long,BotTask> mcolTasks = new Dictionary<long, BotTask>(); //Contenedor de conversaciones activas. Las conversaciones van por ID de telegram.	
-		internal PairingQuew mvarPairingQuew = new PairingQuew();			
+		internal PairingQuew mvarPairingQuew = new PairingQuew();
+		internal Worker mvarService;
+		private readonly ILogger<Worker> mvarLogger;
+		/// <summary>
+		/// Este valor está en el archivo config. Me dice si arranca el bot al arrancar el servicio.
+		/// Lo uso, sobre todo, cuando tengo el servidor en producción y quiero desarrollar en pruebas.
+		/// Si quiero trabajar con el bot en pruebas pongo este valor a "false" en el servicio y lo reinicio. Si quiero trabajar en algo que no sea el bot, pondré "false" en la configuración del equipo de pruebas.
+		/// </summary>
+		private bool IsTelegramEnabled { get => config["TelegramBot:Enabled"] == "true"; }
 
-		public BotSoul (IConfiguration configuration)
+		public BotSoul (ILogger<Worker> logger, IConfiguration configuration, Worker worker)
 		{
 			config = configuration;
-			string? auxToken = config["Telegram:Secret"];
+			mvarService = worker;
+			mvarLogger = logger;
+			mvarLogger.LogInformation("Iniciando bot de Telegram...");
+			string? auxToken = config["TelegramBot:Secret"];
 			Debug.Assert(null != auxToken,"Valor nulo en token de Telegram desde Config");
 			mvarBot = new TelegramBotClient(auxToken);
 			CancellationTokenSource cts = new CancellationTokenSource();
@@ -42,12 +54,7 @@ namespace Sapphire2025Server.Telegram
 			}
 		}
 
-		/// <summary>
-		/// Este valor está en el archivo config. Me dice si arranca el bot al arrancar el servicio.
-		/// Lo uso, sobre todo, cuando tengo el servidor en producción y quiero desarrollar en pruebas.
-		/// Si quiero trabajar con el bot en pruebas pongo este valor a "false" en el servicio y lo reinicio. Si quiero trabajar en algo que no sea el bot, pondré "false" en la configuración del equipo de pruebas.
-		/// </summary>
-		private bool IsTelegramEnabled { get => config["Telegram:Enabled"] == "true"; }		
+
 
 		private async Task HandleUpdateAsync(ITelegramBotClient botClient,
 			Update update,
@@ -94,8 +101,6 @@ namespace Sapphire2025Server.Telegram
 			}
 		}
 
-
-
 		/// <summary>
 		/// Abre una conversación en base a una cuenta de Telegram
 		/// </summary>
@@ -105,7 +110,7 @@ namespace Sapphire2025Server.Telegram
 		{
 			if(!mcolTasks.ContainsKey(telegramId))
 			{
-				BotTask nueva = new BotTask(telegramId, this);
+				BotTask nueva = new BotTask(telegramId, this,config);
 
 				mcolTasks.Add(telegramId, nueva);
 			}

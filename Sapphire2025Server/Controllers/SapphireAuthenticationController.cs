@@ -15,16 +15,10 @@ namespace Sapphire2025Server.Controllers
 	[Route("api/[controller]")]
 	public class SapphireAuthenticationController:SapphireBaseController
 	{
-		private readonly IHubContext<SignalRHub> mvarHubContext; //Referencia al hub.
-
-		//private readonly BotSoul mvarBotSoul;
 		public SapphireAuthenticationController
 			(IConfiguration configuration,
 			IHubContext<SignalRHub> hubContext):
-			base(configuration) 
-		{
-			mvarHubContext = hubContext;
-		}
+			base(configuration, hubContext){ }
 
 		[HttpGet("ping")]
 		public IActionResult GetPing()
@@ -79,7 +73,7 @@ namespace Sapphire2025Server.Controllers
 						if (null != auxDireccion)
 							newSession.HostIp = auxDireccion.ToString();
 						newSession.HostPort = auxHostPort;
-						newSession.Expiry = DateTime.Now.Add(EXPIRY_INTERVAL);
+						newSession.Expiry = DateTime.UtcNow.Add(EXPIRY_INTERVAL);
 
 						almacen.ActiveSessions.Add(newSession);
 						//Ahora rellenamos los datos que vamos a enviar al lado del cliente...
@@ -162,10 +156,35 @@ namespace Sapphire2025Server.Controllers
 		{
 			if(null!=request)
 			{
-				//return mvarBotSoul.GenerateTicket(request.UserId);
+				string requestId = Guid.NewGuid().ToString();
+				TaskCompletionSource<string> tcs = new TaskCompletionSource<string>();
+				mvarPendingRequests.TryAdd(requestId, tcs);
+				try
+				{
+					//Enviamos la petición al Worker de Telegram por medio de SignalR
+					await mvarHubContext.Clients.All.SendAsync(
+						"RequestTelegramPairingCode",
+						requestId,
+						request.UserId.ToString());
+
+					//Se espera la respuesta. Si no la hay en 10 segundos se cancela la petición
+					using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+					string result = await tcs.Task.WaitAsync(cts.Token);
+
+					return result;
+				}
+				catch (OperationCanceledException)
+				{
+					return string.Empty;
+				}
+				finally
+				{
+					mvarPendingRequests.TryRemove(requestId, out _);
+				}
 			}
 			return string.Empty;
 		}
+		
 
 		[HttpPut("logout")]
 		public async Task<bool> LogoutRequest(BasicRequestModel? request)
@@ -261,13 +280,13 @@ namespace Sapphire2025Server.Controllers
 							TimeCache? auxCache = await almacen.TimeCache.Where(x => x.Key == (byte)Common.CacheTableKey.Users).FirstOrDefaultAsync();
 							if(null != auxCache)
 							{
-								auxCache.TimeStamp = DateTime.Now;
+								auxCache.TimeStamp = DateTime.UtcNow;
 							}
 							else
 							{
 								TimeCache nuevoCache = new TimeCache();
 								nuevoCache.Key = (byte)Common.CacheTableKey.Users;
-								nuevoCache.TimeStamp = DateTime.Now;
+								nuevoCache.TimeStamp = DateTime.UtcNow;
 								almacen.TimeCache.Add(nuevoCache);
 							}
 							await almacen.SaveChangesAsync();

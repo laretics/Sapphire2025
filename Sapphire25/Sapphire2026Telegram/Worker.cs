@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR.Client;
+using Sapphire2025Server.Telegram;
 
 namespace Sapphire2026Telegram
 {
@@ -6,11 +7,15 @@ namespace Sapphire2026Telegram
 	{
 		private readonly ILogger<Worker> mvarLogger;
 		private readonly HubConnection mvarHubConnection;
+		private readonly IConfiguration mvarConfiguration;
+		internal readonly BotSoul mvarBotSoul;
 
-		public Worker(ILogger<Worker> logger, HubConnection hubConnection)
+		public Worker(ILogger<Worker> logger, HubConnection hubConnection, IConfiguration configuration)
 		{
 			mvarLogger = logger;
 			mvarHubConnection = hubConnection;
+			mvarConfiguration = configuration;
+			mvarBotSoul = new BotSoul(mvarLogger,mvarConfiguration, this);
 		}
 
 		public async override Task StartAsync(CancellationToken cancellationToken)
@@ -24,6 +29,8 @@ namespace Sapphire2026Telegram
 			{ await OnClosed(er); };
 			mvarHubConnection.On<long, bool>("TelegramMessageAcknowledged", async (chatId, success) =>
 			{await OnTelegramMessageAcknowelged(chatId, success);});
+			mvarHubConnection.On<string, string>("RequestTelegramPairingCode", async (requestId, userId) =>
+			{ await OnRequestPairingCode(requestId, userId); });
 			try
 			{
 				await mvarHubConnection.StartAsync(cancellationToken);
@@ -91,7 +98,30 @@ namespace Sapphire2026Telegram
 		{
 			mvarLogger.LogInformation("Mensaje confirmado por el servidor: ChatId={0}, Success={1}", chatId, success);
 		}
-
+		private async Task OnRequestPairingCode(string requestId, string userId)
+		{
+			mvarLogger.LogInformation("Solicitud de código de emparejamiento recibida: RequestId={0}, UserId={1}", requestId, userId);
+			try
+			{
+				if(Guid.TryParse(userId, out Guid userGuid))
+				{
+					string pairingCode = mvarBotSoul.GenerateTicket(userGuid);
+					//Envío del código al servidor.
+					await mvarHubConnection.InvokeAsync("SendPairingCodeResponse", requestId, pairingCode);
+					mvarLogger.LogInformation ("Código de emparejamiento {0} generado para el usuario {1}", pairingCode, userId);
+				}
+				else
+				{
+					mvarLogger.LogError("User Id inválido: {0}", userId);
+					await mvarHubConnection.InvokeAsync("SendPairingCodeResponse", requestId, string.Empty);
+				}
+			}  
+			catch(Exception e)
+			{
+				mvarLogger.LogError(e, "Error al generar el código de emparejamiento");
+				await mvarHubConnection.InvokeAsync("SendPairingCodeResponse", requestId, string.Empty);
+			}
+		}
 		#endregion Handlers
 
 

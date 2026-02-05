@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Sapphire2026.Data.Models;
 using Sapphire2025Server.Telegram.Semantics.Conversations;
+using Sapphire2026Telegram.Semantics;
 
 namespace Sapphire2025Server.Telegram
 {
@@ -12,15 +13,19 @@ namespace Sapphire2025Server.Telegram
 		private User? mvarUser;
 		internal long mvarTelegramId;
 		private bool mvarFirstMessage;
+		internal IConfiguration mvarConfig;
+		private readonly NlpProcessor mvarNLPProcessor;
 		internal User? user { get => mvarUser;} //Referencia al usuario que tiene esta conversación
 		internal BotTheme theme { get; set; } //Tema de la conversación actual.
 		internal BotSoul parent { get; set; } // Alma de bot que posee todas las tareas
-		internal BotTask(long chatId, BotSoul parent)
+		internal BotTask(long chatId, BotSoul parent, IConfiguration config)
 		{
 			//Tenemos que recuperar el usuario de la base de datos.
 			this.parent = parent;
+			mvarConfig = config;
 			mvarFirstMessage = true;
 			mvarTelegramId = chatId;
+			mvarNLPProcessor = new NlpProcessor();
 			theme = new InitialTheme(this);
 		}
 
@@ -31,7 +36,7 @@ namespace Sapphire2025Server.Telegram
 		/// <returns></returns>
 		internal async Task<bool> PairUser(Guid userId)
 		{
-			using (DataStorage almacen = new DataStorage(BotSoul.config))
+			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
 				Sapphire2026.Data.Models.User? auxUser = await almacen.Users.Where(x => x.Id == userId.ToString()).FirstOrDefaultAsync();
 				if(null!=auxUser)
@@ -46,7 +51,7 @@ namespace Sapphire2025Server.Telegram
 		}
 		internal async Task<bool> FetchUser()
 		{
-			using (DataStorage almacen = new DataStorage(BotSoul.config))
+			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
 				Sapphire2026.Data.Models.User? auxUser = await almacen.Users.Where(x => x.TelegramId == mvarTelegramId).FirstOrDefaultAsync();
 				mvarUser = auxUser;
@@ -78,6 +83,11 @@ namespace Sapphire2025Server.Telegram
 		{
 			if(!mvarFirstMessage) //Ignora el primer mensaje para preparar respuesta.
 			{
+				if (string.IsNullOrWhiteSpace(text))
+					return;
+
+				string[] tokens = mvarNLPProcessor.Process(text);
+
 				await theme.TextToBot(text);
 			}			
 			mvarFirstMessage = false;

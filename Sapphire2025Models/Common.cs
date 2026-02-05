@@ -8,9 +8,9 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public const string SapphireSoftwareVersion = "26.01.26";
-		public const string LastChangesText = "Mejora en el importador de Excel / Cambios en nomenclatura de taller";
-		public const string VersionColor = "#A02020"; //Color de la versión para diferenciar una de otra.
+		public const string SapphireSoftwareVersion = "26.02.05";
+		public const string LastChangesText = "Arreglados problemas de sincronización de horas, Mejoras estéticas en módulo de taller";
+		public const string VersionColor = "#20A020"; //Color de la versión para diferenciar una de otra.
 
 		/// <summary>
 		/// Estados posibles en los que puede encontrarse un tren

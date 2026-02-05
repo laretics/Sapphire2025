@@ -107,6 +107,11 @@ namespace Sapphire2025.Storage
             }
             return false;
         }
+        public async Task<bool> ResetTrainList()
+        {
+            await ResetValue("cachetrainlist", false);
+            return true;
+        }
 		public async Task<bool> SetTrainUsersDictionary(Dictionary<Guid, UserModel>? rhs)
 		{
 			if (null != rhs)

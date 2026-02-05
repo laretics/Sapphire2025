@@ -19,7 +19,7 @@ namespace Sapphire2025Server.Expert
             mvarConfig = config;
         }
 
-        public async Task<string> ProcessExcel(List<List<AssignationCell>>? sheet, DateTime dateutc, int days, int localOffset)
+        public async Task<string> ProcessExcel(List<List<AssignationCell>>? sheet, DateTime dateutc, int days)
         {
             StringBuilder salida = new StringBuilder();
             try
@@ -33,7 +33,7 @@ namespace Sapphire2025Server.Expert
                 //
                 //Cabecera-m,dia1,dia2,...,dia-n
                 //Gracias a los datos que pasamos como parámetros es posible acelerar el proceso.
-                DateTime date = dateutc.AddMinutes(-localOffset);
+                DateTime date = dateutc;
 				using (DataStorage almacen = new DataStorage(mvarConfig))
                 {
                     string? auxCadena = await almacen.GetRegisterValue("ImplCol", "0");

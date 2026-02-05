@@ -19,25 +19,65 @@
 }
 else
 {
+	<!-- Barra de herramientas -->
+	<div class="toolbar mb-3 p-2 bg-light border rounded shadow-sm">
+		<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+			<!-- Grupo izquierdo: Acciones principales -->
+			<div class="btn-toolbar" role="toolbar">
+				<div class="btn-group me-2" role="group">
+					<button type="button" class="btn btn-primary btn-sm" @onclick="RefreshData" title="Actualizar datos">
+						<i class="bi bi-arrow-clockwise"></i> Actualizar
+					</button>
+					<button type="button" class="btn btn-success btn-sm"  title="Exportar datos">
+						<i class="bi bi-download"></i> Exportar
+					</button>
+				</div>
+
+				<div class="btn-group me-2" role="group">
+					<button type="button" class="btn @(Extended ? "btn-warning" : "btn-outline-secondary") btn-sm"
+							@onclick="changeExtended"
+							title="@(Extended ? "Vista compacta" : "Vista extendida")">
+						<i class="bi @(Extended ? "bi-arrows-angle-contract" : "bi-arrows-angle-expand")"></i>
+						@(Extended ? "Compactar" : "Expandir")
+					</button>
+				</div>
+			</div>
+
+			<!-- Grupo derecho: Info y configuración -->
+			<div class="btn-toolbar" role="toolbar">
+				<div class="badge bg-secondary me-2 d-flex align-items-center px-3 py-2">
+					<i class="bi bi-train-front me-2"></i>
+					<span>Disponibles: @AvailableTrains</span>
+				</div>
+				<div class="badge bg-secondary me-2 d-flex align-items-center px-3 py-2">
+					<i class="bi bi-train-front me-2"></i>
+					<span>Taller: @NonAvailableTrains</span>
+				</div>
+				<div class="badge bg-secondary me-2 d-flex align-items-center px-3 py-2">
+					<i class="bi bi-train-front me-2"></i>
+					<span>Total: @mcolTrains.Count()</span>
+				</div>
+				<button type="button" class="btn btn-outline-secondary btn-sm"  title="Configuración">
+					<i class="bi bi-gear"></i>
+				</button>
+			</div>
+		</div>
+	</div>
 	<CascadingValue Value="Extended">
 		<CascadingValue Value="mcolTrains">
 			<CascadingValue Value="Users">
 				<CascadingValue Value="Status">
 					<div class="row align-items-start" style="height: 50vh; width: 100%">
-						<div class="col">
-							<Sapphire2025.Layout.Aeneas.TrainFlowCTL
-							OnStatusSelected="HandleStatusSelected"
-							OnOpenTrain="HandleOpenTrain"
-							width="100" height="50" />
+						<div class="col-5 pe-2" style="overflow: auto; max-height: 50vh;">
+							<Sapphire2025.Layout.Aeneas.TrainFlowCTL OnStatusSelected="HandleStatusSelected"
+																	 OnOpenTrain="HandleOpenTrain"
+																	 width="100" height="50" />
 						</div>
-						<div class="col">
+						<div class="col-7 ps-2" style="overflow: auto; max-height: 50vh;">
 							<Sapphire2025.Layout.Aeneas.StatusTrainsTable Width="100" Height="50" />
 						</div>
 					</div>
 				</CascadingValue>
-				<div class="row">
-					<Button Class="btn-secondary" @onclick="@changeExtended" >...</Button>
-				</div>
 				<div class="row align-items-start" style="height: 50vh;">
 					<div class="col">
 						<Sapphire2025.Layout.Aeneas.AvailableTrainsTable Width="95" Height="50" />
@@ -63,6 +103,16 @@ else
 		await TrainCache();
 
 	}
+	private int AvailableTrains {get =>
+		mcolTrains.Where(xx => xx.lastStatus == Sapphire2025Models.Common.TrainStatus.Available ||
+		xx.lastStatus == Sapphire2025Models.Common.TrainStatus.DepotRequested ||
+		xx.lastStatus == Sapphire2025Models.Common.TrainStatus.RequestToDiagnose ||
+		xx.lastStatus == Sapphire2025Models.Common.TrainStatus.RequestToRepair).Count();
+	}
+	private int NonAvailableTrains { get =>
+		mcolTrains.Where(xx => xx.lastStatus == Sapphire2025Models.Common.TrainStatus.Maintenance ||
+		xx.lastStatus == Sapphire2025Models.Common.TrainStatus.Repairing).Count();
+	}
 
 	/// <summary>
 	/// Función para actualizar las tablas de trenes en función del elemento seleccionado.
@@ -82,6 +132,11 @@ else
 		Extended = !Extended;
 		StateHasChanged();
 	}	
+	private async Task RefreshData()
+	{
+		await mvarInternalStorage.ResetTrainList();
+		StateHasChanged();
+	}
 
 	/// <summary>
 	/// Para acelerar considerablemente la ejecución del programa vamos a cargar la lista en dos
@@ -114,13 +169,21 @@ else
 				System.Diagnostics.Debug.Assert(null != auxTrain, "El tren no existe en la lista de trenes");
 				auxTrain.lastUpdateTime = nuevoCambio.timeStamp;
 				auxTrain.lastStatus = nuevoCambio.status;
-				auxTrain.lastUserInfo = nuevoCambio.userId;
+				auxTrain.lastUserInfo = nuevoCambio.userId;				
 				if (Guid.Empty != nuevoCambio.userId && null != Users && !(Users.ContainsKey(nuevoCambio.userId)))
 					nuevoUsuario = true; //Tengo al menos un usuario que no está en el diccionario
+
+			}
+			//Cargamos la última anotación que tenga cada tren
+			foreach (TrainModel auxTrain in auxLista)
+			{
+				List<NoteModel> notas = await mvarAeneasClient.retrieveNotes(auxTrain.id, "", 1);
+				auxTrain.lastNote = notas.FirstOrDefault()?.Text ?? string.Empty;
 			}
 			//Guardaré la nueva lista en la caché.
 			await mvarInternalStorage.SetTrainList(auxLista);
-		}		
+		}
 		mcolTrains = auxLista;		
 	}
+
 }

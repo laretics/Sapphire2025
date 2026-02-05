@@ -39,7 +39,7 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 		}
 		internal override async Task InternalTextToBot(string text)
 		{
-			//Código de emparejamiento desde el cliente.
+			//Código de emparejamiento desde el cliente.			
 			Guid pairingUser = mvarQuew.getPairingUserId(text);			
 			if (Guid.Empty == pairingUser)
 				mvarFirstError = true;

@@ -1,22 +1,36 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Sapphire2025Models;
+using Sapphire2025Server.Comunications;
 using Sapphire2026.Data.Models;
+using System.Collections.Concurrent;
 using System.Configuration;
 
 namespace Sapphire2025Server.Controllers
 {
 	public abstract class SapphireBaseController : ControllerBase
 	{
+		protected readonly IHubContext<SignalRHub> mvarHubContext; //Referencia al hub.
+		protected static readonly ConcurrentDictionary<string, TaskCompletionSource<string>> mvarPendingRequests 
+			= new ConcurrentDictionary<string, TaskCompletionSource<string>>();
 		internal TimeSpan EXPIRY_INTERVAL = new TimeSpan(4, 0, 0);
 		internal IConfiguration mvarConfig;
 		private const string VIP_TOKEN = "a77363a1-d47b-4d67-8f1e-9953597a7755";
 		private Guid VIP_TOKEN_GUID = Guid.Parse(VIP_TOKEN);
-		internal SapphireBaseController(IConfiguration config)
+		internal SapphireBaseController(IConfiguration config, IHubContext<SignalRHub> hubContext)
 		{
 			mvarConfig = config;
+			mvarHubContext = hubContext;
 		}
 
+		public static void CompletePairingRequest(string requestId, string pairingCode)
+		{
+			if (mvarPendingRequests.TryRemove(requestId, out TaskCompletionSource<string>? tcs))
+			{
+				tcs.SetResult(pairingCode);
+			}
+		}
 
 		/// <summary>
 		/// Actualiza la caché de una tabla. Esto se hace asignando
@@ -34,12 +48,12 @@ namespace Sapphire2025Server.Controllers
 					auxCache = new TimeCache();
 					auxCache.Id = Guid.NewGuid();
 					auxCache.Key = (byte)key;
-					auxCache.TimeStamp = DateTime.Now;
+					auxCache.TimeStamp = DateTime.UtcNow;
 					almacen.TimeCache.Add(auxCache);
 				}
 				else
 				{
-					auxCache.TimeStamp = DateTime.Now;
+					auxCache.TimeStamp = DateTime.UtcNow;
 				}
 				await almacen.SaveChangesAsync();
 			}				
@@ -58,7 +72,7 @@ namespace Sapphire2025Server.Controllers
 			//Elimina las sesiones que hayan caducado.
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				IEnumerable<ActiveSessionModel> seleccion = almacen.ActiveSessions.Where(s => s.Expiry < DateTime.Now);
+				IEnumerable<ActiveSessionModel> seleccion = almacen.ActiveSessions.Where(s => s.Expiry < DateTime.UtcNow);
 				foreach (ActiveSessionModel elemento in seleccion)
 				{
 					//Añado un log de cierre de sesión por expiración.
@@ -77,7 +91,7 @@ namespace Sapphire2025Server.Controllers
 				nuevo.userId = userId.ToString();
 				nuevo.type = type;
 				nuevo.hostPoint = hostPoint;
-				nuevo.timeSpan = DateTime.Now;
+				nuevo.timeSpan = DateTime.UtcNow;
 				almacen.SessionEvents.Add(nuevo);
 				await almacen.SaveChangesAsync();
 			}
@@ -166,7 +180,7 @@ namespace Sapphire2025Server.Controllers
 				ActiveSessionModel? salida = await almacen.ActiveSessions.Where(x => x.Id == tokenId).FirstOrDefaultAsync();
 				if (null != salida)
 				{
-					salida.Expiry = DateTime.Now.Add(EXPIRY_INTERVAL);
+					salida.Expiry = DateTime.UtcNow.Add(EXPIRY_INTERVAL);
 					//Prolongo la caducidad de esta sesión
 					await almacen.SaveChangesAsync();
 				}

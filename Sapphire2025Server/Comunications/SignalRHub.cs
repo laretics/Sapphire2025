@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using System.Configuration;
 using System.Runtime.CompilerServices;
+using Sapphire2025Server.Controllers;
 
 namespace Sapphire2025Server.Comunications
 {
@@ -15,6 +16,26 @@ namespace Sapphire2025Server.Comunications
 		{
 			mvarLogger = logger;
 		}
+
+		/// <summary>
+		/// El Worker de Telegram llama a esta función con el código de emparejamiento ya generado.
+		/// </summary>
+		/// <param name="requestId">Id de la petición original</param>
+		/// <param name="pairingCode">Código de emparejamiento generado en el módulo Telegram</param>
+		/// <returns></returns>
+		public async Task SendPairingCodeResponse(string requestId, string pairingCode)
+		{
+			mvarLogger.LogInformation("Enviando código de emparejamiento al cliente: RequestId={0}, PairingCode={1}", requestId, pairingCode);
+			await Clients.Caller.SendAsync("ReceivePairingCode", requestId, pairingCode);
+
+			//Completamos la petición pendiente.
+			SapphireBaseController.CompletePairingRequest(requestId, pairingCode);
+
+			//Envío de la respuesta al servidor que lo solicitó.
+			await Clients.All.SendAsync("PairingCodeGenerated", requestId, pairingCode); //No estoy seguro de que esta línea sea correcta
+		}		
+
+
 
 		/// <summary>
 		/// Método que invoca el cliente de Telegram cuando se recibe un mensaje.

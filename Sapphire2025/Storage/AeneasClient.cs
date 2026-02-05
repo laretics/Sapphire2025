@@ -67,7 +67,7 @@ namespace Sapphire2025.Storage
 			DateTime auxUtc = timeStamp.ToUniversalTime();
 			string request = composeCommand(
 				"rcchngs",
-				new requestParam("timestamp", auxUtc.ToString()));
+				new requestParam("timestamp", auxUtc.ToString("o")));
 			HttpResponseMessage respuesta = await sendGetRequest(request);
 			IEnumerable<StatusChangeModel>? auxLista = await respuesta.Content.ReadFromJsonAsync<IEnumerable<StatusChangeModel>>();
 			if(null==auxLista) return new List<StatusChangeModel>() ;

@@ -67,7 +67,6 @@ namespace Sapphire2025Server.Telegram
 		}
 	}
 
-
 	public class PairingIntent
 	{
 		public Guid userId { get; set; }

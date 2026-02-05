@@ -18,20 +18,20 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 		}
 		internal async override Task InternalTextToBot(string text)
 		{
-			mvarMessage = string.Concat(text, mvarMessage);
-			if (null == mvarConcept)
-			{
-				mvarConcept = new TrainIncidenceConcept();
-				await mvarConcept.match(mvarMessage.Split(' ').ToList());
-			}
-			if (mvarConcept.mcolTrains.Count>0)
-			{
-				await mvarConcept.match(text.Split(',').ToList());
-			}
-			else if(null==mvarConcept.Sympthoms)
-			{
-				mvarConcept.Sympthoms = text;
-			}
+			//mvarMessage = string.Concat(text, mvarMessage);
+			//if (null == mvarConcept)
+			//{
+			//	mvarConcept = new TrainIncidenceConcept(mvarParent.mvarConfig);
+			//	await mvarConcept.match(mvarMessage.Split(' ').ToList());
+			//}
+			//if (mvarConcept.mcolTrains.Count>0)
+			//{
+			//	await mvarConcept.match(text.Split(',').ToList());
+			//}
+			//else if(null==mvarConcept.Sympthoms)
+			//{
+			//	mvarConcept.Sympthoms = text;
+			//}
 
 
 

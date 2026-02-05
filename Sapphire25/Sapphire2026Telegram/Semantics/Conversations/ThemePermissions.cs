@@ -83,7 +83,7 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 
 		private async Task<User?> getUser(long telegramChatId)
 		{
-			using (DataStorage almacen = new DataStorage(BotSoul.config))
+			using (DataStorage almacen = new DataStorage(mvarParent.mvarConfig))
 			{
 				User? auxUser =
 					await almacen.Users.FirstOrDefaultAsync(x => x.TelegramId == telegramChatId);

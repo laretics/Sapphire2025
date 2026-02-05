@@ -101,6 +101,13 @@ namespace Sapphire2025.Storage
 			//Comprobamos si la tabla de usuarios sigue estando en vigor
             DateTime localTimeStamp = await mvarIntStorage.GetUsersCacheTime();
 			DateTime serverTimeStamp = await LastTableServerUpdate(Common.CacheTableKey.Users);
+
+            //Hay que comprobar que ambas fechas estén en UTC para poder compararlas.
+            if (localTimeStamp.Kind != DateTimeKind.Utc)
+                localTimeStamp = localTimeStamp.ToUniversalTime();
+            if (serverTimeStamp.Kind != DateTimeKind.Utc)
+                serverTimeStamp = serverTimeStamp.ToUniversalTime();
+
 			Dictionary<Guid, UserModelBase>? fromSession = await mvarIntStorage.GetUsersCache();
 			if (localTimeStamp < serverTimeStamp || null==fromSession || 0==fromSession.Count())
 			{

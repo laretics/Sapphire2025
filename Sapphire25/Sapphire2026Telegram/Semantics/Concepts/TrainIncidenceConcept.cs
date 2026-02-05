@@ -11,7 +11,7 @@ namespace Sapphire2025Server.Telegram.Semantics.Concepts
 		private string? mvarSympthoms { get; set; } //Síntomas de la avería.
 		public string? Sympthoms { get => mvarSympthoms; set => mvarSympthoms = value; }
 		public bool mvarConfirmed; //El usuario ha validado esta información.
-		public TrainIncidenceConcept():base("Train_Incidence_Report", "avería,averia,incidencia,parte,hoja,aviso")
+		public TrainIncidenceConcept(IConfiguration config):base("Train_Incidence_Report", "averia,incidencia,incidence,parte,hoja,aviso",config)
 		{
 			
 		}

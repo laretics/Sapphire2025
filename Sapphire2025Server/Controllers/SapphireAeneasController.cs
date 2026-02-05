@@ -13,13 +13,9 @@ namespace Sapphire2025Server.Controllers
 	[Route("api/[controller]")]
 	public class SapphireAeneasController:SapphireBaseController
 	{
-		private readonly IHubContext<SignalRHub> mvarHubContext; //Hub de SignalR.
 		public SapphireAeneasController
 			(IConfiguration configuration,
-			IHubContext<SignalRHub> hubContext) : base(configuration) 
-		{			
-			mvarHubContext = hubContext;
-		}
+			IHubContext<SignalRHub> hubContext) : base(configuration, hubContext) {}
 		/// <summary>
 		/// Lista de trenes actualizada.
 		/// Contiene los trenes y las últimas operaciones que éstos han realizado
@@ -109,11 +105,14 @@ namespace Sapphire2025Server.Controllers
 		public async Task<List<StatusChangeModel>> recentUpdatesRequest(string timestamp)
 		{
 			List<StatusChangeModel> salida = new List<StatusChangeModel>();
-			DateTime auxFecha = DateTime.Now;
-			DateTime.TryParse(timestamp, out auxFecha);
+			DateTime auxFecha = DateTime.UtcNow;
+			DateTime.TryParse(timestamp, null, System.Globalization.DateTimeStyles.RoundtripKind, out auxFecha);
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				List<StatusChange> auxChanges = await almacen.StatusChanges.Where(x=>x.TimeStamp>auxFecha).OrderBy(x=>x.TimeStamp).ToListAsync();
+				List<StatusChange> auxChanges = await almacen.StatusChanges
+					.Where(x=>x.TimeStamp>auxFecha)
+					.OrderBy(x=>x.TimeStamp)
+					.ToListAsync();
 				foreach (StatusChange auxChange in auxChanges)
 					salida.Add(changeFromChange(auxChange));
 			}
@@ -167,7 +166,7 @@ namespace Sapphire2025Server.Controllers
 						nuevoCambio.Guid = Guid.NewGuid();
 						nuevoCambio.TrainId = auxTrain.Guid;
 						nuevoCambio.Operation = commit.operation;
-						nuevoCambio.TimeStamp = DateTime.Now;
+						nuevoCambio.TimeStamp = DateTime.UtcNow; // Cambiar de DateTime.Now
 						User? auxUser = await retrieveSessionUser(commit.SessionToken);
 						if(null!=auxUser)
 							nuevoCambio.UserId = auxUser.guid;
@@ -203,7 +202,7 @@ namespace Sapphire2025Server.Controllers
 					nuevoCambio.Guid = Guid.NewGuid();
 					nuevoCambio.TrainId = auxTrain.Guid;
 					nuevoCambio.Operation = operation;
-					nuevoCambio.TimeStamp = DateTime.Now;
+					nuevoCambio.TimeStamp = DateTime.UtcNow;
 					nuevoCambio.UserId = userId;
 					almacen.StatusChanges.Add(nuevoCambio);
 					auxTrain.lastChange = nuevoCambio.Guid;
@@ -314,7 +313,7 @@ namespace Sapphire2025Server.Controllers
 					Note nuevaNota = new Note();
 					nuevaNota.Id = Guid.NewGuid();
 					nuevaNota.Parent = note.parent;
-					nuevaNota.TimeStamp = DateTime.Now;
+					nuevaNota.TimeStamp = DateTime.UtcNow;
 					nuevaNota.UserId = note.UserId;
 					nuevaNota.Text = note.Text;
 					nuevaNota.Type = note.Type;

@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Sapphire2025Models.Expert;
 using Sapphire2025Models.Expert.WorkshiftTemplates;
+using Sapphire2025Server.Comunications;
 using Sapphire2025Server.Expert;
 using Sapphire2026.Data.Models;
 using Sapphire2026.Data.Models.Turnos;
@@ -15,7 +17,7 @@ namespace Sapphire2025Server.Controllers
     public class SapphireExpertController : SapphireBaseController
     {
 
-        public SapphireExpertController(IConfiguration configuration) : base(configuration) { }
+        public SapphireExpertController(IConfiguration configuration, IHubContext<SignalRHub> hubContext) : base(configuration,hubContext) { }
         [HttpPost("uploadxml")]
         public async Task<string> UploadXML([FromForm] IFormFile file)
         {
@@ -254,7 +256,7 @@ namespace Sapphire2025Server.Controllers
             if (null == request.ExcelDump) return "La hoja de cálculo que se ha recibido tiene un valor nulo";            
             List<List<AssignationCell>>? asignaciones = JsonSerializer.Deserialize<List<List<AssignationCell>>>(request.ExcelDump);
             ExcelGraphImporter importador = new ExcelGraphImporter(mvarConfig);
-            return await importador.ProcessExcel(asignaciones,request.Date, request.Days, request.TimeOffset);
+            return await importador.ProcessExcel(asignaciones,request.Date.Date, request.Days);
         }
     } 
 }

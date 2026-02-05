@@ -41,8 +41,8 @@ namespace Sapphire2025.Storage
         public async Task<List<AssignationContentModel>?> Assignations(DateTime date, int dayCount=1)
         {
             WorkShiftRequestModel request = new WorkShiftRequestModel();
-            request.Date = date;
-            request.Days = dayCount;
+			request.Date = date.Kind == DateTimeKind.Utc ? date : date.Date; // Solo la fecha, sin hora
+			request.Days = dayCount;
             string json = System.Text.Json.JsonSerializer.Serialize(request);
             HttpResponseMessage response = await sendPostRequest("assignations", json);
             if (response.IsSuccessStatusCode)
