@@ -9,8 +9,8 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 	internal class PairingTheme:BotTheme
 	{
 		private PairingQuew mvarQuew { get; set; }
-		private ImageResponse mvarFirstResponse;
-		private ImageResponse mvarSecondResponse;
+		private ImageResponse mvarFirstResponse = new ImageResponse();
+		private ImageResponse mvarSecondResponse = new ImageResponse();
 		private bool mvarFirstError;
 		internal PairingTheme(BotTask parent):base(parent)
 		{
@@ -20,11 +20,9 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 		private void initResponses()
 		{
 			mvarFirstError = false;
-			mvarFirstResponse = new ImageResponse();
 			mvarFirstResponse.ImageUrl = "PairingScreen.png";
 			mvarFirstResponse.addText("Hola. Soy el bot de Zafiro. No te has identificado todavía. Antes de acceder al servicio desde tu cuenta de Telegram necesito que generes una clave pulsando el botón de la página \"YO\" del panel izquierdo de la aplicación y me la envíes.");
 			mvarFirstResponse.addText("Hola. Soy el bot de Zafiro. Parece que todavía no te tengo en la base de datos. Para que podamos comunicarnos tienes que generar una clave pulsando el botón de la página \"YO\" del panel izquierdo de la aplicación y me la envíes.");
-			mvarSecondResponse = new ImageResponse();
 			mvarSecondResponse.ImageUrl = "PairingScreen.png";
 			mvarSecondResponse.addText("El código que me has enviado parece incorrecto. Antes de acceder al servicio desde tu cuenta de Telegram necesito que generes una clave pulsando el botón de la página \"YO\" del panel izquierdo de la aplicación y me la envíes.");
 			mvarSecondResponse.addText("El código que acabas de teclear no es válido. Todavía no te tengo en la base de datos. Para que podamos comunicarnos tienes que generar una clave pulsando el botón de la página \"YO\" del panel izquierdo de la aplicación y me la envíes.");

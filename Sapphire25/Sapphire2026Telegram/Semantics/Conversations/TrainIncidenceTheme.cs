@@ -5,39 +5,41 @@ using Telegram.Bot;
 
 namespace Sapphire2025Server.Telegram.Semantics.Conversations
 {
-	internal class TrainDamageTheme:BotTheme
+	internal class TrainIncidenceTheme:BotTheme
 	{
 		protected TrainIncidenceConcept? mvarConcept { get; set; } = null;
 		private string mvarMessage { get; set; }
 
 
 
-		internal TrainDamageTheme(BotTask parent, string arguments) : base(parent)
+		internal TrainIncidenceTheme(BotTask parent, GeneralConcept concept, string message) : base(parent)
 		{
-			mvarMessage = arguments;
+			mvarMessage = message;
+			if(concept is TrainIncidenceConcept)
+				mvarConcept = (TrainIncidenceConcept)concept;
 		}
 		internal async override Task InternalTextToBot(string text)
 		{
-			//mvarMessage = string.Concat(text, mvarMessage);
-			//if (null == mvarConcept)
-			//{
-			//	mvarConcept = new TrainIncidenceConcept(mvarParent.mvarConfig);
-			//	await mvarConcept.match(mvarMessage.Split(' ').ToList());
-			//}
-			//if (mvarConcept.mcolTrains.Count>0)
-			//{
-			//	await mvarConcept.match(text.Split(',').ToList());
-			//}
-			//else if(null==mvarConcept.Sympthoms)
-			//{
-			//	mvarConcept.Sympthoms = text;
-			//}
+			if (null == mvarConcept) this.endTheme();
+			else
+			{
 
 
-
-
-
-				this.endTheme();
+			}
+				//mvarMessage = string.Concat(text, mvarMessage);
+				//if (null == mvarConcept)
+				//{
+				//	mvarConcept = new TrainIncidenceConcept(mvarParent.mvarConfig);
+				//	await mvarConcept.match(mvarMessage.Split(' ').ToList());
+				//}
+				//if (mvarConcept.mcolTrains.Count>0)
+				//{
+				//	await mvarConcept.match(text.Split(',').ToList());
+				//}
+				//else if(null==mvarConcept.Sympthoms)
+				//{
+				//	mvarConcept.Sympthoms = text;
+				//}				
 		}
 		internal async override Task InternalResponseFromBot(ITelegramBotClient client)
 		{

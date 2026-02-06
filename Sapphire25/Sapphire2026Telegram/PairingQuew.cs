@@ -29,8 +29,9 @@ namespace Sapphire2025Server.Telegram
 		public Guid getPairingUserId(string rhs)
 		{
 			auxPurgePairing();
-			if (mcolPairingQuew.ContainsKey(rhs))
-				return mcolPairingQuew[rhs].userId;
+			string mayuscula = rhs.ToUpper().Trim();
+			if (mcolPairingQuew.ContainsKey(mayuscula))
+				return mcolPairingQuew[mayuscula].userId;
 			return Guid.Empty;
 		}
 

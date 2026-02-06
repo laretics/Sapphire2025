@@ -11,7 +11,7 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 		private IAConceptPerceptron? mvarPerceptron;
 		internal InitialTheme(BotTask parent):base(parent){}
 
-		private string mvarErrorText;
+		//private string mvarErrorText;
 
 		internal override async Task InternalResponseFromBot(ITelegramBotClient client)
 		{
@@ -21,12 +21,12 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 			if(mvarError)
 			{
 				TextResponse equivocado = new TextResponse();
-				//equivocado.addText("No he entendido lo que quieres decir. ¿Quieres abrir un parte de avería o de incidencia?");
-				//equivocado.addText("Por favor escribe o habla más claro. ¿Te gustaría conocer el estado de los trenes disponibles?");
-				//equivocado.addText("Estoy aprendiendo versión a versión. De momento no soy capaz de entender lo que acabas de decirme. Puedo abrir partes de incidencias, mostrar informes de un tren o mostrar históricos de uso.");
-				//equivocado.addText("¿Perdón? ¿Qué querías decirme?");
-				//equivocado.addText("¿Puedes repetir con otras palabras?");
-				equivocado.addText(mvarErrorText);
+				equivocado.addText("No he entendido lo que quieres decir. ¿Quieres abrir un parte de avería o de incidencia?");
+				equivocado.addText("Por favor escribe o habla más claro. ¿Te gustaría conocer el estado de los trenes disponibles?");
+				equivocado.addText("Estoy aprendiendo versión a versión. De momento no soy capaz de entender lo que acabas de decirme. Puedo abrir partes de incidencias, mostrar informes de un tren o mostrar históricos de uso.");
+				equivocado.addText("¿Perdón? ¿Qué querías decirme?");
+				equivocado.addText("¿Puedes repetir con otras palabras?");
+				//equivocado.addText(mvarErrorText);
 				await equivocado.Send(client, mvarParent.mvarTelegramId);
 				mvarError = false;
 			}
@@ -62,6 +62,10 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 			mvarError = (null == detectado);
 			if(null!=detectado)
 			{
+				if(detectado.GetType() == typeof(TrainIncidenceConcept))
+				{// Queremos abrir un parte de avería.
+					this.child = new TrainIncidenceTheme(mvarParent,detectado,text);
+				}
 			//	if (detectado.name.Equals("InformeEstado"))
 			//	{
 
@@ -71,7 +75,7 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 			//	else
 			//		mvarError = true;
 			}
-			mvarErrorText = string.Join("|", auxTokens);
+			//mvarErrorText = string.Join("|", auxTokens);
 
 			mvarError = true;
 		}

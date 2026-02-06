@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using Telegram.Bot.Types;
 
 namespace Sapphire2025Server.Telegram.Semantics.Concepts
 {
@@ -50,6 +51,25 @@ namespace Sapphire2025Server.Telegram.Semantics.Concepts
 				return candidato;
 
 			return null;		
+		}
+
+		/// <summary>
+		/// Obtiene el grado de coincidencia de un concepto con respecto a un vector de tokens
+		/// </summary>
+		/// <param name="concept">Concepto a evaluar</param>
+		/// <param name="rhs">Entrada preprocesada</param>
+		/// <returns></returns>
+		private byte Match(GeneralConcept concept, string[] rhs)
+		{
+			if (concept.mcolTokens.Length < 1) return 0; //Para evitar dividir por cero.
+			int instancias = 0;
+			foreach (string token in rhs)
+			{
+				if (concept.mcolTokens.Contains(token))
+					instancias++;
+			}
+			float resultado = (instancias * 255) / concept.mcolTokens.Length;
+			return (byte)resultado;
 		}
 	}
 }

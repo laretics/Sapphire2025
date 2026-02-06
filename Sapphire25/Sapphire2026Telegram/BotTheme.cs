@@ -6,15 +6,17 @@ namespace Sapphire2025Server.Telegram
 {
 	/// <summary>
 	/// Tema de una conversación.
+	/// Las conversaciones son elementos apilables que tienen la capacidad de recibir texto del usuario y contestar con otro texto.
+	/// También pueden realizar una acción sobre el servidor o la base de datos.
 	/// </summary>
 	internal abstract class BotTheme
 	{
-		private bool mvarEnd = false; //Esta conversación puede haber terminado o seguir activa
-		internal void endTheme() {mvarEnd = true;} //Terminamos el diálogo.
-		internal bool isEnded { get => mvarEnd; }
+		private bool mvarEnded = false; //Esta conversación puede haber terminado o seguir activa
+		internal void endTheme() {mvarEnded = true;} //Terminamos el diálogo.
+		internal bool isEnded { get => mvarEnded; }
 		internal BotTheme(BotTask parent)
 		{
-			mvarEnd = false;
+			mvarEnded = false;
 			mvarParent = parent;
 			if (null == mvarParent)
 				throw new ArgumentNullException(nameof(parent), "El tema no puede ser nulo");

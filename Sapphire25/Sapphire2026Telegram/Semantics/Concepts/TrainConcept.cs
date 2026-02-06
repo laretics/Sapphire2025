@@ -10,7 +10,7 @@ namespace Sapphire2025Server.Telegram.Semantics.Concepts
 	/// <summary>
 	/// Es un tipo de concepto que representa un tren o una operación relacionada con un tren.
 	/// </summary>
-	public class TrainConcept: GeneralConcept
+	internal class TrainConcept: GeneralConcept
 	{
 		internal List<Train> mcolTrains;
 		public TrainConcept(string name,string rhs, IConfiguration config):base(name,string.Concat(rhs,",ut,tren,material,movil,unidad,coche,remolque,vehículo,convoy"),config){ mcolTrains = new List<Train>(); }

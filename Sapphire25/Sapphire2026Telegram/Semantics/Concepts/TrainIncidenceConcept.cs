@@ -6,7 +6,7 @@ namespace Sapphire2025Server.Telegram.Semantics.Concepts
 	/// <summary>
 	/// Esto es una solicitud de un parte de avería en la que involucramos un síntoma y una o varias UT.
 	/// </summary>
-	public class TrainIncidenceConcept: TrainConcept
+	internal class TrainIncidenceConcept: TrainConcept
 	{
 		private string? mvarSympthoms { get; set; } //Síntomas de la avería.
 		public string? Sympthoms { get => mvarSympthoms; set => mvarSympthoms = value; }
