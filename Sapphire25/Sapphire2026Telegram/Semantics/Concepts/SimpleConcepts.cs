@@ -7,9 +7,19 @@ using System.Threading.Tasks;
 
 namespace Sapphire2026Telegram.Semantics.Concepts
 {
+
 	internal class ReportRequestConcept:GeneralConcept
 	{
-		internal ReportRequestConcept(IConfiguration config) : base("", config) { }
+		internal ReportRequestConcept(IConfiguration config) :
+			base(new string[]
+			{"disponible","disponibilidad","disponibles","trenes","disposición",
+			"informe","lista"}, config) 
+			{ }		
 	}
+	internal class CancelConcept:GeneralConcept
+	{
+
+	}
+
 
 }

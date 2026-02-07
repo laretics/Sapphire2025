@@ -6,7 +6,7 @@ using System.Text;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
 
-namespace Sapphire2025Server
+namespace Sapphire2026.Data
 {
 	public class DataStorage:DbContext
 	{

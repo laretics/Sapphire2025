@@ -1,5 +1,6 @@
 ﻿using Sapphire2025Server.Telegram.Semantics.Concepts;
 using Sapphire2026Telegram.Semantics;
+using Sapphire2026Telegram.Semantics.Concepts;
 using System.Diagnostics;
 using Telegram.Bot;
 
@@ -47,11 +48,24 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 		{
 			mvarError = false;
 			mvarPerceptron = new IAConceptPerceptron();
-			mvarPerceptron.addConcept( new GeneralConcept("Report","disponible,disponibilidad,disponibles,trenes,disposicion,informe,lista",mvarParent.mvarConfig)); //Pide un informe
+			mvarPerceptron.addConcept(new TrainNoteConcept(mvarParent.mvarConfig,true)); //Abrir un parte de averías.
+			mvarPerceptron.addConcept(new TrainNoteConcept(mvarParent.mvarConfig, false)); //Abrir una nota
+
+
+
+
+
+
+			mvarPerceptron.addConcept( new ReportRequestConcept(mvarParent.mvarConfig)); //Pide un informe
+
+
+
+
 			mvarPerceptron.addConcept(new GeneralConcept("Retire", "retira,retirar,baja,aparta,quita,quitar,apartar", mvarParent.mvarConfig)); //Retira de la circulación una unidad
 			mvarPerceptron.addConcept(new GeneralConcept("Return", "devuelve,libera,marcha,activa", mvarParent.mvarConfig)); //Devuelve a la circulación una unidad
-			mvarPerceptron.addConcept(new TrainIncidenceConcept(mvarParent.mvarConfig));		
+			
 		}
+
 
 		internal async override Task InternalTextToBot(string text)
 		{
@@ -62,7 +76,7 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 			mvarError = (null == detectado);
 			if(null!=detectado)
 			{
-				if(detectado.GetType() == typeof(TrainIncidenceConcept))
+				if(detectado.GetType() == typeof(TrainNoteConcept))
 				{// Queremos abrir un parte de avería.
 					this.child = new TrainIncidenceTheme(mvarParent,detectado,text);
 				}

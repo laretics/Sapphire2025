@@ -7,7 +7,7 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 {
 	internal class TrainIncidenceTheme:BotTheme
 	{
-		protected TrainIncidenceConcept? mvarConcept { get; set; } = null;
+		protected TrainNoteConcept? mvarConcept { get; set; } = null;
 		private string mvarMessage { get; set; }
 
 
@@ -15,8 +15,8 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 		internal TrainIncidenceTheme(BotTask parent, GeneralConcept concept, string message) : base(parent)
 		{
 			mvarMessage = message;
-			if(concept is TrainIncidenceConcept)
-				mvarConcept = (TrainIncidenceConcept)concept;
+			if(concept is TrainNoteConcept)
+				mvarConcept = (TrainNoteConcept)concept;
 		}
 		internal async override Task InternalTextToBot(string text)
 		{

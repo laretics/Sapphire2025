@@ -1,18 +1,12 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Sapphire2026.Data.Models;
+﻿
+using Sapphire2026.Data;
 using System.Diagnostics;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Polling;
 using Microsoft.EntityFrameworkCore;
-using Sapphire2025Server.Telegram.Semantics;
-using System.Threading.Tasks.Dataflow;
 using Sapphire2025Models;
-using System.Threading.Tasks;
-using Sapphire2025Models.Authentication;
-using Microsoft.AspNetCore.Mvc.Formatters;
-using Microsoft.AspNetCore.SignalR.Protocol;
 using Sapphire2026Telegram;
 
 namespace Sapphire2025Server.Telegram

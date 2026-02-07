@@ -1,7 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Sapphire2026.Data;
 using Sapphire2026.Data.Models;
 using Sapphire2025Server.Telegram.Semantics.Conversations;
 using Sapphire2026Telegram.Semantics;
+using Sapphire2026Telegram.Operative;
 
 namespace Sapphire2025Server.Telegram
 {
@@ -10,12 +12,13 @@ namespace Sapphire2025Server.Telegram
 	/// </summary>
 	internal class BotTask
 	{
-		private User? mvarUser;
+		private UserContext mvarUser;
 		internal long mvarTelegramId;
 		private bool mvarFirstMessage;
 		internal IConfiguration mvarConfig;
 		private readonly NlpProcessor mvarNLPProcessor;
-		internal User? user { get => mvarUser;} //Referencia al usuario que tiene esta conversación
+		internal UserContext user { get => mvarUser; }
+
 		internal BotTheme theme { get; set; } //Tema de la conversación actual.
 		internal BotSoul parent { get; set; } // Alma de bot que posee todas las tareas
 		internal BotTask(long chatId, BotSoul parent, IConfiguration config)
