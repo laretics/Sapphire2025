@@ -3,6 +3,7 @@
 @inject AuthenticationClient mvarAuthClient
 @inject NavigationManager mvarNavigator
 @inject IntStorageService mvarInternalStorage
+@implements IDisposable
 @if(null==mcolTrains)
 {
 	<div class="d-flex justify-content-center align-items-center" style="height: 60vh;">
@@ -97,11 +98,16 @@ else
 	public Dictionary<Guid,UserModelBase>? Users{ get; set; }
 
 	private bool Extended { get; set; } = false;
+	private Timer? mvarTimer;
 
 	protected async override Task OnInitializedAsync()
 	{
+		mvarTimer = new Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
 		await TrainCache();
-
+	}
+	public void Dispose()
+	{
+		mvarTimer?.Dispose();
 	}
 	private int AvailableTrains {get =>
 		mcolTrains.Where(xx => xx.lastStatus == Sapphire2025Models.Common.TrainStatus.Available ||

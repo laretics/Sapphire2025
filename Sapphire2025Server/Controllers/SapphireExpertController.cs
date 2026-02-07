@@ -5,7 +5,7 @@ using Sapphire2025Models.Expert;
 using Sapphire2025Models.Expert.WorkshiftTemplates;
 using Sapphire2025Server.Comunications;
 using Sapphire2025Server.Expert;
-using Sapphire2026.Data.Models;
+using Sapphire2026.Data;
 using Sapphire2026.Data.Models.Turnos;
 using System.Text.Json;
 using System.Xml;

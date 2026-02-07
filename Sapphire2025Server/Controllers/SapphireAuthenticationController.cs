@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sapphire2026.Data;
 using Sapphire2026.Data.Models;
 using System.Net;
 

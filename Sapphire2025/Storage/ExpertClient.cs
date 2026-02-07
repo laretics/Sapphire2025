@@ -41,7 +41,7 @@ namespace Sapphire2025.Storage
         public async Task<List<AssignationContentModel>?> Assignations(DateTime date, int dayCount=1)
         {
             WorkShiftRequestModel request = new WorkShiftRequestModel();
-			request.Date = date.Kind == DateTimeKind.Utc ? date : date.Date; // Solo la fecha, sin hora
+			request.Date = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc); // Solo la fecha, sin hora
 			request.Days = dayCount;
             string json = System.Text.Json.JsonSerializer.Serialize(request);
             HttpResponseMessage response = await sendPostRequest("assignations", json);
@@ -60,8 +60,8 @@ namespace Sapphire2025.Storage
         {
             Sapphire2025Models.Expert.WorkShiftRequestModel peticion = new WorkShiftRequestModel();
             peticion.Id = id;
-            peticion.Date = date; //Es para filtrar el día de la semana que es.
-            peticion.onlyWork = onlyWork; //Sólo carga los turnos que sean de trabajo (para gráfico diario)
+            peticion.Date = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc); //Es para filtrar el día de la semana que es.
+			peticion.onlyWork = onlyWork; //Sólo carga los turnos que sean de trabajo (para gráfico diario)
             string json = System.Text.Json.JsonSerializer.Serialize(peticion);
             HttpResponseMessage respuesta = await sendPostRequest("getplan", json);
             if (respuesta.IsSuccessStatusCode)
@@ -76,8 +76,8 @@ namespace Sapphire2025.Storage
         public async Task<Guid> PlanHeader(DateTime date)
         {
             Sapphire2025Models.Expert.WorkShiftRequestModel peticion = new WorkShiftRequestModel();
-            peticion.Date = date;
-            string json = System.Text.Json.JsonSerializer.Serialize(peticion);
+            peticion.Date = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc);
+			string json = System.Text.Json.JsonSerializer.Serialize(peticion);
             HttpResponseMessage respuesta = await sendPostRequest("planheader", json);
             if (respuesta.IsSuccessStatusCode)
                 return await respuesta.Content.ReadFromJsonAsync<Guid>();
@@ -107,8 +107,8 @@ namespace Sapphire2025.Storage
         public async Task<PlansYearSlice?> PlansTimeSlice(DateTime date, int dayCount=1)
         {
             WorkShiftRequestModel request = new WorkShiftRequestModel();
-            request.Date = date;
-            request.Days = dayCount;
+            request.Date = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc);
+			request.Days = dayCount;
             string json = System.Text.Json.JsonSerializer.Serialize(request);
             HttpResponseMessage respuesta = await sendPostRequest("planstimeslice", json);
             if (respuesta.IsSuccessStatusCode)
@@ -157,8 +157,8 @@ namespace Sapphire2025.Storage
         public async Task<HashSet<DateTime>?> NextFestives(DateTime today)
         {
             FestivesRequestModel requestModel = new FestivesRequestModel();
-            requestModel.Date = today;
-            string json = System.Text.Json.JsonSerializer.Serialize(requestModel);
+            requestModel.Date = DateTime.SpecifyKind(today.Date, DateTimeKind.Utc);
+			string json = System.Text.Json.JsonSerializer.Serialize(requestModel);
             HttpResponseMessage respuesta = await sendPostRequest("nextfestives", json);
             if (respuesta.IsSuccessStatusCode)
                 return await respuesta.Content.ReadFromJsonAsync<HashSet<DateTime>>();
@@ -169,8 +169,8 @@ namespace Sapphire2025.Storage
         public async Task<bool> IsFestive(DateTime day)
         {
             FestivesRequestModel requestModel = new FestivesRequestModel();
-            requestModel.Date = day;
-            string json = System.Text.Json.JsonSerializer.Serialize(requestModel);
+			requestModel.Date = DateTime.SpecifyKind(day.Date, DateTimeKind.Utc);
+			string json = System.Text.Json.JsonSerializer.Serialize(requestModel);
             HttpResponseMessage respuesta = await sendPostRequest("getfestive", json);
             if (respuesta.IsSuccessStatusCode)
                 return await respuesta.Content.ReadFromJsonAsync<bool>();
@@ -181,8 +181,8 @@ namespace Sapphire2025.Storage
         public async Task<bool> SetFestive(DateTime day, bool rhs)
         {
             FestivesRequestModel requestModel = new FestivesRequestModel();
-            requestModel.Date = day;
-            requestModel.Value = rhs;
+			requestModel.Date = DateTime.SpecifyKind(day.Date, DateTimeKind.Utc);
+			requestModel.Value = rhs;
             string json = System.Text.Json.JsonSerializer.Serialize(requestModel);
             HttpResponseMessage respuesta = await sendPostRequest("setfestive", json);
             if (respuesta.IsSuccessStatusCode)
@@ -215,7 +215,7 @@ namespace Sapphire2025.Storage
         public async Task<string?> UploadDailyWorkShift(string auxDocument, DateTime date, int days, int timeOffset)
         {
             XlsxAssignUpdateModel data = new();
-            data.Date = date;
+            data.Date = DateTime.SpecifyKind(date.Date,DateTimeKind.Utc);
             data.Days = days;
             data.TimeOffset = timeOffset;
             data.ExcelDump = auxDocument;

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Sapphire2025Models;
 using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
+using Sapphire2026.Data;
 using Sapphire2026.Data.Models;
 using Microsoft.AspNetCore.SignalR;
 using Sapphire2025Server.Comunications;

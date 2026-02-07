@@ -33,11 +33,34 @@ window.excelInterop = {
     //startCol: Índice de columna VISIBLE donde empieza el proceso (0-based)
     extractWorksheetData: async function (bytes, month, day, days, startCol) {
         var datosEntrada = new Uint8Array(bytes);
-        var libro = XLSX.read(datosEntrada, { type: "array", cellStyles: true, cellComments: true });
+        var libro = XLSX.read(datosEntrada, {
+            type: "array",
+            cellStyles: true,
+            cellComments: true,
+            sheetRows: 0 //Leemos todas las filas
+        });
         var hoja = libro.Sheets[libro.SheetNames[0]];
-        console.log("Claves de la hoja:", Object.keys(hoja));
 
-        var rango = XLSX.utils.decode_range(hoja['!ref']);
+       
+        var rangoCompleto = hoja['!fullref'] || hoja['!ref'];
+        console.log("Rango inicial:", rangoCompleto);
+
+        var rango = XLSX.utils.decode_range(rangoCompleto);
+
+        //Vamos a buscar si hay celdas fuera del rango que se ha declarado
+        var maxFila = rango.e.r;
+        Object.keys(hoja).forEach(function (key) {
+            if (key[0] !== '!') {
+                var pos = XLSX.utils.decode_cell(key);
+                if (pos.r > maxFila) maxFila = pos.r;
+            }
+        });
+
+        if (maxFila > rango.e.r) {
+            console.warn(`⚠️ ÁREA DE IMPRESIÓN DETECTADA: Extendiendo de ${rango.e.r} a ${maxFila}`);
+            rango.e.r = maxFila;
+        }
+        console.log(`Rango final: filas 0-${rango.e.r}`);
 
         // MEJORADA: Verifica si una columna está oculta O tiene ancho mínimo
         function isColumnHidden(colIndex) {
@@ -104,7 +127,7 @@ window.excelInterop = {
         for (var col = startColAbsolute; col <= rango.e.c; ++col) {
             // Saltar columnas ocultas durante la búsqueda
             if (isColumnHidden(col)) {
-                console.log("Saltando columna oculta en búsqueda:", col);
+                //console.log("Saltando columna oculta en búsqueda:", col);
                 continue;
             }
 
@@ -151,7 +174,7 @@ window.excelInterop = {
                 var textoAgente = celdaAgente ? (celdaAgente.v !== undefined && celdaAgente.v !== null ? celdaAgente.v.toString() : "") : "";
 
                 // Verificar si es fila vacía o contiene el nombre del mes
-                var esFilaVacia = ("" == textoAgente) || textoAgente.toUpperCase().includes(mesBuscado);
+                var esFilaVacia = ("" == textoAgente) || (textoAgente.toUpperCase().includes(mesBuscado) && row<2);
 
                 if (esFilaVacia) {
                     filasVacias++;
@@ -164,7 +187,7 @@ window.excelInterop = {
                     for (var col = colStart; col <= auxColEnd; ++col) {
                         // Saltar columnas ocultas durante la extracción
                         if (isColumnHidden(col)) {
-                            console.log("Saltando columna oculta en extracción:", col);
+                            //console.log("Saltando columna oculta en extracción:", col);
                             continue;
                         }
 
@@ -226,7 +249,7 @@ window.excelInterop = {
         var hoja = libro.Sheets[libro.SheetNames[0]];
 
         if (hoja['!cols']) {
-            console.log("Información de columnas:");
+            //console.log("Información de columnas:");
             hoja['!cols'].forEach((col, index) => {
                 if (col) {
                     var status = col.hidden ? 'OCULTA' : 'visible';
@@ -241,7 +264,7 @@ window.excelInterop = {
                         if (col.wpx < 8 && status !== 'OCULTA') status = 'OCULTA (ancho mínimo)';
                     }
 
-                    console.log(`Columna ${index}: ${status}${width}`);
+                    //console.log(`Columna ${index}: ${status}${width}`);
                 }
             });
         } else {

@@ -64,7 +64,9 @@ namespace Sapphire2025.Storage
 
 		public async Task<IEnumerable<StatusChangeModel>> recentChangeList(DateTime timeStamp)
 		{
-			DateTime auxUtc = timeStamp.ToUniversalTime();
+			DateTime auxUtc = timeStamp.Kind == DateTimeKind.Utc
+		? timeStamp
+		: DateTime.SpecifyKind(timeStamp, DateTimeKind.Utc);
 			string request = composeCommand(
 				"rcchngs",
 				new requestParam("timestamp", auxUtc.ToString("o")));

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Sapphire2025Models;
 using Sapphire2025Server.Comunications;
+using Sapphire2026.Data;
 using Sapphire2026.Data.Models;
 using System.Collections.Concurrent;
 using System.Configuration;

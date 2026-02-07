@@ -6,7 +6,7 @@
 			<Sapphire2025.Icons.Status.IcoStatus status="@changeModel.status" color="black" />
 		</td>
 		<td style="border-right:1px solid #dee2e6;">
-			@changeModel.timeStamp
+			@changeModel.timeStamp.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
 		</td>
 		<td style="border-right:1px solid #dee2e6;">
 		</td>

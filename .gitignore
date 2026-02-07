@@ -1,6 +1,7 @@
 # Visual Studio cache/options
 .vs/
 .vscode/
+.idea/
 
 # Build results
 [Bb]in/
@@ -9,14 +10,20 @@
 [Ll]ogs/
 
 # Archivos de publicación
+**/publish/
+**/publish-*/
 **/PubTmp/
+**/wwwroot/dist/
 
 # Archivos de configuración con secretos
 **/appsettings.Development.json
 **/appsettings.Production.json
+appsettings.*.json
+!appsettings.json
 
-#Secretos a nivel desarrollo
+# Secretos a nivel desarrollo
 secrets.json
+**/secrets.json
 
 # User-specific files
 *.rsuser
@@ -24,3 +31,32 @@ secrets.json
 *.user
 *.userosscache
 *.sln.docstates
+
+# Test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+
+# NuGet
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Blazor WASM específicos
+**/wwwroot/_framework/
+**/wwwroot/_bin/
+
+# Rider
+.idea/
+*.sln.iml
+
+# Backup files
+*.bak
+*~

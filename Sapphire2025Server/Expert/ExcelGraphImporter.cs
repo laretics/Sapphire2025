@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.SignalR.Protocol;
 using Microsoft.EntityFrameworkCore;
+using Sapphire2026.Data;
 using Sapphire2026.Data.Models;
 using Sapphire2026.Data.Models.Turnos;
 using System.Text;

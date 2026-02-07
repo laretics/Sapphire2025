@@ -1,4 +1,4 @@
-﻿@implements IDisposable
+﻿
 @inject NavigationManager mvarNavigator
 @if (null != Train)
 {
@@ -38,18 +38,15 @@
     [Parameter]
     public int[] ColWidth { get; set; } = new int[4];
 
-    private Timer? mvarTimer;
+    
 
     protected override void OnInitialized()
     {
         // Actualizar cada minuto para reevaluar IsRecentUpdate
-        mvarTimer = new Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        
     }
 
-    public void Dispose()
-    {
-        mvarTimer?.Dispose();
-    }
+
 
     private string trainColor{ get => Train==null?"transparent":Sapphire2025Models.Utils.TrainStyleFill(Train.name); }
 
