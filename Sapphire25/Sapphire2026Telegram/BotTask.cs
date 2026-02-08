@@ -15,8 +15,7 @@ namespace Sapphire2026Telegram
 		private UserContext mvarUser;
 		private bool mvarFirstMessage;
 		internal IConfiguration mvarConfig;
-		private readonly NlpProcessor mvarNLPProcessor;
-		internal UserContext user { get => mvarUser; }
+		internal UserContext user { get => mvarUser; set => mvarUser = value; }
 
 		internal BotTheme theme { get; set; } //Tema de la conversación actual.
 		internal BotSoul parent { get; set; } // Alma de bot que posee todas las tareas
@@ -27,39 +26,24 @@ namespace Sapphire2026Telegram
 			mvarUser = new UserContext(chatId,config);
 			mvarConfig = config;
 			mvarFirstMessage = true;
-			mvarNLPProcessor = new NlpProcessor();
-			theme = new InitialTheme(this);
+			theme = new PairingTheme(this);
 		}
-		internal async Task Init()
+		internal async Task Initialize()
 		{
-			await mvarUser.Init();
+			await user.Init();
+			await theme.Preprocess();
 		}
 
 		/// <summary>
-		/// Asignación del ID del usuario una vez tenemos el emparejado.
+		/// Verifica el estado de emparejamiento y resetea el tema si es necesario
 		/// </summary>
-		/// <param name="userId"></param>
-		/// <returns></returns>
-		internal async Task<bool> PairUser(Guid userId, long telegramChatId)
+		private async Task VerifyPairing()
 		{
-			bool correcto = false;
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{
-				Sapphire2026.Data.Models.User? auxUser = await almacen.Users.Where(x => x.guid == userId).FirstOrDefaultAsync();
-				if (null != auxUser)
-				{
-					auxUser.TelegramEnabled = true;
-					auxUser.TelegramId = telegramChatId;
-					correcto= await almacen.SaveChangesAsync() > 0;
-				}
-			}
-			if(correcto)
-			{
-				mvarUser = new UserContext(telegramChatId, mvarConfig);
-				await mvarUser.Init();
-				return true;
-			}
-			return false;
+			await mvarUser.Init();
+
+			//Si ya no está emparejado, eliminamos el resto de la conversación.
+			if(!mvarUser.Paired)
+				theme.child = null;
 		}
 
 		/// <summary>
@@ -67,12 +51,9 @@ namespace Sapphire2026Telegram
 		/// </summary>
 		public async Task ResponseFromBot()
 		{
-			//Capturamos el pairing.
-			if(null==user)
-				theme.child = new PairingTheme(this);
-
-			//Aquí cargaré el usuario (si es que no lo tenía todavía)
-			await theme.ResponseFromBot(parent.mvarBot);
+			// Verificar estado de emparejamiento antes de responder
+			await VerifyPairing();
+			await theme.ResponseFromBot(parent.mvarBot);			
 		}
 		/// <summary>
 		/// Envía al bot el texto que ha escrito el usuario.
@@ -81,17 +62,11 @@ namespace Sapphire2026Telegram
 		/// <returns></returns>
 		public async Task TextToBot(string? text)
 		{
-			if(!mvarFirstMessage) //Ignora el primer mensaje para preparar respuesta.
-			{
-				if (string.IsNullOrWhiteSpace(text))
-					return;
-
-				string[] tokens = mvarNLPProcessor.Process(text);
-
-				await theme.TextToBot(text);
-			}			
+			if (string.IsNullOrWhiteSpace(text))
+				return;
+			await theme.TextToBot(text);
 			mvarFirstMessage = false;
+			await theme.Preprocess(); //Tras la respuesta, preparamos el tema que contestará a continuación.
 		}
-
 	}
 }

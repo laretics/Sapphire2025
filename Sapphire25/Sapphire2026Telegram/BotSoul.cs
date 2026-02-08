@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Sapphire2025Models;
 using Sapphire2026Telegram;
 using System.Threading.Tasks;
+using System.Diagnostics.Eventing.Reader;
 
 namespace Sapphire2026Telegram
 {
@@ -48,8 +49,6 @@ namespace Sapphire2026Telegram
 					);
 			}
 		}
-
-
 
 		private async Task HandleUpdateAsync(ITelegramBotClient botClient,
 			Update update,
@@ -106,7 +105,7 @@ namespace Sapphire2026Telegram
 			if(!mcolTasks.ContainsKey(telegramId))
 			{
 				BotTask nueva = new BotTask(telegramId, this,config);
-				await nueva.Init(); //Cargo los datos del usuario desde la base de datosa.
+				await nueva.Initialize(); //Recupera el usuario de la base de datos.
 				mcolTasks.Add(telegramId, nueva);
 			}
 			Debug.Assert(mcolTasks.ContainsKey(telegramId));
@@ -143,8 +142,7 @@ namespace Sapphire2026Telegram
 			if(await GetTelegramEnabled())
 			{
 				List<Sapphire2026.Data.Models.User> auxUsers = new List<Sapphire2026.Data.Models.User>();
-				List<Sapphire2026.Data.Models.User> auxOrigin = await auxAvailableUsers();
-				//SapphireAuthenticationController auxController = new SapphireAuthenticationController(config, this);
+				List<Sapphire2026.Data.Models.User> auxOrigin = await auxAvailableUsers(priority);
 				string[] auxFilters = filters.ToUpper().Split(',');
 				foreach (Sapphire2026.Data.Models.User candidato in auxOrigin)
 				{
@@ -152,9 +150,11 @@ namespace Sapphire2026Telegram
 					{
 						if (filters.Length > 0)
 						{
-							//string auxConfig = await auxController.getTelegramRules(candidato.guid);
-							//if (auxHasFilterActive(auxConfig, auxFilters))
-							//	auxUsers.Add(candidato);
+							if(null!=candidato.TelegramRules)
+							{
+								if(auxHasFilterActive(candidato.TelegramRules,auxFilters))
+									auxUsers.Add(candidato);
+							}
 						}
 						else
 							auxUsers.Add(candidato); //Si no hay filtros meto a todos los usuarios.
@@ -168,29 +168,19 @@ namespace Sapphire2026Telegram
 			if(await GetTelegramEnabled())
 			{
 				List<Sapphire2026.Data.Models.User> auxUsers = new List<Sapphire2026.Data.Models.User>();
-				List<Sapphire2026.Data.Models.User> auxOrigin = await auxAvailableUsers();
-				//SapphireAuthenticationController auxController = new SapphireAuthenticationController(config, this);
+				List<Sapphire2026.Data.Models.User> auxOrigin = await auxAvailableUsers(priority);
 				foreach (Sapphire2026.Data.Models.User candidato in auxOrigin)
 				{
 					if (priority || candidato.TelegramEnabled)
 					{
-						//List<uint> auxColRoles = await auxController.retrieveUserRoles(candidato.guid);
-						//bool notificate = false;
-						//foreach (Common.UserRole role in roles)
-						//{
-						//	if (auxColRoles.Contains((uint)role))
-						//	{
-						//		notificate = true;
-						//		break;
-						//	}
-						//}
-						//if (!notificate)
-						//{
-						//	string auxConfig = await auxController.getTelegramRules(candidato.guid);
-						//	notificate = auxHasRolesInConfig(auxConfig, roles);
-						//}
-						//if (notificate)
-						//	auxUsers.Add(candidato);
+						//Localizo el chat de este usuario... si no está, lo genero.
+						if(!mcolTasks.ContainsKey(candidato.TelegramId))
+							await OpenTask(candidato.TelegramId);
+						Debug.Assert(mcolTasks.ContainsKey(candidato.TelegramId));
+
+						BotTask auxTask = mcolTasks[candidato.TelegramId];
+						if (auxTask.user.MatchRole(roles))
+							auxUsers.Add(candidato);
 					}
 				}
 				await Broadcast(message, auxUsers, priority);
@@ -251,11 +241,14 @@ namespace Sapphire2026Telegram
 			return string.Empty;
 		}
 
-		private async Task<List<Sapphire2026.Data.Models.User>> auxAvailableUsers()
+		private async Task<List<Sapphire2026.Data.Models.User>> auxAvailableUsers(bool priority)
 		{
 			using (DataStorage almacen = new DataStorage(config))
 			{
-				return await almacen.Users.Where(x => x.TelegramEnabled && 0!=x.TelegramId).ToListAsync();
+				if(priority)
+					return await almacen.Users.Where(x => 0 != x.TelegramId).ToListAsync();
+				else
+					return await almacen.Users.Where(x => x.TelegramEnabled && 0 != x.TelegramId).ToListAsync();
 			}				
 		}
 
@@ -313,13 +306,6 @@ namespace Sapphire2026Telegram
 				//return await auxController.pairUser(auxUserPairingId, telegramChatId);
 			}
 			return false;
-		}
-
-
-
-		
-		
-
-		
+		}		
 	}
 }

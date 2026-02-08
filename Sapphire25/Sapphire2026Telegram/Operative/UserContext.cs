@@ -1,5 +1,6 @@
 ﻿
 using Microsoft.EntityFrameworkCore;
+using Sapphire2025Models;
 using Sapphire2025Models.Authentication;
 using Sapphire2026.Data;
 using Sapphire2026.Data.Models;
@@ -27,6 +28,7 @@ namespace Sapphire2026Telegram.Operative
             mvarConfig = config;
             mvarTelegramId = telegramChatId;			
         }
+		internal bool Paired { get => (null != mvarUser); }
 		internal long TelegramId { get => null==mvarUser?mvarTelegramId:mvarUser.TelegramId; }
 		internal string Name { get => (null == mvarUser || null==mvarUser.UserName) ? "Desconocido" : mvarUser.UserName; }
         internal async Task Init()
@@ -36,15 +38,19 @@ namespace Sapphire2026Telegram.Operative
 				mvarUser = await almacen.Users
 					.Where(x => x.TelegramId == mvarTelegramId).FirstOrDefaultAsync();
             }
-			//Ahora recuperamos los roles del usuario
-			if (null != mvarUser)
+			ColRoles.Clear();			
+			if (null==mvarUser)
 			{
-				ColRoles.Clear();
+
+			}
+			else
+			{
+				//Ahora recuperamos los roles del usuario	
 				Dictionary<uint, ExtendedUserModel.RoleInfo> auxRoles = await retrieveRolesDictionary();
 				List<uint> listaRoles = await retrieveUserRoles(mvarUser.guid);
 				foreach (uint elemento in listaRoles)
 				{
-					if(auxRoles.ContainsKey(elemento))
+					if (auxRoles.ContainsKey(elemento))
 						ColRoles.Add(auxRoles[elemento]);
 				}
 			}
@@ -79,9 +85,19 @@ namespace Sapphire2026Telegram.Operative
 			}
 			return salida;
 		}
-
-
-
-
+		internal bool MatchRole(Common.UserRole[] roles)
+		{
+			foreach (ExtendedUserModel.RoleInfo auxInfo in ColRoles)
+			{
+				if(auxInfo.roleId<256)
+				{
+					if (roles.Contains((Common.UserRole)auxInfo.roleId))
+					{
+						return true;
+					}
+				}
+			}
+			return false;
+		}
 	}
 }

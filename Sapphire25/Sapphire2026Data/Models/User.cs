@@ -13,6 +13,7 @@ namespace Sapphire2026.Data.Models
 		public string CF { get; set; }
 		public long TelegramId { get; set; }
 		public bool TelegramEnabled { get; set; }
+		public string? TelegramRules { get; set; }
 		public bool UserEnabled { get; set; }
 		public string? UserName { get; set; }
 		public string? NormalizedUserName {  get; set; }

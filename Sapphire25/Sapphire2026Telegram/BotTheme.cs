@@ -22,8 +22,20 @@ namespace Sapphire2026Telegram
 		internal BotTask mvarParent { get; set; } //Contenedor con la info del chat 
 		internal BotTheme? child { get; set; } //Tema hijo (Las conversaciones funcionan como pilas)
 		internal virtual async Task InitializeAsync(){}
+
+		//Esta función es vital, porque permite cambiar de tema si toca.
 		internal virtual async Task InternalResponseFromBot(ITelegramBotClient client) {}
 		internal virtual async Task InternalTextToBot(string text){}
+		internal virtual async Task InternalPreprocess() { }
+		internal async Task Preprocess() //Esta es la función que hace el tema antes de responder.
+		{
+			if (null != child && child.isEnded)
+				child = null;
+			if (null == child)
+				await InternalPreprocess();
+			else
+				await child.Preprocess();
+		}
 		public async Task ResponseFromBot(ITelegramBotClient client)
 		{
 			if (null != child && child.isEnded)
@@ -32,21 +44,17 @@ namespace Sapphire2026Telegram
 			if (null == child)
 				await InternalResponseFromBot(client);
 			else
-				await child.InternalResponseFromBot(client);			
+				await child.ResponseFromBot(client);			
 		}
 		public async Task TextToBot(string text)
 		{
 			if (null != child && child.isEnded)
 				child = null;
-			string auxTexto = string.Empty;
 
 			if (null == child)
-				await this.InternalTextToBot(text);
+				await InternalTextToBot(text);
 			else
-				await child.InternalTextToBot(text);
-		}
-
-		
-
+				await child.TextToBot(text);
+		}	
 	}
 }

@@ -1,10 +1,11 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
+using Sapphire2025Models;
+using Sapphire2025Server.Controllers;
 using System.Configuration;
 using System.Runtime.CompilerServices;
-using Sapphire2025Server.Controllers;
 
 namespace Sapphire2025Server.Comunications
 {
@@ -70,6 +71,20 @@ namespace Sapphire2025Server.Comunications
 		{
 			mvarLogger.LogWarning("El cliente {0} se ha desconectado. Razón: {1}", Context.ConnectionId, exception?.Message);
 			return base.OnDisconnectedAsync(exception);
+		}
+
+
+		public async Task BroadcastTelegramMessage1(string message, bool priority = false, string filters="")
+		{
+			mvarLogger.LogInformation("Broadcast: Message={0}, Priority={1}, Filters={2}", message, priority, filters);
+			//Envío al cliente worker
+			await Clients.All.SendAsync("ReceiveBroadcastRequest1", message, priority, filters);
+		}
+		public async Task BroadcastTelegramMessage2(string message, bool priority = false, params Common.UserRole[] roles)
+		{
+			mvarLogger.LogInformation("Broadcast: Message={0}, Priority={1}, Roles={2}", message, priority, roles);
+			//Envío al cliente worker
+			await Clients.All.SendAsync("ReceiveBroadcastRequest2", message, priority, roles);
 		}
 	}
 }

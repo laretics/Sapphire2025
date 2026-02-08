@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Sapphire2026.Data;
+using Sapphire2026Telegram.Operative;
 using Telegram.Bot;
 
 namespace Sapphire2026Telegram.Semantics.Conversations
@@ -11,8 +13,28 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 		private bool mvarFirstError;
 		internal PairingTheme(BotTask parent):base(parent)
 		{
-			initResponses();
 			mvarQuew = parent.parent.mvarPairingQuew;
+			initResponses();
+		}
+		/// <summary>
+		/// Asignación del ID del usuario una vez tenemos el emparejado.
+		/// </summary>
+		/// <param name="userId"></param>
+		/// <returns></returns>
+		internal async Task PairUser(Guid userId, long telegramChatId)
+		{
+			using (DataStorage almacen = new DataStorage(mvarParent.mvarConfig))
+			{
+				Sapphire2026.Data.Models.User? auxUser = await almacen.Users.Where(x => x.Id == userId.ToString()).FirstOrDefaultAsync();
+				if (null != auxUser)
+				{
+					auxUser.TelegramEnabled = true;
+					auxUser.TelegramId = telegramChatId;
+					await almacen.SaveChangesAsync();
+					mvarParent.user = new UserContext(telegramChatId, mvarParent.mvarConfig);
+					await mvarParent.user.Init();
+				}
+			}
 		}
 		private void initResponses()
 		{
@@ -24,6 +46,20 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 			mvarSecondResponse.addText("El código que me has enviado parece incorrecto. Antes de acceder al servicio desde tu cuenta de Telegram necesito que generes una clave pulsando el botón de la página \"YO\" del panel izquierdo de la aplicación y me la envíes.");
 			mvarSecondResponse.addText("El código que acabas de teclear no es válido. Todavía no te tengo en la base de datos. Para que podamos comunicarnos tienes que generar una clave pulsando el botón de la página \"YO\" del panel izquierdo de la aplicación y me la envíes.");
 		}
+        internal override async Task InternalPreprocess()
+        {		
+			if (mvarParent.user.Paired)
+			{
+				// El usuario está emparejado. Hay que ver qué pasa con el hijo.
+				if (null != child && child.isEnded)
+					child = null;
+				if (null == child)
+					child = new InitialTheme(mvarParent);
+
+				//Delegación al hijo
+				await child.Preprocess();
+			}
+        }
 		internal override async Task InternalResponseFromBot(ITelegramBotClient client)
 		{
 			//Saludo para el emparejamiento.
@@ -41,8 +77,7 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 			else
 			{
 				//Emparejamos el usuario y se lo asignamos al padre...
-				if (await mvarParent.PairUser(pairingUser,mvarParent.user.TelegramId))
-					endTheme(); //Podemos terminar el emparejado.
+				await PairUser(pairingUser, mvarParent.user.TelegramId);
 			}
 		}
 	}

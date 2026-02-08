@@ -8,8 +8,11 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 	internal class InitialTheme:BotTheme
 	{
 		private bool mvarError { get; set; }
-		private IAConceptPerceptron? mvarPerceptron;
-		internal InitialTheme(BotTask parent):base(parent){}
+		private IAConceptPerceptron mvarPerceptron;
+		internal InitialTheme(BotTask parent):base(parent)
+		{
+			mvarPerceptron = new IAConceptPerceptron();
+		}
 
 		//private string mvarErrorText;
 

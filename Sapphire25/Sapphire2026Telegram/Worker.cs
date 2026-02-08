@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR.Client;
+using Sapphire2025Models;
 using Sapphire2026Telegram;
 
 namespace Sapphire2026Telegram
@@ -104,7 +105,34 @@ namespace Sapphire2026Telegram
 						}
 					});
 				});
-
+				mvarHubConnection.On<string, bool, string>("ReceiveBroadcastRequest1", (message, priority, filter) =>
+				{
+					_ = Task.Run(async () =>
+					{
+						try
+						{
+							await OnTelegramBroadcast1(message, priority, filter);
+						}
+						catch (Exception ex)
+						{
+							mvarLogger.LogError(ex, "Error en el handler de ReceiveBroadcastRequest1");
+						}
+					});
+				});
+				mvarHubConnection.On<string, bool, Common.UserRole[]>("ReceiveBroadcastRequest2", (message, priority, roles) =>
+				{
+					_ = Task.Run(async () =>
+					{
+						try
+						{
+							await OnTelegramBroadcast2(message, priority, roles);
+						}
+						catch (Exception ex)
+						{
+							mvarLogger.LogError(ex, "Error en el handler de ReceiveBroadcastRequest2");
+						}
+					});
+				});
 				try
 				{
 					await mvarHubConnection.StartAsync(cancellationToken);
@@ -200,6 +228,16 @@ namespace Sapphire2026Telegram
 		private async Task OnTelegramMessageAcknowelged(long chatId, bool success)
 		{
 			mvarLogger.LogInformation("Mensaje confirmado por el servidor: ChatId={0}, Success={1}", chatId, success);
+		}
+		private async Task OnTelegramBroadcast1(string message, bool priority = false, string filters = "")
+		{
+			mvarLogger.LogInformation("Transmisión Telegram Message:{0} Priority:{1} Filters:{2}", message, priority, filters);
+			await mvarBotSoul.BroadcastToAll(message, priority, filters);
+		}
+		private async Task OnTelegramBroadcast2(string message, bool priority = false, params Common.UserRole[] roles)
+		{
+			mvarLogger.LogInformation("Transmisión Telegram Message:{0} Priority:{1} Roles:{2}", message, false, roles);
+			await mvarBotSoul.BroadcastByRole(message, priority, roles);
 		}
 		private async Task OnRequestPairingCode(string requestId, string userId)
 		{
