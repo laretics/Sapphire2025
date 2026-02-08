@@ -1,8 +1,6 @@
-﻿using Sapphire2025Server.Telegram.Semantics;
-using Sapphire2025Server.Telegram.Semantics.Concepts;
-using Telegram.Bot;
+﻿using Telegram.Bot;
 
-namespace Sapphire2025Server.Telegram
+namespace Sapphire2026Telegram
 {
 	/// <summary>
 	/// Tema de una conversación.

@@ -1,6 +1,6 @@
 ﻿using Google.Protobuf.Reflection;
 
-namespace Sapphire2025Server.Telegram
+namespace Sapphire2026Telegram
 ///Cola de emparejamientos de Telegram.
 ///Contiene los enlaces de emparejamiento para vincular una cuenta de Telegram
 ///a una cuenta de Zafiro.

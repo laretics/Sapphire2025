@@ -1,11 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Sapphire2026.Data;
 using Sapphire2026.Data.Models;
-using Sapphire2025Server.Telegram.Semantics.Conversations;
+using Sapphire2026Telegram.Semantics.Conversations;
 using Sapphire2026Telegram.Semantics;
 using Sapphire2026Telegram.Operative;
 
-namespace Sapphire2025Server.Telegram
+namespace Sapphire2026Telegram
 {
 	/// <summary>
 	/// Esta clase es un contenedor para una conversación entre el bot de telegram y un usuario.
@@ -13,7 +13,6 @@ namespace Sapphire2025Server.Telegram
 	internal class BotTask
 	{
 		private UserContext mvarUser;
-		internal long mvarTelegramId;
 		private bool mvarFirstMessage;
 		internal IConfiguration mvarConfig;
 		private readonly NlpProcessor mvarNLPProcessor;
@@ -25,11 +24,15 @@ namespace Sapphire2025Server.Telegram
 		{
 			//Tenemos que recuperar el usuario de la base de datos.
 			this.parent = parent;
+			mvarUser = new UserContext(chatId,config);
 			mvarConfig = config;
 			mvarFirstMessage = true;
-			mvarTelegramId = chatId;
 			mvarNLPProcessor = new NlpProcessor();
 			theme = new InitialTheme(this);
+		}
+		internal async Task Init()
+		{
+			await mvarUser.Init();
 		}
 
 		/// <summary>
@@ -37,29 +40,26 @@ namespace Sapphire2025Server.Telegram
 		/// </summary>
 		/// <param name="userId"></param>
 		/// <returns></returns>
-		internal async Task<bool> PairUser(Guid userId)
+		internal async Task<bool> PairUser(Guid userId, long telegramChatId)
 		{
+			bool correcto = false;
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				Sapphire2026.Data.Models.User? auxUser = await almacen.Users.Where(x => x.Id == userId.ToString()).FirstOrDefaultAsync();
-				if(null!=auxUser)
+				Sapphire2026.Data.Models.User? auxUser = await almacen.Users.Where(x => x.guid == userId).FirstOrDefaultAsync();
+				if (null != auxUser)
 				{
-					mvarUser = auxUser;
 					auxUser.TelegramEnabled = true;
-					auxUser.TelegramId = mvarTelegramId;
-					return await almacen.SaveChangesAsync() > 0;
-				}				
+					auxUser.TelegramId = telegramChatId;
+					correcto= await almacen.SaveChangesAsync() > 0;
+				}
+			}
+			if(correcto)
+			{
+				mvarUser = new UserContext(telegramChatId, mvarConfig);
+				await mvarUser.Init();
+				return true;
 			}
 			return false;
-		}
-		internal async Task<bool> FetchUser()
-		{
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{
-				Sapphire2026.Data.Models.User? auxUser = await almacen.Users.Where(x => x.TelegramId == mvarTelegramId).FirstOrDefaultAsync();
-				mvarUser = auxUser;
-			}
-			return (null != mvarUser);
 		}
 
 		/// <summary>
@@ -69,10 +69,7 @@ namespace Sapphire2025Server.Telegram
 		{
 			//Capturamos el pairing.
 			if(null==user)
-			{
-				if (!await FetchUser())
-					theme.child = new PairingTheme(this);
-			}
+				theme.child = new PairingTheme(this);
 
 			//Aquí cargaré el usuario (si es que no lo tenía todavía)
 			await theme.ResponseFromBot(parent.mvarBot);

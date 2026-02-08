@@ -1,8 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Sapphire2026.Data;
 using Sapphire2026.Data.Models;
-using Sapphire2025Server.Telegram.Semantics;
-using Sapphire2025Server.Telegram.Semantics.Concepts;
-namespace Sapphire2025Server.Telegram.Semantics.Conversations
+namespace Sapphire2026Telegram.Semantics.Conversations
 {
 	internal class ThemePermissions:BotTheme
 	{

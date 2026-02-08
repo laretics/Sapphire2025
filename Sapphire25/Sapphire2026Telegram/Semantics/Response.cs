@@ -1,5 +1,6 @@
-﻿using Telegram.Bot;
-namespace Sapphire2025Server.Telegram.Semantics
+﻿using Sapphire2026Telegram.Operative;
+using Telegram.Bot;
+namespace Sapphire2026Telegram.Semantics
 {
 	/// <summary>
 	/// Una respuesta es un objeto semántico que contiene información para responder al usuario
@@ -11,7 +12,7 @@ namespace Sapphire2025Server.Telegram.Semantics
 	{
 		protected static Random generador = new Random(); //Generador de números aleatorios para las respuestas.
 
-		internal virtual async Task Send(ITelegramBotClient client, long telegramId) { }
+		internal virtual async Task Send(ITelegramBotClient client, UserContext userContext) { }
 
 	}
 
@@ -52,29 +53,33 @@ namespace Sapphire2025Server.Telegram.Semantics
 		}
 
 		protected virtual byte maxResponses { get => 1; } //Número máximo de respuestas que puede devolver el objeto. Por defecto es 1, pero se puede sobreescribir en las clases hijas.
-		internal override async Task Send(ITelegramBotClient client, long telegramId)
+		internal override async Task Send(ITelegramBotClient client, UserContext userContext)
 		{
 			byte indice = (byte)generador.Next(0, maxResponses);
-			await client.SendMessage(telegramId, internalResponse());
+			if(-1!=userContext.TelegramId)
+				await client.SendMessage(userContext.TelegramId, internalResponse());
 		}
 	}
 	public class ImageResponse:TextResponse
 	{
 		public string? ImageUrl { get; set; }
-		internal override async Task Send(ITelegramBotClient client, long telegramId)
+		internal override async Task Send(ITelegramBotClient client, UserContext userContext)
 		{
-			if(null==ImageUrl)
-				await base.Send(client, telegramId);
-			else
+			if (-1 != userContext.TelegramId)
 			{
-				string rutaRelativa = Path.Combine("Resources", "Images", ImageUrl);
-				string rutaFisica = Path.Combine(Directory.GetCurrentDirectory(), rutaRelativa);
-				using (FileStream cadena = File.OpenRead(rutaFisica))
+				if (null == ImageUrl)
+					await base.Send(client, userContext);
+				else
 				{
-					await client.SendPhoto(
-						chatId: telegramId,
-						photo: cadena,
-						caption: internalResponse());
+					string rutaRelativa = Path.Combine("Resources", "Images", ImageUrl);
+					string rutaFisica = Path.Combine(Directory.GetCurrentDirectory(), rutaRelativa);
+					using (FileStream cadena = File.OpenRead(rutaFisica))
+					{
+						await client.SendPhoto(
+							chatId: userContext.TelegramId,
+							photo: cadena,
+							caption: internalResponse());
+					}
 				}
 			}
 		}

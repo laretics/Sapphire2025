@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
+using Sapphire2026.Data;
 using Sapphire2026.Data.Models;
 using System.Diagnostics;
 using System.Diagnostics.Eventing.Reader;
@@ -9,7 +10,7 @@ using System.Net.Mime;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Sapphire2025Server.Telegram.Semantics.Concepts
+namespace Sapphire2026Telegram.Semantics.Concepts
 {
 	/// <summary>
 	/// Es un tipo de concepto que representa un tren o una operación relacionada con un tren.

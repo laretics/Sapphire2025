@@ -9,7 +9,7 @@ namespace Sapphire2025Models
 	public static class Common
 	{
 		public const string SapphireSoftwareVersion = "26.02.07";
-		public const string LastChangesText = "¡Módulo de Telegram Activo!";
+		public const string LastChangesText = "Arreglados problemas de importación de Maquinistas";
 		public const string VersionColor = "#20A0A0"; //Color de la versión para diferenciar una de otra.
 
 		/// <summary>
@@ -226,37 +226,6 @@ namespace Sapphire2025Models
 		//	return UserRole.Anonymous;
 		//}
 
-
-		/// <summary>
-		/// Formatea una fecha de forma amigable para el usuario
-		/// </summary>
-		/// <param name="rhs">La fecha a formatear</param>
-		/// <returns></returns>
-		static public string timeString(DateTime? rhs)
-		{			
-			if (null == rhs) return "-";
-			DateTime secc = ((DateTime)rhs).AddHours(2);
-			string cadenaFormato = "{0:dd-MM-yy} ({0:HH:mm})";
-			if (DateTime.Now.Subtract(secc).Ticks > 0) //Tiempo pasado
-			{
-				if (DateTime.Now.Subtract(secc).Days < 1)
-				{
-					cadenaFormato = "Hoy, {0:HH:mm}";
-				}
-				else if (DateTime.Now.Subtract(secc).Days < 2)
-				{
-					cadenaFormato = "Ayer, {0:HH:mm}";
-				}
-				else if (DateTime.Now.Subtract(secc).Days > 30)
-				{
-					cadenaFormato = "{0:dd-MM-yy}";
-				}
-			}
-			else //Tiempo futuro
-				cadenaFormato = "{0:dd-MM-yy}";
-
-			return string.Format(cadenaFormato, secc);
-		}
 		static public string timeStringTelegram(DateTime? rhs)
 		{
 			if (null == rhs) return "-";

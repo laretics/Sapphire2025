@@ -52,7 +52,8 @@
 	}
 	private string textoFecha
 	{
-		get => Sapphire2025Models.Common.timeString(Note.TimeStamp.ToLocalTime());
+		//get => Sapphire2025Models.Common.timeString(Note.TimeStamp.ToLocalTime());
+		get => Sapphire2025Models.Utils.autoDate(Note.TimeStamp);
 	}
 	protected override void OnParametersSet()
 	{

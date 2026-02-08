@@ -1,9 +1,7 @@
-﻿
-using MySqlX.XDevAPI;
-using Sapphire2025Server.Telegram.Semantics.Concepts;
+﻿using Sapphire2026Telegram.Semantics.Concepts;
 using Telegram.Bot;
 
-namespace Sapphire2025Server.Telegram.Semantics.Conversations
+namespace Sapphire2026Telegram.Semantics.Conversations
 {
 	internal class TrainIncidenceTheme:BotTheme
 	{
@@ -48,11 +46,11 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 				TextResponse auxQueryPrompt = new TextResponse();
 				auxQueryPrompt.addText("No te he entendido. ¿Puedes preguntar otra cosa?");
 				auxQueryPrompt.addText("No estoy preparado para manejar esta pregunta. Prueba con otra.");
-				await auxQueryPrompt.Send(client, mvarParent.mvarTelegramId);
+				await auxQueryPrompt.Send(client, mvarParent.user);
 			}
 			else
 			{
-				await mvarConcept.Confirmation().Send(client, mvarParent.mvarTelegramId);
+				await mvarConcept.Confirmation().Send(client, mvarParent.user);
 			}
 		}
 	}

@@ -1,9 +1,9 @@
 ﻿using System.Text.RegularExpressions;
 using Telegram.Bot.Types;
 
-namespace Sapphire2025Server.Telegram.Semantics.Concepts
+namespace Sapphire2026Telegram.Semantics.Concepts
 {
-	public class IAConceptPerceptron
+	internal class IAConceptPerceptron
 	{
 		protected List<GeneralConcept> mcolTematics;
     
@@ -34,13 +34,13 @@ namespace Sapphire2025Server.Telegram.Semantics.Concepts
 			return entities;
 		}
 
-		public async Task<GeneralConcept?> Concept(string[] tokens, byte trigger=0)
+		public async Task<GeneralConcept?> ConceptMatch(string[] tokens, byte trigger=0)
 		{
 			GeneralConcept? candidato=null;
 			byte maxCandidato = 0;
 			foreach(GeneralConcept tematica in mcolTematics)
 			{
-				byte auxPuntos = await tematica.match(tokens);
+				byte auxPuntos = Match(tematica, tokens);
 				if(null==candidato || auxPuntos>maxCandidato)
 				{
 					maxCandidato = auxPuntos;
@@ -61,14 +61,14 @@ namespace Sapphire2025Server.Telegram.Semantics.Concepts
 		/// <returns></returns>
 		private byte Match(GeneralConcept concept, string[] rhs)
 		{
-			if (concept.mcolTokens.Length < 1) return 0; //Para evitar dividir por cero.
+			if (concept.mcolTokens.Count < 1) return 0; //Para evitar dividir por cero.
 			int instancias = 0;
 			foreach (string token in rhs)
 			{
 				if (concept.mcolTokens.Contains(token))
 					instancias++;
 			}
-			float resultado = (instancias * 255) / concept.mcolTokens.Length;
+			float resultado = (instancias * 255) / concept.mcolTokens.Count;
 			return (byte)resultado;
 		}
 	}

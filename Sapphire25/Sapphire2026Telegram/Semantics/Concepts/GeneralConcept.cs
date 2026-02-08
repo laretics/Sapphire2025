@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace Sapphire2025Server.Telegram.Semantics.Concepts
+namespace Sapphire2026Telegram.Semantics.Concepts
 {
 	/// <summary>
 	/// Un concepto es un término que puede reconocer el bot de telegram en un texto escrito por el usuario.

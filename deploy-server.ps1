@@ -1,83 +1,68 @@
-# ============================================
+﻿# ============================================
 # Script de despliegue - Sapphire2025Server
 # ============================================
 
-# Configuración
 $serverProject = "Sapphire2025Server"
 $publishPath = ".\publish-server"
 $configSource = "C:\Users\ErPe\DeployConfigs\appsettings.Production.Server.json"
 $remoteHost = "zafiro"
 $remotePath = "/home/Zafiro/Server"
 
-Write-Host "`n🚀 Iniciando despliegue de Sapphire2025Server`n" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Iniciando despliegue de Sapphire2025Server" -ForegroundColor Cyan
+Write-Host ""
 
 # 1. Compilar proyecto
-Write-Host "🔨 Compilando proyecto..." -ForegroundColor Yellow
+Write-Host "Compilando proyecto..." -ForegroundColor Yellow
 dotnet publish $serverProject -c Release -o $publishPath --self-contained false
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Error al compilar el proyecto" -ForegroundColor Red
+    Write-Host "ERROR: No se pudo compilar el proyecto" -ForegroundColor Red
     exit 1
 }
 
-# 2. Verificar archivo de configuración
+# 2. Verificar archivo de configuracion
 if (-not (Test-Path $configSource)) {
-    Write-Host "❌ No se encontró el archivo de configuración: $configSource" -ForegroundColor Red
+    Write-Host "ERROR: No se encontro el archivo: $configSource" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "📝 Copiando configuración de producción..." -ForegroundColor Yellow
+Write-Host "Copiando configuracion de produccion..." -ForegroundColor Yellow
 Copy-Item $configSource -Destination "$publishPath\appsettings.Production.json" -Force
 
-# 3. Crear paquete ZIP
-Write-Host "📦 Creando paquete de despliegue..." -ForegroundColor Yellow
-Compress-Archive -Path "$publishPath\*" -DestinationPath ".\server-deploy.zip" -Force
+# 3. Crear paquete con tar (sin backslashes)
+Write-Host "Creando paquete de despliegue..." -ForegroundColor Yellow
+Push-Location $publishPath
+tar -czf ..\server-deploy.tar.gz *
+Pop-Location
 
 # 4. Subir al servidor
-Write-Host "⬆️  Subiendo al servidor..." -ForegroundColor Green
-scp .\server-deploy.zip ${remoteHost}:/tmp/
+Write-Host "Subiendo al servidor..." -ForegroundColor Green
+scp .\server-deploy.tar.gz ${remoteHost}:/tmp/
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Error al subir archivos al servidor" -ForegroundColor Red
-    Remove-Item .\server-deploy.zip -ErrorAction SilentlyContinue
+    Write-Host "ERROR: No se pudo subir al servidor" -ForegroundColor Red
+    Remove-Item .\server-deploy.tar.gz -ErrorAction SilentlyContinue
     exit 1
 }
 
 # 5. Desplegar en el servidor
-Write-Host "🔄 Desplegando en el servidor..." -ForegroundColor Green
-ssh $remoteHost @"
-    echo '⏸️  Deteniendo servicio...'
-    sudo systemctl stop sapphire2025
-    
-    echo '🗑️  Limpiando directorio...'
-    cd $remotePath
-    sudo rm -rf *
-    
-    echo '📂 Descomprimiendo archivos...'
-    sudo unzip -q /tmp/server-deploy.zip -d $remotePath
-    
-    echo '🔐 Ajustando permisos...'
-    sudo chown -R zafiro:zafiro $remotePath
-    
-    echo '▶️  Iniciando servicio...'
-    sudo systemctl start sapphire2025
-    
-    echo '📊 Estado del servicio:'
-    sudo systemctl status sapphire2025 --no-pager -l
-    
-    echo '🧹 Limpiando temporal...'
-    rm /tmp/server-deploy.zip
-    
-    echo '✅ Despliegue completado en el servidor'
-"@
+Write-Host "Desplegando en el servidor..." -ForegroundColor Green
+
+ssh $remoteHost "systemctl stop sapphire2025"
+ssh $remoteHost "cd $remotePath && rm -rf *"
+ssh $remoteHost "tar -xzf /tmp/server-deploy.tar.gz -C $remotePath"
+ssh $remoteHost "chown -R zafiro:zafiro $remotePath"
+ssh $remoteHost "systemctl start sapphire2025"
+ssh $remoteHost "systemctl status sapphire2025 --no-pager -l"
+ssh $remoteHost "rm -f /tmp/server-deploy.tar.gz"
 
 # 6. Limpiar archivos temporales locales
-Write-Host "🧹 Limpiando archivos temporales..." -ForegroundColor Yellow
-Remove-Item .\server-deploy.zip -ErrorAction SilentlyContinue
+Write-Host "Limpiando archivos temporales..." -ForegroundColor Yellow
+Remove-Item .\server-deploy.tar.gz -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force $publishPath -ErrorAction SilentlyContinue
 
-Write-Host "`n✅ ¡Despliegue completado exitosamente!`n" -ForegroundColor Green
-Write-Host "📋 Ver logs en tiempo real: " -NoNewline
-Write-Host "ssh zafiro 'sudo journalctl -u sapphire2025 -f'" -ForegroundColor Cyan
-Write-Host "📊 Ver estado del servicio: " -NoNewline
-Write-Host "ssh zafiro 'sudo systemctl status sapphire2025'" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "DESPLIEGUE COMPLETADO" -ForegroundColor Green
+Write-Host ""
+Write-Host "Ver logs: ssh zafiro 'journalctl -u sapphire2025 -n 50'" -ForegroundColor Cyan

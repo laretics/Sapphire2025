@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using Sapphire2026.Data.Models;
 
-namespace Sapphire2025Server.Telegram.Semantics.Concepts
+namespace Sapphire2026Telegram.Semantics.Concepts
 {
 	/// <summary>
 	/// Esto es una solicitud de un parte de avería en la que involucramos un síntoma y una o varias UT.

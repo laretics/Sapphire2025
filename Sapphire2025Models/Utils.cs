@@ -77,25 +77,35 @@ namespace Sapphire2025Models
 		}
 		public static string autoDate(DateTime rhs)
 		{
+			// Si el DateTime no tiene Kind especificado, asumimos que es UTC
+			if (rhs.Kind == DateTimeKind.Unspecified)
+			{
+				rhs = DateTime.SpecifyKind(rhs, DateTimeKind.Utc);
+			}
+
+			// Convertir a hora local
+			DateTime localTime = rhs.Kind == DateTimeKind.Utc ? rhs.ToLocalTime() : rhs;
 			DateTime ahora = DateTime.Now;
-			double dias = ahora.Subtract(rhs).TotalDays;
-			if(rhs.Equals(DateTime.MinValue))
+
+			double dias = ahora.Subtract(localTime).TotalDays;
+
+			if (localTime.Equals(DateTime.MinValue))
 			{
 				return "-";
 			}
 			else
 			{
-				if (dias < 1)
+				if (dias < 1 && dias >= 0)
 				{
-					return string.Format("{0:HH:mm}", rhs);
+					return string.Format("{0:HH:mm}", localTime);
 				}
-				else if (dias < 2)
+				else if (dias < 2 && dias >= 0)
 				{
-					return string.Format("Ayer {0:HH:mm}", rhs);
+					return string.Format("Ayer {0:HH:mm}", localTime);
 				}
 				else
 				{
-					return string.Format("{0:dd-MM-yy}", rhs);
+					return string.Format("{0:dd-MM-yy}", localTime);
 				}
 			}
 		}

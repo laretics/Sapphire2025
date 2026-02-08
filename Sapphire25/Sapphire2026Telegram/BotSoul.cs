@@ -8,8 +8,9 @@ using Telegram.Bot.Polling;
 using Microsoft.EntityFrameworkCore;
 using Sapphire2025Models;
 using Sapphire2026Telegram;
+using System.Threading.Tasks;
 
-namespace Sapphire2025Server.Telegram
+namespace Sapphire2026Telegram
 {
 	public class BotSoul
 	{
@@ -89,7 +90,7 @@ namespace Sapphire2025Server.Telegram
 				await botClient.SendMessage(telegramId, "Error interno: Mensaje vacío");
 			else
 			{
-				BotTask auxTarea = OpenTask(telegramId);
+				BotTask auxTarea = await OpenTask(telegramId);
 				await auxTarea.TextToBot(message.Text);
 				await auxTarea.ResponseFromBot();
 			}
@@ -100,12 +101,12 @@ namespace Sapphire2025Server.Telegram
 		/// </summary>
 		/// <param name="telegramId">Id de diálogo de telegram</param>
 		/// <returns>La conversación aludida</returns>
-		internal BotTask OpenTask(long telegramId)
+		internal async Task<BotTask> OpenTask(long telegramId)
 		{
 			if(!mcolTasks.ContainsKey(telegramId))
 			{
 				BotTask nueva = new BotTask(telegramId, this,config);
-
+				await nueva.Init(); //Cargo los datos del usuario desde la base de datosa.
 				mcolTasks.Add(telegramId, nueva);
 			}
 			Debug.Assert(mcolTasks.ContainsKey(telegramId));

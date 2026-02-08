@@ -1,10 +1,7 @@
-﻿
-
-
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Telegram.Bot;
 
-namespace Sapphire2025Server.Telegram.Semantics.Conversations
+namespace Sapphire2026Telegram.Semantics.Conversations
 {
 	internal class PairingTheme:BotTheme
 	{
@@ -31,9 +28,9 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 		{
 			//Saludo para el emparejamiento.
 			if(mvarFirstError)
-				await mvarSecondResponse.Send(client, mvarParent.mvarTelegramId);
+				await mvarSecondResponse.Send(client, mvarParent.user);
 			else
-				await mvarFirstResponse.Send(client, mvarParent.mvarTelegramId);
+				await mvarFirstResponse.Send(client, mvarParent.user);
 		}
 		internal override async Task InternalTextToBot(string text)
 		{
@@ -44,7 +41,7 @@ namespace Sapphire2025Server.Telegram.Semantics.Conversations
 			else
 			{
 				//Emparejamos el usuario y se lo asignamos al padre...
-				if (await mvarParent.PairUser(pairingUser))
+				if (await mvarParent.PairUser(pairingUser,mvarParent.user.TelegramId))
 					endTheme(); //Podemos terminar el emparejado.
 			}
 		}
