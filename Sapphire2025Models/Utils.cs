@@ -87,26 +87,24 @@ namespace Sapphire2025Models
 			DateTime localTime = rhs.Kind == DateTimeKind.Utc ? rhs.ToLocalTime() : rhs;
 			DateTime ahora = DateTime.Now;
 
-			double dias = ahora.Subtract(localTime).TotalDays;
-
 			if (localTime.Equals(DateTime.MinValue))
 			{
 				return "-";
 			}
+			else if (localTime.Date == ahora.Date)
+			{
+				// Mismo día de calendario
+				return string.Format("{0:HH:mm}", localTime);
+			}
+			else if (localTime.Date == ahora.Date.AddDays(-1))
+			{
+				// Ayer
+				return string.Format("Ayer {0:HH:mm}", localTime);
+			}
 			else
 			{
-				if (dias < 1 && dias >= 0)
-				{
-					return string.Format("{0:HH:mm}", localTime);
-				}
-				else if (dias < 2 && dias >= 0)
-				{
-					return string.Format("Ayer {0:HH:mm}", localTime);
-				}
-				else
-				{
-					return string.Format("{0:dd-MM-yy}", localTime);
-				}
+				// Otro día
+				return string.Format("{0:dd-MM-yy}", localTime);
 			}
 		}
 		public static string TrainStyleFill(string? trainId)

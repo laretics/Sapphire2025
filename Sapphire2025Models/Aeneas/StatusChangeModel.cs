@@ -14,5 +14,15 @@ namespace Sapphire2025Models.Aeneas
 		public Guid trainId { get; set; } //Referencia al tren sobre el que se ejecuta esta transacción
 		public Guid userId { get; set; } //Referencia al usuario que ha ordenado la transacción
 		public string? comment { get; set; }
+		public string description
+		{
+			get
+			{
+				byte auxStatus = (byte)status;
+				if(auxStatus < Common.TrainStatusString.Length) 
+					return Common.TrainStatusString[auxStatus];
+				return "-";
+			}
+		}
 	}
 }

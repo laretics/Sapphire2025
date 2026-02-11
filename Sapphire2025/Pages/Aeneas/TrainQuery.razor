@@ -1,0 +1,159 @@
+﻿@page "/trainQuery"
+@using Sapphire2025Models
+@inject AeneasClient mvarAeneasClient
+@inject AuthenticationClient mvarAuthClient
+
+<PageTitle>Consulta avanzada de trenes</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Consulta avanzada de trenes</h4>
+            <button class="btn btn-outline-light" @onclick="PrintPage">
+                <i class="bi bi-printer"></i> Imprimir
+            </button>
+        </div>
+        <div class="card-body">
+            <!-- Filtros de búsqueda -->
+            <form class="row g-3 mb-4" @onsubmit="OnSearch">
+                <div class="col-md-3">
+                    <label class="form-label">Nombre del tren</label>
+                    <input class="form-control" @bind="filterTrainName" placeholder="Nombre o parte..." />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Estado</label>
+                    <select class="form-select" @bind="filterStatus">
+                        <option value="">Todos</option>
+                        @foreach (var status in Enum.GetValues<Common.TrainStatus>())
+                        {
+                            <option value="@status">@Common.TrainStatusToString(status)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Usuario</label>
+                    <select class="form-select" @bind="filterUserId">
+                        <option value="">Todos</option>
+                        @foreach (var user in Users)
+                        {
+                            <option value="@user.Key">@user.Value.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Buscar
+                    </button>
+                </div>
+            </form>
+
+            <!-- Resultados -->
+            @if (loading)
+            {
+                <div class="text-center my-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div>Cargando resultados...</div>
+                </div>
+            }
+            else if (FilteredTrains.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle">
+                        <thead class="table-primary">
+                            <tr>
+                                <th>Tren</th>
+                                <th>Estado</th>
+                                <th>Última intervención</th>
+                                <th>Usuario</th>
+                                <th>Fecha</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var train in FilteredTrains)
+                            {
+                                <tr>
+                                    <td>@train.name</td>
+                                    <td>@Common.TrainStatusToString(train.lastStatus)</td>
+                                    <td>@GetLastOperation(train)</td>
+                                    <td>@GetUserName(train.lastUserInfo)</td>
+                                    <td>@Utils.autoDate(train.lastUpdateTime)</td>
+                                    <td>
+                                        <a class="btn btn-outline-secondary btn-sm" href="@($"/train/{train.id}")" target="_blank">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-warning mt-4">
+                    No se encontraron resultados para los filtros seleccionados.
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? filterTrainName;
+    private Common.TrainStatus? filterStatus;
+    private Guid? filterUserId;
+    private bool loading = true;
+
+    private List<TrainModel> AllTrains = new();
+    private List<TrainModel> FilteredTrains = new();
+    private Dictionary<Guid, UserModelBase> Users = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        loading = true;
+        AllTrains = (await mvarAeneasClient.trainsList()).ToList();
+        Users = await mvarAuthClient.cachedUserList();
+        FilteredTrains = AllTrains;
+        loading = false;
+    }
+
+    private async Task OnSearch()
+    {
+        loading = true;
+        await Task.Delay(100); // Simula carga si quieres
+        FilteredTrains = AllTrains
+            .Where(t =>
+                (string.IsNullOrWhiteSpace(filterTrainName) || (t.name?.Contains(filterTrainName, StringComparison.OrdinalIgnoreCase) ?? false)) &&
+                (!filterStatus.HasValue || t.lastStatus == filterStatus) &&
+                (!filterUserId.HasValue || t.lastUserInfo == filterUserId)
+            )
+            .ToList();
+        loading = false;
+        StateHasChanged();
+    }
+
+    private string GetUserName(Guid userId)
+    {
+        if (Users.TryGetValue(userId, out var user))
+        {
+            if(null!=user.Name)
+                return user.Name;
+        }        
+        return "-";
+    }
+
+    private string GetLastOperation(TrainModel train)
+    {
+        // Puedes personalizar esto según tu modelo
+        return train.lastStatus.ToString();
+    }
+
+    private void PrintPage()
+    {
+        JS.InvokeVoidAsync("window.print");
+    }
+
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+}

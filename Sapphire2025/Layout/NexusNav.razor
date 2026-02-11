@@ -47,7 +47,14 @@
                     Link="submenu/mechanic" Caption="Mecánico"
                     Image="bi bi-mechanic-nav-menu"
                     Tooltip="Opciones para Personal de los Talleres"
-                    Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Oficial,Sapphire2025Models.Common.UserRole.Mechanic}" />
+                    Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Mechanic}" />
+
+    <NexusNavOption Selected="@(7 == SelectedNavItem)"
+                    OnClick="@(()=>SelectNavItem(5))"
+                    Link="submenu/oficial" Caption="Oficial"
+                    Image="bi bi-mechanic-nav-menu"
+                    Tooltip="Opciones para Oficiales de taller de SFM"
+                    Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Oficial}" />
 
     <NexusNavOption Selected="@(8 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(5))"

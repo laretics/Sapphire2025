@@ -47,18 +47,17 @@ else
 				Parent="@mvarTrain.id" NoteType="2" MaxLines="20"/>
 			</TabPage>
 			<TabPage Text="Historial">
-				<div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
-					<Sapphire2025.Layout.Aeneas.StatusChangesTable 
-					StatusChanges="mcolChanges"/>
+				<div class="table-responsive" style="width:100%; max-height:70vh;">
+					<Sapphire2025.Layout.Aeneas.StatusChangesTable StatusChanges="mcolChanges" />
 				</div>
 			</TabPage>
-			<TabPage Text="Actuaciones">			
+@* 			<TabPage Text="Actuaciones">			
 				<Sapphire2025.Icons.AeneasScheme/>
 
 			</TabPage>
 			<TabPage Text="Campañas">
 
-			</TabPage>
+			</TabPage> *@
 		</TabControl>
 	</CascadingValue>
 }
