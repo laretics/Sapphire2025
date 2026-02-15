@@ -2,18 +2,24 @@
 using System.Data;
 using Sapphire2026.Data.Models;
 using Sapphire2026.Data.Models.Turnos;
+using TimeNet2026.DBStorage;
+using TimeNet2026Data.DBStorage;
 using System.Text;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
+using TimeNet2026Data;
 
 namespace Sapphire2026.Data
 {
-	public class DataStorage:DbContext
+	public class DataStorage:DbContext , ITimeNetContextStorage
 	{
-		private IConfiguration mvarConfig;
+		private IConfiguration? mvarConfig;
 		public const string MY_SALT = "EraseUnaVezUnPlanetaTristeYHelado983948";
 		public const string VIP_PASSWORD = "A930135";
+		public DataStorage() { }
 
+		public DataStorage(DbContextOptions<DataStorage> options)
+			: base(options) { }
 		public DataStorage(IConfiguration config)
 		{
 			mvarConfig = config;
@@ -23,15 +29,73 @@ namespace Sapphire2026.Data
 		{
 			if(!optionsBuilder.IsConfigured)
 			{
-				string? auxCadena = mvarConfig.GetConnectionString("RemoteConnection");
-				if (null!=auxCadena)
+				if (null==mvarConfig)
 				{
-					optionsBuilder.UseMySQL(auxCadena);
+					optionsBuilder.UseMySQL("server=88.99.33.109;port=4406;database=zafiro;user=zafiroextern;password=zafiroextern2233;");
 				}
-
+				else
+				{
+					string? auxCadena = mvarConfig.GetConnectionString("RemoteConnection");
+					if (null != auxCadena)
+					{
+						optionsBuilder.UseMySQL(auxCadena);
+					}
+				}
 			}
 			//base.OnConfiguring(optionsBuilder);
 		}
+
+		#region TimeNet
+		protected override void OnModelCreating(ModelBuilder modelBuilder)
+		{
+			modelBuilder.Entity<DBAsimilationStep>().ToTable("TNAsimilationSteps");
+			modelBuilder.Entity<DBAsimilation>().ToTable("TNAsimilations");
+			modelBuilder.Entity<DBAxis>().ToTable("TNAxis");
+			modelBuilder.Entity<DBCirculationBlock>().ToTable("TNCirculationBlocks");
+			modelBuilder.Entity<DBCirculation>().ToTable("TNCirculations");
+			modelBuilder.Entity<DBHeader>().ToTable("TNHeaders");
+			modelBuilder.Entity<DBPlan>().ToTable("TNPlans");
+			modelBuilder.Entity<DBRauta>().ToTable("TNRautatie");
+			modelBuilder.Entity<DBRefPunctual>().ToTable("TNRefPunctuals");
+			modelBuilder.Entity<DBRefPunctual>()
+				.HasKey(e => new { e.AxisId, e.Pk }); // Clave primaria compuesta
+			modelBuilder.Entity<DBScheduleUnit>().ToTable("TNScheduleUnits");
+			modelBuilder.Entity<DBSchedule>().ToTable("TNSchedules");
+			modelBuilder.Entity<DBStation>().ToTable("TNStations");
+			modelBuilder.Entity<DBTopoStorage>().ToTable("TNTopoStorages");
+		}
+		internal DbSet<DBHeader> Headers { get; set; }
+		DbSet<DBHeader> ITimeNetContextStorage.Headers => Headers;
+		internal DbSet<DBRefPunctual> RefPunctuals { get; set; }
+		DbSet<DBRefPunctual> ITimeNetContextStorage.RefPunctuals => RefPunctuals;
+		internal DbSet<DBStation> Stations { get; set; }
+		DbSet<DBStation> ITimeNetContextStorage.Stations => Stations;
+		internal DbSet<DBAxis> Axis { get; set; }
+		DbSet<DBAxis> ITimeNetContextStorage.Axis => Axis;
+		internal DbSet<DBAsimilationStep> AsimilationSteps { get; set; }
+		DbSet<DBAsimilationStep> ITimeNetContextStorage.AsimilationSteps => AsimilationSteps;
+		internal DbSet<DBAsimilation> Asimilations { get; set; }
+		DbSet<DBAsimilation> ITimeNetContextStorage.Asimilations => Asimilations;
+		internal DbSet<DBTopoStorage> TopoStorages { get; set; }
+		DbSet<DBTopoStorage> ITimeNetContextStorage.TopoStorages => TopoStorages;
+		internal DbSet<DBRauta> Rautatie { get; set; }
+		DbSet<DBRauta> ITimeNetContextStorage.Rautatie => Rautatie;
+		internal DbSet<DBPlan> Plans { get; set; }
+		DbSet<DBPlan> ITimeNetContextStorage.Plans => Plans;
+		internal DbSet<DBCirculationBlock> CirculationBlocks { get; set; }
+		DbSet<DBCirculationBlock> ITimeNetContextStorage.CirculationBlocks => CirculationBlocks;
+		internal DbSet<DBCirculation> Circulations { get; set; }
+		DbSet<DBCirculation> ITimeNetContextStorage.Circulations => Circulations;
+		internal DbSet<DBSchedule> Schedules { get; set; }
+		DbSet<DBSchedule> ITimeNetContextStorage.Schedules => Schedules;
+		internal DbSet<DBScheduleUnit> ScheduleUnits { get; set; }
+		DbSet<DBScheduleUnit> ITimeNetContextStorage.ScheduleUnits => ScheduleUnits;
+
+		async Task<int> ITimeNetContextStorage.SaveChangesAsync()
+		{
+			return await base.SaveChangesAsync();
+		}
+		#endregion TimeNet
 
 		#region "Registro"
 		public async Task <string> GetRegisterValue(string key, string defaultValue)

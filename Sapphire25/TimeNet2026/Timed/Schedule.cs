@@ -6,6 +6,7 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Xml.Linq;
 using TimeNet2026.Auxiliar;
 
 namespace TimeNet2026.Timed
@@ -56,42 +57,35 @@ namespace TimeNet2026.Timed
 			return false;
 		}
 
-
-		internal void deserialize(XmlNode root, Plan parent)
+		internal void deserialize(XNode root, Plan parent)
 		{
-			if(null!=root.Attributes)
+			name = XUtil.StringParam(root, "name","[nil]");
+			if("[nil]"!=name)
 			{
-				string? auxName = root.Attributes["name"]?.Value;
-				string? auxComment = root.Attributes["comment"]?.Value;
-				string? auxColor0 = root.Attributes["stcol"]?.Value;
-				string? auxColor1 = root.Attributes["bgcol"]?.Value;
-				string? auxWeek=root.Attributes["week"]?.Value;
-				string? auxCoordinates=root.Attributes["ord"]?.Value;
-				if(null!=auxName)
+				comment = XUtil.StringParam(root, "comment");
+				color = new string[2];
+				color[0] = XUtil.StringParam(root, "stcolor");
+				color[1] = XUtil.StringParam(root, "bgcolor");
+				weekdayMask = TNUtil.parseWeekDays(XUtil.StringParam(root, "week"));
+				string auxCoordinates = XUtil.StringParam(root, "ord");
+				if (auxCoordinates.Length>0)
 				{
-					this.name = auxName;
-					this.comment = auxComment ?? string.Empty;
-					this.color = new string[2];
-					this.color[0] = auxColor0 ?? "#000000";
-					this.color[1] = auxColor1 ?? "#FFFFFF";
-					this.weekdayMask = TNUtil.parseWeekDays(auxWeek);
-
-					if(null!=auxCoordinates)
+					string[] coords = auxCoordinates.Split(',');
+					if (coords.Length == 2)
 					{
-						string[] coords = auxCoordinates.Split(',');
-						if(coords.Length==2)
-						{
-							this.coordinates = new int[2];
-							this.coordinates[0] = int.Parse(coords[0]);
-							this.coordinates[1] = int.Parse(coords[1]);
-						}
+						this.coordinates = new int[2];
+						this.coordinates[0] = int.Parse(coords[0]);
+						this.coordinates[1] = int.Parse(coords[1]);
 					}
-					foreach (XmlNode node in root.ChildNodes)
+				}
+				if(root is XElement element)
+				{
+					foreach (XElement node in element.Elements())
 					{
-						ScheduleItem nuevoItem = new ScheduleItem(node,parent);
+						ScheduleItem nuevoItem = new ScheduleItem(node, parent);
 						mcolItems.Add(nuevoItem);
 					}
-				}				
+				}
 			}
 		}
 	}

@@ -1,14 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.ComponentModel.DataAnnotations;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
-
-namespace TimeNet2026.DBStorage
+﻿using System.ComponentModel.DataAnnotations;
+namespace TimeNet2026Data.DBStorage
 {
-	internal class DBAsimilation
+	public class DBAsimilation
 	{
 		[Key]
 		public int Id { get; set; } //Código interno.

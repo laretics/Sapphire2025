@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
+﻿using System.Diagnostics;
+using System.Xml.Linq;
 using TimeNet2026.Auxiliar;
 using TimeNet2026.Storage;
 
@@ -18,14 +13,16 @@ namespace TimeNet2026.Topo
 			point = new GeoLocation(latitude, longitude);
 			pk = -1;
 		}
-		internal RefPunctual(XmlNode root)
+		internal RefPunctual(XNode root)
 		{
-			double auxLatitude, auxLongitude;
-			auxLatitude = XMLUtil.DoubleParam(root, "x");
-			auxLongitude = XMLUtil.DoubleParam(root, "y");
-			point = new GeoLocation(auxLatitude, auxLongitude);
+			point = XUtil.GeoLocationParam(root);
 			pk = -1;
 		}
+		internal virtual string XNode()
+		{
+			return string.Format("<point x=\"{0}\" y=\"{1}\" />",  point.Latitude,point.Longitude);
+		}
+
 		internal static new List<OnyxField> Descriptor()
 		{
 			List<OnyxField> salida = Lineal.Descriptor();

@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.ComponentModel.DataAnnotations;
-
-namespace TimeNet2026.DBStorage
+﻿using System.ComponentModel.DataAnnotations;
+namespace TimeNet2026Data.DBStorage
 {
-	internal class DBAsimilationStep
+	public class DBAsimilationStep
 	{
 		[Key]
 		public int Id { get; set; } //Autoincremental, sólo para consistencia de base de datos.

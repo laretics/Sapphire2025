@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Xml.Linq;
 using TimeNet2026.Auxiliar;
 using TimeNet2026.Storage;
 using static System.Collections.Specialized.BitVector32;
@@ -489,56 +490,87 @@ namespace TimeNet2026.Topo
 				this.length = mcolPoints.Last().pk - this.pk;
 			}
 		}
-		public Axis(XmlNode root):this()
+		public Axis(XNode root):this()
 		{
-			deserializeXMLHeader(root);
-			foreach(XmlNode hijo in root.ChildNodes)
+			deserializeXHeader(root);
+			if(root is XElement element)
 			{
-				switch(hijo.Name)
+				foreach(XElement child in element.Elements())
 				{
-					case "poly":
-						deserializeXMLPoly(hijo);
-						break;
-					case "limit":
-						deserializeXMLLimits(hijo);
-						break;
-					case "signal":
-						deserializeXMLSignals(hijo);
-						break;
-				}
-			}
-		}
-		private void deserializeXMLHeader(XmlNode root)
-		{
-			this.id = XMLUtil.StringParam(root, "id");
-			this.mvarName = XMLUtil.StringParam(root, "name");
-			this.mvarComment = XMLUtil.StringParam(root, "comment");
-			this.mvarMaxSpeed = XMLUtil.IntParam(root, "vmax");
-			this.mvarColor[0] = XMLUtil.StringParam(root, "color");
-			this.mvarColor[1] = XMLUtil.StringParam(root, "darkcolor");
-		}
-		private void deserializeXMLPoly(XmlNode root)
-		{
-			foreach(XmlNode hijo in root.ChildNodes)
-			{
-				if("point"==hijo.Name)
-				{
-					GeoLocation auxLocation = XMLUtil.GeoLocationParam(hijo);
-					string auxId = XMLUtil.StringParam(hijo, "id");
-					if(string.Empty==auxId) //Punto vacío
+					switch (child.Name.LocalName)
 					{
-						RefPunctual auxPunto = new RefPunctual(hijo);
-						mcolPoints.Add(auxPunto);
-					}
-					else
-					{
-						Station auxStation = new Station(hijo,this);
-						mcolPoints.Add(auxStation);
-						mcolStations.Add(auxStation);
+						case "poly":
+							deserializeXPoly(child);
+							break;
+						case "limit":
+							deserializeXLimits(child);
+							break;
+						case "signal":
+							deserializeXSignals(child);
+							break;
 					}
 				}
 			}
-			
+		}
+		internal override string XNode()
+		{
+			StringBuilder salida = new StringBuilder();
+			salida.AppendFormat("\t<axis id=\"{0}\" name=\"{1}\" comment=\"{2}\" vmax=\"{3}\" color=\"{4}\" darkcolor=\"{5}\" >\n",
+				id,
+				mvarName,
+				mvarComment,
+				mvarMaxSpeed,
+				mvarColor[0],
+				mvarColor[1]
+				);
+			salida.AppendLine("\t\t<poly>");
+			foreach (RefPunctual auxPunto in mcolPoints)
+				salida.AppendLine("\t\t\t"+auxPunto.XNode());
+			salida.AppendLine("\t\t</poly>");
+			salida.AppendLine("\t\t<limit>\n");
+			foreach (SpeedLimit auxLimit in mcolSpeedLimits)
+				salida.AppendLine("\t\t\t" + auxLimit.XNode());
+			salida.AppendLine("\t\t</limit>\n");
+			salida.AppendLine("\t\t<signal>\n");
+			///Implementar aquí las señales que contiene el eje.
+			salida.AppendLine("\t\t</signal>\n");
+			salida.AppendLine("\t</axis>");
+			return salida.ToString();
+		}
+		private void deserializeXHeader(XNode root)
+		{
+			this.id = XUtil.StringParam(root, "id");
+			this.mvarName = XUtil.StringParam(root, "name");
+			this.mvarComment = XUtil.StringParam(root, "comment");
+			this.mvarMaxSpeed = XUtil.IntParam(root, "vmax");
+			this.mvarColor[0] = XUtil.StringParam(root, "color");
+			this.mvarColor[1] = XUtil.StringParam(root, "darkcolor");
+		}
+		private void deserializeXPoly(XElement root)
+		{
+
+			if(root is XElement element)
+			{
+				foreach(XElement child in element.Elements())
+				{
+					if("point"==child.Name.LocalName)
+					{
+						GeoLocation auxLocation = XUtil.GeoLocationParam(child);
+						string auxId = XUtil.StringParam(child, "id");
+						if (string.Empty == auxId) //Punto vacío
+						{
+							RefPunctual auxPunto = new RefPunctual(child);
+							mcolPoints.Add(auxPunto);
+						}
+						else
+						{
+							Station auxStation = new Station(child, this);
+							mcolPoints.Add(auxStation);
+							mcolStations.Add(auxStation);
+						}
+					}
+				}
+			}
 			if (mcolPoints.Count>0)
 				recalculatePK(); //Asigno los PK de cada punto en función de las referencias
 			RecalculateLinearBounds();
@@ -581,27 +613,35 @@ namespace TimeNet2026.Topo
 			}
 			return -1; //Valor de error. Nos hemos salido del eje.
 		}
-		private void deserializeXMLLimits(XmlNode root)
+		private void deserializeXLimits(XNode root)
 		{
-			foreach(XmlNode hijo in root.ChildNodes)
+			if(root is XElement element)
 			{
-				if("item"==hijo.Name)
+				foreach (XElement hijo in element.Elements())
 				{
-					SpeedLimit nuevo = new SpeedLimit(hijo);
-					mcolSpeedLimits.Add(nuevo);
+					if ("item" == hijo.Name)
+					{
+						SpeedLimit nuevo = new SpeedLimit(hijo);
+						mcolSpeedLimits.Add(nuevo);
+					}
 				}
 			}
 		}
-		private void deserializeXMLSignals(XmlNode root)
+		private void deserializeXSignals(XNode root)
 		{
-			foreach(XmlNode hijo in root.ChildNodes)
+			if (root is XElement element)
 			{
-				if("item"==hijo.Name)
+				foreach (XElement hijo in element.Elements())
 				{
-					Signal nueva = new Signal(hijo);
-					mcolSignals.Add(nueva);
+					if ("item" == hijo.Name)
+					{
+						Signal nueva = new Signal(hijo);
+						mcolSignals.Add(nueva);
+					}
 				}
 			}
+
+
 		}		
 		internal Bounds getBounds()
 		{

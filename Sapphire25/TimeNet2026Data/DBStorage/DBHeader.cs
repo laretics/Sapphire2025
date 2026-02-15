@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.ComponentModel.DataAnnotations;
-
-namespace TimeNet2026.DBStorage
+﻿using System.ComponentModel.DataAnnotations;
+namespace TimeNet2026Data.DBStorage
 {
 	public class DBHeader
 	{

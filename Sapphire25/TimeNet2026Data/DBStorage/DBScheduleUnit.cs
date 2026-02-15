@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
-namespace TimeNet2026.DBStorage
+namespace TimeNet2026Data.DBStorage
 {
-	internal class DBScheduleUnit
+	public class DBScheduleUnit
 	{
 		[Key]
 		public int Id { get; set; } //Autonumérico para el ítem del turno de trabajo

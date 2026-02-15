@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Xml.Linq;
 using TimeNet2026.Auxiliar;
 using TimeNet2026.Storage;
 
@@ -22,11 +23,20 @@ namespace TimeNet2026.Topo
 			mcolColor = new string[1];
 			Speed = 0;
 		}
-		internal SpeedLimit(XmlNode root):base(root)
+		internal SpeedLimit(XNode root):base(root)
 		{
-			this.Speed = XMLUtil.IntParam(root, "speed");			
-			mvarComment = XMLUtil.StringParam(root, "comment");
+			this.Speed = XUtil.IntParam(root, "speed");
+			mvarComment = XUtil.StringParam(root, "comment");
 			mcolColor = new string[1];
+		}
+		internal override string XNode()
+		{
+			return string.Format("<item pk0=\"{0}\" pkf=\"{1}\" par=\"{2}\" speed=\"{3}\" comment=\"{4}\" />",
+				pk, 
+				pkEnd, 
+				Tracks,
+				Speed,
+				comment);
 		}
 		internal static new List<OnyxField> Descriptor()
 		{

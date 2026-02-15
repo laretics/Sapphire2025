@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml;
+using System.Xml.Linq;
 using TimeNet2026.Topo;
 
 namespace TimeNet2026.Timed
@@ -26,44 +26,53 @@ namespace TimeNet2026.Timed
         public Dictionary<string,Plan> Plans { get => mcolPlans; }
         public TopoStorage Parent { get => mvarParent; }
 
-        public Rauta(XmlNode root, TopoStorage parent):this(parent)
+        public Rauta(XNode root, TopoStorage parent):this(parent)
         {
-            foreach(XmlNode hijo in root.ChildNodes)
+            if(root is XElement element)
             {
-                switch(hijo.Name)
-                {
-                    case "info":
-                        Header = new Header();
-                        Header.deserialize(hijo);
-                        break;
-                    case "plans":
-                        deserializePlans(hijo);                        
-                        break;
-                }
-            }
+				foreach (XElement hijo in element.Elements())
+				{
+					switch (hijo.Name.LocalName)
+					{
+						case "info":
+							Header = new Header();
+							Header.deserialize(hijo);
+							break;
+						case "plans":
+							deserializePlans(hijo);
+							break;
+					}
+				}
+			}
         }
-        internal void deserializePlans(XmlNode root)
+        internal void deserializePlans(XNode root)
         {
-            foreach(XmlNode hijo in root.ChildNodes)
+            if(root is XElement element)
             {
-                if(hijo.Name=="plan")
-                {
-                    Plan nuevo = new Plan(hijo, mvarParent);
-                    mcolPlans.Add(nuevo.mvarName, nuevo);
-                }
-            }
+				foreach (XElement hijo in element.Elements())
+				{
+					if (hijo.Name == "plan")
+					{
+						Plan nuevo = new Plan(hijo, mvarParent);
+						mcolPlans.Add(nuevo.mvarName, nuevo);
+					}
+				}
+			}
         }
     
-        internal static Guid TopoStorageId(XmlNode root)
+        internal static Guid TopoStorageId(XNode root)
         {
-            foreach(XmlNode hijo in root.ChildNodes)
+            if( root is XElement element)
             {
-                if(hijo.Name=="info")
+                foreach(XElement hijo in element.Elements())
                 {
-                    Header auxHeader = new Header();
-                    auxHeader.deserialize(hijo);
-                    return auxHeader.ParentId;
-                }
+					if (hijo.Name.LocalName == "info")
+					{
+						Header auxHeader = new Header();
+						auxHeader.deserialize(hijo);
+						return auxHeader.ParentId;
+					}
+				}
             }
             return Guid.Empty;
         }

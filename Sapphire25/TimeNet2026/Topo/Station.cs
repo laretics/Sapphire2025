@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml;
+using System.Xml.Linq;
 using TimeNet2026.Auxiliar;
 using TimeNet2026.Storage;
 
@@ -26,13 +26,23 @@ namespace TimeNet2026.Topo
 			this.shortName = shortName;
 			this.axis = axis;
 		}
-		public Station(XmlNode root, Axis axis):base(root)
+		public Station(XNode root, Axis axis):base(root)
 		{
-			this.id = XMLUtil.StringParam(root, "id");
-			this.name = XMLUtil.StringParam(root, "name");
-			this.shortName = XMLUtil.StringParam(root, "avr");
-			this.pk = XMLUtil.LongParam(root, "pk");
+			id=XUtil.StringParam(root, "id");
+			name = XUtil.StringParam(root,"name");
+			shortName = XUtil.StringParam(root, "avr");
+			pk = XUtil.LongParam(root, "pk");
 			this.axis = axis;
+		}
+		internal override string XNode()
+		{
+			return string.Format("<point x=\"{0}\" y=\"{1}\" name=\"{2}\" avr=\"{3}\" pk=\"{4}\" id=\"{5}\" />", 
+				point.Latitude, 
+				point.Longitude,
+				name,
+				shortName,
+				pk,
+				id);
 		}
 		public bool isStation()
 		{

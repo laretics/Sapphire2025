@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.Json.Serialization;
 
 namespace Sapphire2025Models.Aeneas
 {
@@ -32,5 +33,9 @@ namespace Sapphire2025Models.Aeneas
 
 		//Id del último usuario que interactuó con este tren
 		public Guid lastUserInfo { get; set; }
+
+		[JsonIgnore]
+		public List<StatusChangeModel>? StatusChanges { get; set; }
+
 	}
 }

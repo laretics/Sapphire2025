@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace TimeNet2026.DBStorage
 {
-    internal class DBPlan
+    public class DBPlan
     {
         [Key]
         public int Id { get; set; } //Id interno del plan.

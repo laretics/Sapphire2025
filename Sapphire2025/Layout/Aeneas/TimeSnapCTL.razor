@@ -1,0 +1,200 @@
+﻿@using Sapphire2025.Layout.Inspector
+@using Sapphire2025Models.Aeneas
+@using Sapphire2025Models
+@inject IJSRuntime JS
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <button class="btn btn-outline-primary" @onclick="PrintSVG">
+        <i class="bi bi-printer"></i> Imprimir gráfico
+    </button>
+    <button class="btn btn-outline-success" @onclick="ExportExcel">
+        <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+    </button>
+</div>
+
+@if (trains.Any())
+{
+    <svg id="timesnap-svg" width="100%" height="@((trains.Count() * rowHeight) + marginTop + extraMarginBottom)" viewBox="0 0 @(svgTotalWidth) @((trains.Count() * rowHeight) + marginTop + extraMarginBottom)" preserveAspectRatio="none" style="border:1px solid #ccc;">
+        <defs>
+            <!-- Degradado de fondo -->
+            <linearGradient id="bg-gradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#f8f9fa"/>
+                <stop offset="100%" stop-color="#e9ecef"/>
+            </linearGradient>
+            <!-- Sombra para los segmentos -->
+            <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+                <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#888" flood-opacity="0.25"/>
+            </filter>
+        </defs>
+        <!-- Fondo con degradado -->
+        <rect x="0" y="0" width="@(svgTotalWidth)" height="@((trains.Count() * rowHeight) + marginTop + extraMarginBottom)" fill="url(#bg-gradient)" />
+        <!-- Eje X: Divisiones por día -->
+        @{
+            int totalDays = (int)Math.Ceiling((endDate - startDate).TotalDays);
+            double dayWidth = svgWidth / totalDays;
+            for (int d = 0; d < totalDays; d++)
+            {
+                double x = xOffset + d * dayWidth;
+                // Línea vertical
+                <line x1="@x.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" 
+                y1="@marginTop.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" 
+                x2="@x.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" 
+                y2="@((trains.Count() * rowHeight + marginTop + extraMarginBottom).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))" 
+                stroke="#bbb" 
+                stroke-dasharray="2,2" />
+                // Número del día
+                var dayNum = startDate.AddDays(d).Day;
+                @DayNumberFragment(x, dayNum, dayWidth)
+            }
+        }
+        @for (int i = 0; i < trains.Count(); i++)
+        {
+            var train = trains.ElementAt(i);
+            @TrainTextFragment(train.name, 10, (i + 1) * rowHeight + marginTop - 5)
+            var segments = GetSegments(train);
+            foreach (var seg in segments)
+            {
+                <a href=@string.Format("/train/{0}",train.id) target="_blank">
+                    <rect 
+                        x="@seg.X.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" 
+                        y="@(((i + 1) * rowHeight + marginTop - rowHeight / 2).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))" 
+                        width="@seg.Width.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" 
+                        height="20" 
+                        fill="@seg.Color" rx="4" filter="url(#shadow)" >
+                        <title>@train.name @seg.timeStamp.ToString("HH:mm") @seg.StatusName</title>
+                    </rect>
+                </a>
+            }
+        }
+    </svg>
+}
+else
+{
+    <div class="alert alert-info">No hay trenes en taller en el intervalo seleccionado.</div>
+}
+
+@code {
+    [Parameter] public IEnumerable<TrainModel> trains { get; set; } = Enumerable.Empty<TrainModel>();
+    [Parameter] public DateTime startDate { get; set; }
+    [Parameter] public TimeSpan interval { get; set; }
+
+    private DateTime endDate => startDate.Add(interval);
+    private int rowHeight = 40;
+    private int marginTop = 30;
+    private double svgWidth = 900.0;
+    private double xOffset = 80.0;
+    private double svgTotalWidth => svgWidth + xOffset * 2;
+    private int extraMarginBottom = 30;
+
+    // Paleta provisional
+    private Dictionary<Common.TrainStatus, string> statusColors = new()
+    {
+        { Common.TrainStatus.Maintenance, "#007bff" },
+        { Common.TrainStatus.Repairing, "#dc3545" },
+        { Common.TrainStatus.DepotRequested, "#ffc107" },
+        { Common.TrainStatus.RequestToDiagnose, "#17a2b8" },
+        { Common.TrainStatus.RequestToRepair, "#6f42c1" },
+        { Common.TrainStatus.StandStill, "#6c757d" },
+        { Common.TrainStatus.Available, "#28a745" },
+        { Common.TrainStatus.Disabled, "#fd7e14" },
+        { Common.TrainStatus.Unknown, "#20c997" },
+        // Otros estados...
+    };
+
+    private bool IsExcludedStatus(Common.TrainStatus status) =>
+        status == Common.TrainStatus.Available ||
+        status == Common.TrainStatus.Disabled ||
+        status == Common.TrainStatus.StandStill ||
+        status == Common.TrainStatus.NoneSelected ||
+        status == Common.TrainStatus.Unknown;
+
+    private RenderFragment TrainTextFragment(string text, int x, int y) => builder =>
+    {
+        builder.OpenElement(0, "text");
+        builder.AddAttribute(1, "x", Math.Floor((float)x));
+        builder.AddAttribute(2, "y", y);
+        builder.AddAttribute(3, "font-size", "12");
+        builder.AddAttribute(4, "fill", "#333");
+        builder.AddContent(5, text);
+        builder.CloseElement();
+    };
+    private RenderFragment DayNumberFragment(double x, int dayNum, double dayWidth) => builder =>
+    {
+        builder.OpenElement(0, "text");
+        builder.AddAttribute(1, "x", Math.Floor(x + dayWidth / 2));
+        builder.AddAttribute(2, "y", 20);
+        builder.AddAttribute(3, "font-size", "14");
+        builder.AddAttribute(4, "fill", "#333");
+        builder.AddAttribute(5, "text-anchor", "middle");
+        builder.AddContent(6, dayNum);
+        builder.CloseElement();
+    };
+
+    private DateTime maximal (DateTime first, DateTime second)
+    {
+        if (first > second)
+            return first;
+        else
+            return second;
+    }
+
+    // Ahora usa los cambios de estado del propio tren
+    private IEnumerable<(double X, double Width, string Color, string StatusName, DateTime timeStamp)> GetSegments(TrainModel train)
+    {
+        var trainChanges = train.StatusChanges?
+            .Where(c => c.timeStamp <= endDate)
+            .OrderBy(c => c.timeStamp)
+            .ToList() ?? new List<StatusChangeModel>();
+
+        var segments = new List<(double, double, string, string, DateTime)>();
+
+        DateTime prev = startDate;
+        Common.TrainStatus? prevStatus = null;
+        foreach (var change in trainChanges)
+        {
+            Common.TrainStatus currentStatus = change.status;
+            DateTime next = change.timeStamp;
+            if (prevStatus.HasValue && !IsExcludedStatus(prevStatus.Value))
+            {
+                DateTime auxMaximal = maximal(prev, startDate);
+                double x = (auxMaximal.Subtract(startDate)).TotalSeconds / interval.TotalSeconds * svgWidth + xOffset;
+                double width = (next - auxMaximal).TotalSeconds / interval.TotalSeconds * svgWidth;
+                if (width > 0.01) // Evita segmentos nulos o negativos
+                    segments.Add((x, width, statusColors.GetValueOrDefault(prevStatus.Value, "#999"), Common.TrainStatusToString(prevStatus.Value),auxMaximal));
+            }
+            prev = next;
+            prevStatus = currentStatus;
+        }
+        // Añadir segmento final solo si hay tramo pendiente
+        if (trainChanges.Any() && prevStatus.HasValue && !IsExcludedStatus(prevStatus.Value))
+        {
+            if (prev < endDate)
+            {
+                DateTime auxMaximal = maximal(prev, startDate);
+                double x = (auxMaximal.Subtract(startDate)).TotalSeconds / interval.TotalSeconds * svgWidth + xOffset;
+                double width = (endDate - auxMaximal).TotalSeconds / interval.TotalSeconds * svgWidth;
+                if (width > 0.01)
+                    segments.Add((x, width, statusColors.GetValueOrDefault(prevStatus.Value, "#999"), Common.TrainStatusToString(prevStatus.Value),auxMaximal));
+            }
+        }
+        else if (!trainChanges.Any())
+        {
+            // Si el tren tiene un estado "taller" en el periodo, pero solo uno, pinta todo el rango
+            if (!IsExcludedStatus(train.lastStatus))
+            {
+                segments.Add((xOffset, svgWidth, statusColors.GetValueOrDefault(train.lastStatus, "#999"), Common.TrainStatusToString(train.lastStatus),startDate));
+            }
+        }
+        return segments;
+    }
+
+    private async Task PrintSVG()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    private async Task ExportExcel()
+    {
+        // Aquí puedes implementar la lógica para exportar los segmentos como celdas en Excel
+    }
+}

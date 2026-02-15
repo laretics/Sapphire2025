@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Xml.Linq;
 using TimeNet2026.Auxiliar;
 using TimeNet2026.Topo;
 
@@ -25,18 +27,13 @@ namespace TimeNet2026.Timed
 		public TimeLapseCollection? TimeLapse
 		{
 			get
-			{
-				
+			{				
 				if(mcolCirculations.Count>0)
 				{
 					TimeLapseCollection salida = new TimeLapseCollection();
 					foreach (Circulation cir in mcolCirculations)
-						salida.Add(cir.TimeLapse);
-
-					
+						salida.Add(cir.TimeLapse);					
 				}
-
-
 				return null;
 			}
 		}
@@ -48,7 +45,6 @@ namespace TimeNet2026.Timed
 					return TimeSpan.Zero;
 				else
 					return (TimeSpan)asimilation.duration;
-
 			}
 		}
 		public int Count => mcolCirculations.Count;
@@ -75,7 +71,7 @@ namespace TimeNet2026.Timed
 		{
 			mcolCirculations = new List<Circulation>();
 		}
-		public CirculationBlock(XmlNode node, TopoStorage storage) :this()
+		public CirculationBlock(XNode node, TopoStorage storage) :this()
 		{
 			deserializeBlock(node, storage);
 		}
@@ -86,36 +82,45 @@ namespace TimeNet2026.Timed
 			return null;
 		}
 
-		internal void deserialize(XmlNode root, TopoStorage storage)
+		internal void deserialize(XNode root, TopoStorage storage)
 		{
-			if(root.Name=="block") deserializeBlock(root, storage);
-			else if (root.Name=="cir") deserializeUnit(root, storage);
-		}
-		protected void deserializeBlock(XmlNode root, TopoStorage storage)
-		{
-			if("block" == root.Name)
+			if(root is XElement element)
 			{
-				deserializeCommon(root,storage);
-				foreach(XmlNode child in root.ChildNodes)
+				if (element.Name.LocalName == "block") deserializeBlock(element, storage);
+				else if (element.Name.LocalName == "cir") deserializeUnit(element, storage);
+			}
+		}
+		protected void deserializeBlock(XNode root, TopoStorage storage)
+		{
+			if (root is XElement element)
+			{
+				if ("block" == element.Name.LocalName)
 				{
-					Circulation? nuevaCirculacion = deserializeUnit(child, storage);
-					if (null != nuevaCirculacion)
-						mcolCirculations.Add(nuevaCirculacion);
+					deserializeCommon(root, storage);
+					foreach (XNode child in element.Elements())
+					{
+						Circulation? nuevaCirculacion = deserializeUnit(child, storage);
+						if (null != nuevaCirculacion)
+							mcolCirculations.Add(nuevaCirculacion);
+					}
 				}
 			}
 		}
-		protected Circulation? deserializeUnit(XmlNode root, TopoStorage storage)
+		protected Circulation? deserializeUnit(XNode root, TopoStorage storage)
 		{
-			if("cir"==root.Name)
+			if (root is XElement element)
 			{
-				deserializeCommon(root, storage);
-				Circulation nuevaCirculacion = new Circulation(this);
-				string auxTexto = XMLUtil.StringParam(root, "id", "");
-				if (auxTexto.Length>0) nuevaCirculacion.name = auxTexto;
-				nuevaCirculacion.departure= XMLUtil.TimeSpanParam(root, "dep");				
-				nuevaCirculacion.color[0] = XMLUtil.StringParam(root, "col", "black");
-				nuevaCirculacion.color[1] = XMLUtil.StringParam(root, "col", "white");
-				mcolCirculations.Add(nuevaCirculacion);
+				if("cir" == element.Name.LocalName)
+				{
+					deserializeCommon(root, storage);
+					Circulation nuevaCirculacion = new Circulation(this);
+					string auxTexto = XUtil.StringParam(element, "id");
+					if (auxTexto.Length > 0) nuevaCirculacion.name = auxTexto;
+					nuevaCirculacion.departure = XUtil.TimeSpanParam(root, "dep");
+					nuevaCirculacion.color[0] = XUtil.StringParam(root, "col", "black");
+					nuevaCirculacion.color[1] = XUtil.StringParam(root, "col2", "white");
+					mcolCirculations.Add(nuevaCirculacion);
+				}
 			}
 			return null;
 		}
@@ -123,17 +128,19 @@ namespace TimeNet2026.Timed
 		/// Deserializa las partes que se pueden encontrar tanto en un bloque como en una circulación individual.
 		/// </summary>
 		/// <param name="root"></param>
-		protected void deserializeCommon(XmlNode root, TopoStorage storage)
+		protected void deserializeCommon(XNode root, TopoStorage storage)
 		{
-			string auxTexto = XMLUtil.StringParam(root, "freq", "");
-			if (auxTexto.Length > 0)
-				weekdayMask = TNUtil.parseWeekDays(auxTexto);
-			auxTexto = XMLUtil.StringParam(root, "pattern", "");
-			if (auxTexto.Length > 0)
-				pattern = auxTexto;
-			auxTexto  = XMLUtil.StringParam(root, "asm", "");
-			if (auxTexto.Length > 0)
-				asimilation = storage.GetAsimilation(auxTexto);
+			if(root is XElement element)
+			{
+				string auxTexto = XUtil.StringParam(element, "freq", "");
+				if (auxTexto.Length > 0)
+					weekdayMask = TNUtil.parseWeekDays(auxTexto);				
+				auxTexto = XUtil.StringParam(element, "asm", "");
+				if (auxTexto.Length > 0)
+					asimilation = storage.GetAsimilation(auxTexto);
+				pattern = XUtil.StringParam(element, "pattern", "");
+			}
+
 		}
 	}
 }

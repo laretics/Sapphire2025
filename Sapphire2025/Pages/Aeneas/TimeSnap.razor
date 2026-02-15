@@ -1,0 +1,245 @@
+﻿@page "/timeSnap"
+@using Sapphire2025Models.Aeneas
+@using Sapphire2025.Layout.Aeneas
+@inject AeneasClient mvarAeneasClient
+
+<div class="container-fluid py-3">
+    <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">@HeaderContent()</h5>
+        </div>
+        <div class="card-body">
+            <!-- Barra de filtros -->
+            <form class="row g-3 align-items-end mb-4">
+                <!-- Intervalo de tiempo -->
+                <div class="col-md-3">
+                    <label class="form-label">Intervalo</label>
+                    <div class="btn-group w-100" role="group">
+                        @foreach (var option in intervalOptions)
+                        {
+                            <button type="button"
+                                    class="btn @(interval == option ? "btn-primary" : "btn-outline-primary")"
+                                    @onclick="() => SetInterval(option)">
+                                @option
+                            </button>
+                        }
+                    </div>
+                </div>
+                <!-- Fecha de comienzo -->
+                <div class="col-md-4">
+                    <label class="form-label">Fecha de comienzo</label>
+                    <div class="input-group">
+                        <input type="date" class="form-control" @bind="startDate"/>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="SetCurrentWeek">
+                            Semana en curso
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="SetLastWeek">
+                            Semana pasada
+                        </button>
+                    </div>
+                </div>
+                <!-- Series del material móvil -->
+                <div class="col-md-5">
+                    <label class="form-label">Series</label>
+                    <div class="btn-group flex-wrap w-100" role="group" aria-label="Series">
+                        @foreach (var serie in seriesOptions)
+                        {
+                            <button type="button"
+                                    class="btn @(selectedSeries[serie] ? "btn-primary active" : "btn-outline-primary") mb-1"
+                                    @onclick="() => ToggleSerie(serie)">
+                                @serie
+                            </button>
+                        }
+                    </div>
+                </div>
+            </form>
+
+            <!-- Gráfico de disponibilidad -->
+            @if (loading)
+            {
+                <div class="text-center my-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div>Cargando datos...</div>
+                </div>
+            }
+            else if (trains.Any())
+            {
+                <TimeSnapCTL trains="trains"
+                             startDate="startDate"
+                             interval="intervalSpan" />
+            }
+            else
+            {
+                <div class="alert alert-info mt-4">No hay datos para el filtro seleccionado.</div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    // Opciones de intervalo
+    private string[] intervalOptions = { "Semanal", "Mensual", "Trimestral", "Anual" };
+    private string interval = "Semanal";
+
+    // Fecha de comienzo
+    private DateTime mvarStartDate = DateTime.Today;
+    private DateTime startDate
+    {
+        get => mvarStartDate;
+        set
+        {
+            if (mvarStartDate != value)
+            {
+                mvarStartDate = value;
+                _ = RefreshData();
+            }
+        }
+    } 
+    // Series disponibles
+    private string[] seriesOptions = { "7100", "8100", "9100", "1100", "otros" };
+    private Dictionary<string, bool> selectedSeries = new();
+
+    // Datos
+    private List<TrainModel> trains = new();
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        foreach (var serie in seriesOptions)
+            selectedSeries[serie] = true;
+
+        SetCurrentWeek();
+
+        //await RefreshData();
+    }
+
+    private string HeaderContent()
+    {
+        System.Text.StringBuilder salida = new System.Text.StringBuilder();
+        salida.Append("Disponibilidad de flota");
+        if (trains.Count > 1)
+            salida.AppendFormat(" (Mostrando {0} trenes)", trains.Count);
+        else if (trains.Count > 0)
+            salida.AppendFormat(" (Mostrando el tren {0})", trains.First().name);
+
+        return salida.ToString();
+    }
+
+    private async Task RefreshData()
+    {
+        loading = true;
+        trains = new List<TrainModel>();
+        List<TrainModel> auxTrenes = (await mvarAeneasClient.trainsList()).OrderBy(xx => xx.name).ToList();
+        //Para cada tren, dependiendo de la serie, añadimos un registro
+        foreach (TrainModel auxTren in auxTrenes)
+        {
+            if (isSeries(auxTren))
+            {
+                await loadChanges(auxTren);
+                if (isRelevant(auxTren) && !trains.Any(t => t.id == auxTren.id))
+                    trains.Add(auxTren);
+            }                
+        }
+        loading = false;
+        StateHasChanged();
+    }
+
+    private bool isSeries(TrainModel tren)
+    {
+        if (tren.name.StartsWith("11"))
+        {
+            if (selectedSeries["1100"]) return true;
+        }
+        else if (tren.name.StartsWith("71"))
+        {
+            if (selectedSeries["7100"]) return true;
+        }
+        else if (tren.name.StartsWith("81"))
+        {
+            if (selectedSeries["8100"]) return true;
+        }
+        else if (tren.name.StartsWith("91"))
+        {
+            if (selectedSeries["9100"]) return true;
+        }                       
+        else if (selectedSeries["otros"]) return true;
+
+        return false;
+    }
+    private async Task loadChanges(TrainModel tren)
+    {
+        // 1. Cargar todos los cambios de estado del tren (puedes optimizar esto si tu API lo permite)
+        IEnumerable<StatusChangeModel> allChanges = (await mvarAeneasClient.trainChangesList(tren.id.ToString()))
+            .OrderBy(c => c.timeStamp)
+            .ToList();
+
+        // 2. Buscar el último cambio anterior al intervalo
+        var lastBefore = allChanges
+            .Where(c => c.timeStamp < startDate)
+            .LastOrDefault();
+
+        // 3. Tomar los cambios dentro del intervalo
+        var inInterval = allChanges
+            .Where(c => c.timeStamp >= startDate && c.timeStamp <= startDate.Add(intervalSpan))
+            .ToList();
+
+        // 4. Si hay un cambio anterior, lo añadimos al principio
+        if (lastBefore != null)
+            inInterval.Insert(0, lastBefore);
+
+        tren.StatusChanges = inInterval;
+    }
+    private bool isRelevant(TrainModel tren)
+    {
+        if (null == tren.StatusChanges||tren.StatusChanges.Count<1) return false;
+        foreach(StatusChangeModel change in tren.StatusChanges)
+        {
+            if (change.status == Sapphire2025Models.Common.TrainStatus.DepotAvailable ||
+            change.status == Sapphire2025Models.Common.TrainStatus.DepotRequested ||
+            change.status == Sapphire2025Models.Common.TrainStatus.Maintenance ||
+            change.status == Sapphire2025Models.Common.TrainStatus.Repairing ||
+            change.status == Sapphire2025Models.Common.TrainStatus.RequestToDiagnose ||
+            change.status == Sapphire2025Models.Common.TrainStatus.RequestToRepair)
+                return true;
+        }
+        return false;
+    }
+
+    // Filtros
+    private void SetInterval(string value)
+    {
+        interval = value;
+        _ = RefreshData();
+    }
+
+    private void SetCurrentWeek()
+    {
+        var today = DateTime.Today;
+        var diff = (int)today.DayOfWeek == 0 ? 6 : (int)today.DayOfWeek - 1;
+        startDate = today.AddDays(-diff);
+        //_ = RefreshData();
+    }
+
+    private void SetLastWeek()
+    {
+        var today = DateTime.Today;
+        var diff = (int)today.DayOfWeek == 0 ? 6 : (int)today.DayOfWeek - 1;
+        startDate = today.AddDays(-diff - 7);
+        //_ = RefreshData();
+    }
+    private async Task ToggleSerie(string serie)
+    {
+        selectedSeries[serie] = !selectedSeries[serie];
+        await RefreshData();
+    }
+
+    // Cálculo del intervalo en función del filtro
+    private TimeSpan intervalSpan => interval switch
+    {
+        "Semanal" => TimeSpan.FromDays(7),
+        "Mensual" => TimeSpan.FromDays(30),
+        "Trimestral" => TimeSpan.FromDays(90),
+        "Anual" => TimeSpan.FromDays(365),
+        _ => TimeSpan.FromDays(7)
+    };
+}

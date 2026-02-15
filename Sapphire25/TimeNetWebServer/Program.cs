@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TimeNet2026.Storage;
 using TimeNetWebServer.Components;
 using TimeNet2026.DBStorage;
+using TimeNet2026Data;
 
 // Inicializa SQLitePCL
 SQLitePCL.Batteries_V2.Init();
@@ -13,9 +14,11 @@ builder.Services.AddRazorComponents()
 	.AddInteractiveServerComponents();
 string dbPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "TimeNet.sqlite");
 
-builder.Services.AddDbContext<OnyxDatabase>
+builder.Services.AddDbContext<TimeNet2026Data.TimeNetContext>
 	(options => options.UseSqlite($"Data Source={dbPath}"));
 
+builder.Services.AddScoped<ITimeNetContextStorage>(provider =>
+provider.GetRequiredService<TimeNet2026Data.TimeNetContext>());
 builder.Services.AddScoped<OnyxStorage>();
 
 var app = builder.Build();

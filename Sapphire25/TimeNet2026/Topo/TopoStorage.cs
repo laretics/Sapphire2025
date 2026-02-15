@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml;
+using System.Xml.Linq;
 using TimeNet2026.Auxiliar;
 using TimeNet2026.Timed;
 namespace TimeNet2026.Topo
@@ -37,35 +37,41 @@ namespace TimeNet2026.Topo
 				return mcolAsimilations[id];
 			return null;
 		}
-		public TopoStorage(XmlNode root):this()
+		public TopoStorage(XNode root):this()
 		{
-			foreach (XmlNode hijo in root.ChildNodes)
+			if (root is XElement element)
 			{
-				switch (hijo.Name)
+				foreach (XElement hijo in element.Elements())
 				{
-					case "info": //Cabecera de información.
-						this.Header.deserialize(hijo);
-						break;
-					case "topo": //Ejes
-						importAxis(hijo);
-						break;
-					case "asimilation": //Asimilaciones
-						deserializeAsimilations(hijo, this);
-						break;
+					switch (hijo.Name.LocalName)
+					{
+						case "info": //Cabecera de información.
+							this.Header.deserialize(hijo);
+							break;
+						case "topo": //Ejes
+							importAxis(hijo);
+							break;
+						case "asimilation": //Asimilaciones
+							deserializeAsimilations(hijo, this);
+							break;
+					}
 				}
 			}
 		}
-		internal void importAxis(XmlNode root)
+		internal void importAxis(XNode root)
 		{
-			foreach (XmlNode hijo in root.ChildNodes)
+			if (root is XElement element)
 			{
-				if (hijo.Name.Equals("axis"))
+				foreach(XElement hijo in element.Elements())
 				{
-					Axis nuevo = new Axis(hijo);
-					if (mcolAxis.ContainsKey(nuevo.id))
-						mcolAxis.Remove(nuevo.id);
-					mcolAxis.Add(nuevo.id, nuevo);
-				}
+					if (hijo.Name.LocalName.Equals("axis"))
+					{
+						Axis nuevo = new Axis(hijo);
+						if (mcolAxis.ContainsKey(nuevo.id))
+							mcolAxis.Remove(nuevo.id);
+						mcolAxis.Add(nuevo.id, nuevo);
+					}
+				}				
 			}
 		}
 		internal List<Axis> getNearestAxis(GeoLocation point, double range = 1000) //Obtiene el eje más cercano al punto dado
@@ -118,44 +124,47 @@ namespace TimeNet2026.Topo
 			}
 			return null;
 		}
-		internal void deserializeAsimilations(XmlNode root, TopoStorage parent)
+		internal void deserializeAsimilations(XNode root, TopoStorage parent)
 		{
-			foreach(XmlNode hijo in root.ChildNodes)
+			if (root is XElement element)
 			{
-				if("item"==hijo.Name)
+				foreach (XElement hijo in element.Elements())
 				{
 					Asimilation nueva = deserializeAsimilation(hijo, parent);
 					mcolAsimilations.Add(nueva.id, nueva);
-				}					
+				}
 			}
 		}
-		internal Asimilation deserializeAsimilation(XmlNode root, TopoStorage parent)
+		internal Asimilation deserializeAsimilation(XNode root, TopoStorage parent)
 		{
 			Station? currentStation = null;
 			Axis? auxCurrentAxis = null;			
-			currentStation = stationById(XMLUtil.StringParam(root, "origin"));
+			currentStation = stationById(XUtil.StringParam(root, "origin"));
 			auxCurrentAxis = axisByStation(currentStation);
 			Asimilation currentAsimilation = new Asimilation(root,parent);
 			currentAsimilation.origin = currentStation;			
-			foreach(XmlNode hijo in root.ChildNodes)
+			if(root is XElement element)
 			{
-				if("trip"==hijo.Name)
+				foreach (XElement hijo in element.Elements())
 				{
-					currentStation = stationById(XMLUtil.StringParam(hijo, "dest"));
-					auxCurrentAxis = axisByStation(currentStation);
-					if(null!=currentStation && null!=auxCurrentAxis)
+					if ("trip" == hijo.Name.LocalName)
 					{
-						AsimilationStep paso = new AsimilationStep(currentStation,
-							auxCurrentAxis,
-							XMLUtil.TimeSpanParam(hijo, "time"),
-							XMLUtil.TimeSpanParam(hijo, "stop"));
-						currentAsimilation.mcolSteps.Add(paso);
+						currentStation = stationById(XUtil.StringParam(hijo, "dest"));
+						auxCurrentAxis = axisByStation(currentStation);
+						if (null != currentStation && null != auxCurrentAxis)
+						{
+							AsimilationStep paso = new AsimilationStep(currentStation,
+								auxCurrentAxis,
+								XUtil.TimeSpanParam(hijo, "time"),
+								XUtil.TimeSpanParam(hijo, "stop"));
+							currentAsimilation.mcolSteps.Add(paso);
+						}
 					}
 				}
 			}
 			return currentAsimilation;
 		}		
-		internal Rauta deserializeRauta(XmlNode root)
+		internal Rauta deserializeRauta(XNode root)
 		{
 			Rauta nuevo = new Rauta(root, this);
 			//Eliminamos cualquier rauta existente con el mismo Id.

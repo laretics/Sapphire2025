@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Xml.Linq;
 using TimeNet2026.Auxiliar;
 using TimeNet2026.Topo;
 
@@ -144,51 +145,59 @@ namespace TimeNet2026.Timed
 			CirculationBlocks = new List<CirculationBlock>();			
 			mcolSchedules = new List<Schedule>();
 		}
-		internal Plan(XmlNode root, TopoStorage topoStorage):this(topoStorage)
+		internal Plan(XNode root, TopoStorage topoStorage):this(topoStorage)
 		{
-			mvarId = XMLUtil.StringParam(root, "id");
-			mvarName = XMLUtil.StringParam(root, "name");
-			mvarComment = XMLUtil.StringParam(root, "comment");
-			foreach(XmlNode hijo in root.ChildNodes)
+			mvarId = XUtil.StringParam(root, "id");
+			mvarName = XUtil.StringParam(root, "name");
+			mvarComment = XUtil.StringParam(root, "comment");
+			if(root is XElement element)
 			{
-				switch (hijo.Name)
+				foreach (XElement hijo in element.Elements())
 				{
-					case "circulations": //Circulaciones definidas en el plan
-						deserializeCirculations(hijo,Parent);
-						break;
-					case "schedules": //Horarios definidos en el plan
-						deserializeSchedules(hijo);
-						break;
-				}
-			}
-		}
-		internal void deserializeCirculations(XmlNode root, TopoStorage topoStorage)
-		{
-			foreach (XmlNode hijo in root.ChildNodes)
-			{
-				if (hijo.Name == "block" || hijo.Name=="cir")
-				{
-					CirculationBlock nuevoBloque = new CirculationBlock(hijo, topoStorage);
-					CirculationBlocks.Add(nuevoBloque);
-				}
-			}
-		}
-		internal void deserializeSchedules(XmlNode root)
-		{
-			foreach (XmlNode hijo in root.ChildNodes)
-			{
-				if(hijo.Name=="active")
-				{
-					foreach (XmlNode nieto in hijo.ChildNodes)
+					switch (hijo.Name.LocalName)
 					{
-						if (nieto.Name == "ws")
+						case "circulations": //Circulaciones definidas en el plan
+							deserializeCirculations(hijo, Parent);
+							break;
+						case "schedules": //Horarios definidos en el plan
+							deserializeSchedules(hijo);
+							break;
+					}
+				}
+			}
+		}
+		internal void deserializeCirculations(XNode root, TopoStorage topoStorage)
+		{
+			if(root is XElement element)
+			{
+				foreach (XElement hijo in element.Elements())
+				{
+					if (hijo.Name.LocalName == "block" || hijo.Name.LocalName == "cir")
+					{
+						CirculationBlock nuevoBloque = new CirculationBlock(hijo, topoStorage);
+						CirculationBlocks.Add(nuevoBloque);
+					}
+				}
+			}
+		}
+		internal void deserializeSchedules(XNode root)
+		{
+			if(root is XElement element)
+			{
+				foreach (XElement hijo in element.Elements())
+				{
+					if ("active"==hijo.Name.LocalName)
+					{
+						foreach (XElement nieto in hijo.Elements())
 						{
-							Schedule nuevoTurno = new Schedule();
-							nuevoTurno.deserialize(nieto, this);
-							mcolSchedules.Add(nuevoTurno);
+							if (nieto.Name == "ws")
+							{
+								Schedule nuevoTurno = new Schedule();
+								nuevoTurno.deserialize(nieto, this);
+								mcolSchedules.Add(nuevoTurno);
+							}
 						}
 					}
-
 				}
 			}
 		}

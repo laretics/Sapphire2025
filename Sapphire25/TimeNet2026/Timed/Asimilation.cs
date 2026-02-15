@@ -4,7 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml;
+using System.Xml.Linq;
 using TimeNet2026.Auxiliar;
 using TimeNet2026.Topo;
 
@@ -202,14 +202,14 @@ namespace TimeNet2026.Timed
 			mvarColor = new string[2];
 			this.Parent = parent;
 		}
-		internal Asimilation(XmlNode root, TopoStorage parent):this(parent)
+		internal Asimilation(XNode root, TopoStorage parent):this(parent)
 		{
-			id = XMLUtil.StringParam(root, "id");
-			mvarName = XMLUtil.StringParam(root, "name");
-			mvarMaxSpeed = XMLUtil.IntParam(root, "type");
-			mvarColor[0] = XMLUtil.StringParam(root, "color");
-			mvarColor[1] = XMLUtil.StringParam(root, "darkcolor");
-			mvarComment = XMLUtil.StringParam(root, "comment");
+			id = XUtil.StringParam(root, "id");
+			mvarName = XUtil.StringParam(root, "name");
+			mvarMaxSpeed = XUtil.IntParam(root, "type");
+			mvarColor[0] = XUtil.StringParam(root, "color");
+			mvarColor[1] = XUtil.StringParam(root, "darkcolor");
+			mvarComment = XUtil.StringParam(root, "comment");
 		}
 		internal Asimilation(Axis auxEje, TopoStorage parent):this(parent)
 		{

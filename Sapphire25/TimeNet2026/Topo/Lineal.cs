@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
+﻿using System.Xml.Linq;
 using TimeNet2026.Auxiliar;
 using TimeNet2026.Storage;
 
@@ -17,11 +12,15 @@ namespace TimeNet2026.Topo
 			length = 0;
 			Tracks = 255;
 		}
-		internal Lineal(XmlNode root)
+		internal Lineal(XNode root):this()
 		{
-			this.pk = XMLUtil.LongParam(root, "pk0");
-			this.pkEnd = XMLUtil.LongParam(root, "pkf");
-			this.Tracks = XMLUtil.ByteParam(root, "par");
+			pk = XUtil.LongParam(root, "pk0");
+			pkEnd = XUtil.LongParam(root, "pkf");
+			Tracks = XUtil.ByteParam(root, "par");
+		}
+		internal virtual string XNode()
+		{
+			return string.Format("<item pk0=\"{0}\" pkf=\"{1}\" par=\"{2}\" />", pk, pkEnd, Tracks);
 		}
 
 		internal byte Tracks { get; set; } //Vías en las que está este elemento definido. (Flags binarios)
