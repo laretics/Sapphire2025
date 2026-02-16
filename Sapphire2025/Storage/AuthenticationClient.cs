@@ -382,6 +382,11 @@ namespace Sapphire2025.Storage
 						builder.AddAttribute(1, "Color", color);
 						builder.CloseComponent();
 						break;
+                    case Common.UserRole.Station:
+                        builder.OpenComponent<Icons.Roles.Station>(0);
+                        builder.AddAttribute(1, "Color", color);
+                        builder.CloseComponent();
+                        break;
 					case Common.UserRole.Inspector:
 						builder.OpenComponent<Icons.Roles.Inspector>(0);
 						builder.AddAttribute(1, "Color", color);

@@ -93,6 +93,7 @@ namespace Sapphire2025Server.Controllers
 							salida.Roles.Add(Common.UserRole.Expert);
 							salida.Roles.Add(Common.UserRole.Mechanic);
 							salida.Roles.Add(Common.UserRole.Anonymous);
+							salida.Roles.Add(Common.UserRole.Station);
 						}
 						else
 						{

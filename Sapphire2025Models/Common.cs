@@ -8,9 +8,9 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public const string SapphireSoftwareVersion = "26.02.11";
-		public const string LastChangesText = "Telegram (Sin partes de incidencia)|Mejoras en hoja de tren en sección de taller|Vista de Ingeniero|Perfil de Oficial de Taller";
-		public const string VersionColor = "#1010A0"; //Color de la versión para diferenciar una de otra.
+		public const string SapphireSoftwareVersion = "26.02.17";
+		public const string LastChangesText = "Perfil de Estación|Ventana de Administración|Diagrama de estado del material|Cambios menores";
+		public const string VersionColor = "#10B010"; //Color de la versión para diferenciar una de otra.
 
 		/// <summary>
 		/// Estados posibles en los que puede encontrarse un tren
@@ -137,29 +137,6 @@ namespace Sapphire2025Models
 			Users = 1, //Tabla de usuarios
 			TrainStatus = 2 //Tabla de cambios de estado de los trenes
 		}
-		//public static OperationType stringToOperation(string? rhs)
-		//{
-		//	if (null == rhs) return OperationType.Unknown;
-		//	string auxNormalized = rhs.ToUpper();
-		//	if (auxNormalized.Contains("ACTIVATE")) return OperationType.Activate;
-		//	if (auxNormalized.Contains("CORRECTIVEREQUEST")) return OperationType.CorrectiveRequest;
-		//	if (auxNormalized.Contains("DIAGNOSETOFAULT")) return OperationType.DiagnoseToFault;
-		//	if (auxNormalized.Contains("DIAGNOSETOAVAILABLE")) return OperationType.DiagnoseToAvailable;
-		//	if (auxNormalized.Contains("BEGINCORRECTIVE")) return OperationType.BeginCorrective;
-		//	if (auxNormalized.Contains("ENDCORRECTIVE")) return OperationType.EndCorrective;
-		//	if (auxNormalized.Contains("DEPOTREQUESTACCEPT")) return OperationType.DepotRequestAccept;
-		//	if (auxNormalized.Contains("DEPOTREQUESTDENY")) return OperationType.DepotRequestDeny;
-		//	if (auxNormalized.Contains("DEPOTREQUEST")) return OperationType.DepotRequest;
-		//	if (auxNormalized.Contains("MAINTENANCERESCUE")) return OperationType.MaintenanceRescue;
-		//	if (auxNormalized.Contains("BEGINMAINTENANCE")) return OperationType.BeginMaintenance;
-		//	if (auxNormalized.Contains("ENDMAINTENANCE")) return OperationType.EndMaintenance;
-		//	if (auxNormalized.Contains("DIFERMAINTENANCE")) return OperationType.DiferMaintenance;
-		//	if (auxNormalized.Contains("SENDTOSTANDSTILL")) return OperationType.SendToStandStill;
-		//	if (auxNormalized.Contains("RESCUEFROMSTANDSTILL")) return OperationType.RescueFromStandStill;
-		//	if (auxNormalized.Contains("SENDTODISABLED")) return OperationType.SendToDisabled;
-		//	if (auxNormalized.Contains("RESCUEFROMDISABLED")) return OperationType.RescueFromDisabled;
-		//	return OperationType.Unknown;
-		//}
 
 		/// <summary>
 		/// Estados de una orden de trabajo.
@@ -200,6 +177,7 @@ namespace Sapphire2025Models
 			Mechanic = 4,     //Operario del taller (contrata)
 			Root = 5,         //Usuario administrador con máximos privilegios
 			Engineer = 6,     //Ingeniero que accede a la base de datos para consultar informes.
+			Station = 7,	  //Gestor de estaciones
 		}
 
 		public enum sessionEventType : byte
@@ -211,20 +189,6 @@ namespace Sapphire2025Models
 			badPassword = 4,        //Error de credenciales
 			banned = 5          //Usuario expulsado por un administrador
 		}
-
-		//public static UserRole fromRoleName(string roleName)
-		//{
-		//	switch(roleName.ToUpper())
-		//	{
-		//		case "ENGINEER": return UserRole.Engineer;
-		//		case "MECHANIC": return UserRole.Mechanic;
-		//		case "ROOT": return UserRole.Root;
-		//		case "INSPECTOR": return UserRole.Inspector;
-		//		case "OFICIAL": return UserRole.Oficial;
-		//		case "EXPERT": return UserRole.Expert;			
-		//	}
-		//	return UserRole.Anonymous;
-		//}
 
 		static public string timeStringTelegram(DateTime? rhs)
 		{
