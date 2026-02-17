@@ -57,8 +57,11 @@ namespace Sapphire2025Server.Expert
                                 {
                                     nueva.Id = Guid.NewGuid();
                                     nueva.Agent = agente.guid;
-                                    nueva.Annotation = original.Comment;
-                                    nueva.Assignation = getCleanAssignationString(original.Text);
+                                    if (null == original.Comment)
+                                        nueva.Annotation = string.Empty;
+                                    else
+										nueva.Annotation = original.Comment.Substring(0, Math.Min(original.Comment.Length, 254));
+									nueva.Assignation = getCleanAssignationString(original.Text);
                                     nueva.BgColor = manageBgColor(original.Bg);
                                     nueva.Date = date.AddDays(col);
                                     nueva.Definitive = getLastAssignation(nueva.Assignation??"");
@@ -94,87 +97,6 @@ namespace Sapphire2025Server.Expert
                     foreach(List<WorkshiftAssignation> grupo in cambios.Values)
 						SolveChanges(grupo);
 
-
-
-					/*
-										foreach (List<WorkshiftAssignation> grupo in cambios.Values)
-										{
-											if(grupo.Count==2)
-											{
-												//Cambio simple.
-												if (null!=grupo[0].Definitive && null != grupo[1].Definitive)
-												{
-													//Eliminamos la manía de Peñarrustria de poner dos agentes con
-													//el mismo turno en el gráfico
-													if (!(grupo[0].Definitive.Equals(grupo[1].Definitive,StringComparison.InvariantCultureIgnoreCase)))
-													{
-														grupo[0].SwappingAgent = grupo[1].Agent;
-														grupo[1].SwappingAgent = grupo[0].Agent;
-														string? turnoDefinitivo = grupo[0].Definitive;
-														grupo[0].Definitive = grupo[1].Definitive;
-														grupo[1].Definitive = turnoDefinitivo;
-													}
-												}
-												else
-												{
-													//Fallo Peñarrustria
-													int cuenta = grupo.Count;
-												}
-											}
-											else if (grupo.Count>2)
-											{
-												int annotations = 0;
-												foreach(WorkshiftAssignation asignacion in grupo)
-												{
-													if (null != asignacion.Annotation && asignacion.Annotation.Length > 0)
-														annotations++;
-												}
-												if(annotations==grupo.Count) //Evito selecciones múltiples que no son cambios a múltiples bandas
-												{
-													//Cambio a tres, cuatro o más bandas.
-													//Voy a crear una base de datos de turnos disponibles en el cambio
-													//es una especie de "montón común"
-													//Al montón común añado todas las asignaciones (no sólo la última)
-													Dictionary<string, Guid> auxMontonComun = new Dictionary<string, Guid>();
-													foreach (WorkshiftAssignation elemento in grupo)
-													{
-														if (null != elemento.Assignation)
-														{
-															string[] auxAsignaciones = elemento.Assignation.Split('/');
-															foreach (string auxAsignacion in auxAsignaciones)
-															{
-																if(!(auxMontonComun.ContainsKey(auxAsignacion)))
-																	auxMontonComun.Add(auxAsignacion, elemento.Agent);
-															}											
-														}
-													}
-													//Ahora voy a recorrer los mismos elementos con la anotación
-													foreach (WorkshiftAssignation elemento in grupo)
-													{
-														foreach (string clave in auxMontonComun.Keys)
-														{
-															if (null != elemento.Annotation && elemento.Annotation.Length > 0)
-															{
-																if (elemento.Annotation.Contains(clave))
-																{
-																	elemento.SwappingAgent = auxMontonComun[clave];
-																	elemento.Annotation = string.Format("Cambio a {0} bandas.", grupo.Count());
-																	elemento.Definitive = clave;
-																	auxMontonComun.Remove(clave);
-																}
-															}
-														}
-													}
-												}
-												else
-												{
-													//Detectado un grupo con repetición chunga.
-													int cuenta = grupo.Count;
-													salida.AppendFormat("Grupo de {0} agentes con información incompleta.", cuenta);
-												}
-											}
-										}
-					*/
 				}
 
 				//Escribo las asignaciones en la base de datos.
