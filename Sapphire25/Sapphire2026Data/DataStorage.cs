@@ -8,6 +8,7 @@ using System.Text;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
 using TimeNet2026Data;
+using Sapphire2026Data.Models;
 
 namespace Sapphire2026.Data
 {
@@ -251,6 +252,7 @@ namespace Sapphire2026.Data
 		public DbSet<StatusChange> StatusChanges { get; set; }
 		public DbSet<Train> Trains { get; set; }
 		public DbSet<Note> Notes { get; set; }
+		public DbSet<Platform> Platforms { get; set; }
         #endregion
         #region Maquinistros
 		public DbSet<WorkShiftTemplateCollection> WorkShiftTemplateCollections { get; set; }

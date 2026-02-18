@@ -1,23 +1,20 @@
-﻿using System.Xml;
+﻿using System.Xml.Linq;
 
 namespace TimeNetWebServer.Classes
 {
 	internal class XMLImporter
 	{
-		internal async Task<XmlElement?> ImportXML(Stream rhs)
+		internal async Task<XElement?> ImportXML(Stream rhs)
 		{
-			XmlDocument documento = new XmlDocument();
+			XDocument documento;
 			try
 			{
 				using StreamReader lector = new StreamReader(rhs);
 				string contenido = await lector.ReadToEndAsync();
-				documento.LoadXml(contenido);
+				documento = XDocument.Parse(contenido);
+				return documento.Root;
 			}
-			catch (Exception ex){ Console.WriteLine(ex.Message); }
-			
-			if (null != documento.DocumentElement)
-				return documento.DocumentElement;
-
+			catch (Exception ex){ Console.WriteLine(ex.Message); }				
 			return null;
 		}
 

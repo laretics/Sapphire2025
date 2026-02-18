@@ -1,0 +1,88 @@
+﻿@using Sapphire2025Models.Aeneas
+
+<div class="platform-select-ctl" style="position:relative;max-width:400px;">
+    <div class="input-group">
+        <input type="text"
+               class="form-control"
+               placeholder="Buscar estación o andén"
+               @bind="searchText"
+               @bind:event="oninput"
+               @onfocus="ShowDropdown"
+               @onblur="HideDropdownWithDelay"
+               autocomplete="off" />
+        @if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            <button type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    style="border-top-left-radius: 0; border-bottom-left-radius: 0;"
+                    title="Borrar"
+                    @onclick="ClearSelection">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        }
+    </div>
+
+    @if (showDropdown && FilteredPlatforms.Any())
+    {
+        <ul class="dropdown-menu show w-100" style="max-height: 250px; overflow-y: auto; position: absolute; z-index: 10;">
+            @foreach (var platform in FilteredPlatforms)
+            {
+                <li>
+                    <button type="button" class="dropdown-item"
+                            @onclick="() => SelectPlatform(platform)">
+                        @platform.StationName - @platform.PlatformName
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public IEnumerable<PlatformModel> Platforms { get; set; } = new List<PlatformModel>();
+
+    [Parameter]
+    public EventCallback<PlatformModel> OnPlatformSelected { get; set; }
+
+    private string searchText = string.Empty;
+    private bool showDropdown = false;
+    private PlatformModel? selectedPlatform;
+
+    private IEnumerable<PlatformModel> FilteredPlatforms =>
+        Platforms.Where(p =>
+            (string.IsNullOrWhiteSpace(searchText) ||
+             p.StationName.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+             p.PlatformName.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+        );
+
+    private void ShowDropdown()
+    {
+        showDropdown = true;
+    }
+
+    private async Task HideDropdownWithDelay()
+    {
+        await Task.Delay(150);
+        showDropdown = false;
+        StateHasChanged();
+    }
+
+    private async Task SelectPlatform(PlatformModel platform)
+    {
+        selectedPlatform = platform;
+        searchText = $"{platform.StationName} - {platform.PlatformName}";
+        showDropdown = false;
+        if (OnPlatformSelected.HasDelegate)
+            await OnPlatformSelected.InvokeAsync(platform);
+    }
+
+    private async Task ClearSelection()
+    {
+        searchText = string.Empty;
+        selectedPlatform = null;
+        showDropdown = false;
+        if (OnPlatformSelected.HasDelegate)
+            await OnPlatformSelected.InvokeAsync(null);
+    }
+}

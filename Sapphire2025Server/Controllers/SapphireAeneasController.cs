@@ -7,6 +7,7 @@ using Sapphire2026.Data;
 using Sapphire2026.Data.Models;
 using Microsoft.AspNetCore.SignalR;
 using Sapphire2025Server.Comunications;
+using Sapphire2026Data.Models;
 
 namespace Sapphire2025Server.Controllers
 {
@@ -32,6 +33,24 @@ namespace Sapphire2025Server.Controllers
 				List<Train> trenes = await almacen.Trains.ToListAsync();
 				foreach (Train tren in trenes)
 					salida.Add(await trainFromTrain(tren,mvarConfig));
+			}
+			return salida;
+		}
+		[HttpGet("platforms")]
+		public async Task<List<PlatformModel>> PlatformsRequest()
+		{
+			List<PlatformModel> salida = new List<PlatformModel>();
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				List<Platform> andenes = await almacen.Platforms.ToListAsync();
+				foreach(Platform platform in andenes)
+				{
+					PlatformModel nuevo = new PlatformModel();
+					nuevo.Id = platform.Id;
+					nuevo.StationName = platform.StationId;
+					nuevo.PlatformName = platform.PlatformId;
+					salida.Add(nuevo);
+				}
 			}
 			return salida;
 		}

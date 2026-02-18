@@ -85,6 +85,36 @@ namespace Sapphire2025.Storage
 
 		#endregion "Autenticación"
 
+		#region "Caché de andenes"
+        public async Task<IEnumerable<PlatformModel>>GetPlatformList()
+        {
+            string? auxCadena = await GetStringValue("cacheplatformlist", false);
+            if(null!=auxCadena)
+            {
+                IEnumerable<PlatformModel>? auxLista = JsonSerializer.Deserialize<IEnumerable<PlatformModel>>(auxCadena);
+                if (null != auxLista)
+                    return auxLista;
+            }
+            return new List<PlatformModel>();
+        }
+        public async Task<bool>SetPlatformList(IEnumerable<PlatformModel>? rhs)
+        {
+            if(null!=rhs)
+            {
+                string cadena = JsonSerializer.Serialize(rhs);
+                await SetStringValue("cacheplatformlist", cadena, false);
+                return true;
+            }
+            return false; 
+        }
+        public async Task<bool> ResetPlatformList()
+        {
+            await ResetValue("cacheplatformlist",false);
+            return true;
+        }
+
+		#endregion "Caché de andenes"
+
 		#region "Caché de trenes"
 		public async Task<IEnumerable<TrainModel>>GetTrainList()
         {

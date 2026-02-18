@@ -37,6 +37,15 @@ namespace Sapphire2025.Storage
 			if(null == auxLista) return new List<TrainModel>();
 			return auxLista;
 		}
+		public async Task<IEnumerable<PlatformModel>> platformsList()
+		{
+			string request = composeCommand("platforms");
+			HttpResponseMessage respuesta = await sendGetRequest(request);
+			IEnumerable<PlatformModel>? auxLista = await
+				respuesta.Content.ReadFromJsonAsync<IEnumerable<PlatformModel>>();
+			if(null==auxLista) return new List<PlatformModel>();
+			return auxLista;
+		}
 		public async Task<TrainModel?> train(string trainId)
 		{
 			string request = composeCommand(
@@ -92,6 +101,15 @@ namespace Sapphire2025.Storage
 			if (respuesta.IsSuccessStatusCode)
 				return await respuesta.Content.ReadFromJsonAsync<bool>();
 			return false;
+		}
+		//Fuerza la modificación del andén actual del tren
+		public async Task<bool> changePlatform(TrainModel train)
+		{
+			string jsonData = System.Text.Json.JsonSerializer.Serialize(train);
+			HttpResponseMessage respuesta = await sendPostRequest("changeplatform", jsonData);
+			if (respuesta.IsSuccessStatusCode)
+				return await respuesta.Content.ReadFromJsonAsync<bool>();
+			return false;	
 		}
 		//Obtiene las últimas notas de un determinado tren.
 		//Si el parámetro max es cero, devuelve todas las notas.

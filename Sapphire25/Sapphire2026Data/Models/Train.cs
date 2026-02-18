@@ -18,13 +18,14 @@ namespace Sapphire2026.Data.Models
 		public string Comment { get; set; } //Comentario permanente sobre este tren
 		public byte LastStatus { get; set; } //Caché del último estado registrado en este tren
 		public Guid lastChange { get; set; } //Última operación de cambio de estado del tren.
-
+		public int PlatformId { get; set; } //Asignación de andén actual para este tren.
 		public Train()
 		{
 			Guid = Guid.NewGuid();
 			Name = string.Format("New {0}", Guid.ToString()[8..]);
 			Comment = string.Empty;
 			NameCloud = string.Empty;
+			PlatformId = -1; //-1 significa que no está en ningún sitio
 		}
 	}
 }

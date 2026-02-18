@@ -87,7 +87,7 @@
         mvarBusy = true;
         StateHasChanged();
         TimeNetWebServer.Classes.XMLImporter importador = new Classes.XMLImporter();
-        XmlElement? elemento = await importador.ImportXML(file.OpenReadStream());
+        XElement? elemento = await importador.ImportXML(file.OpenReadStream());
         if (null != elemento)
             await mvarStorage.deserializeXML(elemento);
         await Task.Yield(); //Para mostrar la pantalla de carga.
