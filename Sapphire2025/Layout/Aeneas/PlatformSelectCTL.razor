@@ -41,13 +41,32 @@
 @code {
     [Parameter]
     public IEnumerable<PlatformModel> Platforms { get; set; } = new List<PlatformModel>();
+    [Parameter]
+    public TrainModel? Train{ get; set; }
 
     [Parameter]
     public EventCallback<PlatformModel> OnPlatformSelected { get; set; }
 
     private string searchText = string.Empty;
     private bool showDropdown = false;
+    private PlatformModel? lastPlatformSelected;
     private PlatformModel? selectedPlatform;
+
+    protected async override Task OnInitializedAsync()
+    {
+        if (null != Train)
+        {
+            if (Train.PlatformId < 1)
+                lastPlatformSelected = null;
+            else
+                lastPlatformSelected = platformFromIndex(Train.PlatformId);
+
+            if (null == lastPlatformSelected)
+                await ClearSelection();
+            else
+                await SelectPlatform(lastPlatformSelected);
+        }
+    }
 
     private IEnumerable<PlatformModel> FilteredPlatforms =>
         Platforms.Where(p =>
@@ -73,8 +92,20 @@
         selectedPlatform = platform;
         searchText = $"{platform.StationName} - {platform.PlatformName}";
         showDropdown = false;
-        if (OnPlatformSelected.HasDelegate)
-            await OnPlatformSelected.InvokeAsync(platform);
+        if (lastPlatformSelected != selectedPlatform)
+        {
+            if (OnPlatformSelected.HasDelegate)
+                await OnPlatformSelected.InvokeAsync(selectedPlatform);
+        }
+    }
+    private PlatformModel? platformFromIndex(int index)
+    {
+        foreach(PlatformModel elemento in Platforms)
+        {
+            if (elemento.Id == index)
+                return elemento;
+        }
+        return null;
     }
 
     private async Task ClearSelection()
@@ -82,7 +113,10 @@
         searchText = string.Empty;
         selectedPlatform = null;
         showDropdown = false;
-        if (OnPlatformSelected.HasDelegate)
-            await OnPlatformSelected.InvokeAsync(null);
+        if (lastPlatformSelected != selectedPlatform)
+        {
+            if (OnPlatformSelected.HasDelegate)
+                await OnPlatformSelected.InvokeAsync(null);
+        }
     }
 }

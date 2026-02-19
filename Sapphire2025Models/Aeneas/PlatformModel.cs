@@ -18,5 +18,9 @@ namespace Sapphire2025Models.Aeneas
 			StationName=string.Empty;
 			PlatformName = string.Empty;
 		}
+		public override string ToString()
+		{
+			return string.Format("{0};{1}", PlatformName, StationName);
+		}
 	}
 }

@@ -34,6 +34,9 @@ namespace Sapphire2025Models.Aeneas
 		//Id del último usuario que interactuó con este tren
 		public Guid lastUserInfo { get; set; }
 
+		//Vía de estacionamiento asignada
+		public int PlatformId { get; set; }
+
 		[JsonIgnore]
 		public List<StatusChangeModel>? StatusChanges { get; set; }
 

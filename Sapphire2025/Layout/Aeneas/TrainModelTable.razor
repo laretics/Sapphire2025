@@ -1,4 +1,4 @@
-﻿
+﻿@inject NavigationManager mvarNavigator
 @code {
 	[CascadingParameter]
 	public IEnumerable<TrainModel>? Trains{ get; set; }
@@ -11,6 +11,8 @@
 	public int Width{ get; set; }
 	[Parameter]
 	public int Height{ get; set; }
+	[CascadingParameter]
+	public PlatformModel[] Platforms { get; set; } = new PlatformModel[0];
 
 	private int mvarLastOrderField { get; set; } = -1;
 
@@ -29,6 +31,16 @@
 					case 2:
 						mcolTrains = mcolTrains.OrderByDescending(xx => xx.lastStatus).ToList();
 						break;
+					case 3:
+						mcolTrains = mcolTrains.OrderByDescending(xx => xx.lastUserInfo).ToList();
+						break;
+					case 4:
+						mcolTrains = mcolTrains.OrderByDescending(xx => xx.lastNote).ToList();
+						break;
+					case 5:
+						mcolTrains = mcolTrains.OrderByDescending(xx => xx.PlatformId).ToList();
+						break;
+
 					default:
 						mcolTrains = mcolTrains.OrderByDescending(xx => xx.lastUpdateTime).ToList();
 						break;
@@ -64,4 +76,21 @@
 		}
 		return null;
 	}
+	public void OnTrainClick(TrainModel train)
+	{
+		if (null != train)
+		{
+			mvarNavigator.NavigateTo(string.Format("/train/{0}", train.id));
+		}
+	}
+	protected string platformString(TrainModel train)
+	{
+		if (train.PlatformId > 0)
+		{
+			if ((train.PlatformId - 1) < Platforms.Length)
+				return Platforms[train.PlatformId - 1].ToString();
+		}
+		return "-";
+	}
+	protected string trainColor(TrainModel train) { return train == null ? "transparent" : Sapphire2025Models.Utils.TrainStyleFill(train.name); }
 }

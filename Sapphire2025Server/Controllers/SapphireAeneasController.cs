@@ -273,6 +273,7 @@ namespace Sapphire2025Server.Controllers
 		{
 			User? usuario = await retrieveUserStatic(statusChange.UserId,config);
 			string nombreUsuario = "un usuario desconocido";
+			string ultimoParte = string.Empty;
 			if (null!=usuario && null!=usuario.UserName) nombreUsuario = usuario.UserName;
 			switch(statusChange.Operation)
 			{
@@ -282,20 +283,23 @@ namespace Sapphire2025Server.Controllers
 				case Common.OperationType.EndCorrective:					
 					await SendTelegramBroadcast(string.Format("La UT {0} acaba de reincorporarse a la circulación tras dar {1} por terminada la reparación.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector }); break;
 				case Common.OperationType.CorrectiveRequest:
-					await SendTelegramBroadcast(string.Format("{1} acaba de hacer un parte de avería sobre la UT {0}.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector, Common.UserRole.Expert, Common.UserRole.Oficial, Common.UserRole.Mechanic }); break;
+					ultimoParte = await lastNoteStatic(train.Guid, config);
+					await SendTelegramBroadcast(string.Format("{1} abrió incidencia a la UT {0}: \"{2}\"", train.Name, nombreUsuario, ultimoParte), false, new Common.UserRole[] { Common.UserRole.Inspector, Common.UserRole.Expert, Common.UserRole.Oficial, Common.UserRole.Mechanic }); break;
 				case Common.OperationType.DiagnoseToFault:
-					await SendTelegramBroadcast(string.Format("{1} acaba de declarar una avería. La UT {0} debe ser retirada de la circulación.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector }); break;
+					ultimoParte = await lastNoteStatic(train.Guid, config);
+					await SendTelegramBroadcast(string.Format("{1} pide retirar el tren {0} de la circulación. \"{2}\"", train.Name, nombreUsuario,ultimoParte), false, new Common.UserRole[] { Common.UserRole.Inspector, Common.UserRole.Station }); break;
 				case Common.OperationType.DiagnoseToAvailable:
-					await SendTelegramBroadcast(string.Format("{1} considera que la UT {0} puede seguir en servicio.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector }); break;
+					ultimoParte = await lastNoteStatic(train.Guid, config);
+					await SendTelegramBroadcast(string.Format("{1} considera que la UT {0} puede seguir en servicio. La última nota es:\"{2}\"", train.Name, nombreUsuario,ultimoParte), false, new Common.UserRole[] { Common.UserRole.Inspector }); break;
 				case Common.OperationType.BeginCorrective:
-					await SendTelegramBroadcast(string.Format("{1} ha dado entrada en taller a la UT {0} para correctivo.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Oficial, Common.UserRole.Engineer }); break;
+					await SendTelegramBroadcast(string.Format("{1} ha dado entrada en taller a la UT {0} para correctivo.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Oficial, Common.UserRole.Engineer, Common.UserRole.Inspector, Common.UserRole.Station }); break;
 				case Common.OperationType.DepotRequest:
-					await SendTelegramBroadcast(string.Format("{1} solicita apartar la UT {0} para mantenimiento planificado.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector }); break;
+					await SendTelegramBroadcast(string.Format("{1} solicita apartar la UT {0} para mantenimiento planificado.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector, Common.UserRole.Station }); break;
 				case Common.OperationType.DepotRequestAccept:
-					await SendTelegramBroadcast(string.Format("{1} acaba de apartar la UT {0} para mantenimiento planificado.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Oficial, Common.UserRole.Mechanic }); break;
+					await SendTelegramBroadcast(string.Format("{1} acaba de apartar la UT {0} para mantenimiento planificado.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Oficial, Common.UserRole.Mechanic, Common.UserRole.Inspector, Common.UserRole.Station }); break;
 				case Common.OperationType.MaintenanceRescue:
 				case Common.OperationType.DiferMaintenance:
-					await SendTelegramBroadcast(string.Format("{1} devuelve a la circulación la UT {0} que había solicitado taller para mantenimiento planificado.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector }); break;
+					await SendTelegramBroadcast(string.Format("{1} devuelve a la circulación la UT {0} que había solicitado taller para mantenimiento planificado.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector, Common.UserRole.Station }); break;
 				case Common.OperationType.SendToStandStill:
 					await SendTelegramBroadcast(string.Format("{1} envía la UT {0} al estado \"Stand-Still\" .", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Engineer, Common.UserRole.Oficial }); break;
 				case Common.OperationType.Activate:
@@ -309,6 +313,21 @@ namespace Sapphire2025Server.Controllers
 		public async Task<bool> AddNote(NoteModel note)
 		{
 			return await addNoteStatic(note, mvarConfig);
+		}
+		[HttpPost("changeplatform")]
+		public async Task<bool> ChangePlatform(TrainModel train)
+		{
+			using(DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				Train? auxTren = await almacen.Trains.Where(x => x.Guid == train.id).FirstOrDefaultAsync();
+				if (null!=auxTren)
+				{
+					auxTren.PlatformId = train.PlatformId;
+					await almacen.SaveChangesAsync();
+					return true;
+				}
+			}
+			return false;
 		}
 		[HttpPost("getnotes")]
 		public async Task<List<NoteModel>> RetrieveNotes(NoteChatRequestModel model)
@@ -350,6 +369,17 @@ namespace Sapphire2025Server.Controllers
 			return salida;
 		}
 
+		public static async Task<string> lastNoteStatic(Guid trainId, IConfiguration config)
+		{
+			using (DataStorage almacen = new DataStorage(config))
+			{
+				Note? auxNota = await almacen.Notes.OrderBy(x => x.TimeStamp).LastOrDefaultAsync();
+				if (null != auxNota && null!=auxNota.Text)
+					return auxNota.Text;
+			}
+			return string.Empty;
+		}
+
 		public static async Task<bool> addNoteStatic(NoteModel note, IConfiguration config)
 		{
 			bool salida = false;
@@ -377,6 +407,8 @@ namespace Sapphire2025Server.Controllers
 			salida.id = train.Guid;
 			salida.name = train.Name;
 			salida.nameCloud = train.NameCloud;
+			salida.PlatformId = train.PlatformId;
+			salida.lastNote = await lastNoteStatic(train.Guid, config);
 			using (DataStorage almacen = new DataStorage(config))
 			{
 				//Ahora obtiene los últimos movimientos de este tren...

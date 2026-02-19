@@ -66,24 +66,26 @@ else
 	</div>
 	<CascadingValue Value="Extended">
 		<CascadingValue Value="mcolTrains">
-			<CascadingValue Value="Users">
-				<CascadingValue Value="Status">
-					<div class="row align-items-start" style="height: 50vh; width: 100%">
-						<div class="col-5 pe-2" style="overflow: auto; max-height: 50vh;">
-							<Sapphire2025.Layout.Aeneas.TrainFlowCTL OnStatusSelected="HandleStatusSelected"
-																	 OnOpenTrain="HandleOpenTrain"
-																	 width="100" height="50" />
+			<CascadingValue Value="mcolPlatforms">
+				<CascadingValue Value="Users">
+					<CascadingValue Value="Status">
+						<div class="row align-items-start" style="height: 50vh; width: 100%">
+							<div class="col-5 pe-2" style="overflow: auto; max-height: 50vh;">
+								<Sapphire2025.Layout.Aeneas.TrainFlowCTL OnStatusSelected="HandleStatusSelected"
+																		 OnOpenTrain="HandleOpenTrain"
+																		 width="100" height="50" />
+							</div>
+							<div class="col-7 ps-2" style="overflow: auto; max-height: 50vh;">
+								<Sapphire2025.Layout.Aeneas.StatusTrainsTable Width="100" Height="50" />
+							</div>
 						</div>
-						<div class="col-7 ps-2" style="overflow: auto; max-height: 50vh;">
-							<Sapphire2025.Layout.Aeneas.StatusTrainsTable Width="100" Height="50" />
+					</CascadingValue>
+					<div class="row align-items-start" style="height: 50vh;">
+						<div class="col">
+							<Sapphire2025.Layout.Aeneas.AvailableTrainsTable Width="95" Height="50" />
 						</div>
 					</div>
 				</CascadingValue>
-				<div class="row align-items-start" style="height: 50vh;">
-					<div class="col">
-						<Sapphire2025.Layout.Aeneas.AvailableTrainsTable Width="95" Height="50" />
-					</div>
-				</div>
 			</CascadingValue>
 		</CascadingValue>
 	</CascadingValue>
@@ -92,6 +94,8 @@ else
 @code 
 {
 	private IEnumerable<TrainModel> mcolTrains{ get; set; }
+	private Sapphire2025Models.Aeneas.PlatformModel[] mcolPlatforms { get; set; } = new PlatformModel[0];
+
 	[Parameter]
 	public Sapphire2025Models.Common.TrainStatus Status { get; set; }	
 	[Parameter]
@@ -103,8 +107,11 @@ else
 	protected async override Task OnInitializedAsync()
 	{
 		mvarTimer = new Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+		await LoadPlatforms();
 		await TrainCache();
 	}
+
+
 	public void Dispose()
 	{
 		mvarTimer?.Dispose();
@@ -144,6 +151,23 @@ else
 		StateHasChanged();
 	}
 
+	private async Task LoadPlatforms()
+	{
+		mcolPlatforms = await mvarInternalStorage.GetPlatformList();
+		if(mcolPlatforms.Length<1)
+		{
+			IEnumerable<PlatformModel>? auxLista = await mvarAeneasClient.platformsList();
+			if(null!=auxLista)
+			{
+				mcolPlatforms = new PlatformModel[auxLista.Count()];
+				foreach (PlatformModel elemento in auxLista)
+					mcolPlatforms[elemento.Id-1] = elemento;
+
+				await mvarInternalStorage.SetPlatformList(mcolPlatforms); //Lo guardo en la caché para poder usarlo
+			}
+		}
+	}
+
 	/// <summary>
 	/// Para acelerar considerablemente la ejecución del programa vamos a cargar la lista en dos
 	/// fases... primero leemos del almacenamiento interno la lista completa, luego pedimos al servidor
@@ -181,11 +205,11 @@ else
 
 			}
 			//Cargamos la última anotación que tenga cada tren
-			foreach (TrainModel auxTrain in auxLista)
-			{
-				List<NoteModel> notas = await mvarAeneasClient.retrieveNotes(auxTrain.id, "", 1);
-				auxTrain.lastNote = notas.FirstOrDefault()?.Text ?? string.Empty;
-			}
+			// foreach (TrainModel auxTrain in auxLista)
+			// {
+			// 	List<NoteModel> notas = await mvarAeneasClient.retrieveNotes(auxTrain.id, "", 1);
+			// 	auxTrain.lastNote = notas.FirstOrDefault()?.Text ?? string.Empty;
+			// }
 			//Guardaré la nueva lista en la caché.
 			await mvarInternalStorage.SetTrainList(auxLista);
 		}
