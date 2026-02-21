@@ -8,8 +8,8 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public const string SapphireSoftwareVersion = "26.02.20";
-		public const string LastChangesText = "Perfil de Estación|Ventana de Administración|Diagrama de estado del material|Cambios menores";
+		public const string SapphireSoftwareVersion = "26.02.22";
+		public const string LastChangesText = "Perfil de Estación|Ubicación de los trenes|Diagrama de estado del material|Contenido de incidencias y notas en Telegram|Cambios menores";
 		public const string VersionColor = "#10B010"; //Color de la versión para diferenciar una de otra.
 
 		/// <summary>

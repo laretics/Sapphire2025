@@ -11,6 +11,9 @@
 				<th class="bg-secondary text-white" style="width:100px;" @onclick="() => sortFields(5)">
 					<Sapphire2025.Icons.Headers.Location color="white" />
 				</th>
+				<th class="bg-secondary text-white" style="width:100px;" @onclick="() => sortFields(5)">
+					<Sapphire2025.Icons.Headers.TrainTrack color="white" />
+				</th>
 				<th class="bg-secondary text-white" style="width:100px;" @onclick="() => sortFields(0)">
 					<Sapphire2025.Icons.Headers.EventDateTime color="white" />					
 				</th>
@@ -28,6 +31,9 @@
 				<tr @onclick="@(e => OnTrainClick(train))">
 					<td class="truncate" style="background-color: @trainColor(train)">
 						@train.name
+					</td>
+					<td class="truncate">
+						@locationString(train)
 					</td>
 					<td class="truncate">
 						@platformString(train)

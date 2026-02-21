@@ -373,7 +373,7 @@ namespace Sapphire2025Server.Controllers
 		{
 			using (DataStorage almacen = new DataStorage(config))
 			{
-				Note? auxNota = await almacen.Notes.OrderBy(x => x.TimeStamp).LastOrDefaultAsync();
+				Note? auxNota = await almacen.Notes.Where(x =>x.Parent==trainId).OrderBy(x => x.TimeStamp).LastOrDefaultAsync();
 				if (null != auxNota && null!=auxNota.Text)
 					return auxNota.Text;
 			}

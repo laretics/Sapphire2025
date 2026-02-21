@@ -88,7 +88,16 @@
 		if (train.PlatformId > 0)
 		{
 			if ((train.PlatformId - 1) < Platforms.Length)
-				return Platforms[train.PlatformId - 1].ToString();
+				return Platforms[train.PlatformId - 1].PlatformName;
+		}
+		return "-";
+	}
+	protected string locationString(TrainModel train)
+	{
+		if(train.PlatformId>0)
+		{
+			if ((train.PlatformId - 1) < Platforms.Length)
+				return Platforms[train.PlatformId - 1].StationName;
 		}
 		return "-";
 	}

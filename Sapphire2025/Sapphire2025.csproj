@@ -25,6 +25,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Sapphire2025Models\Sapphire2025Models.csproj" />
+    <ProjectReference Include="..\Sapphire25\TimeNet2026\TimeNet2026.csproj" />
+    <ProjectReference Include="..\Sapphire25\TimeNetComponents\TimeNetComponents.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -56,7 +58,13 @@
     <Content Update="wwwroot\img\grExcel.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Update="wwwroot\img\SplitFlap.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Update="wwwroot\img\TimeNet.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="wwwroot\img\UsersAdmin.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Update="wwwroot\img\ut81.png">

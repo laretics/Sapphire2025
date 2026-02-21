@@ -70,17 +70,17 @@ else
 				<CascadingValue Value="Users">
 					<CascadingValue Value="Status">
 						<div class="row align-items-start" style="height: 50vh; width: 100%">
-							<div class="col-5 pe-2" style="overflow: auto; max-height: 50vh;">
+							<div class="col-5 pe-2" style="overflow: visible;">
 								<Sapphire2025.Layout.Aeneas.TrainFlowCTL OnStatusSelected="HandleStatusSelected"
 																		 OnOpenTrain="HandleOpenTrain"
 																		 width="100" height="50" />
 							</div>
-							<div class="col-7 ps-2" style="overflow: auto; max-height: 50vh;">
+							<div class="col-7 ps-2" style="overflow: auto; height: 48vh;">
 								<Sapphire2025.Layout.Aeneas.StatusTrainsTable Width="100" Height="50" />
 							</div>
 						</div>
 					</CascadingValue>
-					<div class="row align-items-start" style="height: 50vh;">
+					<div class="row align-items-start" style="overflow: auto; height: 48vh;">
 						<div class="col">
 							<Sapphire2025.Layout.Aeneas.AvailableTrainsTable Width="95" Height="50" />
 						</div>
@@ -175,45 +175,48 @@ else
 	/// </summary>
 	private async Task TrainCache()
 	{
-		IEnumerable<TrainModel> auxLista = await mvarInternalStorage.GetTrainList();
+		mcolTrains = await mvarAeneasClient.trainsList();
+
+
+		//IEnumerable<TrainModel> auxLista = await mvarInternalStorage.GetTrainList();
 		Users = await mvarAuthClient.cachedUserList();
-		if(auxLista.Count()<1)
-		{
-			//Tenemos la lista vacía. La sesión no tiene la información.
-			//Lo primero que hacemos es cargar lista de trenes y usuarios
-			//después lo almacenamos en la caché.
-			auxLista = await mvarAeneasClient.trainsList();
-			await mvarInternalStorage.SetTrainList(mcolTrains);			
-		}
+		// if(auxLista.Count()<1)
+		// {
+		// 	//Tenemos la lista vacía. La sesión no tiene la información.
+		// 	//Lo primero que hacemos es cargar lista de trenes y usuarios
+		// 	//después lo almacenamos en la caché.
+		// 	auxLista = await mvarAeneasClient.trainsList();
+		// 	await mvarInternalStorage.SetTrainList(mcolTrains);			
+		// }
 
-		//Ahora se supone que tenemos ya la lista cargada.
-		DateTime ultimaFecha = auxLista.Max(xx => xx.lastUpdateTime);
-		//Cargamos ahora los datos más recientes.
-		IEnumerable<StatusChangeModel> actualizaciones = await mvarAeneasClient.recentChangeList(ultimaFecha);
-		if (actualizaciones.Count() > 0)
-		{
-			bool nuevoUsuario = false; //Flag para detectar usuarios que no estaban en el diccionario
-			foreach (StatusChangeModel nuevoCambio in actualizaciones)
-			{
-				TrainModel? auxTrain = auxLista.FirstOrDefault(xx => xx.id == nuevoCambio.trainId);
-				System.Diagnostics.Debug.Assert(null != auxTrain, "El tren no existe en la lista de trenes");
-				auxTrain.lastUpdateTime = nuevoCambio.timeStamp;
-				auxTrain.lastStatus = nuevoCambio.status;
-				auxTrain.lastUserInfo = nuevoCambio.userId;				
-				if (Guid.Empty != nuevoCambio.userId && null != Users && !(Users.ContainsKey(nuevoCambio.userId)))
-					nuevoUsuario = true; //Tengo al menos un usuario que no está en el diccionario
+		// //Ahora se supone que tenemos ya la lista cargada.
+		// DateTime ultimaFecha = auxLista.Max(xx => xx.lastUpdateTime);
+		// //Cargamos ahora los datos más recientes.
+		// IEnumerable<StatusChangeModel> actualizaciones = await mvarAeneasClient.recentChangeList(ultimaFecha);
+		// if (actualizaciones.Count() > 0)
+		// {
+		// 	bool nuevoUsuario = false; //Flag para detectar usuarios que no estaban en el diccionario
+		// 	foreach (StatusChangeModel nuevoCambio in actualizaciones)
+		// 	{
+		// 		TrainModel? auxTrain = auxLista.FirstOrDefault(xx => xx.id == nuevoCambio.trainId);
+		// 		System.Diagnostics.Debug.Assert(null != auxTrain, "El tren no existe en la lista de trenes");
+		// 		auxTrain.lastUpdateTime = nuevoCambio.timeStamp;
+		// 		auxTrain.lastStatus = nuevoCambio.status;
+		// 		auxTrain.lastUserInfo = nuevoCambio.userId;				
+		// 		if (Guid.Empty != nuevoCambio.userId && null != Users && !(Users.ContainsKey(nuevoCambio.userId)))
+		// 			nuevoUsuario = true; //Tengo al menos un usuario que no está en el diccionario
 
-			}
-			//Cargamos la última anotación que tenga cada tren
-			// foreach (TrainModel auxTrain in auxLista)
-			// {
-			// 	List<NoteModel> notas = await mvarAeneasClient.retrieveNotes(auxTrain.id, "", 1);
-			// 	auxTrain.lastNote = notas.FirstOrDefault()?.Text ?? string.Empty;
-			// }
-			//Guardaré la nueva lista en la caché.
-			await mvarInternalStorage.SetTrainList(auxLista);
-		}
-		mcolTrains = auxLista;		
+		// 	}
+		// 	//Cargamos la última anotación que tenga cada tren
+		// 	// foreach (TrainModel auxTrain in auxLista)
+		// 	// {
+		// 	// 	List<NoteModel> notas = await mvarAeneasClient.retrieveNotes(auxTrain.id, "", 1);
+		// 	// 	auxTrain.lastNote = notas.FirstOrDefault()?.Text ?? string.Empty;
+		// 	// }
+		// 	//Guardaré la nueva lista en la caché.
+		// 	await mvarInternalStorage.SetTrainList(auxLista);
+		// }
+		// mcolTrains = auxLista;		
 	}
 
 }
