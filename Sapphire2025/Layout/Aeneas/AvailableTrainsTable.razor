@@ -67,26 +67,33 @@
 }
 
 @code {
+	[Parameter]
+	public bool Filtered { get; set; } = true;
 
 	protected override void OnParametersSet()
 	{
 		base.OnParametersSet();
-		mcolTrains.Clear();
-		if (null != Trains)
+		if (Filtered)
 		{
-			foreach (TrainModel auxTren in Trains)
+			mcolTrains.Clear();
+			if (null != Trains)
 			{
-				if (
-					auxTren.lastStatus.Equals(Sapphire2025Models.Common.TrainStatus.DepotRequested) ||
-					auxTren.lastStatus.Equals(Sapphire2025Models.Common.TrainStatus.Available) ||
-					auxTren.lastStatus.Equals(Sapphire2025Models.Common.TrainStatus.RequestToDiagnose) ||
-					auxTren.lastStatus.Equals(Sapphire2025Models.Common.TrainStatus.RequestToRepair))
+				foreach (TrainModel auxTren in Trains)
 				{
-					mcolTrains.Add(auxTren);
+					if (
+						auxTren.lastStatus.Equals(Sapphire2025Models.Common.TrainStatus.DepotRequested) ||
+						auxTren.lastStatus.Equals(Sapphire2025Models.Common.TrainStatus.Available) ||
+						auxTren.lastStatus.Equals(Sapphire2025Models.Common.TrainStatus.RequestToDiagnose) ||
+						auxTren.lastStatus.Equals(Sapphire2025Models.Common.TrainStatus.RequestToRepair))
+					{
+						mcolTrains.Add(auxTren);
+					}
 				}
+				sortFields(1);
 			}
-			sortFields(1);
 		}
+		else
+			mcolTrains = Trains.ToList();
 	}
 
 }

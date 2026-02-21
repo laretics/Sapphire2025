@@ -1,0 +1,86 @@
+﻿@page "/admin/managetimenet"
+@using TimeNetComponents.TreeView
+@using Microsoft.AspNetCore.Components.Forms
+
+<h3 class="mb-4">Time Net 2026</h3>
+<TabControl>
+    <TabPage Text="Calendario">
+        <!-- Aquí puedes añadir calendario o resumen -->
+    </TabPage>
+    <TabPage Text="Planes">
+        <!-- Aquí puedes añadir planes o tablas -->
+    </TabPage>
+    <TabPage Text="Topología">
+        <TreeView>
+            <!-- Aquí puedes mostrar la topología -->
+        </TreeView>
+    </TabPage>
+    <TabPage Text="Upload">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <strong>Subir y editar archivo XML</strong>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <InputFile OnChange="HandleFileSelected" accept=".xml" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Contenido XML</label>
+                    <div id="my-editor-id" class="monaco-editor-container my-editor-class">
+                        <StandaloneCodeEditor Id="my-code-editor"
+                                              ConstructionOptions="EditorConstructionOptions"
+                                              Style="height:100%;width:100%;" />
+                    </div>
+                </div>
+                <button class="btn btn-success" @onclick="UploadXml" disabled="@string.IsNullOrWhiteSpace(xmlContent)">
+                    <i class="bi bi-cloud-upload"></i> Guardar en base de datos
+                </button>
+                @if (uploadResult != null)
+                {
+                    <div class="alert alert-info mt-3">@uploadResult</div>
+                }
+            </div>
+        </div>
+    </TabPage>
+</TabControl>
+
+@code {
+    private string? xmlContent;
+    private string? uploadResult;
+    private StandaloneCodeEditor? monacoEditor;
+    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = "javascript",
+            Value = "function xyz() {\n" +
+                    "   console.log(\"Hello world!\");\n" +
+                    "}"
+        };
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            using var stream = file.OpenReadStream();
+            using var reader = new StreamReader(stream);
+            xmlContent = await reader.ReadToEndAsync();
+            // No necesitas llamar a SetValue, el editor se actualiza solo por el binding
+        }
+    }
+
+    private void HandleEditorChanged(string value)
+    {
+        xmlContent = value;
+    }
+
+    private async Task UploadXml()
+    {
+        // Aquí va la lógica para guardar el XML en la base de datos
+        uploadResult = "Archivo XML guardado correctamente.";
+        await Task.Delay(500); // Simula operación
+    }
+}

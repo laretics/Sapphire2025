@@ -1,4 +1,5 @@
-﻿@page "/trainQuery"
+﻿@page "/trainQueryprintview"
+@layout EmptyLayout
 @using Sapphire2025.Layout.Aeneas
 @using Sapphire2025Models
 @inject AeneasClient mvarAeneasClient
@@ -6,59 +7,25 @@
 @inject IntStorageService mvarInternalStorage
 
 <PageTitle>Material Móvil</PageTitle>
+<div class="print-area">
+	<div class="print-title d-flex align-items-center" style="gap: 1.0rem; max-width: 100%; flex-wrap: nowrap;">
+		<div class="print-logo" style="margin-bottom:0; flex: 0 0 auto;">
+			<img src="img/sfmImg.png" alt="Logotipo SFM" style="max-width: 90px; height: auto;" />
+		</div>
+		<h2 class="mb-0 flex-grow-1" style="font-size: 1.3em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+			Material Móvil - @mvarCurrentDate.ToString("dd/MM/yyyy")
+		</h2>
+		<h1 class="mb-0 flex-grow-1" style="font-size: 2.0em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+			@GetDiaSemana(mvarCurrentDate)
+		</h1>
+	</div>
+
+
+</div>
 
 <div class="container-fluid py-4">
     <div class="card shadow mb-4">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">Material móvil</h4>
-            <button class="btn btn-outline-light" @onclick="PrintPage">
-                <i class="bi bi-printer"></i> Imprimir
-            </button>
-        </div>
         <div class="card-body">
-            <!-- Filtros de búsqueda -->
-            <form class="row g-3 mb-4" @onsubmit="OnSearch">
-                <div class="col-md-2">
-                    <label class="form-label">Número</label>
-                    <input class="form-control" @bind="filterTrainName" placeholder="Nombre o parte..." />
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Estado</label>
-                    <select class="form-select" @bind="filterStatus">
-                        <option value="">Todos</option>
-                        @foreach (var status in Enum.GetValues<Common.TrainStatus>())
-                        {
-                            <option value="@status">@Common.TrainStatusToString(status)</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Lugar</label>
-                    <select class="form-select" @bind="filterStationName">
-                        <option value="">Todos</option>
-                        @foreach (var station in mcolPlatforms.Select(p => p.StationName).Distinct())
-                        {
-                            <option value="@station">@station</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Usuario</label>
-                    <select class="form-select" @bind="filterUserId">
-                        <option value="">Todos</option>
-                        @foreach (var user in Users)
-                        {
-                            <option value="@user.Key">@user.Value.Name</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Buscar
-                    </button>
-                </div>
-            </form>
-
             <!-- Resultados -->
             @if (loading)
             {
@@ -72,7 +39,7 @@
                 <CascadingValue Value="Users">
                     <CascadingValue Value="Trains">
                         <CascadingValue Value="mcolPlatforms">
-                            <AvailableTrainsTable Width="80" Height="100" Filtered = "false">
+                            <AvailableTrainsTable Width="80" Height="100" Filtered="false">
                             </AvailableTrainsTable>
                         </CascadingValue>
                     </CascadingValue>
@@ -89,6 +56,8 @@
 </div>
 
 @code {
+    private DateTime mvarCurrentDate { get; set; }
+    private Dictionary<Guid, UserModelBase>? Users = new();
     private string? filterTrainName;
     private Common.TrainStatus? filterStatus;
     private Guid? filterUserId;
@@ -97,7 +66,7 @@
 
     private IEnumerable<TrainModel> AllTrains = new List<TrainModel>();
     private IEnumerable<TrainModel> Trains = new List<TrainModel>();
-    private Dictionary<Guid, UserModelBase>? Users = new();
+    
     private Sapphire2025Models.Aeneas.PlatformModel[] mcolPlatforms { get; set; } = new PlatformModel[0];
 
     protected override async Task OnInitializedAsync()
@@ -143,9 +112,9 @@
     {
         if (Users.TryGetValue(userId, out var user))
         {
-            if(null!=user.Name)
+            if (null != user.Name)
                 return user.Name;
-        }        
+        }
         return "-";
     }
 
@@ -155,9 +124,19 @@
         return train.lastStatus.ToString();
     }
 
-    private void PrintPage()
+    private static string GetDiaSemana(DateTime fecha)
     {
-        JS.InvokeVoidAsync("window.print");
+        return fecha.DayOfWeek switch
+        {
+            DayOfWeek.Monday => "LUNES",
+            DayOfWeek.Tuesday => "MARTES",
+            DayOfWeek.Wednesday => "MIÉRCOLES",
+            DayOfWeek.Thursday => "JUEVES",
+            DayOfWeek.Friday => "VIERNES",
+            DayOfWeek.Saturday => "SÁBADO",
+            DayOfWeek.Sunday => "DOMINGO",
+            _ => ""
+        };
     }
 
     [Inject]
