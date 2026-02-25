@@ -1,8 +1,16 @@
 ﻿@page "/admin/managetimenet"
 @using TimeNetComponents.TreeView
 @using Microsoft.AspNetCore.Components.Forms
+@inject IJSRuntime mvarJS
 
 <h3 class="mb-4">Time Net 2026</h3>
+<style>
+    #xml-editor {
+        height: 55VH !important;
+        min-height: 55VH !important;
+        width: 100% !important;
+    }
+</style>
 <TabControl>
     <TabPage Text="Calendario">
         <!-- Aquí puedes añadir calendario o resumen -->
@@ -21,18 +29,20 @@
                 <strong>Subir y editar archivo XML</strong>
             </div>
             <div class="card-body">
-                <div class="mb-3">
-                    <InputFile OnChange="HandleFileSelected" accept=".xml" />
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Contenido XML</label>
-                    <div id="my-editor-id" class="monaco-editor-container my-editor-class">
-                        <StandaloneCodeEditor Id="my-code-editor"
-                                              ConstructionOptions="EditorConstructionOptions"
-                                              Style="height:100%;width:100%;" />
+                <InputFile OnChange="HandleFileSelected" accept=".xml" />
+                <div class="btn-toolbar mb-3" role="toolbar">
+                    <div class="btn-group me-2" role="group">                        
+                        <button class="btn btn-outline-primary" @onclick="SaveXmlToLocal" title="Guardar archivo XML en el equipo">
+                            <i class="bi bi-download"></i> Guardar local
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="ClearEditor" title="Vaciar el editor">
+                            <i class="bi bi-trash"></i> Vaciar editor
+                        </button>
                     </div>
                 </div>
-                <button class="btn btn-success" @onclick="UploadXml" disabled="@string.IsNullOrWhiteSpace(xmlContent)">
+                <StandaloneCodeEditor Id="xml-editor" ConstructionOptions="EditorConstructionOptions" />
+
+                <button class="btn btn-success mt-3" @onclick="UploadXml" disabled="@string.IsNullOrWhiteSpace(xmlContent)">
                     <i class="bi bi-cloud-upload"></i> Guardar en base de datos
                 </button>
                 @if (uploadResult != null)
@@ -43,20 +53,34 @@
         </div>
     </TabPage>
 </TabControl>
+<script>
+    window.downloadXmlFilePrompt = function (content, defaultName) {
+        var filename = prompt("Nombre del archivo:", defaultName || "archivo.xml");
+        if (!filename) return;
+        const blob = new Blob([content], { type: "text/xml" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    }
+</script>
 
 @code {
     private string? xmlContent;
     private string? uploadResult;
-    private StandaloneCodeEditor? monacoEditor;
+    private StandaloneCodeEditor? mvarEditor;
     private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
     {
+        mvarEditor = editor;
         return new StandaloneEditorConstructionOptions
         {
             AutomaticLayout = true,
-            Language = "javascript",
-            Value = "function xyz() {\n" +
-                    "   console.log(\"Hello world!\");\n" +
-                    "}"
+            Language = "xml",
+            Value = xmlContent ?? "",
+            Theme="vs-dark"
         };
     }
 
@@ -68,13 +92,27 @@
             using var stream = file.OpenReadStream();
             using var reader = new StreamReader(stream);
             xmlContent = await reader.ReadToEndAsync();
-            // No necesitas llamar a SetValue, el editor se actualiza solo por el binding
+            if (null != mvarEditor)
+                await mvarEditor.SetValue(xmlContent);
         }
     }
 
     private void HandleEditorChanged(string value)
     {
         xmlContent = value;
+    }
+
+    private async Task SaveXmlToLocal()
+    {
+        if (!string.IsNullOrWhiteSpace(xmlContent))
+            await mvarJS.InvokeVoidAsync("downloadXmlFilePrompt", xmlContent, "archivo.xml");
+    }
+
+    private async Task ClearEditor()
+    {
+        xmlContent = string.Empty;
+        if (mvarEditor != null)
+            await mvarEditor.SetValue("");
     }
 
     private async Task UploadXml()
