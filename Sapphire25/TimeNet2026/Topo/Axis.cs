@@ -13,21 +13,19 @@ using static System.Collections.Specialized.BitVector32;
 
 namespace TimeNet2026.Topo
 {
-	public class Axis : Lineal, Entity
+	public class Axis : BasicAxis,Entity
 	{
 		internal const double BOUNDS_PERCENTAGE = 0.05;
 		internal GeoLocation[] mvarBounds = new GeoLocation[2];
 		//Utilizo el rectángulo para detectar rápidamente si un punto dado puede pertenecer a un eje.
-		string Entity.name { get => mvarName; set => mvarName = value; }
 		public string name { get => mvarName; set => mvarName = value; }
 		public string comment { get => mvarComment; set => mvarComment = value; }
-		string Entity.comment { get => mvarComment; set => mvarComment = value; }
-		String[] Entity.color { get => mvarColor; set => mvarColor = value; }
+		
+		
 		public string id { get; set; }
-		protected string mvarName { get; set; }
-		protected string mvarComment { get; set; }
+
 		internal int searchStep { get; set; } //Valor de salto para la caché de búsqueda de puntos en el eje.
-		internal string[] mvarColor { get; set; }
+		
 		internal List<RefPunctual> mcolPoints; //Polilínea
 		internal List<Station> mcolStations; // Estaciones en el eje
 		internal List<SpeedLimit> mcolSpeedLimits; //Limitaciones de velocidad que afectan a este eje.
