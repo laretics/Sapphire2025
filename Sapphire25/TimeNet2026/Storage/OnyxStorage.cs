@@ -95,19 +95,6 @@ namespace TimeNet2026.Storage
 			}
 		}
 
-		internal async Task deserializeRauta(XNode root, ITimeNetContextStorage context)
-		{
-			//Lo primero que tenemos que hacer es buscar el TopoStorage compatible
-			//await Init();
-			Guid auxId = Rauta.TopoStorageId(root);
-			if(Guid.Empty!=auxId && mcolTopoStorages.ContainsKey(auxId))
-			{
-				TopoStorage auxTopoStorage = mcolTopoStorages[auxId];
-				Rauta auxRauta = new Rauta(root, auxTopoStorage);
-				if( auxTopoStorage.InstallRauta(auxRauta))
-					await SerializeRautatie(auxTopoStorage,context);
-            }                            
-		}
 		#region Header
 		internal void SerializeHeader(Header rhs, ITimeNetContextStorage context)
 		{

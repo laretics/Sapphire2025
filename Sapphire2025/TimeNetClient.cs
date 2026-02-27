@@ -1,12 +1,18 @@
 ﻿using Sapphire2025.Storage;
 using Sapphire2025Models.ScriptCompiling;
 using System.Net.Http.Json;
+using TimeNet2026.Storage;
 
 namespace Sapphire2025
 {
 	public class TimeNetClient:HttpClientBase
 	{
-		public TimeNetClient(HttpClient http, IntStorageService intStorage) : base(http, intStorage, "shappiretimenet") { }
+		//Almacén local TimeNet para poder "jugar" con la estructura en modo local sin sobrecargar las comunicaciones.
+		public OnyxStorage LocalStorage { get; set; }
+		public TimeNetClient(HttpClient http, IntStorageService intStorage) : base(http, intStorage, "shappiretimenet") 
+		{
+			LocalStorage = new OnyxStorage();
+		}
 		public async Task<XMLCompileResult?> UploadXML(Stream xmlSourceCode, string fileName)
 		{
 			using MultipartFormDataContent contenido = new MultipartFormDataContent();
@@ -19,5 +25,15 @@ namespace Sapphire2025
 
 			return null; //En caso de error de comunicaciones
 		}
+		/// <summary>
+		/// Carga en la base de datos local (LocalStorage) la topología y los rautas.
+		/// </summary>
+		public async Task DownloadMemory(Guid TopoStorageId)
+		{
+
+		}
+
+
+
 	}
 }
