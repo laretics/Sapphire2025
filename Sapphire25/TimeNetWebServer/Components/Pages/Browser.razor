@@ -3,10 +3,12 @@
 @using TimeNet2026.Storage
 @using TimeNet2026.Production
 @using TimeNet2026.Timed
+@using TimeNet2026Data
 @using TimeNetComponents.TreeView
 @using TimeNetComponents.Controls.TimeNetControl
 @inject OnyxStorage mvarStorage
 @inject IJSRuntime JS
+@inject TimeNetContext context
 @implements IAsyncDisposable
 
 <div class="container-fluid p-0 h-100">
@@ -97,7 +99,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await mvarStorage.Init();
+        await mvarStorage.DeserializeMemory(context);
         entornoTN = new TimeNetEnvironment(mvarStorage);
         entornoArbol = new TreeViewEnvironment(entornoTN);
         controlStyle.CurrentTime = showCurrentTime;

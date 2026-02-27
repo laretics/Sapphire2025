@@ -3,8 +3,10 @@
 @using TimeNet2026.Topo
 @using TimeNet2026.Storage
 @using TimeNet2026.Production
+@using TimeNet2026Data
 @using TimeNetComponents.Controls.TimeNetControl
 @inject OnyxStorage mvarStorage
+@inject TimeNetContext context
 
 @rendermode InteractiveServer
 @if(null==mvarEnvironment)
@@ -45,10 +47,9 @@ else
     private TimeNetSelection mvarSelection{ get; set; } = new TimeNetSelection();
     private void auxStateChanged() { StateHasChanged(); }
 
-
     protected async override Task OnInitializedAsync()
     {
-        await mvarStorage.Init();
+        await mvarStorage.DeserializeMemory(context);
         mvarEnvironment = new TimeNetControlEnvironment(1400,700);
 
         TimeNetEnvironment enviro = new TimeNetEnvironment(mvarStorage, TopoStorageId, AsimilationId, RautatieId, PlanId);

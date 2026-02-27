@@ -10,28 +10,20 @@ namespace TimeNet2026.Storage
 {
 	public class OnyxStorage
 	{
-		private DBSerializer mvarSerializer;
+		//private DBSerializer mvarSerializer;
 
 		private Dictionary<Guid,TopoStorage> mcolTopoStorages;
-		private Dictionary<int, TopoStorage> mcolCacheTopoStorages = new Dictionary<int, TopoStorage>(); //Caché con los TopoStorages cargados
+		//private Dictionary<int, TopoStorage> mcolCacheTopoStorages = new Dictionary<int, TopoStorage>(); //Caché con los TopoStorages cargados
 
-		public OnyxStorage(ITimeNetContextStorage context)
+		public OnyxStorage()
 		{
 			mcolTopoStorages = new Dictionary<Guid, TopoStorage>();
-			mvarSerializer = new DBSerializer(context);
 			//mvarStorage.Database.EnsureCreated(); //Se asegura de que existe la base de datos.
 		}
-		public async Task EmptyDatabase() {await mvarSerializer.ClearDatabase();}
-		public async Task Init()
+		public async Task EmptyDatabase(ITimeNetContextStorage context) 
 		{
-			//Primero sacamos los topos
-			mcolTopoStorages = await DeserializeTopoStorages();
-			//Luego cargamos los rautas.
-			foreach(TopoStorage auxTopo in mcolTopoStorages.Values)
-			{
-                Dictionary<Guid,Rauta> rautatie = await DeserializeRautatie(auxTopo);
-				auxTopo.mcolRauta = rautatie;
-            }                
+			DBSerializer auxSerializer = new DBSerializer(context);
+			await auxSerializer.ClearDatabase();
 		}
 	
 		public Dictionary<Guid,TopoStorage> Storages { get => mcolTopoStorages; }
@@ -40,31 +32,70 @@ namespace TimeNet2026.Storage
 		/// Carga el nodo que viene y deserializa automáticamente lo que contenga.
 		/// </summary>
 		/// <param name="root"></param>
-		public async Task deserializeXML(XNode root)
+		public bool ImportFromXML(XNode root)
 		{
 			if(root is XElement element)
 			{
 				switch (element.Name.LocalName)
 				{
 					case "layout":
-						await deserializeTopo(root);
-						break;
+						return ImportTopoFromXML(root);
 					case "rautatie":
-						await deserializeRauta(root);
-						break;
-					default:
-						break;
-				}
+						return ImportRautaFromXML(root);
+				}				
+			}
+			return false;
+		}
+		internal bool ImportTopoFromXML(XNode root)
+		{
+			TopoStorage nuevo = new TopoStorage(root);
+			if(Guid.Empty!=nuevo.Header.Id)
+			{
+				if(mcolTopoStorages.ContainsKey(nuevo.Header.Id))
+					mcolTopoStorages[nuevo.Header.Id]= nuevo;
+				else
+					mcolTopoStorages.Add(nuevo.Header.Id, nuevo);
+
+				return true;
+			}
+			return false;
+		}
+		internal bool ImportRautaFromXML(XNode root)
+		{
+			Guid auxId = Rauta.TopoStorageId(root);
+			if(Guid.Empty!=auxId && mcolTopoStorages.ContainsKey(auxId))
+			{
+				TopoStorage auxTopoStorage = mcolTopoStorages[auxId];
+				Rauta auxRauta = new Rauta(root, auxTopoStorage);
+				return auxTopoStorage.InstallRauta(auxRauta);
+			}
+			return false;
+		}
+		/// <summary>
+		/// Almacena el contenido de la estructura en la base de datos.
+		/// </summary>
+		/// <param name="context"></param>
+		public async Task SerializeMemory(ITimeNetContextStorage context)
+		{
+			foreach (TopoStorage storage in mcolTopoStorages.Values)
+				await SerializeTopoStorage(storage, context);
+		}
+		/// <summary>
+		/// Carga toda la estructura TimeNet desde la base de datos.
+		/// </summary>
+		/// <param name="context"></param>
+		public async Task DeserializeMemory(ITimeNetContextStorage context)
+		{
+			mcolTopoStorages = await DeserializeTopoStorages(context);
+			foreach(TopoStorage auxTopo in mcolTopoStorages.Values)
+			{
+				IEnumerable<Rauta> rautatie = await DeserializeRautatie(auxTopo, context);
+				foreach (Rauta ra in rautatie)
+					auxTopo.InstallRauta(ra);
 			}
 		}
 
-		internal async Task deserializeTopo(XNode root)
-		{
-			//Root es el nodo "layout"
-			TopoStorage nuevo = new TopoStorage(root);
-			await SerializeTopoStorage(nuevo);
-		}
-		internal async Task deserializeRauta(XNode root)
+		internal async Task deserializeRauta(XNode root, ITimeNetContextStorage context)
 		{
 			//Lo primero que tenemos que hacer es buscar el TopoStorage compatible
 			//await Init();
@@ -73,15 +104,14 @@ namespace TimeNet2026.Storage
 			{
 				TopoStorage auxTopoStorage = mcolTopoStorages[auxId];
 				Rauta auxRauta = new Rauta(root, auxTopoStorage);
-				auxTopoStorage.mcolRauta.Add(auxRauta.Header.Id, auxRauta);
-				await SerializeRautatie(auxTopoStorage);
+				if( auxTopoStorage.InstallRauta(auxRauta))
+					await SerializeRautatie(auxTopoStorage,context);
             }                            
 		}
-
 		#region Header
-		internal void SerializeHeader(Header rhs)
+		internal void SerializeHeader(Header rhs, ITimeNetContextStorage context)
 		{
-			RemoveHeader(rhs.Id); //Elimino cualquier etiqueta anterior.
+			RemoveHeader(rhs.Id,context); //Elimino cualquier etiqueta anterior.
 			DBHeader auxHeader = new DBHeader();
 			auxHeader.Id = rhs.Id;
 			auxHeader.Name = rhs.Name;
@@ -92,12 +122,18 @@ namespace TimeNet2026.Storage
 			auxHeader.LastDate = rhs.LastDate;
 			auxHeader.Version = rhs.Version;
 			auxHeader.Bitmap = rhs.Bitmap;
-			mvarSerializer.Add(auxHeader);			
+			DBSerializer auxSerializer = new DBSerializer(context);
+			auxSerializer.Add(auxHeader);			
 		}
-		internal void RemoveHeader(Guid id) {mvarSerializer.RemoveHeader(id);}
-		internal async Task<Header?> DeserializeHeader(Guid id)
+		internal void RemoveHeader(Guid id, ITimeNetContextStorage context) 
 		{
-			DBHeader? xx = await mvarSerializer.GetHeader(id);
+			DBSerializer auxSerializer = new DBSerializer(context);
+			auxSerializer.RemoveHeader(id);
+		}
+		internal async Task<Header?> DeserializeHeader(Guid id, ITimeNetContextStorage context)
+		{
+			DBSerializer auxSerializer = new DBSerializer(context);
+			DBHeader? xx = await auxSerializer.GetHeader(id);
 			if (null != xx)
 			{
 				Header salida = new Header();
@@ -117,25 +153,30 @@ namespace TimeNet2026.Storage
 		#endregion Header
 
 		#region Rautatie
-		internal async Task RemoveRautatie(int topoStorageId){await mvarSerializer.RemoveRauta(topoStorageId);}		
-		internal async Task SerializeRautatie(TopoStorage topoStorage)
+		internal async Task RemoveRautatie(int topoStorageId, ITimeNetContextStorage context)
+		{
+			DBSerializer auxSerializer = new DBSerializer(context);
+			await auxSerializer.RemoveRauta(topoStorageId);
+		}		
+		internal async Task SerializeRautatie(TopoStorage topoStorage, ITimeNetContextStorage context)
 		{
 			//Elimino rautatie existentes:
-			foreach (Rauta auxRauta in topoStorage.mcolRauta.Values)
-				await mvarSerializer.RemoveRauta(auxRauta.Header.Id);
+			DBSerializer auxSerializer = new DBSerializer(context);
+			foreach (Rauta auxRauta in topoStorage.Rautatie)
+				await auxSerializer.RemoveRauta(auxRauta.Header.Id);
 
 			//Antes de empezar tengo que obtener el registro del TopoStorage en la base de datos.
-			DBTopoStorage? auxDBTopoStorage = await mvarSerializer.GetTopoStorage(topoStorage.Header.Id);
+			DBTopoStorage? auxDBTopoStorage = await auxSerializer.GetTopoStorage(topoStorage.Header.Id);
 			if (null != auxDBTopoStorage)
 			{
-				foreach (Rauta auxRauta in topoStorage.mcolRauta.Values)
+				foreach (Rauta auxRauta in topoStorage.Rautatie)
 				{
 					DBRauta nuevoRauta = new DBRauta();
 					nuevoRauta.HeaderId = auxRauta.Header.Id;
 					nuevoRauta.TopoStorageId = auxDBTopoStorage.Id;
-					mvarSerializer.Add(nuevoRauta);
-					SerializeHeader(auxRauta.Header);
-					await mvarSerializer.SaveChangesAsync();
+					auxSerializer.Add(nuevoRauta);
+					SerializeHeader(auxRauta.Header, context);
+					await auxSerializer.SaveChangesAsync();
 					foreach (Plan auxPlan in auxRauta.Plans.Values)
 					{
 						DBPlan nuevoPlan = new DBPlan();
@@ -145,8 +186,8 @@ namespace TimeNet2026.Storage
 						nuevoPlan.Comment = auxPlan.mvarComment;
 						nuevoPlan.Color0 = auxPlan.mvarColor[0] ?? "black";
 						nuevoPlan.Color1 = auxPlan.mvarColor[1] ?? "white";
-						mvarSerializer.Add(nuevoPlan);
-						await mvarSerializer.SaveChangesAsync();
+						auxSerializer.Add(nuevoPlan);
+						await auxSerializer.SaveChangesAsync();
 						foreach (CirculationBlock auxBlock in auxPlan.CirculationBlocks)
 						{
 							if (null != auxBlock.asimilation)
@@ -156,8 +197,8 @@ namespace TimeNet2026.Storage
 								nuevoBlock.AsimilationId = auxBlock.asimilation.id;
 								nuevoBlock.WeekdayMask = auxBlock.weekdayMask;
 								nuevoBlock.Pattern = auxBlock.pattern;
-								mvarSerializer.Add(nuevoBlock);
-								await mvarSerializer.SaveChangesAsync();
+								auxSerializer.Add(nuevoBlock);
+								await auxSerializer.SaveChangesAsync();
 								foreach (Circulation auxCircula in auxBlock.mcolCirculations)
 								{
 									DBCirculation nuevaCircula = new DBCirculation();
@@ -167,11 +208,11 @@ namespace TimeNet2026.Storage
 									nuevaCircula.Comment = auxCircula.comment;
 									nuevaCircula.Color0 = auxCircula.color[0] ?? "black";
 									nuevaCircula.Color1 = auxCircula.color[1] ?? "white";
-									mvarSerializer.Add(nuevaCircula);
+									auxSerializer.Add(nuevaCircula);
 								}
 							}
 						}
-						await mvarSerializer.SaveChangesAsync();
+						await auxSerializer.SaveChangesAsync();
 
 						foreach (Schedule auxSchedule in auxPlan.Schedules)
 						{
@@ -184,8 +225,8 @@ namespace TimeNet2026.Storage
 							nuevoSchedule.Color2 = auxSchedule.color[1] ?? "white";
 							nuevoSchedule.CoordinateX = auxSchedule.coordinates[0];
 							nuevoSchedule.CoordinateY = auxSchedule.coordinates[1];
-							mvarSerializer.Add(nuevoSchedule);
-							await mvarSerializer.SaveChangesAsync();
+							auxSerializer.Add(nuevoSchedule);
+							await auxSerializer.SaveChangesAsync();
 							foreach (ScheduleItem auxItem in auxSchedule.mcolItems)
 							{
 								DBScheduleUnit nuevoUnit = new DBScheduleUnit();
@@ -196,10 +237,10 @@ namespace TimeNet2026.Storage
 								if (null != auxItem.circulation) //Esto es un tren
 								{
 									//Tenemos que encontrar el registro correspondiente a esta circulación en la base de datos.
-									IEnumerable<DBCirculationBlock> listaCirculaciones = await mvarSerializer.GetCirculationBlocks(nuevoPlan.Id);
+									IEnumerable<DBCirculationBlock> listaCirculaciones = await auxSerializer.GetCirculationBlocks(nuevoPlan.Id);
 									foreach (DBCirculationBlock bloque in listaCirculaciones)
 									{
-										List<DBCirculation> auxCirculacionesEnBloque = await mvarSerializer.GetCirculations(bloque.Id);
+										List<DBCirculation> auxCirculacionesEnBloque = await auxSerializer.GetCirculations(bloque.Id);
 										foreach (DBCirculation circulacionEnBloque in auxCirculacionesEnBloque)
 										{
 											if (circulacionEnBloque.Name == auxItem.circulation.name)
@@ -215,30 +256,31 @@ namespace TimeNet2026.Storage
 								else //Esto es un turno de depósito
 									nuevoUnit.CirculationId = -1;
 
-								mvarSerializer.Add(nuevoUnit);
+								auxSerializer.Add(nuevoUnit);
 							}
-							await mvarSerializer.SaveChangesAsync();
+							await auxSerializer.SaveChangesAsync();
 						}
 					}
 				}
 			}
 		}
-		internal async Task<Dictionary<Guid, Rauta>> DeserializeRautatie(TopoStorage topoStorage)
+		internal async Task<IEnumerable<Rauta>> DeserializeRautatie(TopoStorage topoStorage, ITimeNetContextStorage context)
 		{
-			Dictionary<Guid, Rauta> salida = new Dictionary<Guid, Rauta>();
-			DBTopoStorage? auxTopo = await mvarSerializer.GetTopoStorage(topoStorage.Header.Id);
+			List<Rauta> salida = new List<Rauta>();
+			DBSerializer auxSerializer = new DBSerializer(context);
+			DBTopoStorage? auxTopo = await auxSerializer.GetTopoStorage(topoStorage.Header.Id);
 			if (null == auxTopo) return salida;
-			List<DBRauta> entrada = await mvarSerializer.GetRautatie(auxTopo.Id);
+			List<DBRauta> entrada = await auxSerializer.GetRautatie(auxTopo.Id);
 			foreach (DBRauta auxRauta in entrada)
 			{
-				Header? auxCabecera = await DeserializeHeader(auxRauta.HeaderId);
+				Header? auxCabecera = await DeserializeHeader(auxRauta.HeaderId,context);
 				if (null != auxCabecera)
 				{
 					Rauta nuevoRauta = new Rauta(topoStorage);
 					nuevoRauta.Header = auxCabecera;
 					nuevoRauta.mvarParent = topoStorage;
 					//Cargamos los planes del rauta
-					List<DBPlan> planes = await mvarSerializer.GetPlans(auxRauta.Id);
+					List<DBPlan> planes = await auxSerializer.GetPlans(auxRauta.Id);
 					foreach (DBPlan auxPlan in planes)
 					{
 						Plan nuevoPlan = new Plan(topoStorage);
@@ -249,7 +291,7 @@ namespace TimeNet2026.Storage
 						nuevoPlan.mvarColor[1] = auxPlan.Color1 ?? "white";
 						nuevoPlan.TopoId = topoStorage.Header.Id;
 						//Cargamos las circulaciones del plan.
-						List<DBCirculationBlock> blocks = await mvarSerializer.GetCirculationBlocks(auxPlan.Id);
+						List<DBCirculationBlock> blocks = await auxSerializer.GetCirculationBlocks(auxPlan.Id);
 							//mvarContext.CirculationBlocks.Where(x => x.PlanId == auxPlan.Id).ToListAsync();
 						foreach (DBCirculationBlock block in blocks)
 						{
@@ -260,7 +302,7 @@ namespace TimeNet2026.Storage
 								nuevoBlock.weekdayMask = block.WeekdayMask;
 								nuevoBlock.pattern = block.Pattern;
 								nuevoPlan.CirculationBlocks.Add(nuevoBlock);
-								List<DBCirculation> circulacionesEnBloque = await mvarSerializer.GetCirculations(block.Id);
+								List<DBCirculation> circulacionesEnBloque = await auxSerializer.GetCirculations(block.Id);
 								foreach (DBCirculation auxCirculation in circulacionesEnBloque)
 								{
 									Circulation nuevaCirculation = new Circulation(nuevoBlock);
@@ -274,7 +316,7 @@ namespace TimeNet2026.Storage
 							}
 						}
 
-						List<DBSchedule> schedules = await mvarSerializer.GetSchedules(auxPlan.Id);
+						List<DBSchedule> schedules = await auxSerializer.GetSchedules(auxPlan.Id);
 						foreach (DBSchedule schedule in schedules)
 						{
 							Schedule nuevoSchedule = new Schedule();
@@ -286,7 +328,7 @@ namespace TimeNet2026.Storage
 							nuevoSchedule.coordinates[0] = schedule.CoordinateX;
 							nuevoSchedule.coordinates[1] = schedule.CoordinateY;
 							//Cargamos las unidades del horario.
-							List<DBScheduleUnit> unidades = await mvarSerializer.GetScheduleUnits(schedule.Id);
+							List<DBScheduleUnit> unidades = await auxSerializer.GetScheduleUnits(schedule.Id);
 							foreach (DBScheduleUnit unidad in unidades)
 							{
 								if (unidad.CirculationId < 0) //Turno de depósito
@@ -297,7 +339,7 @@ namespace TimeNet2026.Storage
 								}
 								else //Tracción o acompañamiento
 								{
-									DBCirculation? auxCirculation = await mvarSerializer.GetCirculation(unidad.CirculationId);
+									DBCirculation? auxCirculation = await auxSerializer.GetCirculation(unidad.CirculationId);
 									//System.Diagnostics.Debug.Assert(null != auxCirculation);
 									if (null != auxCirculation)
 									{
@@ -315,7 +357,7 @@ namespace TimeNet2026.Storage
 						}
 						nuevoRauta.mcolPlans.Add(nuevoPlan.Id, nuevoPlan);
 					}
-					salida.Add(auxCabecera.Id, nuevoRauta);
+					salida.Add(nuevoRauta);
 				}
 			}
 			return salida;
@@ -323,32 +365,34 @@ namespace TimeNet2026.Storage
 		#endregion Rautatie
 
 		#region TopoStorage
-		internal async Task<Dictionary<Guid, TopoStorage>> DeserializeTopoStorages()
+		internal async Task<Dictionary<Guid, TopoStorage>> DeserializeTopoStorages(ITimeNetContextStorage context)
 		{
+			DBSerializer auxSerializer = new DBSerializer(context);
 			Dictionary<Guid, TopoStorage> salida = new Dictionary<Guid, TopoStorage>();
-			List<DBTopoStorage> entrada = await mvarSerializer.GetTopoStorages();
+			List<DBTopoStorage> entrada = await auxSerializer.GetTopoStorages();
 			foreach (DBTopoStorage auxEntrada in entrada)
 			{
-				TopoStorage? nuevo = await DeserializeTopoStorage(auxEntrada.HeaderId);
+				TopoStorage? nuevo = await DeserializeTopoStorage(auxEntrada.HeaderId,context);
 				if (null != nuevo)
 					salida.Add(auxEntrada.HeaderId, nuevo);
 			}
 			return salida;
 		}
-		internal async Task<TopoStorage?> DeserializeTopoStorage(Guid id)
+		internal async Task<TopoStorage?> DeserializeTopoStorage(Guid id, ITimeNetContextStorage context)
 		{
-			DBTopoStorage? auxTopoStorage = await mvarSerializer.GetTopoStorage(id);	
+			DBSerializer auxSerializer = new DBSerializer(context);
+			DBTopoStorage? auxTopoStorage = await auxSerializer.GetTopoStorage(id);	
 			if (null == auxTopoStorage) return null;
 			TopoStorage salida = new TopoStorage();
 			//Cargamos todos los elementos del TopoStorage afectado.
 			//Carga del Header.
-			Header? auxHeader = await DeserializeHeader(id);
+			Header? auxHeader = await DeserializeHeader(id,context);
 			if (null == auxHeader) return null;
 			salida.Header = auxHeader;
 			//Carga de los ejes.
 			Dictionary<int, Station> auxAllStationsCache = new Dictionary<int, Station>();
 			Dictionary<int, Axis> auxAllAxisCache = new Dictionary<int, Axis>();
-			IEnumerable<DBAxis> auxAxises = await mvarSerializer.GetAxises(auxTopoStorage.Id);
+			IEnumerable<DBAxis> auxAxises = await auxSerializer.GetAxises(auxTopoStorage.Id);
 			foreach (DBAxis auxAxis in auxAxises)
 			{
 				Axis nuevoAxis = new Axis();
@@ -359,7 +403,7 @@ namespace TimeNet2026.Storage
 				nuevoAxis.mvarColor[1] = auxAxis.Color1 ?? "white";
 				Dictionary<long, Station> auxCacheStations = new Dictionary<long, Station>();
 				//Estaciones del eje
-				IEnumerable<DBStation> auxStations = await mvarSerializer.GetStations(auxAxis.Id);
+				IEnumerable<DBStation> auxStations = await auxSerializer.GetStations(auxAxis.Id);
 				foreach (DBStation auxStation in auxStations)
 				{
 					Station nuevaStation = new Station
@@ -374,7 +418,7 @@ namespace TimeNet2026.Storage
 					auxAllStationsCache.Add(auxStation.Id, nuevaStation);
 				}
 				//Puntos singulares y estaciones del eje.
-				IEnumerable<DBRefPunctual> auxPunctuals = await mvarSerializer.GetRefPunctuals(auxAxis.Id);
+				IEnumerable<DBRefPunctual> auxPunctuals = await auxSerializer.GetRefPunctuals(auxAxis.Id);
 				foreach (DBRefPunctual auxPunctual in auxPunctuals)
 				{
 					if (auxCacheStations.ContainsKey(auxPunctual.Pk))
@@ -414,7 +458,7 @@ namespace TimeNet2026.Storage
 			}
 
 			//Carga de las asimilaciones
-			IEnumerable<DBAsimilation> auxAsimilations = await mvarSerializer.GetAsimilations(auxTopoStorage.Id);
+			IEnumerable<DBAsimilation> auxAsimilations = await auxSerializer.GetAsimilations(auxTopoStorage.Id);
 			foreach (DBAsimilation auxAsimilation in auxAsimilations)
 			{
 				if (auxAllStationsCache.ContainsKey(auxAsimilation.OriginStationId))
@@ -428,7 +472,7 @@ namespace TimeNet2026.Storage
 					nuevaAsimilation.mvarMaxSpeed = auxAsimilation.MaxSpeed;
 					nuevaAsimilation.origin = auxAllStationsCache[auxAsimilation.OriginStationId];
 					//Carga de los pasos de cada asimilación
-					IEnumerable<DBAsimilationStep> auxAsimilationSteps = await mvarSerializer.GetAsimilationSteps(auxAsimilation.Id);
+					IEnumerable<DBAsimilationStep> auxAsimilationSteps = await auxSerializer.GetAsimilationSteps(auxAsimilation.Id);
 					foreach (DBAsimilationStep auxAsimilationStep in auxAsimilationSteps)
 					{
 						if (auxAllStationsCache.ContainsKey(auxAsimilationStep.DestinationStationId) &&
@@ -449,16 +493,26 @@ namespace TimeNet2026.Storage
 			}
 			return salida;
 		}
-		internal async Task RemoveTopoStorage(Guid id){await mvarSerializer.RemoveTopoStorage(id);}
-
-		internal async Task SerializeTopoStorage(TopoStorage rhs)
+		internal async Task RemoveTopoStorage(Guid id, ITimeNetContextStorage context)
 		{
-			await RemoveTopoStorage(rhs.Header.Id);
+			DBSerializer auxSerializer = new DBSerializer(context);
+			await auxSerializer.RemoveTopoStorage(id);
+		}
+
+		/// <summary>
+		/// Almacena un TopoStorage completo en una base de datos.
+		/// </summary>
+		/// <param name="rhs">El TopoStorage que queremos guardar</param>
+		/// <param name="context">Entorno de serialización</param>
+		internal async Task SerializeTopoStorage(TopoStorage rhs, ITimeNetContextStorage context)
+		{
+			await RemoveTopoStorage(rhs.Header.Id,context);
 			DBTopoStorage nuevo = new DBTopoStorage();
-			SerializeHeader(rhs.Header);
+			SerializeHeader(rhs.Header,context);
 			nuevo.HeaderId = rhs.Header.Id;
-			mvarSerializer.Add(nuevo);
-			await mvarSerializer.SaveChangesAsync();
+			DBSerializer auxSerializer = new DBSerializer(context);
+			auxSerializer.Add(nuevo);
+			await auxSerializer.SaveChangesAsync();
 
 			Dictionary<Station, int> auxColStations = new Dictionary<Station, int>();
 			Dictionary<Axis, int> auxColAxis = new Dictionary<Axis, int>();
@@ -471,8 +525,8 @@ namespace TimeNet2026.Storage
 				nuevoEje.Comment = eje.comment;
 				nuevoEje.Color0 = eje.mvarColor[0];
 				nuevoEje.Color1 = eje.mvarColor[1];
-				mvarSerializer.Add(nuevoEje);
-				await mvarSerializer.SaveChangesAsync();
+				auxSerializer.Add(nuevoEje);
+				await auxSerializer.SaveChangesAsync();
 				auxColAxis.Add(eje, nuevoEje.Id);
 				//Estaciones
 				foreach (Station estacion in eje.Stations)
@@ -483,8 +537,8 @@ namespace TimeNet2026.Storage
 					nuevaEstacion.Pk = estacion.pk;
 					nuevaEstacion.Name = estacion.name;
 					nuevaEstacion.ShortName = estacion.shortName;
-					mvarSerializer.Add(nuevaEstacion);
-					await mvarSerializer.SaveChangesAsync();
+					auxSerializer.Add(nuevaEstacion);
+					await auxSerializer.SaveChangesAsync();
 					auxColStations.Add(estacion, nuevaEstacion.Id);
 				}
 				//Referencias puntuales
@@ -495,7 +549,7 @@ namespace TimeNet2026.Storage
 					nuevoPunto.Pk = punto.pk;
 					nuevoPunto.Latitude = punto.point.Latitude;
 					nuevoPunto.Longitude = punto.point.Longitude;
-					mvarSerializer.Add(nuevoPunto);
+					auxSerializer.Add(nuevoPunto);
 				}
 				#region todos
 				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
@@ -514,7 +568,7 @@ namespace TimeNet2026.Storage
 				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 				#endregion todos
-				await mvarSerializer.SaveChangesAsync();
+				await auxSerializer.SaveChangesAsync();
 			}
 			foreach (Asimilation asimilacion in rhs.ColAsimilations.Values)
 			{
@@ -528,8 +582,8 @@ namespace TimeNet2026.Storage
 				nuevaAsimilacion.MaxSpeed = asimilacion.maxSpeed;
 				System.Diagnostics.Debug.Assert(null != asimilacion.origin);
 				nuevaAsimilacion.OriginStationId = auxColStations[asimilacion.origin];
-				mvarSerializer.Add(nuevaAsimilacion);
-				await mvarSerializer.SaveChangesAsync();
+				auxSerializer.Add(nuevaAsimilacion);
+				await auxSerializer.SaveChangesAsync();
 				foreach (AsimilationStep paso in asimilacion.mcolSteps)
 				{
 					DBAsimilationStep nuevoPaso = new DBAsimilationStep();
@@ -538,9 +592,9 @@ namespace TimeNet2026.Storage
 					nuevoPaso.AxisId = auxColAxis[paso.destination.axis];
 					nuevoPaso.tripTime = paso.tripTime;
 					nuevoPaso.stopTime = paso.stopTime;
-					mvarSerializer.Add(nuevoPaso);
+					auxSerializer.Add(nuevoPaso);
 				}
-				await mvarSerializer.SaveChangesAsync();
+				await auxSerializer.SaveChangesAsync();
 			}
 		}
 		#endregion TopoStorage

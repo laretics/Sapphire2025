@@ -2,9 +2,11 @@
 @rendermode InteractiveServer
 @using TimeNet2026.Storage
 @using TimeNet2026.Production
+@using TimeNet2026Data
 @using TimeNetComponents.TreeView
 @inject IJSRuntime JS
 @inject OnyxStorage mvarStorage
+@inject TimeNetContext context
 
 @if(mvarBusy)
 {
@@ -64,14 +66,14 @@
     };
 </script>
 
-@code {    
+@code {
     private string? FileName;
     private InputFile? fileInput;
     private bool mvarBusy { get; set; } = false;
 
     protected override async Task OnInitializedAsync()
-    {        
-        await mvarStorage.Init();
+    {
+        await mvarStorage.DeserializeMemory(context);
     }
 
     private async Task TriggerFileInput()
@@ -89,7 +91,10 @@
         TimeNetWebServer.Classes.XMLImporter importador = new Classes.XMLImporter();
         XElement? elemento = await importador.ImportXML(file.OpenReadStream());
         if (null != elemento)
-            await mvarStorage.deserializeXML(elemento);
+        {
+            if (mvarStorage.ImportFromXML(elemento)) //Carga el elemento desde XML
+                await mvarStorage.SerializeMemory(context);
+        }       
         await Task.Yield(); //Para mostrar la pantalla de carga.
         mvarBusy = false;
         StateHasChanged();
@@ -101,7 +106,7 @@
         StateHasChanged();
         await Task.Yield(); //Para mostrar la pantalla de carga.
         // Lógica para eliminar datos del almacén
-        await mvarStorage.EmptyDatabase();
+        await mvarStorage.EmptyDatabase(context);
         FileName = null;
         mvarBusy = false;
         StateHasChanged();

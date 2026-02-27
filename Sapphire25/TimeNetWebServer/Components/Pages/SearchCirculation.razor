@@ -4,9 +4,11 @@
 @using TimeNet2026.Topo
 @using TimeNet2026.Storage
 @using TimeNet2026.Production
+@using TimeNet2026Data
 @using TimeNetComponents.TreeView
 @using TimeNetComponents.Controls.TimeNetControl
 @inject OnyxStorage mvarStorage
+@inject TimeNetContext context
 
 <div class="container-fluid vh-100 p-0 overflow-hidden">
     <div class="row g-0 h-100">
@@ -110,15 +112,15 @@
     [Parameter]
     public string? TopoStorageId { get; set; }
     private void auxStateChanged() { StateHasChanged(); }
-    private TimeNetEnvironment entornoTN;
-    private TreeViewEnvironment entornoArbol;
+    private TimeNetEnvironment? entornoTN;
+    private TreeViewEnvironment? entornoArbol;
 
     private TimeNetControlEnvironment? mvarEnvironment { get; set; }
     private TimeNetControlStyle mvarStyle { get; set; } = new TimeNetControlStyle();
     private TimeNetSelection mvarSelection { get; set; } = new TimeNetSelection();
     protected override async Task OnInitializedAsync()
     {
-        await mvarStorage.Init();
+        await mvarStorage.DeserializeMemory(context);
         entornoTN = new TimeNetEnvironment(mvarStorage);
         entornoArbol = new TreeViewEnvironment(entornoTN);  
     }
