@@ -1,9 +1,8 @@
-﻿using Sapphire2025.Storage;
-using Sapphire2025Models.ScriptCompiling;
+﻿using Sapphire2025Models.ScriptCompiling;
 using System.Net.Http.Json;
 using TimeNet2026.Storage;
 
-namespace Sapphire2025
+namespace Sapphire2025.Storage
 {
 	public class TimeNetClient:HttpClientBase
 	{

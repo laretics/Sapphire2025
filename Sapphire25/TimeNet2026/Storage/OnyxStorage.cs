@@ -378,14 +378,14 @@ namespace TimeNet2026.Storage
 			salida.Header = auxHeader;
 			//Carga de los ejes.
 			Dictionary<int, Station> auxAllStationsCache = new Dictionary<int, Station>();
-			Dictionary<int, TopoAxis> auxAllAxisCache = new Dictionary<int, TopoAxis>();
+			Dictionary<int, Axis> auxAllAxisCache = new Dictionary<int, Axis>();
 			IEnumerable<DBAxis> auxAxises = await auxSerializer.GetAxises(auxTopoStorage.Id);
 			foreach (DBAxis auxAxis in auxAxises)
 			{
-				TopoAxis nuevoAxis = new TopoAxis();
+				Axis nuevoAxis = new Axis();
 				nuevoAxis.id = auxAxis.AxisId;
-				nuevoAxis.name = auxAxis.Name;
-				nuevoAxis.comment = auxAxis.Comment;
+				nuevoAxis.Name = auxAxis.Name;
+				nuevoAxis.Comment = auxAxis.Comment;
 				nuevoAxis.mvarColor[0] = auxAxis.Color0 ?? "black";
 				nuevoAxis.mvarColor[1] = auxAxis.Color1 ?? "white";
 				Dictionary<long, Station> auxCacheStations = new Dictionary<long, Station>();
@@ -406,20 +406,21 @@ namespace TimeNet2026.Storage
 				}
 				//Puntos singulares y estaciones del eje.
 				IEnumerable<DBRefPunctual> auxPunctuals = await auxSerializer.GetRefPunctuals(auxAxis.Id);
+				nuevoAxis.Topology = new TopoAxis();
 				foreach (DBRefPunctual auxPunctual in auxPunctuals)
 				{
 					if (auxCacheStations.ContainsKey(auxPunctual.Pk))
 					{
 						Station auxxStation = auxCacheStations[auxPunctual.Pk];
 						auxxStation.point = new GeoLocation(auxPunctual.Latitude, auxPunctual.Longitude);
-						nuevoAxis.mcolPoints.Add(auxxStation);
-						nuevoAxis.mcolStations.Add(auxxStation);
+						nuevoAxis.Topology.Points.Add(auxxStation);
+						nuevoAxis.Stations.Add(auxxStation);
 					}
 					else
 					{
 						RefPunctual nuevoPunctual = new RefPunctual(auxPunctual.Latitude, auxPunctual.Longitude);
 						nuevoPunctual.pk = auxPunctual.Pk;
-						nuevoAxis.mcolPoints.Add(nuevoPunctual);
+						nuevoAxis.Topology.Points.Add(nuevoPunctual);
 					}
 				}
 				#region todos
@@ -502,14 +503,14 @@ namespace TimeNet2026.Storage
 			await auxSerializer.SaveChangesAsync();
 
 			Dictionary<Station, int> auxColStations = new Dictionary<Station, int>();
-			Dictionary<TopoAxis, int> auxColAxis = new Dictionary<TopoAxis, int>();
-			foreach (TopoAxis eje in rhs.mcolAxis.Values)
+			Dictionary<Axis, int> auxColAxis = new Dictionary<Axis, int>();
+			foreach (Axis eje in rhs.mcolAxis.Values)
 			{
 				DBAxis nuevoEje = new DBAxis();
 				nuevoEje.AxisId = eje.id;
 				nuevoEje.StorageId = nuevo.Id;
-				nuevoEje.Name = eje.name;
-				nuevoEje.Comment = eje.comment;
+				nuevoEje.Name = eje.Name;
+				nuevoEje.Comment = eje.Comment;
 				nuevoEje.Color0 = eje.mvarColor[0];
 				nuevoEje.Color1 = eje.mvarColor[1];
 				auxSerializer.Add(nuevoEje);
@@ -529,14 +530,17 @@ namespace TimeNet2026.Storage
 					auxColStations.Add(estacion, nuevaEstacion.Id);
 				}
 				//Referencias puntuales
-				foreach (RefPunctual punto in eje.mcolPoints)
+				if(null!=eje.Topology)
 				{
-					DBRefPunctual nuevoPunto = new DBRefPunctual();
-					nuevoPunto.AxisId = nuevoEje.Id;
-					nuevoPunto.Pk = punto.pk;
-					nuevoPunto.Latitude = punto.point.Latitude;
-					nuevoPunto.Longitude = punto.point.Longitude;
-					auxSerializer.Add(nuevoPunto);
+					foreach (RefPunctual punto in eje.Topology.Points)
+					{
+						DBRefPunctual nuevoPunto = new DBRefPunctual();
+						nuevoPunto.AxisId = nuevoEje.Id;
+						nuevoPunto.Pk = punto.pk;
+						nuevoPunto.Latitude = punto.point.Latitude;
+						nuevoPunto.Longitude = punto.point.Longitude;
+						auxSerializer.Add(nuevoPunto);
+					}
 				}
 				#region todos
 				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###

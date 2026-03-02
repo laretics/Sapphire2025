@@ -9,7 +9,7 @@ namespace TimeNet2026.Timed
 {
 	public class AsimilationStep
 	{
-		public AsimilationStep(Station destination, TopoAxis axis, TimeSpan tripTime, TimeSpan stopTime)
+		public AsimilationStep(Station destination, Axis axis, TimeSpan tripTime, TimeSpan stopTime)
 		{
 			this.destination = destination;
 			this.axis = axis;
@@ -17,7 +17,7 @@ namespace TimeNet2026.Timed
 			this.stopTime = stopTime;
 		}
 		public Station destination { get; set; }
-		public TopoAxis axis { get; set; } //Devuelve el eje al que pertenece este tramo
+		public Axis axis { get; set; } //Devuelve el eje al que pertenece este tramo
 		public TimeSpan tripTime { get; set; }
 		public TimeSpan stopTime { get; set; }
 	}

@@ -18,7 +18,7 @@ namespace TimeNet2026.Production
     {
         public OnyxStorage OnyxStorage { get; private set; }
         public TopoStorage? TopoStorage { get; set; }
-        public TopoAxis? Axis { get; set; } //El eje se necesita para los nodos de los árboles.
+        public Axis? Axis { get; set; } //El eje se necesita para los nodos de los árboles.
 		public Asimilation? ViewAsimilation { get; set; } //Asimilación que marca la vista de la malla.
         public Asimilation? Asimilation { get; set; }//Asimilación a mostrar o asimilación vigente.
         public Rauta? Rauta { get; set; } //Almacén donde están los planes
@@ -50,7 +50,7 @@ namespace TimeNet2026.Production
 		}
         public TimeNetEnvironment(OnyxStorage storage, 
             TopoStorage topoStorage , 
-            TopoAxis? axis = null, 
+            Axis? axis = null, 
             Asimilation? viewAsimilation = null, 
             Rauta? rauta = null, 
             Plan? plan = null):this(storage)

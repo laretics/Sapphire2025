@@ -60,7 +60,7 @@ namespace TimeNetComponents.TreeView
 				case TreeNode.NodeType.AxisCollection:
 					if(null!=enviro.TopoStorage)
 					{
-						foreach(TopoAxis eje in enviro.TopoStorage.ColAxis)
+						foreach(Axis eje in enviro.TopoStorage.ColAxis)
 						{
 							nuevo = new TreeNode(this,element, TreeNode.NodeType.Axis);
 							nuevo.NetEnvironment.Axis = eje;

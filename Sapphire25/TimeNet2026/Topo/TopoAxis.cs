@@ -20,10 +20,10 @@ namespace TimeNet2026.Topo
 		//Utilizo el rectángulo para detectar rápidamente si un punto dado puede pertenecer a un eje.
 		internal int searchStep { get; set; } //Valor de salto para la caché de búsqueda de puntos en el eje.
 		
-		internal List<RefPunctual> mcolPoints; //Polilínea
+		internal List<RefPunctual> Points; //Polilínea
 		
-		internal List<SpeedLimit> mcolSpeedLimits; //Limitaciones de velocidad que afectan a este eje.
-		internal List<Signal> mcolSignals; //Señales luminosas en la vía.		
+		internal List<SpeedLimit> SpeedLimits; //Limitaciones de velocidad que afectan a este eje.
+		internal List<Signal> Signals; //Señales luminosas en la vía.		
 		private int mvarCurrentIndex { get; set; } //Lo uso para calcular bearing
 		internal bool contains(GeoLocation point)
 		{
@@ -34,13 +34,13 @@ namespace TimeNet2026.Topo
 		}
 		internal int nearestPointIndex(GeoLocation point) //Devuelve el índice del punto del eje más cercano al punto dado.
 		{
-			if (null==mcolPoints || mcolPoints.Count == 0) return -1;
+			if (null==Points || Points.Count == 0) return -1;
 			int candidateIndex = -1;
 			double candidateDistance = double.MaxValue;
 			double auxDistance;
-			for (int i = 0; i < mcolPoints.Count; i += searchStep)
+			for (int i = 0; i < Points.Count; i += searchStep)
 			{
-				auxDistance = point.DistanceTo(mcolPoints[i].point);
+				auxDistance = point.DistanceTo(Points[i].point);
 				if (auxDistance < candidateDistance)
 				{
 					candidateIndex = i;
@@ -52,17 +52,17 @@ namespace TimeNet2026.Topo
 		}
 		private int nearestPointIndexSlow(GeoLocation point, int startingIndex)
 		{
-			if (null == mcolPoints) return startingIndex; //Colección de puntos vacía.
+			if (null == Points) return startingIndex; //Colección de puntos vacía.
 			if (startingIndex < 0) return startingIndex; //Índice fuera de rango.
-			double candidateDistance = mcolPoints[startingIndex].point.DistanceTo(point);
+			double candidateDistance = Points[startingIndex].point.DistanceTo(point);
 			int candidateIndex = startingIndex;
 			double auxDistance;
 			int minIndex, maxIndex;
 			minIndex = (startingIndex > searchStep) ? startingIndex - searchStep : 0;
-			maxIndex = (startingIndex + searchStep < mcolPoints.Count) ? startingIndex + searchStep : mcolPoints.Count;
+			maxIndex = (startingIndex + searchStep < Points.Count) ? startingIndex + searchStep : Points.Count;
 			for (int i = minIndex; i < maxIndex; i++)
 			{
-				auxDistance = mcolPoints[i].point.DistanceTo(point);
+				auxDistance = Points[i].point.DistanceTo(point);
 				if (auxDistance < candidateDistance)
 				{
 					candidateDistance = auxDistance;
@@ -73,7 +73,7 @@ namespace TimeNet2026.Topo
 		}
 		internal Station? nearestStation(GeoLocation point) //Estación más cercana a este punto
 		{
-			if (null == mcolPoints) return null; //Colección vacía.
+			if (null == Points) return null; //Colección vacía.
 			int i = nearestPointIndex(point);
 			if (i < 0) return null; //No tenemos nada cerca.
 			int upperStation, lowerStation;
@@ -85,26 +85,26 @@ namespace TimeNet2026.Topo
 				{
 					//Devuelvo la que está a menos distancia...
 					if (calculateDistanceAlongAxis(upperStation, i) < calculateDistanceAlongAxis(lowerStation, i))
-						return (Station)mcolPoints[upperStation];
+						return (Station)Points[upperStation];
 					else
-						return (Station)mcolPoints[lowerStation];
+						return (Station)Points[lowerStation];
 				}
 				else
-					return (Station)mcolPoints[upperStation];
+					return (Station)Points[upperStation];
 			}
 			else
 			{
 				if (lowerStation > -1)
-					return (Station)mcolPoints[lowerStation];
+					return (Station)Points[lowerStation];
 			}
 			return null;
 		}
 		internal GeoLocation? nearestPoint(GeoLocation point)
 		{
-			if (null == mcolPoints) return null; //Colección vacía.
+			if (null == Points) return null; //Colección vacía.
 			int i = nearestPointIndex(point);
 			if (i < 0) return null;
-			return mcolPoints[i].point;
+			return Points[i].point;
 		}
 		internal double distanceToPoint(GeoLocation point)
 		{
@@ -115,13 +115,13 @@ namespace TimeNet2026.Topo
 		private int nextValidRefPoint(int refPointIndex, bool forwards)
 		{
 			int auxIndex = refPointIndex;
-			if(null!=mcolPoints)
+			if(null!=Points)
 			{
 				if (forwards)
 				{
-					while (auxIndex < mcolPoints.Count)
+					while (auxIndex < Points.Count)
 					{
-						if (mcolPoints[auxIndex].pk >= 0) return auxIndex; //Punto válido como referencia.
+						if (Points[auxIndex].pk >= 0) return auxIndex; //Punto válido como referencia.
 						auxIndex++;
 					}
 				}
@@ -129,7 +129,7 @@ namespace TimeNet2026.Topo
 				{
 					while (auxIndex > -1)
 					{
-						if (mcolPoints[auxIndex].pk >= 0) return auxIndex; //Punto válido como referencia.
+						if (Points[auxIndex].pk >= 0) return auxIndex; //Punto válido como referencia.
 						auxIndex--;
 					}
 				}
@@ -139,13 +139,13 @@ namespace TimeNet2026.Topo
 		private int nextStationIndex(int refPointIndex, bool forwards)
 		{
 			int auxIndex = refPointIndex;
-			if(null!=mcolPoints)
+			if(null!=Points)
 			{
 				if (forwards)
 				{
-					while (auxIndex < mcolPoints.Count)
+					while (auxIndex < Points.Count)
 					{
-						if (mcolPoints[auxIndex].GetType() == typeof(Station))
+						if (Points[auxIndex].GetType() == typeof(Station))
 							return auxIndex;
 						auxIndex++;
 					}
@@ -154,7 +154,7 @@ namespace TimeNet2026.Topo
 				{
 					while (auxIndex > -1)
 					{
-						if (mcolPoints[auxIndex].GetType() == typeof(Station))
+						if (Points[auxIndex].GetType() == typeof(Station))
 							return auxIndex;
 						auxIndex--;
 					}
@@ -177,11 +177,11 @@ namespace TimeNet2026.Topo
 				auxLast = firstIndex;
 			}
 			GeoLocation currentLocation;
-			Debug.Assert(null != mcolPoints);
-			GeoLocation lastLocation = mcolPoints[firstIndex].point;
+			Debug.Assert(null != Points);
+			GeoLocation lastLocation = Points[firstIndex].point;
 			for (int i = auxFirst + 1; i < auxLast + 1; i++)
 			{
-				currentLocation = mcolPoints[i].point;
+				currentLocation = Points[i].point;
 				distance += currentLocation.DistanceTo(lastLocation);
 				lastLocation = currentLocation;
 			}
@@ -197,19 +197,19 @@ namespace TimeNet2026.Topo
 		}
 		internal float bearing(bool forward)
 		{
-			if(null!=mcolPoints)
+			if(null!=Points)
 			{
 				if (mvarCurrentIndex >= 0)
 				{
 					if (forward)
 					{
-						if (mvarCurrentIndex + 1 < mcolPoints.Count)
-							return GeoLocation.BearingAngle(mcolPoints[mvarCurrentIndex].point, mcolPoints[mvarCurrentIndex + 1].point);
+						if (mvarCurrentIndex + 1 < Points.Count)
+							return GeoLocation.BearingAngle(Points[mvarCurrentIndex].point, Points[mvarCurrentIndex + 1].point);
 					}
 					else
 					{
 						if (mvarCurrentIndex > 1)
-							return GeoLocation.BearingAngle(mcolPoints[mvarCurrentIndex].point, mcolPoints[mvarCurrentIndex - 1].point);
+							return GeoLocation.BearingAngle(Points[mvarCurrentIndex].point, Points[mvarCurrentIndex - 1].point);
 						else
 							return 180;
 					}
@@ -219,11 +219,11 @@ namespace TimeNet2026.Topo
 		}
 		internal GeoLocation? getLocation(long Pk, int offset)
 		{
-			if (null == mcolPoints) return null;
+			if (null == Points) return null;
 			//Interpolación lineal del punto de salida.
 			mvarCurrentIndex = getLocationIndex(Pk);
 			if (mvarCurrentIndex < 0) return null;
-			GeoLocation origin = mcolPoints[mvarCurrentIndex].point;
+			GeoLocation origin = Points[mvarCurrentIndex].point;
 			GeoLocation? candidateDown = null;
 			GeoLocation? candidateUp = null;
 			double candidateDistanceDown = double.MaxValue;
@@ -231,9 +231,9 @@ namespace TimeNet2026.Topo
 
 			//Este punto rara vez va a ser igual.            
 			if (mvarCurrentIndex > 0)
-				candidateDown = auxInterpolation(Pk, mcolPoints[mvarCurrentIndex - 1], mcolPoints[mvarCurrentIndex], offset);
-			if (mvarCurrentIndex + 1 < mcolPoints.Count)
-				candidateUp = auxInterpolation(Pk, mcolPoints[mvarCurrentIndex], mcolPoints[mvarCurrentIndex + 1], offset);
+				candidateDown = auxInterpolation(Pk, Points[mvarCurrentIndex - 1], Points[mvarCurrentIndex], offset);
+			if (mvarCurrentIndex + 1 < Points.Count)
+				candidateUp = auxInterpolation(Pk, Points[mvarCurrentIndex], Points[mvarCurrentIndex + 1], offset);
 
 			if (null != candidateDown)
 				candidateDistanceDown = origin.DistanceTo(candidateDown);
@@ -253,18 +253,18 @@ namespace TimeNet2026.Topo
 			int indexInicio = getLocationIndex(Pk0);
 			int indexFin = getLocationIndex(Pk0 + length);
 			if (indexInicio < 0) indexInicio = 0;
-			if (indexFin > mcolPoints.Count) indexFin = mcolPoints.Count;
-			for (int i = indexInicio; i < indexFin; i++) salida.Add(mcolPoints[i].point);
+			if (indexFin > Points.Count) indexFin = Points.Count;
+			for (int i = indexInicio; i < indexFin; i++) salida.Add(Points[i].point);
 			return salida;
 		}
 		internal Bounds getSubSegmentBounds(long Pk0, long length)
 		{
 			int indexInicio = getLocationIndex(Pk0);
 			int indexFin = getLocationIndex(Pk0 + length);
-			Debug.Assert(null != mcolPoints);
+			Debug.Assert(null != Points);
 			List<RefPunctual> auxLista = new List<RefPunctual>();
 			for (int i = indexInicio; i < indexFin; i++)
-				auxLista.Add(mcolPoints[i]);
+				auxLista.Add(Points[i]);
 			return polyLineBounds(auxLista);
 		}
 		private GeoLocation auxInterpolation(long rhs, RefPunctual anterior, RefPunctual posterior, int offset)
@@ -288,7 +288,7 @@ namespace TimeNet2026.Topo
 		private int getLocationIndex(long rhs)
 		{
 			//Buscamos el punto en el eje usando divide y vencerás.
-			return auxFindPkDV(rhs, 0, mcolPoints.Count - 1);
+			return auxFindPkDV(rhs, 0, Points.Count - 1);
 		}
 
 		private long auxProjectPk(GeoLocation rhs, int nearestIndex)
@@ -296,13 +296,13 @@ namespace TimeNet2026.Topo
 			//Obtiene el Pk del punto más próximo al eje
 			try
 			{
-				Debug.Assert(null != mcolPoints);
-				long candidatePk = mcolPoints[nearestIndex].pk;
+				Debug.Assert(null != Points);
+				long candidatePk = Points[nearestIndex].pk;
 				candidatePk = auxProjectionFromIndex(nearestIndex - 1, rhs);
 				if (candidatePk < 0)
 					candidatePk = auxProjectionFromIndex(nearestIndex, rhs);
 				if (candidatePk < 0)
-					candidatePk = mcolPoints[nearestIndex].pk;
+					candidatePk = Points[nearestIndex].pk;
 				return candidatePk;
 			}
 			catch (System.Exception ex)
@@ -313,12 +313,12 @@ namespace TimeNet2026.Topo
 		}
 		private long auxProjectionFromIndex(int index, GeoLocation rhs)
 		{
-			if(null!=mcolPoints)
+			if(null!=Points)
 			{
-				if (index > 0 && index + 1 < mcolPoints.Count)
+				if (index > 0 && index + 1 < Points.Count)
 				{
-					RefPunctual anterior = mcolPoints[index];
-					RefPunctual siguiente = mcolPoints[index + 1];
+					RefPunctual anterior = Points[index];
+					RefPunctual siguiente = Points[index + 1];
 					if (GeoLocation.HasProjectionOnSegment(anterior.point, siguiente.point, rhs))
 					{
 						double auxProjection = GeoLocation.RelativeProjectionOnSegment(anterior.point, siguiente.point, rhs);
@@ -335,7 +335,7 @@ namespace TimeNet2026.Topo
 				return minIndex; //Condición de salida.
 
 			int average = (minIndex + maxIndex) / 2;
-			long midPk = mcolPoints[average].pk;
+			long midPk = Points[average].pk;
 			if (midPk >= Pk)
 				return auxFindPkDV(Pk, minIndex, average);
 			else
@@ -344,9 +344,9 @@ namespace TimeNet2026.Topo
 		internal GeoPolyline getPoly(Lineal segment)
 		{
 			GeoPolyline salida = new GeoPolyline();
-			if(null!=mcolPoints)
+			if(null!=Points)
 			{
-				foreach (RefPunctual point in mcolPoints)
+				foreach (RefPunctual point in Points)
 				{
 					if (segment.contains(point)) salida.add(point.point);
 				}
@@ -356,54 +356,31 @@ namespace TimeNet2026.Topo
 		internal GeoPolyline getPoly()
 		{
 			GeoPolyline salida = new GeoPolyline();
-			if(null!=mcolPoints)
+			if(null!=Points)
 			{
-				foreach (RefPunctual point in mcolPoints)
+				foreach (RefPunctual point in Points)
 					salida.add(point.point);
 			}
 			return salida;
 		}
 		public TopoAxis():base()
 		{
-			mcolPoints = new List<RefPunctual>();			
-			mcolSpeedLimits = new List<SpeedLimit>();
-			mcolSignals = new List<Signal>();
+			Points = new List<RefPunctual>();			
+			SpeedLimits = new List<SpeedLimit>();
+			Signals = new List<Signal>();
 			
 			searchStep = 8; //En principio nos saltamos los puntos de 8 en 8 para buscar el más cercano.
 		}
 		public void RecalculateLinearBounds()
 		{
-			if(mcolPoints.Count>0)
+			if(Points.Count>0)
 			{
-				this.pk = mcolPoints.First().pk;
-				this.length = mcolPoints.Last().pk - this.pk;
-			}
-		}
-		public TopoAxis(XNode root):this()
-		{
-			deserializeXHeader(root);
-			if(root is XElement element)
-			{
-				foreach(XElement child in element.Elements())
-				{
-					switch (child.Name.LocalName)
-					{
-						case "poly":
-							deserializeXPoly(child);
-							break;
-						case "limit":
-							deserializeXLimits(child);
-							break;
-						case "signal":
-							deserializeXSignals(child);
-							break;
-					}
-				}
+				this.pk = Points.First().pk;
+				this.length = Points.Last().pk - this.pk;
 			}
 		}
 
-
-		private void deserializeXPoly(XElement root)
+		internal void deserializeXPoly(XElement root, Axis parent)
 		{
 
 			if(root is XElement element)
@@ -417,18 +394,18 @@ namespace TimeNet2026.Topo
 						if (string.Empty == auxId) //Punto vacío
 						{
 							RefPunctual auxPunto = new RefPunctual(child);
-							mcolPoints.Add(auxPunto);
+							Points.Add(auxPunto);
 						}
 						else
 						{
-							Station auxStation = new Station(child, this);
-							mcolPoints.Add(auxStation);
-							mcolStations.Add(auxStation);
+							Station auxStation = new Station(child, parent);
+							Points.Add(auxStation);
+							parent.Stations.Add(auxStation);
 						}
 					}
 				}
 			}
-			if (mcolPoints.Count>0)
+			if (Points.Count>0)
 				recalculatePK(); //Asigno los PK de cada punto en función de las referencias
 			RecalculateLinearBounds();
 		}
@@ -438,23 +415,23 @@ namespace TimeNet2026.Topo
 			int nextPkIndex = auxCalculateNextPkIndex(lastPkIndex); //Índice del siguiente punto con contenido distinto de -1.
 			while (-1 != nextPkIndex)
 			{
-				long pkIni = mcolPoints[lastPkIndex].pk;
-				long pkFin = mcolPoints[nextPkIndex].pk;
+				long pkIni = Points[lastPkIndex].pk;
+				long pkFin = Points[nextPkIndex].pk;
 				long distancia = pkFin - pkIni;
 				Debug.Assert(distancia > 0);
 				double distanciaGeograficaTotal = 0;
 				//Primero tengo que calcular la distancia entre puntos geográficos
 				for(int i=lastPkIndex+1;i<nextPkIndex;i++)
-					distanciaGeograficaTotal += mcolPoints[i - 1].point.DistanceTo(mcolPoints[i].point);
+					distanciaGeograficaTotal += Points[i - 1].point.DistanceTo(Points[i].point);
 				Debug.Assert(distanciaGeograficaTotal > 0);				
 				//Ahora puedo calcular el pk.
-				double acumulado = mcolPoints[lastPkIndex].point.DistanceTo(mcolPoints[lastPkIndex+1].point);
+				double acumulado = Points[lastPkIndex].point.DistanceTo(Points[lastPkIndex+1].point);
                 for (int i=lastPkIndex+1;i<nextPkIndex;i++)
 				{
-					acumulado += mcolPoints[i - 1].point.DistanceTo(mcolPoints[i].point);
+					acumulado += Points[i - 1].point.DistanceTo(Points[i].point);
 					long resultado = (long)((acumulado * distancia) / distanciaGeograficaTotal);
-					mcolPoints[i].pk = resultado + pkIni;
-					//Console.WriteLine(string.Format("Point ({0},{1}) at pk {2}", mcolPoints[i].point.Latitude, mcolPoints[i].point.Longitude, mcolPoints[i].pk));
+					Points[i].pk = resultado + pkIni;
+					//Console.WriteLine(string.Format("Point ({0},{1}) at pk {2}", Points[i].point.Latitude, Points[i].point.Longitude, Points[i].pk));
 				}
 
 				lastPkIndex = nextPkIndex;
@@ -463,14 +440,14 @@ namespace TimeNet2026.Topo
 		}
 		private int auxCalculateNextPkIndex(int lastPkIndex)
 		{
-			for (int i =lastPkIndex+1; i<mcolPoints.Count;i++)
+			for (int i =lastPkIndex+1; i<Points.Count;i++)
 			{
-				if (-1 != mcolPoints[i].pk)
+				if (-1 != Points[i].pk)
 					return i;
 			}
 			return -1; //Valor de error. Nos hemos salido del eje.
 		}
-		private void deserializeXLimits(XNode root)
+		internal void deserializeXLimits(XNode root)
 		{
 			if(root is XElement element)
 			{
@@ -479,12 +456,12 @@ namespace TimeNet2026.Topo
 					if ("item" == hijo.Name)
 					{
 						SpeedLimit nuevo = new SpeedLimit(hijo);
-						mcolSpeedLimits.Add(nuevo);
+						SpeedLimits.Add(nuevo);
 					}
 				}
 			}
 		}
-		private void deserializeXSignals(XNode root)
+		internal void deserializeXSignals(XNode root)
 		{
 			if (root is XElement element)
 			{
@@ -493,20 +470,13 @@ namespace TimeNet2026.Topo
 					if ("item" == hijo.Name)
 					{
 						Signal nueva = new Signal(hijo);
-						mcolSignals.Add(nueva);
+						Signals.Add(nueva);
 					}
 				}
 			}
 
 
 		}		
-		internal Bounds getBounds()
-		{
-			List<RefPunctual> points = new List<RefPunctual>();
-			foreach (Station auxEstacion in mcolStations)
-				points.Add(auxEstacion);
-			return polyLineBounds(points);
-		}
 		static internal Bounds polyLineBounds(List<RefPunctual> elements)
 		{
 			double minLat, maxLat;
@@ -536,7 +506,7 @@ namespace TimeNet2026.Topo
 		internal List<SpeedLimit> getTemporalLimitations(byte track=255, long pkIni=-1, long pkEnd=-1, bool onlyActives=false)
 		{
 			List<SpeedLimit> salida = new List<SpeedLimit>();
-			foreach (SpeedLimit lim in mcolSpeedLimits)
+			foreach (SpeedLimit lim in SpeedLimits)
 			{
 				if((track&lim.Tracks)!=0)
 				{
