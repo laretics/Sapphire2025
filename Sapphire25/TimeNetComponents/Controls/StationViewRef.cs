@@ -9,10 +9,10 @@ namespace TimeNetComponents.Controls
 {
 	internal class StationViewRef
 	{
-		public Axis Axis { get; set; } //Eje comprendido desde la referencia anterior, hasta la siguiente.
+		public TopoAxis Axis { get; set; } //Eje comprendido desde la referencia anterior, hasta la siguiente.
 		public int Index { get; set; }
 		public long ViewPk { get; set; }
-		public StationViewRef(Axis axis, int index, long viewPk, bool isStation)
+		public StationViewRef(TopoAxis axis, int index, long viewPk, bool isStation)
 		{
 			this.Axis = axis;
 			this.Index = index;

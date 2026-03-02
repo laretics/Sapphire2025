@@ -378,11 +378,11 @@ namespace TimeNet2026.Storage
 			salida.Header = auxHeader;
 			//Carga de los ejes.
 			Dictionary<int, Station> auxAllStationsCache = new Dictionary<int, Station>();
-			Dictionary<int, Axis> auxAllAxisCache = new Dictionary<int, Axis>();
+			Dictionary<int, TopoAxis> auxAllAxisCache = new Dictionary<int, TopoAxis>();
 			IEnumerable<DBAxis> auxAxises = await auxSerializer.GetAxises(auxTopoStorage.Id);
 			foreach (DBAxis auxAxis in auxAxises)
 			{
-				Axis nuevoAxis = new Axis();
+				TopoAxis nuevoAxis = new TopoAxis();
 				nuevoAxis.id = auxAxis.AxisId;
 				nuevoAxis.name = auxAxis.Name;
 				nuevoAxis.comment = auxAxis.Comment;
@@ -502,8 +502,8 @@ namespace TimeNet2026.Storage
 			await auxSerializer.SaveChangesAsync();
 
 			Dictionary<Station, int> auxColStations = new Dictionary<Station, int>();
-			Dictionary<Axis, int> auxColAxis = new Dictionary<Axis, int>();
-			foreach (Axis eje in rhs.mcolAxis.Values)
+			Dictionary<TopoAxis, int> auxColAxis = new Dictionary<TopoAxis, int>();
+			foreach (TopoAxis eje in rhs.mcolAxis.Values)
 			{
 				DBAxis nuevoEje = new DBAxis();
 				nuevoEje.AxisId = eje.id;

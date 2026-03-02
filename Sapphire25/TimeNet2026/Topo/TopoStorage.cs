@@ -13,7 +13,7 @@ namespace TimeNet2026.Topo
 	public class TopoStorage: Entity
 	{
 		public Header Header { get; set; } //Encabezado.
-		internal Dictionary<string, Axis> mcolAxis; //Colección de ejes	
+		internal Dictionary<string, TopoAxis> mcolAxis; //Colección de ejes	
 		internal Dictionary<string, Asimilation> mcolAsimilations; //Colección de asimilaciones.
 		private Dictionary<Guid,Rauta> mcolRauta; //Colección de paquetes de importación.
 		string Entity.name { get => Header.Name; set => Header.Name=value; }
@@ -24,10 +24,10 @@ namespace TimeNet2026.Topo
 		{
 			Header = new Header();
 			mcolAsimilations = new Dictionary<string, Asimilation>();
-			mcolAxis = new Dictionary<string, Axis>();
+			mcolAxis = new Dictionary<string, TopoAxis>();
 			mcolRauta = new Dictionary<Guid, Rauta>();			
 		}
-		public IEnumerable<Axis> ColAxis { get => mcolAxis.Values; }
+		public IEnumerable<TopoAxis> ColAxis { get => mcolAxis.Values; }
 		public Dictionary<string,Asimilation> ColAsimilations { get => mcolAsimilations; }
 		public Dictionary<Guid,Rauta> ColRauta { get => mcolRauta; }
 		public Asimilation? GetAsimilation(string? id)
@@ -66,7 +66,7 @@ namespace TimeNet2026.Topo
 				{
 					if (hijo.Name.LocalName.Equals("axis"))
 					{
-						Axis nuevo = new Axis(hijo);
+						TopoAxis nuevo = new TopoAxis(hijo);
 						if (mcolAxis.ContainsKey(nuevo.id))
 							mcolAxis.Remove(nuevo.id);
 						mcolAxis.Add(nuevo.id, nuevo);
@@ -74,11 +74,11 @@ namespace TimeNet2026.Topo
 				}				
 			}
 		}
-		internal List<Axis> getNearestAxis(GeoLocation point, double range = 1000) //Obtiene el eje más cercano al punto dado
+		internal List<TopoAxis> getNearestAxis(GeoLocation point, double range = 1000) //Obtiene el eje más cercano al punto dado
 		{
-			List<Axis> colSalida = new List<Axis>();			
+			List<TopoAxis> colSalida = new List<TopoAxis>();			
 			double auxDistance;
-			foreach (Axis eje in mcolAxis.Values)
+			foreach (TopoAxis eje in mcolAxis.Values)
 			{
 				if (eje.contains(point))
 				{
@@ -89,12 +89,12 @@ namespace TimeNet2026.Topo
 			}
 			return colSalida;
 		}
-		internal Axis getMostNearestAxis(GeoLocation point, double range = 1000)
+		internal TopoAxis getMostNearestAxis(GeoLocation point, double range = 1000)
 		{
-			List<Axis> col = getNearestAxis(point, range);
+			List<TopoAxis> col = getNearestAxis(point, range);
 			if (0 == col.Count) return null;
 			if (col.Count == 1) return col[0];
-			Axis candidate = col[0];
+			TopoAxis candidate = col[0];
 			double auxDistance = candidate.distanceToPoint(point);
 			for (int i = 1; i < col.Count; i++)
 			{
@@ -107,17 +107,17 @@ namespace TimeNet2026.Topo
 			}
 			return candidate;
 		}
-		public Axis? axisByStation(Station? rhs)
+		public TopoAxis? axisByStation(Station? rhs)
 		{
 			if (null == rhs) return null;
-			foreach (Axis eje in mcolAxis.Values)
+			foreach (TopoAxis eje in mcolAxis.Values)
 				if (eje.contains(rhs)) return eje;
 			return null;
 		}
 		public Station? stationById(string id)
 		{
 			Station? salida = null;
-			foreach(Axis eje in mcolAxis.Values)
+			foreach(TopoAxis eje in mcolAxis.Values)
 			{
 				salida = eje.stationById(id);
 				if (null != salida) return salida;
@@ -138,7 +138,7 @@ namespace TimeNet2026.Topo
 		internal Asimilation deserializeAsimilation(XNode root, TopoStorage parent)
 		{
 			Station? currentStation = null;
-			Axis? auxCurrentAxis = null;			
+			TopoAxis? auxCurrentAxis = null;			
 			currentStation = stationById(XUtil.StringParam(root, "origin"));
 			auxCurrentAxis = axisByStation(currentStation);
 			Asimilation currentAsimilation = new Asimilation(root,parent);

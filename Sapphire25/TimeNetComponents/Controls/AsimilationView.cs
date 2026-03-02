@@ -44,7 +44,7 @@ namespace TimeNetComponents.Controls
 					Station lastStation = Parent.origin;
 					int auxIndex = 0;
 					long cumulPk = 0;
-					Axis currentAxis = Parent.Steps.First().axis;
+					TopoAxis currentAxis = Parent.Steps.First().axis;
 					StationViewRef nueva = new StationViewRef(currentAxis, auxIndex++, cumulPk, lastStation.shortName[0] < 'a');
 					Elements.Add(lastStation, nueva);
 					foreach (AsimilationStep paso in Parent.Steps)

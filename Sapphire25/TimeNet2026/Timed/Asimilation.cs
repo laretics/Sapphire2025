@@ -118,7 +118,7 @@ namespace TimeNet2026.Timed
 			}
 			return TimeSpan.Zero;
 		}
-		internal Axis axisByPk(long pk) //Calcula el eje de este Pk
+		internal TopoAxis axisByPk(long pk) //Calcula el eje de este Pk
 		{
 			if (isAscendent)
 			{
@@ -211,7 +211,7 @@ namespace TimeNet2026.Timed
 			mvarColor[1] = XUtil.StringParam(root, "darkcolor");
 			mvarComment = XUtil.StringParam(root, "comment");
 		}
-		internal Asimilation(Axis auxEje, TopoStorage parent):this(parent)
+		internal Asimilation(TopoAxis auxEje, TopoStorage parent):this(parent)
 		{
 			//Genera una asimilación a partir de un eje dado.
 			mcolSteps = new List<AsimilationStep>();

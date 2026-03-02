@@ -13,34 +13,17 @@ using static System.Collections.Specialized.BitVector32;
 
 namespace TimeNet2026.Topo
 {
-	public class Axis : BasicAxis,Entity
+	public class TopoAxis:Lineal
 	{
 		internal const double BOUNDS_PERCENTAGE = 0.05;
 		internal GeoLocation[] mvarBounds = new GeoLocation[2];
 		//Utilizo el rectángulo para detectar rápidamente si un punto dado puede pertenecer a un eje.
-		public string name { get => mvarName; set => mvarName = value; }
-		public string comment { get => mvarComment; set => mvarComment = value; }
-		
-		
-		public string id { get; set; }
-
 		internal int searchStep { get; set; } //Valor de salto para la caché de búsqueda de puntos en el eje.
 		
 		internal List<RefPunctual> mcolPoints; //Polilínea
-		internal List<Station> mcolStations; // Estaciones en el eje
+		
 		internal List<SpeedLimit> mcolSpeedLimits; //Limitaciones de velocidad que afectan a este eje.
-		internal List<Signal> mcolSignals; //Señales luminosas en la vía.
-		public List<Station> Stations { get => mcolStations; }
-		internal static new List<OnyxField> Descriptor()
-		{
-			List<OnyxField> salida = Lineal.Descriptor();
-			salida.Add(new OnyxField("id", "STRING", true, true, false));
-			salida.Add(new OnyxField("name", "STRING"));
-			salida.Add(new OnyxField("comment", "STRING"));
-			salida.Add(new OnyxField("color0", "STRING"));
-			salida.Add(new OnyxField("color1", "STRING"));
-			return salida;
-		}
+		internal List<Signal> mcolSignals; //Señales luminosas en la vía.		
 		private int mvarCurrentIndex { get; set; } //Lo uso para calcular bearing
 		internal bool contains(GeoLocation point)
 		{
@@ -48,19 +31,6 @@ namespace TimeNet2026.Topo
 				(point.Latitude < mvarBounds[1].Latitude) &&
 				(point.Longitude > mvarBounds[0].Longitude) &&
 				(point.Longitude < mvarBounds[1].Longitude);
-		}
-		internal override bool contains(Punctual rhs)
-		{
-			if (rhs.GetType() == typeof(Station))
-			{
-				if(null!=mcolStations)
-				{
-					foreach (Station auxStation in mcolStations)
-						if (auxStation == rhs) return true;
-				}
-				return false;
-			}
-			return base.contains(rhs);
 		}
 		internal int nearestPointIndex(GeoLocation point) //Devuelve el índice del punto del eje más cercano al punto dado.
 		{
@@ -128,53 +98,6 @@ namespace TimeNet2026.Topo
 					return (Station)mcolPoints[lowerStation];
 			}
 			return null;
-		}
-		internal Station? nearestStation(long rhs) //Estación más cercana a este PK
-		{
-			if (null == mcolStations) return null; //Colección vacía.
-			long candidateDistance = long.MaxValue;
-			Station? candidate = null;
-			foreach (Station auxStation in mcolStations)
-			{
-				long auxDistance = auxStation.distanceFrom(rhs);
-				if (auxDistance < candidateDistance)
-				{
-					candidateDistance = auxDistance;
-					candidate = auxStation;
-				}
-			}
-			return candidate;
-		}
-		internal List<Station> nearestStations(long rhs) //Las dos estaciones más cercanas a este PK
-		{
-			List<Station> salida = new List<Station>();
-			Station? anterior = null;
-			if (null != mcolStations)
-			{
-				foreach (Station auxStation in mcolStations)
-				{
-					if (auxStation.isNear(rhs))
-					{ //Estamos en esta estación, así que devolveremos sólo esa estación.
-						salida.Add(auxStation);
-						return salida;
-					}
-					else
-					{
-						if (anterior != null)
-						{
-							if ((anterior.pk < rhs) && (auxStation.pk > rhs))
-							{
-								salida.Add(anterior);
-								salida.Add(auxStation);
-								return salida;
-							}
-						}
-						anterior = auxStation;
-					}
-				}
-			}
-			//Llegados a este punto nos hemos pasado el eje completo. Devolvemos una lista vacía.
-			return salida;
 		}
 		internal GeoLocation? nearestPoint(GeoLocation point)
 		{
@@ -264,13 +187,7 @@ namespace TimeNet2026.Topo
 			}
 			return distance;
 		}
-		internal Station? stationById(string id)
-		{
-			if (null == mcolStations) return null;
-			foreach (Station auxStation in mcolStations)
-				if (id.Equals(auxStation.id)) return auxStation;
-			return null;
-		}
+
 		internal long getPk(GeoLocation point)
 		{
 			mvarCurrentIndex = nearestPointIndex(point);
@@ -373,25 +290,7 @@ namespace TimeNet2026.Topo
 			//Buscamos el punto en el eje usando divide y vencerás.
 			return auxFindPkDV(rhs, 0, mcolPoints.Count - 1);
 		}
-		internal string neighbourhod(long rhs) //Devuelve información sobre la ubicación en lenguaje humano
-		{
-			List<Station> auxStations = nearestStations(rhs);
-			if (auxStations.Count == 1)
-			{
-				return string.Format("In {0}", auxStations[0].name);
-			}
-			else if (auxStations.Count == 2)
-			{
-				int mostNear;
-				mostNear = (auxStations[0].distanceFrom(rhs) < auxStations[1].distanceFrom(rhs)) ? 0 : 1;
-				return string.Format("Between {0} and {1}. (At {2}m from {3})",
-					auxStations[0].name,
-					auxStations[1].name,
-					auxStations[mostNear].distanceFrom(rhs),
-					auxStations[mostNear].name);
-			}
-			return "";
-		}
+
 		private long auxProjectPk(GeoLocation rhs, int nearestIndex)
 		{
 			//Obtiene el Pk del punto más próximo al eje
@@ -464,20 +363,12 @@ namespace TimeNet2026.Topo
 			}
 			return salida;
 		}
-
-		internal int mvarMaxSpeed;
-		internal int maxSpeed { get => mvarMaxSpeed; }
-		public Axis()
+		public TopoAxis():base()
 		{
-			id = "Unnamed";
-			mvarName = "Unnamed";
-			mvarComment = string.Empty;
-			mvarMaxSpeed = 100; //Valor por defecto a remplazar.
-			mcolPoints = new List<RefPunctual>();
-			mcolStations = new List<Station>();
+			mcolPoints = new List<RefPunctual>();			
 			mcolSpeedLimits = new List<SpeedLimit>();
 			mcolSignals = new List<Signal>();
-			mvarColor = new string[2];
+			
 			searchStep = 8; //En principio nos saltamos los puntos de 8 en 8 para buscar el más cercano.
 		}
 		public void RecalculateLinearBounds()
@@ -488,7 +379,7 @@ namespace TimeNet2026.Topo
 				this.length = mcolPoints.Last().pk - this.pk;
 			}
 		}
-		public Axis(XNode root):this()
+		public TopoAxis(XNode root):this()
 		{
 			deserializeXHeader(root);
 			if(root is XElement element)
@@ -510,40 +401,8 @@ namespace TimeNet2026.Topo
 				}
 			}
 		}
-		internal override string XNode()
-		{
-			StringBuilder salida = new StringBuilder();
-			salida.AppendFormat("\t<axis id=\"{0}\" name=\"{1}\" comment=\"{2}\" vmax=\"{3}\" color=\"{4}\" darkcolor=\"{5}\" >\n",
-				id,
-				mvarName,
-				mvarComment,
-				mvarMaxSpeed,
-				mvarColor[0],
-				mvarColor[1]
-				);
-			salida.AppendLine("\t\t<poly>");
-			foreach (RefPunctual auxPunto in mcolPoints)
-				salida.AppendLine("\t\t\t"+auxPunto.XNode());
-			salida.AppendLine("\t\t</poly>");
-			salida.AppendLine("\t\t<limit>\n");
-			foreach (SpeedLimit auxLimit in mcolSpeedLimits)
-				salida.AppendLine("\t\t\t" + auxLimit.XNode());
-			salida.AppendLine("\t\t</limit>\n");
-			salida.AppendLine("\t\t<signal>\n");
-			///Implementar aquí las señales que contiene el eje.
-			salida.AppendLine("\t\t</signal>\n");
-			salida.AppendLine("\t</axis>");
-			return salida.ToString();
-		}
-		private void deserializeXHeader(XNode root)
-		{
-			this.id = XUtil.StringParam(root, "id");
-			this.mvarName = XUtil.StringParam(root, "name");
-			this.mvarComment = XUtil.StringParam(root, "comment");
-			this.mvarMaxSpeed = XUtil.IntParam(root, "vmax");
-			this.mvarColor[0] = XUtil.StringParam(root, "color");
-			this.mvarColor[1] = XUtil.StringParam(root, "darkcolor");
-		}
+
+
 		private void deserializeXPoly(XElement root)
 		{
 

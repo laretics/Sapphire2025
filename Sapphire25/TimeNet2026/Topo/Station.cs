@@ -14,19 +14,19 @@ namespace TimeNet2026.Topo
 		public string id { get; private set; }
 		public string name { get; private set; }
 		public string shortName { get; private set; }
-		internal Axis axis { get; private set; }
+		internal TopoAxis axis { get; private set; }
 		string Entity.name { get => this.name; set => this.name = value; }
 		string Entity.comment { get => this.name; set => this.name = value; }
 		string[] Entity.color { get =>	new string[2]; set => throw new NotImplementedException(); }
 
-		public Station(string id, string name, string shortName, Axis axis, double latitude, double longitude) : base(latitude, longitude)
+		public Station(string id, string name, string shortName, TopoAxis axis, double latitude, double longitude) : base(latitude, longitude)
 		{
 			this.id = id;
 			this.name = name;
 			this.shortName = shortName;
 			this.axis = axis;
 		}
-		public Station(XNode root, Axis axis):base(root)
+		public Station(XNode root, TopoAxis axis):base(root)
 		{
 			id=XUtil.StringParam(root, "id");
 			name = XUtil.StringParam(root,"name");
