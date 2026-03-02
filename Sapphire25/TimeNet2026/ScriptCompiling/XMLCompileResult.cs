@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Sapphire2025Models.ScriptCompiling
+namespace TimeNet2026.ScriptCompiling
 {
 	public class XMLCompileResult
 	{

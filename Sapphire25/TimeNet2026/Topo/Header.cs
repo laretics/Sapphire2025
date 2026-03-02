@@ -4,8 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Linq;
 using TimeNet2026.Auxiliar;
+using TimeNet2026.ScriptCompiling;
 
 namespace TimeNet2026.Topo
 {
@@ -35,22 +37,6 @@ namespace TimeNet2026.Topo
 			this.Author = string.Empty;
 			this.Bitmap = string.Empty;
 			this.Version = string.Empty;
-		}
-		internal void deserialize(XNode root)
-		{
-			this.Name = XUtil.StringParam(root, "name");
-			this.Description = XUtil.StringParam(root, "description");
-			this.Comment = XUtil.StringParam(root, "comment");
-			this.License = XUtil.StringParam(root, "license");
-			this.Author = XUtil.StringParam(root, "author");
-			this.FirstDate = XUtil.DateTimeParam(root, "firstdate");
-			this.LastDate = XUtil.DateTimeParam(root, "lastdate");
-			this.Version = XUtil.StringParam(root, "version");
-			this.Bitmap = XUtil.StringParam(root, "bitmap");
-			this.ParentId = XUtil.GuidParam(root, "parentId");
-			if (this.ParentId.Equals(Guid.Empty))
-				this.ParentId = XUtil.GuidParam(root, "topoId");
-			this.Id = XUtil.GuidParam(root, "id");
 		}
 		internal string XNode()
 		{

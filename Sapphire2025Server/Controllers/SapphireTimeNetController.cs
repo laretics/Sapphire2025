@@ -23,8 +23,7 @@ namespace Sapphire2025Server.Controllers
 			ITimeNetContextStorage contexto = new DataStorage(mvarConfig);
 			Onice = new OnyxStorage();
 
-		}
-		
+		}		
 
 		[HttpPost("uploadxml")]
 		public async Task<XMLCompileResult> UploadXML([FromForm] IFormFile file)
@@ -57,7 +56,7 @@ namespace Sapphire2025Server.Controllers
 				switch (root.Name.LocalName)
 				{
 					case "layout":
-
+						
 					case "rautatie":
 
 					default:

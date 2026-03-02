@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using TimeNet2026.Auxiliar;
+using TimeNet2026.ScriptCompiling;
 using TimeNet2026.Timed;
 namespace TimeNet2026.Topo
 {
@@ -37,28 +38,13 @@ namespace TimeNet2026.Topo
 				return mcolAsimilations[id];
 			return null;
 		}
-		public TopoStorage(XNode root):this()
+		public XMLCompileResult Compile(XNode root)
 		{
-			if (root is XElement element)
-			{
-				foreach (XElement hijo in element.Elements())
-				{
-					switch (hijo.Name.LocalName)
-					{
-						case "info": //Cabecera de información.
-							this.Header.deserialize(hijo);
-							break;
-						case "topo": //Ejes
-							importAxis(hijo);
-							break;
-						case "asimilation": //Asimilaciones
-							deserializeAsimilations(hijo, this);
-							break;
-					}
-				}
-			}
+			XMLCompileResult salida = new XMLCompileResult();
+
+			return salida;
 		}
-		internal void importAxis(XNode root)
+		internal void importAxis(XNode root, XMLCompileResult result)
 		{
 			if (root is XElement element)
 			{
