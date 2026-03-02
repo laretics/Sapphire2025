@@ -29,6 +29,10 @@ namespace Sapphire2025Server.Controllers
 		public async Task<XMLCompileResult> UploadXML([FromForm] IFormFile file)
 		{
 			XMLCompileResult salida = new XMLCompileResult();
+			
+
+
+
 
 
 			//Mensaje por defecto para probar la cadena de depuración.

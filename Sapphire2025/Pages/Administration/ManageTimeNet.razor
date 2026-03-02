@@ -1,13 +1,50 @@
 ﻿@page "/admin/managetimenet"
+@using Sapphire2025.Icons.Actions
+@using Sapphire2025.Layout.Expert
 @using TimeNetComponents.TreeView
 @using Microsoft.AspNetCore.Components.Forms
 @using BlazorMonaco.Editor
 @inject IJSRuntime mvarJS
+@inject TimeNetClient mvarClient
 <style>
+    html, body, .container-fluid, .card, .card-body {
+        height: 100%;
+        min-height: 0;
+    }
+    .card {
+        display: flex;
+        flex-direction: column;
+        height: 85vh; /* Ajusta según tu preferencia */
+        min-height: 0;
+    }
+    .card-body {
+        flex: 1 1 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        padding-bottom: 0.5rem;
+    }
+    #xml-editor-container {
+        flex: 1 1 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        height: 100%;
+    }
     #xml-editor {
-        height: 55VH !important;
-        min-height: 55VH !important;
-        width: 100% !important;
+        flex: 1 1 0;
+        min-height: 0;
+        height: 100% !important;
+    }
+    .error-list-panel {
+        background: #fff3cd;
+        color: #856404;
+        border-top: 2px solid #ffeeba;
+        padding: 1rem;
+        font-size: 0.95rem;
+        overflow-y: auto;
+        max-height: 50%;
+        min-height: 120px;
     }
 </style>
 <TabControl>
@@ -18,42 +55,65 @@
         <!-- Aquí puedes añadir planes o tablas -->
     </TabPage>
     <TabPage Text="Topología">
-        <TreeView>
+@*         <TreeView>
             <!-- Aquí puedes mostrar la topología -->
-        </TreeView>
+        </TreeView> *@
     </TabPage>
     <TabPage Text="Upload">
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-gradient-secondary-agent text-white">
-                <strong>Editor XML</strong>
-            </div>
-            <div class="card-body">
-                <div class="btn-toolbar mb-3" role="toolbar">
-                    <div class="btn-group me-2" role="group">     <label class="btn btn-outline-primary mb-0" title="Cargar archivo XML">
-                            <i class="bi bi-upload"></i> Cargar archivo
-                            <InputFile OnChange="HandleFileSelected" accept=".xml" style="display:none;" />
-                        </label>
-                        <button class="btn btn-outline-primary" @onclick="SaveXmlToLocal" title="Guardar archivo XML en el equipo">
-                            <i class="bi bi-download"></i> Guardar local
-                        </button>
-                        <button class="btn btn-outline-primary" @onclick="ClearEditor" title="Vaciar el editor">
-                            <i class="bi bi-trash"></i> Vaciar editor
-                        </button>
-                        <button class="btn btn-outline-primary" @onclick="InsertGuidAtCursor" title="Genera un nuevo Guid">
-                            <i class="bi bi-trash"></i> Guid
-                        </button>
-                        <button class="btn btn-outline-success" @onclick="UploadXml" disabled="@string.IsNullOrWhiteSpace(xmlContent)">
-                            <i class="bi bi-cloud-upload"></i> Subir a servidor
-                        </button>
+        @if(mvarDataProcessing)
+        {            
+            <LoadingTab ElementText="@mvarProcessBarText" />
+        }
+        else
+        {
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-secondary text-white py-3">
+                    <span class="fs-4 fw-bold">Editor XML</span>
+                </div>
+                <div class="card-body">
+                    <div class="btn-toolbar mb-3" role="toolbar">
+                        <div class="btn-group me-2" role="group">
+                            <label class="btn btn-outline-primary mb-0" title="Cargar archivo XML">
+                                <i class="bi bi-upload"></i> Cargar archivo
+                                <InputFile OnChange="HandleFileSelected" accept=".xml" style="display:none;" />
+                            </label>
+                            <button class="btn btn-outline-primary" @onclick="SaveXmlToLocal" title="Guardar archivo XML en el equipo">
+                                <i class="bi bi-download"></i> Guardar local
+                            </button>
+                            <button class="btn btn-outline-primary" @onclick="ClearEditor" title="Vaciar el editor">
+                                <i class="bi bi-trash"></i> Vaciar editor
+
+                            </button>
+                            <button class="btn btn-outline-primary" @onclick="ToggleErrors" title="Mostrar/Ocultar resultados">
+                                <Eye color="blue"></Eye> Resultados
+                            </button>
+                            <button class="btn btn-outline-primary" @onclick="InsertGuidAtCursor" title="Genera un nuevo Guid">
+                                <i class="bi bi-asterisk"></i> Guid
+                            </button>
+                            <button class="btn btn-outline-success" @onclick="UploadXml" disabled="@string.IsNullOrEmpty(xmlContent)">
+                                <Exec Color="green"></Exec> Subir a servidor
+                            </button>
+                        </div>
+                    </div>
+                    <div id="xml-editor-container">
+                        <StandaloneCodeEditor Id="xml-editor"
+                                              ConstructionOptions="EditorConstructionOptions"
+                                              OnDidChangeModelContent="@(value => HandleEditorChanged(value))" />
+                        @if(showErrors)
+                        {
+                            <div class="error-list-panel">
+                                <strong>Errores de compilación:</strong>
+                                <ul class="mb-0">
+                                    <li>Línea 12: Etiqueta &lt;Train&gt; no cerrada.</li>
+                                    <li>Línea 27: Atributo 'id' no válido.</li>
+                                    <li>Línea 42: Error de sintaxis cerca de &lt;/Route&gt;.</li>
+                                </ul>
+                            </div>
+                        }
                     </div>
                 </div>
-                <StandaloneCodeEditor Id="xml-editor" ConstructionOptions="EditorConstructionOptions" />
-                @if (uploadResult != null)
-                {
-                    <div class="alert alert-info mt-3">@uploadResult</div>
-                }
             </div>
-        </div>
+        }
     </TabPage>
 </TabControl>
 <script>
@@ -73,8 +133,13 @@
 
 @code {
     private string? xmlContent;
-    private string? uploadResult;
     private StandaloneCodeEditor? mvarEditor;
+    private bool mvarDataProcessing{ get; set; }
+    private string? mvarProcessBarText{ get; set; }
+    private bool showErrors = false;
+
+    private void ToggleErrors() => showErrors = !showErrors;
+
     private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
     {
         mvarEditor = editor;
@@ -100,9 +165,11 @@
         }
     }
 
-    private void HandleEditorChanged(string value)
+    private async Task HandleEditorChanged(ModelContentChangedEvent e)
     {
-        xmlContent = value;
+        if (mvarEditor != null)
+            xmlContent = await mvarEditor.GetValue(); // Actualiza con el contenido actual del editor
+        StateHasChanged();
     }
     private async Task InsertGuidAtCursor()
     {
@@ -156,8 +223,22 @@
 
     private async Task UploadXml()
     {
+        mvarDataProcessing = true;
+        mvarProcessBarText = "Subiendo a la nube (simulado)";
+        System.Diagnostics.Debug.Assert(null != xmlContent);
+        Sapphire2025Models.ScriptCompiling.XMLCompileResult? resultado 
+            = await mvarClient.UploadXML(xmlContent, "popo");
+        mvarDataProcessing = false;
         // Aquí va la lógica para guardar el XML en la base de datos
-        uploadResult = "Archivo XML guardado correctamente.";
-        await Task.Delay(500); // Simula operación
+        if (null == resultado) { }
+        //uploadResult = "Fallo de importación";
+        else
+        {
+            if (resultado.Success) { }
+            //uploadResult = "Archivo XML guardado correctamente.";
+            else { }
+            //uploadResult = "La importación no ha salido bien";
+        }
+        StateHasChanged();
     }
 }

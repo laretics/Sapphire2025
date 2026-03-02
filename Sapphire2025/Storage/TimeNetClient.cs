@@ -1,5 +1,6 @@
 ﻿using Sapphire2025Models.ScriptCompiling;
 using System.Net.Http.Json;
+using System.Text;
 using TimeNet2026.Storage;
 
 namespace Sapphire2025.Storage
@@ -8,14 +9,15 @@ namespace Sapphire2025.Storage
 	{
 		//Almacén local TimeNet para poder "jugar" con la estructura en modo local sin sobrecargar las comunicaciones.
 		public OnyxStorage LocalStorage { get; set; }
-		public TimeNetClient(HttpClient http, IntStorageService intStorage) : base(http, intStorage, "shappiretimenet") 
+		public TimeNetClient(HttpClient http, IntStorageService intStorage) : base(http, intStorage, "SapphireTimeNet") 
 		{
 			LocalStorage = new OnyxStorage();
 		}
-		public async Task<XMLCompileResult?> UploadXML(Stream xmlSourceCode, string fileName)
+		public async Task<XMLCompileResult?> UploadXML(string xmlSourceCode, string fileName)
 		{
 			using MultipartFormDataContent contenido = new MultipartFormDataContent();
-			StreamContent streamContent = new StreamContent(xmlSourceCode);
+			Stream corriente = new MemoryStream(Encoding.UTF8.GetBytes(xmlSourceCode));
+			StreamContent streamContent = new StreamContent(corriente);
 			streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/xml");
 			contenido.Add(streamContent, "file", fileName);
 			HttpResponseMessage respuesta = await sendPostRequest("uploadxml", contenido);
