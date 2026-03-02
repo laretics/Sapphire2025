@@ -379,37 +379,7 @@ namespace TimeNet2026.Topo
 				this.length = Points.Last().pk - this.pk;
 			}
 		}
-
-		internal void deserializeXPoly(XElement root, Axis parent)
-		{
-
-			if(root is XElement element)
-			{
-				foreach(XElement child in element.Elements())
-				{
-					if("point"==child.Name.LocalName)
-					{
-						GeoLocation auxLocation = XUtil.GeoLocationParam(child);
-						string auxId = XUtil.StringParam(child, "id");
-						if (string.Empty == auxId) //Punto vacío
-						{
-							RefPunctual auxPunto = new RefPunctual(child);
-							Points.Add(auxPunto);
-						}
-						else
-						{
-							Station auxStation = new Station(child, parent);
-							Points.Add(auxStation);
-							parent.Stations.Add(auxStation);
-						}
-					}
-				}
-			}
-			if (Points.Count>0)
-				recalculatePK(); //Asigno los PK de cada punto en función de las referencias
-			RecalculateLinearBounds();
-		}
-		private void recalculatePK()
+		internal void recalculatePK()
 		{
 			int lastPkIndex = 0; //Índice del último punto con contenido distinto de -1
 			int nextPkIndex = auxCalculateNextPkIndex(lastPkIndex); //Índice del siguiente punto con contenido distinto de -1.
@@ -447,36 +417,6 @@ namespace TimeNet2026.Topo
 			}
 			return -1; //Valor de error. Nos hemos salido del eje.
 		}
-		internal void deserializeXLimits(XNode root)
-		{
-			if(root is XElement element)
-			{
-				foreach (XElement hijo in element.Elements())
-				{
-					if ("item" == hijo.Name)
-					{
-						SpeedLimit nuevo = new SpeedLimit(hijo);
-						SpeedLimits.Add(nuevo);
-					}
-				}
-			}
-		}
-		internal void deserializeXSignals(XNode root)
-		{
-			if (root is XElement element)
-			{
-				foreach (XElement hijo in element.Elements())
-				{
-					if ("item" == hijo.Name)
-					{
-						Signal nueva = new Signal(hijo);
-						Signals.Add(nueva);
-					}
-				}
-			}
-
-
-		}		
 		static internal Bounds polyLineBounds(List<RefPunctual> elements)
 		{
 			double minLat, maxLat;

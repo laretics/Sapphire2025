@@ -28,22 +28,7 @@ namespace TimeNet2026.Timed
 
         public Rauta(XNode root, TopoStorage parent):this(parent)
         {
-            if(root is XElement element)
-            {
-				foreach (XElement hijo in element.Elements())
-				{
-					switch (hijo.Name.LocalName)
-					{
-						case "info":
-							Header = new Header();
-							Header.deserialize(hijo);
-							break;
-						case "plans":
-							deserializePlans(hijo);
-							break;
-					}
-				}
-			}
+
         }
         internal void deserializePlans(XNode root)
         {

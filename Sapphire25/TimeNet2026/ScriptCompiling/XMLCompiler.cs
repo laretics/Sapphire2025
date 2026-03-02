@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using TimeNet2026.Auxiliar;
+using TimeNet2026.Timed;
 using TimeNet2026.Topo;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace TimeNet2026.ScriptCompiling
 {
@@ -14,7 +17,7 @@ namespace TimeNet2026.ScriptCompiling
 	/// </summary>
 	internal class XMLCompiler
 	{
-		public XMLCompiler() { }
+		public XMLCompiler() { Result = new XMLCompileResult(); }
 
 		public XMLCompileResult Result { get; private set; }
 
@@ -33,16 +36,17 @@ namespace TimeNet2026.ScriptCompiling
 							salida.Header = CompileHeader(hijo);
 							break;
 						case "topo": //Ejes
-							importAxis(hijo, salida);
+							if (!CompileAxisCollection(hijo, salida))
+								return null;
 							break;
 						case "asimilation": //Asimilaciones
-							deserializeAsimilations(hijo, this);
+							if(!CompileAsimilationCollection(hijo,salida))
+								return null;
 							break;
 					}
 				}
+				return salida;
 			}
-
-
 			return null;
 		}
 
@@ -65,8 +69,269 @@ namespace TimeNet2026.ScriptCompiling
 			salida.Id = GuidParam(root, "id");
 			return salida;
 		}
+		#region Topo
+		internal Axis CompileAxis(XNode root)
+		{
+			Axis salida = new Axis();
+			//Cabecera
+			salida.id = StringParam(root, "id");
+			salida.Name = StringParam(root, "name");
+			salida.Comment = StringParam(root, "comment");
+			salida.MaxSpeed = IntParam(root, "vmax");
+			salida.mvarColor[0] = StringParam(root, "color");
+			salida.mvarColor[1] = StringParam(root, "darkcolor");
+			if (root is XElement element)
+			{
+				foreach (XElement child in element.Elements())
+				{
+					switch (child.Name.LocalName)
+					{
+						case "poly":
+							CompileAxisPoly(child, salida);
+							break;
+						case "limit":
+							CompileAxisLimits(child, salida);
+							break;
+						case "signal":
+							CompileAxisSignals(child, salida);
+							break;
+					}
+				}
+			}
+			return salida;
+		}
+		private void CompileAxisPoly (XElement root, Axis parent)
+		{
+			if(null==parent.Topology) parent.Topology = new TopoAxis();
 
+			if (root is XElement element)
+			{
+				foreach (XElement child in element.Elements())
+				{
+					if ("point" == child.Name.LocalName)
+					{
+						GeoLocation auxLocation = GeoLocationParam(child);
+						string auxId = StringParam(child, "id");
+						if (string.Empty == auxId) //Punto vacío
+						{
+							RefPunctual auxPunto = new RefPunctual(child);
+							parent.Topology.Points.Add(auxPunto);
+						}
+						else
+						{
+							Station auxStation = new Station(child, parent);
+							parent.Topology.Points.Add(auxStation);
+							parent.Stations.Add(auxStation);
+						}
+					}
+				}
+			}
+			if (parent.Topology.Points.Count > 0)
+				parent.Topology.recalculatePK(); //Asigno los PK de cada punto en función de las referencias
+			parent.Topology.RecalculateLinearBounds();
+		}
+		private void CompileAxisLimits(XElement root, Axis parent)
+		{
+			if (null == parent.Topology) parent.Topology = new TopoAxis();
+			if (root is XElement element)
+			{
+				foreach (XElement hijo in element.Elements())
+				{
+					if ("item" == hijo.Name)
+					{
+						SpeedLimit nuevo = new SpeedLimit(hijo);
+						parent.Topology.SpeedLimits.Add(nuevo);
+					}
+				}
+			}
+		}
+		private void CompileAxisSignals(XElement root, Axis parent)
+		{
+			if (null == parent.Topology) parent.Topology = new TopoAxis();
+			if (root is XElement element)
+			{
+				foreach (XElement hijo in element.Elements())
+				{
+					if ("item" == hijo.Name)
+					{
+						Signal nueva = new Signal(hijo);
+						parent.Topology.Signals.Add(nueva);
+					}
+				}
+			}
+		}
+		internal bool CompileAxisCollection(XElement root,TopoStorage storage)
+		{
+			if (root is XElement element)
+			{
+				foreach (XElement hijo in element.Elements())
+				{
+					if (hijo.Name.LocalName.Equals("axis"))
+					{
+						Axis nuevo = CompileAxis(hijo);
+						if (storage.mcolAxis.ContainsKey(nuevo.id))
+						{
+							Result.Success = false;
+							Result.Warnings.Add(new XMLCompileWarning(string.Format("Topo Storage {0} already contains an axis named {1} with same id {2}", storage.Header.Name, nuevo.Name, nuevo.id), -1, XMLCompileWarning.SeverityEnum.Severe);
+							return false;
+						}
+						else
+							storage.mcolAxis.Add(nuevo.id, nuevo);							
+					}
+				}
+			}
+			return true;
+		}
+		internal Asimilation CompileAsimilation(XElement root, TopoStorage storage)
+		{
+			Station? currentStation = null;
+			Axis? auxCurrentAxis = null;
+			currentStation = storage.stationById(StringParam(root, "origin"));
+			auxCurrentAxis = storage.axisByStation(currentStation);
+			Asimilation currentAsimilation = new Asimilation(root, storage);
+			currentAsimilation.origin = currentStation;
+			if (root is XElement element)
+			{
+				foreach (XElement hijo in element.Elements())
+				{
+					if ("trip" == hijo.Name.LocalName)
+					{
+						currentStation = storage.stationById(StringParam(hijo, "dest"));
+						auxCurrentAxis = storage.axisByStation(currentStation);
+						if (null != currentStation && null != auxCurrentAxis)
+						{
+							AsimilationStep paso = new AsimilationStep(currentStation,
+								auxCurrentAxis,
+								TimeSpanParam(hijo, "time"),
+								TimeSpanParam(hijo, "stop"));
+							currentAsimilation.mcolSteps.Add(paso);
+						}
+					}
+				}
+			}
+			return currentAsimilation;
+		}
+		internal bool CompileAsimilationCollection(XElement root, TopoStorage storage)
+		{
+			if (root is XElement element)
+			{
+				foreach (XElement hijo in element.Elements())
+				{
+					Asimilation nueva = CompileAsimilation(hijo, storage);
+					if (storage.mcolAsimilations.ContainsKey(nueva.id))
+					{
+						Result.Success = false;
+						Result.Warnings.Add(new XMLCompileWarning(string.Format("Topo Storage {0} already contains an asimilation named {1} with id {2}", storage.Header.Name, nueva.name, nueva.id), -1, XMLCompileWarning.SeverityEnum.Severe));
+						return false;
+					}
+					storage.mcolAsimilations.Add(nueva.id, nueva);
+				}
+			}
+			return true;
+		}
+		internal string DecompileHeader(Header rhs)
+		{
+			StringBuilder salida = new StringBuilder();
+			salida.AppendFormat("<info id=\"{0}\"\n", rhs.Id);
+			if (rhs.ParentId != Guid.Empty)
+				salida.AppendFormat("topoId=\"{0}\"\n", rhs.ParentId);
 
+			salida.AppendFormat("name=\"{0}\"\n description\"{1}\"\n comment\"{2}\"\n license\"{3}\"\n",
+				rhs.Name,
+				rhs.Description,
+				rhs.Comment,
+				rhs.License);
+			salida.AppendFormat("author=\"{0}\"\n firstdate=\"{1}\"\n lastdate=\"{2}\"\n version=\"{3}\"\n bitmap=\"\"\n",
+				rhs.Author,
+				rhs.FirstDate,
+				rhs.LastDate,
+				rhs.Version,
+				rhs.Bitmap
+				);
+			return salida.ToString();
+		}
+		internal string DecompileAxis(Axis rhs)
+		{
+			StringBuilder salida = new StringBuilder();
+			salida.AppendFormat("\t<axis id=\"{0}\" name=\"{1}\" comment=\"{2}\" vmax=\"{3}\" color=\"{4}\" darkcolor=\"{5}\" >\n",
+				rhs.id,
+				rhs.Name,
+				rhs.Comment,
+				rhs.MaxSpeed,
+				rhs.mvarColor[0],
+				rhs.mvarColor[1]
+				);
+			salida.AppendLine("\t\t<poly>");
+			if (null != rhs.Topology)
+			{
+				foreach (RefPunctual auxPunto in rhs.Topology.Points)
+					salida.AppendLine("\t\t\t" + auxPunto.XNode());
+			}
+			salida.AppendLine("\t\t</poly>");
+			salida.AppendLine("\t\t<limit>\n");
+			if (null != rhs.Topology)
+			{
+				foreach (SpeedLimit auxLimit in rhs.Topology.SpeedLimits)
+					salida.AppendLine("\t\t\t" + auxLimit.XNode());
+			}
+			salida.AppendLine("\t\t</limit>\n");
+			salida.AppendLine("\t\t<signal>\n");
+			if (null != rhs.Topology)
+			{
+				///Implementar aquí las señales que contiene el eje.
+			}
+			salida.AppendLine("\t\t</signal>\n");
+			salida.AppendLine("\t</axis>");
+			return salida.ToString();
+		}
+		#endregion Topo
+		#region Rauta
+		/// <summary>
+		/// Obtiene el Guid del TopoStorage que es compatible con este rauta.
+		/// </summary>
+		/// <param name="root"></param>
+		/// <returns></returns>
+		public Guid TopoStorageIdByRauta(XNode root)
+		{
+			if (root is XElement element)
+			{
+				foreach (XElement hijo in element.Elements())
+				{
+					if (hijo.Name.LocalName == "info")
+					{
+						Header auxHeader = CompileHeader(hijo);
+						return auxHeader.ParentId;
+					}
+				}
+			}
+			return Guid.Empty;
+		}
+		/// <summary>
+		/// Extrae un archivo Rauta de XML e intenta asignárselo a un TopoStorage ya existente
+		/// </summary>
+		/// <param name="parent"></param>
+		/// <param name="root"></param>
+		/// <returns></returns>
+		public bool CompileRauta(TopoStorage parent, XNode root)
+		{
+			if (root is XElement element)
+			{
+				foreach (XElement hijo in element.Elements())
+				{
+					switch (hijo.Name.LocalName)
+					{
+						case "info":
+							Header = new Header();
+							Header.deserialize(hijo);
+							break;
+						case "plans":
+							deserializePlans(hijo);
+							break;
+					}
+				}
+			}
+		}
+		#endregion Rauta
 		#region Lectura de atributos
 		private string StringParam(XNode node, string paramId, string defaultValue = "")
 		{

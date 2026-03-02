@@ -123,40 +123,7 @@ namespace TimeNet2026.Topo
 			}
 			return "";
 		}
-		internal override string XNode()
-		{
-			StringBuilder salida = new StringBuilder();
-			salida.AppendFormat("\t<axis id=\"{0}\" name=\"{1}\" comment=\"{2}\" vmax=\"{3}\" color=\"{4}\" darkcolor=\"{5}\" >\n",
-				id,
-				Name,
-				Comment,
-				MaxSpeed,
-				mvarColor[0],
-				mvarColor[1]
-				);
-			salida.AppendLine("\t\t<poly>");
-			if(null!=Topology)
-			{
-				foreach (RefPunctual auxPunto in Topology.Points)
-					salida.AppendLine("\t\t\t" + auxPunto.XNode());
-			}
-			salida.AppendLine("\t\t</poly>");
-			salida.AppendLine("\t\t<limit>\n");
-			if(null!=Topology)
-			{
-				foreach (SpeedLimit auxLimit in Topology.SpeedLimits)
-					salida.AppendLine("\t\t\t" + auxLimit.XNode());
-			}
-			salida.AppendLine("\t\t</limit>\n");
-			salida.AppendLine("\t\t<signal>\n");
-			if(null!=Topology)
-			{
-				///Implementar aquí las señales que contiene el eje.
-			}
-			salida.AppendLine("\t\t</signal>\n");
-			salida.AppendLine("\t</axis>");
-			return salida.ToString();
-		}
+
 		internal Bounds getBounds()
 		{
 			List<RefPunctual> points = new List<RefPunctual>();
@@ -173,46 +140,6 @@ namespace TimeNet2026.Topo
 			MaxSpeed = 100; //Valor por defecto a remplazar.
 			Stations = new List<Station>();
 			mvarColor = new string[2];
-		}
-		public Axis(XNode root):base()
-		{
-			deserializeXHeader(root);
-			Stations = new List<Station>();
-			if(root is XElement element)
-			{
-				foreach(XElement child in element.Elements())
-				{
-					switch (child.Name.LocalName)
-					{
-						case "poly":
-							if (null == Topology) Topology = new TopoAxis();
-							Topology.deserializeXPoly(child, this);							
-							break;
-						case "limit":
-							if (null == Topology) Topology = new TopoAxis();
-							Topology.deserializeXLimits(child);
-							break;
-						case "signal":
-							if (null == Topology) Topology = new TopoAxis();
-							Topology.deserializeXSignals(child);
-							break;
-
-					}
-				}
-			}
-		}
-		protected void deserializeXHeader(XNode root)
-		{
-			id = XUtil.StringParam(root, "id");
-			Name = XUtil.StringParam(root, "name");
-			Comment = XUtil.StringParam(root, "comment");
-			MaxSpeed = XUtil.IntParam(root, "vmax");
-			mvarColor[0] = XUtil.StringParam(root, "color");
-			mvarColor[1] = XUtil.StringParam(root, "darkcolor");
-		}
-		protected void deserializeXStations(XElement root)
-		{
-
 		}
 	}
 }

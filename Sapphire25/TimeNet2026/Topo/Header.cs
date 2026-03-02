@@ -38,26 +38,5 @@ namespace TimeNet2026.Topo
 			this.Bitmap = string.Empty;
 			this.Version = string.Empty;
 		}
-		internal string XNode()
-		{
-			StringBuilder salida = new StringBuilder();
-			salida.AppendFormat("<info id=\"{0}\"\n", this.Id);
-			if (ParentId != Guid.Empty)
-				salida.AppendFormat("topoId=\"{0}\"\n", ParentId);
-
-			salida.AppendFormat("name=\"{0}\"\n description\"{1}\"\n comment\"{2}\"\n license\"{3}\"\n",
-				Name,
-				Description,
-				Comment,
-				License);
-			salida.AppendFormat("author=\"{0}\"\n firstdate=\"{1}\"\n lastdate=\"{2}\"\n version=\"{3}\"\n bitmap=\"\"\n",
-				Author,
-				FirstDate,
-				LastDate,
-				Version,
-				Bitmap
-				);
-			return salida.ToString();
-		}
 	}
 }
