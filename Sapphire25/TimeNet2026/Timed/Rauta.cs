@@ -25,11 +25,6 @@ namespace TimeNet2026.Timed
         }
         public Dictionary<string,Plan> Plans { get => mcolPlans; }
         public TopoStorage Parent { get => mvarParent; }
-
-        public Rauta(XNode root, TopoStorage parent):this(parent)
-        {
-
-        }
         internal void deserializePlans(XNode root)
         {
             if(root is XElement element)

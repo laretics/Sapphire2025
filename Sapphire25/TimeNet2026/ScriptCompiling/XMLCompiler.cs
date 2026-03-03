@@ -172,7 +172,7 @@ namespace TimeNet2026.ScriptCompiling
 						if (storage.mcolAxis.ContainsKey(nuevo.id))
 						{
 							Result.Success = false;
-							Result.Warnings.Add(new XMLCompileWarning(string.Format("Topo Storage {0} already contains an axis named {1} with same id {2}", storage.Header.Name, nuevo.Name, nuevo.id), -1, XMLCompileWarning.SeverityEnum.Severe);
+							Result.Warnings.Add(new XMLCompileWarning(string.Format("Topo Storage {0} already contains an axis named {1} with same id {2}", storage.Header.Name, nuevo.Name, nuevo.id), -1, XMLCompileWarning.SeverityEnum.Severe));
 							return false;
 						}
 						else
@@ -314,6 +314,8 @@ namespace TimeNet2026.ScriptCompiling
 		/// <returns></returns>
 		public bool CompileRauta(TopoStorage parent, XNode root)
 		{
+			Rauta salida = new Rauta(parent);
+
 			if (root is XElement element)
 			{
 				foreach (XElement hijo in element.Elements())
@@ -321,15 +323,24 @@ namespace TimeNet2026.ScriptCompiling
 					switch (hijo.Name.LocalName)
 					{
 						case "info":
-							Header = new Header();
-							Header.deserialize(hijo);
+							Header cabecera = CompileHeader(hijo);
+							if(cabecera.ParentId!=parent.Header.Id)
+							{
+								Result.Success = false;
+								Result.Warnings.Add(new XMLCompileWarning(string.Format("Rauta named {0} has an incompatible signature with TopoStorage named {1}", cabecera.Name, parent.Header.Name), -1, XMLCompileWarning.SeverityEnum.Fatal));
+								return false;
+							}
+							salida.Header = cabecera;
 							break;
 						case "plans":
 							deserializePlans(hijo);
 							break;
 					}
 				}
+				//Si no ha devuelto "false", intentará instalar el rauta en parent.
+
 			}
+			return true; //Aquí llegamos si todo fue bien.
 		}
 		#endregion Rauta
 		#region Lectura de atributos
