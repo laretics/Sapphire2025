@@ -333,15 +333,57 @@ namespace TimeNet2026.ScriptCompiling
 							salida.Header = cabecera;
 							break;
 						case "plans":
-							deserializePlans(hijo);
+							if(!CompilePlans(hijo,salida))
+							{
+								Result.Success = false;
+								if(null==salida)
+								{
+									Result.Warnings.Add(new XMLCompileWarning("Current rauta is not complete and has registered errors trying to deserialize its plans", -1, XMLCompileWarning.SeverityEnum.Fatal));
+								}
+								else
+								{
+									Result.Warnings.Add(new XMLCompileWarning(string.Format("Rauta named {0} could not deserialize it's plans.", salida.Header.Name), -1, XMLCompileWarning.SeverityEnum.Warning));
+								}
+								return false;
+							}
 							break;
 					}
 				}
 				//Si no ha devuelto "false", intentará instalar el rauta en parent.
-
+				if (parent.ColRauta.ContainsKey(salida.Header.Id))
+				{
+					Result.Warnings.Add(new XMLCompileWarning(string.Format("Rauta named {0} already exists on topo collection {1}. New instance will overwrite old one.", salida.Header.Name, parent.Header.Name), -1, XMLCompileWarning.SeverityEnum.Warning));
+					parent.ColRauta[salida.Header.Id] = salida;
+				}
+				else
+					parent.ColRauta.Add(salida.Header.Id, salida);
 			}
 			return true; //Aquí llegamos si todo fue bien.
 		}
+		internal bool CompilePlans(XNode root, Rauta parent)
+		{
+			if (root is XElement element)
+			{
+				foreach (XElement hijo in element.Elements())
+				{
+					if (hijo.Name == "plan")
+					{
+						Plan? nuevo = CompilePlan(hijo, parent);
+						if(null==nuevo)
+							return false;
+						else
+							parent.Plans.Add(nuevo.mvarName, nuevo);
+					}
+				}
+			}
+			return true;
+		}
+		internal Plan? CompilePlan(XNode root, Rauta parent)
+		{ 
+		
+
+		}
+
 		#endregion Rauta
 		#region Lectura de atributos
 		private string StringParam(XNode node, string paramId, string defaultValue = "")
