@@ -8,6 +8,7 @@ using System.Xml.Linq;
 using TimeNet2026.Auxiliar;
 using TimeNet2026.Timed;
 using TimeNet2026.Topo;
+using TimeNet2026Data.DBStorage;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace TimeNet2026.ScriptCompiling
@@ -372,21 +373,78 @@ namespace TimeNet2026.ScriptCompiling
 						if(null==nuevo)
 							return false;
 						else
-							parent.Plans.Add(nuevo.mvarName, nuevo);
+							parent.Plans.Add(nuevo.Name, nuevo);
 					}
 				}
 			}
 			return true;
 		}
 		internal Plan? CompilePlan(XNode root, Rauta parent)
-		{ 
-		
+		{
+			Plan salida = new Plan(parent.Parent);
+			salida.Id=StringParam(root, "id");
+			salida.Name =StringParam(root, "name");
+			salida.Comment = StringParam(root, "comment");
+			if (root is XElement element)
+			{
+				foreach (XElement hijo in element.Elements())
+				{
+					switch (hijo.Name.LocalName)
+					{
+						case "circulations": //Circulaciones definidas en el plan
+							if (!CompileCirculations(hijo, salida)) return null;
+							break;
+						case "schedules": //Horarios definidos en el plan
+							if (!CompileSchedules(hijo, salida)) return null;
+							break;
+					}
+				}
+			}
+			if (!Result.Success) return null;
+			return salida;
+		}
+		internal bool CompileCirculations(XNode root, Plan plan)
+		{
+
+		}
+		internal bool CompileCirculationBlock(XNode root, Plan plan)
+		{
+
+		}
+		//AQUÍ ME QUEDÉ
+		internal Circulation? CompileCirculation(XNode root, CirculationBlock parent)
+		{
+			if (root is XElement element)
+			{
+				if ("cir" == element.Name.LocalName)
+				{
+					Circulation nuevaCirculacion = new Circulation(parent);
+					string auxTexto = StringParam(element, "freq", "");
+					if (auxTexto.Length > 0)
+						parent.weekdayMask = TNUtil.parseWeekDays(auxTexto);
+					auxTexto = XUtil.StringParam(element, "asm", "");
+					if (auxTexto.Length > 0)
+						asimilation = storage.GetAsimilation(auxTexto);
+					pattern = XUtil.StringParam(element, "pattern", "");
+					string auxTexto = XUtil.StringParam(element, "id");
+					if (auxTexto.Length > 0) nuevaCirculacion.name = auxTexto;
+					nuevaCirculacion.departure = XUtil.TimeSpanParam(root, "dep");
+					nuevaCirculacion.color[0] = XUtil.StringParam(root, "col", "black");
+					nuevaCirculacion.color[1] = XUtil.StringParam(root, "col2", "white");
+					mcolCirculations.Add(nuevaCirculacion);
+				}
+			}
+			return null;
+		}
+
+		internal bool CompileSchedules(XNode root, Plan plan)
+		{
 
 		}
 
 		#endregion Rauta
 		#region Lectura de atributos
-		private string StringParam(XNode node, string paramId, string defaultValue = "")
+		private string StringParam(XNode node, string paramId, string defaultValue = "", bool checkExist = true)
 		{
 			if (node is XElement element)
 			{

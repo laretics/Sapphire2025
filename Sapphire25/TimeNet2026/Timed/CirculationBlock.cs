@@ -18,7 +18,7 @@ namespace TimeNet2026.Timed
 	/// </summary>
 	public class CirculationBlock
 	{
-		internal List<Circulation> mcolCirculations;
+		public List<Circulation> Circulations { get; internal set; }
 		public Asimilation? asimilation { get; set; }
 		public byte weekdayMask { get; set; }
 		public string pattern { get; set; } = "####";
@@ -28,10 +28,10 @@ namespace TimeNet2026.Timed
 		{
 			get
 			{				
-				if(mcolCirculations.Count>0)
+				if(Circulations.Count>0)
 				{
 					TimeLapseCollection salida = new TimeLapseCollection();
-					foreach (Circulation cir in mcolCirculations)
+					foreach (Circulation cir in Circulations)
 						salida.Add(cir.TimeLapse);					
 				}
 				return null;
@@ -47,14 +47,13 @@ namespace TimeNet2026.Timed
 					return (TimeSpan)asimilation.duration;
 			}
 		}
-		public int Count => mcolCirculations.Count;
-		public List<Circulation> Circulations => mcolCirculations;
+		public int Count => Circulations.Count;
 		public override string ToString()
 		{
 			if(null==asimilation)
 				return "?? (No asimilación)";
 			else
-				return string.Format("{0} ({1} circulaciones)", asimilation.name, mcolCirculations.Count);
+				return string.Format("{0} ({1} circulaciones)", asimilation.name, Circulations.Count);
 		}
 		internal TimeSpan CalculateDelay(long pk, TimeSpan currentTime)
 		{
@@ -69,7 +68,7 @@ namespace TimeNet2026.Timed
 		}
 		public CirculationBlock()
 		{
-			mcolCirculations = new List<Circulation>();
+			Circulations = new List<Circulation>();
 		}
 		public CirculationBlock(XNode node, TopoStorage storage) :this()
 		{
@@ -77,7 +76,7 @@ namespace TimeNet2026.Timed
 		}
 		public Circulation? GetCirculation(string id)
 		{
-			foreach(Circulation aux in mcolCirculations)
+			foreach(Circulation aux in Circulations)
 				if (aux.name == id) return aux;
 			return null;
 		}
@@ -101,7 +100,7 @@ namespace TimeNet2026.Timed
 					{
 						Circulation? nuevaCirculacion = deserializeUnit(child, storage);
 						if (null != nuevaCirculacion)
-							mcolCirculations.Add(nuevaCirculacion);
+							Circulations.Add(nuevaCirculacion);
 					}
 				}
 			}

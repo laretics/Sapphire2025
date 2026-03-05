@@ -25,22 +25,6 @@ namespace TimeNet2026.Timed
         }
         public Dictionary<string,Plan> Plans { get => mcolPlans; }
         public TopoStorage Parent { get => mvarParent; }
-    
-        internal static Guid TopoStorageId(XNode root)
-        {
-            if( root is XElement element)
-            {
-                foreach(XElement hijo in element.Elements())
-                {
-					if (hijo.Name.LocalName == "info")
-					{
-						Header auxHeader = new Header();
-						auxHeader.deserialize(hijo);
-						return auxHeader.ParentId;
-					}
-				}
-            }
-            return Guid.Empty;
-        }
+   
     }
 }

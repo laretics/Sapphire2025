@@ -16,13 +16,11 @@ namespace TimeNet2026.Timed
 	public class Plan : Entity
 	//Plan de explotación
 	{		
-		internal string mvarId; //Identificador del plan
-		internal string mvarName; //Nombre del plan
-		internal string mvarComment; //Comentarios del plan
 		public string[] mvarColor { get; set; }
 		public string Color { get => mvarColor[0]; }
-		public string Name { get => mvarName; }
-        public string Id { get => mvarId; } //Identificador del plan
+		public string Name { get; set; }
+		public string Comment { get; set; }
+        public string Id { get; set; } //Identificador del plan
 		public TopoStorage Parent { get; private set; }
 		public int CirculationCount
 		{
@@ -53,8 +51,8 @@ namespace TimeNet2026.Timed
 			return null;
 		}
 		string[] Entity.color { get => mvarColor; set => mvarColor = value; }
-		string Entity.name { get => mvarName; set => mvarName = value; }
-		string Entity.comment { get => mvarComment; set => mvarComment = value; }
+		string Entity.name { get => Name; set => Name = value; }
+		string Entity.comment { get => Comment; set => Comment = value; }
 		internal Guid TopoId { get; set; } //Id de compatibilidad con la topología.
 		internal List<Circulation> nextCirculationsByStation(Station station, TimeSpan time)
 		{
@@ -138,33 +136,12 @@ namespace TimeNet2026.Timed
 		internal Plan(TopoStorage parent)
 		{
 			this.Parent = parent;
-			mvarId = string.Empty;
-			mvarName = string.Empty;
-			mvarComment = string.Empty;
+			Id = string.Empty;
+			Name = string.Empty;
+			Comment = string.Empty;
 			mvarColor = new string[2];
 			CirculationBlocks = new List<CirculationBlock>();			
 			mcolSchedules = new List<Schedule>();
-		}
-		internal Plan(XNode root, TopoStorage topoStorage):this(topoStorage)
-		{
-			mvarId = XUtil.StringParam(root, "id");
-			mvarName = XUtil.StringParam(root, "name");
-			mvarComment = XUtil.StringParam(root, "comment");
-			if(root is XElement element)
-			{
-				foreach (XElement hijo in element.Elements())
-				{
-					switch (hijo.Name.LocalName)
-					{
-						case "circulations": //Circulaciones definidas en el plan
-							deserializeCirculations(hijo, Parent);
-							break;
-						case "schedules": //Horarios definidos en el plan
-							deserializeSchedules(hijo);
-							break;
-					}
-				}
-			}
 		}
 		internal void deserializeCirculations(XNode root, TopoStorage topoStorage)
 		{
