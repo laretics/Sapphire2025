@@ -2,15 +2,15 @@
 @using System.Globalization
 
 <TimeNetLayer LayerClass="y-column-labels-layer" Transform="@auxTransformString">
-    @if (Environment?.Environment.ViewAsimilation?.origin != null)
+    @if (Environment?.Environment.ViewAsimilation?.Origin != null)
     {
         string textoX = (Environment.XX.LeftMargin - 16).ToString(CultureInfo.InvariantCulture);
         
         @* Estación origen *@
-        var auxRef = Environment.YY.GetReference(Environment.Environment.ViewAsimilation.origin);
+        var auxRef = Environment.YY.GetReference(Environment.Environment.ViewAsimilation.Origin);
         if (auxRef != null)
         {
-            @RenderStationLabel(Environment.Environment.ViewAsimilation.origin, auxRef, textoX)
+            @RenderStationLabel(Environment.Environment.ViewAsimilation.Origin, auxRef, textoX)
         }
         
         @* Estaciones siguientes *@
@@ -45,7 +45,7 @@
         
         return builder =>
         {
-            builder.AddMarkupContent(0, $"<text x='{textoX}' y='{yLabelStr}' class='{cssClass}'>{station.name}</text>");
+            builder.AddMarkupContent(0, $"<text x='{textoX}' y='{yLabelStr}' class='{cssClass}'>{station.Name}</text>");
         };
     }
 }

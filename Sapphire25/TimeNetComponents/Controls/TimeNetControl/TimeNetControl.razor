@@ -176,7 +176,7 @@ else
         int seconds = 0;
         bool lastTrace = true;
         double startX = -1, startY = -1, endX = -1, endY = -1;
-        if (Environment!.YY.GetY(asimila.origin) >= 0) points.Add($"M {GetXString(0)},{GetYString(asimila.origin)}");
+        if (Environment!.YY.GetY(asimila.Origin) >= 0) points.Add($"M {GetXString(0)},{GetYString(asimila.Origin)}");
         foreach (var paso in asimila.Steps)
         {
             seconds += (int)paso.tripTime.TotalSeconds;

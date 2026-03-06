@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace TimeNet2026.ScriptCompiling
 {
-	public class XMLCompileResult
+	public class XMLCompileResult:IDisposable
 	{
 		public bool Success { get; set; }
 		public List<XMLCompileWarning> Warnings { get; set; }
@@ -15,6 +15,11 @@ namespace TimeNet2026.ScriptCompiling
 		{ 
 			Warnings=new List<XMLCompileWarning>();
 			Message =string.Empty;
+		}
+
+		public void Dispose()
+		{
+			Warnings.Clear();
 		}
 	}
 }

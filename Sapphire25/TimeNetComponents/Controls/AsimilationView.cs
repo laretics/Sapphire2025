@@ -30,7 +30,7 @@ namespace TimeNetComponents.Controls
 		private void calculateReferences()
 		{
 			Elements.Clear();
-			if(null==Parent.origin)
+			if(null==Parent.Origin)
 			{
 				//Asimilación vacía. Cuando se crea un objeto de este tipo y no se le ha pasado la asimilación de la vista.
 				MaxPk = 10;
@@ -38,21 +38,21 @@ namespace TimeNetComponents.Controls
 			}
 			else
 			{
-				Debug.Assert(null != Parent.origin);
+				Debug.Assert(null != Parent.Origin);
 				if (Parent.Steps.Count() > 0)
 				{
-					Station lastStation = Parent.origin;
+					Station lastStation = Parent.Origin;
 					int auxIndex = 0;
 					long cumulPk = 0;
 					Axis currentAxis = Parent.Steps.First().axis;
-					StationViewRef nueva = new StationViewRef(currentAxis, auxIndex++, cumulPk, lastStation.shortName[0] < 'a');
+					StationViewRef nueva = new StationViewRef(currentAxis, auxIndex++, cumulPk, lastStation.ShortName[0] < 'a');
 					Elements.Add(lastStation, nueva);
 					foreach (AsimilationStep paso in Parent.Steps)
 					{
 						if (paso.axis == currentAxis)
 							cumulPk += Math.Abs(paso.destination.pk - lastStation.pk);
 
-						nueva = new StationViewRef(paso.axis, auxIndex++, cumulPk, paso.destination.shortName[0] < 'a');
+						nueva = new StationViewRef(paso.axis, auxIndex++, cumulPk, paso.destination.ShortName[0] < 'a');
 
 						Elements.Add(paso.destination, nueva);
 						currentAxis = paso.axis;

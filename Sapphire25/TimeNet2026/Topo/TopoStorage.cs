@@ -97,22 +97,6 @@ namespace TimeNet2026.Topo
 			}
 			return null;
 		}
-		internal Rauta deserializeRauta(XNode root)
-		{
-			Rauta nuevo = new Rauta(root, this);
-			//Eliminamos cualquier rauta existente con el mismo Id.
-			List<Rauta> auxTemporal = new List<Rauta>();
-			foreach(Rauta candidato in mcolRauta.Values)
-			{
-				if(candidato.Header.Id!=nuevo.Header.Id)
-                    auxTemporal.Add(candidato);
-			}
-			mcolRauta = new Dictionary<Guid, Rauta>();
-			foreach(Rauta elemento in auxTemporal)
-                mcolRauta.Add(elemento.Header.Id, elemento);
-			mcolRauta.Add(nuevo.Header.Id, nuevo);
-			return nuevo;
-		}
 	
 		internal bool InstallRauta(Rauta rauta)
 		{

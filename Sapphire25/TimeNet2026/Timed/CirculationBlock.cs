@@ -23,6 +23,8 @@ namespace TimeNet2026.Timed
 		public byte weekdayMask { get; set; }
 		public string pattern { get; set; } = "####";
 		public bool Ready => null != asimilation && null !=asimilation.duration;
+		private string[] mvarColor;
+		public string[] color { get => mvarColor; set => mvarColor = value; }
 
 		public TimeLapseCollection? TimeLapse
 		{
@@ -53,7 +55,7 @@ namespace TimeNet2026.Timed
 			if(null==asimilation)
 				return "?? (No asimilación)";
 			else
-				return string.Format("{0} ({1} circulaciones)", asimilation.name, Circulations.Count);
+				return string.Format("{0} ({1} circulaciones)", asimilation.Name, Circulations.Count);
 		}
 		internal TimeSpan CalculateDelay(long pk, TimeSpan currentTime)
 		{
@@ -69,77 +71,13 @@ namespace TimeNet2026.Timed
 		public CirculationBlock()
 		{
 			Circulations = new List<Circulation>();
-		}
-		public CirculationBlock(XNode node, TopoStorage storage) :this()
-		{
-			deserializeBlock(node, storage);
+			mvarColor = new string[2];
 		}
 		public Circulation? GetCirculation(string id)
 		{
 			foreach(Circulation aux in Circulations)
 				if (aux.name == id) return aux;
 			return null;
-		}
-
-		internal void deserialize(XNode root, TopoStorage storage)
-		{
-			if(root is XElement element)
-			{
-				if (element.Name.LocalName == "block") deserializeBlock(element, storage);
-				else if (element.Name.LocalName == "cir") deserializeUnit(element, storage);
-			}
-		}
-		protected void deserializeBlock(XNode root, TopoStorage storage)
-		{
-			if (root is XElement element)
-			{
-				if ("block" == element.Name.LocalName)
-				{
-					deserializeCommon(root, storage);
-					foreach (XNode child in element.Elements())
-					{
-						Circulation? nuevaCirculacion = deserializeUnit(child, storage);
-						if (null != nuevaCirculacion)
-							Circulations.Add(nuevaCirculacion);
-					}
-				}
-			}
-		}
-		protected Circulation? deserializeUnit(XNode root, TopoStorage storage)
-		{
-			if (root is XElement element)
-			{
-				if("cir" == element.Name.LocalName)
-				{
-					deserializeCommon(root, storage);
-					Circulation nuevaCirculacion = new Circulation(this);
-					string auxTexto = XUtil.StringParam(element, "id");
-					if (auxTexto.Length > 0) nuevaCirculacion.name = auxTexto;
-					nuevaCirculacion.departure = XUtil.TimeSpanParam(root, "dep");
-					nuevaCirculacion.color[0] = XUtil.StringParam(root, "col", "black");
-					nuevaCirculacion.color[1] = XUtil.StringParam(root, "col2", "white");
-					mcolCirculations.Add(nuevaCirculacion);
-				}
-			}
-			return null;
-		}
-		/// <summary>
-		/// Deserializa las partes que se pueden encontrar tanto en un bloque como en una circulación individual.
-		/// </summary>
-		/// <param name="root"></param>
-		protected void deserializeCommon(XNode root, TopoStorage storage)
-		{
-			if(root is XElement element)
-			{
-				string auxTexto = XUtil.StringParam(element, "freq", "");
-				if (auxTexto.Length > 0)
-					weekdayMask = TNUtil.parseWeekDays(auxTexto);				
-				auxTexto = XUtil.StringParam(element, "asm", "");
-				if (auxTexto.Length > 0)
-					asimilation = storage.GetAsimilation(auxTexto);
-				pattern = XUtil.StringParam(element, "pattern", "");
-			}
-
 		}
 	}
 }

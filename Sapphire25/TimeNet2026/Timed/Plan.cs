@@ -28,7 +28,7 @@ namespace TimeNet2026.Timed
 			{
 				int cuenta = 0;
 				foreach(CirculationBlock bloque in CirculationBlocks)
-					cuenta += bloque.mcolCirculations.Count;
+					cuenta += bloque.Circulations.Count;
 				return cuenta;
 			}
 		}
@@ -46,7 +46,7 @@ namespace TimeNet2026.Timed
 		{
 			foreach (Schedule auxSchedule in mcolSchedules)
 			{
-				if ((auxSchedule.name == name) && ((auxSchedule.weekdayMask & (1 << (dayOfWeek - 1))) != 0)) return auxSchedule;
+				if ((auxSchedule.Name == name) && ((auxSchedule.weekdayMask & (1 << (dayOfWeek - 1))) != 0)) return auxSchedule;
 			}
 			return null;
 		}
@@ -60,7 +60,7 @@ namespace TimeNet2026.Timed
 			//Obtiene el próximo tren en partir a partir de esta hora...
 			foreach(CirculationBlock bloque in CirculationBlocks)
 			{
-				foreach(Circulation auxCircula in bloque.mcolCirculations)
+				foreach(Circulation auxCircula in bloque.Circulations)
 				{
 					TimeSpan auxTime = auxCircula.departureFrom(station);
 					if ((auxTime < TimeSpan.MaxValue) && (auxTime >= time))
@@ -80,7 +80,7 @@ namespace TimeNet2026.Timed
 			double auxNearest = double.MaxValue;
 			foreach(CirculationBlock bloque in CirculationBlocks)
 			{
-				foreach (Circulation auxCircula in bloque.mcolCirculations)
+				foreach (Circulation auxCircula in bloque.Circulations)
 				{
 					TimeSpan auxTime = auxCircula.departureFrom(station);
 					auxNearest = Math.Abs(time.TotalMilliseconds - auxTime.TotalMilliseconds);
@@ -100,7 +100,7 @@ namespace TimeNet2026.Timed
 				TimeLapseCollection salida = new TimeLapseCollection();
 				foreach (CirculationBlock bloque in CirculationBlocks)
 				{
-					foreach (Circulation cir in bloque.mcolCirculations)
+					foreach (Circulation cir in bloque.Circulations)
 					{
 						salida.Add(cir.TimeLapse);
 					}
@@ -142,41 +142,6 @@ namespace TimeNet2026.Timed
 			mvarColor = new string[2];
 			CirculationBlocks = new List<CirculationBlock>();			
 			mcolSchedules = new List<Schedule>();
-		}
-		internal void deserializeCirculations(XNode root, TopoStorage topoStorage)
-		{
-			if(root is XElement element)
-			{
-				foreach (XElement hijo in element.Elements())
-				{
-					if (hijo.Name.LocalName == "block" || hijo.Name.LocalName == "cir")
-					{
-						CirculationBlock nuevoBloque = new CirculationBlock(hijo, topoStorage);
-						CirculationBlocks.Add(nuevoBloque);
-					}
-				}
-			}
-		}
-		internal void deserializeSchedules(XNode root)
-		{
-			if(root is XElement element)
-			{
-				foreach (XElement hijo in element.Elements())
-				{
-					if ("active"==hijo.Name.LocalName)
-					{
-						foreach (XElement nieto in hijo.Elements())
-						{
-							if (nieto.Name == "ws")
-							{
-								Schedule nuevoTurno = new Schedule();
-								nuevoTurno.deserialize(nieto, this);
-								mcolSchedules.Add(nuevoTurno);
-							}
-						}
-					}
-				}
-			}
 		}
 	}
 }

@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Tracing;
+using System.IO.Pipes;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Linq;
 using TimeNet2026.Auxiliar;
 using TimeNet2026.Timed;
@@ -74,7 +78,7 @@ namespace TimeNet2026.ScriptCompiling
 		internal Axis CompileAxis(XNode root)
 		{
 			Axis salida = new Axis();
-			//Cabecera
+			//Cabecera			
 			salida.id = StringParam(root, "id");
 			salida.Name = StringParam(root, "name");
 			salida.Comment = StringParam(root, "comment");
@@ -83,6 +87,7 @@ namespace TimeNet2026.ScriptCompiling
 			salida.mvarColor[1] = StringParam(root, "darkcolor");
 			if (root is XElement element)
 			{
+				CompileLineal(element, salida); //Características de la clase "Lineal"
 				foreach (XElement child in element.Elements())
 				{
 					switch (child.Name.LocalName)
@@ -101,6 +106,41 @@ namespace TimeNet2026.ScriptCompiling
 			}
 			return salida;
 		}
+		internal bool CompileLineal(XElement root, Lineal element)
+		{
+			element.pk = LongParam(root, "pk0");
+			element.pkEnd = LongParam(root, "pkf");
+			element.Tracks = ByteParam(root, "par");
+			return Result.Success;
+		}
+		internal RefPunctual CompileRefPunctual(XElement root)
+		{
+			RefPunctual salida = new RefPunctual();
+			salida.point = GeoLocationParam(root);
+			return salida;
+		}
+		internal Station? CompileStation(XElement root, Axis parent)
+		{
+			Station salida = new Station(parent);
+			salida.Id = StringParam(root, "id");
+			salida.Name = StringParam(root, "name");
+			salida.ShortName = StringParam(root, "avr");
+			salida.pk = LongParam(root, "pk");
+			salida.point = GeoLocationParam(root);
+			if(Result.Success)
+				return salida;
+			return null;
+		}
+		internal Signal? CompileSignal(XElement root)
+		{
+			Signal salida = new Signal();
+			salida.pk = LongParam(root, "pk");
+			salida.Track = ByteParam(root, "par");
+			salida.Name = StringParam(root, "id");
+			salida.Comment = StringParam(root,"comment","",false);
+			if( Result.Success) return salida;
+			return null;
+		}
 		private void CompileAxisPoly (XElement root, Axis parent)
 		{
 			if(null==parent.Topology) parent.Topology = new TopoAxis();
@@ -115,14 +155,17 @@ namespace TimeNet2026.ScriptCompiling
 						string auxId = StringParam(child, "id");
 						if (string.Empty == auxId) //Punto vacío
 						{
-							RefPunctual auxPunto = new RefPunctual(child);
+							RefPunctual auxPunto = CompileRefPunctual(child);
 							parent.Topology.Points.Add(auxPunto);
 						}
 						else
 						{
-							Station auxStation = new Station(child, parent);
-							parent.Topology.Points.Add(auxStation);
-							parent.Stations.Add(auxStation);
+							Station? auxStation = CompileStation(child, parent);
+							if(null!=auxStation)
+							{
+								parent.Topology.Points.Add(auxStation);
+								parent.Stations.Add(auxStation);
+							}
 						}
 					}
 				}
@@ -140,11 +183,25 @@ namespace TimeNet2026.ScriptCompiling
 				{
 					if ("item" == hijo.Name)
 					{
-						SpeedLimit nuevo = new SpeedLimit(hijo);
-						parent.Topology.SpeedLimits.Add(nuevo);
+						SpeedLimit? nuevo = CompileSpeedLimit(hijo);
+						if(null!=nuevo)
+							parent.Topology.SpeedLimits.Add(nuevo);
 					}
 				}
 			}
+		}
+		private SpeedLimit? CompileSpeedLimit(XElement root)
+		{
+			SpeedLimit salida = new SpeedLimit();
+			if(CompileLineal(root,salida))
+			{
+				salida.Speed = IntParam(root, "speed");
+				salida.comment = StringParam(root, "comment", "", false);
+				salida.color[0] = StringParam(root, "color0","black",false);
+				salida.color[1] = StringParam(root, "color1", "white", false);
+				return salida;
+			}
+			return null;
 		}
 		private void CompileAxisSignals(XElement root, Axis parent)
 		{
@@ -155,8 +212,9 @@ namespace TimeNet2026.ScriptCompiling
 				{
 					if ("item" == hijo.Name)
 					{
-						Signal nueva = new Signal(hijo);
-						parent.Topology.Signals.Add(nueva);
+						Signal? nueva = CompileSignal(hijo);
+						if(null!=nueva)
+							parent.Topology.Signals.Add(nueva);
 					}
 				}
 			}
@@ -188,9 +246,16 @@ namespace TimeNet2026.ScriptCompiling
 			Station? currentStation = null;
 			Axis? auxCurrentAxis = null;
 			currentStation = storage.stationById(StringParam(root, "origin"));
+			System.Diagnostics.Debug.Assert(null!=currentStation);
 			auxCurrentAxis = storage.axisByStation(currentStation);
-			Asimilation currentAsimilation = new Asimilation(root, storage);
-			currentAsimilation.origin = currentStation;
+			Asimilation currentAsimilation = new Asimilation(storage);
+			currentAsimilation.id = StringParam(root, "id");
+			currentAsimilation.Name = StringParam(root, "name");
+			currentAsimilation.MaxSpeed = IntParam(root, "type",100);
+			currentAsimilation.color[0] = StringParam(root, "color", "white", false);
+			currentAsimilation.color[1] = StringParam(root, "color", "black", false);
+			currentAsimilation.Comment = StringParam(root, "comment","",false);
+			currentAsimilation.Origin = currentStation;
 			if (root is XElement element)
 			{
 				foreach (XElement hijo in element.Elements())
@@ -222,7 +287,7 @@ namespace TimeNet2026.ScriptCompiling
 					if (storage.mcolAsimilations.ContainsKey(nueva.id))
 					{
 						Result.Success = false;
-						Result.Warnings.Add(new XMLCompileWarning(string.Format("Topo Storage {0} already contains an asimilation named {1} with id {2}", storage.Header.Name, nueva.name, nueva.id), -1, XMLCompileWarning.SeverityEnum.Severe));
+						Result.Warnings.Add(new XMLCompileWarning(string.Format("Topo Storage {0} already contains an asimilation named {1} with id {2}", storage.Header.Name, nueva.Name, nueva.id), -1, XMLCompileWarning.SeverityEnum.Severe));
 						return false;
 					}
 					storage.mcolAsimilations.Add(nueva.id, nueva);
@@ -392,7 +457,7 @@ namespace TimeNet2026.ScriptCompiling
 					switch (hijo.Name.LocalName)
 					{
 						case "circulations": //Circulaciones definidas en el plan
-							if (!CompileCirculations(hijo, salida)) return null;
+							if (!CompileCirculations(hijo, salida, parent.Parent)) return null;
 							break;
 						case "schedules": //Horarios definidos en el plan
 							if (!CompileSchedules(hijo, salida)) return null;
@@ -403,76 +468,243 @@ namespace TimeNet2026.ScriptCompiling
 			if (!Result.Success) return null;
 			return salida;
 		}
-		internal bool CompileCirculations(XNode root, Plan plan)
+		internal bool CompileCirculations(XNode root, Plan plan, TopoStorage storage)
 		{
-
+			if(root is XElement element)
+			{
+				foreach(XElement hijo in element.Elements())
+				{
+					switch(hijo.Name.LocalName)
+					{
+						case "block":
+							CirculationBlock? auxBlock = CompileCirculationBlock(hijo, plan, storage);
+							if (null != auxBlock)
+								plan.CirculationBlocks.Add(auxBlock);
+							break;
+						case "cir":
+							CirculationBlock? auxBlock2 = CompileStandAloneCirculation(hijo, storage);
+							if (null != auxBlock2)
+								plan.CirculationBlocks.Add(auxBlock2);
+							break;
+					}
+				}
+				return true;
+			}
+			Result.Warnings.Add(new XMLCompileWarning(string.Format("Node {0} for circulations at plan {1} is not an XML element.", root.BaseUri, plan.Name), -1, XMLCompileWarning.SeverityEnum.Warning));
+			return false;
 		}
-		internal bool CompileCirculationBlock(XNode root, Plan plan)
+		internal CirculationBlock? CompileCirculationBlock(XElement root, Plan plan, TopoStorage storage)
 		{
-
+			CirculationBlock salida = new CirculationBlock();
+			Asimilation? auxAsimila = asimilationByNode(root, storage, "Block");
+			if (null != auxAsimila)
+			{
+				salida.asimilation = auxAsimila;
+				string auxTexto = StringParam(root, "freq", "", false);
+				if (auxTexto.Length > 0)
+					salida.weekdayMask = TNUtil.parseWeekDays(auxTexto);
+				salida.pattern = StringParam(root, "pattern", "", false);
+				salida.color[0] = StringParam(root, "col", "black", false);
+				salida.color[1] = StringParam(root, "col2", "white", false);
+				Circulation? auxCircula = null;
+				foreach (XNode hijo in root.Nodes())
+				{
+					if(hijo is XElement hijoElement)
+					{
+						if(hijoElement.Name.LocalName=="cir")
+						{
+							auxCircula = CompileCirculation(hijoElement, salida);
+							if (null != auxCircula)
+								salida.Circulations.Add(auxCircula);
+						}
+					}
+				}
+				if (Result.Success) return salida;
+			}
+			return null;
 		}
-		//AQUÍ ME QUEDÉ
-		internal Circulation? CompileCirculation(XNode root, CirculationBlock parent)
+
+		internal Circulation? CompileCirculation(XElement root, CirculationBlock parent)
+		{
+			Circulation nuevaCirculacion = new Circulation(parent);
+			string auxTexto = StringParam(root, "id");
+			if (auxTexto.Length > 0)
+			{
+				nuevaCirculacion.name = auxTexto;
+				nuevaCirculacion.departure = TimeSpanParam(root, "dep");
+				return nuevaCirculacion;
+			}
+			return null;
+		}
+		/// <summary>
+		/// Obtiene una circulación suelta en un bloque sólo para ella.
+		/// Se usa como retrocompatibilidad con Ónice clásico
+		/// </summary>
+		/// <param name="root">Nodo "cir"</param>
+		/// <param name="storage">Referencia al TopoStorage</param>
+		/// <returns></returns>
+		internal CirculationBlock? CompileStandAloneCirculation(XNode root, TopoStorage storage)
 		{
 			if (root is XElement element)
 			{
-				if ("cir" == element.Name.LocalName)
+				CirculationBlock salida = new CirculationBlock();
+				Circulation nuevaCirculacion = new Circulation(salida);
+				string auxTexto = StringParam(element, "id");
+				if (auxTexto.Length > 0) nuevaCirculacion.name = auxTexto;
+				Asimilation? auxAsimila = asimilationByNode(root, storage, nuevaCirculacion.name);
+				if(null!=auxAsimila)
 				{
-					Circulation nuevaCirculacion = new Circulation(parent);
-					string auxTexto = StringParam(element, "freq", "");
-					if (auxTexto.Length > 0)
-						parent.weekdayMask = TNUtil.parseWeekDays(auxTexto);
-					auxTexto = XUtil.StringParam(element, "asm", "");
-					if (auxTexto.Length > 0)
-						asimilation = storage.GetAsimilation(auxTexto);
-					pattern = XUtil.StringParam(element, "pattern", "");
-					string auxTexto = XUtil.StringParam(element, "id");
+					salida.asimilation = auxAsimila;
 					if (auxTexto.Length > 0) nuevaCirculacion.name = auxTexto;
-					nuevaCirculacion.departure = XUtil.TimeSpanParam(root, "dep");
-					nuevaCirculacion.color[0] = XUtil.StringParam(root, "col", "black");
-					nuevaCirculacion.color[1] = XUtil.StringParam(root, "col2", "white");
-					mcolCirculations.Add(nuevaCirculacion);
+					auxTexto = StringParam(element, "freq", "", false);
+					if (auxTexto.Length > 0)
+						salida.weekdayMask = TNUtil.parseWeekDays(auxTexto);
+					salida.pattern = StringParam(element, "pattern", "", false);
+					salida.color[0] = StringParam(root, "col", "black", false);
+					salida.color[1] = StringParam(root, "col2", "white", false);
+
+					nuevaCirculacion.departure = TimeSpanParam(root, "dep");
+					salida.Circulations.Add(nuevaCirculacion);
+					if (Result.Success) return salida;
 				}
 			}
 			return null;
 		}
 
-		internal bool CompileSchedules(XNode root, Plan plan)
+		private Asimilation? asimilationByNode(XNode root, TopoStorage storage, string circulationId)
 		{
-
+			if (root is XElement element)
+			{
+				string auxTexto = StringParam(element, "asm", "");
+				if (auxTexto.Length < 1)
+				{
+					Result.Warnings.Add(new XMLCompileWarning(string.Format("Circulacion {0} has no dependence in any asimilation.", circulationId), -1, XMLCompileWarning.SeverityEnum.Warning));
+					return null;
+				}
+				Asimilation? auxAsimilation = storage.GetAsimilation(auxTexto);
+				if (null == auxAsimilation)
+				{
+					Result.Warnings.Add(new XMLCompileWarning(string.Format("Circulacion {0} related to asimilation named \"{1}\" has not any object with this reference.", circulationId, auxTexto), -1, XMLCompileWarning.SeverityEnum.Warning));
+					return null;
+				}
+				return auxAsimilation;
+			}
+			Result.Warnings.Add(new XMLCompileWarning(string.Format("Node {0} for circulation {1} is not an XML element.",root.BaseUri, circulationId), -1, XMLCompileWarning.SeverityEnum.Warning));
+			return null;
 		}
 
+		internal bool CompileSchedules(XElement root, Plan plan)
+		{
+			foreach(XElement hijo in root.Elements())
+			{
+				if("active"==hijo.Name.LocalName)
+				{
+					foreach (XElement nieto in hijo.Elements())
+					{
+						if(nieto.Name.LocalName=="ws")
+						{
+							Schedule? turno = CompileSchedule(nieto, plan);
+							if(null!=turno) plan.mcolSchedules.Add(turno);								
+						}
+					}
+				}
+			}
+			return false;
+		}
+		internal Schedule? CompileSchedule(XElement root, Plan plan)
+		{
+			Schedule salida = new Schedule();
+			string auxName = StringParam(root, "name", "[nil]");
+			if("[nil]"!=auxName)
+			{
+				salida.Comment = StringParam(root, "comment", "", false);
+				salida.Color[0] = StringParam(root, "stcolor", "black", false);
+				salida.Color[1] = StringParam(root, "bgcolor", "white", false);
+				salida.weekdayMask = TNUtil.parseWeekDays(StringParam(root, "week", "", false));
+				string auxCoordinates = StringParam(root, "ord", "", false);
+				if(auxCoordinates.Length>0)
+				{
+					string[] coords = auxCoordinates.Split(',');
+					if(coords.Length==2)
+					{
+						salida.Coordinates[0] = int.Parse(coords[0]);
+						salida.Coordinates[1] = int.Parse(coords[1]);
+					}
+				}
+				foreach(XElement node in root.Elements())
+				{
+					ScheduleItem? item = CompileScheduleItem(node, plan);
+					if(null!=item) salida.mcolItems.Add(item);
+				}
+			}
+			if (Result.Success)
+				return salida;
+
+			return null;
+		}
+		internal ScheduleItem? CompileScheduleItem(XElement root, Plan plan)
+		{
+			TimeSpan auxStart, auxEnd;			
+			switch(root.Name.LocalName)
+			{
+				case "train":
+					string auxCirculationId = StringParam(root, "id", "");
+					if(auxCirculationId.Length>0)
+					{
+						Circulation? circula = plan.getCirculationById(auxCirculationId);
+						if(null!=circula)
+						{
+							bool auxActive = BoolParam(root, "active");
+							ScheduleItem salidaTren = new ScheduleItem(circula, auxActive);
+							salidaTren.timeLapse = circula.TimeLapse;
+							return salidaTren;
+						}
+					}
+					break;
+				case "depot":
+					auxStart = TimeSpanParam(root, "start");
+					auxEnd = TimeSpanParam(root, "end");
+					TimeLapse lapse = new TimeLapse(auxStart, auxEnd);
+					return new ScheduleItem(lapse, false);
+			}
+			return null;
+		}
 		#endregion Rauta
 		#region Lectura de atributos
 		private string StringParam(XNode node, string paramId, string defaultValue = "", bool checkExist = true)
 		{
 			if (node is XElement element)
 			{
-				if (null == element.Attribute(paramId))
+				if (checkExist)
 				{
-					Result.Success = false;
-					Result.Warnings.Add(
-						new XMLCompileWarning(
-							string.Format("Node {0} has no attribute named {1}.", element.Name, paramId),
-							-1,
-							XMLCompileWarning.SeverityEnum.Error));
-				}
-				else
-				{
-					if (null == element.Attribute(paramId)?.Value)
+					if (null == element.Attribute(paramId))
 					{
 						Result.Success = false;
 						Result.Warnings.Add(
-						new XMLCompileWarning(
-						string.Format("Attribute {0} in node {1} has no value.", paramId, element.Name),
-						-1,
-						XMLCompileWarning.SeverityEnum.Warning));
+							new XMLCompileWarning(
+								string.Format("Node {0} has no attribute named {1}.", element.Name, paramId),
+								-1,
+								XMLCompileWarning.SeverityEnum.Error));
 					}
 					else
 					{
-						return element.Attribute(paramId)?.Value ?? defaultValue;
+						if (null == element.Attribute(paramId)?.Value)
+						{
+							Result.Success = false;
+							Result.Warnings.Add(
+							new XMLCompileWarning(
+							string.Format("Attribute {0} in node {1} has no value.", paramId, element.Name),
+							-1,
+							XMLCompileWarning.SeverityEnum.Warning));
+						}
+						else
+						{
+							return element.Attribute(paramId)?.Value ?? defaultValue;
+						}
 					}
 				}
+				else
+					return element.Attribute(paramId)?.Value ?? defaultValue;
 			}
 			else
 			{

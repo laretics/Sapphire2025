@@ -2,15 +2,15 @@
 @using System.Globalization
 
 <TimeNetLayer LayerClass="y-column-lines-layer" Transform="@auxTransformString">
-    @if (Environment?.Environment.ViewAsimilation?.origin != null)
+    @if (Environment?.Environment.ViewAsimilation?.Origin != null)
     {
         string textoRight = Environment.XX.mvarGraphicalWidth.ToString(CultureInfo.InvariantCulture);
         
         @* Estación origen *@
-        var auxRef = Environment.YY.GetReference(Environment.Environment.ViewAsimilation.origin);
+        var auxRef = Environment.YY.GetReference(Environment.Environment.ViewAsimilation.Origin);
         if (auxRef != null)
         {
-            @RenderStationLine(Environment.Environment.ViewAsimilation.origin, auxRef, textoRight)
+            @RenderStationLine(Environment.Environment.ViewAsimilation.Origin, auxRef, textoRight)
         }
         
         @* Estaciones siguientes *@

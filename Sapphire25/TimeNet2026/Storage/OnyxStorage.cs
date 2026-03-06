@@ -1,5 +1,6 @@
 ﻿using System.Xml.Linq;
 using TimeNet2026.DBStorage;
+using TimeNet2026.ScriptCompiling;
 using TimeNet2026.Timed;
 using TimeNet2026.Topo;
 using TimeNet2026Data;
@@ -32,9 +33,11 @@ namespace TimeNet2026.Storage
 		/// Carga el nodo que viene y deserializa automáticamente lo que contenga.
 		/// </summary>
 		/// <param name="root"></param>
-		public bool ImportFromXML(XNode root)
+		public XMLCompileResult ImportFromXML(XNode root)
 		{
-			if(root is XElement element)
+			XMLCompileResult result = new XMLCompileResult();
+			result.Success = false;
+			if (root is XElement element)
 			{
 				switch (element.Name.LocalName)
 				{
@@ -42,34 +45,43 @@ namespace TimeNet2026.Storage
 						return ImportTopoFromXML(root);
 					case "rautatie":
 						return ImportRautaFromXML(root);
-				}				
+				}								
+				result.Message = string.Format("Node named {0} is not a topoStorage and not a rautatie database.", element.Name.LocalName);
+				return result;
 			}
-			return false;
+			result.Message = "This XML is not a valid node containing data. Please check input file.";
+			return result;
 		}
-		internal bool ImportTopoFromXML(XNode root)
+		internal XMLCompileResult ImportTopoFromXML(XNode root)
 		{
-			TopoStorage nuevo = new TopoStorage(root);
-			if(Guid.Empty!=nuevo.Header.Id)
+			XMLCompiler compilador = new XMLCompiler();
+			TopoStorage? nuevo = compilador.CompileTopoStorage(root);
+			if(null!=nuevo && compilador.Result.Success)
 			{
-				if(mcolTopoStorages.ContainsKey(nuevo.Header.Id))
-					mcolTopoStorages[nuevo.Header.Id]= nuevo;
+				if (mcolTopoStorages.ContainsKey(nuevo.Header.Id))
+					mcolTopoStorages[nuevo.Header.Id] = nuevo;
 				else
 					mcolTopoStorages.Add(nuevo.Header.Id, nuevo);
-
-				return true;
 			}
-			return false;
+			return compilador.Result;
 		}
-		internal bool ImportRautaFromXML(XNode root)
+		internal XMLCompileResult ImportRautaFromXML(XNode root)
 		{
-			Guid auxId = Rauta.TopoStorageId(root);
+			XMLCompiler compilador = new XMLCompiler();
+			XMLCompileResult result = new XMLCompileResult();
+			result.Success = false;
+			Guid auxId = compilador.TopoStorageIdByRauta(root);			
 			if(Guid.Empty!=auxId && mcolTopoStorages.ContainsKey(auxId))
 			{
 				TopoStorage auxTopoStorage = mcolTopoStorages[auxId];
-				Rauta auxRauta = new Rauta(root, auxTopoStorage);
-				return auxTopoStorage.InstallRauta(auxRauta);
+				compilador.CompileRauta(auxTopoStorage, root);
+				return compilador.Result;
 			}
-			return false;
+			else
+			{
+				result.Message = string.Format("Rauta with id {0} has no any installed compatible topoStorage on the database.", auxId);
+				return result;
+			}
 		}
 		/// <summary>
 		/// Almacena el contenido de la estructura en la base de datos.
@@ -170,7 +182,7 @@ namespace TimeNet2026.Storage
 						nuevoPlan.RautaId = nuevoRauta.Id;
 						nuevoPlan.PlanId = auxPlan.Id;
 						nuevoPlan.Name = auxPlan.Name;
-						nuevoPlan.Comment = auxPlan.mvarComment;
+						nuevoPlan.Comment = auxPlan.Comment;
 						nuevoPlan.Color0 = auxPlan.mvarColor[0] ?? "black";
 						nuevoPlan.Color1 = auxPlan.mvarColor[1] ?? "white";
 						auxSerializer.Add(nuevoPlan);
@@ -186,7 +198,7 @@ namespace TimeNet2026.Storage
 								nuevoBlock.Pattern = auxBlock.pattern;
 								auxSerializer.Add(nuevoBlock);
 								await auxSerializer.SaveChangesAsync();
-								foreach (Circulation auxCircula in auxBlock.mcolCirculations)
+								foreach (Circulation auxCircula in auxBlock.Circulations)
 								{
 									DBCirculation nuevaCircula = new DBCirculation();
 									nuevaCircula.BlockId = nuevoBlock.Id;
@@ -205,13 +217,13 @@ namespace TimeNet2026.Storage
 						{
 							DBSchedule nuevoSchedule = new DBSchedule();
 							nuevoSchedule.PlanId = nuevoPlan.Id;
-							nuevoSchedule.Name = auxSchedule.nameCloudString;
-							nuevoSchedule.Comment = auxSchedule.comment;
+							nuevoSchedule.Name = auxSchedule.NameCloudString;
+							nuevoSchedule.Comment = auxSchedule.Comment;
 							nuevoSchedule.WeekdayMask = auxSchedule.weekdayMask;
-							nuevoSchedule.Color1 = auxSchedule.color[0] ?? "black";
-							nuevoSchedule.Color2 = auxSchedule.color[1] ?? "white";
-							nuevoSchedule.CoordinateX = auxSchedule.coordinates[0];
-							nuevoSchedule.CoordinateY = auxSchedule.coordinates[1];
+							nuevoSchedule.Color1 = auxSchedule.Color[0] ?? "black";
+							nuevoSchedule.Color2 = auxSchedule.Color[1] ?? "white";
+							nuevoSchedule.CoordinateX = auxSchedule.Coordinates[0];
+							nuevoSchedule.CoordinateY = auxSchedule.Coordinates[1];
 							auxSerializer.Add(nuevoSchedule);
 							await auxSerializer.SaveChangesAsync();
 							foreach (ScheduleItem auxItem in auxSchedule.mcolItems)
@@ -271,9 +283,9 @@ namespace TimeNet2026.Storage
 					foreach (DBPlan auxPlan in planes)
 					{
 						Plan nuevoPlan = new Plan(topoStorage);
-						nuevoPlan.mvarId = auxPlan.PlanId;
-						nuevoPlan.mvarName = auxPlan.Name;
-						nuevoPlan.mvarComment = auxPlan.Comment;
+						nuevoPlan.Id = auxPlan.PlanId;
+						nuevoPlan.Name = auxPlan.Name;
+						nuevoPlan.Comment = auxPlan.Comment;
 						nuevoPlan.mvarColor[0] = auxPlan.Color0 ?? "black";
 						nuevoPlan.mvarColor[1] = auxPlan.Color1 ?? "white";
 						nuevoPlan.TopoId = topoStorage.Header.Id;
@@ -298,7 +310,7 @@ namespace TimeNet2026.Storage
 									nuevaCirculation.color[1] = auxCirculation.Color1;
 									nuevaCirculation.comment = auxCirculation.Comment;
 									nuevaCirculation.name = auxCirculation.Name;
-									nuevoBlock.mcolCirculations.Add(nuevaCirculation);
+									nuevoBlock.Circulations.Add(nuevaCirculation);
 								}
 							}
 						}
@@ -307,13 +319,13 @@ namespace TimeNet2026.Storage
 						foreach (DBSchedule schedule in schedules)
 						{
 							Schedule nuevoSchedule = new Schedule();
-							nuevoSchedule.name = schedule.Name;
-							nuevoSchedule.comment = schedule.Comment;
+							nuevoSchedule.Name = schedule.Name;
+							nuevoSchedule.Comment = schedule.Comment;
 							nuevoSchedule.weekdayMask = schedule.WeekdayMask;
-							nuevoSchedule.color[0] = schedule.Color1 ?? "black";
-							nuevoSchedule.color[1] = schedule.Color2 ?? "white";
-							nuevoSchedule.coordinates[0] = schedule.CoordinateX;
-							nuevoSchedule.coordinates[1] = schedule.CoordinateY;
+							nuevoSchedule.Color[0] = schedule.Color1 ?? "black";
+							nuevoSchedule.Color[1] = schedule.Color2 ?? "white";
+							nuevoSchedule.Coordinates[0] = schedule.CoordinateX;
+							nuevoSchedule.Coordinates[1] = schedule.CoordinateY;
 							//Cargamos las unidades del horario.
 							List<DBScheduleUnit> unidades = await auxSerializer.GetScheduleUnits(schedule.Id);
 							foreach (DBScheduleUnit unidad in unidades)
@@ -453,12 +465,12 @@ namespace TimeNet2026.Storage
 				{
 					Asimilation nuevaAsimilation = new Asimilation(salida);
 					nuevaAsimilation.id = auxAsimilation.AsimilationId;
-					nuevaAsimilation.mvarName = auxAsimilation.Name;
-					nuevaAsimilation.mvarComment = auxAsimilation.Comment;
+					nuevaAsimilation.Name = auxAsimilation.Name;
+					nuevaAsimilation.Comment = auxAsimilation.Comment;
 					nuevaAsimilation.color[0] = auxAsimilation.Color0 ?? "white";
 					nuevaAsimilation.color[1] = auxAsimilation.Color1 ?? "black";
-					nuevaAsimilation.mvarMaxSpeed = auxAsimilation.MaxSpeed;
-					nuevaAsimilation.origin = auxAllStationsCache[auxAsimilation.OriginStationId];
+					nuevaAsimilation.MaxSpeed = auxAsimilation.MaxSpeed;
+					nuevaAsimilation.Origin = auxAllStationsCache[auxAsimilation.OriginStationId];
 					//Carga de los pasos de cada asimilación
 					IEnumerable<DBAsimilationStep> auxAsimilationSteps = await auxSerializer.GetAsimilationSteps(auxAsimilation.Id);
 					foreach (DBAsimilationStep auxAsimilationStep in auxAsimilationSteps)
@@ -520,11 +532,11 @@ namespace TimeNet2026.Storage
 				foreach (Station estacion in eje.Stations)
 				{
 					DBStation nuevaEstacion = new DBStation();
-					nuevaEstacion.StationId = estacion.id;
+					nuevaEstacion.StationId = estacion.Id;
 					nuevaEstacion.AxisId = nuevoEje.Id;
 					nuevaEstacion.Pk = estacion.pk;
-					nuevaEstacion.Name = estacion.name;
-					nuevaEstacion.ShortName = estacion.shortName;
+					nuevaEstacion.Name = estacion.Name;
+					nuevaEstacion.ShortName = estacion.ShortName;
 					auxSerializer.Add(nuevaEstacion);
 					await auxSerializer.SaveChangesAsync();
 					auxColStations.Add(estacion, nuevaEstacion.Id);
@@ -566,13 +578,13 @@ namespace TimeNet2026.Storage
 				DBAsimilation nuevaAsimilacion = new DBAsimilation();
 				nuevaAsimilacion.TopoStorageId = nuevo.Id;
 				nuevaAsimilacion.AsimilationId = asimilacion.id;
-				nuevaAsimilacion.Name = asimilacion.name;
-				nuevaAsimilacion.Comment = asimilacion.comment;
+				nuevaAsimilacion.Name = asimilacion.Name;
+				nuevaAsimilacion.Comment = asimilacion.Comment;
 				nuevaAsimilacion.Color0 = asimilacion.mvarColor[0];
 				nuevaAsimilacion.Color1 = asimilacion.mvarColor[1];
-				nuevaAsimilacion.MaxSpeed = asimilacion.maxSpeed;
-				System.Diagnostics.Debug.Assert(null != asimilacion.origin);
-				nuevaAsimilacion.OriginStationId = auxColStations[asimilacion.origin];
+				nuevaAsimilacion.MaxSpeed = asimilacion.MaxSpeed;
+				System.Diagnostics.Debug.Assert(null != asimilacion.Origin);
+				nuevaAsimilacion.OriginStationId = auxColStations[asimilacion.Origin];
 				auxSerializer.Add(nuevaAsimilacion);
 				await auxSerializer.SaveChangesAsync();
 				foreach (AsimilationStep paso in asimilacion.mcolSteps)

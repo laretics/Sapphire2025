@@ -12,10 +12,7 @@ namespace TimeNet2026.Timed
 {
 	public class Asimilation : Entity
 	{
-		internal string mvarName;
-		internal string mvarComment;
 		internal string[] mvarColor; //Colores nocturno y diurno
-		internal int mvarMaxSpeed; //Velocidad máxima de la asimilación.
 		public TopoStorage Parent { get; private set; }
 		private TimeSpan? mvarDuration;
 		public TimeSpan? duration
@@ -32,12 +29,12 @@ namespace TimeNet2026.Timed
 				return mvarDuration;
 			}
 		}
-		public Station? origin { get; set; }
-		public Station? destination
+		public Station? Origin { get; set; }
+		public Station? Destination
 		{
 			get
 			{
-				if (mcolSteps.Count == 0) return origin;
+				if (mcolSteps.Count == 0) return Origin;
 				return mcolSteps[mcolSteps.Count - 1].destination;
 			}
 		}
@@ -45,23 +42,23 @@ namespace TimeNet2026.Timed
 		{ 
 			get
 			{
-				if (null == origin || null == destination) return true;
-				return destination.pk > origin.pk;
+				if (null == Origin || null == Destination) return true;
+				return Destination.pk > Origin.pk;
 			}				
 		}
 		public string id { get; set; }
-		public string name { get => mvarName; set => mvarName = value; }
-		string Entity.name { get => mvarName; set => mvarName=value; }
-		public string comment { get => mvarComment; set => mvarComment = value; }
-		string Entity.comment { get => mvarComment; set => mvarComment = value; }
-		public int maxSpeed { get => mvarMaxSpeed; }
+		public string Name { get; internal set; }
+		string Entity.name { get => Name; set => Name=value; }
+		public string Comment { get; set; }
+		string Entity.comment { get => Comment; set => Comment = value; }
+		public int MaxSpeed { get; internal set; }
 		public string[] color { get => mvarColor; set => mvarColor = value; }
 		string[] Entity.color { get => mvarColor; set => mvarColor = value; }	
 		internal List<AsimilationStep> mcolSteps;
 		public IEnumerable<AsimilationStep> Steps { get => mcolSteps; }
 		internal bool containsStation(Station rhs)
 		{
-			if (rhs == origin) return true;
+			if (rhs == Origin) return true;
 			foreach (AsimilationStep aux in mcolSteps)
 			{
 				if (aux.destination == rhs) return true;
@@ -69,17 +66,17 @@ namespace TimeNet2026.Timed
 			return false;
 		}
 		internal Station? stationByName(string name)
-		{
-			if (name.Equals(origin.name)) return origin;
+		{			
+			if (null!=Origin && name.Equals(Origin.Name)) return Origin;
 			foreach (AsimilationStep aux in mcolSteps)
 			{
-				if (name.Equals(aux.destination.name)) return aux.destination;
+				if (name.Equals(aux.destination.Name)) return aux.destination;
 			}
 			return null; //No contiene la estación.
 		}
 		internal TimeSpan departureFrom(Station station)
 		{
-			if (station == origin) return TimeSpan.Zero;
+			if (station == Origin) return TimeSpan.Zero;
 			TimeSpan salida = TimeSpan.Zero;
 			for (int i = 0; i < mcolSteps.Count; i++)
 			{
@@ -91,9 +88,10 @@ namespace TimeNet2026.Timed
 		}
 		internal Station? nextStation(long pk) //Devuelve la próxima estación en este PK
 		{
+			if (null == Origin) return null;
 			if (isAscendent)
 			{
-				if (origin.pk > pk) return origin;
+				if (Origin.pk > pk) return Origin;
 				for (int i = 0; i < mcolSteps.Count; i++)
 				{
 					if (mcolSteps[i].destination.pk > pk) return mcolSteps[i].destination;
@@ -105,13 +103,13 @@ namespace TimeNet2026.Timed
 				{
 					if (mcolSteps[i].destination.pk < pk) return mcolSteps[i].destination;
 				}
-				if (origin.pk > pk) return destination;
+				if (Origin.pk > pk) return Destination;
 			}
 			return null;
 		}
 		internal TimeSpan stationStopTime(Station rhs)
 		{
-			if (rhs == origin) return TimeSpan.Zero; //Estación de salida.
+			if (rhs == Origin) return TimeSpan.Zero; //Estación de salida.
 			foreach (AsimilationStep step in mcolSteps)
 			{
 				if (step.destination == rhs) return step.stopTime;
@@ -146,12 +144,12 @@ namespace TimeNet2026.Timed
 		//Calcula la hora exacta desde la salida para pasar por ese PK
 		{
 			TimeSpan auxLapse = TimeSpan.Zero;
-			if(null!=origin && null!=destination)
+			if(null!=Origin && null!=Destination)
 			{
-				Station lastStation = origin;
+				Station lastStation = Origin;
 				if (isAscendent)
 				{
-					if (currentPk <= origin.pk) return auxLapse; //En origen el tiempo es cero.
+					if (currentPk <= Origin.pk) return auxLapse; //En origen el tiempo es cero.
 					foreach (AsimilationStep step in mcolSteps)
 					{
 						if (step.destination.pk > currentPk)
@@ -167,7 +165,7 @@ namespace TimeNet2026.Timed
 				}
 				else
 				{
-					if (currentPk >= origin.pk) return auxLapse; //En origen el tiempo es cero.
+					if (currentPk >= Origin.pk) return auxLapse; //En origen el tiempo es cero.
 					foreach (AsimilationStep step in mcolSteps)
 					{
 						if (step.destination.pk < currentPk)
@@ -189,27 +187,20 @@ namespace TimeNet2026.Timed
 											   //IMPORTANTE: Este valor no tiene ninguna relevancia fuera de la operación de pintado.
 		public override string ToString()
 		{
-			return string.Format("{0}-{1}", origin.name, destination.name);
+			if (null == Origin || null == Destination)
+				return "[Empty]";
+			return string.Format("{0}-{1}", Origin.Name, Destination.Name);
 		}
 		public Asimilation(TopoStorage parent)
 		{
 			id = string.Empty;
-			mvarName = string.Empty;
-			mvarComment = string.Empty;
-			mvarMaxSpeed = 100;
+			Name = string.Empty;
+			Comment = string.Empty;
+			MaxSpeed = 100;
 			mcolSteps = new List<AsimilationStep>();
 			mvarDuration = null;
 			mvarColor = new string[2];
 			this.Parent = parent;
-		}
-		internal Asimilation(XNode root, TopoStorage parent):this(parent)
-		{
-			id = XUtil.StringParam(root, "id");
-			mvarName = XUtil.StringParam(root, "name");
-			mvarMaxSpeed = XUtil.IntParam(root, "type");
-			mvarColor[0] = XUtil.StringParam(root, "color");
-			mvarColor[1] = XUtil.StringParam(root, "darkcolor");
-			mvarComment = XUtil.StringParam(root, "comment");
 		}
 		internal Asimilation(Axis auxEje, TopoStorage parent):this(parent)
 		{
@@ -217,18 +208,18 @@ namespace TimeNet2026.Timed
 			mcolSteps = new List<AsimilationStep>();
 			mvarColor = new string[2];
 			mvarDuration = null;
-			mvarName = auxEje.Name;
+			Name = auxEje.Name;
 			mvarColor[0] = auxEje.mvarColor[0];
 			mvarColor[1] = auxEje.mvarColor[1];
-			mvarMaxSpeed = auxEje.MaxSpeed;
-			origin = null;
+			MaxSpeed = auxEje.MaxSpeed;
+			Origin = null;
 			if(null!=auxEje.Stations)
 			{
 				foreach (Station auxEstacion in auxEje.Stations)
 				{
-					if (null == origin)
+					if (null == Origin)
 					{
-						origin = auxEstacion;
+						Origin = auxEstacion;
 					}
 					else
 					{

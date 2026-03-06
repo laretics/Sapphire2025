@@ -23,12 +23,6 @@ namespace TimeNet2026.Topo
 			mcolColor = new string[1];
 			Speed = 0;
 		}
-		internal SpeedLimit(XNode root):base(root)
-		{
-			this.Speed = XUtil.IntParam(root, "speed");
-			mvarComment = XUtil.StringParam(root, "comment");
-			mcolColor = new string[1];
-		}
 		internal override string XNode()
 		{
 			return string.Format("<item pk0=\"{0}\" pkf=\"{1}\" par=\"{2}\" speed=\"{3}\" comment=\"{4}\" />",

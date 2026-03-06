@@ -11,27 +11,23 @@ namespace TimeNet2026.Topo
 {
 	public class Station : RefPunctual, Entity
 	{
-		public string id { get; private set; }
-		public string name { get; private set; }
-		public string shortName { get; private set; }
+		public string Id { get; internal set; }
+		public string Name { get; internal set; }
+		public string ShortName { get; internal set; }
 		internal Axis axis { get; private set; }
-		string Entity.name { get => this.name; set => this.name = value; }
-		string Entity.comment { get => this.name; set => this.name = value; }
+		string Entity.name { get => this.Name; set => this.Name = value; }
+		string Entity.comment { get => this.Name; set => this.Name = value; }
 		string[] Entity.color { get =>	new string[2]; set => throw new NotImplementedException(); }
 
-		public Station(string id, string name, string shortName, Axis axis, double latitude, double longitude) : base(latitude, longitude)
+		public Station(Axis axis)
 		{
-			this.id = id;
-			this.name = name;
-			this.shortName = shortName;
 			this.axis = axis;
 		}
-		public Station(XNode root, Axis axis):base(root)
+		public Station(string id, string name, string shortName, Axis axis, double latitude, double longitude) : base(latitude, longitude)
 		{
-			id=XUtil.StringParam(root, "id");
-			name = XUtil.StringParam(root,"name");
-			shortName = XUtil.StringParam(root, "avr");
-			pk = XUtil.LongParam(root, "pk");
+			Id = id;
+			Name = name;
+			ShortName = shortName;
 			this.axis = axis;
 		}
 		internal override string XNode()
@@ -39,15 +35,15 @@ namespace TimeNet2026.Topo
 			return string.Format("<point x=\"{0}\" y=\"{1}\" name=\"{2}\" avr=\"{3}\" pk=\"{4}\" id=\"{5}\" />", 
 				point.Latitude, 
 				point.Longitude,
-				name,
-				shortName,
+				Name,
+				ShortName,
 				pk,
-				id);
+				Id);
 		}
 		public bool isStation()
 		{
 			//Es una estación si el código Id comienza por mayúsculas.
-			string primeraLetra = shortName.Substring(0, 1);
+			string primeraLetra = ShortName.Substring(0, 1);
 			return primeraLetra.Equals(primeraLetra.ToUpper());
 		}
 		internal static new List<OnyxField> Descriptor()

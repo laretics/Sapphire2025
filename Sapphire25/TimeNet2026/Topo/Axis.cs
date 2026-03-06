@@ -87,7 +87,7 @@ namespace TimeNet2026.Topo
 		{
 			if (null == Stations) return null;
 			foreach (Station auxStation in Stations)
-				if (id.Equals(auxStation.id)) return auxStation;
+				if (id.Equals(auxStation.Id)) return auxStation;
 			return null;
 		}
 		
@@ -109,17 +109,17 @@ namespace TimeNet2026.Topo
 			List<Station> auxStations = nearestStations(rhs);
 			if (auxStations.Count == 1)
 			{
-				return string.Format("In {0}", auxStations[0].name);
+				return string.Format("In {0}", auxStations[0].Name);
 			}
 			else if (auxStations.Count == 2)
 			{
 				int mostNear;
 				mostNear = (auxStations[0].distanceFrom(rhs) < auxStations[1].distanceFrom(rhs)) ? 0 : 1;
 				return string.Format("Between {0} and {1}. (At {2}m from {3})",
-					auxStations[0].name,
-					auxStations[1].name,
+					auxStations[0].Name,
+					auxStations[1].Name,
 					auxStations[mostNear].distanceFrom(rhs),
-					auxStations[mostNear].name);
+					auxStations[mostNear].Name);
 			}
 			return "";
 		}

@@ -21,13 +21,6 @@ namespace TimeNet2026.Topo
 			Name = string.Empty;
 			Comment = string.Empty;
 		}
-		internal Signal(XNode root):base()
-		{
-			this.pk = XUtil.LongParam(root, "pk");
-			this.Track = XUtil.ByteParam(root, "par");
-			this.Name = XUtil.StringParam(root, "id");
-			this.Comment = XUtil.StringParam(root, "comment");
-		}
 		internal string XNode()
 		{
 			return string.Format("<item pk=\"{0}\" par=\"{1}\" id=\"{2}\" comment=\"{3}\"  />", 

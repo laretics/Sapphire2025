@@ -55,27 +55,5 @@ namespace TimeNet2026.Timed
 		public override string ToString() {return this.name;}
 		public string comment { get => mvarComment; set => mvarComment = value; }
 		public string[] color { get => mvarColor; set => mvarColor=value; }
-
-		
-
-		//internal View GetView(View destination, ViewGroup parent, bool isNight)
-		//{
-		//	//Mapeando controles
-		//	LinearLayout auxContainer = destination.FindViewById<LinearLayout>(Resource.Id.lnCirculationRow);
-		//	TextView auxTBId = destination.FindViewById<TextView>(Resource.Id.tbId);
-		//	TextView auxTBDeparture = destination.FindViewById<TextView>(Resource.Id.tbDeparture);
-		//	TextView auxTBPath = destination.FindViewById<TextView>(Resource.Id.tbPath);
-
-		//	//Escribiendo información
-		//	Android.Graphics.Color auxColor = asimilation.color[isNight ? 1 : 0];
-		//	auxTBId.SetTextColor(auxColor);
-		//	auxTBPath.SetTextColor(auxColor);
-
-		//	auxTBId.Text = this.name;
-		//	auxTBDeparture.Text = string.Format("{0:HH:mm}", DateTime.Today.Add(this.departure));
-		//	auxTBPath.Text = this.asimilation.ToString();
-		//	return destination;
-		//}
-
 	}
 }

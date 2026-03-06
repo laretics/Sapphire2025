@@ -226,7 +226,8 @@
         mvarDataProcessing = true;
         mvarProcessBarText = "Subiendo a la nube (simulado)";
         System.Diagnostics.Debug.Assert(null != xmlContent);
-        Sapphire2025Models.ScriptCompiling.XMLCompileResult? resultado 
+        using TimeNet2026.ScriptCompiling.XMLCompileResult? resultado
+        
             = await mvarClient.UploadXML(xmlContent, "popo");
         mvarDataProcessing = false;
         // Aquí va la lógica para guardar el XML en la base de datos

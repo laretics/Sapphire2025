@@ -8,14 +8,12 @@ namespace TimeNet2026.Topo
 	public class RefPunctual : Punctual
 	{																 
 		internal GeoLocation point { get; set; }//Ubicación geográfica del punto
-		internal RefPunctual(double latitude, double longitude)
+		internal RefPunctual(double latitude, double longitude) : this()
 		{
 			point = new GeoLocation(latitude, longitude);
-			pk = -1;
 		}
-		internal RefPunctual(XNode root)
+		internal RefPunctual()
 		{
-			point = XUtil.GeoLocationParam(root);
 			pk = -1;
 		}
 		internal virtual string XNode()

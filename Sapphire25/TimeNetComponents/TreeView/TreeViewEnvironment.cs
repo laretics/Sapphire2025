@@ -103,7 +103,7 @@ namespace TimeNetComponents.TreeView
 						{
 							nuevo = new TreeNode(this,element, TreeNode.NodeType.Station);
 							nuevo.NetEnvironment.Axis = enviro.Axis;
-							nuevo.ContentId = estacion.id;
+							nuevo.ContentId = estacion.Id;
 							children.Add(nuevo);
 						}
 					}

@@ -62,16 +62,16 @@ namespace TimeNetComponents.TreeView
 						else
 						{
 							if (null == NetEnvironment.Plan)
-								return string.Format("{0}/{1} ({2})", NetEnvironment.ViewAsimilation.id, NetEnvironment.Asimilation.name, NetEnvironment.Asimilation.comment);
+								return string.Format("{0}/{1} ({2})", NetEnvironment.ViewAsimilation.id, NetEnvironment.Asimilation.Name, NetEnvironment.Asimilation.Comment);
 							else
-								return string.Format("{0}/{1} ({2})", NetEnvironment.ViewAsimilation.id, NetEnvironment.Asimilation.name, NetEnvironment.Plan.CirculationCount);
+								return string.Format("{0}/{1} ({2})", NetEnvironment.ViewAsimilation.id, NetEnvironment.Asimilation.Name, NetEnvironment.Plan.CirculationCount);
 						}
 					case NodeType.Station:
 						if (null != NetEnvironment.TopoStorage)
 						{
 							Station? auxStation = NetEnvironment.TopoStorage.stationById(ContentId);
 							if (null != auxStation)
-								return string.Format("{0} ({1})", auxStation.name, auxStation.shortName);
+								return string.Format("{0} ({1})", auxStation.Name, auxStation.ShortName);
 						}
 						return "[Unknown Station]";
 					case NodeType.Rautatie:
@@ -93,7 +93,7 @@ namespace TimeNetComponents.TreeView
 					case NodeType.CirculationBlock:
 						if (null != NetEnvironment.CirculationBlock && null!= NetEnvironment.CirculationBlock.asimilation)
 							return string.Format("Asimilación {0} - {1} circulaciones",
-								NetEnvironment.CirculationBlock.asimilation.name,
+								NetEnvironment.CirculationBlock.asimilation.Name,
 								NetEnvironment.CirculationBlock.Count);
 						return "[Unknown Circulation Block]";
 					case NodeType.Circulation:
