@@ -193,7 +193,6 @@ namespace Sapphire2025Server.Controllers
 						almacen.StatusChanges.Add(nuevoCambio);						
 						auxTrain.lastChange = nuevoCambio.Guid;
 						salida = (await almacen.SaveChangesAsync() > 0);
-						//await mvarHubContext.Clients.All.SendAsync("TrainStatusChanged", auxTrain.Guid.ToString(), commit.operation.ToString(), nuevoCambio.TimeStamp);
 						await TelegramNotify(nuevoCambio, auxTrain, mvarConfig);
 					}
 				}
@@ -281,7 +280,8 @@ namespace Sapphire2025Server.Controllers
 					await SendTelegramBroadcast(string.Format("La UT {0} acaba de reincorporarse a la circulación tras terminar {1} los trabajos planificados.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector });
 					break;
 				case Common.OperationType.EndCorrective:					
-					await SendTelegramBroadcast(string.Format("La UT {0} acaba de reincorporarse a la circulación tras dar {1} por terminada la reparación.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector }); break;
+					await SendTelegramBroadcast(string.Format("La UT {0} acaba de reincorporarse a la circulación tras dar {1} por terminada la reparación.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector }); 
+					break;
 				case Common.OperationType.CorrectiveRequest:
 					ultimoParte = await lastNoteStatic(train.Guid, config);
 					await SendTelegramBroadcast(string.Format("{1} abrió incidencia a la UT {0}: \"{2}\"", train.Name, nombreUsuario, ultimoParte), false, new Common.UserRole[] { Common.UserRole.Inspector, Common.UserRole.Expert, Common.UserRole.Oficial, Common.UserRole.Mechanic }); break;

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
@@ -20,7 +21,7 @@ namespace TimeNet2026.ScriptCompiling
 	/// <summary>
 	/// Esta clase sirve para deserializar la estructura TimeNet sin ensuciar la información de la jerarquía con funciones raras.
 	/// </summary>
-	internal class XMLCompiler
+	public class XMLCompiler
 	{
 		public XMLCompiler() { Result = new XMLCompileResult(); }
 
@@ -119,7 +120,7 @@ namespace TimeNet2026.ScriptCompiling
 			salida.point = GeoLocationParam(root);
 			return salida;
 		}
-		internal Station? CompileStation(XElement root, Axis parent)
+		internal Station CompileStation(XElement root, Axis parent)
 		{
 			Station salida = new Station(parent);
 			salida.Id = StringParam(root, "id");
@@ -127,49 +128,40 @@ namespace TimeNet2026.ScriptCompiling
 			salida.ShortName = StringParam(root, "avr");
 			salida.pk = LongParam(root, "pk");
 			salida.point = GeoLocationParam(root);
-			if(Result.Success)
-				return salida;
-			return null;
+			return salida;
 		}
-		internal Signal? CompileSignal(XElement root)
+		internal Signal CompileSignal(XElement root)
 		{
 			Signal salida = new Signal();
 			salida.pk = LongParam(root, "pk");
 			salida.Track = ByteParam(root, "par");
 			salida.Name = StringParam(root, "id");
 			salida.Comment = StringParam(root,"comment","",false);
-			if( Result.Success) return salida;
-			return null;
+			return salida;
 		}
 		private void CompileAxisPoly (XElement root, Axis parent)
 		{
 			if(null==parent.Topology) parent.Topology = new TopoAxis();
-
-			if (root is XElement element)
+			foreach (XElement child in root.Elements())
 			{
-				foreach (XElement child in element.Elements())
+				if ("point" == child.Name.LocalName)
 				{
-					if ("point" == child.Name.LocalName)
+					GeoLocation auxLocation = GeoLocationParam(child);
+					string auxId = StringParam(child, "id","",false);
+					if (string.Empty == auxId) //Punto vacío
 					{
-						GeoLocation auxLocation = GeoLocationParam(child);
-						string auxId = StringParam(child, "id");
-						if (string.Empty == auxId) //Punto vacío
-						{
-							RefPunctual auxPunto = CompileRefPunctual(child);
-							parent.Topology.Points.Add(auxPunto);
-						}
-						else
-						{
-							Station? auxStation = CompileStation(child, parent);
-							if(null!=auxStation)
-							{
-								parent.Topology.Points.Add(auxStation);
-								parent.Stations.Add(auxStation);
-							}
-						}
+						RefPunctual auxPunto = CompileRefPunctual(child);
+						parent.Topology.Points.Add(auxPunto);
+					}
+					else
+					{
+						Station auxStation = CompileStation(child, parent);
+						parent.Topology.Points.Add(auxStation);
+						parent.Stations.Add(auxStation);
 					}
 				}
 			}
+
 			if (parent.Topology.Points.Count > 0)
 				parent.Topology.recalculatePK(); //Asigno los PK de cada punto en función de las referencias
 			parent.Topology.RecalculateLinearBounds();
@@ -212,9 +204,8 @@ namespace TimeNet2026.ScriptCompiling
 				{
 					if ("item" == hijo.Name)
 					{
-						Signal? nueva = CompileSignal(hijo);
-						if(null!=nueva)
-							parent.Topology.Signals.Add(nueva);
+						Signal nueva = CompileSignal(hijo);
+						parent.Topology.Signals.Add(nueva);							
 					}
 				}
 			}
@@ -864,7 +855,7 @@ namespace TimeNet2026.ScriptCompiling
 			{
 				if (element.Attribute(paramId)?.Value is string stringValue)
 				{
-					if (double.TryParse(stringValue, out double salida))
+					if (double.TryParse(stringValue, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double salida))
 						return salida;
 					else
 					{

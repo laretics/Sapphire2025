@@ -6,6 +6,7 @@ using TimeNet2026.ScriptCompiling;
 using Sapphire2026.Data;
 using TimeNet2026Data;
 using System.Xml.Linq;
+using TimeNet2026.Topo;
 
 namespace Sapphire2025Server.Controllers
 {
@@ -46,6 +47,7 @@ namespace Sapphire2025Server.Controllers
 			{
 				XDocument xdoc = System.Xml.Linq.XDocument.Parse(xmlText);
 				XElement? root = xdoc.Root;
+				XMLCompiler compiler = new XMLCompiler();
 				if(null==root)
 				{
 					salida.Success = false;
@@ -55,7 +57,9 @@ namespace Sapphire2025Server.Controllers
 				switch (root.Name.LocalName)
 				{
 					case "layout":
-						
+						TopoStorage? storage = compiler.CompileTopoStorage(root);
+						salida = compiler.Result;
+						break;
 					case "rautatie":
 
 					default:

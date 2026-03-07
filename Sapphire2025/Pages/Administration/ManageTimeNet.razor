@@ -4,6 +4,7 @@
 @using TimeNetComponents.TreeView
 @using Microsoft.AspNetCore.Components.Forms
 @using BlazorMonaco.Editor
+@using TimeNet2026.ScriptCompiling
 @inject IJSRuntime mvarJS
 @inject TimeNetClient mvarClient
 <style>
@@ -99,15 +100,20 @@
                         <StandaloneCodeEditor Id="xml-editor"
                                               ConstructionOptions="EditorConstructionOptions"
                                               OnDidChangeModelContent="@(value => HandleEditorChanged(value))" />
-                        @if(showErrors)
+                        @if(showErrors && null!=mvarResult)
                         {
                             <div class="error-list-panel">
-                                <strong>Errores de compilación:</strong>
-                                <ul class="mb-0">
-                                    <li>Línea 12: Etiqueta &lt;Train&gt; no cerrada.</li>
-                                    <li>Línea 27: Atributo 'id' no válido.</li>
-                                    <li>Línea 42: Error de sintaxis cerca de &lt;/Route&gt;.</li>
-                                </ul>
+                                <strong>@mvarResult.Message</strong>
+                                @if(!mvarResult.Success)
+                                {
+                                    <strong>Errores de compilación:</strong>
+                                    <ul class="mb-0">
+                                        @foreach(XMLCompileWarning message in mvarResult.Warnings)
+                                        {
+                                            <li>@message.Message</li>
+                                        }
+                                    </ul>
+                                }
                             </div>
                         }
                     </div>
@@ -137,6 +143,7 @@
     private bool mvarDataProcessing{ get; set; }
     private string? mvarProcessBarText{ get; set; }
     private bool showErrors = false;
+    private XMLCompileResult? mvarResult = null;
 
     private void ToggleErrors() => showErrors = !showErrors;
 
@@ -226,20 +233,11 @@
         mvarDataProcessing = true;
         mvarProcessBarText = "Subiendo a la nube (simulado)";
         System.Diagnostics.Debug.Assert(null != xmlContent);
-        using TimeNet2026.ScriptCompiling.XMLCompileResult? resultado
+        mvarResult
         
             = await mvarClient.UploadXML(xmlContent, "popo");
         mvarDataProcessing = false;
         // Aquí va la lógica para guardar el XML en la base de datos
-        if (null == resultado) { }
-        //uploadResult = "Fallo de importación";
-        else
-        {
-            if (resultado.Success) { }
-            //uploadResult = "Archivo XML guardado correctamente.";
-            else { }
-            //uploadResult = "La importación no ha salido bien";
-        }
         StateHasChanged();
     }
 }
