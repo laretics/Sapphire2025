@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace TimeNet2026.ScriptCompiling
 {
-	public class XMLCompileWarning
+	public class CompileWarning
 	{
 		public enum SeverityEnum:byte
 		{
@@ -19,8 +19,8 @@ namespace TimeNet2026.ScriptCompiling
 		public SeverityEnum Severity { get; set; }
 		public string Message { get; set; } = string.Empty;
 		public int Location { get; set; }
-		public XMLCompileWarning():this(string.Empty,-1,SeverityEnum.Note){ }
-		public XMLCompileWarning(string message, int location, SeverityEnum severity)
+		public CompileWarning():this(string.Empty,-1,SeverityEnum.Note){ }
+		public CompileWarning(string message, int location, SeverityEnum severity)
 		{
 			Message = message;
 			Location = location;

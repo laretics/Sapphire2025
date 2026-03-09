@@ -12,7 +12,15 @@
                     Link="admin/myuserdossier" Caption="Yo"
                     Image="bi bi-my-user-nav-menu"
                     Tooltip="Mi página de información."
-                    Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Engineer, Sapphire2025Models.Common.UserRole.Expert, Sapphire2025Models.Common.UserRole.Inspector, Sapphire2025Models.Common.UserRole.Mechanic, Sapphire2025Models.Common.UserRole.Oficial, Sapphire2025Models.Common.UserRole.Root}" />    
+                    Roles="new List<Sapphire2025Models.Common.UserRole>{ 
+                    Sapphire2025Models.Common.UserRole.Engineer, 
+                    Sapphire2025Models.Common.UserRole.Expert, 
+                    Sapphire2025Models.Common.UserRole.Inspector, 
+                    Sapphire2025Models.Common.UserRole.Mechanic, 
+                    Sapphire2025Models.Common.UserRole.Oficial, 
+                    Sapphire2025Models.Common.UserRole.Station,
+                    Sapphire2025Models.Common.UserRole.Anonymous,
+                    Sapphire2025Models.Common.UserRole.Root}" />    
 
     <NexusNavOption Selected="@(2 == SelectedNavItem)"
                     onclick="@(()=>SelectNavItem(2))"

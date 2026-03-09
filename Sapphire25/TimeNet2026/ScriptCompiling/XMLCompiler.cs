@@ -23,13 +23,13 @@ namespace TimeNet2026.ScriptCompiling
 	/// </summary>
 	public class XMLCompiler
 	{
-		public XMLCompiler() { Result = new XMLCompileResult(); }
+		public XMLCompiler() { Result = new CompileResult(); }
 
-		public XMLCompileResult Result { get; private set; }
+		public CompileResult Result { get; private set; }
 
 		public TopoStorage? CompileTopoStorage(XNode root)
 		{
-			Result = new XMLCompileResult();
+			Result = new CompileResult();
 			Result.Success = true; //En principio la compilación será correcta.
 			TopoStorage salida = new TopoStorage();
 			if (root is XElement element)
@@ -55,9 +55,7 @@ namespace TimeNet2026.ScriptCompiling
 			}
 			return null;
 		}
-
-
-		internal Header CompileHeader(XNode root)
+		internal Header CompileHeader(XElement root)
 		{
 			Header salida = new Header();
 			salida.Name = StringParam(root, "name");
@@ -69,14 +67,14 @@ namespace TimeNet2026.ScriptCompiling
 			salida.LastDate = DateTimeParam(root, "lastdate");
 			salida.Version = StringParam(root, "version");
 			salida.Bitmap = StringParam(root, "bitmap");
-			salida.ParentId = GuidParam(root, "parentId");
+			salida.ParentId = GuidParam(root, "parentId",false);
 			if (salida.ParentId.Equals(Guid.Empty))
-				salida.ParentId = GuidParam(root, "topoId");
+				salida.ParentId = GuidParam(root, "topoId",false);
 			salida.Id = GuidParam(root, "id");
 			return salida;
 		}
 		#region Topo
-		internal Axis CompileAxis(XNode root)
+		internal Axis CompileAxis(XElement root)
 		{
 			Axis salida = new Axis();
 			//Cabecera			
@@ -88,7 +86,7 @@ namespace TimeNet2026.ScriptCompiling
 			salida.mvarColor[1] = StringParam(root, "darkcolor");
 			if (root is XElement element)
 			{
-				CompileLineal(element, salida); //Características de la clase "Lineal"
+				//CompileLineal(element, salida); //Características de la clase "Lineal"				
 				foreach (XElement child in element.Elements())
 				{
 					switch (child.Name.LocalName)
@@ -222,7 +220,7 @@ namespace TimeNet2026.ScriptCompiling
 						if (storage.mcolAxis.ContainsKey(nuevo.id))
 						{
 							Result.Success = false;
-							Result.Warnings.Add(new XMLCompileWarning(string.Format("Topo Storage {0} already contains an axis named {1} with same id {2}", storage.Header.Name, nuevo.Name, nuevo.id), -1, XMLCompileWarning.SeverityEnum.Severe));
+							Result.Warnings.Add(new CompileWarning(string.Format("Topo Storage {0} already contains an axis named {1} with same id {2}", storage.Header.Name, nuevo.Name, nuevo.id), -1, CompileWarning.SeverityEnum.Severe));
 							return false;
 						}
 						else
@@ -278,7 +276,7 @@ namespace TimeNet2026.ScriptCompiling
 					if (storage.mcolAsimilations.ContainsKey(nueva.id))
 					{
 						Result.Success = false;
-						Result.Warnings.Add(new XMLCompileWarning(string.Format("Topo Storage {0} already contains an asimilation named {1} with id {2}", storage.Header.Name, nueva.Name, nueva.id), -1, XMLCompileWarning.SeverityEnum.Severe));
+						Result.Warnings.Add(new CompileWarning(string.Format("Topo Storage {0} already contains an asimilation named {1} with id {2}", storage.Header.Name, nueva.Name, nueva.id), -1, CompileWarning.SeverityEnum.Severe));
 						return false;
 					}
 					storage.mcolAsimilations.Add(nueva.id, nueva);
@@ -348,17 +346,14 @@ namespace TimeNet2026.ScriptCompiling
 		/// </summary>
 		/// <param name="root"></param>
 		/// <returns></returns>
-		public Guid TopoStorageIdByRauta(XNode root)
+		public Guid TopoStorageIdByRauta(XElement root)
 		{
-			if (root is XElement element)
+			foreach (XElement hijo in root.Elements())
 			{
-				foreach (XElement hijo in element.Elements())
+				if (hijo.Name.LocalName == "info")
 				{
-					if (hijo.Name.LocalName == "info")
-					{
-						Header auxHeader = CompileHeader(hijo);
-						return auxHeader.ParentId;
-					}
+					Header auxHeader = CompileHeader(hijo);
+					return auxHeader.ParentId;
 				}
 			}
 			return Guid.Empty;
@@ -369,73 +364,68 @@ namespace TimeNet2026.ScriptCompiling
 		/// <param name="parent"></param>
 		/// <param name="root"></param>
 		/// <returns></returns>
-		public bool CompileRauta(TopoStorage parent, XNode root)
+		public bool CompileRauta(TopoStorage parent, XElement root)
 		{
 			Rauta salida = new Rauta(parent);
 
-			if (root is XElement element)
+			foreach (XElement hijo in root.Elements())
 			{
-				foreach (XElement hijo in element.Elements())
+				switch (hijo.Name.LocalName)
 				{
-					switch (hijo.Name.LocalName)
-					{
-						case "info":
-							Header cabecera = CompileHeader(hijo);
-							if(cabecera.ParentId!=parent.Header.Id)
+					case "info":
+						Header cabecera = CompileHeader(hijo);
+						if (cabecera.ParentId != parent.Header.Id)
+						{
+							Result.Success = false;
+							Result.Warnings.Add(new CompileWarning(string.Format("Rauta named {0} has an incompatible signature with TopoStorage named {1}", cabecera.Name, parent.Header.Name), -1, CompileWarning.SeverityEnum.Fatal));
+							return false;
+						}
+						salida.Header = cabecera;
+						break;
+					case "plans":
+						if (!CompilePlans(hijo, salida))
+						{
+							Result.Success = false;
+							if (null == salida)
 							{
-								Result.Success = false;
-								Result.Warnings.Add(new XMLCompileWarning(string.Format("Rauta named {0} has an incompatible signature with TopoStorage named {1}", cabecera.Name, parent.Header.Name), -1, XMLCompileWarning.SeverityEnum.Fatal));
-								return false;
+								Result.Warnings.Add(new CompileWarning("Current rauta is not complete and has registered errors trying to deserialize its plans", -1, CompileWarning.SeverityEnum.Fatal));
 							}
-							salida.Header = cabecera;
-							break;
-						case "plans":
-							if(!CompilePlans(hijo,salida))
+							else
 							{
-								Result.Success = false;
-								if(null==salida)
-								{
-									Result.Warnings.Add(new XMLCompileWarning("Current rauta is not complete and has registered errors trying to deserialize its plans", -1, XMLCompileWarning.SeverityEnum.Fatal));
-								}
-								else
-								{
-									Result.Warnings.Add(new XMLCompileWarning(string.Format("Rauta named {0} could not deserialize it's plans.", salida.Header.Name), -1, XMLCompileWarning.SeverityEnum.Warning));
-								}
-								return false;
+								Result.Warnings.Add(new CompileWarning(string.Format("Rauta named {0} could not deserialize it's plans.", salida.Header.Name), -1, CompileWarning.SeverityEnum.Warning));
 							}
-							break;
-					}
+							return false;
+						}
+						break;
 				}
-				//Si no ha devuelto "false", intentará instalar el rauta en parent.
-				if (parent.ColRauta.ContainsKey(salida.Header.Id))
-				{
-					Result.Warnings.Add(new XMLCompileWarning(string.Format("Rauta named {0} already exists on topo collection {1}. New instance will overwrite old one.", salida.Header.Name, parent.Header.Name), -1, XMLCompileWarning.SeverityEnum.Warning));
-					parent.ColRauta[salida.Header.Id] = salida;
-				}
-				else
-					parent.ColRauta.Add(salida.Header.Id, salida);
 			}
+			//Si no ha devuelto "false", intentará instalar el rauta en parent.
+			if (parent.ColRauta.ContainsKey(salida.Header.Id))
+			{
+				Result.Warnings.Add(new CompileWarning(string.Format("Rauta named {0} already exists on topo collection {1}. New instance will overwrite old one.", salida.Header.Name, parent.Header.Name), -1, CompileWarning.SeverityEnum.Warning));
+				parent.ColRauta[salida.Header.Id] = salida;
+			}
+			else
+				parent.ColRauta.Add(salida.Header.Id, salida);
+
 			return true; //Aquí llegamos si todo fue bien.
 		}
-		internal bool CompilePlans(XNode root, Rauta parent)
+		internal bool CompilePlans(XElement root, Rauta parent)
 		{
-			if (root is XElement element)
+			foreach (XElement hijo in root.Elements())
 			{
-				foreach (XElement hijo in element.Elements())
+				if (hijo.Name == "plan")
 				{
-					if (hijo.Name == "plan")
-					{
-						Plan? nuevo = CompilePlan(hijo, parent);
-						if(null==nuevo)
-							return false;
-						else
-							parent.Plans.Add(nuevo.Name, nuevo);
-					}
+					Plan? nuevo = CompilePlan(hijo, parent);
+					if (null == nuevo)
+						return false;
+					else
+						parent.Plans.Add(nuevo.Name, nuevo);
 				}
 			}
 			return true;
 		}
-		internal Plan? CompilePlan(XNode root, Rauta parent)
+		internal Plan? CompilePlan(XElement root, Rauta parent)
 		{
 			Plan salida = new Plan(parent.Parent);
 			salida.Id=StringParam(root, "id");
@@ -459,30 +449,25 @@ namespace TimeNet2026.ScriptCompiling
 			if (!Result.Success) return null;
 			return salida;
 		}
-		internal bool CompileCirculations(XNode root, Plan plan, TopoStorage storage)
+		internal bool CompileCirculations(XElement root, Plan plan, TopoStorage storage)
 		{
-			if(root is XElement element)
+			foreach (XElement hijo in root.Elements())
 			{
-				foreach(XElement hijo in element.Elements())
+				switch (hijo.Name.LocalName)
 				{
-					switch(hijo.Name.LocalName)
-					{
-						case "block":
-							CirculationBlock? auxBlock = CompileCirculationBlock(hijo, plan, storage);
-							if (null != auxBlock)
-								plan.CirculationBlocks.Add(auxBlock);
-							break;
-						case "cir":
-							CirculationBlock? auxBlock2 = CompileStandAloneCirculation(hijo, storage);
-							if (null != auxBlock2)
-								plan.CirculationBlocks.Add(auxBlock2);
-							break;
-					}
+					case "block":
+						CirculationBlock? auxBlock = CompileCirculationBlock(hijo, plan, storage);
+						if (null != auxBlock)
+							plan.CirculationBlocks.Add(auxBlock);
+						break;
+					case "cir":
+						CirculationBlock? auxBlock2 = CompileStandAloneCirculation(hijo, storage);
+						if (null != auxBlock2)
+							plan.CirculationBlocks.Add(auxBlock2);
+						break;
 				}
-				return true;
 			}
-			Result.Warnings.Add(new XMLCompileWarning(string.Format("Node {0} for circulations at plan {1} is not an XML element.", root.BaseUri, plan.Name), -1, XMLCompileWarning.SeverityEnum.Warning));
-			return false;
+			return true;
 		}
 		internal CirculationBlock? CompileCirculationBlock(XElement root, Plan plan, TopoStorage storage)
 		{
@@ -514,7 +499,6 @@ namespace TimeNet2026.ScriptCompiling
 			}
 			return null;
 		}
-
 		internal Circulation? CompileCirculation(XElement root, CirculationBlock parent)
 		{
 			Circulation nuevaCirculacion = new Circulation(parent);
@@ -534,56 +518,46 @@ namespace TimeNet2026.ScriptCompiling
 		/// <param name="root">Nodo "cir"</param>
 		/// <param name="storage">Referencia al TopoStorage</param>
 		/// <returns></returns>
-		internal CirculationBlock? CompileStandAloneCirculation(XNode root, TopoStorage storage)
+		internal CirculationBlock? CompileStandAloneCirculation(XElement root, TopoStorage storage)
 		{
-			if (root is XElement element)
+			CirculationBlock salida = new CirculationBlock();
+			Circulation nuevaCirculacion = new Circulation(salida);
+			string auxTexto = StringParam(root, "id");
+			if (auxTexto.Length > 0) nuevaCirculacion.name = auxTexto;
+			Asimilation? auxAsimila = asimilationByNode(root, storage, nuevaCirculacion.name);
+			if (null != auxAsimila)
 			{
-				CirculationBlock salida = new CirculationBlock();
-				Circulation nuevaCirculacion = new Circulation(salida);
-				string auxTexto = StringParam(element, "id");
+				salida.asimilation = auxAsimila;
 				if (auxTexto.Length > 0) nuevaCirculacion.name = auxTexto;
-				Asimilation? auxAsimila = asimilationByNode(root, storage, nuevaCirculacion.name);
-				if(null!=auxAsimila)
-				{
-					salida.asimilation = auxAsimila;
-					if (auxTexto.Length > 0) nuevaCirculacion.name = auxTexto;
-					auxTexto = StringParam(element, "freq", "", false);
-					if (auxTexto.Length > 0)
-						salida.weekdayMask = TNUtil.parseWeekDays(auxTexto);
-					salida.pattern = StringParam(element, "pattern", "", false);
-					salida.color[0] = StringParam(root, "col", "black", false);
-					salida.color[1] = StringParam(root, "col2", "white", false);
+				auxTexto = StringParam(root, "freq", "", false);
+				if (auxTexto.Length > 0)
+					salida.weekdayMask = TNUtil.parseWeekDays(auxTexto);
+				salida.pattern = StringParam(root, "pattern", "", false);
+				salida.color[0] = StringParam(root, "col", "black", false);
+				salida.color[1] = StringParam(root, "col2", "white", false);
 
-					nuevaCirculacion.departure = TimeSpanParam(root, "dep");
-					salida.Circulations.Add(nuevaCirculacion);
-					if (Result.Success) return salida;
-				}
+				nuevaCirculacion.departure = TimeSpanParam(root, "dep");
+				salida.Circulations.Add(nuevaCirculacion);
+				if (Result.Success) return salida;
 			}
 			return null;
 		}
-
-		private Asimilation? asimilationByNode(XNode root, TopoStorage storage, string circulationId)
+		private Asimilation? asimilationByNode(XElement root, TopoStorage storage, string circulationId)
 		{
-			if (root is XElement element)
+			string auxTexto = StringParam(root, "asm", "");
+			if (auxTexto.Length < 1)
 			{
-				string auxTexto = StringParam(element, "asm", "");
-				if (auxTexto.Length < 1)
-				{
-					Result.Warnings.Add(new XMLCompileWarning(string.Format("Circulacion {0} has no dependence in any asimilation.", circulationId), -1, XMLCompileWarning.SeverityEnum.Warning));
-					return null;
-				}
-				Asimilation? auxAsimilation = storage.GetAsimilation(auxTexto);
-				if (null == auxAsimilation)
-				{
-					Result.Warnings.Add(new XMLCompileWarning(string.Format("Circulacion {0} related to asimilation named \"{1}\" has not any object with this reference.", circulationId, auxTexto), -1, XMLCompileWarning.SeverityEnum.Warning));
-					return null;
-				}
-				return auxAsimilation;
+				Result.Warnings.Add(new CompileWarning(string.Format("Circulacion {0} has no dependence in any asimilation.", circulationId), -1, CompileWarning.SeverityEnum.Warning));
+				return null;
 			}
-			Result.Warnings.Add(new XMLCompileWarning(string.Format("Node {0} for circulation {1} is not an XML element.",root.BaseUri, circulationId), -1, XMLCompileWarning.SeverityEnum.Warning));
-			return null;
+			Asimilation? auxAsimilation = storage.GetAsimilation(auxTexto);
+			if (null == auxAsimilation)
+			{
+				Result.Warnings.Add(new CompileWarning(string.Format("Circulacion {0} related to asimilation named \"{1}\" has not any object with this reference.", circulationId, auxTexto), -1, CompileWarning.SeverityEnum.Warning));
+				return null;
+			}
+			return auxAsimilation;
 		}
-
 		internal bool CompileSchedules(XElement root, Plan plan)
 		{
 			foreach(XElement hijo in root.Elements())
@@ -662,53 +636,41 @@ namespace TimeNet2026.ScriptCompiling
 		}
 		#endregion Rauta
 		#region Lectura de atributos
-		private string StringParam(XNode node, string paramId, string defaultValue = "", bool checkExist = true)
+		private string StringParam(XElement node, string paramId, string defaultValue = "", bool checkExist = true)
 		{
-			if (node is XElement element)
-			{
 				if (checkExist)
 				{
-					if (null == element.Attribute(paramId))
+					if (null == node.Attribute(paramId))
 					{
 						Result.Success = false;
 						Result.Warnings.Add(
-							new XMLCompileWarning(
-								string.Format("Node {0} has no attribute named {1}.", element.Name, paramId),
+							new CompileWarning(
+								string.Format("Node {0} has no attribute named {1}.", node.Name, paramId),
 								-1,
-								XMLCompileWarning.SeverityEnum.Error));
+								CompileWarning.SeverityEnum.Error));
 					}
 					else
 					{
-						if (null == element.Attribute(paramId)?.Value)
+						if (null == node.Attribute(paramId)?.Value)
 						{
 							Result.Success = false;
 							Result.Warnings.Add(
-							new XMLCompileWarning(
-							string.Format("Attribute {0} in node {1} has no value.", paramId, element.Name),
+							new CompileWarning(
+							string.Format("Attribute {0} in node {1} has no value.", paramId, node.Name),
 							-1,
-							XMLCompileWarning.SeverityEnum.Warning));
+							CompileWarning.SeverityEnum.Warning));
 						}
 						else
 						{
-							return element.Attribute(paramId)?.Value ?? defaultValue;
+							return node.Attribute(paramId)?.Value ?? defaultValue;
 						}
 					}
 				}
 				else
-					return element.Attribute(paramId)?.Value ?? defaultValue;
-			}
-			else
-			{
-				Result.Success = false;
-				Result.Warnings.Add(
-					new XMLCompileWarning(
-						string.Format("Node {0} is not an element.", node.BaseUri),
-						-1,
-						XMLCompileWarning.SeverityEnum.Error));
-			}
+					return node.Attribute(paramId)?.Value ?? defaultValue;			
 			return defaultValue;
 		}
-		private bool BoolParam(XNode node, string paramId, bool defaultValue = false)
+		private bool BoolParam(XElement node, string paramId, bool defaultValue = false)
 		{
 			string salida = StringParam(node, paramId, "XX");
 			if (salida != "XX")
@@ -723,16 +685,16 @@ namespace TimeNet2026.ScriptCompiling
 					{
 						Result.Success = false;
 						Result.Warnings.Add(
-						new XMLCompileWarning(
+						new CompileWarning(
 						string.Format("Attribute {0} with value {1} in node {2} is not a boolean.", paramId, salida, element.Name),
 						-1,
-						XMLCompileWarning.SeverityEnum.Warning));
+						CompileWarning.SeverityEnum.Warning));
 					}
 				}
 			}
 			return defaultValue;
 		}
-		private byte ByteParam(XNode node, string paramId, byte defaultValue = 255)
+		private byte ByteParam(XElement node, string paramId, byte defaultValue = 255)
 		{
 			if (node is XElement element)
 			{
@@ -744,268 +706,199 @@ namespace TimeNet2026.ScriptCompiling
 					{
 						Result.Success = false;
 						Result.Warnings.Add(
-							new XMLCompileWarning(
+							new CompileWarning(
 								string.Format("Attribute {0} with value {1} in node {2} is not a byte.", paramId, value, element.Name),
 								-1,
-								XMLCompileWarning.SeverityEnum.Warning));
+								CompileWarning.SeverityEnum.Warning));
 					}
 				}
 				else
 				{
 					Result.Success = false;
 					Result.Warnings.Add(
-						new XMLCompileWarning(
+						new CompileWarning(
 							string.Format("Node {0} has no attribute named {1}.", element.Name, paramId),
 							-1,
-							XMLCompileWarning.SeverityEnum.Error));
+							CompileWarning.SeverityEnum.Error));
 				}
 			}
 			else
 			{
 				Result.Success = false;
 				Result.Warnings.Add(
-					new XMLCompileWarning(
+					new CompileWarning(
 						string.Format("Node {0} is not an element.", node.BaseUri),
 						-1,
-						XMLCompileWarning.SeverityEnum.Error));
+						CompileWarning.SeverityEnum.Error));
 			}
 			return defaultValue;
 		}
-		private int IntParam(XNode node, string paramId, int defaultValue = -1)
+		private int IntParam(XElement node, string paramId, int defaultValue = -1)
 		{
-			if (node is XElement element)
+			if (node.Attribute(paramId)?.Value is string stringValue)
 			{
-				if (element.Attribute(paramId)?.Value is string stringValue)
-				{
-					if (int.TryParse(stringValue, out int salida))
-						return salida;
-					else
-					{
-						Result.Success = false;
-						Result.Warnings.Add(
-							new XMLCompileWarning(
-								string.Format("Attribute {0} with value {1} in node {2} is not an integer.", paramId, stringValue, element.Name),
-								-1,
-								XMLCompileWarning.SeverityEnum.Warning));
-					}
-				}
+				if (int.TryParse(stringValue, out int salida))
+					return salida;
 				else
 				{
 					Result.Success = false;
 					Result.Warnings.Add(
-						new XMLCompileWarning(
-							string.Format("Node {0} has no attribute named {1}.", element.Name, paramId),
+						new CompileWarning(
+							string.Format("Attribute {0} with value {1} in node {2} is not an integer.", paramId, stringValue, node.Name),
 							-1,
-							XMLCompileWarning.SeverityEnum.Error));
+							CompileWarning.SeverityEnum.Warning));
 				}
 			}
 			else
 			{
 				Result.Success = false;
 				Result.Warnings.Add(
-					new XMLCompileWarning(
-						string.Format("Node {0} is not an element.", node.BaseUri),
+					new CompileWarning(
+						string.Format("Node {0} has no attribute named {1}.", node.Name, paramId),
 						-1,
-						XMLCompileWarning.SeverityEnum.Error));
+						CompileWarning.SeverityEnum.Error));
 			}
 			return defaultValue;
 		}
-		private long LongParam(XNode node, string paramId, long defaultValue = -1)
+		private long LongParam(XElement node, string paramId, long defaultValue = -1)
 		{
-			if (node is XElement element)
+			if (node.Attribute(paramId)?.Value is string stringValue)
 			{
-				if (element.Attribute(paramId)?.Value is string stringValue)
-				{
-					if (long.TryParse(stringValue, out long salida))
-						return salida;
-					else
-					{
-						Result.Success = false;
-						Result.Warnings.Add(
-							new XMLCompileWarning(
-								string.Format("Attribute {0} with value {1} in node {2} is not a long integer.", paramId, stringValue, element.Name),
-								-1,
-								XMLCompileWarning.SeverityEnum.Warning));
-					}
-				}
+				if (long.TryParse(stringValue, out long salida))
+					return salida;
 				else
 				{
 					Result.Success = false;
 					Result.Warnings.Add(
-						new XMLCompileWarning(
-							string.Format("Node {0} has no attribute named {1}.", element.Name, paramId),
+						new CompileWarning(
+							string.Format("Attribute {0} with value {1} in node {2} is not a long integer.", paramId, stringValue, node.Name),
 							-1,
-							XMLCompileWarning.SeverityEnum.Error));
+							CompileWarning.SeverityEnum.Warning));
 				}
 			}
 			else
 			{
 				Result.Success = false;
 				Result.Warnings.Add(
-					new XMLCompileWarning(
-						string.Format("Node {0} is not an element.", node.BaseUri),
+					new CompileWarning(
+						string.Format("Node {0} has no attribute named {1}.", node.Name, paramId),
 						-1,
-						XMLCompileWarning.SeverityEnum.Error));
+						CompileWarning.SeverityEnum.Error));
 			}
 			return defaultValue;
 		}
-		private double DoubleParam(XNode node, string paramId, double defaultValue = double.NaN)
+		private double DoubleParam(XElement node, string paramId, double defaultValue = double.NaN)
 		{
-			if (node is XElement element)
+			if (node.Attribute(paramId)?.Value is string stringValue)
 			{
-				if (element.Attribute(paramId)?.Value is string stringValue)
-				{
-					if (double.TryParse(stringValue, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double salida))
-						return salida;
-					else
-					{
-						Result.Success = false;
-						Result.Warnings.Add(
-							new XMLCompileWarning(
-								string.Format("Attribute {0} with value {1} in node {2} is not a double.", paramId, stringValue, element.Name),
-								-1,
-								XMLCompileWarning.SeverityEnum.Warning));
-					}
-				}
+				if (double.TryParse(stringValue, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double salida))
+					return salida;
 				else
 				{
 					Result.Success = false;
 					Result.Warnings.Add(
-						new XMLCompileWarning(
-							string.Format("Node {0} has no attribute named {1}.", element.Name, paramId),
+						new CompileWarning(
+							string.Format("Attribute {0} with value {1} in node {2} is not a double.", paramId, stringValue, node.Name),
 							-1,
-							XMLCompileWarning.SeverityEnum.Error));
+							CompileWarning.SeverityEnum.Warning));
 				}
 			}
 			else
 			{
 				Result.Success = false;
 				Result.Warnings.Add(
-					new XMLCompileWarning(
-						string.Format("Node {0} is not an element.", node.BaseUri),
+					new CompileWarning(
+						string.Format("Node {0} has no attribute named {1}.", node.Name, paramId),
 						-1,
-						XMLCompileWarning.SeverityEnum.Error));
+						CompileWarning.SeverityEnum.Error));
 			}
 			return defaultValue;
 		}
-		private Guid GuidParam(XNode node, string paramId)
+		private Guid GuidParam(XElement node, string paramId, bool checkExist=true)
 		{
-			if (node is XElement element)
+			if (node.Attribute(paramId)?.Value is string stringValue)
 			{
-				if (element.Attribute(paramId)?.Value is string stringValue)
-				{
-					if (Guid.TryParse(stringValue, out Guid salida))
-						return salida;
-					else
-					{
-						Result.Success = false;
-						Result.Warnings.Add(
-							new XMLCompileWarning(
-								string.Format("Attribute {0} with value {1} in node {2} is not a Guid.", paramId, stringValue, element.Name),
-								-1,
-								XMLCompileWarning.SeverityEnum.Warning));
-					}
-				}
+				if (Guid.TryParse(stringValue, out Guid salida))
+					return salida;
 				else
 				{
 					Result.Success = false;
 					Result.Warnings.Add(
-						new XMLCompileWarning(
-							string.Format("Node {0} has no attribute named {1}.", element.Name, paramId),
+						new CompileWarning(
+							string.Format("Attribute {0} with value {1} in node {2} is not a Guid.", paramId, stringValue, node.Name),
 							-1,
-							XMLCompileWarning.SeverityEnum.Error));
+							CompileWarning.SeverityEnum.Warning));
 				}
 			}
 			else
 			{
-				Result.Success = false;
-				Result.Warnings.Add(
-					new XMLCompileWarning(
-						string.Format("Node {0} is not an element.", node.BaseUri),
-						-1,
-						XMLCompileWarning.SeverityEnum.Error));
+				if(checkExist)
+				{
+					Result.Success = false;
+					Result.Warnings.Add(
+						new CompileWarning(
+							string.Format("Node {0} has no attribute named {1}.", node.Name, paramId),
+							-1,
+							CompileWarning.SeverityEnum.Error));
+				}
 			}
 			return Guid.Empty;
 		}
-		private DateTime DateTimeParam(XNode node, string paramId)
+		private DateTime DateTimeParam(XElement node, string paramId)
 		{
-			if (node is XElement element)
+			if (node.Attribute(paramId)?.Value is string stringValue)
 			{
-				if (element.Attribute(paramId)?.Value is string stringValue)
-				{
-					if (DateTime.TryParse(stringValue, out DateTime salida))
-						return salida;
-					else
-					{
-						Result.Success = false;
-						Result.Warnings.Add(
-							new XMLCompileWarning(
-								string.Format("Attribute {0} with value {1} in node {2} is not a date or a time.", paramId, stringValue, element.Name),
-								-1,
-								XMLCompileWarning.SeverityEnum.Warning));
-					}
-				}
+				if (DateTime.TryParseExact(stringValue, "MM/dd/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime salida))
+					return salida;
 				else
 				{
 					Result.Success = false;
 					Result.Warnings.Add(
-						new XMLCompileWarning(
-							string.Format("Node {0} has no attribute named {1}.", element.Name, paramId),
+						new CompileWarning(
+							string.Format("Attribute {0} with value {1} in node {2} is not a date or a time.", paramId, stringValue, node.Name),
 							-1,
-							XMLCompileWarning.SeverityEnum.Error));
+							CompileWarning.SeverityEnum.Warning));
 				}
 			}
 			else
 			{
 				Result.Success = false;
 				Result.Warnings.Add(
-					new XMLCompileWarning(
-						string.Format("Node {0} is not an element.", node.BaseUri),
+					new CompileWarning(
+						string.Format("Node {0} has no attribute named {1}.", node.Name, paramId),
 						-1,
-						XMLCompileWarning.SeverityEnum.Error));
+						CompileWarning.SeverityEnum.Error));
 			}
 			return DateTime.MinValue;
 		}
-		private TimeSpan TimeSpanParam(XNode node, string paramId)
+		private TimeSpan TimeSpanParam(XElement node, string paramId)
 		{
-			if (node is XElement element)
+			if (node.Attribute(paramId)?.Value is string stringValue)
 			{
-				if (element.Attribute(paramId)?.Value is string stringValue)
-				{
-					if (TimeSpan.TryParse(stringValue, out TimeSpan salida))
-						return salida;
-					else
-					{
-						Result.Success = false;
-						Result.Warnings.Add(
-							new XMLCompileWarning(
-								string.Format("Attribute {0} with value {1} in node {2} is not a time span.", paramId, stringValue, element.Name),
-								-1,
-								XMLCompileWarning.SeverityEnum.Warning));
-					}
-				}
+				if (TimeSpan.TryParse(stringValue, out TimeSpan salida))
+					return salida;
 				else
 				{
 					Result.Success = false;
 					Result.Warnings.Add(
-						new XMLCompileWarning(
-							string.Format("Node {0} has no attribute named {1}.", element.Name, paramId),
+						new CompileWarning(
+							string.Format("Attribute {0} with value {1} in node {2} is not a time span.", paramId, stringValue, node.Name),
 							-1,
-							XMLCompileWarning.SeverityEnum.Error));
+							CompileWarning.SeverityEnum.Warning));
 				}
 			}
 			else
 			{
 				Result.Success = false;
 				Result.Warnings.Add(
-					new XMLCompileWarning(
-						string.Format("Node {0} is not an element.", node.BaseUri),
+					new CompileWarning(
+						string.Format("Node {0} has no attribute named {1}.", node.Name, paramId),
 						-1,
-						XMLCompileWarning.SeverityEnum.Error));
+						CompileWarning.SeverityEnum.Error));
 			}
 			return new TimeSpan(0);
 		}
-		private GeoLocation GeoLocationParam(XNode node)
+		private GeoLocation GeoLocationParam(XElement node)
 		{
 			return new GeoLocation(DoubleParam(node, "x", 0), DoubleParam(node, "y", 0));
 		}

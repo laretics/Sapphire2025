@@ -91,8 +91,8 @@
         TimeNetWebServer.Classes.XMLImporter importador = new Classes.XMLImporter();
         XElement? elemento = await importador.ImportXML(file.OpenReadStream());
         if (null != elemento)
-        {
-            if (mvarStorage.ImportFromXML(elemento)) //Carga el elemento desde XML
+        {           
+            if (mvarStorage.ImportFromXML(elemento).Success) //Carga el elemento desde XML
                 await mvarStorage.SerializeMemory(context);
         }       
         await Task.Yield(); //Para mostrar la pantalla de carga.

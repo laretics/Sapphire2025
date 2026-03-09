@@ -20,7 +20,7 @@ namespace TimeNet2026.Topo
 		internal SpeedLimit()
 		{
 			mvarComment = string.Empty;
-			mcolColor = new string[1];
+			mcolColor = new string[2];
 			Speed = 0;
 		}
 		internal override string XNode()

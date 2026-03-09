@@ -1,66 +1,35 @@
 ﻿@inject AeneasClient mvarAeneasClient
 @inject NavigationManager mvarNavigationManager
 @inject IntStorageService mvarIntStorage
-@if(trainInCirculation)
+@foreach (TrainCommand cmd in Commands.Where(c => c.ShowIf()))
 {
-	<Button Class="btn btn-outline-secondary" @onclick="@openFailureReport">
-		<span><Sapphire2025.Icons.Actions.AddReport color="#b02020"/></span>
-		Parte de Incidencia</Button>
-}		
-@if(isExpert&&currentStatus== Sapphire2025Models.Common.TrainStatus.RequestToDiagnose)
-{
-	<Button Class="btn btn-outline-secondary" @onclick="@diagnoseToAvailable">Sigue circulando</Button>
-	<Button Class="btn btn-outline-secondary" @onclick="@diagnoseToFault">Retirar</Button>
+	<Button Class="@cmd.CssClass" @onclick="@cmd.Action">
+		@if(null!=cmd.Icon)
+		{
+			@cmd.Icon
+		}
+		@cmd.Label
+		</Button>
 }
-@if(isInspector&&currentStatus== Sapphire2025Models.Common.TrainStatus.RequestToRepair)
+
+
+
+
+
+@if (isEngineer && currentStatus == Sapphire2025Models.Common.TrainStatus.Disabled)
 {
-	<Button Class="btn btn-outline-secondary" @onclick="@sendToCorrective">Entrar a Taller</Button>
-}
-@if(isMechanic&&currentStatus== Sapphire2025Models.Common.TrainStatus.Repairing)
-{
-	<Button Class="btn btn-outline-secondary" @onclick="@sendToAvailable">Devolver a circulación</Button>
-}
-@if(isOfficial&&currentStatus== Sapphire2025Models.Common.TrainStatus.Available)
-{
-	<Button Class="btn btn-outline-secondary" @onclick="@requestMaintenance">Solicitar Mantenimiento</Button>
-}
-@if(isOfficial&&currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested)
-{
-	<Button Class="btn btn-outline-warning" @onclick="@undoSendToMaintenance">Anular Solicitud Mant.</Button>
-}
-@if(isInspector&&currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested)
-{
-	<Button Class="btn btn-outline-secondary" @onclick="@acceptSendToMaintenance">Enviar a Depósito</Button>
-}
-@if(isOfficial&&currentStatus== Sapphire2025Models.Common.TrainStatus.DepotAvailable)
-{
-	<Button Class="btn btn-outline-warning" @onclick="@rescueFromMaintenance">Rescatar de depósito</Button>
-	<Button Class="btn btn-outline-secondary" @onclick="@sendToMaintenance">Entrar a Taller</Button>
-}
-@if(isMechanic&&currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance)
-{
-	<Button Class="btn btn-outline-secondary" @onclick="@endMaintenance">Devolver a circulación</Button>
-}
-@if (isOfficial && currentStatus == Sapphire2025Models.Common.TrainStatus.Unknown)
-{
-	<Button Class="btn btn-outline-secondary" @onclick="@sendToCorrective">Enviar a correctivo</Button>
-}
-@if (isEngineer && readyForStandStill)
-{
-	<Button Class="btn btn-outline-danger" @onclick="@sendToStandStill">Stand Still</Button>
-}
-@if (isEngineer && currentStatus == Sapphire2025Models.Common.TrainStatus.StandStill)
-{
-	<Button Class="btn btn-outline-primary" @onclick="@sendToCorrective">Reactivar</Button>
-	<Button Class="btn btn-outline-secondary" @onclick="@sendToDisabled">Baja definitiva</Button>
+	<Button Class="btn btn-outline-primary" @onclick="@sendToStandStill">Reconstruir</Button>
 }
 @if (isEngineer && currentStatus == Sapphire2025Models.Common.TrainStatus.Disabled)
 {
 	<Button Class="btn btn-outline-primary" @onclick="@sendToStandStill">Reconstruir</Button>
 }
-<Button Class="btn btn-outline-secondary" @onclick="@onAddNote">
-	<span><Sapphire2025.Icons.Actions.WriteNote color="gray" />Nota</span>
-</Button>
+@if(isAnonymous)
+{
+	<Button Class="btn btn-outline-secondary" @onclick="@onAddNote">
+		<span><Sapphire2025.Icons.Actions.WriteNote color="gray" />Nota</span>
+	</Button>
+}
 @code {
 	//Esto es una barra de comandos para cambiar a los trenes de estado.
 	//Dependiendo de los permisos del usuario actual y del estado del tren,
@@ -74,12 +43,165 @@
 		await base.OnParametersSetAsync();
 		mvarSession = await mvarIntStorage.GetSessionInfo();
 	}
+
+	private List<TrainCommand> Commands => new()
+	{
+		new TrainCommand
+		{
+			Label="Parte de Incidencia",
+			ShowIf = () => trainInCirculation || isAnonymous,
+			Action = openFailureReport,
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Actions.AddReport>(0);
+				b.AddAttribute(1,"color","#b02020");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
+			Label="Material Disponible",
+			ShowIf = () => (isOfficial || isExpert) && currentStatus == Sapphire2025Models.Common.TrainStatus.RequestToDiagnose,			
+			Action = diagnoseToAvailable,
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Status.Available>(0);
+				b.AddAttribute(1,"color","#b02020");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
+			Label="Retirar",
+			ShowIf = () => (isOfficial || isExpert) && currentStatus == Sapphire2025Models.Common.TrainStatus.RequestToDiagnose,
+			Style="outline-warning",
+			Action = diagnoseToFault,
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Status.RequestToRepair>(0);
+				b.AddAttribute(1,"color","#b02020");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
+			Label="Retirar a Reparar",
+			ShowIf = () => isStation && currentStatus== Sapphire2025Models.Common.TrainStatus.RequestToRepair,
+			Style="outline-warning",
+			Action = sendToCorrective,
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Status.Repairing>(0);
+				b.AddAttribute(1,"color","#b02020");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
+			Label="Reparación Terminada",
+			ShowIf = () => isMechanic && currentStatus== Sapphire2025Models.Common.TrainStatus.Repairing,
+			Style="outline-success",
+			Action = sendToAvailable,
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Status.Available>(0);
+				b.AddAttribute(1,"color","#b02020");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
+			Label="Solicitar Mantenimiento",
+			ShowIf = () => isMechanic && currentStatus== Sapphire2025Models.Common.TrainStatus.Available,
+			Action = requestMaintenance,
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Status.DepotRequested>(0);
+				b.AddAttribute(1,"color","#b02020");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
+			Label="Anular Solicitud Mantenimiento",
+			ShowIf = () => isOfficial && currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested,
+			Action = undoSendToMaintenance,
+			Style="warning",
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Status.Available>(0);
+				b.AddAttribute(1,"color","#b02020");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
+			Label="Retirar a Mantenimiento",
+			ShowIf = () => isOfficial && currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested,
+			Action = acceptSendToMaintenance,			
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Status.DepotAvailable>(0);
+				b.AddAttribute(1,"color","#b02020");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
+			Label="Ceder a Circulación",
+			ShowIf = () => isMechanic && currentStatus== Sapphire2025Models.Common.TrainStatus.DepotAvailable,
+			Action = rescueFromMaintenance,
+			Style="outline-warning",
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Status.DepotRequested>(0);
+				b.AddAttribute(1,"color","#b02020");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
+			Label="Empezar Intervención",
+			ShowIf = () => isMechanic && currentStatus== Sapphire2025Models.Common.TrainStatus.DepotAvailable,
+			Action = sendToMaintenance,
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Status.Maintenance>(0);
+				b.AddAttribute(1,"color","#b02020");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
+			Label="Terminar Intervención",
+			ShowIf = () => isMechanic && currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance,
+			Action = endMaintenance,
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Status.Available>(0);
+				b.AddAttribute(1,"color","#b02020");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
+			Label="Iniciar Tren (Correctivo)",
+			ShowIf = () => isOfficial && currentStatus== Sapphire2025Models.Common.TrainStatus.Unknown,
+			Action = sendToCorrective,
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Status.Repairing>(0);
+				b.AddAttribute(1,"color","#b02020");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
+			Label="Stand Still",
+			ShowIf = () => isEngineer && readyForStandStill,
+			Action = sendToStandStill,
+			Style="outline-danger",
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Status.StandStill>(0);
+				b.AddAttribute(1,"color","#b02020");
+				b.CloseComponent();}))
+		},
+	};
+
+	/*
+				@if (isEngineer && currentStatus == Sapphire2025Models.Common.TrainStatus.StandStill)
+{
+	<Button Class="btn btn-outline-primary" @onclick="@sendToCorrective">Reactivar</Button>
+	<Button Class="btn btn-outline-secondary" @onclick="@sendToDisabled">Baja definitiva</Button>
+}
+	 */
+
+
+
+	private bool isAnonymous { get => isRoot || isMechanic || isStation || null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Anonymous); }
 	private bool isRoot { get => null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Root); }
-	private bool isOfficial { get => isRoot || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Mechanic)); }
+	private bool isOfficial { get => isRoot || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Oficial)); }
 	private bool isMechanic{ get => isOfficial ||( null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Mechanic)); }	
 	private bool isExpert { get => isRoot || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Expert)); }
 	private bool isInspector { get => isRoot || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Inspector)); }	
-	private bool isEngineer { get => isRoot || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Engineer)); }
+	private bool isStation { get => isRoot || isInspector || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Station)); }
+	private bool isEngineer { get => isRoot || isOfficial || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Engineer)); }
 	private bool trainInCirculation
 	{
 		get => currentStatus == Sapphire2025Models.Common.TrainStatus.Available ||

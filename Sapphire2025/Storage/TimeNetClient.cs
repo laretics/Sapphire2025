@@ -2,6 +2,7 @@
 using System.Text;
 using TimeNet2026.Storage;
 using TimeNet2026.ScriptCompiling;
+using TimeNet2026.Models;
 
 namespace Sapphire2025.Storage
 {
@@ -13,7 +14,7 @@ namespace Sapphire2025.Storage
 		{
 			LocalStorage = new OnyxStorage();
 		}
-		public async Task<XMLCompileResult?> UploadXML(string xmlSourceCode, string fileName)
+		public async Task<CompileResult?> UploadXML(string xmlSourceCode, string fileName)
 		{
 			using MultipartFormDataContent contenido = new MultipartFormDataContent();
 			Stream corriente = new MemoryStream(Encoding.UTF8.GetBytes(xmlSourceCode));
@@ -22,19 +23,22 @@ namespace Sapphire2025.Storage
 			contenido.Add(streamContent, "file", fileName);
 			HttpResponseMessage respuesta = await sendPostRequest("uploadxml", contenido);
 			if(respuesta.IsSuccessStatusCode)
-				return await respuesta.Content.ReadFromJsonAsync<XMLCompileResult>();
+				return await respuesta.Content.ReadFromJsonAsync<CompileResult>();
 
 			return null; //En caso de error de comunicaciones
 		}
 		/// <summary>
 		/// Carga en la base de datos local (LocalStorage) la topología y los rautas.
 		/// </summary>
-		public async Task DownloadMemory(Guid TopoStorageId)
+		public async Task<IEnumerable<TopoStorageHeaderModel>?> GetTopoStorages()
 		{
-
+			string request = composeCommand("topostorages");
+			HttpResponseMessage respuesta = await sendGetRequest(request);
+			return await respuesta.Content.ReadFromJsonAsync<IEnumerable<TopoStorageHeaderModel>>();
 		}
-
-
-
+		public async Task<CompileResult> DeleteTopoStorage(Guid id)
+		{
+			return new CompileResult();
+		}
 	}
 }

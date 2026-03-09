@@ -1,0 +1,82 @@
+﻿@using Sapphire2025.Icons.Commands
+@using TimeNet2026.Topo
+@using TimeNet2026.Models
+@inject TimeNetClient mvarClient
+
+<ModalDialog @ref="MSGBoxDelete" OnClose="OnModalClose"/>
+
+@if (null== mcolHeaders || mcolHeaders.Count() < 1)
+{
+    <div class="alert alert-info">No hay TopoStorages almacenados.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Id</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Autor</th>
+                    <th>Versión</th>
+                    <th>Fecha inicio</th>
+                    <th>Fecha fin</th> 
+                    <th>Comandos</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (TopoStorageHeaderModel topo in mcolHeaders)
+                {
+                    <tr>
+                        <td><code>@topo.header.Id</code></td>
+                        <td>@topo.header.Name</td>
+                        <td>@topo.header.Comment</td>
+                        <td>@topo.header.Author</td>
+                        <td>@topo.header.Version</td>
+                        <td>@topo.header.FirstDate.ToShortDateString()</td>
+                        <td>@topo.header.LastDate.ToShortDateString()</td>                        
+                        <td><Button @onclick="() => onConfirmDelete(topo)">
+                            <Trash></Trash></Button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private IEnumerable<TopoStorageHeaderModel>? mcolHeaders { get; set; }
+    private ModalDialog? MSGBoxDelete;
+    private TopoStorageHeaderModel? mvarSelectedTopo;
+
+    protected async override Task OnInitializedAsync()
+    {
+        mcolHeaders = await mvarClient.GetTopoStorages();
+    }
+    private async Task onConfirmDelete(TopoStorageHeaderModel topo)
+    {
+        mvarSelectedTopo = topo;
+        if(null!=MSGBoxDelete)
+        {
+            await MSGBoxDelete.show(
+                "Confirmar eliminación",
+                $"¿Está seguro de querer eliminar el TopoStorage \"{topo.header.Name}\"?",
+                "Eliminar",
+                "Cancelar"
+            );
+        }
+    }
+    private async Task OnModalClose(bool confirmed)
+    {
+        if(null!=mvarSelectedTopo && confirmed)
+        {
+            //await mvarClient.DeleteTopoStorage(mvarSelectedTopo.header.Id);
+            mcolHeaders = await mvarClient.GetTopoStorages();
+            StateHasChanged();
+        }
+        mvarSelectedTopo = null;
+    }
+
+}

@@ -1,4 +1,5 @@
 ﻿using System.Xml.Linq;
+using TimeNet2026.Models;
 using TimeNet2026.DBStorage;
 using TimeNet2026.ScriptCompiling;
 using TimeNet2026.Timed;
@@ -11,10 +12,7 @@ namespace TimeNet2026.Storage
 {
 	public class OnyxStorage
 	{
-		//private DBSerializer mvarSerializer;
-
 		private Dictionary<Guid,TopoStorage> mcolTopoStorages;
-		//private Dictionary<int, TopoStorage> mcolCacheTopoStorages = new Dictionary<int, TopoStorage>(); //Caché con los TopoStorages cargados
 
 		public OnyxStorage()
 		{
@@ -29,22 +27,24 @@ namespace TimeNet2026.Storage
 	
 		public Dictionary<Guid,TopoStorage> Storages { get => mcolTopoStorages; }
 
+
+
 		/// <summary>
 		/// Carga el nodo que viene y deserializa automáticamente lo que contenga.
 		/// </summary>
 		/// <param name="root"></param>
-		public XMLCompileResult ImportFromXML(XNode root)
+		public CompileResult ImportFromXML(XNode root)
 		{
-			XMLCompileResult result = new XMLCompileResult();
+			CompileResult result = new CompileResult();
 			result.Success = false;
 			if (root is XElement element)
 			{
 				switch (element.Name.LocalName)
 				{
 					case "layout":
-						return ImportTopoFromXML(root);
+						return ImportTopoFromXML(element);
 					case "rautatie":
-						return ImportRautaFromXML(root);
+						return ImportRautaFromXML(element);
 				}								
 				result.Message = string.Format("Node named {0} is not a topoStorage and not a rautatie database.", element.Name.LocalName);
 				return result;
@@ -52,7 +52,7 @@ namespace TimeNet2026.Storage
 			result.Message = "This XML is not a valid node containing data. Please check input file.";
 			return result;
 		}
-		internal XMLCompileResult ImportTopoFromXML(XNode root)
+		internal CompileResult ImportTopoFromXML(XElement root)
 		{
 			XMLCompiler compilador = new XMLCompiler();
 			TopoStorage? nuevo = compilador.CompileTopoStorage(root);
@@ -65,10 +65,10 @@ namespace TimeNet2026.Storage
 			}
 			return compilador.Result;
 		}
-		internal XMLCompileResult ImportRautaFromXML(XNode root)
+		internal CompileResult ImportRautaFromXML(XElement root)
 		{
 			XMLCompiler compilador = new XMLCompiler();
-			XMLCompileResult result = new XMLCompileResult();
+			CompileResult result = new CompileResult();
 			result.Success = false;
 			Guid auxId = compilador.TopoStorageIdByRauta(root);			
 			if(Guid.Empty!=auxId && mcolTopoStorages.ContainsKey(auxId))
@@ -374,6 +374,39 @@ namespace TimeNet2026.Storage
 				TopoStorage? nuevo = await DeserializeTopoStorage(auxEntrada.HeaderId,context);
 				if (null != nuevo)
 					salida.Add(auxEntrada.HeaderId, nuevo);
+			}
+			return salida;
+		}
+		/// <summary>
+		/// Obtiene la lista de los headers de los TopoStorage almacenados en la base de datos.
+		/// Usaremos esta lista para mostrar en el cliente Zafiro el contenido de TopoStorages
+		/// </summary>
+		/// <param name="context"></param>
+		/// <returns></returns>
+		public async Task<IEnumerable<TopoStorageHeaderModel>> DeserializeTopoStoragesHeaders(ITimeNetContextStorage context)
+		{
+			List<TopoStorageHeaderModel> salida = new List<TopoStorageHeaderModel>();
+			DBSerializer auxSerializer = new DBSerializer(context);
+			List<DBTopoStorage> auxColStorages = await auxSerializer.GetTopoStorages();
+			foreach (DBTopoStorage auxStorage in  auxColStorages)
+			{
+				Header? auxHeader = await DeserializeHeader(auxStorage.HeaderId,context);
+				if(null!=auxHeader)
+				{
+					TopoStorageHeaderModel cabecera = new TopoStorageHeaderModel();
+					cabecera.header = auxHeader;
+					List<DBRauta> auxRautatie = await auxSerializer.GetRautatie(auxStorage.Id);
+					List<Header> auxColRautatieHeader = new List<Header>();
+					foreach(DBRauta auxRauta in auxRautatie)
+					{
+						//Aquí me quedé... tengo que iterar por los rautas para obtener sus cabeceras.
+						auxHeader = await DeserializeHeader(auxRauta.HeaderId,context);
+						if (null != auxHeader)
+							auxColRautatieHeader.Add(auxHeader);
+					}
+					cabecera.rautatie = auxColRautatieHeader;
+					salida.Add(cabecera);
+				}
 			}
 			return salida;
 		}

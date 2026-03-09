@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 
 namespace TimeNet2026.ScriptCompiling
 {
-	public class XMLCompileResult:IDisposable
+	public class CompileResult:IDisposable
 	{
 		public bool Success { get; set; }
-		public List<XMLCompileWarning> Warnings { get; set; }
+		public List<CompileWarning> Warnings { get; set; }
 		public string Message { get; set; }
-		public XMLCompileResult() 
+		public CompileResult() 
 		{ 
-			Warnings=new List<XMLCompileWarning>();
+			Warnings=new List<CompileWarning>();
 			Message =string.Empty;
 		}
 
