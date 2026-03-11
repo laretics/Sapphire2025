@@ -26,7 +26,7 @@
 	[Parameter]
 	public string NoteType { get; set; } = "0"; //Tipo de nota que se va a mostrar en este chat
 	[Parameter]
-	public int MaxLines { get; set; } = 20; //Máximo de líneas a mostrar en el chat
+	public int MaxLines { get; set; } = 30; //Máximo de líneas a mostrar en el chat
 	[CascadingParameter]
 	public Dictionary<Guid, UserModelBase>? Users { get; set; }
 	private List<NoteModel>? Notes { get; set; } = new List<NoteModel>();

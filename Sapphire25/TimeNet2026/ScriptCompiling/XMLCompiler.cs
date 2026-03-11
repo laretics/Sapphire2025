@@ -446,7 +446,6 @@ namespace TimeNet2026.ScriptCompiling
 					}
 				}
 			}
-			if (!Result.Success) return null;
 			return salida;
 		}
 		internal bool CompileCirculations(XElement root, Plan plan, TopoStorage storage)
@@ -495,7 +494,7 @@ namespace TimeNet2026.ScriptCompiling
 						}
 					}
 				}
-				if (Result.Success) return salida;
+				return salida;
 			}
 			return null;
 		}
@@ -538,7 +537,7 @@ namespace TimeNet2026.ScriptCompiling
 
 				nuevaCirculacion.departure = TimeSpanParam(root, "dep");
 				salida.Circulations.Add(nuevaCirculacion);
-				if (Result.Success) return salida;
+				return salida;
 			}
 			return null;
 		}
@@ -574,7 +573,7 @@ namespace TimeNet2026.ScriptCompiling
 					}
 				}
 			}
-			return false;
+			return true;
 		}
 		internal Schedule? CompileSchedule(XElement root, Plan plan)
 		{
@@ -602,10 +601,7 @@ namespace TimeNet2026.ScriptCompiling
 					if(null!=item) salida.mcolItems.Add(item);
 				}
 			}
-			if (Result.Success)
-				return salida;
-
-			return null;
+			return salida;
 		}
 		internal ScheduleItem? CompileScheduleItem(XElement root, Plan plan)
 		{

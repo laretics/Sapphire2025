@@ -86,6 +86,8 @@ else
                         return string.Format("Incidencia en el tren {0}",mvarTrain.name);
                     case "2":
                         return string.Format("Nota del tren {0}",mvarTrain.name);
+                    case "3":
+                        return string.Format("Nota técnica del tren {0}", mvarTrain.name);
                     default:
                         return string.Format("Documento del tren {0}",mvarTrain.name);
                 }
@@ -103,6 +105,8 @@ else
                     return "Descripción de la avería";
                 case "2":
                     return "Texto de la información";
+                case "3":
+                    return "Anotación técnica";
                 default:
                     return "Contenido";
             }
@@ -147,7 +151,7 @@ else
                     //de diagnóstico, pero esto no lo deberíamos hacer aquí, sino en el cliente
                     //de Aeneas.
                     await mvarAeneasClient.openFailReport(mvarTrain);
-				}
+                }
             }
             mvarNavigationManager.NavigateTo($"/train/{trainId}");
         }                

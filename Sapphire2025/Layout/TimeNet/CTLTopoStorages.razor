@@ -1,9 +1,12 @@
 ﻿@using Sapphire2025.Icons.Commands
+@using TimeNet2026.ScriptCompiling
 @using TimeNet2026.Topo
 @using TimeNet2026.Models
 @inject TimeNetClient mvarClient
 
 <ModalDialog @ref="MSGBoxDelete" OnClose="OnModalClose"/>
+<ModalDialog @ref="MSGBoxActivate" OnClose="OnModalActivateClose" />
+<CompilationResultReport @ref="mvarDeleteResultReport" Result="@mvarResult"></CompilationResultReport>
 
 @if (null== mcolHeaders || mcolHeaders.Count() < 1)
 {
@@ -49,7 +52,10 @@ else
 @code {
     private IEnumerable<TopoStorageHeaderModel>? mcolHeaders { get; set; }
     private ModalDialog? MSGBoxDelete;
+    private ModalDialog? MSGBoxActivate;
     private TopoStorageHeaderModel? mvarSelectedTopo;
+    private CompilationResultReport? mvarDeleteResultReport;
+    private CompileResult? mvarResult;
 
     protected async override Task OnInitializedAsync()
     {
@@ -68,15 +74,32 @@ else
             );
         }
     }
+    private async Task onActivate(TopoStorageHeaderModel topo)
+    {
+        mvarSelectedTopo = topo;
+
+    }
     private async Task OnModalClose(bool confirmed)
     {
         if(null!=mvarSelectedTopo && confirmed)
         {
-            //await mvarClient.DeleteTopoStorage(mvarSelectedTopo.header.Id);
+            await mvarClient.DeleteTopoStorage(mvarSelectedTopo.header.Id);
             mcolHeaders = await mvarClient.GetTopoStorages();
             StateHasChanged();
         }
         mvarSelectedTopo = null;
     }
+    private async Task OnModalActivateClose(bool confirmed)
+    {
+        if (null != mvarSelectedTopo && confirmed)
+        {
+            mvarResult = await mvarClient.DeleteTopoStorage(mvarSelectedTopo.header.Id);
+            if(null!=mvarResult && !mvarResult.Success && null!=mvarDeleteResultReport)
+                await mvarDeleteResultReport.show();
 
+            mcolHeaders = await mvarClient.GetTopoStorages();
+            StateHasChanged();
+        }
+        mvarSelectedTopo = null;
+    }
 }

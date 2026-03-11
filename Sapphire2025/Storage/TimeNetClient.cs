@@ -36,9 +36,14 @@ namespace Sapphire2025.Storage
 			HttpResponseMessage respuesta = await sendGetRequest(request);
 			return await respuesta.Content.ReadFromJsonAsync<IEnumerable<TopoStorageHeaderModel>>();
 		}
-		public async Task<CompileResult> DeleteTopoStorage(Guid id)
+		public async Task<CompileResult?> DeleteTopoStorage(Guid id)
 		{
-			return new CompileResult();
+			string jsonData = System.Text.Json.JsonSerializer.Serialize(id);
+			HttpResponseMessage respuesta = await sendPostRequest("deletetopostorage", jsonData);
+			if (respuesta.IsSuccessStatusCode)
+				return await respuesta.Content.ReadFromJsonAsync<CompileResult>();
+
+			return null;
 		}
 	}
 }

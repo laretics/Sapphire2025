@@ -8,6 +8,7 @@ using Sapphire2026.Data.Models;
 using Microsoft.AspNetCore.SignalR;
 using Sapphire2025Server.Comunications;
 using Sapphire2026Data.Models;
+using System.Configuration;
 
 namespace Sapphire2025Server.Controllers
 {
@@ -312,7 +313,18 @@ namespace Sapphire2025Server.Controllers
 		[HttpPost("addnote")]
 		public async Task<bool> AddNote(NoteModel note)
 		{
-			return await addNoteStatic(note, mvarConfig);
+			if(note.Type==3) //Nota técnica
+			{
+				User? usuario = await retrieveUserStatic(note.UserId, mvarConfig);
+				TrainModel? tren = await TrainInfo(note.parent.ToString());
+				if (null != usuario && null != tren)
+					await SendTelegramBroadcast(
+						string.Format("{0} ha escrito \"{1}\" (Nota técnica del tren {2})", usuario.UserName, note.Text, tren.name),
+						false,
+						new Common.UserRole[] { Common.UserRole.Inspector, Common.UserRole.Expert, Common.UserRole.Oficial, Common.UserRole.Mechanic }
+						);
+			}			
+			return await addNoteStatic(note, mvarConfig);			
 		}
 		[HttpPost("changeplatform")]
 		public async Task<bool> ChangePlatform(TrainModel train)

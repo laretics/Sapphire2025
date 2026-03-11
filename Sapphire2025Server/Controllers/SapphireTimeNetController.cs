@@ -9,6 +9,7 @@ using System.Xml.Linq;
 using TimeNet2026.Topo;
 using System.Linq.Expressions;
 using TimeNet2026.Models;
+using TimeNet2026.Timed;
 
 namespace Sapphire2025Server.Controllers
 {
@@ -61,7 +62,16 @@ namespace Sapphire2025Server.Controllers
 						else
 							return compiler.Result;
 					case "rautatie":
-
+						Guid auxStorageId = compiler.TopoStorageIdByRauta(root);
+						OnyxStorage auxOnice = new OnyxStorage();
+						ITimeNetContextStorage contexto = new DataStorage(mvarConfig);
+						TopoStorage? auxStorage = await auxOnice.DeserializeTopoStorage(auxStorageId, contexto);
+						if(null!=auxStorage)
+						{
+							if(compiler.CompileRauta(auxStorage, root))
+								await auxOnice.SerializeRautatie(auxStorage, contexto);
+						}							
+						return compiler.Result;
 					default:
 						break;
 				}
@@ -72,6 +82,14 @@ namespace Sapphire2025Server.Controllers
 				salida.Message = string.Format("El archivo no es un XML válido: {0}", ex.Message);
 			}
 			return salida;
+		}
+
+		[HttpPost("deletetopostorage")]
+		public async Task<CompileResult> DeleteTopoStorage([FromBody] Guid id)
+		{
+			OnyxStorage auxOnice = new OnyxStorage();
+			ITimeNetContextStorage contexto = new DataStorage(mvarConfig);
+			return await auxOnice.RemoveTopoStorage(id, contexto);
 		}
 
 		[HttpGet("topostorages")]

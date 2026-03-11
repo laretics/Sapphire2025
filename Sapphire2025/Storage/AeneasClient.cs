@@ -28,7 +28,7 @@ namespace Sapphire2025.Storage
 					return true; //En cualquier otro estado la salida es correcta y no se hace nada.
 			}
 			return false;
-		}	
+		}
 		public async Task<IEnumerable<TrainModel>> trainsList()
 		{
 			string request = composeCommand("trains");

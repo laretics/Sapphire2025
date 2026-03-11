@@ -7,6 +7,7 @@ using TimeNet2026.Topo;
 using TimeNet2026Data;
 using TimeNet2026Data.DBStorage;
 using TimeNet2026Data.Serialization;
+using System.Diagnostics;
 
 namespace TimeNet2026.Storage
 {
@@ -157,7 +158,7 @@ namespace TimeNet2026.Storage
 			DBSerializer auxSerializer = new DBSerializer(context);
 			await auxSerializer.RemoveRauta(topoStorageId);
 		}		
-		internal async Task SerializeRautatie(TopoStorage topoStorage, ITimeNetContextStorage context)
+		public async Task SerializeRautatie(TopoStorage topoStorage, ITimeNetContextStorage context)
 		{
 			//Elimino rautatie existentes:
 			DBSerializer auxSerializer = new DBSerializer(context);
@@ -410,7 +411,7 @@ namespace TimeNet2026.Storage
 			}
 			return salida;
 		}
-		internal async Task<TopoStorage?> DeserializeTopoStorage(Guid id, ITimeNetContextStorage context)
+		public async Task<TopoStorage?> DeserializeTopoStorage(Guid id, ITimeNetContextStorage context)
 		{
 			DBSerializer auxSerializer = new DBSerializer(context);
 			DBTopoStorage? auxTopoStorage = await auxSerializer.GetTopoStorage(id);	
@@ -526,10 +527,50 @@ namespace TimeNet2026.Storage
 			}
 			return salida;
 		}
-		internal async Task RemoveTopoStorage(Guid id, ITimeNetContextStorage context)
+		public async Task<CompileResult> RemoveTopoStorage(Guid id, ITimeNetContextStorage context)
 		{
 			DBSerializer auxSerializer = new DBSerializer(context);
-			await auxSerializer.RemoveTopoStorage(id);
+			CompileResult salida = new CompileResult();
+			salida.Success = true;
+			try
+			{
+				DBTopoStorage? auxStorage = await auxSerializer.GetTopoStorage(id);
+				if (null == auxStorage)
+				{
+					salida.Success = false;
+					salida.Message = "Couldn't find this TopoStorage in Database.";
+					salida.Warnings.Add(new CompileWarning(string.Format("TopoStorage id {0} not found on database.", id), -1, CompileWarning.SeverityEnum.Error));
+				}
+				else
+				{
+					DBHeader? auxHeader = await auxSerializer.GetHeader(id);
+					List<DBRauta> auxRautatie = await auxSerializer.GetRautatie(auxStorage.Id);
+					if (auxRautatie.Count > 0)
+					{
+						Debug.Assert(null != auxHeader);
+						salida.Success = false;
+						salida.Message = string.Format(
+							"TopoStorage {0} can't be deleted. There are {1} rautatie based on it. Please, delete them prior to this deletion.",
+							auxHeader.Name, auxRautatie.Count);
+						foreach (DBRauta auxRauta in auxRautatie)
+						{
+							auxHeader = await auxSerializer.GetHeader(auxRauta.HeaderId);
+							if (null != auxHeader)
+								salida.Warnings.Add(new CompileWarning(string.Format("Rauta id {0} and name {1} must be deleted.", auxRauta.HeaderId, auxHeader.Name), -1, CompileWarning.SeverityEnum.Warning));
+						}
+					}
+					else
+					{
+						await auxSerializer.RemoveTopoStorage(id);
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				salida.Success = false;
+				salida.Message = string.Format("Unhandled exception trying to delete a TopoStorage: {0}", ex.Message);
+			}			
+			return salida;
 		}
 
 		/// <summary>
