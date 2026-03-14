@@ -26,6 +26,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapphire2026Telegram", "Sap
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeNet2026Data", "TimeNet2026Data\TimeNet2026Data.csproj", "{D4A77742-26BE-45B9-89B9-C8493D361973}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tourmaline26", "Tourmaline26\Tourmaline26.csproj", "{E3A72FBC-EDED-437A-88F3-466EA9E2FA4D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -106,6 +108,14 @@ Global
 		{D4A77742-26BE-45B9-89B9-C8493D361973}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D4A77742-26BE-45B9-89B9-C8493D361973}.Release|x64.ActiveCfg = Release|Any CPU
 		{D4A77742-26BE-45B9-89B9-C8493D361973}.Release|x64.Build.0 = Release|Any CPU
+		{E3A72FBC-EDED-437A-88F3-466EA9E2FA4D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E3A72FBC-EDED-437A-88F3-466EA9E2FA4D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E3A72FBC-EDED-437A-88F3-466EA9E2FA4D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E3A72FBC-EDED-437A-88F3-466EA9E2FA4D}.Debug|x64.Build.0 = Debug|Any CPU
+		{E3A72FBC-EDED-437A-88F3-466EA9E2FA4D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E3A72FBC-EDED-437A-88F3-466EA9E2FA4D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E3A72FBC-EDED-437A-88F3-466EA9E2FA4D}.Release|x64.ActiveCfg = Release|Any CPU
+		{E3A72FBC-EDED-437A-88F3-466EA9E2FA4D}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

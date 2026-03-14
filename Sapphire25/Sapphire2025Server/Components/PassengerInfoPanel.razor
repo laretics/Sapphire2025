@@ -1,0 +1,177 @@
+@* PassengerInfoPanel.razor *@
+@code {
+    // Variables locales para datos dinámicos
+    string TrainNumber = "ICE 519";
+    string Destination = "München Hbf";
+    string CurrentTime => DateTime.Now.ToString("HH:mm");
+    string DepartureInfo = "Abfahrt in 1 min";
+    string DepartureTime = "09:46";
+    int CarNumber = 2;
+    int Direction = 1;
+
+    List<string> Stops = new() {
+        "Hamburg Hbf",
+        "Hamburg-Harburg",
+        "Bremen Hbf",
+        "Osnabrück Hbf"
+    };
+    int CurrentStopIndex = 0;
+}
+
+<div class="panel-root">
+    <div class="panel-header">
+        <span class="train-number">@TrainNumber nach</span>
+        <span class="panel-time">@CurrentTime</span>
+        <div class="destination">@Destination</div>
+    </div>
+    <div class="panel-body">
+        <div class="route-box">
+            <div class="route-title">Fahrtverlauf</div>
+            <ul class="route-list">
+                @for (int i = 0; i < Stops.Count; i++)
+                {
+                    <li class="@(i == CurrentStopIndex ? "current-stop" : "")">
+                        <span class="stop-dot @(i == CurrentStopIndex ? "active-dot" : "")"></span>
+                        <span>@Stops[i]</span>
+                    </li>
+                }
+            </ul>
+        </div>
+        <div class="info-box">
+            <div class="departure-row">
+                <span class="departure-info">@DepartureInfo</span>
+                <span class="departure-time">@DepartureTime</span>
+            </div>
+            <div class="direction-row">
+                <span class="direction-arrow">&#8593; @Direction</span>
+            </div>
+            <div class="car-row">
+                <span class="car-icon">&#128648;</span>
+                <span class="car-number">@CarNumber</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.panel-root {
+    background: #222;
+    color: #fff;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    border-radius: 12px;
+    overflow: hidden;
+    width: 700px;
+    box-shadow: 0 4px 24px #0008;
+}
+.panel-header {
+    background: #222;
+    padding: 24px 32px 8px 32px;
+    position: relative;
+}
+.train-number {
+    font-size: 2rem;
+    font-weight: bold;
+    opacity: 0.9;
+}
+.panel-time {
+    position: absolute;
+    right: 32px;
+    top: 24px;
+    font-size: 2rem;
+    font-weight: bold;
+}
+.destination {
+    font-size: 4rem;
+    font-weight: bold;
+    margin-top: 8px;
+}
+.panel-body {
+    display: flex;
+    background: #f5f5f5;
+    color: #222;
+    padding: 16px 32px;
+    gap: 32px;
+}
+.route-box {
+    flex: 2;
+}
+.route-title {
+    font-size: 1.2rem;
+    color: #888;
+    margin-bottom: 8px;
+}
+.route-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.route-list li {
+    display: flex;
+    align-items: center;
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+.stop-dot {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #bbb;
+    margin-right: 12px;
+    border: 2px solid #bbb;
+}
+.active-dot {
+    background: #222;
+    border-color: #222;
+}
+.current-stop {
+    font-weight: bold;
+    color: #222;
+}
+.info-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: #fff;
+    border-radius: 8px;
+    padding: 16px;
+    min-width: 180px;
+    box-shadow: 0 2px 8px #0002;
+}
+.departure-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1.2rem;
+    margin-bottom: 16px;
+}
+.departure-info {
+    color: #888;
+}
+.departure-time {
+    color: #2e8b00;
+    font-size: 2rem;
+    font-weight: bold;
+}
+.direction-row {
+    font-size: 2rem;
+    text-align: center;
+    margin-bottom: 16px;
+}
+.car-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    gap: 8px;
+}
+.car-icon {
+    font-size: 2.2rem;
+}
+.car-number {
+    font-size: 2.2rem;
+    font-weight: bold;
+}
+</style>

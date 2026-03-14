@@ -1,0 +1,55 @@
+﻿@* PassengerInfoPanel.razor *@
+@code {
+    // Variables locales para datos dinámicos
+    string TrainNumber = "4915";
+    string Destination = "Manacor";
+    string CurrentTime => DateTime.Now.ToString("HH:mm");
+    string DepartureInfo = "Sortida en 1 min";
+    string DepartureTime = "09:46";
+    int CarNumber = 2;
+    int Direction = 1;
+
+    List<string> Stops = new() {
+        "Jacint Verdaguer",
+        "Son Costa-Son Forteza",
+        "Son Fuster",
+        "Son Cladera-Es Vivero",
+        "Verge de Lluc",
+    };
+    int CurrentStopIndex = 0;
+}
+
+<div class="panel-root">
+    <div class="panel-header">
+        <span class="train-number">@TrainNumber destinació</span>
+        <span class="panel-time">@CurrentTime</span>
+        <div class="destination">@Destination</div>
+    </div>
+    <div class="panel-body">
+        <div class="route-box">
+            <div class="route-title">Pròximes aturades</div>
+            <ul class="route-list">
+                @for (int i = 0; i < Stops.Count; i++)
+                {
+                    <li class="@(i == CurrentStopIndex ? "current-stop" : "")">
+                        <span class="stop-dot @(i == CurrentStopIndex ? "active-dot" : "")"></span>
+                        <span>@Stops[i]</span>
+                    </li>
+                }
+            </ul>
+        </div>
+        <div class="info-box">
+            <div class="departure-row">
+                <span class="departure-info">@DepartureInfo</span>
+                <span class="departure-time">@DepartureTime</span>
+            </div>
+            <div class="direction-row">
+                <span class="direction-arrow">&#8593; @Direction</span>
+            </div>
+            <div class="car-row">
+                <span class="car-icon">&#128648;</span>
+                <span class="car-number">@CarNumber</span>
+            </div>
+        </div>
+    </div>
+</div>

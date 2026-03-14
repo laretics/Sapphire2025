@@ -1,0 +1,64 @@
+﻿.tesla-root {
+    width: 100vw;
+    height: 100vh;
+    background: #f7f7f7;
+    border-radius: 2vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.tesla-main {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: row;
+    gap: 2vw;
+    padding: 2vw 2vw 0 2vw;
+}
+
+.tesla-left {
+    flex: 1.2 1 0;
+    background: #fff;
+    border-radius: 1vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 0;
+    box-shadow: 0 2px 8px #0001;
+    overflow: hidden;
+}
+
+.tesla-right {
+    flex: 2 1 0;
+    background: #fff;
+    border-radius: 1vw;
+    min-width: 0;
+    min-height: 0;
+    box-shadow: 0 2px 8px #0001;
+    overflow: hidden;
+}
+
+.tesla-bottom-bar {
+    height: 8vh;
+    background: #fff;
+    border-radius: 0 0 2vw 2vw;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    box-shadow: 0 -2px 8px #0001;
+    padding: 0 2vw;
+    font-size: 2.5vw;
+    overflow: hidden;
+}
+
+    .tesla-bottom-bar i, .tesla-bottom-bar span {
+        margin: 0 2vw;
+        color: #888;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+
+        .tesla-bottom-bar i:hover, .tesla-bottom-bar span:hover {
+            color: #222;
+        }
