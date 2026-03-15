@@ -98,32 +98,38 @@ namespace Sapphire2025.Storage
         /// <returns>Lista reducida cacheada</returns>
         public async Task<Dictionary<Guid,UserModelBase>> cachedUserList()
         {
-			//Comprobamos si la tabla de usuarios sigue estando en vigor
-            DateTime localTimeStamp = await mvarIntStorage.GetUsersCacheTime();
-			DateTime serverTimeStamp = await LastTableServerUpdate(Common.CacheTableKey.Users);
+			Dictionary<Guid, UserModelBase>? auxLista = await smallUsersList();
+            if (null != auxLista) return auxLista;
 
-            //Hay que comprobar que ambas fechas estén en UTC para poder compararlas.
-            if (localTimeStamp.Kind != DateTimeKind.Utc)
-                localTimeStamp = localTimeStamp.ToUniversalTime();
-            if (serverTimeStamp.Kind != DateTimeKind.Utc)
-                serverTimeStamp = serverTimeStamp.ToUniversalTime();
+            return new Dictionary<Guid, UserModelBase>();
 
-			Dictionary<Guid, UserModelBase>? fromSession = await mvarIntStorage.GetUsersCache();
-			if (localTimeStamp < serverTimeStamp || null==fromSession || 0==fromSession.Count())
-			{
-				//La tabla de usuarios ha cambiado, así que la actualizamos
-				Dictionary<Guid, UserModelBase>? auxLista = await smallUsersList();
-				if (null != auxLista)
-				{
-					await mvarIntStorage.SetUsersCache(auxLista);
-					await mvarIntStorage.SetUsersCacheTime(serverTimeStamp);
-					fromSession = auxLista;
-				}
-			}
-            Dictionary<Guid, UserModelBase> salida = new Dictionary<Guid, UserModelBase>();
-			if (null != fromSession)
-                salida = fromSession;
-            return salida;
+
+			////Comprobamos si la tabla de usuarios sigue estando en vigor
+   //         DateTime localTimeStamp = await mvarIntStorage.GetUsersCacheTime();
+			//DateTime serverTimeStamp = await LastTableServerUpdate(Common.CacheTableKey.Users);
+
+   //         //Hay que comprobar que ambas fechas estén en UTC para poder compararlas.
+   //         if (localTimeStamp.Kind != DateTimeKind.Utc)
+   //             localTimeStamp = localTimeStamp.ToUniversalTime();
+   //         if (serverTimeStamp.Kind != DateTimeKind.Utc)
+   //             serverTimeStamp = serverTimeStamp.ToUniversalTime();
+
+			//Dictionary<Guid, UserModelBase>? fromSession = await mvarIntStorage.GetUsersCache();
+			//if (localTimeStamp < serverTimeStamp || null==fromSession || 0==fromSession.Count())
+			//{
+			//	//La tabla de usuarios ha cambiado, así que la actualizamos
+			//	Dictionary<Guid, UserModelBase>? auxLista = await smallUsersList();
+			//	if (null != auxLista)
+			//	{
+			//		await mvarIntStorage.SetUsersCache(auxLista);
+			//		await mvarIntStorage.SetUsersCacheTime(serverTimeStamp);
+			//		fromSession = auxLista;
+			//	}
+			//}
+   //         Dictionary<Guid, UserModelBase> salida = new Dictionary<Guid, UserModelBase>();
+			//if (null != fromSession)
+   //             salida = fromSession;
+   //         return salida;
 		}
         public async Task<UserModelBase?> GetCurrentUser()
         {
