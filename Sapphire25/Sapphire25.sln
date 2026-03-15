@@ -28,6 +28,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeNet2026Data", "TimeNet2
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tourmaline26", "Tourmaline26\Tourmaline26.csproj", "{E3A72FBC-EDED-437A-88F3-466EA9E2FA4D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonoGameRenderer", "MonoGameRenderer\MonoGameRenderer.csproj", "{2401D9F6-6E15-47A5-A76D-F5B23B3758BA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -116,6 +118,14 @@ Global
 		{E3A72FBC-EDED-437A-88F3-466EA9E2FA4D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{E3A72FBC-EDED-437A-88F3-466EA9E2FA4D}.Release|x64.ActiveCfg = Release|Any CPU
 		{E3A72FBC-EDED-437A-88F3-466EA9E2FA4D}.Release|x64.Build.0 = Release|Any CPU
+		{2401D9F6-6E15-47A5-A76D-F5B23B3758BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2401D9F6-6E15-47A5-A76D-F5B23B3758BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2401D9F6-6E15-47A5-A76D-F5B23B3758BA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2401D9F6-6E15-47A5-A76D-F5B23B3758BA}.Debug|x64.Build.0 = Debug|Any CPU
+		{2401D9F6-6E15-47A5-A76D-F5B23B3758BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2401D9F6-6E15-47A5-A76D-F5B23B3758BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2401D9F6-6E15-47A5-A76D-F5B23B3758BA}.Release|x64.ActiveCfg = Release|Any CPU
+		{2401D9F6-6E15-47A5-A76D-F5B23B3758BA}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

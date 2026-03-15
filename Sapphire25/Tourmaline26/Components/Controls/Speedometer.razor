@@ -85,7 +85,7 @@
                 var y1 = 100 + 82 * Math.Sin(rad);
                 var x2 = 100 + 88 * Math.Cos(rad);
                 var y2 = 100 + 88 * Math.Sin(rad);
-                <line x1="@x1" y1="@y1" x2="@x2" y2="@y2" stroke=\"#bbb\" stroke-width=\"1.5\" />
+                <line x1="@x1.ToString(CultureInfo.InvariantCulture)" y1="@y1.ToString(CultureInfo.InvariantCulture)" x2="@x2.ToString(CultureInfo.InvariantCulture)" y2="@y2.ToString(CultureInfo.InvariantCulture)" stroke="#bbb" stroke-width="1.5" />
             }
         }
         <!-- Aguja -->
@@ -109,12 +109,14 @@
         align-items: center;
         justify-content: center;
         background: transparent;
+        overflow: hidden;
     }
 
     .speedometer-svg {
         width: 100%;
-        height: auto;
-        max-width: 420px;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
         display: block;
     }
 </style>
