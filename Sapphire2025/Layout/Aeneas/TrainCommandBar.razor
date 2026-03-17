@@ -213,7 +213,7 @@
 				b.CloseComponent();}))
 		}
 	};
-	private bool isAnonymous { get => (isRoot || isMechanic || isStation) || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Anonymous)); }
+	private bool isAnonymous { get => (isRoot || isMechanic || isStation ||isInspector ||isExpert) || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Anonymous)); }
 	private bool isRoot { get => null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Root); }
 	private bool isOfficial { get => isRoot || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Oficial)); }
 	private bool isMechanic{ get => isOfficial ||( null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Mechanic)); }	

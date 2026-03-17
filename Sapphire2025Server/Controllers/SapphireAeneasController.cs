@@ -473,10 +473,14 @@ namespace Sapphire2025Server.Controllers
 				case Common.OperationType.BeginCorrective:
 					salida = await hasBasicPermission(request, Common.UserRole.Oficial); //El oficial de taller puede reintegra un tren stand-still
 					if(!salida)
+						salida = await hasBasicPermission(request, Common.UserRole.Station); //El inspector puede mandar un tren a reparar
+					if(!salida)
 						salida = await hasBasicPermission(request, Common.UserRole.Inspector); //El inspector puede mandar un tren a reparar
 					return salida;							
 				case Common.OperationType.DepotRequestAccept: //El inspector acepta enviar un tren a mantenimiento
-					salida = await hasBasicPermission(request, Common.UserRole.Inspector); //Es importante que ningún otro pueda tomar esta decisión.
+					salida = await hasBasicPermission(request, Common.UserRole.Station); //Es importante que ningún otro pueda tomar esta decisión.
+					if(!salida)
+						salida = await hasBasicPermission(request, Common.UserRole.Inspector); //El inspector puede mandar un tren a reparar
 					return salida;
 				case Common.OperationType.DepotRequestDeny: //El oficial de taller puede rescatar un tren del que se ha pedido un mantenimiento sin querer.
 					return await hasBasicPermission(request, Common.UserRole.Oficial);
