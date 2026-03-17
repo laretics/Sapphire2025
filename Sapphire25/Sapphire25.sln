@@ -38,6 +38,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orts.Formats", "Orts.Format
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FreeTrainSimulator.Models.Imported", "FreeTrainSimulator.Models.Imported\FreeTrainSimulator.Models.Imported.csproj", "{3C584F5C-53D4-4597-A6A8-AA1CB6725FAD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FreeTrainSimulator.Graphics", "FreeTrainSimulator.Graphics\FreeTrainSimulator.Graphics.csproj", "{1FADD048-576A-47B6-B9CA-AF9FEA7F59E7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonoGameSimulator", "MonoGameSimulator\MonoGameSimulator.csproj", "{647A9C5B-1CCD-4469-AC0B-FF37EC379521}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -166,6 +170,22 @@ Global
 		{3C584F5C-53D4-4597-A6A8-AA1CB6725FAD}.Release|Any CPU.Build.0 = Release|Any CPU
 		{3C584F5C-53D4-4597-A6A8-AA1CB6725FAD}.Release|x64.ActiveCfg = Release|Any CPU
 		{3C584F5C-53D4-4597-A6A8-AA1CB6725FAD}.Release|x64.Build.0 = Release|Any CPU
+		{1FADD048-576A-47B6-B9CA-AF9FEA7F59E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1FADD048-576A-47B6-B9CA-AF9FEA7F59E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1FADD048-576A-47B6-B9CA-AF9FEA7F59E7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1FADD048-576A-47B6-B9CA-AF9FEA7F59E7}.Debug|x64.Build.0 = Debug|Any CPU
+		{1FADD048-576A-47B6-B9CA-AF9FEA7F59E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1FADD048-576A-47B6-B9CA-AF9FEA7F59E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1FADD048-576A-47B6-B9CA-AF9FEA7F59E7}.Release|x64.ActiveCfg = Release|Any CPU
+		{1FADD048-576A-47B6-B9CA-AF9FEA7F59E7}.Release|x64.Build.0 = Release|Any CPU
+		{647A9C5B-1CCD-4469-AC0B-FF37EC379521}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{647A9C5B-1CCD-4469-AC0B-FF37EC379521}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{647A9C5B-1CCD-4469-AC0B-FF37EC379521}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{647A9C5B-1CCD-4469-AC0B-FF37EC379521}.Debug|x64.Build.0 = Debug|Any CPU
+		{647A9C5B-1CCD-4469-AC0B-FF37EC379521}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{647A9C5B-1CCD-4469-AC0B-FF37EC379521}.Release|Any CPU.Build.0 = Release|Any CPU
+		{647A9C5B-1CCD-4469-AC0B-FF37EC379521}.Release|x64.ActiveCfg = Release|Any CPU
+		{647A9C5B-1CCD-4469-AC0B-FF37EC379521}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

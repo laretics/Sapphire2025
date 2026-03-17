@@ -144,7 +144,7 @@ namespace FreeTrainSimulator.Common
                         foreach (dynamic arrayItem in (Array)(dynamic)this[item])
                         {
                             builder.Append(arrayItem);
-                            builder.Append(',');
+                        builder.Append(',');
                         }
                         if (builder[^1] == ',')
                             builder.Length--;

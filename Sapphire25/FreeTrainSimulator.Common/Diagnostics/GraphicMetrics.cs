@@ -1,4 +1,13 @@
-﻿using FreeTrainSimulator.Common.DebugInfo;
+﻿// COPYRIGHT 2009, 2010, 2011, 2012, 2013, 2014 by the Open Rails project.
+// 
+// This file is part of Open Rails.
+// 
+// Open Rails is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// 
+using FreeTrainSimulator.Common.DebugInfo;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;

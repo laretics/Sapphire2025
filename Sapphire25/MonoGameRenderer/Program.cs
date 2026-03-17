@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using FreeTrainSimulator.Models.Settings;
+using Orts.ActivityRunner.Viewer3D;
 
 namespace Orts.ActivityRunner
 {
@@ -13,7 +14,7 @@ namespace Orts.ActivityRunner
     {
         private static readonly char[] optionSeparators = new[] { '=', ':' };
 
-        //public static Viewer Viewer;        
+        public static Viewer Viewer;        
 
         /// <summary>
         /// Punto de entrada principal para la aplicación

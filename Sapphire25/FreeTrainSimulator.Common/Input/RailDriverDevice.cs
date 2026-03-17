@@ -3,8 +3,6 @@ using System.Linq;
 
 using FreeTrainSimulator.Common;
 
-//using RailDriver;
-
 namespace FreeTrainSimulator.Common.Input
 {
 #pragma warning disable CA1708 // Identifiers should differ by more than case
@@ -55,7 +53,7 @@ namespace FreeTrainSimulator.Common.Input
             (byte)RailDriverDisplaySign.Digit6 | (byte)RailDriverDisplaySign.Dot, (byte)RailDriverDisplaySign.Digit7 | (byte)RailDriverDisplaySign.Dot,
             (byte)RailDriverDisplaySign.Digit8 | (byte)RailDriverDisplaySign.Dot, (byte)RailDriverDisplaySign.Digit9 | (byte)RailDriverDisplaySign.Dot};
 
-        //private readonly PIEDevice device;
+        
         private static RailDriverDevice instance;
         private readonly byte[] writeBuffer;
 
@@ -63,14 +61,13 @@ namespace FreeTrainSimulator.Common.Input
         public static readonly EnumArray<byte, RailDriverCalibrationSetting> DefaultCalibrationSettings =
             new EnumArray<byte, RailDriverCalibrationSetting>(new byte[] { 225, 116, 60, 229, 176, 42, 119, 216, 79, 58, 213, 179, 30, 209, 109, 121, 73, 135, 180, 86, 145, 189, 0, 0, 0, 0, 0, 1 });
 
-        public int WriteBufferSize => 0;// device?.WriteLength ?? 0;
+        public int WriteBufferSize => 0;
 
-        public int ReadBufferSize => 0;// device?.ReadLength ?? 0;
+        public int ReadBufferSize =>  0;
 
         public int WriteData(byte[] writeBuffer)
         {
-            //return device?.WriteData(writeBuffer) ?? -1;
-            return -1;
+            return  -1;
         }
 
         public byte[] GetReadBuffer()
@@ -80,16 +77,15 @@ namespace FreeTrainSimulator.Common.Input
 
         public int ReadCurrentData(ref byte[] data)
         {
-            //return device?.ReadLast(ref data) ?? -1;
             return -1;
         }
 
         public void Shutdown()
         {
-            //device?.CloseInterface();
+            
         }
 
-        public bool Enabled => false;// device != null;
+        public bool Enabled => false;
 
         public static RailDriverDevice Instance
         {
@@ -103,13 +99,6 @@ namespace FreeTrainSimulator.Common.Input
 
         private RailDriverDevice()
         {
-            //device = PIEDevice.EnumeratePIE().Where(dev => dev.HidUsagePage == 0xc && dev.Pid == 210).FirstOrDefault();
-            //if (null != device)
-            //{
-            //    device.SetupInterface();
-            //    device.SuppressDuplicateReports = true;
-            //    writeBuffer = new byte[WriteBufferSize];
-            //}
         }
 
         /// <summary>
@@ -120,15 +109,6 @@ namespace FreeTrainSimulator.Common.Input
         /// <param name="led3"></param>
         public void SetLeds(byte led1, byte led2, byte led3)
         {
-            //if (device != null)
-            //{
-            //    writeBuffer.Initialize();
-            //    writeBuffer[1] = 134;
-            //    writeBuffer[2] = led3;
-            //    writeBuffer[3] = led2;
-            //    writeBuffer[4] = led1;
-            //    device.WriteData(writeBuffer);
-            //}
         }
 
         /// <summary>
@@ -139,15 +119,6 @@ namespace FreeTrainSimulator.Common.Input
         /// <param name="led3"></param>
         public void SetLeds(RailDriverDisplaySign led1, RailDriverDisplaySign led2, RailDriverDisplaySign led3)
         {
-            //if (device != null)
-            //{
-            //    writeBuffer.Initialize();
-            //    writeBuffer[1] = 134;
-            //    writeBuffer[2] = (byte)led3;
-            //    writeBuffer[3] = (byte)led2;
-            //    writeBuffer[4] = (byte)led1;
-            //    device.WriteData(writeBuffer);
-            //}
         }
 
         /// <summary>
@@ -192,13 +163,6 @@ namespace FreeTrainSimulator.Common.Input
         /// <param name="on"></param>
         public void EnableSpeaker(bool state)
         {
-            //if (device != null)
-            //{
-            //    writeBuffer.Initialize();
-            //    writeBuffer[1] = 133;
-            //    writeBuffer[7] = (byte)(state ? 1 : 0);
-            //    device.WriteData(writeBuffer);
-            //}
         }
 
 

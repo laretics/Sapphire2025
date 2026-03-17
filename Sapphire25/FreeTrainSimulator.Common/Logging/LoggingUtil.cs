@@ -34,6 +34,9 @@ namespace FreeTrainSimulator.Common.Logging
         {
             Dictionary<string, string> replacementValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
+                { "application", RuntimeInfo.ProductApplication },
+                { "product", RuntimeInfo.ProductName },
+                { "version", VersionInfo.Version},
                 { "date", DateTime.Now.Date.ToString("d", CultureInfo.CurrentCulture) },
                 { "time", TimeSpan.FromSeconds((int)DateTime.Now.TimeOfDay.TotalSeconds).ToString("t", CultureInfo.CurrentCulture) },
             };
@@ -53,7 +56,7 @@ namespace FreeTrainSimulator.Common.Logging
             if (string.IsNullOrEmpty(logFileName))
                 return;
 
-            for (int i = Trace.Listeners.Count - 1; i >= 0; i--)
+            for (int i = Trace.Listeners.Count -1; i >= 0; i--)
             {
                 if (Trace.Listeners[i] is LoggingTraceListener loggingTraceListener)
                 {
@@ -87,6 +90,7 @@ namespace FreeTrainSimulator.Common.Logging
             {
             }
 
+            Trace.WriteLine($"This is a log file for {RuntimeInfo.ProductName} {RuntimeInfo.ProductApplication}. Please include this file in bug reports.");
             Trace.WriteLine(SeparatorLine);
             if (eventType <= TraceEventType.Error)
             {
@@ -101,6 +105,8 @@ namespace FreeTrainSimulator.Common.Logging
                     Trace.WriteLine(SeparatorLine);
                 }
                 Trace.WriteLine($"{"Date/Time",-12}= {DateTime.Now} ({DateTime.UtcNow:u})");
+                Trace.WriteLine($"{"Version",-12}= {VersionInfo.Version}");
+                Trace.WriteLine($"{"Code Version",-12}= {VersionInfo.CodeVersion}");
                 Trace.WriteLine($"{"OS",-12}= {RuntimeInformation.OSDescription} {RuntimeInformation.RuntimeIdentifier}");
                 Trace.WriteLine($"{"Runtime",-12}= {RuntimeInformation.FrameworkDescription} ({(Environment.Is64BitProcess ? "64" : "32")}bit)");
                 if (logFileName.Length > 0)

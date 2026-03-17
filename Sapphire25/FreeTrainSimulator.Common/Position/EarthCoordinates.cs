@@ -1,6 +1,6 @@
-﻿using Microsoft.Xna.Framework;
-using SharpDX.Direct2D1.Effects;
-using System;
+﻿using System;
+
+using Microsoft.Xna.Framework;
 
 namespace FreeTrainSimulator.Common.Position
 {
@@ -133,13 +133,13 @@ namespace FreeTrainSimulator.Common.Position
                     region = 9;
             else
                 if (gx <= earthRadius * -1.74532925199)
-                    region = 6;                                  // Between -180 and -100
-                else if (gx <= earthRadius * -0.349065850399)
-                    region = 5;                                  // Between -100 and -20
-                else if (gx <= earthRadius * 1.3962634016)
-                    region = 10;                                 // Between -20 and 80
-                else
-                    region = 11;                                 // Between 80 and 180
+                region = 6;                                  // Between -180 and -100
+            else if (gx <= earthRadius * -0.349065850399)
+                region = 5;                                  // Between -100 and -20
+            else if (gx <= earthRadius * 1.3962634016)
+                region = 10;                                 // Between -20 and 80
+            else
+                region = 11;                                 // Between 80 and 180
 
             gx -= falseEast[region];
 
@@ -287,13 +287,13 @@ namespace FreeTrainSimulator.Common.Position
                     region = 9;
             else
                 if (gx <= earthRadius * -1.74532925199)
-                    region = 6;                                  // Between -180 and -100
-                else if (gx <= earthRadius * -0.349065850399)
-                    region = 5;                                  // Between -100 and -20
-                else if (gx <= earthRadius * 1.3962634016)
-                    region = 10;                                 // Between -20 and 80
-                else
-                    region = 11;                                 // Between 80 and 180
+                region = 6;                                  // Between -180 and -100
+            else if (gx <= earthRadius * -0.349065850399)
+                region = 5;                                  // Between -100 and -20
+            else if (gx <= earthRadius * 1.3962634016)
+                region = 10;                                 // Between -20 and 80
+            else
+                region = 11;                                 // Between 80 and 180
 
             gx -= falseEast[region];
 

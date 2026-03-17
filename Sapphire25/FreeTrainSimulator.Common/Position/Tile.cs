@@ -87,7 +87,7 @@ namespace FreeTrainSimulator.Common.Position
         public static Tile TileFromAbs(double x, double y)
         {
             return new Tile(
-                Convert.ToInt16(Math.Round((int)(x / 1024) / 2.0, MidpointRounding.AwayFromZero)),
+                Convert.ToInt16(Math.Round((int)(x / 1024) / 2.0, MidpointRounding.AwayFromZero)), 
                 Convert.ToInt16(Math.Round((int)(y / 1024) / 2.0, MidpointRounding.AwayFromZero)));
         }
 

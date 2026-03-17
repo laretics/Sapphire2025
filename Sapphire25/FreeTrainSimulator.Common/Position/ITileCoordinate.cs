@@ -1,6 +1,4 @@
-﻿using SharpDX.Direct2D1.Effects;
-
-namespace FreeTrainSimulator.Common.Position
+﻿namespace FreeTrainSimulator.Common.Position
 {
     public interface ITileCoordinate
     {

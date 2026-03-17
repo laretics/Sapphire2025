@@ -35,4 +35,3 @@ namespace FreeTrainSimulator.Common.Input
     }
 }
 
-

@@ -78,4 +78,3 @@ namespace FreeTrainSimulator.Common.Xna
 
     }
 }
-

@@ -82,9 +82,9 @@ namespace FreeTrainSimulator.Common.Position
             ArgumentException.ThrowIfNullOrEmpty(fileName);
             fileName = Path.GetFileNameWithoutExtension(fileName);
 
-            return fileName.Length != 15 ||
-                fileName[0] != 'w' ||
-                (fileName[1] != '+' && fileName[1] != '-') ||
+            return fileName.Length != 15 || 
+                fileName[0] != 'w' || 
+                (fileName[1] != '+' && fileName[1] != '-') || 
                 (fileName[8] != '+' && fileName[8] != '-') ||
                 !int.TryParse(fileName.AsSpan(1, 7), out int tileX) || !int.TryParse(fileName.AsSpan(8, 7), out int tileZ)
                 ? throw new InvalidDataException($"WorldFile name {fileName} is not valid!")

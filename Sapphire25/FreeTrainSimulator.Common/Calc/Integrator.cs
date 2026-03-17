@@ -177,15 +177,15 @@ namespace FreeTrainSimulator.Common.Calc
             }
             else
                 if (--waitBeforeSpeedingUp <= 0)    //wait for a while before speeding up the integration
-                {
-                    count = --NumOfSubstepsPS;
-                    if (count < 1)
-                        count = 1;
+            {
+                count = --NumOfSubstepsPS;
+                if (count < 1)
+                    count = 1;
 
-                    waitBeforeSpeedingUp = 10;      //not so fast ;)
-                }
-                else
-                    count = NumOfSubstepsPS;
+                waitBeforeSpeedingUp = 10;      //not so fast ;)
+            }
+            else
+                count = NumOfSubstepsPS;
 
             timeSpan /= count;
             NumOfSubstepsPS = count;
@@ -275,12 +275,12 @@ namespace FreeTrainSimulator.Common.Calc
             }
             else
                 if (--waitBeforeSpeedingUp <= 0)    //wait for a while before speeding up the integration
-                {
-                    count = Math.Max(--NumOfSubstepsPS, 1);
-                    waitBeforeSpeedingUp = 10;      //not so fast ;)
-                }
-                else
-                    count = NumOfSubstepsPS;
+            {
+                count = Math.Max(--NumOfSubstepsPS, 1);
+                waitBeforeSpeedingUp = 10;      //not so fast ;)
+            }
+            else
+                count = NumOfSubstepsPS;
 
             timeSpan /= count;
             NumOfSubstepsPS = count;

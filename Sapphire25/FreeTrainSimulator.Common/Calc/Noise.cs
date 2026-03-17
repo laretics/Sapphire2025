@@ -188,35 +188,35 @@
                 }
             else
                 if (y0 < z0)
-                {
-                    // Z Y X order
-                    i1 = 0;
-                    j1 = 0;
-                    k1 = 1;
-                    i2 = 0;
-                    j2 = 1;
-                    k2 = 1;
-                }
-                else if (x0 < z0)
-                {
-                    // Y Z X order
-                    i1 = 0;
-                    j1 = 1;
-                    k1 = 0;
-                    i2 = 0;
-                    j2 = 1;
-                    k2 = 1;
-                }
-                else
-                {
-                    // Y X Z order
-                    i1 = 0;
-                    j1 = 1;
-                    k1 = 0;
-                    i2 = 1;
-                    j2 = 1;
-                    k2 = 0;
-                }
+            {
+                // Z Y X order
+                i1 = 0;
+                j1 = 0;
+                k1 = 1;
+                i2 = 0;
+                j2 = 1;
+                k2 = 1;
+            }
+            else if (x0 < z0)
+            {
+                // Y Z X order
+                i1 = 0;
+                j1 = 1;
+                k1 = 0;
+                i2 = 0;
+                j2 = 1;
+                k2 = 1;
+            }
+            else
+            {
+                // Y X Z order
+                i1 = 0;
+                j1 = 1;
+                k1 = 0;
+                i2 = 1;
+                j2 = 1;
+                k2 = 0;
+            } 
 
             // A step of (1,0,0) in (i,j,k) means a step of (1-c,-c,-c) in (x,y,z),
             // a step of (0,1,0) in (i,j,k) means a step of (-c,1-c,-c) in (x,y,z), and

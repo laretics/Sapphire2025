@@ -1,7 +1,32 @@
-﻿using FreeTrainSimulator.Common.Xna;
-using Microsoft.Xna.Framework;
-using SharpDX.Direct2D1.Effects;
+﻿/*
+ * 
+ * COORDINATE SYSTEMS - XNA uses a different coordinate system than MSTS.  In XNA, +ve Z is toward the camera, 
+ * whereas in MSTS it is the opposite.  As a result you will see the sign of all Z coordinates gets negated
+ * and matrices are adjusted as they are loaded into XNA.  In addition the winding order of triangles is reversed in XNA.
+ * Generally - X,Y,Z coordinates, vectors, quaternions, and angles will be expressed using MSTS coordinates 
+ * unless otherwise noted with the prefix XNA.  Matrix's are usually constructed using XNA coordinates so they can be 
+ * used directly in XNA draw routines.  So most matrix's will have XNA prepended to their name.
+ * 
+ * WorldCoordinates
+ * X increases to the east
+ * Y increases up
+ * Z increases to the north
+ * AX increases tilting down
+ * AY increases turning to the right
+ * 
+ * LEXICON
+ * Location - the x,y,z point where the center of the object is located - usually a Vector3
+ * Pose - the orientation of an object in 3D, ie tilt, rotation - usually an XNAMatrix
+ * Position - combines pose and location
+ * WorldLocation - adds tile coordinates to a Location
+ * WorldPosition - adds tile coordinates to a Position
+ */
+
 using System;
+
+using FreeTrainSimulator.Common.Xna;
+
+using Microsoft.Xna.Framework;
 
 namespace FreeTrainSimulator.Common.Position
 {
