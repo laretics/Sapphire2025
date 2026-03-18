@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using FreeTrainSimulator.Models.Settings;
+using Orts.ActivityRunner.Processes;
 using Orts.ActivityRunner.Viewer3D;
 
 namespace Orts.ActivityRunner
@@ -30,6 +31,17 @@ namespace Orts.ActivityRunner
             //ProfileModel profile = await (string.IsNullOrEmpty(profileName) ?
             //    ((ProfileModel)null).Current(CancellationToken.None).ConfigureAwait(false) :
             //    (((ProfileModel)null).Get(profileName, CancellationToken.None)).ConfigureAwait(false));
+
+            ProfileUserSettingsModel popo = new ProfileUserSettingsModel();
+            popo.WindowScreen = 0;
+            
+
+            using (GameHost game = new GameHost(popo))
+            {                
+                game.PushState(new GameStateViewer3DTest());
+                game.Run();
+            }
+
 
             //ProfileUserSettingsModel userSettings = await profile.LoadSettingsModel<ProfileUserSettingsModel>(CancellationToken.None).ConfigureAwait(false);
             //userSettings.MultiPlayer = !string.IsNullOrEmpty(ParseCommandLineOption(argumentList, "MultiplayerClient"));

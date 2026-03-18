@@ -177,7 +177,7 @@ namespace Orts.Formats.Msts
 
             private readonly ConcurrentDictionary<string, RouteFolder> routeFolders = new ConcurrentDictionary<string, RouteFolder>(StringComparer.OrdinalIgnoreCase);
 
-            internal ContentFolder(string root)
+            public ContentFolder(string root)
             {
                 Folder = Path.GetFullPath(root);
             }

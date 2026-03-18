@@ -18,7 +18,7 @@ using Orts.Formats.Msts.Models;
 
 namespace FreeTrainSimulator.Models.Imported.ImportHandler.TrainSimulator
 {
-    internal sealed class RouteModelImportHandler : ContentHandlerBase<RouteModelHeader>
+    public sealed class RouteModelImportHandler : ContentHandlerBase<RouteModelHeader>
     {
         internal const string SourceNameKey = "MstsSourceRoute";
 
@@ -41,14 +41,22 @@ namespace FreeTrainSimulator.Models.Imported.ImportHandler.TrainSimulator
                         _ = routeFolders.TryAdd(folder.RouteName, folder);
                 }
 
-                await Parallel.ForEachAsync(routeFolders, cancellationToken, async (routeFolder, token) =>
+                //await Parallel.ForEachAsync(routeFolders, cancellationToken, async (routeFolder, token) =>
+                //{
+                //    Task<RouteModelHeader> modelTask = Cast(Convert(routeFolder.Value, folderModel, cancellationToken));
+                //    RouteModelHeader routeModel = await modelTask.ConfigureAwait(false);
+                //    string key = routeModel.Hierarchy();
+                //    results.Add(routeModel);
+                //    modelTaskCache[key] = modelTask;
+                //}).ConfigureAwait(false);
+                foreach (var routeFolder in routeFolders)
                 {
                     Task<RouteModelHeader> modelTask = Cast(Convert(routeFolder.Value, folderModel, cancellationToken));
                     RouteModelHeader routeModel = await modelTask.ConfigureAwait(false);
-                    string key = routeModel.Hierarchy();
+                    string key2 = routeModel.Hierarchy();
                     results.Add(routeModel);
-                    modelTaskCache[key] = modelTask;
-                }).ConfigureAwait(false);
+                    modelTaskCache[key2] = modelTask;
+                }
             }
 
             ImmutableArray<RouteModelHeader> result = results.ToImmutableArray();

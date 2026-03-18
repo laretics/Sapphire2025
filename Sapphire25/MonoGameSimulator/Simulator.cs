@@ -234,8 +234,7 @@ namespace Orts.Simulation
         public event EventHandler<QueryCarViewerLoadedEventArgs> QueryCarViewerLoaded;
         public event EventHandler RequestTTDetachWindow;
 
-        public float TimetableLoadedFraction { get; internal set; }    // Set by AI.PrerunAI(), Get by GameStateRunActivity.Update()
-
+        public float TimetableLoadedFraction { get; internal set; }    // Set by AI.PrerunAI(), Get by GameStateRunActivity.Update()        
         public Simulator(ProfileUserSettingsModel userSettings, RouteModel routeModel)
         {
             Instance = this;
@@ -248,7 +247,9 @@ namespace Orts.Simulation
             GamePaused = userSettings.PauseAtStart;
 
             RouteModel = routeModel ?? throw new ArgumentNullException(nameof(routeModel));
+
             RouteFolder = routeModel.MstsRouteFolder();
+
 
             // TODO 2025-01-29 refactor to use route specific configuration settings
             if (RouteModel.Settings.TryGetValue("OpenComputerTrainDoors", out string trainDoorsSetting) && bool.TryParse(trainDoorsSetting, out bool openComputerTrainDoors))
