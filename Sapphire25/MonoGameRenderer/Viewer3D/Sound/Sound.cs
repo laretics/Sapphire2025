@@ -155,19 +155,19 @@ namespace Orts.ActivityRunner.Viewer3D.Sound
                     {
                         case OrtsActivitySoundFileType.Everywhere:
                             ActivitySounds = new SoundSource(SoundEventSource.InGame, ORTSActSoundFile, true);
-                            Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
+                            //Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
                             break;
                         case OrtsActivitySoundFileType.Cab:
                             var playerLoco = (MSTSWagon)Program.Viewer.Simulator.PlayerLocomotive;
                             ActivitySounds = new SoundSource(playerLoco, Program.Viewer.World.Trains.GetViewer(playerLoco), ORTSActSoundFile);
-                            Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
+                            //Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
                             break;
                         case OrtsActivitySoundFileType.Pass:
                             if (Program.Viewer.Camera.Style == CameraStyle.Passenger && Program.Viewer.Camera.AttachedCar != null)
                             {
                                 var selectedWagon = (MSTSWagon)Program.Viewer.Camera.AttachedCar;
                                 ActivitySounds = new SoundSource(selectedWagon, Program.Viewer.World.Trains.GetViewer(selectedWagon), ORTSActSoundFile);
-                                Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
+                                //Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
                             }
                             break;
                         case OrtsActivitySoundFileType.Ground:
@@ -175,11 +175,11 @@ namespace Orts.ActivityRunner.Viewer3D.Sound
                                 Program.Viewer.Simulator.PlayerLocomotive : train.Cars[0];
                             //                            string wsName = Program.Viewer.Simulator.RoutePath + @"\WORLD\" + WorldFile.WorldFileNameFromTileCoordinates(worldLocation.TileX, worldLocation.TileZ) + "s";
                             ActivitySounds = new SoundSource(loco.WorldPosition.WorldLocation.ChangeElevation(3.0f), SoundEventSource.None, ORTSActSoundFile, true);
-                            Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
+                            //Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
                             break;
                         case OrtsActivitySoundFileType.Location:
                             ActivitySounds = new SoundSource(activitySound.Location.ChangeElevation(3.0f), SoundEventSource.None, ORTSActSoundFile, true);
-                            Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
+                            //Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
                             break;
                         default:
                             break;
@@ -190,19 +190,19 @@ namespace Orts.ActivityRunner.Viewer3D.Sound
                     {
                         case OrtsActivitySoundFileType.Everywhere:
                             ActivitySounds = new SoundSource(ORTSActSoundFile, ORTSActSoundFileType, true);
-                            Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
+                            //Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
                             break;
                         case OrtsActivitySoundFileType.Cab:
                             var playerLoco = (MSTSWagon)Program.Viewer.Simulator.PlayerLocomotive;
                             ActivitySounds = new SoundSource(playerLoco, ORTSActSoundFile, ORTSActSoundFileType);
-                            Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
+                            //Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
                             break;
                         case OrtsActivitySoundFileType.Pass:
                             if (Program.Viewer.Camera.Style == CameraStyle.Passenger && Program.Viewer.Camera.AttachedCar != null)
                             {
                                 var selectedWagon = (MSTSWagon)Program.Viewer.Camera.AttachedCar;
                                 ActivitySounds = new SoundSource(selectedWagon, ORTSActSoundFile, ORTSActSoundFileType);
-                                Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
+                                //Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
                             }
                             break;
                         case OrtsActivitySoundFileType.Ground:
@@ -210,11 +210,11 @@ namespace Orts.ActivityRunner.Viewer3D.Sound
                                 Program.Viewer.Simulator.PlayerLocomotive : train.Cars[0];
                             //                           string wsName = Program.Viewer.Simulator.RoutePath + @"\WORLD\" + WorldFile.WorldFileNameFromTileCoordinates(worldLocation.TileX, worldLocation.TileZ) + "s";
                             ActivitySounds = new SoundSource(loco.WorldPosition.WorldLocation.ChangeElevation(3.0f), ORTSActSoundFile, true, ORTSActSoundFileType);// Sound does not come from earth!
-                            Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
+                            //Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
                             break;
                         case OrtsActivitySoundFileType.Location:
                             ActivitySounds = new SoundSource(activitySound.Location.ChangeElevation(3.0f), ORTSActSoundFile, true, ORTSActSoundFileType);// Sound does not come from earth!
-                            Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
+                            //Program.Viewer.SoundProcess.AddSoundSource(localEventID, ActivitySounds);
                             break;
                         default:
                             break;

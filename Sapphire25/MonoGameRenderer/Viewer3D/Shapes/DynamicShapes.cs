@@ -658,12 +658,12 @@ namespace Orts.ActivityRunner.Viewer3D.Shapes
                     if (File.Exists(soundPath))
                     {
                         soundSource = new SoundSource(WorldPosition.WorldLocation, SoundEventSource.Crossing, soundPath);
-                        viewer.SoundProcess.AddSoundSource(this, soundSource);
+                        //viewer.SoundProcess.AddSoundSource(this, soundSource);
                     }
                     else if (File.Exists(soundPath = viewer.Simulator.RouteFolder.ContentFolder.SoundFile(soundFileName)))
                     {
                         soundSource = new SoundSource(WorldPosition.WorldLocation, SoundEventSource.Crossing, soundPath);
-                        viewer.SoundProcess.AddSoundSource(this, soundSource);
+                        //viewer.SoundProcess.AddSoundSource(this, soundSource);
                     }
                     else
                     {
@@ -694,7 +694,7 @@ namespace Orts.ActivityRunner.Viewer3D.Shapes
         {
             if (soundSource != null)
             {
-                viewer.SoundProcess.RemoveSoundSources(this);
+                //viewer.SoundProcess.RemoveSoundSources(this);
                 soundSource.Dispose();
             }
             base.Unload();
@@ -880,12 +880,12 @@ namespace Orts.ActivityRunner.Viewer3D.Shapes
                 if (File.Exists(soundPath))
                 {
                     soundSource = new SoundSource(WorldPosition.WorldLocation, SoundEventSource.FuelTower, soundPath);
-                    viewer.SoundProcess.AddSoundSource(this, soundSource);
+                    //viewer.SoundProcess.AddSoundSource(this, soundSource);
                 }
                 else if (File.Exists(soundPath = Simulator.Instance.RouteFolder.ContentFolder.SoundFile(viewer.Simulator.RouteModel.RouteSounds[DefaultSoundType.DieselTower])))
                 {
                     soundSource = new SoundSource(WorldPosition.WorldLocation, SoundEventSource.FuelTower, soundPath);
-                    viewer.SoundProcess.AddSoundSource(this, soundSource);
+                    //viewer.SoundProcess.AddSoundSource(this, soundSource);
                 }
                 else
                 {
@@ -898,12 +898,12 @@ namespace Orts.ActivityRunner.Viewer3D.Shapes
                 if (File.Exists(soundPath))
                 {
                     soundSource = new SoundSource(WorldPosition.WorldLocation, SoundEventSource.FuelTower, soundPath);
-                    viewer.SoundProcess.AddSoundSource(this, soundSource);
+                    //viewer.SoundProcess.AddSoundSource(this, soundSource);
                 }
                 else if (File.Exists(soundPath = Simulator.Instance.RouteFolder.ContentFolder.SoundFile(Simulator.Instance.RouteModel.RouteSounds[DefaultSoundType.WaterTower])))
                 {
                     soundSource = new SoundSource(WorldPosition.WorldLocation, SoundEventSource.FuelTower, soundPath);
-                    viewer.SoundProcess.AddSoundSource(this, soundSource);
+                    //viewer.SoundProcess.AddSoundSource(this, soundSource);
                 }
                 else
                 {
@@ -918,12 +918,12 @@ namespace Orts.ActivityRunner.Viewer3D.Shapes
                     if (File.Exists(soundPath))
                     {
                         soundSource = new SoundSource(WorldPosition.WorldLocation, SoundEventSource.FuelTower, soundPath);
-                        viewer.SoundProcess.AddSoundSource(this, soundSource);
+                        //viewer.SoundProcess.AddSoundSource(this, soundSource);
                     }
                     else if (File.Exists(soundPath = Simulator.Instance.RouteFolder.ContentFolder.SoundFile(Simulator.Instance.RouteModel.RouteSounds[DefaultSoundType.CoalTower])))
                     {
                         soundSource = new SoundSource(WorldPosition.WorldLocation, SoundEventSource.FuelTower, soundPath);
-                        viewer.SoundProcess.AddSoundSource(this, soundSource);
+                        //viewer.SoundProcess.AddSoundSource(this, soundSource);
                     }
                     else
                     {
@@ -950,7 +950,7 @@ namespace Orts.ActivityRunner.Viewer3D.Shapes
         {
             if (soundSource != null)
             {
-                viewer.SoundProcess.RemoveSoundSources(this);
+                //viewer.SoundProcess.RemoveSoundSources(this);
                 soundSource.Dispose();
             }
             base.Unload();
@@ -1066,7 +1066,7 @@ namespace Orts.ActivityRunner.Viewer3D.Shapes
                 File.Exists(soundPath = Simulator.Instance.RouteFolder.ContentFolder.SoundFile("containercrane.sms")))
             {
                 soundSource = new SoundSource(WorldPosition.WorldLocation, SoundEventSource.ContainerCrane, soundPath);
-                viewer.SoundProcess.AddSoundSource(this, soundSource);
+                //viewer.SoundProcess.AddSoundSource(this, soundSource);
             }
             else
                 Trace.TraceWarning("Cannot find sound file {0}", soundPath);

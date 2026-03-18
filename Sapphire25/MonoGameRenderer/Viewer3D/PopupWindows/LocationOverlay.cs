@@ -71,7 +71,7 @@ namespace Orts.ActivityRunner.Viewer3D.PopupWindows
 
         protected override void Update(GameTime gameTime, bool shouldUpdate)
         {
-            UpdateLabelLists();
+            //UpdateLabelLists();
             ref readonly WorldLocation cameraLocation = ref viewer.Camera.CameraWorldLocation;
             if (shouldUpdate && cameraTile != cameraLocation.Tile)
             {
@@ -159,49 +159,49 @@ namespace Orts.ActivityRunner.Viewer3D.PopupWindows
             }
         }
 
-        private void UpdateLabelLists()
-        {
-            TrackDB tdb = RuntimeData.Instance.TrackDB;
-            List<StationStop> stationStops = Simulator.Instance.PlayerLocomotive.Train.StationStops;
-            Simulation.Activities.Activity activity = Simulator.Instance.ActivityRun;
+        //private void UpdateLabelLists()
+        //{
+        //    TrackDB tdb = RuntimeData.Instance.TrackDB;
+        //    List<StationStop> stationStops = Simulator.Instance.PlayerLocomotive.Train.StationStops;
+        //    Simulation.Activities.Activity activity = Simulator.Instance.ActivityRun;
 
-            // Update every 10s or when the current activity task changes.
-            if (System.Environment.TickCount64 > nextActivityUpdate || stationStopsCount != (stationStopsCount = stationStops.Count) ||
-                activityTask != (activityTask = activity?.ActivityTask))
-            {
-                nextActivityUpdate = System.Environment.TickCount64 + 1000;
-                autoPlatforms.Clear();
-                autoSidings.Clear();
+        //    // Update every 10s or when the current activity task changes.
+        //    if (System.Environment.TickCount64 > nextActivityUpdate || stationStopsCount != (stationStopsCount = stationStops.Count) ||
+        //        activityTask != (activityTask = activity?.ActivityTask))
+        //    {
+        //        nextActivityUpdate = System.Environment.TickCount64 + 1000;
+        //        autoPlatforms.Clear();
+        //        autoSidings.Clear();
 
-                if (tdb.TrackItems != null)
-                {
-                    foreach (StationStop stop in stationStops)
-                    {
-                        int platformId = stop.PlatformReference;
-                        if (0 <= platformId && platformId < tdb.TrackItems.Count && tdb.TrackItems[platformId] is PlatformItem)
-                        {
-                            autoPlatforms.Add(tdb.TrackItems[platformId].ItemName);
-                        }
-                    }
+        //        if (tdb.TrackItems != null)
+        //        {
+        //            foreach (StationStop stop in stationStops)
+        //            {
+        //                int platformId = stop.PlatformReference;
+        //                if (0 <= platformId && platformId < tdb.TrackItems.Count && tdb.TrackItems[platformId] is PlatformItem)
+        //                {
+        //                    autoPlatforms.Add(tdb.TrackItems[platformId].ItemName);
+        //                }
+        //            }
 
-                    if (activity?.EventList != null)
-                    {
-                        foreach (EventWrapper activityEvent in activity.EventList)
-                        {
-                            if (activityEvent.ActivityEvent is ActionActivityEvent eventAction)
-                            {
-                                int sidingId1 = eventAction.SidingId;
-                                int sidingId2 = eventAction.WorkOrderWagons != null && eventAction.WorkOrderWagons.Count > 0 ? eventAction.WorkOrderWagons[0].SidingId : -1;
-                                int sidingId = sidingId1 > -1 ? sidingId1 : sidingId2;
-                                if (sidingId > -1 && sidingId < tdb.TrackItems.Count && tdb.TrackItems[sidingId] is SidingItem)
-                                {
-                                    autoSidings.Add(tdb.TrackItems[sidingId].ItemName);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        //            if (activity?.EventList != null)
+        //            {
+        //                foreach (EventWrapper activityEvent in activity.EventList)
+        //                {
+        //                    if (activityEvent.ActivityEvent is ActionActivityEvent eventAction)
+        //                    {
+        //                        int sidingId1 = eventAction.SidingId;
+        //                        int sidingId2 = eventAction.WorkOrderWagons != null && eventAction.WorkOrderWagons.Count > 0 ? eventAction.WorkOrderWagons[0].SidingId : -1;
+        //                        int sidingId = sidingId1 > -1 ? sidingId1 : sidingId2;
+        //                        if (sidingId > -1 && sidingId < tdb.TrackItems.Count && tdb.TrackItems[sidingId] is SidingItem)
+        //                        {
+        //                            autoSidings.Add(tdb.TrackItems[sidingId].ItemName);
+        //                        }
+        //                    }
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
     }
 }

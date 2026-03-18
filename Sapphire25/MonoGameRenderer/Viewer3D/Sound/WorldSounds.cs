@@ -215,7 +215,7 @@ namespace Orts.ActivityRunner.Viewer3D.Sound
                         ls.Add(soundSource);
                     }
                 }
-                viewer.SoundProcess.AddSoundSources(name, ls);
+                //viewer.SoundProcess.AddSoundSources(name, ls);
 
                 soundRegions.TryAdd(name, wf.TrackItemSound.SoundRegions);
             }
@@ -224,7 +224,7 @@ namespace Orts.ActivityRunner.Viewer3D.Sound
         public void RemoveByTile(in Tile tile)
         {
             string name = Path.Combine(viewer.Simulator.RouteFolder.WorldFolder, WorldFile.WorldFileNameFromTileCoordinates(tile) + "s");
-            viewer.SoundProcess.RemoveSoundSources(name);
+            //viewer.SoundProcess.RemoveSoundSources(name);
             soundRegions.TryRemove(name, out _);
         }
     }

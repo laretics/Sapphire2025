@@ -46,12 +46,12 @@ namespace Orts.ActivityRunner.Viewer3D.Shapes
                 if (File.Exists(soundPath))
                 {
                     Sound = new SoundSource(WorldPosition.WorldLocation, SoundEventSource.Turntable, soundPath);
-                    viewer.SoundProcess.AddSoundSource(this, Sound);
+                    //viewer.SoundProcess.AddSoundSource(this, Sound);
                 }
                 else if (File.Exists(soundPath = Simulator.Instance.RouteFolder.ContentFolder.SoundFile(Simulator.Instance.RouteModel.RouteSounds[DefaultSoundType.Turntable])))
                 {
                     Sound = new SoundSource(WorldPosition.WorldLocation, SoundEventSource.Turntable, soundPath);
-                    viewer.SoundProcess.AddSoundSource(this, Sound);
+                    //viewer.SoundProcess.AddSoundSource(this, Sound);
                 }
                 else
                 {
@@ -159,12 +159,12 @@ namespace Orts.ActivityRunner.Viewer3D.Shapes
                 if (File.Exists(soundPath))
                 {
                     Sound = new SoundSource(WorldPosition.WorldLocation, SoundEventSource.Turntable, soundPath);
-                    viewer.SoundProcess.AddSoundSource(this, Sound);
+                    //viewer.SoundProcess.AddSoundSource(this, Sound);
                 }
                 else if (File.Exists(soundPath = Simulator.Instance.RouteFolder.ContentFolder.SoundFile(Simulator.Instance.RouteModel.RouteSounds[DefaultSoundType.Turntable])))
                 {
                     Sound = new SoundSource(WorldPosition.WorldLocation, SoundEventSource.Turntable, soundPath);
-                    viewer.SoundProcess.AddSoundSource(this, Sound);
+                    //viewer.SoundProcess.AddSoundSource(this, Sound);
                 }
                 else
                 {

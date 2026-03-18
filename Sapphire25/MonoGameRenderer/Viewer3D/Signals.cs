@@ -283,7 +283,7 @@ namespace Orts.ActivityRunner.Viewer3D
                         try
                         {
                             Sound = new SoundSource(SignalShape.WorldPosition.WorldLocation, SoundEventSource.Signal, soundPath);
-                            Viewer.SoundProcess.AddSoundSource(this, Sound);
+                            //Viewer.SoundProcess.AddSoundSource(this, Sound);
                         }
                         catch (Exception error)
                         {
@@ -305,7 +305,7 @@ namespace Orts.ActivityRunner.Viewer3D
             {
                 if (Sound != null)
                 {
-                    Viewer.SoundProcess.RemoveSoundSources(this);
+                    //Viewer.SoundProcess.RemoveSoundSources(this);
                     Sound.Dispose();
                 }
             }

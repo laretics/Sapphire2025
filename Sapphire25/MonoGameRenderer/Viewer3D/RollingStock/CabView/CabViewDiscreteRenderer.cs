@@ -139,30 +139,30 @@ namespace Orts.ActivityRunner.Viewer3D.RollingStock.CabView
                     break;
                 case CabViewControlType.Dynamic_Brake:
                 case CabViewControlType.Dynamic_Brake_Display:
-                    var dynBrakePercent = locomotive.Train.TrainType == TrainType.AiPlayerHosting ?
-                        locomotive.DynamicBrakePercent : locomotive.LocalDynamicBrakePercent;
-                    if (locomotive.DynamicBrakeController != null)
-                    {
-                        if (dynBrakePercent == -1)
-                        {
-                            index = 0;
-                            break;
-                        }
-                        if (!locomotive.HasSmoothStruc)
-                        {
-                            index = locomotive.DynamicBrakeController.NotchIndex;
-                        }
-                        else
-                        {
-                            index = locomotive.CruiseControl != null &&
-                                locomotive.CruiseControl.SpeedRegulatorMode == SpeedRegulatorMode.Auto && !locomotive.CruiseControl.DynamicBrakePriority ||
-                                locomotive.DynamicBrakeIntervention > 0 ? 0 : PercentToIndex(dynBrakePercent);
-                        }
-                    }
-                    else
-                    {
-                        index = PercentToIndex(dynBrakePercent);
-                    }
+                    //var dynBrakePercent = locomotive.Train.TrainType == TrainType.AiPlayerHosting ?
+                    //    locomotive.DynamicBrakePercent : locomotive.LocalDynamicBrakePercent;
+                    //if (locomotive.DynamicBrakeController != null)
+                    //{
+                    //    if (dynBrakePercent == -1)
+                    //    {
+                    //        index = 0;
+                    //        break;
+                    //    }
+                    //    if (!locomotive.HasSmoothStruc)
+                    //    {
+                    //        index = locomotive.DynamicBrakeController.NotchIndex;
+                    //    }
+                    //    else
+                    //    {
+                    //        index = locomotive.CruiseControl != null &&
+                    //            locomotive.CruiseControl.SpeedRegulatorMode == SpeedRegulatorMode.Auto && !locomotive.CruiseControl.DynamicBrakePriority ||
+                    //            locomotive.DynamicBrakeIntervention > 0 ? 0 : PercentToIndex(dynBrakePercent);
+                    //    }
+                    //}
+                    //else
+                    //{
+                    //    index = PercentToIndex(dynBrakePercent);
+                    //}
                     break;
                 case CabViewControlType.Cph_Display:
                     if (locomotive.CombinedControlType == CombinedControl.ThrottleDynamic && locomotive.DynamicBrakePercent >= 0)
@@ -175,11 +175,11 @@ namespace Orts.ActivityRunner.Viewer3D.RollingStock.CabView
                         index = PercentToIndex(locomotive.GetCombinedHandleValue(false));
                     break;
                 case CabViewControlType.Cp_Handle:
-                    if (locomotive.CombinedControlType == CombinedControl.ThrottleDynamic && locomotive.DynamicBrakePercent >= 0
-                        || locomotive.CombinedControlType == CombinedControl.ThrottleAir && locomotive.TrainBrakeController.CurrentValue > 0)
-                        index = PercentToIndex(locomotive.GetCombinedHandleValue(false));
-                    else
-                        index = PercentToIndex(locomotive.GetCombinedHandleValue(false));
+                    //if (locomotive.CombinedControlType == CombinedControl.ThrottleDynamic && locomotive.DynamicBrakePercent >= 0
+                    //    || locomotive.CombinedControlType == CombinedControl.ThrottleAir && locomotive.TrainBrakeController.CurrentValue > 0)
+                    //    index = PercentToIndex(locomotive.GetCombinedHandleValue(false));
+                    //else
+                    //    index = PercentToIndex(locomotive.GetCombinedHandleValue(false));
                     break;
                 case CabViewControlType.Orts_Selected_Speed_Display:
                     if (locomotive.CruiseControl == null)
@@ -388,32 +388,32 @@ namespace Orts.ActivityRunner.Viewer3D.RollingStock.CabView
                     {
                         if (locomotive.CruiseControl.ZeroSelectedSpeedWhenPassingToThrottleMode)
                             locomotive.CruiseControl.SetSpeed(0);
-                        if (locomotive.ThrottleController.CurrentValue == 0)
-                        {
-                            locomotive.CruiseControl.SpeedRegulatorMode = SpeedRegulatorMode.Manual;
-                            locomotive.CruiseControl.DynamicBrakePriority = false;
-                        }
+                        //if (locomotive.ThrottleController.CurrentValue == 0)
+                        //{
+                        //    locomotive.CruiseControl.SpeedRegulatorMode = SpeedRegulatorMode.Manual;
+                        //    locomotive.CruiseControl.DynamicBrakePriority = false;
+                        //}
                         locomotive.CruiseControl.SkipThrottleDisplay = false;
                     }
                     if (locomotive.CruiseControl?.SpeedRegulatorMode == SpeedRegulatorMode.Auto
                         && locomotive.CruiseControl.SelectedMaxAccelerationPercent != 0 && locomotive.CruiseControl.HasIndependentThrottleDynamicBrakeLever)
                         break;
-                    locomotive.SetThrottleValue(UpdateCommandValue(locomotive.ThrottleController.IntermediateValue, buttonEventType, delta));
+                    //locomotive.SetThrottleValue(UpdateCommandValue(locomotive.ThrottleController.IntermediateValue, buttonEventType, delta));
                     break;
                 case CabViewControlType.Engine_Brake:
-                    locomotive.SetEngineBrakeValue(UpdateCommandValue(locomotive.EngineBrakeController.IntermediateValue, buttonEventType, delta));
+                    //locomotive.SetEngineBrakeValue(UpdateCommandValue(locomotive.EngineBrakeController.IntermediateValue, buttonEventType, delta));
                     break;
                 case CabViewControlType.Brakeman_Brake:
-                    locomotive.SetBrakemanBrakeValue(UpdateCommandValue(locomotive.BrakemanBrakeController.IntermediateValue, buttonEventType, delta));
+                    //locomotive.SetBrakemanBrakeValue(UpdateCommandValue(locomotive.BrakemanBrakeController.IntermediateValue, buttonEventType, delta));
                     break;
                 case CabViewControlType.Train_Brake:
-                    locomotive.SetTrainBrakeValue(UpdateCommandValue(locomotive.TrainBrakeController.IntermediateValue, buttonEventType, delta));
+                    //locomotive.SetTrainBrakeValue(UpdateCommandValue(locomotive.TrainBrakeController.IntermediateValue, buttonEventType, delta));
                     break;
                 case CabViewControlType.Dynamic_Brake:
-                    locomotive.SetDynamicBrakeValue(UpdateCommandValue(locomotive.DynamicBrakeController.IntermediateValue, buttonEventType, delta));
+                    //locomotive.SetDynamicBrakeValue(UpdateCommandValue(locomotive.DynamicBrakeController.IntermediateValue, buttonEventType, delta));
                     break;
                 case CabViewControlType.Gears:
-                    locomotive.SetGearBoxValue(UpdateCommandValue(locomotive.GearBoxController.IntermediateValue, buttonEventType, delta));
+                    //locomotive.SetGearBoxValue(UpdateCommandValue(locomotive.GearBoxController.IntermediateValue, buttonEventType, delta));
                     break;
                 case CabViewControlType.Direction:
                     float dir = UpdateCommandValue(0, buttonEventType, delta);
@@ -489,7 +489,7 @@ namespace Orts.ActivityRunner.Viewer3D.RollingStock.CabView
                     }
                     break;
                 case CabViewControlType.Steam_Heat:
-                    locomotive.SetSteamHeatValue(UpdateCommandValue(locomotive.SteamHeatController.IntermediateValue, buttonEventType, delta));
+                    //locomotive.SetSteamHeatValue(UpdateCommandValue(locomotive.SteamHeatController.IntermediateValue, buttonEventType, delta));
                     break;
                 case CabViewControlType.Orts_Water_Scoop:
                     if (((locomotive as MSTSSteamLocomotive).WaterScoopDown ? 1 : 0) != UpdateCommandValue(locomotive.WaterScoopDown ? 1 : 0, buttonEventType, delta))
@@ -523,10 +523,10 @@ namespace Orts.ActivityRunner.Viewer3D.RollingStock.CabView
                     _ = new BailOffCommand(viewer.Log, UpdateCommandValue(locomotive.BailOff ? 1 : 0, buttonEventType, delta) > 0);
                     break;
                 case CabViewControlType.Orts_QuickRelease:
-                    _ = new QuickReleaseCommand(viewer.Log, UpdateCommandValue(locomotive.TrainBrakeController.QuickReleaseButtonPressed ? 1 : 0, buttonEventType, delta) > 0);
+                    //_ = new QuickReleaseCommand(viewer.Log, UpdateCommandValue(locomotive.TrainBrakeController.QuickReleaseButtonPressed ? 1 : 0, buttonEventType, delta) > 0);
                     break;
                 case CabViewControlType.Orts_Overcharge:
-                    _ = new BrakeOverchargeCommand(viewer.Log, UpdateCommandValue(locomotive.TrainBrakeController.OverchargeButtonPressed ? 1 : 0, buttonEventType, delta) > 0);
+                    //_ = new BrakeOverchargeCommand(viewer.Log, UpdateCommandValue(locomotive.TrainBrakeController.OverchargeButtonPressed ? 1 : 0, buttonEventType, delta) > 0);
                     break;
                 case CabViewControlType.Reset:
                     _ = new AlerterCommand(viewer.Log, UpdateCommandValue(locomotive.TrainControlSystem.AlerterButtonPressed ? 1 : 0, buttonEventType, delta) > 0);
@@ -537,11 +537,11 @@ namespace Orts.ActivityRunner.Viewer3D.RollingStock.CabView
                     {
                         if (locomotive.CruiseControl.ZeroSelectedSpeedWhenPassingToThrottleMode)
                             locomotive.CruiseControl.SetSpeed(0);
-                        if (locomotive.ThrottleController.CurrentValue == 0)
-                        {
-                            locomotive.CruiseControl.SpeedRegulatorMode = SpeedRegulatorMode.Manual;
-                            locomotive.CruiseControl.DynamicBrakePriority = false;
-                        }
+                        //if (locomotive.ThrottleController.CurrentValue == 0)
+                        //{
+                        //    locomotive.CruiseControl.SpeedRegulatorMode = SpeedRegulatorMode.Manual;
+                        //    locomotive.CruiseControl.DynamicBrakePriority = false;
+                        //}
                         locomotive.CruiseControl.SkipThrottleDisplay = false;
                     }
                     if (locomotive.CruiseControl?.SpeedRegulatorMode == SpeedRegulatorMode.Auto
@@ -551,22 +551,22 @@ namespace Orts.ActivityRunner.Viewer3D.RollingStock.CabView
                     break;
                 // Steam locomotives only:
                 case CabViewControlType.CutOff:
-                    (locomotive as MSTSSteamLocomotive).SetCutoffValue(UpdateCommandValue((locomotive as MSTSSteamLocomotive).CutoffController.IntermediateValue, buttonEventType, delta));
+                    //(locomotive as MSTSSteamLocomotive).SetCutoffValue(UpdateCommandValue((locomotive as MSTSSteamLocomotive).CutoffController.IntermediateValue, buttonEventType, delta));
                     break;
                 case CabViewControlType.Blower:
-                    (locomotive as MSTSSteamLocomotive).SetBlowerValue(UpdateCommandValue((locomotive as MSTSSteamLocomotive).BlowerController.IntermediateValue, buttonEventType, delta));
+                    //(locomotive as MSTSSteamLocomotive).SetBlowerValue(UpdateCommandValue((locomotive as MSTSSteamLocomotive).BlowerController.IntermediateValue, buttonEventType, delta));
                     break;
                 case CabViewControlType.Dampers_Front:
-                    (locomotive as MSTSSteamLocomotive).SetDamperValue(UpdateCommandValue((locomotive as MSTSSteamLocomotive).DamperController.IntermediateValue, buttonEventType, delta));
+                    //(locomotive as MSTSSteamLocomotive).SetDamperValue(UpdateCommandValue((locomotive as MSTSSteamLocomotive).DamperController.IntermediateValue, buttonEventType, delta));
                     break;
                 case CabViewControlType.FireHole:
-                    (locomotive as MSTSSteamLocomotive).SetFireboxDoorValue(UpdateCommandValue((locomotive as MSTSSteamLocomotive).FireboxDoorController.IntermediateValue, buttonEventType, delta));
+                    //(locomotive as MSTSSteamLocomotive).SetFireboxDoorValue(UpdateCommandValue((locomotive as MSTSSteamLocomotive).FireboxDoorController.IntermediateValue, buttonEventType, delta));
                     break;
                 case CabViewControlType.Water_Injector1:
-                    (locomotive as MSTSSteamLocomotive).SetInjector1Value(UpdateCommandValue((locomotive as MSTSSteamLocomotive).Injector1Controller.IntermediateValue, buttonEventType, delta));
+                    //(locomotive as MSTSSteamLocomotive).SetInjector1Value(UpdateCommandValue((locomotive as MSTSSteamLocomotive).Injector1Controller.IntermediateValue, buttonEventType, delta));
                     break;
                 case CabViewControlType.Water_Injector2:
-                    (locomotive as MSTSSteamLocomotive).SetInjector2Value(UpdateCommandValue((locomotive as MSTSSteamLocomotive).Injector2Controller.IntermediateValue, buttonEventType, delta));
+                    //(locomotive as MSTSSteamLocomotive).SetInjector2Value(UpdateCommandValue((locomotive as MSTSSteamLocomotive).Injector2Controller.IntermediateValue, buttonEventType, delta));
                     break;
                 case CabViewControlType.Cyl_Cocks:
                     if (((locomotive as MSTSSteamLocomotive).CylinderCocksAreOpen ? 1 : 0) != UpdateCommandValue((locomotive as MSTSSteamLocomotive).CylinderCocksAreOpen ? 1 : 0, buttonEventType, delta))
@@ -589,10 +589,10 @@ namespace Orts.ActivityRunner.Viewer3D.RollingStock.CabView
                         _ = new ToggleInjectorCommand(viewer.Log, 2);
                     break;
                 case CabViewControlType.Small_Ejector:
-                    (locomotive as MSTSSteamLocomotive).SetSmallEjectorValue(UpdateCommandValue((locomotive as MSTSSteamLocomotive).SmallEjectorController.IntermediateValue, buttonEventType, delta));
+                    //(locomotive as MSTSSteamLocomotive).SetSmallEjectorValue(UpdateCommandValue((locomotive as MSTSSteamLocomotive).SmallEjectorController.IntermediateValue, buttonEventType, delta));
                     break;
                 case CabViewControlType.Orts_Large_Ejector:
-                    (locomotive as MSTSSteamLocomotive).SetLargeEjectorValue(UpdateCommandValue((locomotive as MSTSSteamLocomotive).LargeEjectorController.IntermediateValue, buttonEventType, delta));
+                    //(locomotive as MSTSSteamLocomotive).SetLargeEjectorValue(UpdateCommandValue((locomotive as MSTSSteamLocomotive).LargeEjectorController.IntermediateValue, buttonEventType, delta));
                     break;
                 //
                 case CabViewControlType.Cab_Radio:
@@ -812,35 +812,35 @@ namespace Orts.ActivityRunner.Viewer3D.RollingStock.CabView
                     break;
                 case CabViewControlType.Orts_Multi_Position_Controller:
                     {
-                        foreach (MultiPositionController mpc in locomotive.MultiPositionControllers)
-                        {
-                            if (mpc.ControllerId == control.ControlId)
-                            {
-                                p = UpdateCommandValue(0, buttonEventType, delta);
-                                if (!mpc.StateChanged)
-                                    mpc.StateChanged = true;
-                                if (p != 0 && locomotive.CruiseControl.SelectedMaxAccelerationPercent == 0 && locomotive.CruiseControl.DisableCruiseControlOnThrottleAndZeroForce &&
-                                    locomotive.CruiseControl.ForceRegulatorAutoWhenNonZeroSpeedSelectedAndThrottleAtZero && locomotive.ThrottleController.CurrentValue == 0 &&
-                                    locomotive.DynamicBrakeController.CurrentValue == 0 && locomotive.CruiseControl.SpeedRegulatorMode == SpeedRegulatorMode.Manual)
-                                    locomotive.CruiseControl.SpeedRegulatorMode = SpeedRegulatorMode.Auto;
-                                if (p == 1)
-                                {
-                                    if (mpc.ControllerBinding == CruiseControllerBinding.SelectedSpeed && locomotive.CruiseControl.ForceRegulatorAutoWhenNonZeroSpeedSelected)
-                                    {
-                                        locomotive.CruiseControl.SpeedRegulatorMode = SpeedRegulatorMode.Auto;
-                                        locomotive.CruiseControl.SpeedSelectorMode = SpeedSelectorMode.On;
-                                    }
-                                    mpc.DoMovement(Movement.Forward);
-                                }
-                                if (p == -1)
-                                    mpc.DoMovement(Movement.Backward);
-                                if (p == 0 && buttonEventType != GenericButtonEventType.Down)
-                                {
-                                    mpc.DoMovement(Movement.Neutral);
-                                    mpc.StateChanged = false;
-                                }
-                            }
-                        }
+                        //foreach (MultiPositionController mpc in locomotive.MultiPositionControllers)
+                        //{
+                        //    if (mpc.ControllerId == control.ControlId)
+                        //    {
+                        //        p = UpdateCommandValue(0, buttonEventType, delta);
+                        //        if (!mpc.StateChanged)
+                        //            mpc.StateChanged = true;
+                        //        if (p != 0 && locomotive.CruiseControl.SelectedMaxAccelerationPercent == 0 && locomotive.CruiseControl.DisableCruiseControlOnThrottleAndZeroForce &&
+                        //            locomotive.CruiseControl.ForceRegulatorAutoWhenNonZeroSpeedSelectedAndThrottleAtZero && locomotive.ThrottleController.CurrentValue == 0 &&
+                        //            locomotive.DynamicBrakeController.CurrentValue == 0 && locomotive.CruiseControl.SpeedRegulatorMode == SpeedRegulatorMode.Manual)
+                        //            locomotive.CruiseControl.SpeedRegulatorMode = SpeedRegulatorMode.Auto;
+                        //        if (p == 1)
+                        //        {
+                        //            if (mpc.ControllerBinding == CruiseControllerBinding.SelectedSpeed && locomotive.CruiseControl.ForceRegulatorAutoWhenNonZeroSpeedSelected)
+                        //            {
+                        //                locomotive.CruiseControl.SpeedRegulatorMode = SpeedRegulatorMode.Auto;
+                        //                locomotive.CruiseControl.SpeedSelectorMode = SpeedSelectorMode.On;
+                        //            }
+                        //            mpc.DoMovement(Movement.Forward);
+                        //        }
+                        //        if (p == -1)
+                        //            mpc.DoMovement(Movement.Backward);
+                        //        if (p == 0 && buttonEventType != GenericButtonEventType.Down)
+                        //        {
+                        //            mpc.DoMovement(Movement.Neutral);
+                        //            mpc.StateChanged = false;
+                        //        }
+                        //    }
+                        //}
                         break;
                     }
                 case CabViewControlType.Orts_CC_Speed_0:
@@ -897,29 +897,29 @@ namespace Orts.ActivityRunner.Viewer3D.RollingStock.CabView
                     break;
                 case CabViewControlType.Orts_Eot_Comm_Test:
                     buttonState = UpdateCommandValue(ButtonState ? 1 : 0, buttonEventType, delta) > 0;
-                    if (!ButtonState && (ButtonState ? 1 : 0) != UpdateCommandValue(ButtonState ? 1 : 0, buttonEventType, delta))
-                        _ = new EOTCommTestCommand(viewer.Log);
+                    //if (!ButtonState && (ButtonState ? 1 : 0) != UpdateCommandValue(ButtonState ? 1 : 0, buttonEventType, delta))
+                    //    _ = new EOTCommTestCommand(viewer.Log);
                     ButtonState = buttonState;
                     break;
                 case CabViewControlType.Orts_Eot_Disarm:
                     buttonState = UpdateCommandValue(ButtonState ? 1 : 0, buttonEventType, delta) > 0;
-                    if (!ButtonState && (ButtonState ? 1 : 0) != UpdateCommandValue(ButtonState ? 1 : 0, buttonEventType, delta))
-                        _ = new EOTDisarmCommand(viewer.Log);
+                    //if (!ButtonState && (ButtonState ? 1 : 0) != UpdateCommandValue(ButtonState ? 1 : 0, buttonEventType, delta))
+                    //    _ = new EOTDisarmCommand(viewer.Log);
                     ButtonState = buttonState;
                     break;
                 case CabViewControlType.Orts_Eot_Arm_Two_Way:
                     buttonState = UpdateCommandValue(ButtonState ? 1 : 0, buttonEventType, delta) > 0;
-                    if (!ButtonState && (ButtonState ? 1 : 0) != UpdateCommandValue(ButtonState ? 1 : 0, buttonEventType, delta))
-                        _ = new EOTArmTwoWayCommand(viewer.Log);
+                    //if (!ButtonState && (ButtonState ? 1 : 0) != UpdateCommandValue(ButtonState ? 1 : 0, buttonEventType, delta))
+                    //    _ = new EOTArmTwoWayCommand(viewer.Log);
                     ButtonState = buttonState;
                     break;
                 case CabViewControlType.Orts_Eot_Emergency_Brake:
                     if (UpdateCommandValue(0, buttonEventType, delta) == 1)
                     {
-                        if (locomotive.Train?.EndOfTrainDevice != null)
-                        {
-                            _ = new ToggleEOTEmergencyBrakeCommand(viewer.Log);
-                        }
+                        //if (locomotive.Train?.EndOfTrainDevice != null)
+                        //{
+                        //    _ = new ToggleEOTEmergencyBrakeCommand(viewer.Log);
+                        //}
                     }
                     break;
             }

@@ -96,10 +96,10 @@ namespace Orts.ActivityRunner.Viewer3D.Sound
         /// <param name="viewer">Object the event belongs to</param>
         internal void OnCarSoundEvent(object sender, SoundSourceEventArgs e)
         {
-            if (e.SoundEvent == TriggerId)
-            {
-                Triggered = e.Owner == null || Program.Viewer.SoundProcess.IsSoundSourceOwnedBy(e.Owner, soundStream.SoundSource);
-            }
+            //if (e.SoundEvent == TriggerId)
+            //{
+            //    Triggered = e.Owner == null || Program.Viewer.SoundProcess.IsSoundSourceOwnedBy(e.Owner, soundStream.SoundSource);
+            //}
         }
 
         public override void CheckTrigger()
