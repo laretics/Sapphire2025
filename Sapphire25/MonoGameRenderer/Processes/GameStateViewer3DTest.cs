@@ -14,9 +14,17 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
+using Orts.Formats.Msts;
+using FreeTrainSimulator.Models.Track;
 using static Orts.Formats.Msts.FolderStructure;
 using MemoryPack;
 using FreeTrainSimulator.Models.Imported.Shim;
+using FreeTrainSimulator.Models.Imported.ImportHandler.TrainSimulator;
+using Orts.Simulation.Physics;
+using Orts.Formats.Msts.Files;
+using Orts.Formats.Msts.Models;
+using FreeTrainSimulator.Models.Shim;
+
 
 namespace Orts.ActivityRunner.Processes
 {
@@ -31,23 +39,56 @@ namespace Orts.ActivityRunner.Processes
         {
         }
 
+
         internal override async Task Load()
         {
             //Game.PopState();
-            var folderModel = new FolderModel("MSTS", @"C:\MSTS", null);
-            string fileName = @"C:\MSTS\TourmalineSerial\Serveis Ferroviaris de Mallorca.trm";
-            RouteModel auxRouteModel;
+            string contentPath = @"C:\MSTS";
+            
+            var folderModel = new FolderModel("MSTS", contentPath, null);            
+            string serializedPath = Path.Combine(contentPath, @"TourmalineSerial");
+            string tsectionFileName = Path.Combine(serializedPath, @"tsection.trs");
+            string routeFileName = Path.Combine(serializedPath, @"Routes\SFM.trm");
+            string pathFileName = Path.Combine(contentPath,@"ROUTES\SFM\paths\T31.pat");
 
-            byte[] buffer = File.ReadAllBytes(fileName);
-            auxRouteModel = MemoryPackSerializer.Deserialize<RouteModel>(buffer);
+            byte[] sectionBuffer = File.ReadAllBytes(tsectionFileName);
+            var trackSectionsModel = MemoryPackSerializer.Deserialize<TrackSectionsModel>(sectionBuffer);
+
+            byte[] routeBuffer = File.ReadAllBytes(routeFileName);
+            RouteModel auxRouteModel = MemoryPackSerializer.Deserialize<RouteModel>(routeBuffer);
             auxRouteModel.SetParent(folderModel);
 
-            ProfileUserSettingsModel userSettings = new ProfileUserSettingsModel();           
-            Simulator Simulador = new Simulator(userSettings, auxRouteModel);
-            mvarViewer = new Viewer(Simulador, Game);
-            mvarViewer.Initialize();
-            mvarViewer.Load();
-            await base.Load();
+            RouteModelHeader routeHeader = (RouteModelHeader)auxRouteModel;
+            PathModel auxPathModel = await PathModelImportHandler.Convert(pathFileName, auxRouteModel, CancellationToken.None);
+
+            //string auxPathTrackDB = Path.Combine(contentPath,@"ROUTES\SFM\SFM.tdb");
+            //var tdbFile = new TrackDatabaseFile(auxPathTrackDB);
+            //TrackDB trackDB = tdbFile.TrackDB;
+
+            string consistFileName = Path.Combine(serializedPath, @"Trains\440.trn");
+            byte[] consistBuffer = File.ReadAllBytes(consistFileName);
+            var wagonSetModel = MemoryPackSerializer.Deserialize<WagonSetModel>(consistBuffer);
+            wagonSetModel.SetParent(folderModel);
+
+            ProfileUserSettingsModel userSettings = new ProfileUserSettingsModel();
+            userSettings.KeyboardSettings = new ProfileKeyboardSettingsModel();
+            Simulator Simulador = new Simulator(userSettings, auxRouteModel,trackSectionsModel);
+
+            Simulador.SetExplore(
+                auxPathModel,
+                "440",
+                TimeSpan.FromHours(12),
+                SeasonType.Spring,
+                WeatherType.Clear);
+
+            //Simulador.Start(CancellationToken.None);
+            //Simulador.InitializeTrains(CancellationToken.None);
+
+
+            //mvarViewer = new Viewer(Simulador, Game);
+            //mvarViewer.Initialize();
+            //mvarViewer.Load();
+            //await base.Load();
         }
         internal override void BeginRender(RenderFrame frame)
         {
@@ -57,7 +98,7 @@ namespace Orts.ActivityRunner.Processes
         protected override void Dispose(bool disposing)
         {
             ExportTestSummary(Passed, LoadTime);
-            Environment.ExitCode = Passed ? 0 : 1;
+            System.Environment.ExitCode = Passed ? 0 : 1;
             base.Dispose(disposing);
         }
 

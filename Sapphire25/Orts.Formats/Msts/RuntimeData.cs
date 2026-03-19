@@ -34,7 +34,7 @@ namespace Orts.Formats.Msts
             return game?.Services.GetService<RuntimeData>() ?? Instance;
         }
 
-        public static void Initialize(RouteModel route, TrackDB trackDb, RoadTrackDB roadTrackDB, 
+        public static void Initialize(RouteModel route, TrackDB trackDb, RoadTrackDB roadTrackDB,
             SignalConfigurationFile signalConfig, bool metricUnits)//, IRuntimeReferenceResolver runtimeReferenceResolver = null)
         {
             TrackSectionsModel trackSectionModel = null;
@@ -48,13 +48,35 @@ namespace Orts.Formats.Msts
             Instance = new RuntimeData(route, trackSectionModel, trackModel, trackDb, roadTrackDB, signalConfig, metricUnits);//, runtimeReferenceResolver);
         }
 
-        public static void Initialize(RouteModel route, TrackSectionsModel trackSectionModel, TrackModel trackModel, SignalConfigurationFile signalConfig, bool metricUnits, IRuntimeReferenceResolver runtimeReferenceResolver = null)
+        //public static void Initialize(RouteModel route, TrackSectionsModel trackSectionModel, TrackModel trackModel, SignalConfigurationFile signalConfig, bool metricUnits, IRuntimeReferenceResolver runtimeReferenceResolver = null)
+        //{
+        //    Instance = new RuntimeData(route, trackSectionModel, trackModel, null, null, signalConfig, metricUnits);//, runtimeReferenceResolver);
+        //}
+
+        /// <summary>
+        /// Este es mi constructor a medida para Tourmaline
+        /// </summary>
+        /// <param name="route">Información general de una determinada ruta</param>
+        /// <param name="tdatabase">Topología de esta ruta</param>
+        /// <param name="trackCatalog">Catálogo con todos los posibles tipos de vía que se pueden combinar</param>
+        /// <param name="metricUnits">Sistema métrico</param>
+        public static void Initialize(
+            RouteModel route, 
+            TrackDB tdatabase, 
+            TrackSectionsModel trackCatalog, 
+            bool metricUnits)
         {
-            Instance = new RuntimeData(route, trackSectionModel, trackModel, null, null, signalConfig, metricUnits);//, runtimeReferenceResolver);
+            Instance = new RuntimeData(route, trackCatalog,null,tdatabase,null,null, metricUnits);//, runtimeReferenceResolver);
         }
 
-        protected RuntimeData(RouteModel route, TrackSectionsModel trackSectionModel, TrackModel trackModel,
-            TrackDB trackDb, RoadTrackDB roadTrackDB, SignalConfigurationFile signalConfig, bool useMetricUnits)//, IRuntimeReferenceResolver runtimeReferenceResolver)
+        protected RuntimeData(
+            RouteModel route, 
+            TrackSectionsModel trackSectionModel, 
+            TrackModel trackModel,
+            TrackDB trackDb, 
+            RoadTrackDB roadTrackDB, 
+            SignalConfigurationFile signalConfig, 
+            bool useMetricUnits)//, IRuntimeReferenceResolver runtimeReferenceResolver)
         {
             RouteData = route;
             TrackSections = trackSectionModel;

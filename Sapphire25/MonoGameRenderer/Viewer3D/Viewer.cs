@@ -376,7 +376,10 @@ namespace Orts.ActivityRunner.Viewer3D
             #region Input Command Controller
             KeyboardInputGameComponent keyboardInputGameComponent = new KeyboardInputGameComponent(Game);
             KeyboardInputHandler<UserCommand> keyboardInput = new KeyboardInputHandler<UserCommand>();
-            keyboardInput.Initialize(UserSettings.KeyboardSettings.UserCommands, keyboardInputGameComponent, UserCommandController);
+            //He tenido que poner esta línea porque no soy capaz de ver dónde está el error.
+            //Se supone que estoy asignando esto desde el cargador, pero pasa de mí.
+            if(null!=UserSettings.KeyboardSettings) 
+                keyboardInput.Initialize(UserSettings.KeyboardSettings.UserCommands, keyboardInputGameComponent, UserCommandController);
 
             MouseInputGameComponent mouseInputGameComponent = new MouseInputGameComponent(Game);
             MouseInputHandler<UserCommand> mouseInput = new MouseInputHandler<UserCommand>();

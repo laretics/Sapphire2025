@@ -16,7 +16,7 @@ using Orts.Formats.Msts.Files;
 
 namespace FreeTrainSimulator.Models.Imported.ImportHandler.TrainSimulator
 {
-    internal class WagonReferenceModelImportHandler : ContentHandlerBase<WagonReferenceModel>
+    public class WagonReferenceModelImportHandler : ContentHandlerBase<WagonReferenceModel>
     {
         internal const string SourceNameKey = "MstsSourceTrainCar";
         private static readonly string[] sourceFileExtensions = new[] { "*.wag", "*.eng" };

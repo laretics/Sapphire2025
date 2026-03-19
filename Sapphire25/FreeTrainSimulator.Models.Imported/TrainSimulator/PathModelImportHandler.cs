@@ -16,7 +16,7 @@ using Orts.Formats.Msts.Files;
 
 namespace FreeTrainSimulator.Models.Imported.ImportHandler.TrainSimulator
 {
-    internal sealed class PathModelImportHandler : ContentHandlerBase<PathModelHeader>
+    public sealed class PathModelImportHandler : ContentHandlerBase<PathModelHeader>
     {
         internal const string SourceNameKey = "MstsSourcePath";
 
@@ -74,7 +74,7 @@ namespace FreeTrainSimulator.Models.Imported.ImportHandler.TrainSimulator
             return result;
         }
 
-        private static async Task<PathModel> Convert(string filePath, RouteModelHeader routeModel, CancellationToken cancellationToken)
+        public static async Task<PathModel> Convert(string filePath, RouteModelHeader routeModel, CancellationToken cancellationToken)
         {
             ArgumentException.ThrowIfNullOrEmpty(filePath, nameof(filePath));
             ArgumentNullException.ThrowIfNull(routeModel, nameof(routeModel));

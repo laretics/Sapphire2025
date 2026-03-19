@@ -52,8 +52,10 @@ using Orts.Simulation.Signalling;
 using Orts.Simulation.Track;
 using Orts.Simulation.World;
 using Orts.Simulation.Commanding;
+using Orts.Simulation.AIs;
 
 using Activity = Orts.Simulation.Activities.Activity;
+using FreeTrainSimulator.Models.Track;
 
 namespace Orts.Simulation
 {
@@ -235,7 +237,11 @@ namespace Orts.Simulation
         public event EventHandler RequestTTDetachWindow;
 
         public float TimetableLoadedFraction { get; internal set; }    // Set by AI.PrerunAI(), Get by GameStateRunActivity.Update()        
-        public Simulator(ProfileUserSettingsModel userSettings, RouteModel routeModel)
+        public Simulator(
+            ProfileUserSettingsModel userSettings, 
+            RouteModel routeModel,
+            TrackSectionsModel trackSectionsModel = null
+            )
         {
             Instance = this;
             CatalogManager.SetCatalogDomainPattern(CatalogDomainPattern.AssemblyName, null, RuntimeInfo.LocalesFolder);
@@ -247,15 +253,16 @@ namespace Orts.Simulation
             GamePaused = userSettings.PauseAtStart;
 
             RouteModel = routeModel ?? throw new ArgumentNullException(nameof(routeModel));
-
             RouteFolder = routeModel.MstsRouteFolder();
-
+        
 
             // TODO 2025-01-29 refactor to use route specific configuration settings
             if (RouteModel.Settings.TryGetValue("OpenComputerTrainDoors", out string trainDoorsSetting) && bool.TryParse(trainDoorsSetting, out bool openComputerTrainDoors))
                 UserSettings.ComputerTrainDoors = openComputerTrainDoors;
 
-            TrackDB trackDatabase = new TrackDatabaseFile(RouteFolder.TrackDatabaseFile(RouteModel.RouteKey)).TrackDB;
+            TrackDB trackDatabase = 
+                new TrackDatabaseFile(RouteFolder.TrackDatabaseFile(RouteModel.RouteKey)).TrackDB;
+
 
             SignalConfig = new SignalConfigurationFile(RouteFolder.SignalConfigurationFile, RouteFolder.ORSignalConfigFile);
 
@@ -266,7 +273,12 @@ namespace Orts.Simulation
             }
 
             MetricUnits = userSettings.MeasurementUnit == MeasurementUnit.Route ? RouteModel.MetricUnits : (userSettings.MeasurementUnit == MeasurementUnit.Metric || userSettings.MeasurementUnit == MeasurementUnit.System && System.Globalization.RegionInfo.CurrentRegion.IsMetric);
-            RuntimeData.Initialize(RouteModel, trackDatabase, roadDatabase, SignalConfig, MetricUnits);//, new RuntimeResolver());
+
+            if (null != trackSectionsModel)
+                RuntimeData.Initialize
+                    (routeModel,trackDatabase, trackSectionsModel,MetricUnits);
+            else
+                RuntimeData.Initialize(RouteModel, trackDatabase, roadDatabase, SignalConfig, MetricUnits);//, new RuntimeResolver());
 
             //SuperElevation = new SuperElevation(this);
 
@@ -566,7 +578,7 @@ namespace Orts.Simulation
             LevelCrossings = new LevelCrossings();
         }
 
-        private Train InitializeTrains(CancellationToken cancellationToken)
+        public Train InitializeTrains(CancellationToken cancellationToken)
         {
             Train playerTrain = InitializePlayerTrain();
             InitializeStaticConsists();
@@ -738,6 +750,12 @@ namespace Orts.Simulation
             ServiceFile srvFile = new ServiceFile(RouteFolder.ServiceFile(ActivityFile.Activity.PlayerServices.Name));
             ConsistFileName = RouteFolder.ContentFolder.ConsistFile(srvFile.TrainConfig);
             PlayerPath = await RouteModel.PathModel(srvFile.PathId.Trim(), CancellationToken.None).ConfigureAwait(false);
+        }
+
+        public async Task SetPathAndConsist(string consistPath, string playerPath)
+        {
+            ConsistFileName = consistPath;
+            PlayerPath = await RouteModel.PathModel(playerPath, CancellationToken.None).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1216,16 +1234,16 @@ namespace Orts.Simulation
             train.IsTilting = ConsistFileName.Contains("tilted", StringComparison.OrdinalIgnoreCase);
 
             PlayerPath ??= Task.Run(async () => await RouteModel.PathModel(serviceFile.PathId.Trim(), CancellationToken.None).ConfigureAwait(false)).Result;
-            //AIPath aiPath = new AIPath(PlayerPath, TimetableMode);
-            //PathName = aiPath.PathName;
+            AIPath aiPath = new AIPath(PlayerPath, TimetableMode);
+            PathName = aiPath.PathName;
 
-            //if (aiPath.Nodes == null)
-            //{
-            //    throw new InvalidDataException($"Broken path {PlayerPath?.Hierarchy() ?? RouteFolder.PathFile(serviceFile.PathId)} for Player train - activity cannot be started");
-            //}
+            if (aiPath.Nodes == null)
+            {
+                throw new InvalidDataException($"Broken path {PlayerPath?.Hierarchy() ?? RouteFolder.PathFile(serviceFile.PathId)} for Player train - activity cannot be started");
+            }
 
-            // place rear of train on starting location of aiPath.
-            //train.RearTDBTraveller = new Traveller(aiPath.FirstNode.Location, aiPath.FirstNode.NextMainNode.Location);
+            //place rear of train on starting location of aiPath.
+            train.RearTDBTraveller = new Traveller(aiPath.FirstNode.Location, aiPath.FirstNode.NextMainNode.Location);            
 
             ConsistFile conFile = new ConsistFile(ConsistFileName);
             CurveDurability = conFile.Train.Durability;   // Finds curve durability of consist based upon the value in consist file

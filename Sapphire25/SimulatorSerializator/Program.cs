@@ -1,6 +1,7 @@
 ﻿using FreeTrainSimulator.Models.Content;
 using FreeTrainSimulator.Models.Imported.ImportHandler.TrainSimulator;
 using MemoryPack;
+using SimulatorSerializator;
 using System;
 using System.Buffers;
 using System.IO;
@@ -9,27 +10,19 @@ using System.Threading.Tasks;
 
 string contentRoot = @"C:\MSTS";
 string outputFolder = Path.Combine(contentRoot, "TourmalineSerial");
+string outputRouteFolder = Path.Combine(outputFolder, "Routes");
+string outputTrainsFolder = Path.Combine(outputFolder, "Trains");
+string outputVehiclesFolder = Path.Combine(outputFolder, "Vehicles");
 
 Directory.CreateDirectory(outputFolder);
-
 FolderModel auxFolderModel = new FolderModel("MSTS", contentRoot, null);
 
-// Expande y serializa todas las rutas como RouteModel completo
-var auxColRoutes = await RouteModelImportHandler.ExpandRouteModels(auxFolderModel, CancellationToken.None);
+RouteSerializator auxRouter = new RouteSerializator(outputRouteFolder, contentRoot);
+await auxRouter.Execute();
+ConsistSerializator auxConsist = new ConsistSerializator(outputTrainsFolder, contentRoot);
+await auxConsist.Execute();
+VehicleSerializator auxVehicles = new VehicleSerializator(outputVehiclesFolder, contentRoot);
+await auxVehicles.Execute();
+TrackSectionSerializator auxTrackSection = new TrackSectionSerializator(outputFolder, contentRoot);
+await auxTrackSection.Execute();
 
-foreach (var routeHeader in auxColRoutes)
-{
-    // Obtener el modelo extendido (RouteModel completo)
-    var routeModel = await FreeTrainSimulator.Models.Handler.RouteModelHandler.GetExtended(routeHeader, CancellationToken.None);
-    if (routeModel == null)
-    {
-        Console.WriteLine($"No se pudo obtener el modelo extendido para: {routeHeader.Name}");
-        continue;
-    }
-    string fileName = Path.Combine(outputFolder, $"{routeModel.Name}.trm");
-    var buffer = new ArrayBufferWriter<byte>();
-    MemoryPackSerializer.Serialize(buffer, routeModel); // Serializa al buffer
-    File.WriteAllBytes(fileName, buffer.WrittenSpan.ToArray()); // Guarda el buffer en un archivo
-    Console.WriteLine($"Serializada: {routeModel.Name}");
-}
-Console.WriteLine("¡Serialización completa de modelos extendidos!");

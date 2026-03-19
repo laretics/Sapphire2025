@@ -12,4 +12,13 @@
 
 
 #---------------------------------- Content ---------------------------------#
-
+/build:Shaders\CabShader.fx
+/build:Shaders\DriverMachineInterfaceShader.fx
+/build:Shaders\LightConeShader.fx
+/build:Shaders\LightGlowShader.fx
+/build:Shaders\Loading.fx
+/build:Shaders\ParticleEmitterShader.fx
+/build:Shaders\PrecipitationShader.fx
+/build:Shaders\SceneryShader.fx
+/build:Shaders\ShadowMap.fx
+/build:Shaders\SkyShader.fx

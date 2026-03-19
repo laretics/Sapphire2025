@@ -13,7 +13,7 @@ using Orts.Formats.Msts.Files;
 
 namespace FreeTrainSimulator.Models.Imported.ImportHandler.TrainSimulator
 {
-    internal class TrackSectionsModelImportHandler : ContentHandlerBase<TrackSectionsModel>
+    public class TrackSectionsModelImportHandler : ContentHandlerBase<TrackSectionsModel>
     {
         public static Task<TrackSectionsModel> ExpandTrackSectionModel(RouteModelHeader routeModel, CancellationToken cancellationToken)
         {
@@ -22,6 +22,51 @@ namespace FreeTrainSimulator.Models.Imported.ImportHandler.TrainSimulator
             Task<TrackSectionsModel> modelTask = Convert(routeModel, cancellationToken);
             modelTaskCache[routeModel.Id] = modelTask;
             return modelTask;
+        }
+
+        public static async Task<TrackSectionsModel> ImportGlobal(string tsectionPath, CancellationToken cancellationToken)
+        {
+            // Lee el archivo tsection.dat global
+            TrackSectionsFile trackSectionsFile = new TrackSectionsFile(tsectionPath);
+
+            TrackSectionsModel trackSectionModel = new TrackSectionsModel()
+            {
+                Id = "global",
+                TrackSections = trackSectionsFile.TrackSections?.Where(t => t.Value.Length > 0 || t.Value.Angle > 0).Select(trackSection => new TrackSection()
+                {
+                    SectionIndex = trackSection.Key,
+                    Angle = trackSection.Value.Angle,
+                    Radius = trackSection.Value.Radius,
+                    Curved = trackSection.Value.Curved,
+                    Length = trackSection.Value.Length,
+                    Gauge = trackSection.Value.Width,
+                }).ToImmutableDictionary((trackSection) => trackSection.SectionIndex),
+                TrackShapes = trackSectionsFile.TrackShapes?.Where(t => !string.IsNullOrEmpty(t.Value.FileName)).Select(trackShape => new TrackShape()
+                {
+                    ShapeIndex = trackShape.Key,
+                    FileName = trackShape.Value.FileName,
+                    ClearanceDistance = (float)trackShape.Value.ClearanceDistance,
+                    MainRoute = trackShape.Value.MainRoute,
+                    ShapeType = trackShape.Value.TunnelShape ? ShapeType.Tunnel : trackShape.Value.RoadShape ? ShapeType.Road : ShapeType.None,
+                }).ToImmutableDictionary((trackShape) => trackShape.ShapeIndex),
+                TrackSectionIndices = trackSectionsFile.TrackShapes?.Where(t => !string.IsNullOrEmpty(t.Value.FileName)).
+                        ToDictionary(trackShape => trackShape.Key, trackShape => trackShape.Value.SectionIndices.Select(sectionIndex => new TrackSectionIndex()
+                        {
+                            TrackSections = sectionIndex.TrackSections.ToImmutableArray(),
+                            ShapeOffset = new TrackShapeOffset(sectionIndex.Offset, sectionIndex.AngularOffset)
+                        }).ToImmutableArray()).
+                Concat(
+                    trackSectionsFile.TrackSectionIndex?.Where(t => t.Value.TrackSections?.Length > 0).
+                        ToDictionary(dynamicTrackSection => dynamicTrackSection.Key, dynamicTrackSection => ImmutableArray.Create(new TrackSectionIndex()
+                        {
+                            TrackSections = dynamicTrackSection.Value.TrackSections.ToImmutableArray(),
+                        })) ??
+                        ImmutableDictionary<int, ImmutableArray<TrackSectionIndex>>.Empty.ToDictionary()
+                        ).ToImmutableDictionary(),
+            };
+
+            // No necesita Create porque no depende de una ruta
+            return trackSectionModel;
         }
 
         private static async Task<TrackSectionsModel> Convert(RouteModelHeader routeModel, CancellationToken cancellationToken)

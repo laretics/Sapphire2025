@@ -1,6 +1,7 @@
 ﻿using FreeTrainSimulator.Common;
 using Orts.Simulation.RollingStocks;
 using Orts.Simulation.Track;
+using Orts.Simulation.Signalling;
 using Orts.Formats.Msts;
 using Orts.Formats.Msts.Models;
 using FreeTrainSimulator.Common.Calc;
@@ -283,8 +284,8 @@ namespace Orts.Simulation.Physics
             set
             {
                 aiBrakePercent = value;
-                foreach (TrainCar car in Cars)
-                    car.BrakeSystem.AISetPercent(aiBrakePercent);
+                //foreach (TrainCar car in Cars)
+                //    car.BrakeSystem.AISetPercent(aiBrakePercent);
             }
         }
         private float aiBrakePercent;
@@ -2054,12 +2055,12 @@ namespace Orts.Simulation.Physics
             }
             if (SignalObjIndex >= 0)
             {
-                //Signal signalObject = Simulator.Instance.SignalEnvironment.Signals[SignalObjIndex];
+                Signal signalObject = Simulator.Instance.SignalEnvironment.Signals[SignalObjIndex];
 
                 ////the following is added by CSantucci, applying also to manual mode what Jtang implemented for activity mode: after passing a manually forced signal,
                 //// system will take back control of the signal
-                //if (signalObject.HoldState == SignalHoldState.ManualPass || signalObject.HoldState == SignalHoldState.ManualApproach)
-                //    signalObject.HoldState = SignalHoldState.None;
+                if (signalObject.HoldState == SignalHoldState.ManualPass || signalObject.HoldState == SignalHoldState.ManualApproach)
+                    signalObject.HoldState = SignalHoldState.None;
             }
             UpdateSectionStateManual();                                                           // update track occupation          //
             UpdateManualMode(SignalObjIndex);                                                     // update route clearance           //
@@ -2078,12 +2079,12 @@ namespace Orts.Simulation.Physics
             }
             if (SignalObjIndex >= 0)
             {
-                //Signal signalObject = Simulator.Instance.SignalEnvironment.Signals[SignalObjIndex];
+                Signal signalObject = Simulator.Instance.SignalEnvironment.Signals[SignalObjIndex];
 
                 ////the following is added by CSantucci, applying also to explorer mode what Jtang implemented for activity mode: after passing a manually forced signal,
                 //// system will take back control of the signal
-                //if (signalObject.HoldState == SignalHoldState.ManualPass || signalObject.HoldState == SignalHoldState.ManualApproach)
-                //    signalObject.HoldState = SignalHoldState.None;
+                if (signalObject.HoldState == SignalHoldState.ManualPass || signalObject.HoldState == SignalHoldState.ManualApproach)
+                    signalObject.HoldState = SignalHoldState.None;
             }
             UpdateSectionStateExplorer();                                                         // update track occupation          //
             UpdateExplorerMode(SignalObjIndex);                                                   // update route clearance           //
@@ -2268,9 +2269,9 @@ namespace Orts.Simulation.Physics
             float distanceToLastObject = 9E29f;  // set to overlarge value
             SignalAspectState nextAspect = SignalAspectState.Unknown;
 
-            //SignalItemInfo firstObject = Simulator.Instance.SignalEnvironment.GetNextObjectInRoute(RoutedForward, ValidRoutes[Direction.Forward],
-            //    PresentPosition[Direction.Forward].RouteListIndex, PresentPosition[Direction.Forward].Offset, -1,
-            //    SignalItemType.Any);
+            SignalItemInfo firstObject = Simulator.Instance.SignalEnvironment.GetNextObjectInRoute(RoutedForward, ValidRoutes[Direction.Forward],
+                PresentPosition[Direction.Forward].RouteListIndex, PresentPosition[Direction.Forward].Offset, -1,
+                SignalItemType.Any);
 
             //  get first item from train (irrespective of distance)
             //SignalItemFindState returnState = firstObject.State;
@@ -2288,8 +2289,8 @@ namespace Orts.Simulation.Physics
 
             // get next items within max distance; longer for player train to provide correct TCS handling
 
-            //SignalItemInfo nextObject;
-            //SignalItemInfo prevObject = firstObject;
+            SignalItemInfo nextObject;
+            SignalItemInfo prevObject = firstObject;
 
             int routeListIndex = PresentPosition[Direction.Forward].RouteListIndex;
             float offset = PresentPosition[Direction.Forward].Offset;
@@ -2323,8 +2324,8 @@ namespace Orts.Simulation.Physics
             //        }
             //    }
 
-            //    nextObject = Simulator.Instance.SignalEnvironment.GetNextObjectInRoute(RoutedForward, ValidRoutes[Direction.Forward],
-            //    nextIndex, offset, -1, SignalItemType.Any);
+                nextObject = Simulator.Instance.SignalEnvironment.GetNextObjectInRoute(RoutedForward, ValidRoutes[Direction.Forward],
+                nextIndex, offset, -1, SignalItemType.Any);
 
             //    returnState = nextObject.State;
 
@@ -3501,7 +3502,7 @@ namespace Orts.Simulation.Physics
             }
 
             // get starting position and route
-
+            
             TrackNode tn = RearTDBTraveller.TrackNode;
             float offset = RearTDBTraveller.TrackNodeOffset;
             TrackDirection direction = (TrackDirection)RearTDBTraveller.Direction.Reverse();
@@ -3523,8 +3524,8 @@ namespace Orts.Simulation.Physics
             // create route if train has none
             if (ValidRoutes[Direction.Forward] == null)
             {
-                //ValidRoutes[Direction.Forward] = SignalEnvironment.BuildTempRoute(this, section.Index, PresentPosition[Direction.Backward].Offset,
-                //            PresentPosition[Direction.Backward].Direction, trainLength, true, true, false);
+                ValidRoutes[Direction.Forward] = SignalEnvironment.BuildTempRoute(this, section.Index, PresentPosition[Direction.Backward].Offset,
+                            PresentPosition[Direction.Backward].Direction, trainLength, true, true, false);
             }
 
             // find sections
