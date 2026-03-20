@@ -1,5 +1,35 @@
-﻿@page "/"
+﻿
+@page "/"
 @using Tourmaline26.Components.Controls
+@inject Tourmaline26.Components.Services.DeviceMapService DeviceMapService
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 
-<PageTitle>Passenger</PageTitle>
-<PassengerInfoPanel></PassengerInfoPanel>
+@code {
+    private DeviceMapped? device;
+    private string? clientIp;
+
+    protected override void OnInitialized()
+    {
+        // Obtener la IP del cliente
+        clientIp = HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
+        if (!string.IsNullOrEmpty(clientIp))
+        {
+            device = DeviceMapService.Devices.FirstOrDefault(d => d.Address.ToString() == clientIp);
+        }
+    }
+}
+
+<PageTitle>Tourmaline</PageTitle>
+@if (device is null)
+{
+    <h3>Dispositivo no reconocido</h3>
+    <p>IP detectada: @clientIp</p>
+}
+else if (device.Type == DeviceMapped.DeviceType.HMI)
+{
+    <DriverInfotaiment />
+}
+else if (device.Type == DeviceMapped.DeviceType.TFT)
+{
+    <PassengerInfoPanel />
+}
