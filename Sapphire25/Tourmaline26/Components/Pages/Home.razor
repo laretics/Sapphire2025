@@ -13,9 +13,9 @@
         // Obtener la IP del cliente
         clientIp = HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
         if (!string.IsNullOrEmpty(clientIp))
-        {
+                    device = DeviceMapService.Devices[0];
+        else
             device = DeviceMapService.Devices.FirstOrDefault(d => d.Address.ToString() == clientIp);
-        }
     }
 }
 

@@ -13,7 +13,7 @@ namespace Tourmaline26.Components.Services
             {
                 DeviceMapped nuevo = new DeviceMapped();
                 nuevo.SetParameters(
-                    deviceSection.Key, 
+                    deviceSection["address"], 
                     deviceSection["Type"], 
                     deviceSection["Coach"], 
                     deviceSection["Side"], 
