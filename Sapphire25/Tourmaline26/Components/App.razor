@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <link rel="stylesheet" href="@Assets["app.css"]" />
-    <link rel="stylesheet" href="@Assets["Tourmaline26.styles.css"]" />
+    <link rel="stylesheet" href="@Assets["Tourmaline26.styles.css"]" />   
+    <link href="css/bootstrap.min.css" rel="stylesheet" />
     <ImportMap />
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
@@ -14,6 +15,7 @@
 <body>
     <Routes @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
+    <script src="js/hmiKeyboard.js"></script>
 </body>
 
 </html>

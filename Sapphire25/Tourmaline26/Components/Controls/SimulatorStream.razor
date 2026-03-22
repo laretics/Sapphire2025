@@ -1,0 +1,23 @@
+﻿<div class="simulator-stream-container">
+    @if (StreamDisponible)
+    {
+        <img src="/stream"
+             class="simulator-stream-img"
+             @onerror="OnStreamError" />
+    }
+    else
+    {
+        <img src="img/TourmalineBack.png"
+             class="simulator-stream-img" />
+    }
+</div>
+
+@code {
+    private bool StreamDisponible = true;
+
+    private void OnStreamError()
+    {
+        StreamDisponible = false;
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,44 @@
+﻿@using Microsoft.AspNetCore.Components
+
+<div class="virtual-keyboard-container">
+    <div class="virtual-keyboard shadow-lg rounded-4 p-3 @KeyboardThemeClass">
+        <div class="row g-2 mb-2" style="flex-wrap:nowrap;">
+            @foreach (var key in Row1)
+            {
+                <div class="col text-center"><button class="btn btn-key" @onclick="() => OnKeyPress(key[0])">@key</button></div>
+            }
+        </div>
+        <div class="row g-2 mb-2" style="flex-wrap:nowrap;">
+            @foreach (var key in Row2)
+            {
+                <div class="col text-center"><button class="btn btn-key" @onclick="() => OnKeyPress(key[0])">@key</button></div>
+            }
+        </div>
+        <div class="row g-2 mb-2" style="flex-wrap:nowrap;">
+            @foreach (var key in Row3)
+            {
+                <div class="col text-center"><button class="btn btn-key" @onclick="() => OnKeyPress(key[0])">@key</button></div>
+            }
+        </div>
+        <div class="row g-2">
+            <div class="col-2 text-center"><button class="btn btn-key" @onclick="() => OnKeyPress('|')">123</button></div>
+            <div class="col-6 text-center"><button class="btn btn-key" style="width:100%;" @onclick="() => OnKeyPress(' ')">Espacio</button></div>
+            <div class="col-2 text-center"><button class="btn btn-key" @onclick="() => OnKeyPress('⌫')">⌫</button></div>
+            <div class="col-2 text-center"><button class="btn btn-key btn-success" @onclick="() => OnKeyPress('#')">Intro</button></div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public bool NightMode { get; set; }
+
+    private string[] Row1 = new[] { "q", "w", "e", "r", "t", "y", "u", "i", "o", "p" };
+    private string[] Row2 = new[] { "a", "s", "d", "f", "g", "h", "j", "k", "l", "ñ" };
+    private string[] Row3 = new[] { "z", "x", "c", "v", "b", "n", "m", ",", ".", "-" };
+
+    [Parameter] public EventCallback<char> KeyPressed { get; set; }
+
+    private Task OnKeyPress(char key) => KeyPressed.InvokeAsync(key);
+
+    private string KeyboardThemeClass => NightMode ? "vk-night" : "vk-day";
+}

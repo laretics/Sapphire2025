@@ -44,3 +44,29 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/*Ajustes día / noche Tesla*/
+.teslapanel,
+.floating-panel {
+    transition: background 0.3s, color 0.3s;
+}
+
+    .teslapanel.night {
+        background: #181c20;
+        color: #b0b8c1;
+    }
+
+    .teslapanel.day {
+        background: #fff;
+        color: #222;
+    }
+
+.floating-panel.night {
+    background: rgba(24, 28, 32, 0.92); /* negro azulado con transparencia */
+    color: #b0b8c1;
+}
+
+.floating-panel.day {
+    background: rgba(255,255,255,0.95);
+    color: #222;
+}

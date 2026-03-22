@@ -1,0 +1,15 @@
+﻿<div class="floating-destination-panel @panelClass">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+    [CascadingParameter]
+    public bool NightMode { get; set; }
+
+    private string panelClass
+    {
+        get => string.Format("floating-panel {0}", NightMode ? "night" : "day");
+    }
+}

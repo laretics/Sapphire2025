@@ -4,20 +4,7 @@
 @inject Tourmaline26.Components.Services.DeviceMapService DeviceMapService
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 
-@code {
-    private DeviceMapped? device;
-    private string? clientIp;
 
-    protected override void OnInitialized()
-    {
-        // Obtener la IP del cliente
-        clientIp = HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
-        if (!string.IsNullOrEmpty(clientIp))
-                    device = DeviceMapService.Devices[0];
-        else
-            device = DeviceMapService.Devices.FirstOrDefault(d => d.Address.ToString() == clientIp);
-    }
-}
 
 <PageTitle>Tourmaline</PageTitle>
 @if (device is null)
@@ -27,9 +14,35 @@
 }
 else if (device.Type == DeviceMapped.DeviceType.HMI)
 {
-    <DriverInfotaiment />
+    <CascadingValue Value=@NightMode>
+        <CascadingValue Value=@ToggleNightMode>
+            <DriverInfotaiment IsMaintenanceMode="false"></DriverInfotaiment>
+        </CascadingValue>        
+    </CascadingValue>    
 }
 else if (device.Type == DeviceMapped.DeviceType.TFT)
 {
     <PassengerInfoPanel />
+}
+
+@code {
+    private DeviceMapped? device;
+    private string? clientIp;
+
+    private bool NightMode { get; set; }
+    private void ToggleNightMode()
+    {
+        NightMode = !NightMode;
+        StateHasChanged();
+    }
+
+    protected override void OnInitialized()
+    {
+        // Obtener la IP del cliente
+        clientIp = HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
+        if (!string.IsNullOrEmpty(clientIp))
+            device = DeviceMapService.Devices[0];
+        else
+            device = DeviceMapService.Devices.FirstOrDefault(d => d.Address.ToString() == clientIp);
+    }
 }

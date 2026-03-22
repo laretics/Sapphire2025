@@ -1,15 +1,100 @@
 ﻿<div class="tesla-toolbar">
-    <button class="toolbar-btn"><img src="icons/3DOn.svg" alt="Home" /></button>
-    <button class="toolbar-btn"><img src="icons/3DOff.svg" alt="Climate" /></button>
-    <button class="toolbar-btn"><img src="icons/Bezier.svg" alt="Music" /></button>
-    <button class="toolbar-btn"><img src="icons/Exit.svg" alt="Fan" /></button>
-    <button class="toolbar-btn"><img src="icons/WhiteSun.svg" alt="Settings" /></button>
-    <button class="toolbar-btn"><img src="icons/BlackSun.svg" alt="Settings" /></button>
-    <button class="toolbar-btn" disabled></button>
-    <button class="toolbar-btn" disabled></button>
-    <button class="toolbar-btn" disabled></button>
-    <button class="toolbar-btn"><img src="icons/power.svg" alt="Power" /></button>
+    @for (int i = 0; i < buttonData.Length; i++)
+    {
+        var btnIndex = i;
+        <button class="toolbar-btn @(pressedStates[btnIndex] ? "pressed" : "")"
+                @onpointerdown="() => PressButton(btnIndex)"
+                @onpointerup="() => ReleaseButton(btnIndex)"
+                @onclick="() => OnButtonClick(btnIndex)"
+                disabled="@buttonData[btnIndex].Disabled">
+            @if (!string.IsNullOrEmpty(buttonData[btnIndex].Icon))
+            {
+                <img src="@buttonData[btnIndex].Icon" alt="@buttonData[btnIndex].Alt" />
+            }
+        </button>
+    }
 </div>
-@code {
 
+@code {
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+
+    public record ButtonInfo(string Icon, string Alt, bool Disabled = false);
+
+    // Define los datos de los botones aquí
+    private ButtonInfo[] buttonData = new ButtonInfo[]
+    {
+        new("icons/Train.svg", "Home"),
+        new("icons/3DOff.svg", "Climate"),
+        new("icons/Bezier.svg", "Music"),
+        new("icons/Exit.svg", "Fan"),
+        new("icons/WhiteSun.svg", "Settings"),
+        new("icons/BlackSun.svg", "Settings"),
+        new("", "", true),
+        new("", "", true),
+        new("", "", true),
+        new("icons/power.svg", "Power")
+    };
+
+    [JSInvokable]
+    public async Task HandleKey(string key)
+    {
+        int btnIndex = key switch
+        {
+            "1" => 0,
+            "2" => 1,
+            "3" => 2,
+            "4" => 3,
+            "5" => 4,
+            "6" => 5,
+            "7" => 6,
+            "8" => 7,
+            "9" => 8,
+            "0" => 9,
+            _ => -1
+        };
+        if (btnIndex >= 0 && btnIndex < buttonData.Length && !buttonData[btnIndex].Disabled)
+        {
+            PressButton(btnIndex);
+            await OnButtonClick(btnIndex);
+            ReleaseButton(btnIndex);
+        }
+    }
+
+    private bool[] pressedStates = new bool[10];
+
+    [Parameter]
+    public EventCallback[] ButtonClickCallback { get; set; } = Array.Empty<EventCallback>();
+
+    private void PressButton(int btn)
+    {
+        pressedStates[btn] = true;
+    }
+
+    private async void ReleaseButton(int btn)
+    {
+        await Task.Delay(180);
+        pressedStates[btn] = false;
+        StateHasChanged();
+    }
+
+    private async Task OnButtonClick(int btn)
+    {
+        if (null != ButtonClickCallback && btn < ButtonClickCallback.Length)
+            await ButtonClickCallback[btn].InvokeAsync();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Registrar el evento de teclado
+            _ = JS.InvokeVoidAsync("TeslaToolBar_registerKeyHandler", DotNetObjectReference.Create(this));
+        }
+    }
+
+    public void Dispose()
+    {
+        _ = JS.InvokeVoidAsync("TeslaToolBar_unregisterKeyHandler");
+    }
 }

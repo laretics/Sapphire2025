@@ -1,0 +1,11 @@
+﻿.floating-destination-panel {
+	position: absolute;
+	top: 20px;
+	left: 20px;
+	width: 320px;
+	min-height: 120px;
+	border-radius: 16px;
+	box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+	padding: 20px;
+	z-index: 100;
+}
