@@ -1,0 +1,56 @@
+﻿<div class="test-card-grid">
+    <img src="img/Montefaro.svg" class="test-card-logo" alt="Montefaro" />
+    <div class="test-card-circle"></div>
+    <div class="test-card-content">
+        <!-- Barras de color -->
+        <div class="test-card-colors">
+            <div class="color color-yellow"></div>
+            <div class="color color-cyan"></div>
+            <div class="color color-green"></div>
+            <div class="color color-magenta"></div>
+            <div class="color color-red"></div>
+            <div class="color color-blue"></div>
+            <div class="color color-black"></div>
+        </div>
+        <!-- Escala de grises -->
+        <div class="test-card-grayscale">
+            <div class="gray gray-black"></div>
+            <div class="gray gray-dark"></div>
+            <div class="gray gray-medium"></div>
+            <div class="gray gray-light"></div>
+            <div class="gray gray-white"></div>
+        </div>
+        <!-- Barras negras y blancas -->
+        <div class="test-card-bars">
+            <div class="bar bar-white"></div>
+            <div class="bar bar-black"></div>
+        </div>
+        <!-- Líneas de resolución y dorado -->
+        <div class="test-card-resolution">
+            <div class="resolution-lines"></div>
+            <div class="resolution-gold"></div>
+        </div>
+        <!-- Degradado -->
+        <div class="test-card-gradient"></div>
+    </div>
+    <div class="test-card-center">
+        <div class="test-card-title">TOURMALINE</div>
+        <div class="test-card-coach">@((Device?.Address.ToString()) ?? "No address")</div>
+        <div class="test-card-extra">@CoachDescription</div>
+    </div>
+ </div>
+@code {
+    [CascadingParameter]
+    public DeviceMapped? Device { get; set; }
+
+    private string CoachDescription
+    {
+        get
+        {
+            string coachId = (Device?.PublicId) ?? "Unknown Coach";
+            string auxNum = (Device?.Coach.ToString()) ?? "?";
+            string auxSide = (Device?.Side.ToString()) ?? "?";
+            return string.Format("\"{0}\" ({1},{2})", coachId, auxNum, auxSide);
+        }
+    }
+}

@@ -14,15 +14,19 @@
 }
 else if (device.Type == DeviceMapped.DeviceType.HMI)
 {
-    <CascadingValue Value=@NightMode>
-        <CascadingValue Value=@ToggleNightMode>
-            <DriverInfotaiment IsMaintenanceMode="false"></DriverInfotaiment>
-        </CascadingValue>        
-    </CascadingValue>    
+    <CascadingValue Value="@device">
+        <CascadingValue Value=@NightMode>
+            <CascadingValue Value=@ToggleNightMode>
+                <DriverInfotaiment IsMaintenanceMode="false"></DriverInfotaiment>
+            </CascadingValue>
+        </CascadingValue>
+    </CascadingValue>
 }
 else if (device.Type == DeviceMapped.DeviceType.TFT)
 {
-    <PassengerInfoPanel />
+    <CascadingValue Value="@device">
+        <PassengerInfoPanel/>
+    </CascadingValue>    
 }
 
 @code {

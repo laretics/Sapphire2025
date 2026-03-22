@@ -1,0 +1,21 @@
+﻿@if(Maintenance)
+{
+    <div class="service-border">
+        <div class="service-text service-text-top">MODO SERVICIO</div>
+        <div class="service-text service-text-bottom">@MaintenanceMessage</div>
+        <div class="service-text service-text-left">MODO SERVICIO</div>
+        <div class="service-text service-text-right">MODO SERVICIO</div>
+        <div class="service-content">
+            @ChildContent
+        </div>
+    </div>
+}
+else
+{
+    @ChildContent
+}
+@code {
+    [Parameter] public bool Maintenance { get; set; }
+    [Parameter] public string? MaintenanceMessage { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

@@ -1,0 +1,216 @@
+﻿.test-card-logo {
+	position: absolute;
+	top: 2vw;
+	left: 2vw;
+	width: 7vw;
+	height: auto;
+	z-index: 20;
+	filter: drop-shadow(0 0 8px #222a);
+	pointer-events: none;
+}
+
+.test-card-grid {
+	position: relative;
+	width: 100vw;
+	height: 100vh;
+	background: #444;
+	overflow: hidden;
+	/* Cuadrícula */
+	background-image: linear-gradient(to right, #fff2 1px, transparent 1px), linear-gradient(to bottom, #fff2 1px, transparent 1px);
+	background-size: 60px 60px;
+}
+
+.test-card-circle {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 80vw;
+	height: 80vw;
+	max-width: 80vh;
+	max-height: 80vh;
+	transform: translate(-50%, -50%);
+	border: 3px solid #fff;
+	border-radius: 50%;
+	pointer-events: none;
+	z-index: 1;
+}
+
+.test-card-content {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 60vw;
+	height: 45vw;
+	max-width: 60vh;
+	max-height: 45vh;
+	min-width: 320px;
+	min-height: 240px;
+	transform: translate(-50%, -50%);
+	display: flex;
+	flex-direction: column;
+	z-index: 2;
+	background: transparent;
+}
+
+/* Barras de color */
+.test-card-colors {
+	display: flex;
+	flex: none;
+	height: 16%;
+	width: 100%;
+}
+
+.color {
+	flex: 1;
+}
+
+.color-yellow {
+	background: #cccc00;
+}
+
+.color-cyan {
+	background: #00cccc;
+}
+
+.color-green {
+	background: #00cc00;
+}
+
+.color-magenta {
+	background: #cc00cc;
+}
+
+.color-red {
+	background: #cc0000;
+}
+
+.color-blue {
+	background: #0000cc;
+}
+
+.color-black {
+	background: #000;
+}
+
+/* Escala de grises */
+.test-card-grayscale {
+	display: flex;
+	flex: none;
+	height: 10%;
+	width: 100%;
+}
+
+.gray {
+	flex: 1;
+}
+
+.gray-black {
+	background: #000;
+}
+
+.gray-dark {
+	background: #444;
+}
+
+.gray-medium {
+	background: #888;
+}
+
+.gray-light {
+	background: #ccc;
+}
+
+.gray-white {
+	background: #fff;
+}
+
+/* Barras negras y blancas */
+.test-card-bars {
+	display: flex;
+	flex: none;
+	height: 10%;
+	width: 100%;
+}
+
+.bar-white {
+	background: #fff;
+	flex: 1;
+}
+
+.bar-black {
+	background: #000;
+	flex: 1;
+}
+
+/* Líneas de resolución y dorado */
+.test-card-resolution {
+	display: flex;
+	flex: none;
+	height: 10%;
+	width: 100%;
+}
+
+.resolution-lines {
+	flex: 2;
+	background: repeating-linear-gradient( to right, #000 0 4px, #fff 4px 8px );
+}
+
+.resolution-gold {
+	flex: 1;
+	background: #bfa100;
+}
+
+/* Degradado */
+.test-card-gradient {
+	flex: 1;
+	width: 100%;
+	background: linear-gradient(90deg, #f0f, #f00, #000, #00f, #0ff);
+	border-bottom-left-radius: 2vw;
+	border-bottom-right-radius: 2vw;
+}
+
+.test-card-center {
+	position: absolute;
+	right: 4vw;
+	bottom: 4vw;
+	left: auto;
+	top: auto;
+	transform: none;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	background: rgba(0,0,0,0.7);
+	padding: 2.5rem 4rem;
+	border-radius: 2rem;
+	box-shadow: 0 0 32px 8px #000a;
+	min-width: 400px;
+	min-height: 200px;
+	z-index: 10; /* Asegura que esté delante */
+}
+
+.test-card-title {
+	font-size: 4rem;
+	font-weight: 900;
+	color: #fff;
+	letter-spacing: 0.2em;
+	text-shadow: 0 0 12px #000, 0 2px 8px #00f, 0 0 2px #fff;
+	margin-bottom: 1.5rem;
+	text-align: center;
+	text-transform: uppercase;
+}
+
+.test-card-coach {
+	font-size: 2.5rem;
+	font-weight: 700;
+	color: #ff0;
+	text-shadow: 0 0 8px #000, 0 2px 4px #f80;
+	margin-bottom: 1rem;
+	text-align: center;
+}
+
+.test-card-extra {
+	font-size: 1.5rem;
+	color: #fff;
+	text-shadow: 0 0 6px #000;
+	text-align: center;
+}

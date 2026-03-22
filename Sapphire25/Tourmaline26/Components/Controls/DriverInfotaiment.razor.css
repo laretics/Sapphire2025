@@ -11,88 +11,7 @@
     overflow: hidden;
 }
 
-.service-border {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    box-sizing: border-box;
-    border: 2.5vw solid #e53935; /* Borde grueso y escalable */
-    background: transparent;
-    display: flex;
-    flex-direction: column;
-    justify-content: stretch;
-    padding: 0;
-    margin: 0;
-    overflow: visible;
-}
 
-.service-content {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    box-sizing: border-box;
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    /* Sin padding para que el contenido toque el borde interior */
-}
-
-.service-text {
-    position: absolute;
-    color: #fff;
-    font-weight: bold;
-    z-index: 10;
-    pointer-events: none;
-    user-select: none;
-    font-family: 'Segoe UI', Arial, sans-serif;
-    letter-spacing: 0.1em;
-    text-shadow: 0 0 4px #b00000, 0 0 2px #b00000;
-}
-
-.service-text-top {
-    top: -2vw;
-    left: 0;
-    right: 0;
-    text-align: center;
-    font-size: 1.2vw;
-    line-height: 1.2vw;
-}
-
-.service-text-bottom {
-    bottom: -2vw;
-    left: 0;
-    right: 0;
-    text-align: center;
-    font-size: 1.6vw;
-    line-height: 1.6vw;
-}
-
-.service-text-left {
-    top: 0;
-    bottom: 0;
-    left: -2vw;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    text-align: center;
-    font-size: 1.2vw;
-    transform: rotate(180deg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.service-text-right {
-    top: 0;
-    bottom: 0;
-    right: -2vw;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    text-align: center;
-    font-size: 1.2vw;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
 
 .tesla-main {
     flex: 1 1 auto;
@@ -122,7 +41,19 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
 }
+
+    .tesla-left img {
+        display: block;
+        width: 100%;
+        height: auto;
+        object-fit: contain; /* O usa 'cover' si quieres recortar */
+        object-position: top;
+    }
 
 .tesla-right {
     flex: 2 1 0;

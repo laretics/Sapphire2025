@@ -1,0 +1,473 @@
+/* _content/Tourmaline26/Components/Controls/DriverInfotaiment.razor.rz.scp.css */
+.tesla-root[b-1vaz1gu96o] {
+    width: 100vw;
+    height: 100vh;
+    /*background: #f7f7f7;*/
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.service-border[b-1vaz1gu96o] {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    box-sizing: border-box;
+    border: 2.5vw solid #e53935; /* Borde grueso y escalable */
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+    justify-content: stretch;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+}
+
+.service-content[b-1vaz1gu96o] {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    /* Sin padding para que el contenido toque el borde interior */
+}
+
+.service-text[b-1vaz1gu96o] {
+    position: absolute;
+    color: #fff;
+    font-weight: bold;
+    z-index: 10;
+    pointer-events: none;
+    user-select: none;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    letter-spacing: 0.1em;
+    text-shadow: 0 0 4px #b00000, 0 0 2px #b00000;
+}
+
+.service-text-top[b-1vaz1gu96o] {
+    top: -2vw;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 1.2vw;
+    line-height: 1.2vw;
+}
+
+.service-text-bottom[b-1vaz1gu96o] {
+    bottom: -2vw;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 1.6vw;
+    line-height: 1.6vw;
+}
+
+.service-text-left[b-1vaz1gu96o] {
+    top: 0;
+    bottom: 0;
+    left: -2vw;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    text-align: center;
+    font-size: 1.2vw;
+    transform: rotate(180deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.service-text-right[b-1vaz1gu96o] {
+    top: 0;
+    bottom: 0;
+    right: -2vw;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    text-align: center;
+    font-size: 1.2vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tesla-main[b-1vaz1gu96o] {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: row;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+    border-radius: 0;
+    box-sizing: border-box;
+    min-height: 0;
+    /*background: #fff;*/
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.tesla-left[b-1vaz1gu96o] {
+    flex: 1 1 0;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    min-width: 0;
+    min-height: 0;
+    box-shadow: none;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tesla-right[b-1vaz1gu96o] {
+    flex: 2 1 0;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    min-width: 0;
+    min-height: 0;
+    box-shadow: none;
+    overflow: hidden;
+    display: flex;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+}
+/* _content/Tourmaline26/Components/Controls/Floatings/FloatDestinationInput.razor.rz.scp.css */
+.floating-destination-panel[b-1oaxi6d362] {
+	position: absolute;
+	top: 20px;
+	left: 20px;
+	width: 320px;
+	min-height: 120px;
+	border-radius: 16px;
+	box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+	padding: 20px;
+	z-index: 100;
+}
+/* _content/Tourmaline26/Components/Controls/PassengerInfoPanel.razor.rz.scp.css */
+html[b-l0ymyzddir], body[b-l0ymyzddir], .panel-root[b-l0ymyzddir] {
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.panel-root[b-l0ymyzddir] {
+    background: #222;
+    color: #fff;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    border-radius: 0;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-header[b-l0ymyzddir] {
+    background: #222;
+    padding: 3vh 4vw 1vh 4vw;
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.train-number[b-l0ymyzddir] {
+    font-size: 3vw;
+    font-weight: bold;
+    opacity: 0.9;
+}
+
+.panel-time[b-l0ymyzddir] {
+    position: absolute;
+    right: 4vw;
+    top: 3vh;
+    font-size: 3vw;
+    font-weight: bold;
+}
+
+.destination[b-l0ymyzddir] {
+    font-size: 7vw;
+    font-weight: bold;
+    margin-top: 1vh;
+    word-break: break-word;
+}
+
+.panel-body[b-l0ymyzddir] {
+    display: flex;
+    flex: 1 1 auto;
+    background: #f5f5f5;
+    color: #222;
+    padding: 2vh 4vw;
+    gap: 4vw;
+    min-height: 0;
+    min-width: 0;
+}
+
+.route-box[b-l0ymyzddir] {
+    flex: 2 1 0;
+    min-width: 0;
+}
+
+.route-title[b-l0ymyzddir] {
+    font-size: 2vw;
+    color: #888;
+    margin-bottom: 1vh;
+}
+
+.route-list[b-l0ymyzddir] {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+    .route-list li[b-l0ymyzddir] {
+        display: flex;
+        align-items: center;
+        font-size: 2.5vw;
+        margin-bottom: 1vh;
+        font-weight: 500;
+        min-width: 0;
+    }
+
+.stop-dot[b-l0ymyzddir] {
+    display: inline-block;
+    width: 2vw;
+    height: 2vw;
+    min-width: 16px;
+    min-height: 16px;
+    border-radius: 50%;
+    background: #bbb;
+    margin-right: 1vw;
+    border: 0.3vw solid #bbb;
+}
+
+.active-dot[b-l0ymyzddir] {
+    background: #222;
+    border-color: #222;
+}
+
+.current-stop[b-l0ymyzddir] {
+    font-weight: bold;
+    color: #222;
+}
+
+.info-box[b-l0ymyzddir] {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: #fff;
+    border-radius: 1vw;
+    padding: 2vh 2vw;
+    min-width: 0;
+    box-shadow: 0 2px 8px #0002;
+}
+
+.departure-row[b-l0ymyzddir] {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 2vw;
+    margin-bottom: 2vh;
+}
+
+.departure-info[b-l0ymyzddir] {
+    color: #888;
+}
+
+.departure-time[b-l0ymyzddir] {
+    color: #2e8b00;
+    font-size: 3vw;
+    font-weight: bold;
+}
+
+.direction-row[b-l0ymyzddir] {
+    font-size: 3vw;
+    text-align: center;
+    margin-bottom: 2vh;
+}
+
+.car-row[b-l0ymyzddir] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3vw;
+    gap: 1vw;
+}
+
+.car-icon[b-l0ymyzddir] {
+    font-size: 3vw;
+}
+
+.car-number[b-l0ymyzddir] {
+    font-size: 3vw;
+    font-weight: bold;
+}
+/* _content/Tourmaline26/Components/Controls/SimulatorStream.razor.rz.scp.css */
+.simulator-stream-container[b-x1kfd5556n] {
+	width: 100%;
+	height: 100%;
+	position: relative;
+	overflow: hidden;
+	display: flex;
+}
+
+.simulator-stream-img[b-x1kfd5556n] {
+	width: 100%;
+	height: 100%;
+	object-fit: cover; /* Esto hace el "stretch" vertical y recorta por los lados */
+	display: block;
+}
+/* _content/Tourmaline26/Components/Controls/TeslaToolBar.razor.rz.scp.css */
+.tesla-toolbar[b-f31n59ku3g] {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    align-items: center;
+    background: #18191a;
+    padding: 0.5rem 0;
+    border-radius: 0;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.4);
+    width: 100%;
+}
+
+.toolbar-btn[b-f31n59ku3g] {
+    background: none;
+    border: none;
+    outline: none;
+    padding: 0.5rem 0;
+    border-radius: 1rem;
+    transition: background 0.2s;
+    cursor: pointer;
+    width: 100%;
+    height: 3.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+    .toolbar-btn img[b-f31n59ku3g] {
+        filter: invert(1);
+        width: auto;
+        height: 100%;         /* O usa 100% si quieres apurar más */
+        max-height: 3.6rem;  /* Un poco menos que el alto del botón */
+        max-width: 100%;
+        object-fit: contain;
+        display: block;
+        margin: 0 auto;
+    }
+
+    .toolbar-btn:disabled[b-f31n59ku3g] {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+@keyframes button-press-b-f31n59ku3g {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 #00e5ff;
+    }
+
+    50% {
+        transform: scale(0.92);
+        box-shadow: 0 0 12px 2px #00e5ff;
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 #00e5ff;
+    }
+}
+
+.toolbar-btn.pressed[b-f31n59ku3g] {
+    animation: button-press-b-f31n59ku3g 0.18s cubic-bezier(.4,0,.2,1);
+}
+/* _content/Tourmaline26/Components/Controls/VirtualKeyboard.razor.rz.scp.css */
+.virtual-keyboard-container[b-zoij98b5jq] {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 33vh;
+	z-index: 2000;
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	pointer-events: none;
+}
+
+.virtual-keyboard[b-zoij98b5jq] {
+	width: 98vw;
+	height: 100%;
+	pointer-events: all;
+	border-radius: 2rem 2rem 0 0;
+	box-shadow: 0 -8px 32px rgba(0,0,0,0.18);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	transition: background 0.3s, color 0.3s;
+}
+
+.vk-day[b-zoij98b5jq] {
+	background: rgba(255,255,255,0.92);
+	color: #222;
+}
+
+.vk-night[b-zoij98b5jq] {
+	background: rgba(24,28,32,0.92);
+	color: #b0b8c1;
+}
+
+.btn-key[b-zoij98b5jq] {
+	width: 100%;
+	font-size: 2rem;
+	font-weight: 500;
+	border-radius: 1rem;
+	background: rgba(255,255,255,0.7);
+	color: #222;
+	transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.vk-night .btn-key[b-zoij98b5jq] {
+	background: rgba(40,44,50,0.85);
+	color: #b0b8c1;
+}
+
+.btn-key:active[b-zoij98b5jq], .btn-key:focus[b-zoij98b5jq] {
+	background: #0d6efd;
+	color: #fff;
+}
+
+.vk-night .btn-key:active[b-zoij98b5jq], .vk-night .btn-key:focus[b-zoij98b5jq] {
+	background: #1a73e8;
+	color: #fff;
+}
+/* _content/Tourmaline26/Components/Layout/MainLayout.razor.rz.scp.css */
+#blazor-error-ui[b-ocpvbsl2by] {
+    color-scheme: light only;
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+    #blazor-error-ui .dismiss[b-ocpvbsl2by] {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }

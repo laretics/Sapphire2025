@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Fondo circular con efecto brillante -->
+  <defs>
+    <radialGradient id="blueGloss" cx="30%" cy="20%" r="80%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+      <stop offset="40%" stop-color="#5fb9ff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0050a8" stop-opacity="1"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Círculo principal -->
+  <circle cx="100" cy="100" r="95" fill="url(#blueGloss)"/>
+
+  <!-- Sombra interior suave -->
+  <circle cx="100" cy="110" r="80" fill="#000000" opacity="0.15"/>
+
+  <!-- Cuerpo del “satélite” -->
+  <ellipse cx="100" cy="95" rx="40" ry="28" fill="#06254a"/>
+
+  <!-- Antena -->
+  <line x1="120" y1="80" x2="150" y2="55" stroke="#06254a" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="150" cy="55" r="6" fill="#06254a"/>
+
+  <!-- “Patas” o soportes inferiores -->
+  <line x1="80" y1="110" x2="70" y2="135" stroke="#06254a" stroke-width="6" stroke-linecap="round"/>
+  <line x1="100" y1="115" x2="100" y2="140" stroke="#06254a" stroke-width="6" stroke-linecap="round"/>
+  <line x1="120" y1="110" x2="130" y2="135" stroke="#06254a" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Brillo superior -->
+  <ellipse cx="80" cy="65" rx="45" ry="20" fill="#ffffff" opacity="0.35"/>
+</svg>
