@@ -1,20 +1,34 @@
 ﻿@* <VirtualKeyboard></VirtualKeyboard> *@
+@using Tourmaline26.Components.Controls.Floatings;
+@inject Tourmaline26.Components.Services.TourmalineService mvarTourmaline
 <div class="tesla-root">
     <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="IsMaintenanceMode">
         <div class="tesla-main">
             <div class="tesla-left @panelClass">
                 <img src="img/Wireframe1.png" />
-                <Speedometer />
+                @* <Speedometer /> *@
             </div>
             <div class="tesla-right @panelClass">
-                <SimulatorStream></SimulatorStream>
-                <Tourmaline26.Components.Controls.Floatings.FloatDestinationInput>Hola Mundo</Tourmaline26.Components.Controls.Floatings.FloatDestinationInput>
+                @if(View3DEnabled)
+                {
+                    <SimulatorStream></SimulatorStream>
+                }                
+                @if(RightPanelVisible)
+                {
+                    <FloatRightContainer>
+                        <SlidingMenu Options="auxOptions">
+                        </SlidingMenu>
+                    </FloatRightContainer>                    
+                }
+                else
+                {
+                    <FloatDestinationInput>Hola Mundo</FloatDestinationInput>
+                }
             </div>
         </div>
     </ServiceModeFrame>
-
     <div class="tesla-bottom-bar">
-        <TeslaToolBar ButtonClickCallback="buttonCallbacks" />
+        <TeslaToolBar Buttons="buttonData"/>
     </div>
 </div>
 @code {
@@ -23,41 +37,87 @@
     [CascadingParameter]
     public Action? ToggleNightMode { get; set; }
 
+    private bool RightPanelVisible
+    {
+        get => (null!=buttonData && buttonData.Length>0)?buttonData[0].Selected:false;
+    }
 
+    private TeslaButton[] buttonData = Array.Empty<TeslaButton>();
 
-    private bool mvarMaintenance;
-    private EventCallback[] buttonCallbacks;
+    private List<MenuOptionModel> auxOptions =
+
+        new MenuOptionModel[]{
+        new MenuOptionModel("Dinámica",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
+    new MenuOptionModel("Carga",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
+    new MenuOptionModel("Piloto automático",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
+    new MenuOptionModel("Seguros",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
+    new MenuOptionModel("Luces",@<img src="icons/Train.svg" alt="popo" width="24" height="24" />),
+    new MenuOptionModel("Asientos",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
+    new MenuOptionModel("Pantalla",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
+            }.ToList();
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        buttonCallbacks = new EventCallback[]
+        buttonData = new TeslaButton[]
         {
-            EventCallback.Factory.Create(this, ()=>ToggleMaintenanceMode()),
-            EventCallback.Factory.Create(this, ()=>ToggleNightMode?.Invoke()),
-            EventCallback.Factory.Create(this, ()=>ToggleMaintenanceMode())
+            new("Train", "MainMenu",true),
+            new("BlackSun", "NightMode",true),
+            new("CCTV", "Cameras",true),
+            new("Microphone", "Microphone",true),
+            new("3DOn", "View3D",true),
+            new("WhiteSun", "Settings"),
+            new("BlackSun", "Settings"),            
+            new("", "", true),
+            new("Wrench", "Service",true),
+            new("", "", true)
         };
+        buttonData[0].Callback = EventCallback.Factory.Create(this, () => OnButtonChanged());
+        buttonData[1].Callback = EventCallback.Factory.Create(this, () => ToggleNightMode?.Invoke());
+        buttonData[1].AlternateIcon = "WhiteSun";
+        buttonData[4].AlternateIcon = "3DOff";
+        buttonData[4].Callback = EventCallback.Factory.Create(this, () => OnButtonChanged());
+        buttonData[8].Callback = EventCallback.Factory.Create(this, () => ToggleMaintenanceMode());
+        mvarTourmaline.ServiceModeChanged += OnButtonChanged;
     }
 
     private string panelClass
     {
         get => string.Format("teslapanel {0}", NightMode ? "night" : "day");
     }
+    private bool View3DEnabled
+    {
+        get => (null != buttonData && buttonData.Length > 4)?(!buttonData[4].Selected):true;
+    }
 
     [Parameter]
     public bool IsMaintenanceMode     
     { 
-        get => mvarMaintenance;
+        get => mvarTourmaline.ServiceMode;
         set
         {
-            mvarMaintenance = value;
+            mvarTourmaline.ServiceMode = value;           
             StateHasChanged();
         }
     }
     [Parameter]
     public string MaintenanceMessage { get; set; } = "Modo de Mantenimiento";
 
+    private void OnButtonChanged(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    public void Dispose()
+    {
+        mvarTourmaline.ServiceModeChanged -= OnButtonChanged;
+    }
     private void ToggleMaintenanceMode()
     {
-        IsMaintenanceMode = !IsMaintenanceMode;
+        IsMaintenanceMode = buttonData[8].Selected;
+        //StateHasChanged();
+    }
+    private void OnButtonChanged()
+    {        
+        StateHasChanged();
     }
 }

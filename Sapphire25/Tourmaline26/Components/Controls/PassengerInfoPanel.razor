@@ -1,5 +1,7 @@
 ﻿@* PassengerInfoPanel.razor *@
-@if (settingScreen)
+@using Tourmaline26.Components.Services
+@inject TourmalineService mvarTourmaline
+@if (mvarTourmaline.ServiceMode)
 {
     <SettingCaret></SettingCaret>
 }
@@ -45,17 +47,22 @@ else
     [CascadingParameter]
     public DeviceMapped? Device{ get; set; }
 
-
     // Variables locales para datos dinámicos
     bool settingScreen = true;
     string TrainNumber = "4915";
     string Destination = "Manacor";
-    string CurrentTime => DateTime.Now.ToString("HH:mm");
+    string CurrentTime =>  mvarTourmaline.Now.ToString("HH:mm");
     string DepartureInfo = "Sortida en 1 min";
     string DepartureTime = "09:46";
     int Direction = 1;
 
     private string CarId { get => (null == Device) ? "" : Device.PublicId; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        mvarTourmaline.ServiceModeChanged += OnMaintentanceChanged;
+    }
 
     List<string> Stops = new() {
         "Jacint Verdaguer",
@@ -65,4 +72,13 @@ else
         "Verge de Lluc",
     };
     int CurrentStopIndex = 0;
+
+    private void OnMaintentanceChanged(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    public void Dispose()
+    {
+        mvarTourmaline.ServiceModeChanged -= OnMaintentanceChanged;
+    }   
 }

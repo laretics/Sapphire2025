@@ -1,0 +1,16 @@
+﻿<div class="menu-option @(Selected ? "selected" : null)" @onclick="OnClick">
+    <span class="menu-option-icon">
+        @if (Icon != null)
+        {
+            @Icon
+        }
+    </span>
+    <span class="menu-option-title">@Title</span>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? Icon { get; set; }
+    [Parameter] public bool Selected { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+}

@@ -8,8 +8,8 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddSingleton<DeviceMapService>();
+builder.Services.AddSingleton<TourmalineService>();
 builder.Services.AddHttpContextAccessor();
-
 
 var app = builder.Build();
 

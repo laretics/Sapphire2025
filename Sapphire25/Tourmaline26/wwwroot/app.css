@@ -62,11 +62,11 @@ h1:focus {
     }
 
 .floating-panel.night {
-    background: rgba(24, 28, 32, 0.92); /* negro azulado con transparencia */
+    background: rgba(44, 48, 62, 0.92); /* negro azulado con transparencia */
     color: #b0b8c1;
 }
 
 .floating-panel.day {
-    background: rgba(255,255,255,0.95);
+    background: rgba(220,220,220,0.95);
     color: #222;
 }

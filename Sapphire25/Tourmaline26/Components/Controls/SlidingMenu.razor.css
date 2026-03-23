@@ -1,0 +1,26 @@
+﻿.sliding-menu {
+    height: 100%;
+    width: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    background: transparent;
+    border-radius: 0;
+    scrollbar-width: auto;
+    scrollbar-color: #00e5ff #222;
+    transition: background 0.3s;
+}
+
+    .sliding-menu::-webkit-scrollbar {
+        width: 10px;
+        background: transparent; /* Fondo transparente */
+    }
+
+    .sliding-menu::-webkit-scrollbar-thumb {
+        background: rgba(186, 230, 253, 0.7); /* Azul pastel con transparencia */
+        border-radius: 8px;
+    }
+
+    .sliding-menu::-webkit-scrollbar-track {
+        background: transparent;
+    }

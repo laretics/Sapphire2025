@@ -7,11 +7,11 @@ namespace Tourmaline26.Components.Services.Logic
     /// </summary>
     public class DeviceMapped
     {
-        public IPAddress Address { get; set; } = new IPAddress(0);
-        public DeviceType Type { get; set; } = DeviceType.TFT;
-        public CoachEnum Coach { get; set; } = CoachEnum.Undeterminated;
-        public Orientation Side { get; set; } = Orientation.Neutral;
-        public string PublicId { get; set; } = "Coche 1"; //Esto es lo que se muestra en público en el panel.
+        public IPAddress Address { get; private set; } = new IPAddress(0);
+        public DeviceType Type { get; private set; } = DeviceType.TFT;
+        public CoachEnum Coach { get; private set; } = CoachEnum.Undeterminated;
+        public Orientation Side { get; private set; } = Orientation.Neutral;
+        public string PublicId { get; private set; } = "Coche 1"; //Esto es lo que se muestra en público en el panel.
         public void SetParameters(string address, string type, string coach, string side, string publicId)
         {
             Address = IPAddress.Parse(address);

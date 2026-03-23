@@ -13,6 +13,7 @@
     background: none;
     border: none;
     outline: none;
+    color: #707070;
     padding: 0.5rem 0;
     border-radius: 1rem;
     transition: background 0.2s;
@@ -23,20 +24,14 @@
     align-items: center;
     justify-content: center;
 }
-    .toolbar-btn img {
-        filter: invert(1);
-        width: auto;
-        height: 100%;         /* O usa 100% si quieres apurar más */
-        max-height: 3.6rem;  /* Un poco menos que el alto del botón */
-        max-width: 100%;
-        object-fit: contain;
-        display: block;
-        margin: 0 auto;
+
+    .toolbar-btn.disabled {
+        color: #202020;
+        pointer-events: none;
     }
 
-    .toolbar-btn:disabled {
-        opacity: 0;
-        pointer-events: none;
+    .toolbar-btn.selected {
+        color: #e0e0e0;
     }
 
 @keyframes button-press {

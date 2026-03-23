@@ -1,0 +1,29 @@
+﻿.menu-option {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.menu-option-icon {
+    display: flex;
+    align-items: center;
+    margin-right: 0.75rem;
+    width: 24px;
+    height: 24px;
+}
+
+.menu-option.selected {
+    background: #b6e3fd;    
+    box-shadow: 0 2px 8px 0 rgba(0,0,0,0.08);
+    font-weight: 700;
+}
+
+.menu-option-title {
+    font-size: 1.8rem;
+    font-family: "Inter", "Roboto", "Segoe UI", Arial, sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
