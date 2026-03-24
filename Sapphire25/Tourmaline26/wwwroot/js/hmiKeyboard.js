@@ -3,7 +3,14 @@
         // Solo si el foco no está en un input
         if (["INPUT", "TEXTAREA"].indexOf(document.activeElement.tagName) === -1) {
             const key = e.key;
-            if (/^[0-9]$/.test(key)) {
+            if (
+                /^[0-9]$/.test(key) ||
+                key === "Enter" ||
+                key === "ArrowUp" ||
+                key === "ArrowDown" ||
+                key === "ArrowLeft" ||
+                key === "ArrowRight"
+            ) {
                 dotNetHelper.invokeMethodAsync('HandleKey', key);
             }
         }

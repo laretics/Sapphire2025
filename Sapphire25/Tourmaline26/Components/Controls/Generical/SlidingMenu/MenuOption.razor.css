@@ -5,20 +5,23 @@
     cursor: pointer;
     border-radius: 8px;
     transition: background 0.2s;
+    color: var(--menu-text);
 }
 
 .menu-option-icon {
     display: flex;
     align-items: center;
     margin-right: 0.75rem;
-    width: 24px;
-    height: 24px;
+    width: 48px;
+    height: 48px;
 }
 
 .menu-option.selected {
-    background: #b6e3fd;    
-    box-shadow: 0 2px 8px 0 rgba(0,0,0,0.08);
+    background: var(--menu-selected-bg);
+    border: 1.5px solid var(--menu-selected-border);
+    color: var(--menu-selected-text);
     font-weight: 700;
+    box-shadow: 0 2px 8px 0 rgba(0,0,0,0.04);
 }
 
 .menu-option-title {

@@ -1,0 +1,20 @@
+﻿@using Tourmaline26.Components.Images
+<div class="side-panel-header">
+    <div class="side-header-left">
+        <input class="header-search" type="text" placeholder="Buscar" @bind="SearchText" />
+    </div>
+    <div class="side-header-center">
+        @TrainId
+    </div>
+    <div class="side-header-right">
+        <ColorIcon Name="Bezier" Size="24" />
+        <ColorIcon Name="Bezier" Size="24" />
+        <ColorIcon Name="Bezier" Size="24" />
+        <span class="header-temp">15ºC</span>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string TrainId { get; set; } = "Identificador";
+    [Parameter] public string SearchText { get; set; } = "";
+}

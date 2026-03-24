@@ -1,0 +1,69 @@
+﻿@using Tourmaline26.Components.Images
+<div class="tesla-toolbar">
+    @foreach (TeslaButton auxButton in Buttons)
+    {
+        <button @key="auxButton.Id"
+                class="toolbar-btn @auxButton.Class"
+                @onpointerdown="() => PressButton(auxButton)"
+                @onpointerup="() => ReleaseButton(auxButton)"
+                @onclick="() => OnButtonClick(auxButton)"
+                disabled="@(!auxButton.Enabled)">
+                <ColorIcon Name="@auxButton.Icon"></ColorIcon>
+        </button>
+    }
+</div>
+
+@code {
+    // Define los datos de los botones aquí
+    [Parameter]
+    public TeslaButton[] Buttons{ get; set; }  = new TeslaButton[]
+    {
+        new("Train", "MainMenu")
+    };
+    public async Task ManagePhysicalKeyboard(string key)
+    {
+        int btnIndex = key switch
+        {
+            "1" => 0,
+            "2" => 1,
+            "3" => 2,
+            "4" => 3,
+            "5" => 4,
+            "6" => 5,
+            "7" => 6,
+            "8" => 7,
+            "9" => 8,
+            "0" => 9,
+            _ => -1
+        };
+        if (btnIndex >= 0 && btnIndex < Buttons.Length && Buttons[btnIndex].Enabled)
+        {
+            TeslaButton auxButton = Buttons[btnIndex];
+            if (auxButton.Enabled)
+            {
+                PressButton(auxButton);
+                await OnButtonClick(auxButton);
+                ReleaseButton(auxButton);
+            }
+        }
+    }
+
+    private void PressButton(TeslaButton btn)
+    {
+        btn.Press();
+        StateHasChanged();
+    }
+
+    private async void ReleaseButton(TeslaButton btn)
+    {
+        await Task.Delay(180);
+        btn.Release();
+        StateHasChanged();
+    }
+
+    private async Task OnButtonClick(TeslaButton btn)
+    {
+        btn.DoToggle();
+        await btn.Callback.InvokeAsync();
+    }
+}

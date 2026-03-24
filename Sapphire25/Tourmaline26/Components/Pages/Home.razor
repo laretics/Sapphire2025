@@ -1,11 +1,9 @@
 ﻿
 @page "/"
 @using Tourmaline26.Components.Controls
+@using Tourmaline26.Components.Passenger
 @inject Tourmaline26.Components.Services.DeviceMapService DeviceMapService
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
-
-
-
 <PageTitle>Tourmaline</PageTitle>
 @if (device is null)
 {

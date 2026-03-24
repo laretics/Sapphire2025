@@ -8,35 +8,40 @@ namespace Tourmaline26.Components.Services.Logic
     /// </summary>
     public class TeslaButton
     {
-        public TeslaButton(string iconName, string comment, bool isToggle = false)
+        private string[] mcolIcon;
+        private Guid mvarId;
+        public TeslaButton(string iconName, string? alternateIcon=null, bool toggled= false, EventCallback? callback= null, string? comment=null, bool disabled=false)
         {
-            mvarIcon = iconName;
-            this.Comment = comment;
-            this.IsToggle = isToggle;
-            this.Enabled = true; //Por defecto, los botones están habilitados
+            mvarId = Guid.NewGuid();
+            mcolIcon = new[] { iconName,iconName };
+            if(null!=alternateIcon) mcolIcon[1]= alternateIcon;
+			this.Comment = (null==comment)?string.Empty:comment;            
+            this.IsToggle = toggled;
+            this.Enabled = !disabled; //Por defecto, los botones están habilitados
+            this.Callback = callback??EventCallback.Empty;
         }
+        public Guid Id => mvarId;
         public void Press()
         {
+            if (!this.Enabled) return;
             this.Pressed = true; 
-            if(IsToggle)
-                this.Selected= !this.Selected;
         }
+        public void DoToggle()
+        {
+			if (IsToggle)
+				this.Selected = !this.Selected;
+		}
         public void Release()
         {
             this.Pressed = false;
         }
-        private string mvarIcon;
         public string Icon 
         { 
             get
             {
-                if (IsToggle && AlternateIcon != null)
-                    return Selected ? AlternateIcon : mvarIcon;
-                else
-                    return mvarIcon;
+                return mcolIcon[Selected ? 1 : 0];
             }
         }
-        public string? AlternateIcon { get; set; } //Icono para mostrar imagen alternativa en toggle
         public string Comment { get; private set; }
         public EventCallback Callback { get; set; }
         public bool Enabled { get; set; }
@@ -48,12 +53,18 @@ namespace Tourmaline26.Components.Services.Logic
         { 
             get
             {
-                return string.Format("{0}{1}{2}"
-                    , Pressed ? "pressed " : ""
-                    , Enabled ? "" : "disabled "
-                    , (null==AlternateIcon) && Selected ? "selected " : ""
-                    );
-            }
+                if (mcolIcon[0] == mcolIcon[1])
+                    return string.Format("{0}{1}{2}"
+                        , Pressed ? "pressed " : ""
+                        , Enabled ? "" : "disabled "
+                        , Selected ? "selected " : ""
+                        );
+                else
+                    return string.Format("{0}{1}"
+                      , Pressed ? "pressed " : ""
+                      , Enabled ? "" : "disabled "
+                      );
+			}
         }
     }
 }

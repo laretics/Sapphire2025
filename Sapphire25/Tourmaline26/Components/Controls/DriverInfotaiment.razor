@@ -1,6 +1,8 @@
 ﻿@* <VirtualKeyboard></VirtualKeyboard> *@
-@using Tourmaline26.Components.Controls.Floatings;
-@inject Tourmaline26.Components.Services.TourmalineService mvarTourmaline
+@using Tourmaline26.Components.Controls.Generical
+@using Tourmaline26.Components.Controls.Floatings
+@using Tourmaline26.Components.Controls.Generical.SideMenu
+@using Tourmaline26.Components.Services
 <div class="tesla-root">
     <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="IsMaintenanceMode">
         <div class="tesla-main">
@@ -15,10 +17,7 @@
                 }                
                 @if(RightPanelVisible)
                 {
-                    <FloatRightContainer>
-                        <SlidingMenu Options="auxOptions">
-                        </SlidingMenu>
-                    </FloatRightContainer>                    
+                    <SideMenu @ref="mvarSideMenu"></SideMenu>
                 }
                 else
                 {
@@ -28,57 +27,53 @@
         </div>
     </ServiceModeFrame>
     <div class="tesla-bottom-bar">
-        <TeslaToolBar Buttons="buttonData"/>
+        <TeslaToolBar Buttons="buttonData" @ref="mvarTeclado"/>
     </div>
 </div>
 @code {
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+    [Inject]
+    private TourmalineService mvarTourmaline{ get; set; }=default!;
     [CascadingParameter]
     public bool NightMode{ get; set; }
     [CascadingParameter]
     public Action<bool>? ToggleNightMode { get; set; }
+    private TeslaToolBar? mvarTeclado{ get; set; }
+    private SideMenu? mvarSideMenu{ get; set; }
 
     private bool RightPanelVisible
     {
         get => (null!=buttonData && buttonData.Length>0)?buttonData[0].Selected:false;
     }
 
+    [JSInvokable]
+    public async Task HandleKey(string key)
+    {
+        if (byte.TryParse(key, out _) && null != mvarTeclado)
+            await mvarTeclado.ManagePhysicalKeyboard(key);
+        if(buttonData[0].Selected && null!=mvarSideMenu)
+            await mvarSideMenu.ManagePhysicalKeyboard(key);
+    }
+
     private TeslaButton[] buttonData = Array.Empty<TeslaButton>();
-
-    private List<MenuOptionModel> auxOptions =
-
-        new MenuOptionModel[]{
-        new MenuOptionModel("Dinámica",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
-    new MenuOptionModel("Carga",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
-    new MenuOptionModel("Piloto automático",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
-    new MenuOptionModel("Seguros",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
-    new MenuOptionModel("Luces",@<img src="icons/Train.svg" alt="popo" width="24" height="24" />),
-    new MenuOptionModel("Asientos",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
-    new MenuOptionModel("Pantalla",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
-            }.ToList();
-
     protected override void OnInitialized()
     {
         base.OnInitialized();
         buttonData = new TeslaButton[]
         {
-            new("Train", "MainMenu",true),
-            new("BlackSun", "NightMode",true),
-            new("CCTV", "Cameras",true),
-            new("Microphone", "Microphone",true),
-            new("3DOn", "View3D",true),
-            new("WhiteSun", "Settings"),
-            new("BlackSun", "Settings"),            
-            new("", "", true),
-            new("Wrench", "Service",true),
+            new("Train",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Main Menu"),
+            new("BlackSun","WhiteSun",true,EventCallback.Factory.Create(this, () => NightModeChanged()),"Night Mode"),
+            new("CCTV",null,true,null,"Cameras"),
+            new("Microphone",null,true,null,"Microphone"),
+            new("3DOn","3DOff",true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "View3D"),
+            new(""),
+            new(""),            
+            new(""),
+            new("Wrench",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Service"),
             new("", "", true)
         };
-        buttonData[0].Callback = EventCallback.Factory.Create(this, () => OnButtonChanged());
-        buttonData[1].Callback = EventCallback.Factory.Create(this, () => ToggleNightMode?.Invoke(buttonData[1].Selected));
-        buttonData[1].AlternateIcon = "WhiteSun";
-        buttonData[4].AlternateIcon = "3DOff";
-        buttonData[4].Callback = EventCallback.Factory.Create(this, () => OnButtonChanged());
-        buttonData[8].Callback = EventCallback.Factory.Create(this, () => ToggleMaintenanceMode());
-        mvarTourmaline.ServiceModeChanged += OnButtonChanged;
+        mvarTourmaline.ServiceModeChanged += OnButtonExternalChanged;
     }
 
     private string panelClass
@@ -89,35 +84,46 @@
     {
         get => (null != buttonData && buttonData.Length > 4)?(!buttonData[4].Selected):true;
     }
+    private void NightModeChanged()
+    {
+        ToggleNightMode?.Invoke(buttonData[1].Selected);
+    }
 
     [Parameter]
     public bool IsMaintenanceMode     
     { 
-        get => mvarTourmaline.ServiceMode;
+        get => buttonData[8].Selected;
         set
         {
-            mvarTourmaline.ServiceMode = value;           
-            StateHasChanged();
+            if(buttonData.Length>8)
+            {
+                buttonData[8].Selected = value;
+                StateHasChanged();
+            }
         }
     }
     [Parameter]
     public string MaintenanceMessage { get; set; } = "Modo de Mantenimiento";
 
-    private void OnButtonChanged(object? sender, EventArgs e)
+    private void OnButtonExternalChanged(object? sender, EventArgs e)
     {
         InvokeAsync(StateHasChanged);
     }
-    public void Dispose()
-    {
-        mvarTourmaline.ServiceModeChanged -= OnButtonChanged;
-    }
-    private void ToggleMaintenanceMode()
-    {
-        IsMaintenanceMode = buttonData[8].Selected;
-        //StateHasChanged();
-    }
-    private void OnButtonChanged()
+    private void OnButtonInternalChanged()
     {        
         StateHasChanged();
+    }
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Registrar el evento de teclado
+            _ = JS.InvokeVoidAsync("TeslaToolBar_registerKeyHandler", DotNetObjectReference.Create(this));
+        }
+    }
+    public void Dispose()
+    {
+        _ = JS.InvokeVoidAsync("TeslaToolBar_unregisterKeyHandler");
+        mvarTourmaline.ServiceModeChanged -= OnButtonExternalChanged;
     }
 }

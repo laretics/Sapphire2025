@@ -1,0 +1,39 @@
+﻿<div class="sliding-menu">
+    @for (int i = 0; i < Options.Count; i++)
+    {
+        var x = i;
+        <MenuOption Title="@Options[i].Title"
+                    Icon="@Options[i].Icon"
+                    Selected="@(SelectedIndex == x)"
+                    OnClick="() => SelectOption(x)" />
+    }
+</div>
+
+@code {
+    [Parameter] public List<MenuOptionModel> Options { get; set; } = new();
+    [Parameter] public EventCallback<int> OnSelectedIndexChanged { get; set; }
+    public int SelectedIndex { get; set; } = 0;
+
+    private void SelectOption(int index)
+    {
+        SelectedIndex = index;
+        OnSelectedIndexChanged.InvokeAsync(index);
+    }
+    public async Task ManagePhysicalKeyboard(string key)
+    {
+        if(key=="ArrowUp")
+        {
+            SelectedIndex--;
+            if (SelectedIndex < 0)
+                SelectedIndex = 0;
+            SelectOption(SelectedIndex);
+        }
+        else if(key=="ArrowDown")
+        {
+            SelectedIndex++;
+            if (SelectedIndex >= Options.Count)
+                SelectedIndex = Options.Count - 1;
+            SelectOption(SelectedIndex);
+        }
+    }
+}

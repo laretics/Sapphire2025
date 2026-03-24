@@ -1,0 +1,45 @@
+﻿.side-panel-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 48px;
+	padding: 0 24px;
+	border-bottom: 3px solid #e0e0e0;
+	font-size: 1.5rem;
+	font-weight: 500;
+	user-select: none;
+}
+
+.side-header-left {
+	flex: 1;
+}
+
+.header-search {
+	width: 160px;
+	padding: 6px 12px;
+	border-radius: 12px;
+	border: 1px solid #ccc;
+	background: #f7f7f7;
+	font-size: 1rem;
+}
+
+.side-header-center {
+	flex: 2;
+	text-align: center;
+	font-weight: 600;
+	color: #444;
+}
+
+.side-header-right {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 12px;
+}
+
+.side-header-temp {
+	margin-left: 8px;
+	color: #888;
+	font-size: 1rem;
+}

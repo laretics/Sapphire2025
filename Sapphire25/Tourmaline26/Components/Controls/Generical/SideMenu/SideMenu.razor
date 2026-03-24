@@ -1,0 +1,56 @@
+﻿@using Tourmaline26.Components.Controls.Floatings
+@using Tourmaline26.Components.Controls.Generical.SideMenu.SideMenuContent
+@using Tourmaline26.Components.Controls.Generical.SlidingMenu
+@using Tourmaline26.Components.Images
+@using Tourmaline26.Components.Services
+@using Tourmaline26.Components.Services.Logic
+<div class="side-menu-container">    
+    <FloatRightContainer>
+        <SideHeader TrainId="@(mvarConfig?.Name ?? "")"></SideHeader>
+        <div class="side-menu-content-row">
+            <SlidingMenu Options="auxOptions" @ref="mvarSlidingMenu" OnSelectedIndexChanged="OnMenuChanged" />
+            <SideOptionContainer>
+                @switch(mvarSlidingMenu?.SelectedIndex??-1)
+                {
+                    case 0:
+                    <SideOptionPassengers></SideOptionPassengers>
+                        break;
+                    default:
+                    <div></div>
+                        break;
+                }                
+            </SideOptionContainer>
+        </div>
+    </FloatRightContainer>
+</div>
+@code {
+    private SlidingMenu? mvarSlidingMenu;
+    [Inject]
+    TourmalineService mvarTourmaline { get; set; } = default!;
+    SystemConfiguration? mvarConfig{ get; set; }
+    private List<MenuOptionModel> auxOptions =
+    new MenuOptionModel[]{
+    new MenuOptionModel("Pasaje",@<ColorIcon Name="People" Size="64"/>),
+    new MenuOptionModel("Carga",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
+    new MenuOptionModel("Piloto automático",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
+    new MenuOptionModel("Seguros",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
+    new MenuOptionModel("Luces",@<img src="icons/Train.svg" alt="popo" width="24" height="24" />),
+    new MenuOptionModel("Asientos",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
+    new MenuOptionModel("Pantalla",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
+    }.ToList();
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        mvarConfig = mvarTourmaline.SystemConfig;
+    }
+    public async Task ManagePhysicalKeyboard(string key)
+    {
+        if (null != mvarSlidingMenu)
+            await mvarSlidingMenu.ManagePhysicalKeyboard(key);
+    }
+    private void OnMenuChanged()
+    {
+        StateHasChanged();
+    }
+
+}

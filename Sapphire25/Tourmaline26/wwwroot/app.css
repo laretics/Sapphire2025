@@ -70,3 +70,19 @@ h1:focus {
     background: rgba(220,220,220,0.95);
     color: #222;
 }
+
+:root {
+    --menu-bg: #fff;
+    --menu-selected-bg: #f5f5f5;
+    --menu-selected-border: #e0e0e0;
+    --menu-text: #222;
+    --menu-selected-text: #222;
+}
+
+.night {
+    --menu-bg: #23272a;
+    --menu-selected-bg: #2c2f33;
+    --menu-selected-border: #444;
+    --menu-text: #eee;
+    --menu-selected-text: #fff;
+}
