@@ -1,4 +1,8 @@
 ﻿.side-option-scroll {
+	flex: 1 1 0%;
+	flex-direction:column;
+	align-items:flex-end;
+	text-align:center;
 	width: 100%;
 	height: 100%;
 	overflow-y: auto;
@@ -6,7 +10,6 @@
 	box-sizing: border-box;
 	background: none;
 	border: none;
-	/* Elimina padding/margin si lo necesitas */
 	padding: 0;
 	margin: 0;
 }

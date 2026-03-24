@@ -8,18 +8,22 @@
     <FloatRightContainer>
         <SideHeader TrainId="@(mvarConfig?.Name ?? "")"></SideHeader>
         <div class="side-menu-content-row">
-            <SlidingMenu Options="auxOptions" @ref="mvarSlidingMenu" OnSelectedIndexChanged="OnMenuChanged" />
-            <SideOptionContainer>
-                @switch(mvarSlidingMenu?.SelectedIndex??-1)
-                {
-                    case 0:
-                    <SideOptionPassengers></SideOptionPassengers>
-                        break;
-                    default:
-                    <div></div>
-                        break;
-                }                
-            </SideOptionContainer>
+            <div class="sliding-menu">
+                <SlidingMenu Options="auxOptions" @ref="mvarSlidingMenu" OnSelectedIndexChanged="OnMenuChanged" />
+            </div>
+            <div class="side-option-scroll">
+                <SideOptionContainer>
+                    @switch (mvarSlidingMenu?.SelectedIndex ?? -1)
+                    {
+                        case 0:
+                            <SideOptionPassengers></SideOptionPassengers>
+                            break;
+                        default:
+                            <div></div>
+                            break;
+                    }
+                </SideOptionContainer>
+            </div>
         </div>
     </FloatRightContainer>
 </div>

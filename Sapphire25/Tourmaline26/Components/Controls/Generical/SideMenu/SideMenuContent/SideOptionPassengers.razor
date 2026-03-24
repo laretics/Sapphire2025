@@ -1,5 +1,13 @@
-﻿<h3>SideOptionPassengers</h3>
+﻿@using Tourmaline26.Components.Controls.Generical
+
+<h4>Información al viajero</h4>
+<Switch Label="Conexión" Value="@mainSwitch" ValueChanged="@((bool v) => mainSwitch = v)" />
+<h4>Anunciador</h4>
+<RadioButton Options="@(new List<string> { "Ruta", "Desactivado", "Tren Sin Servicio" })"
+                 SelectedIndex="@routeModeIndex"
+                 SelectedIndexChanged="@((int i) => routeModeIndex = i)" />
 
 @code {
-
+    private bool mainSwitch = true;
+    private int routeModeIndex = 0;
 }

@@ -1,0 +1,24 @@
+﻿<div class="btn-group @SizeClass" role="group">
+    @for (int i = 0; i < Options.Count; i++)
+    {
+        var optionId = $"{Name}_{i}";
+        <input type="radio" class="btn-check" name="@Name" id="@optionId"
+               checked="@(i == SelectedIndex)"
+               @onchange="() => OnIndexChanged(i)" />
+        <label class="btn btn-outline-dark" for="@optionId">@Options[i]</label>
+    }
+</div>
+
+@code {
+    [Parameter] public string Name { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public List<string> Options { get; set; } = new();
+    [Parameter] public int SelectedIndex { get; set; }
+    [Parameter] public EventCallback<int> SelectedIndexChanged { get; set; }
+    [Parameter] public string SizeClass { get; set; } = "btn-group-lg";
+
+    private async Task OnIndexChanged(int index)
+    {
+        SelectedIndex = index;
+        await SelectedIndexChanged.InvokeAsync(index);
+    }
+}

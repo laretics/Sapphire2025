@@ -1,0 +1,20 @@
+﻿<div class="form-check form-switch w-100 d-flex align-items-center justify-content-between" style="padding: 1.5rem 1rem;">
+    <label class="form-check-label fs-2" for="@Name">@Label</label>
+    <input class="form-check-input" type="checkbox" role="switch" id="@Name"
+           checked="@Value"
+           @onchange="OnSwitchChanged" style="width: 3rem; height: 1.5rem;" />
+</div>
+
+@code {
+    [Parameter] public string Name { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public bool Value { get; set; }
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }   
+
+    private async Task OnSwitchChanged(ChangeEventArgs e)
+    {
+        var newValue = e.Value is bool b ? b : e.Value?.ToString() == "true";
+        Value = newValue;
+        await ValueChanged.InvokeAsync(newValue);
+    }
+}
