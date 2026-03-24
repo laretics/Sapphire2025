@@ -35,7 +35,7 @@
     [CascadingParameter]
     public bool NightMode{ get; set; }
     [CascadingParameter]
-    public Action? ToggleNightMode { get; set; }
+    public Action<bool>? ToggleNightMode { get; set; }
 
     private bool RightPanelVisible
     {
@@ -73,7 +73,7 @@
             new("", "", true)
         };
         buttonData[0].Callback = EventCallback.Factory.Create(this, () => OnButtonChanged());
-        buttonData[1].Callback = EventCallback.Factory.Create(this, () => ToggleNightMode?.Invoke());
+        buttonData[1].Callback = EventCallback.Factory.Create(this, () => ToggleNightMode?.Invoke(buttonData[1].Selected));
         buttonData[1].AlternateIcon = "WhiteSun";
         buttonData[4].AlternateIcon = "3DOff";
         buttonData[4].Callback = EventCallback.Factory.Create(this, () => OnButtonChanged());

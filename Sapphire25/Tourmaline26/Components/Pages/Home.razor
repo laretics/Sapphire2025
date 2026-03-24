@@ -34,9 +34,9 @@ else if (device.Type == DeviceMapped.DeviceType.TFT)
     private string? clientIp;
 
     private bool NightMode { get; set; }
-    private void ToggleNightMode()
+    private void ToggleNightMode(bool newValue)
     {
-        NightMode = !NightMode;
+        NightMode = newValue;
         StateHasChanged();
     }
 
