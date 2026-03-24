@@ -4,7 +4,7 @@
 @using Tourmaline26.Components.Controls.Generical.SideMenu
 @using Tourmaline26.Components.Services
 <div class="tesla-root">
-    <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="IsMaintenanceMode">
+    <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="@mvarTourmaline.ServiceMode">
         <div class="tesla-main">
             <div class="tesla-left @panelClass">
                 <img src="img/Wireframe1.png" />
@@ -69,11 +69,11 @@
             new("3DOn","3DOff",true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "View3D"),
             new(""),
             new(""),            
+            new(""),                        
             new(""),
-            new("Wrench",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Service"),
-            new("", "", true)
+            new(""),
         };
-        mvarTourmaline.ServiceModeChanged += OnButtonExternalChanged;
+        mvarTourmaline.HMIUpdateRequested += OnExternalEventChanged;
     }
 
     private string panelClass
@@ -89,23 +89,23 @@
         ToggleNightMode?.Invoke(buttonData[1].Selected);
     }
 
-    [Parameter]
-    public bool IsMaintenanceMode     
-    { 
-        get => buttonData[8].Selected;
-        set
-        {
-            if(buttonData.Length>8)
-            {
-                buttonData[8].Selected = value;
-                StateHasChanged();
-            }
-        }
-    }
+    // [Parameter]
+    // public bool IsMaintenanceMode     
+    // { 
+    //     get => buttonData[8].Selected;
+    //     set
+    //     {
+    //         if(buttonData.Length>8)
+    //         {
+    //             buttonData[8].Selected = value;
+    //             StateHasChanged();
+    //         }
+    //     }
+    // }
     [Parameter]
     public string MaintenanceMessage { get; set; } = "Modo de Mantenimiento";
 
-    private void OnButtonExternalChanged(object? sender, EventArgs e)
+    private void OnExternalEventChanged(object? sender, EventArgs e)
     {
         InvokeAsync(StateHasChanged);
     }
@@ -124,6 +124,6 @@
     public void Dispose()
     {
         _ = JS.InvokeVoidAsync("TeslaToolBar_unregisterKeyHandler");
-        mvarTourmaline.ServiceModeChanged -= OnButtonExternalChanged;
+        mvarTourmaline.HMIUpdateRequested -= OnExternalEventChanged;
     }
 }

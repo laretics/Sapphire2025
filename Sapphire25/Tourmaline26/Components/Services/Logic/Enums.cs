@@ -30,5 +30,12 @@
 			ManFGC=6,
 			Other=255
 		}
+
+		public enum InformationLevel:byte
+		{
+			Disabled=0, //Anunciador al viajero desconectada
+			Route=1, //Anunciador al viajero en modo normal
+			Forbidden=2 //Tren no admite viajeros
+		}
 	}
 }

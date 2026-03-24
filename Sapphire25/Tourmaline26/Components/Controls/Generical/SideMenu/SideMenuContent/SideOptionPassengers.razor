@@ -1,13 +1,23 @@
 ﻿@using Tourmaline26.Components.Controls.Generical
+@inject Tourmaline26.Components.Services.TourmalineService TourmalineService
 
 <h4>Información al viajero</h4>
-<Switch Label="Conexión" Value="@mainSwitch" ValueChanged="@((bool v) => mainSwitch = v)" />
+<Switch Label="Conexión" Value="@TourmalineService.MainPower" ValueChanged="@((bool v) => TourmalineService.MainPower = v)" />
 <h4>Anunciador</h4>
 <RadioButton Options="@(new List<string> { "Ruta", "Desactivado", "Tren Sin Servicio" })"
-                 SelectedIndex="@routeModeIndex"
-                 SelectedIndexChanged="@((int i) => routeModeIndex = i)" />
-
+             SelectedIndex="@( (int)(byte)TourmalineService.CurrentInformationLevel )"
+             SelectedIndexChanged="OnSelectedRouteModeChanged" />
+<Switch Label="Monitores Vídeo" Value="@TourmalineService.TFTEnabled" 
+    ValueChanged="@((bool v) => TourmalineService.TFTEnabled = v)" />
+<Switch Label="Sonido" Value="@TourmalineService.SoundEnabled"
+        ValueChanged="@((bool v) => TourmalineService.SoundEnabled = v)" />
+<Switch Label="Teleindicadores" Value="@TourmalineService.TeleindicatorsEnabled"
+        ValueChanged="@((bool v) => TourmalineService.TeleindicatorsEnabled = v)" />
+<Switch Label="Frontales" Value="@TourmalineService.ExternalTeleindicatorsEnabled"
+        ValueChanged="@((bool v) => TourmalineService.ExternalTeleindicatorsEnabled = v)" />
 @code {
-    private bool mainSwitch = true;
-    private int routeModeIndex = 0;
+    private void OnSelectedRouteModeChanged(int index)
+    {
+        TourmalineService.CurrentInformationLevel = (Enums.InformationLevel)(byte)index;
+    }
 }

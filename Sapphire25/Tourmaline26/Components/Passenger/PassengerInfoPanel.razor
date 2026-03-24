@@ -61,7 +61,7 @@ else
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        mvarTourmaline.ServiceModeChanged += OnMaintentanceChanged;
+        mvarTourmaline.PassengerUpdateRequested += OnChangeRequest;
     }
 
     List<string> Stops = new() {
@@ -73,12 +73,12 @@ else
     };
     int CurrentStopIndex = 0;
 
-    private void OnMaintentanceChanged(object? sender, EventArgs e)
+    private void OnChangeRequest(object? sender, EventArgs e)
     {
         InvokeAsync(StateHasChanged);
     }
     public void Dispose()
     {
-        mvarTourmaline.ServiceModeChanged -= OnMaintentanceChanged;
+        mvarTourmaline.PassengerUpdateRequested -= OnChangeRequest;
     }   
 }

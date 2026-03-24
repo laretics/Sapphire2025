@@ -18,6 +18,12 @@
                         case 0:
                             <SideOptionPassengers></SideOptionPassengers>
                             break;
+                        case 1:
+                            <SideOptionCameras></SideOptionCameras>
+                            break;
+                        case 6:
+                            <SideOptionInfo></SideOptionInfo>
+                            break;
                         default:
                             <div></div>
                             break;
@@ -35,12 +41,12 @@
     private List<MenuOptionModel> auxOptions =
     new MenuOptionModel[]{
     new MenuOptionModel("Pasaje",@<ColorIcon Name="People" Size="64"/>),
-    new MenuOptionModel("Carga",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
+    new MenuOptionModel("CCTV",@<ColorIcon Name="CCTV" Size="64" />),
     new MenuOptionModel("Piloto automático",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
     new MenuOptionModel("Seguros",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
     new MenuOptionModel("Luces",@<img src="icons/Train.svg" alt="popo" width="24" height="24" />),
     new MenuOptionModel("Asientos",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
-    new MenuOptionModel("Pantalla",@<img src="icons/Exit.svg" alt="popo" width="24" height="24" />),
+    new MenuOptionModel("Información",@<ColorIcon Name="Info" Size="64" />),
     }.ToList();
     protected override void OnInitialized()
     {

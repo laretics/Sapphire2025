@@ -1,8 +1,9 @@
-﻿<div class="form-check form-switch w-100 d-flex align-items-center justify-content-between" style="padding: 1.5rem 1rem;">
-    <label class="form-check-label fs-2" for="@Name">@Label</label>
-    <input class="form-check-input" type="checkbox" role="switch" id="@Name"
+﻿<div class="form-check form-switch d-flex align-items-center" style="padding: 1.5rem 1rem;">
+    <label class="form-check-label fs-3" for="@Name">@Label</label>
+    <input class="form-check-input ms-4" type="checkbox" role="switch" id="@Name"
            checked="@Value"
-           @onchange="OnSwitchChanged" style="width: 3rem; height: 1.5rem;" />
+           @onchange="OnSwitchChanged"
+           style="width: 2.5rem; height: 1.25rem;" />
 </div>
 
 @code {
