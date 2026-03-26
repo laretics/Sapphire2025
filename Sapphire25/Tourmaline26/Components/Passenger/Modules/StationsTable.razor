@@ -1,0 +1,35 @@
+﻿@using TimeNet2026.Topo
+@using Tourmaline26.Components.Services.Logic
+<div class="route-box">
+    <div class="route-title">Pròximes aturades</div>
+    <table class="route-table">
+        @if(null!=Stations)
+        {
+            <tbody>
+                @for (int idx = 0; idx < Stations.Count; idx++)
+                {
+                    <tr>
+                        <td>
+                            <span class="stop-dot"></span>
+                        </td>
+                        <td class="stop-name">@Stations[idx].Name</td>
+                        @if (null!=EstimatedTimes && EstimatedTimes.Count() > idx)
+                        {
+                            <td class="stop-time">@Enums.autoInterval(EstimatedTimes[idx],false,false)</td>
+                        }                        
+                    </tr>
+                }
+            </tbody>
+        }
+    </table>
+</div>
+@code {
+    [Parameter]
+    public List<Station>? Stations { get; set; }
+    [Parameter]
+    public List<TimeSpan>? EstimatedTimes { get; set; }
+
+    
+
+
+}

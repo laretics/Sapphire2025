@@ -4,8 +4,12 @@
      alt="Imagen informativa"
      class="img-fluid rounded shadow mx-auto d-block my-4"
      style="max-width: 420px;" />
-<Switch Label="Modo de Servicio" Value="@TourmalineService.ServiceMode"
-        ValueChanged="@((bool v) => TourmalineService.ServiceMode = v)" />
+<Switch Label="Modo de Servicio" Value="@TourmalineService.SessionConfig.ServiceMode"
+        ValueChanged="@((bool v) => SetServiceMode(v))" />
 @code {
-
+    private void SetServiceMode(bool value)
+    {
+        TourmalineService.SessionConfig.ServiceMode = value;
+        TourmalineService.RaiseEvents(true);
+    }
 }

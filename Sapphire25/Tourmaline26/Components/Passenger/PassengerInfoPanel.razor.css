@@ -21,29 +21,29 @@
 
 .panel-header {
     background: #222;
-    padding: 3vh 4vw 1vh 4vw;
+    padding: 4vh 4vw 0.5vh 4vw;
     position: relative;
     flex: 0 0 auto;
 }
 
 .train-number {
-    font-size: 3vw;
+    font-size: 4vw;
     font-weight: bold;
-    opacity: 0.9;
+    opacity: 0.95;
 }
 
 .panel-time {
     position: absolute;
     right: 4vw;
     top: 3vh;
-    font-size: 3vw;
+    font-size: 4vw;
     font-weight: bold;
 }
 
 .destination {
-    font-size: 7vw;
+    font-size: 11vw;
     font-weight: bold;
-    margin-top: 1vh;
+    margin-top: 0.5vh;
     word-break: break-word;
 }
 
@@ -58,42 +58,15 @@
     min-width: 0;
 }
 
-.route-box {
-    flex: 2 1 0;
-    min-width: 0;
-}
 
-.route-title {
-    font-size: 2vw;
-    color: #888;
-    margin-bottom: 1vh;
-}
-
-.route-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-    .route-list li {
-        display: flex;
-        align-items: center;
-        font-size: 2.5vw;
-        margin-bottom: 1vh;
-        font-weight: 500;
-        min-width: 0;
-    }
 
 .stop-dot {
-    display: inline-block;
-    width: 2vw;
-    height: 2vw;
-    min-width: 16px;
-    min-height: 16px;
-    border-radius: 50%;
-    background: #bbb;
-    margin-right: 1vw;
-    border: 0.3vw solid #bbb;
+    width: 3vw;
+    height: 3vw;
+    min-width: 22px;
+    min-height: 22px;
+    margin-right: 1.5vw;
+    border: 0.5vw solid #bbb;
 }
 
 .active-dot {
@@ -101,7 +74,7 @@
     border-color: #222;
 }
 
-.current-stop {
+.current-stop .stop-name {
     font-weight: bold;
     color: #222;
 }

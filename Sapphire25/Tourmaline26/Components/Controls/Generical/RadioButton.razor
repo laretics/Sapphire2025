@@ -3,8 +3,9 @@
     {
         var optionId = $"{Name}_{i}";
         <input type="radio" class="btn-check" name="@Name" id="@optionId"
+               value="@i"
                checked="@(i == SelectedIndex)"
-               @onchange="() => OnIndexChanged(i)" />
+               @onchange="OnRadioChanged" />
         <label class="btn btn-outline-dark" for="@optionId">@Options[i]</label>
     }
 </div>
@@ -16,9 +17,12 @@
     [Parameter] public EventCallback<int> SelectedIndexChanged { get; set; }
     [Parameter] public string SizeClass { get; set; } = "btn-group-lg";
 
-    private async Task OnIndexChanged(int index)
+    private async Task OnRadioChanged(ChangeEventArgs e)
     {
-        SelectedIndex = index;
-        await SelectedIndexChanged.InvokeAsync(index);
+        if (int.TryParse(e.Value?.ToString(), out int index))
+        {
+            SelectedIndex = index;
+            await SelectedIndexChanged.InvokeAsync(index);
+        }
     }
 }

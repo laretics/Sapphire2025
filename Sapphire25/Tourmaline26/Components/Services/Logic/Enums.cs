@@ -1,4 +1,6 @@
-﻿namespace Tourmaline26.Components.Services.Logic
+﻿using System.Text;
+
+namespace Tourmaline26.Components.Services.Logic
 {
 	public static class Enums
 	{
@@ -37,5 +39,53 @@
 			Route=1, //Anunciador al viajero en modo normal
 			Forbidden=2 //Tren no admite viajeros
 		}
-	}
+
+        /// <summary>
+        /// Traduce un intervalo en texto
+        /// </summary>
+        /// <param name="rhs">Intervalo</param>
+        /// <returns></returns>
+        public static string autoInterval(TimeSpan rhs, bool timeFormat, bool addSeconds = false)
+        {
+            if (timeFormat)
+                return string.Format("{0:00}:{1:00}", rhs.Hours, rhs.Minutes);
+            else
+            {
+                StringBuilder salida = new StringBuilder();
+                if (rhs.Hours > 0)
+                {
+                    if (rhs.Hours == 1)
+                        salida.Append("una hora");
+                    else
+                        salida.AppendFormat("{0} h", rhs.Hours);
+                }
+                if (rhs.Minutes > 0)
+                {
+                    if (salida.Length > 0)
+                    {
+                        if (rhs.Seconds > 0)
+                            salida.Append(" , ");
+                        else
+                            salida.Append(" y ");
+                    }
+
+                    if (rhs.Minutes == 1)
+                        salida.Append("un minuto");
+                    else
+                        salida.AppendFormat("{0} min", rhs.Minutes);
+                }
+                if (rhs.Seconds > 0 && addSeconds)
+                {
+                    if (salida.Length > 0)
+                        salida.Append(" y ");
+                    if (rhs.Seconds == 1)
+                        salida.Append("un segundo");
+                    else
+                        salida.AppendFormat("{0} s", rhs.Seconds);
+                }
+                return salida.ToString();
+            }
+        }
+
+    }
 }

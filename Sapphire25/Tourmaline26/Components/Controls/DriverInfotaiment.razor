@@ -3,8 +3,9 @@
 @using Tourmaline26.Components.Controls.Floatings
 @using Tourmaline26.Components.Controls.Generical.SideMenu
 @using Tourmaline26.Components.Services
+@using Tourmaline26.Components.Services.Logic.Generical
 <div class="tesla-root">
-    <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="@mvarTourmaline.ServiceMode">
+    <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="@mvarTourmaline.SessionConfig.ServiceMode">
         <div class="tesla-main">
             <div class="tesla-left @panelClass">
                 <img src="img/Wireframe1.png" />
@@ -42,6 +43,16 @@
     private TeslaToolBar? mvarTeclado{ get; set; }
     private SideMenu? mvarSideMenu{ get; set; }
 
+    public enum MainToolBarItem:byte
+    {
+        Train=0,
+        NightMode=1,
+        CCTV = 2,
+        Microphone = 3,
+        View3d = 4,
+        Clipboard = 9
+    }
+
     private bool RightPanelVisible
     {
         get => (null!=buttonData && buttonData.Length>0)?buttonData[0].Selected:false;
@@ -52,7 +63,7 @@
     {
         if (byte.TryParse(key, out _) && null != mvarTeclado)
             await mvarTeclado.ManagePhysicalKeyboard(key);
-        if(buttonData[0].Selected && null!=mvarSideMenu)
+        if(buttonData[(byte)MainToolBarItem.Train].Selected && null!=mvarSideMenu)
             await mvarSideMenu.ManagePhysicalKeyboard(key);
     }
 
@@ -71,7 +82,7 @@
             new(""),            
             new(""),                        
             new(""),
-            new(""),
+            new("Clipboard",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Damage Clipboard"),
         };
         mvarTourmaline.HMIUpdateRequested += OnExternalEventChanged;
     }
@@ -82,26 +93,19 @@
     }
     private bool View3DEnabled
     {
-        get => (null != buttonData && buttonData.Length > 4)?(!buttonData[4].Selected):true;
+        get
+        {
+            byte index = (byte)MainToolBarItem.View3d;
+            if(null!=buttonData && buttonData.Length>index)
+                return !buttonData[index].Selected;
+            return true;            
+        }
     }
     private void NightModeChanged()
     {
-        ToggleNightMode?.Invoke(buttonData[1].Selected);
+        ToggleNightMode?.Invoke(buttonData[(byte)MainToolBarItem.NightMode].Selected);
     }
 
-    // [Parameter]
-    // public bool IsMaintenanceMode     
-    // { 
-    //     get => buttonData[8].Selected;
-    //     set
-    //     {
-    //         if(buttonData.Length>8)
-    //         {
-    //             buttonData[8].Selected = value;
-    //             StateHasChanged();
-    //         }
-    //     }
-    // }
     [Parameter]
     public string MaintenanceMessage { get; set; } = "Modo de Mantenimiento";
 
@@ -110,9 +114,14 @@
         InvokeAsync(StateHasChanged);
     }
     private void OnButtonInternalChanged()
-    {        
+    {
+        //Aprovechamos para validar la lógica de los botones de la barra de tareas.
+        //No se puede abrir la sección de partes de avería si está seleccionado el menú principal.
+        if (buttonData[(byte)MainToolBarItem.Train].Selected)
+            buttonData[(byte)MainToolBarItem.Clipboard].Selected = false;
+
         StateHasChanged();
-    }
+    }    
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
