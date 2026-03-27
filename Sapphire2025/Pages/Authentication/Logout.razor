@@ -1,5 +1,6 @@
 ﻿@page "/auth/logout"
 @inject IntStorageService mvarClientStorage
+@inject InteractiveService mvarInteractive
 @inject AuthenticationClient mvarAuthenticationClient
 @inject NavigationManager mvarNavigator
 
@@ -23,6 +24,7 @@
 
 		//Nos damos de baja a nivel local.
 		await mvarClientStorage.SetSessionInfo(null);
+		mvarInteractive.NotifyStateChanged();
 		mvarNavigator.NavigateTo("/");
 		//StateHasChanged();
 	}

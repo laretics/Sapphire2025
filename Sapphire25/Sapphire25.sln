@@ -44,6 +44,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonoGameSimulator", "MonoGa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimulatorSerializator", "SimulatorSerializator\SimulatorSerializator.csproj", "{AA347A3C-8E1E-40F2-88A8-7C3008F14851}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapphire2026Clients", "Sapphire2026Clients\Sapphire2026Clients.csproj", "{77A9BA99-4DF9-4D4E-81A2-D96C9B502D55}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -196,6 +198,14 @@ Global
 		{AA347A3C-8E1E-40F2-88A8-7C3008F14851}.Release|Any CPU.Build.0 = Release|Any CPU
 		{AA347A3C-8E1E-40F2-88A8-7C3008F14851}.Release|x64.ActiveCfg = Release|Any CPU
 		{AA347A3C-8E1E-40F2-88A8-7C3008F14851}.Release|x64.Build.0 = Release|Any CPU
+		{77A9BA99-4DF9-4D4E-81A2-D96C9B502D55}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77A9BA99-4DF9-4D4E-81A2-D96C9B502D55}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77A9BA99-4DF9-4D4E-81A2-D96C9B502D55}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{77A9BA99-4DF9-4D4E-81A2-D96C9B502D55}.Debug|x64.Build.0 = Debug|Any CPU
+		{77A9BA99-4DF9-4D4E-81A2-D96C9B502D55}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77A9BA99-4DF9-4D4E-81A2-D96C9B502D55}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77A9BA99-4DF9-4D4E-81A2-D96C9B502D55}.Release|x64.ActiveCfg = Release|Any CPU
+		{77A9BA99-4DF9-4D4E-81A2-D96C9B502D55}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

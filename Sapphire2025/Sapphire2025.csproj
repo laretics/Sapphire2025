@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Sapphire2025Models\Sapphire2025Models.csproj" />
+    <ProjectReference Include="..\Sapphire25\Sapphire2026Clients\Sapphire2026Clients.csproj" />
     <ProjectReference Include="..\Sapphire25\TimeNet2026\TimeNet2026.csproj" />
     <ProjectReference Include="..\Sapphire25\TimeNetComponents\TimeNetComponents.csproj" />
   </ItemGroup>

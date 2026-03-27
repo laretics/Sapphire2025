@@ -17,17 +17,17 @@ namespace Sapphire2025.Storage
 	public class IntStorageService
 	{
         private readonly IJSRuntime mvarJsRuntime;
-        private readonly InteractiveService mvarInteractiveService;
+        //private readonly InteractiveService mvarInteractiveService;
 		
 		internal const string LOCAL_STORAGE_ID = "localStorage";
 		internal const string SESSION_STORAGE_ID = "sessionStorage";
 
         internal const string SESSION_INFO = "sessioninfo";
 
-		public IntStorageService(IJSRuntime jsRuntime, InteractiveService interactive)
+		public IntStorageService(IJSRuntime jsRuntime)//, InteractiveService interactive)
         {
             mvarJsRuntime = jsRuntime;
-            mvarInteractiveService = interactive;
+            //mvarInteractiveService = interactive;
         }
 
         internal string internalRequestString(bool session, string command)
@@ -79,7 +79,7 @@ namespace Sapphire2025.Storage
                 string cadena = JsonSerializer.Serialize(session);
                 await SetStringValue(SESSION_INFO, cadena, false);
             }
-			mvarInteractiveService.NotifyStateChanged();
+			//mvarInteractiveService.NotifyStateChanged();
 			return true;
         }
 

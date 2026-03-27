@@ -1,7 +1,8 @@
-﻿<div class="d-flex @alineacion mb-3">
+﻿@using Sapphire2025.Icons
+<div class="d-flex @alineacion mb-3">
 	<div class="card shadow-sm" style="max-width: 75%;">
 		<div class="card-header @bgType text-white">
-			<span>@userIcon()</span>
+			<span><RoleIcon Credentials="@(mvarUser?.CredentialKey ?? 0)" Color="@(null==mvarUser?"gray":"white")"/></span>
 			<strong class="me-2">@userName</strong>
 			<small class="text-white float-end">@textoFecha</small>
 		</div>
@@ -21,13 +22,6 @@
 		get => 
 		(null == mvarUser ? Sapphire2025Models.Common.UserRole.Anonymous : 
 			(Sapphire2025Models.Common.UserRole)mvarUser.CredentialKey); 
-	}
-	private RenderFragment userIcon()
-	{
-		if(null!=mvarUser)
-			return AuthenticationClient.userIcon(mvarUser.CredentialKey, "white");
-
-		return AuthenticationClient.userIcon(0, "gray");
 	}
 	private string bgType
 	{

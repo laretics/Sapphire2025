@@ -1,29 +1,32 @@
 ﻿@inherits TrainModelTable
+@using Sapphire2025.Icons.Headers
+@using Sapphire2025.Icons.Actions
+@using Sapphire2025.Icons
 @if(null!=base.Trains)
 {
 	<table class="table table-bordered table-stripped table-fixed mb-0">
 		<thead>
 			<tr>
 				<th class="bg-secondary text-white" style="width:100px;" @onclick="() => sortFields(2)">
-					<Sapphire2025.Icons.Headers.TrainStatus color="white" />
+					<TrainStatus color="white" />
 				</th>
 				<th class="bg-secondary text-white" style="width:100px;" @onclick="() => sortFields(1)">
-					<Sapphire2025.Icons.Headers.UT color="white" />
+					<UT color="white" />
 				</th>
 				<th class="bg-secondary text-white" style="width:100px;" @onclick="() => sortFields(5)">
-					<Sapphire2025.Icons.Headers.Location color="white" />
+					<Location color="white" />
 				</th>
 				<th class="bg-secondary text-white" style="width:100px;" @onclick="() => sortFields(5)">
-					<Sapphire2025.Icons.Headers.TrainTrack color="white" />
+					<TrainTrack color="white" />
 				</th>
 				<th class="bg-secondary text-white" style="width:100px;" @onclick="() => sortFields(0)">
-					<Sapphire2025.Icons.Headers.EventDateTime color="white" />
+					<EventDateTime color="white" />
 				</th>
 				<th class="bg-secondary text-white" style="width:200px;" @onclick="() => sortFields(3)">
-					<Sapphire2025.Icons.Headers.User color="white" />
+					<User color="white" />
 				</th>
 				<th class="bg-secondary text-white" style="width:250px;" @onclick="() => sortFields(4)">
-					<Sapphire2025.Icons.Actions.AddReport Color="white" />
+					<AddReport Color="white" />
 				</th>
 			</tr>
 		</thead>
@@ -52,7 +55,7 @@
 							UserModelBase? auxUser = userFromTrain(train);
 							if (null != auxUser)
 							{
-								<span class="d-inline-block align-middle">@AuthenticationClient.userIcon(auxUser.CredentialKey, "gray")</span>
+								<span class="d-inline-block align-middle"><RoleIcon Credentials="auxUser.CredentialKey" Color="gray"></RoleIcon></span>
 								<span class="truncate d-inline-block align-middle">@auxUser.Name</span>
 							}
 						}
