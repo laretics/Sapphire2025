@@ -2,8 +2,9 @@
 	position: fixed;
 	left: 0;
 	right: 0;
-	bottom: 0;
-	height: 33vh;
+	bottom: 2.5rem;
+	height: auto;
+	min-height: calc(33vh + 8rem); /* Aumenta el espacio disponible */
 	z-index: 2000;
 	display: flex;
 	align-items: flex-end;
@@ -13,7 +14,9 @@
 
 .virtual-keyboard {
 	width: 98vw;
-	height: 100%;
+	/* Elimina height */
+	padding-top: 4rem; /* Más espacio arriba */
+	padding-bottom: 4rem; /* Más espacio abajo */
 	pointer-events: all;
 	border-radius: 2rem 2rem 0 0;
 	box-shadow: 0 -8px 32px rgba(0,0,0,0.18);

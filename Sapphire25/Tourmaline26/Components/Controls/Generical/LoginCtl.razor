@@ -1,0 +1,31 @@
+﻿@using Microsoft.AspNetCore.Components
+<div class="login-dialog-overlay">
+    <div class="login-dialog @DialogThemeClass">
+        <h3>Iniciar sesión</h3>
+        <input class="form-control mb-3" @bind="Username" placeholder="Usuario" />
+        <input class="form-control mb-3" type="password" @bind="Password" placeholder="Contraseña" />
+        <button class="btn btn-primary w-100 mb-2" @onclick="OnLogin">Entrar</button>
+        <VirtualKeyboard KeyPressed="OnVirtualKey" />
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public bool NightMode { get; set; }
+    [Parameter] public EventCallback<(string, string)> Login { get; set; }
+
+    private string Username { get; set; } = "";
+    private string Password { get; set; } = "";
+
+    private void OnVirtualKey(char key)
+    {
+        // Lógica para escribir en el campo activo (usuario o contraseña)
+        // Puedes mejorar esto con un control de foco
+    }
+
+    private async Task OnLogin()
+    {
+        await Login.InvokeAsync((Username, Password));
+    }
+
+    private string DialogThemeClass => NightMode ? "login-night" : "login-day";
+}

@@ -26,6 +26,10 @@
                 }
             </div>
         </div>
+        @if(LoginMode)
+        {
+            <LoginCtl Login="OnLogin" />
+        }
     </ServiceModeFrame>
     <div class="tesla-bottom-bar">
         <TeslaToolBar Buttons="buttonData" @ref="mvarTeclado"/>
@@ -42,6 +46,7 @@
     public Action<bool>? ToggleNightMode { get; set; }
     private TeslaToolBar? mvarTeclado{ get; set; }
     private SideMenu? mvarSideMenu{ get; set; }
+    private bool LoginMode { get; set; } = false;
 
     public enum MainToolBarItem:byte
     {
@@ -80,9 +85,9 @@
             new("3DOn","3DOff",true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "View3D"),
             new(""),
             new(""),            
-            new(""),                        
-            new(""),
+            new(""),                                    
             new("Clipboard",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Damage Clipboard"),
+            new("Key",null,false,EventCallback.Factory.Create(this, () => OnLoginRequest()),"Login"),
         };
         mvarTourmaline.HMIUpdateRequested += OnExternalEventChanged;
     }
@@ -129,6 +134,18 @@
             // Registrar el evento de teclado
             _ = JS.InvokeVoidAsync("TeslaToolBar_registerKeyHandler", DotNetObjectReference.Create(this));
         }
+    }
+    protected void OnLoginRequest()
+    {
+        LoginMode = true;
+        StateHasChanged();
+    }
+    protected void OnLogin((string username, string password) credentials)
+    {
+        // Aquí iría la lógica de autenticación real
+        // Por ahora, simplemente salimos del modo de login
+        LoginMode = false;
+        StateHasChanged();
     }
     public void Dispose()
     {

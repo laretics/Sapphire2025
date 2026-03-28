@@ -1,0 +1,86 @@
+﻿.login-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(30, 30, 30, 0.65);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.login-dialog {
+    margin-top: 10vh; /* Aproximadamente un tercio superior de la pantalla */
+    min-width: 340px;
+    max-width: 95vw;
+    padding: 2.5rem 2rem 2rem 2rem;
+    border-radius: 18px;
+    box-shadow: 0 8px 32px 0 rgba(0,0,0,0.25);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    transition: background 0.2s, color 0.2s;
+}
+
+.login-day {
+    background: #fff;
+    color: #222;
+}
+
+.login-night {
+    background: #23272e;
+    color: #f1f1f1;
+    border: 1px solid #444;
+}
+
+.login-dialog h3 {
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.login-dialog input.form-control {
+    font-size: 1.1rem;
+    border-radius: 8px;
+    border: 1px solid #bbb;
+    margin-bottom: 0.5rem;
+    padding: 0.7rem 1rem;
+    background: inherit;
+    color: inherit;
+    transition: border 0.2s;
+}
+
+.login-night input.form-control {
+    background: #23272e;
+    color: #f1f1f1;
+    border: 1px solid #444;
+}
+
+.login-dialog button.btn-primary {
+    font-size: 1.1rem;
+    border-radius: 8px;
+    padding: 0.7rem 0;
+    font-weight: 500;
+    background: linear-gradient(90deg, #007bff 60%, #0056b3 100%);
+    border: none;
+    color: #fff;
+    box-shadow: 0 2px 8px 0 rgba(0,0,0,0.10);
+    margin-bottom: 1rem;
+    transition: background 0.2s;
+}
+
+    .login-dialog button.btn-primary:hover {
+        background: linear-gradient(90deg, #0056b3 60%, #007bff 100%);
+    }
+
+@media (max-width: 500px) {
+    .login-dialog {
+        min-width: 90vw;
+        padding: 1.2rem 0.5rem 1rem 0.5rem;
+        margin-top: 5vh;
+    }
+}
