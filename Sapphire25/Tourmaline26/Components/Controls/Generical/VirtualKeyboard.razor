@@ -51,9 +51,10 @@
             </div>
             <div class="row g-2">
                 <div class="col-2 text-center"><button class="btn btn-key" @onclick="ToggleNumeric">ABC</button></div>
-                <div class="col-6 text-center"><button class="btn btn-key" style="width:100%;" @onclick="() => OnKeyPress('_')">_</button></div>
+                <div class="col-4 text-center"><button class="btn btn-key" style="width:100%;" @onclick="() => OnKeyPress('_')">_</button></div>
                 <div class="col-2 text-center"><button class="btn btn-key" @onclick="() => OnKeyPress('⌫')">⌫</button></div>
-                <div class="col-2 text-center"><button class="btn btn-key btn-success" @onclick="() => OnKeyPress('#')">Intro</button></div>
+                <div class="col-2 text-center"><button class="btn btn-key" @onclick="() => OnKeyPress('⌫')">Tab</button></div>
+                <div class="col-2 text-center"><button class="btn btn-key btn-success" @onclick="() => OnPressEnter()">Intro</button></div>
             </div>
         }
     </div>
@@ -72,12 +73,16 @@
     private string[] NumRow3 = new[] { "!", "?", ":", ";", "'", "\"", "[", "]", "{", "}" };
 
     [Parameter] public EventCallback<char> KeyPressed { get; set; }
+    [Parameter] public EventCallback EnterPressed { get; set; }
+    [Parameter] public EventCallback TabPressed { get; set; }
 
-    private bool IsNumeric { get; set; } = false;
+    private bool IsNumeric { get; set; } = true;
 
     private void ToggleNumeric() => IsNumeric = !IsNumeric;
 
     private Task OnKeyPress(char key) => KeyPressed.InvokeAsync(key);
+
+    private Task OnPressEnter() => EnterPressed.InvokeAsync(null);
 
     private string KeyboardThemeClass => NightMode ? "vk-night" : "vk-day";
 }

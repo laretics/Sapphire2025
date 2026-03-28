@@ -2,8 +2,10 @@
 <div class="login-dialog-overlay">
     <div class="login-dialog @DialogThemeClass">
         <h3>Iniciar sesión</h3>
-        <input class="form-control mb-3" @bind="Username" placeholder="Usuario" />
-        <input class="form-control mb-3" type="password" @bind="Password" placeholder="Contraseña" />
+        <input class="form-control mb-3" @bind="Username" placeholder="Usuario"
+               @onfocus="() => SetActiveField(LoginField.Username)" />
+        <input class="form-control mb-3" type="password" @bind="Password" placeholder="Contraseña"
+               @onfocus="() => SetActiveField(LoginField.Password)" />
         <button class="btn btn-primary w-100 mb-2" @onclick="OnLogin">Entrar</button>
         <VirtualKeyboard KeyPressed="OnVirtualKey" />
     </div>
@@ -16,10 +18,31 @@
     private string Username { get; set; } = "";
     private string Password { get; set; } = "";
 
+    private LoginField ActiveField { get; set; } = LoginField.Username;
+
+    private enum LoginField { Username, Password }
+
+    private void SetActiveField(LoginField field)
+    {
+        ActiveField = field;
+    }
+
     private void OnVirtualKey(char key)
     {
-        // Lógica para escribir en el campo activo (usuario o contraseña)
-        // Puedes mejorar esto con un control de foco
+        if (key == '⌫' || key == (char)8) // Soporta tecla Backspace
+        {
+            if (ActiveField == LoginField.Username && Username.Length > 0)
+                Username = Username[..^1];
+            else if (ActiveField == LoginField.Password && Password.Length > 0)
+                Password = Password[..^1];
+        }
+        else
+        {
+            if (ActiveField == LoginField.Username)
+                Username += key;
+            else if (ActiveField == LoginField.Password)
+                Password += key;
+        }
     }
 
     private async Task OnLogin()
