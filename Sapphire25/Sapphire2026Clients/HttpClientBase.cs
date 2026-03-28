@@ -18,7 +18,7 @@ namespace Sapphire2025.Storage
 		public HttpClientBase(HttpClient httpClient,IntStorageService intStorageService, string controllerId)
 		{
 			mvarClient = httpClient;
-			//mvarIntStorage = intStorageService;
+			mvarIntStorage = intStorageService;
 			this.controllerId = controllerId;
 		}
 
