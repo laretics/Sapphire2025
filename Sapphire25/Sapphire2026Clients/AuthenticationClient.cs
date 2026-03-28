@@ -232,13 +232,13 @@ namespace Sapphire2025.Storage
             
 		}
 
-		internal async Task <HttpResponseMessage> sendModifyUser(UpdateUserPersonalDataMessage message)
+		public async Task <HttpResponseMessage> sendModifyUser(UpdateUserPersonalDataMessage message)
         {
             string jsonString = JsonSerializer.Serialize(message);
             return await sendPutRequest("modifyuser", jsonString);
         }
 
-        internal async Task <bool> UnpairTelegram(Guid tokenId, Guid userId)
+        public async Task <bool> UnpairTelegram(Guid tokenId, Guid userId)
         {
             UpdateUserPersonalDataMessage message = new UpdateUserPersonalDataMessage();
             message.SessionToken = tokenId;
@@ -263,7 +263,7 @@ namespace Sapphire2025.Storage
 		/// </summary>
 		/// <param name="newUser"></param>
 		/// <returns>True si se ha añadido correctamente</returns>
-		internal async Task<Guid> sendNewUserRequest(CreateNewUserDataMessage newUser)
+		public async Task<Guid> sendNewUserRequest(CreateNewUserDataMessage newUser)
         {
             string jsonString = JsonSerializer.Serialize(newUser);
             HttpResponseMessage respuesta = await sendPutRequest("newuser", jsonString);
@@ -273,13 +273,13 @@ namespace Sapphire2025.Storage
             return Guid.Empty; //No ha funcionado por cualquier motivo ajeno al servidor.
 		}
 
-		internal async Task<HttpResponseMessage> sendUserRolesUpdate(UpdateRolesChangeMessage message)
+		public async Task<HttpResponseMessage> sendUserRolesUpdate(UpdateRolesChangeMessage message)
 		{
 			string jsonString = JsonSerializer.Serialize(message);
             return await sendPutRequest("changeroles", jsonString);
 		}
 
-        internal async Task<HttpResponseMessage> sendUserResetPassword
+        public async Task<HttpResponseMessage> sendUserResetPassword
             (ResetPasswordDataMessage message)
         {
             string jsonString = JsonSerializer.Serialize(message);
@@ -294,7 +294,7 @@ namespace Sapphire2025.Storage
             return salida;
         }
 
-        internal async Task<bool> sendSetPassword(SetPasswordDataMessage model)
+        public async Task<bool> sendSetPassword(SetPasswordDataMessage model)
         {
             string jsonString = JsonSerializer.Serialize(model);
             HttpResponseMessage response = await sendPutRequest("setpwd", jsonString);
@@ -303,7 +303,7 @@ namespace Sapphire2025.Storage
             return false;
         }
 
-        internal async Task<UserActivityModel?> getUserActivity(Guid tokenId, Guid userId, int maxRecords=0)
+        public async Task<UserActivityModel?> getUserActivity(Guid tokenId, Guid userId, int maxRecords=0)
         {
 			UserActivityRequest peticion = new UserActivityRequest();
             peticion.SessionToken = tokenId;

@@ -1,6 +1,7 @@
 ﻿@page "/create-user"
 @using Sapphire2025Models.Authentication
 @using System.ComponentModel.DataAnnotations
+@using Sapphire2025.Icons
 @inject AuthenticationClient mvarCliente
 @inject IntStorageService mvarLocalStorage
 @inject NavigationManager mvarNavigationManager
@@ -50,7 +51,7 @@ else
 					{
 						<div class="card mb-3">
 							<div class="card-header">
-								@userIcon(usuario.CredentialKey)
+                                <RoleIcon Credentials="usuario.CredentialKey" Color="gray" />
 								@usuario.CF
 							</div>
 							<div class="card-body">
@@ -123,9 +124,5 @@ else
 	{
 		mcolFilteredUsers = sortedUsers();
 		return base.ShouldRender();
-	}
-	private RenderFragment userIcon(byte credentials)
-	{
-		return AuthenticationClient.userIcon(credentials, "gray");
 	}
 }

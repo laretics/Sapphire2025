@@ -1,6 +1,7 @@
 ﻿@page "/edit-user/{userId:guid}"
 @using Sapphire2025Models.Authentication
 @using System.ComponentModel.DataAnnotations
+@using Sapphire2025.Icons
 @inject AuthenticationClient mvarCliente
 @inject IntStorageService mvarLocalStorage
 
@@ -67,7 +68,8 @@ else
                                     <h4>Rol</h4>
                                 </HeaderContent>
                                 <ChildContent>
-                                    @roleIcon(context.roleId) @context.Name
+                                    <RoleIcon RoleId="@context.roleId" Color="black" />
+                                    @context.Name
                                 </ChildContent>
                             </GridColumn>
                             <GridColumn TItem="ExtendedUserModel.RoleInfo" PropertyName="Comment">
@@ -125,12 +127,6 @@ else
             };
     }
 
-    private RenderFragment? roleIcon(uint roleId)
-    {
-        if(roleId<8)
-            return AuthenticationClient.roleIcon(roleId,"black");
-        return null;
-    }
 
     private void OnSelectionChanged(IEnumerable<ExtendedUserModel.RoleInfo> selectedItems)
     {

@@ -1,13 +1,16 @@
 ﻿@inject NavigationManager mvarNavigator
+@using Sapphire2025.Icons.Status
+@using Sapphire2025.Icons.Fields
+@using Sapphire2025.Icons
 <div class="row border-bottom @rowBgClass" @onclick="@onRowClick"style="cursor:pointer;">
 	<div class="col border-end d-flex align-items-center">
-		@userIcon 
+		<RoleIcon Credentials="User?.CredentialKey??0" Color="black"/>
 		<span class="ms-2"><p>@userCF</p></span>
 		@if(null!=User)
 		{
 			if(User.NullPassword)
 			{
-				<Sapphire2025.Icons.Status.Disabled color="red" />
+				<Disabled color="red" />
 			}			
 		}
 	</div>
@@ -21,11 +24,11 @@
 			<span class="ms-2">
 				@if(User.TelegramEnabled)
 				{
-					<Sapphire2025.Icons.Fields.Telegram color="blue" />
+					<Telegram color="blue" />
 				}
 				else
 				{
-					<Sapphire2025.Icons.Fields.Telegram color="gray" />
+					<Telegram color="gray" />
 				}
 			</span>
 		}
@@ -45,14 +48,6 @@
 		{
 			if (null == User || null == User.CF) return string.Empty;
 			return User.CF;
-		}
-	}
-	private RenderFragment userIcon
-	{
-		get
-		{
-			if (null == User) return AuthenticationClient.userIcon(0, "black");
-			return AuthenticationClient.userIcon(User.CredentialKey, "black");
 		}
 	}
 	private string userName
