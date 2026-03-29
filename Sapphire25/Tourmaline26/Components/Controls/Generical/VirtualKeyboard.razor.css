@@ -2,62 +2,110 @@
 	position: fixed;
 	left: 0;
 	right: 0;
-	bottom: 2.5rem;
+	bottom: 0;
 	height: auto;
-	min-height: calc(33vh + 8rem); /* Aumenta el espacio disponible */
+	min-height: 42vh; /* Más espacio vertical - importante en tren */
 	z-index: 2000;
 	display: flex;
 	align-items: flex-end;
 	justify-content: center;
 	pointer-events: none;
+	padding: 0 8px 12px;
 }
 
 .virtual-keyboard {
 	width: 98vw;
-	/* Elimina height */
-	padding-top: 4rem; /* Más espacio arriba */
-	padding-bottom: 4rem; /* Más espacio abajo */
-	pointer-events: all;
-	border-radius: 2rem 2rem 0 0;
-	box-shadow: 0 -8px 32px rgba(0,0,0,0.18);
+	max-width: 1400px;
+	padding: 1.25rem 1rem 1.5rem;
+	border-radius: 24px 24px 0 0;
+	box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.25);
 	display: flex;
 	flex-direction: column;
-	justify-content: center;
-	transition: background 0.3s, color 0.3s;
+	gap: 12px; /* Espacio entre filas */
+	pointer-events: all;
+	transition: all 0.3s ease;
+	backdrop-filter: blur(12px);
 }
 
 .vk-day {
-	background: rgba(255,255,255,0.92);
-	color: #222;
+	background: rgba(250, 250, 252, 0.95);
+	color: #1f2937;
+	border: 1px solid rgba(0,0,0,0.08);
 }
 
 .vk-night {
-	background: rgba(24,28,32,0.92);
-	color: #b0b8c1;
+	background: rgba(15, 23, 42, 0.94);
+	color: #e2e8f0;
+	border: 1px solid rgba(255,255,255,0.08);
 }
 
+/* ==================== FILAS ==================== */
+.keyboard-row {
+	display: flex;
+	gap: 8px; /* Espacio horizontal entre teclas */
+	justify-content: center;
+}
+
+/* ==================== BOTONES ==================== */
 .btn-key {
-	width: 100%;
-	font-size: 2rem;
-	font-weight: 500;
-	border-radius: 1rem;
-	background: rgba(255,255,255,0.7);
-	color: #222;
-	transition: background 0.2s, color 0.2s, box-shadow 0.2s;
-	box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+	flex: 1;
+	min-height: 68px; /* Altura mínima grande - clave para guantes */
+	font-size: 1.85rem;
+	font-weight: 600;
+	border-radius: 14px;
+	border: none;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+	transition: all 0.12s ease;
+	touch-action: manipulation; /* Mejor respuesta táctil */
+	user-select: none;
+}
+
+.vk-day .btn-key {
+	background: #f8fafc;
+	color: #1e2937;
 }
 
 .vk-night .btn-key {
-	background: rgba(40,44,50,0.85);
-	color: #b0b8c1;
+	background: #334155;
+	color: #e2e8f0;
 }
 
-.btn-key:active, .btn-key:focus {
-	background: #0d6efd;
-	color: #fff;
+/* Efecto al pulsar (muy importante en HMI) */
+.btn-key:active {
+	transform: scale(0.92) translateY(2px);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+	background: #2563eb !important;
+	color: white !important;
 }
 
-.vk-night .btn-key:active, .vk-night .btn-key:focus {
-	background: #1a73e8;
-	color: #fff;
+/* Botones especiales */
+.btn-space {
+	flex: 3.2; /* Espacio más ancho */
+	min-height: 68px;
+	font-size: 1.65rem;
+}
+
+.btn-backspace {
+	flex: 1.1;
+	background: #ef4444 !important;
+	color: white !important;
+}
+
+.btn-enter {
+	flex: 1.4;
+	background: #16a34a !important;
+	color: white !important;
+	font-weight: 700;
+}
+
+.btn-mode, .btn-tab {
+	flex: 1.2;
+	font-size: 1.55rem;
+	background: #64748b !important;
+	color: white !important;
+}
+
+/* Hover / Focus para cuando se usa ratón o touch */
+.btn-key:hover {
+	filter: brightness(1.08);
 }

@@ -1,88 +1,98 @@
-﻿@using Microsoft.AspNetCore.Components
-
-<div class="virtual-keyboard-container">
-    <div class="virtual-keyboard shadow-lg rounded-4 p-3 @KeyboardThemeClass">
+﻿<div class="virtual-keyboard-container">
+    <div class="virtual-keyboard @KeyboardThemeClass">
+        
         @if (!IsNumeric)
         {
-            <div class="row g-2 mb-2" style="flex-wrap:nowrap;">
-                @foreach (var key in Row1)
-                {
-                    <div class="col text-center"><button class="btn btn-key" @onclick="() => OnKeyPress(key[0])">@key</button></div>
-                }
-            </div>
-            <div class="row g-2 mb-2" style="flex-wrap:nowrap;">
-                @foreach (var key in Row2)
-                {
-                    <div class="col text-center"><button class="btn btn-key" @onclick="() => OnKeyPress(key[0])">@key</button></div>
-                }
-            </div>
-            <div class="row g-2 mb-2" style="flex-wrap:nowrap;">
-                @foreach (var key in Row3)
-                {
-                    <div class="col text-center"><button class="btn btn-key" @onclick="() => OnKeyPress(key[0])">@key</button></div>
-                }
-            </div>
-            <div class="row g-2">
-                <div class="col-2 text-center"><button class="btn btn-key" @onclick="ToggleNumeric">123</button></div>
-                <div class="col-6 text-center"><button class="btn btn-key" style="width:100%;" @onclick="() => OnKeyPress(' ')">Espacio</button></div>
-                <div class="col-2 text-center"><button class="btn btn-key" @onclick="() => OnKeyPress('⌫')">⌫</button></div>
-                <div class="col-2 text-center"><button class="btn btn-key btn-success" @onclick="() => OnKeyPress('#')">Intro</button></div>
-            </div>
-        }
-        else
-        {
-            <div class="row g-2 mb-2" style="flex-wrap:nowrap;">
-                @foreach (var key in NumRow1)
-                {
-                    <div class="col text-center"><button class="btn btn-key" @onclick="() => OnKeyPress(key[0])">@key</button></div>
-                }
-            </div>
-            <div class="row g-2 mb-2" style="flex-wrap:nowrap;">
-                @foreach (var key in NumRow2)
-                {
-                    <div class="col text-center"><button class="btn btn-key" @onclick="() => OnKeyPress(key[0])">@key</button></div>
-                }
-            </div>
-            <div class="row g-2 mb-2" style="flex-wrap:nowrap;">
-                @foreach (var key in NumRow3)
-                {
-                    <div class="col text-center"><button class="btn btn-key" @onclick="() => OnKeyPress(key[0])">@key</button></div>
-                }
-            </div>
-            <div class="row g-2">
-                <div class="col-2 text-center"><button class="btn btn-key" @onclick="ToggleNumeric">ABC</button></div>
-                <div class="col-4 text-center"><button class="btn btn-key" style="width:100%;" @onclick="() => OnKeyPress('_')">_</button></div>
-                <div class="col-2 text-center"><button class="btn btn-key" @onclick="() => OnKeyPress('⌫')">⌫</button></div>
-                <div class="col-2 text-center"><button class="btn btn-key" @onclick="() => OnKeyPress('⌫')">Tab</button></div>
-                <div class="col-2 text-center"><button class="btn btn-key btn-success" @onclick="() => OnPressEnter()">Intro</button></div>
-            </div>
+            <!-- Teclado alfabético -->
+            <div class="keyboard-row">@foreach (var key in Row1) {
+                <button class="btn btn-key" @onclick="() => PressKey(key[0])">@key</button>
+            }
+        </div>
+        <div class="keyboard-row">@foreach (var key in Row2) {
+            <button class="btn btn-key" @onclick="() => PressKey(key[0])">@key</button>
         }
     </div>
+    <div class="keyboard-row">@foreach (var key in Row3) {
+        <button class="btn btn-key" @onclick="() => PressKey(key[0])">@key</button>
+    }
+</div>
+        }
+        else
+{
+    <!-- Teclado numérico por defecto -->
+    <div class="keyboard-row">@foreach (var key in NumRow1) {
+        <button class="btn btn-key" @onclick="() => PressKey(key[0])">@key</button>
+    }
+</div>
+<div class="keyboard-row">@foreach (var key in NumRow2) {
+    <button class="btn btn-key" @onclick="() => PressKey(key[0])">@key</button>
+}
+</div>
+<div class="keyboard-row">@foreach (var key in NumRow3) {
+    <button class="btn btn-key" @onclick="() => PressKey(key[0])">@key</button>
+}
+</div>
+        }
+
+<!-- Fila inferior -->
+<div class="keyboard-row bottom-row">
+    <button class="btn btn-key btn-mode" @onclick="ToggleMode">
+        @(IsNumeric ? "ABC" : "123")
+    </button>
+            
+    <button class="btn btn-key btn-space" @onclick="() => PressKey(' ')">Espacio</button>
+            
+    <button class="btn btn-key btn-backspace" @onclick="() => PressKey('⌫')">⌫</button>
+
+    <button class="btn btn-key btn-tab" @onclick="HandleTabClick">Tab</button>
+
+    <button class="btn btn-key btn-enter btn-success" @onclick="HandleEnter">Intro</button>
+</div>
+</div>
 </div>
 
 @code {
     [CascadingParameter] public bool NightMode { get; set; }
 
-    private string[] Row1 = new[] { "q", "w", "e", "r", "t", "y", "u", "i", "o", "p" };
-    private string[] Row2 = new[] { "a", "s", "d", "f", "g", "h", "j", "k", "l", "ñ" };
-    private string[] Row3 = new[] { "z", "x", "c", "v", "b", "n", "m", ",", ".", "-" };
-
-    // Teclado numérico y símbolos útiles para password
-    private string[] NumRow1 = new[] { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" };
-    private string[] NumRow2 = new[] { "@", "#", "$", "%", "&", "*", "(", ")", "/", "+" };
-    private string[] NumRow3 = new[] { "!", "?", ":", ";", "'", "\"", "[", "]", "{", "}" };
-
     [Parameter] public EventCallback<char> KeyPressed { get; set; }
     [Parameter] public EventCallback EnterPressed { get; set; }
     [Parameter] public EventCallback TabPressed { get; set; }
+    [Parameter] public bool IsNumericByDefault { get; set; } = false;   // Nuevo parámetro
 
-    private bool IsNumeric { get; set; } = true;
+    private bool IsNumeric { get; set; }
 
-    private void ToggleNumeric() => IsNumeric = !IsNumeric;
+    private readonly string[] Row1 = { "q", "w", "e", "r", "t", "y", "u", "i", "o", "p" };
+    private readonly string[] Row2 = { "a", "s", "d", "f", "g", "h", "j", "k", "l", "ñ" };
+    private readonly string[] Row3 = { "z", "x", "c", "v", "b", "n", "m", ",", ".", "-" };
 
-    private Task OnKeyPress(char key) => KeyPressed.InvokeAsync(key);
+    private readonly string[] NumRow1 = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" };
+    private readonly string[] NumRow2 = { "@", "#", "$", "%", "&", "*", "(", ")", "/", "+" };
+    private readonly string[] NumRow3 = { "!", "?", ":", ";", "'", "\"", "[", "]", "{", "}" };
 
-    private Task OnPressEnter() => EnterPressed.InvokeAsync(null);
+    protected override void OnInitialized()
+    {
+        IsNumeric = IsNumericByDefault;   // Arranca en numérico si se indica
+    }
+
+    private async Task PressKey(char key)
+    {
+        await KeyPressed.InvokeAsync(key);
+    }
+
+    private async Task HandleEnter()
+    {
+        await EnterPressed.InvokeAsync(null);
+    }
+
+    private async Task HandleTabClick()
+    {
+        await TabPressed.InvokeAsync(null);
+    }
+
+    private void ToggleMode()
+    {
+        IsNumeric = !IsNumeric;
+    }
 
     private string KeyboardThemeClass => NightMode ? "vk-night" : "vk-day";
 }
