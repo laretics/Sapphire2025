@@ -2,7 +2,7 @@
 @page "/"
 @using Tourmaline26.Components.Controls
 @using Tourmaline26.Components.Passenger
-@inject Tourmaline26.Components.Services.DeviceMapService DeviceMapService
+@inject Tourmaline26.Components.Services.TourmalineService TourmalineService
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 <PageTitle>Tourmaline</PageTitle>
 @if (device is null)
@@ -10,7 +10,7 @@
     <h3>Dispositivo no reconocido</h3>
     <p>IP detectada: @clientIp</p>
 }
-else if (device.Type == DeviceMapped.DeviceType.HMI)
+else if (device.Type == Enums.DeviceType.HMI)
 {
     <CascadingValue Value="@device">
         <CascadingValue Value=@NightMode>
@@ -20,7 +20,7 @@ else if (device.Type == DeviceMapped.DeviceType.HMI)
         </CascadingValue>
     </CascadingValue>
 }
-else if (device.Type == DeviceMapped.DeviceType.TFT)
+else if (device.Type == Enums.DeviceType.TFT)
 {
     <CascadingValue Value="@device">
         <PassengerInfoPanel/>
@@ -45,6 +45,6 @@ else if (device.Type == DeviceMapped.DeviceType.TFT)
         // if (!string.IsNullOrEmpty(clientIp))
         //     device = DeviceMapService.Devices[0];
         // else
-            device = DeviceMapService.Devices.FirstOrDefault(d => d.Address.ToString() == clientIp);
+            device = TourmalineService.Devices.FirstOrDefault(d => d.Address.ToString() == clientIp);
     }
 }

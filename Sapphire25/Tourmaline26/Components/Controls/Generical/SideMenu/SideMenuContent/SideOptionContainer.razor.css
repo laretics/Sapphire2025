@@ -1,38 +1,28 @@
 ﻿.side-option-scroll {
 	flex: 1 1 0%;
-	flex-direction:column;
-	align-items:flex-end;
-	text-align:center;
+	flex-direction: column;
+	/* align-items: flex-end; */ /* Mejor quítalo o cámbialo a stretch/flex-start */
+	text-align: left; /* Cambia a left para que los labels se vean bien */
 	width: 100%;
 	height: 100%;
 	overflow-y: auto;
-	overflow-x: hidden;
+	overflow-x: visible; /* ← Cambia hidden a visible */
 	box-sizing: border-box;
 	background: none;
 	border: none;
-	padding: 0;
+	padding: 20px 25px 20px 32px; /* ← Padding izquierdo generoso (lo más importante) */
 	margin: 0;
 }
 
-	/* Scrollbar personalizada para navegadores Webkit (Chrome, Edge, Safari) */
-	.side-option-scroll::-webkit-scrollbar {
-		width: 10px;
-		background: transparent;
-	}
+/* Ajuste específico para los switches de Bootstrap 5.0 */
+.form-check.form-switch {
+	padding-left: 2.85rem; /* Un poco más que el valor por defecto de BS5 */
+	margin-bottom: 1rem;
+	width: 100%;
+	text-align: left;
+}
 
-	.side-option-scroll::-webkit-scrollbar-thumb {
-		background: #bdbdbd;
-		border-radius: 8px;
-		min-height: 40px;
-		transition: background 0.2s;
-	}
-
-		.side-option-scroll::-webkit-scrollbar-thumb:hover {
-			background: #888;
-		}
-
-/* Scrollbar para Firefox */
-.side-option-scroll {
-	scrollbar-width: thin;
-	scrollbar-color: #bdbdbd transparent;
+.form-check-input[role="switch"] {
+	margin-left: 0;
+	left: 0;
 }

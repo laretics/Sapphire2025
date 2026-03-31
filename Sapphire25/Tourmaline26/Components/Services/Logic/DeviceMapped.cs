@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Runtime.Serialization;
 
 namespace Tourmaline26.Components.Services.Logic
 {
@@ -8,47 +9,24 @@ namespace Tourmaline26.Components.Services.Logic
     public class DeviceMapped
     {
         public IPAddress Address { get; private set; } = new IPAddress(0);
-        public DeviceType Type { get; private set; } = DeviceType.TFT;
-        public CoachEnum Coach { get; private set; } = CoachEnum.Undeterminated;
-        public Orientation Side { get; private set; } = Orientation.Neutral;
+        public Enums.DeviceType Type { get; private set; } = Enums.DeviceType.TFT;
+        public Enums.CoachEnum Coach { get; private set; } = Enums.CoachEnum.Undeterminated;
+        public Enums.Orientation Side { get; private set; } = Enums.Orientation.Neutral;
+        public Enums.CameraType CameraType { get; private set; } = Enums.CameraType.None;
+        public Enums.CameraCodec CameraCodec { get; private set; } = Enums.CameraCodec.None;
         public string PublicId { get; private set; } = "Coche 1"; //Esto es lo que se muestra en público en el panel.
         public void SetParameters(string address, string type, string coach, string side, string publicId)
         {
             Address = IPAddress.Parse(address);
-            Type = (DeviceType)Enum.Parse(typeof(DeviceType), type);
-            Coach = (CoachEnum)Enum.Parse(typeof(CoachEnum), coach);
-            Side = (Orientation)Enum.Parse(typeof(Orientation), side);
+            Type = (Enums.DeviceType)Enum.Parse(typeof(Enums.DeviceType), type);
+            Coach = (Enums.CoachEnum)Enum.Parse(typeof(Enums.CoachEnum), coach);
+            Side = (Enums.Orientation)Enum.Parse(typeof(Enums.Orientation), side);
             PublicId = publicId;
         }
-        public enum DeviceType
+        public void SetCameraParameters(string cameraType, string cameraCodec)
         {
-            HMI,
-            TFT,
-            Led,
-            Camera,
-            Server3D
-        }
-        public enum CoachEnum
-        {
-            Undeterminated=0,
-            M1=1,
-            M2=2,
-            M3=3,
-            M4=4,
-            N1=1,
-            N2=2,
-            N3=3,
-            N4=4,
-            R1=1,
-            R2=2,
-            R3=3,
-            R4=4,
-        }
-        public enum Orientation
-        {
-            Neutral=0,
-            Forward=1,
-            Backward=2
+            CameraType = (Enums.CameraType)Enum.Parse(typeof(Enums.CameraType), cameraType);
+            CameraCodec = (Enums.CameraCodec)Enum.Parse(typeof(Enums.CameraCodec), cameraCodec);
         }
     }
 }

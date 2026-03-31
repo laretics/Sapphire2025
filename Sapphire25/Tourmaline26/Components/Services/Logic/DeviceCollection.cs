@@ -2,7 +2,7 @@
 {
     public class DeviceCollection : List<DeviceMapped>
     {
-        public DeviceCollection ByCoach(DeviceMapped.CoachEnum coach)
+        public DeviceCollection ByCoach(Enums.CoachEnum coach)
         {
             var result = new DeviceCollection();
             foreach (var device in this)
@@ -12,7 +12,7 @@
             }
             return result;
         }
-        public DeviceCollection ByType(DeviceMapped.DeviceType type)
+        public DeviceCollection ByType(Enums.DeviceType type)
         {
             var result = new DeviceCollection();
             foreach (var device in this)

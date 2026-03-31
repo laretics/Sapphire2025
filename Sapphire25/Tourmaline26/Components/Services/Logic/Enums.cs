@@ -4,8 +4,36 @@ namespace Tourmaline26.Components.Services.Logic
 {
 	public static class Enums
 	{
-
-		public enum CameraType:byte
+        public enum DeviceType
+        {
+            HMI,
+            TFT,
+            Led,
+            Server3D
+        }
+        public enum CoachEnum
+        {
+            Undeterminated = 0,
+            M1 = 1,
+            M2 = 2,
+            M3 = 3,
+            M4 = 4,
+            N1 = 1,
+            N2 = 2,
+            N3 = 3,
+            N4 = 4,
+            R1 = 1,
+            R2 = 2,
+            R3 = 3,
+            R4 = 4,
+        }
+        public enum Orientation
+        {
+            Neutral = 0,
+            Forward = 1,
+            Backward = 2
+        }
+        public enum CameraType:byte
 		{
 			None=0,
 			Inside=1,
