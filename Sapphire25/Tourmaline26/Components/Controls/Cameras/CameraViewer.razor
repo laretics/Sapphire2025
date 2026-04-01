@@ -1,0 +1,71 @@
+﻿@inject IJSRuntime JS
+
+<div class="camera-viewer">
+    <div class="camera-overlay">
+        <span>@CameraName</span>
+        <span class="status-indicator @StatusClass">@StatusMessage</span>
+    </div>
+
+    <div class="video-container">
+        <video id="@VideoElementId"
+               autoplay
+               muted
+               playsinline
+               class="camera-video">
+        </video>
+    </div>
+</div>
+
+<!-- Script inline - más fiable en Blazor Server -->
+<script>
+    console.log("=== Script inline de HLS cargado ===");
+
+    window.playHLS = function (videoId, hlsUrl) {
+        console.log(`=== playHLS llamado para ${videoId} | URL: ${hlsUrl} ===`);
+
+        const video = document.getElementById(videoId);
+        if (!video) {
+            console.error("No se encontró el elemento video");
+            return;
+        }
+
+        if (typeof Hls !== "undefined" && Hls.isSupported()) {
+            console.log("HLS.js soportado. Creando instancia...");
+            const hls = new Hls();
+            hls.loadSource(hlsUrl);
+            hls.attachMedia(video);
+
+            hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                console.log("Manifest parsed - Reproduciendo");
+                video.play().catch(e => console.warn("Auto-play bloqueado:", e));
+            });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            console.log("Usando reproducción nativa");
+            video.src = hlsUrl;
+            video.play();
+        } else {
+            console.error("Navegador no soporta HLS");
+        }
+    };
+</script>
+
+@code {
+    [Parameter] public string CameraName { get; set; } = "Cámara";
+    [Parameter] public string PathName { get; set; } = "cc1";
+    [Parameter] public string ServerIp { get; set; } = "192.168.0.9";
+
+    private string VideoElementId => $"video_{PathName}";
+
+    private string StatusMessage { get; set; } = "Conectando...";
+    private string StatusClass { get; set; } = "status-connecting";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var url = $"http://{ServerIp}:8888/{PathName}";
+            Console.WriteLine($"[CameraViewer] Llamando playHLS para {CameraName} → {url}");
+            await JS.InvokeVoidAsync("playHLS", VideoElementId, url);
+        }
+    }
+}

@@ -1,0 +1,23 @@
+﻿@using Tourmaline26.Components.Controls.Floatings
+@using Tourmaline26.Components.Controls.Generical
+
+<FloatRightContainer>
+    <div class="camera-grid">
+        <div class="grid-item">
+            <CameraViewer CameraName="M1 Cabeza" PathName="cc1" ServerIp="192.168.0.9" />
+        </div>
+        <div class="grid-item">
+            <CameraViewer CameraName="M1 Centro" PathName="cc2" ServerIp="192.168.0.9" />
+        </div>
+        <div class="grid-item">
+            <CameraViewer CameraName="M1 Extremo" PathName="cc3" ServerIp="192.168.0.9" />
+        </div>
+        <div class="grid-item menu-area">
+            @ChildContent
+        </div>
+    </div>
+</FloatRightContainer>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

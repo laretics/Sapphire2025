@@ -1,4 +1,5 @@
 ﻿@* <VirtualKeyboard></VirtualKeyboard> *@
+@using Tourmaline26.Components.Controls.Cameras
 @using Tourmaline26.Components.Controls.Generical
 @using Tourmaline26.Components.Controls.Floatings
 @using Tourmaline26.Components.Controls.Generical.SideMenu
@@ -8,14 +9,15 @@
     <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="@mvarTourmaline.SessionConfig.ServiceMode">
         <div class="tesla-main">
             <div class="tesla-left @panelClass">
-                <img src="img/Wireframe1.png" />
+                @*  *@
                 @* <Speedometer /> *@
             </div>
-            <div class="tesla-right @panelClass">
+            <div class="tesla-right @panelClass">                
                 @if(View3DEnabled)
                 {
                     <SimulatorStream></SimulatorStream>
                 }                
+                <TeslaTopRightBar></TeslaTopRightBar>
                 @if(RightPanelVisible)
                 {
                     <SideMenu @ref="mvarSideMenu"></SideMenu>
@@ -24,7 +26,11 @@
                 {
                     <FloatDestinationInput>Hola Mundo</FloatDestinationInput>
                 }
-            </div>
+            </div>        
+            @if (CameraViewMode)
+            {
+                <CamerasView></CamerasView>
+            }
         </div>
         @if(LoginMode)
         {
@@ -47,7 +53,6 @@
     private TeslaToolBar? mvarTeclado{ get; set; }
     private SideMenu? mvarSideMenu{ get; set; }
     private bool LoginMode { get; set; } = false;
-
     public enum MainToolBarItem:byte
     {
         Train=0,
@@ -57,10 +62,15 @@
         View3d = 4,
         Clipboard = 9
     }
-
     private bool RightPanelVisible
     {
-        get => (null!=buttonData && buttonData.Length>0)?buttonData[0].Selected:false;
+        get => (null != buttonData && buttonData.Length > (Byte)MainToolBarItem.Train) 
+            ? buttonData[(Byte)MainToolBarItem.Train].Selected : false;
+    }
+    private bool CameraViewMode
+    {
+        get =>(null!=buttonData && buttonData.Length > (Byte)MainToolBarItem.CCTV) 
+            ? buttonData[(Byte)MainToolBarItem.CCTV].Selected : false;
     }
 
     [JSInvokable]
@@ -80,7 +90,7 @@
         {
             new("Train",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Main Menu"),
             new("BlackSun","WhiteSun",true,EventCallback.Factory.Create(this, () => NightModeChanged()),"Night Mode"),
-            new("CCTV",null,true,null,"Cameras"),
+            new("CCTV",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()),"Cameras"),
             new("Microphone",null,true,null,"Microphone"),
             new("3DOn","3DOff",true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "View3D"),
             new(""),
@@ -94,7 +104,7 @@
 
     private string panelClass
     {
-        get => string.Format("teslapanel {0}", NightMode ? "night" : "day");
+        get => string.Format("teslapanel {0}", NightMode ? "night" : "day");        
     }
     private bool View3DEnabled
     {
@@ -121,10 +131,15 @@
     private void OnButtonInternalChanged()
     {
         //Aprovechamos para validar la lógica de los botones de la barra de tareas.
+        //No se puede abrir ninguno de los botones si está seleccionado el modo de cámaras.
+        if(buttonData[(byte)MainToolBarItem.CCTV].Selected)
+        {
+            buttonData[(byte)MainToolBarItem.Train].Selected = false;
+            buttonData[(byte)MainToolBarItem.Clipboard].Selected = false;
+        }
         //No se puede abrir la sección de partes de avería si está seleccionado el menú principal.
         if (buttonData[(byte)MainToolBarItem.Train].Selected)
             buttonData[(byte)MainToolBarItem.Clipboard].Selected = false;
-
         StateHasChanged();
     }    
     protected override void OnAfterRender(bool firstRender)

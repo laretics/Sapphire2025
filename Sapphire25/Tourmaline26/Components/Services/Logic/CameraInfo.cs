@@ -7,20 +7,25 @@ namespace Tourmaline26.Components.Services.Logic
 	/// </summary>
 	public class CameraInfo
 	{
+		protected IPAddress mvarAddress = IPAddress.None;
 		public int Id { get; set; } = -1; //Numeración única de esta cámara.
 		public string Name { get; set; } = "Camera";
 		public int CoachId { get; set; } = 0; //Número de coche en que está situada esta cámara.
 		public bool Essential { get; set; } = false; //¿Es necesaria esta cámara en la visualización reducida?
-		public IPAddress Address{ get; set; } = IPAddress.None; //Dirección de la cámara
-		public string SAddress
+		public string Address //Formato string para deserialización.
 		{
-			get => Address.ToString();
-			set 
+			get => mvarAddress.ToString();
+			set
 			{
-				IPAddress? auxAddress = IPAddress.None;
-				if (IPAddress.TryParse(value, out auxAddress)) 
-					Address = auxAddress;
-			} 			
+                IPAddress? auxAddress = IPAddress.None;
+                if (IPAddress.TryParse(value, out auxAddress))
+                    mvarAddress = auxAddress;
+            }
+		}
+		public IPAddress IpAddress
+		{
+			get => mvarAddress;
+			set => mvarAddress = value;
 		}
 
 		public Enums.CameraType CameraType { get; set; } = Enums.CameraType.None; //Tipo de la cámara.

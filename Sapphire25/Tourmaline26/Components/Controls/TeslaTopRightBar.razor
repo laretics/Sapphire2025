@@ -1,0 +1,28 @@
+﻿@using Tourmaline26.Components.Images
+<div class="tesla-top-right-bar">
+    <ColorIcon Name="WhiteSun" Size="16" Color="#EEEE00"></ColorIcon>
+    <ColorIcon Name="Bezier" Size="16" Color="#EEEE00"></ColorIcon>
+    <span class="clock">@currentTime.ToString("HH:mm")</span>
+</div>
+
+@code {
+    private DateTime currentTime = DateTime.Now;
+    private System.Threading.Timer? timer;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        currentTime = DateTime.Now;
+        timer = new System.Threading.Timer(_ =>
+        {
+            currentTime = DateTime.Now;
+            InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+        // ...tu código existente...
+    }
+}
