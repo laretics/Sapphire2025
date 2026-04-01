@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Sapphire2025Models\Sapphire2025Models.csproj" />
+    <ProjectReference Include="..\Sapphire2026Clients\Sapphire2026Clients.csproj" />
     <ProjectReference Include="..\TimeNet2026Data\TimeNet2026Data.csproj" />
     <ProjectReference Include="..\TimeNet2026\TimeNet2026.csproj" />
     <ProjectReference Include="..\TimeNetComponents\TimeNetComponents.csproj" />

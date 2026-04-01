@@ -1,0 +1,44 @@
+﻿@inject Tourmaline26.Components.Services.TourmalineService TourmalineService
+@inject Sapphire2025.Storage.AuthenticationClient AuthenticationService
+@using Sapphire2025Models
+@using Sapphire2025Models.Authentication
+<h3>Configuración Acceso Remoto</h3>
+<p>Parámetros del servicio Tourmaline</p>
+<table class="table table-striped table-bordered mt-4">
+    <thead>
+        <tr>
+            <th>Campo</th>
+            <th>Valor</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Last Release</td>
+            <td>@LastRelease</td>
+        </tr>
+        <tr>
+            <td>URL Zafiro</td>
+            <td>@TourmalineService.SystemConfig.SapphireUrl</td>
+        </tr>
+        <tr>
+            <td>Current User</td>
+            <td>@CurrentUserString</td>
+        </tr>
+        <tr>
+            <td>Carlos Ruiz</td>
+            <td>Pendiente</td>
+        </tr>
+    </tbody>
+</table>
+@code {
+    private string LastRelease { get => Utils.autoDate(TourmalineService.SystemConfig.LastRelease); }
+    UserModelBase? mvarUser;
+    protected override async Task OnInitializedAsync()
+    {
+        mvarUser = await AuthenticationService.GetCurrentUser();
+
+    }
+
+    private string CurrentUserString { get => (null == mvarUser) ? "[Offline]" : string.Format("{0} ({1})", mvarUser.CF, mvarUser.Name); }
+
+}

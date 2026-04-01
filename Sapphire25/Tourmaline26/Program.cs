@@ -1,5 +1,6 @@
 using Tourmaline26.Components;
 using Tourmaline26.Components.Services;
+using Sapphire2025.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,12 +15,27 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSingleton<TourmalineService>();
 builder.Services.AddHttpContextAccessor();
 
+string auxApiAddress = builder.Configuration["ApiBaseAddress"] ?? "http://material.trensfm/api/";
+Console.WriteLine($"API Address for SFM: {auxApiAddress}");
+
+Uri apiBaseUri;
+apiBaseUri = new Uri(auxApiAddress);
+Console.WriteLine($"Final API URI: {apiBaseUri}");
+
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBaseUri });
+
+builder.Services.AddScoped<IntStorageService>();
+builder.Services.AddScoped<AuthenticationClient>();
+builder.Services.AddScoped<AeneasClient>();
+builder.Services.AddScoped<ExpertClient>();
+builder.Services.AddScoped<TimeNetClient>();
+
 builder.Services.AddHostedService<MediaMTXService>();
 
 // Configurar HttpClient para llamar a la API local
-builder.Services.AddHttpClient<MediaMTXService>(client =>
+builder.Services.AddHttpClient<MediaMTXService>("CameraService", client =>
 {
-    client.Timeout = TimeSpan.FromSeconds(30);
+	client.Timeout = TimeSpan.FromSeconds(30);
 });
 
 var app = builder.Build();

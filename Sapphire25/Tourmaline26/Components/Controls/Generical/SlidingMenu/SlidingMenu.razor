@@ -1,12 +1,16 @@
 ﻿@using Tourmaline26.Components.Services.Logic.Generical
+@inject Tourmaline26.Components.Services.TourmalineService mvarTourmaline
 <div class="sliding-menu">
     @for (int i = 0; i < Options.Count; i++)
     {
         var x = i;
-        <MenuOption Title="@Options[i].Title"
-                    Icon="@Options[i].Icon"
-                    Selected="@(SelectedIndex == x)"
-                    OnClick="() => SelectOption(x)" />
+        @if(!Options[i].ServiceMode || mvarTourmaline.SessionConfig.ServiceMode)
+        {
+            <MenuOption Title="@Options[i].Title"
+                        Icon="@Options[i].Icon"
+                        Selected="@(SelectedIndex == x)"
+                        OnClick="() => SelectOption(x)" />
+        }
     }
 </div>
 

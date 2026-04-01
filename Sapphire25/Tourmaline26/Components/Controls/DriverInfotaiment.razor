@@ -5,6 +5,8 @@
 @using Tourmaline26.Components.Controls.Generical.SideMenu
 @using Tourmaline26.Components.Services
 @using Tourmaline26.Components.Services.Logic.Generical
+@using Sapphire2025Models.Authentication
+@inject Sapphire2025.Storage.AuthenticationClient AuthenticationService
 <div class="tesla-root">
     <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="@mvarTourmaline.SessionConfig.ServiceMode">
         <div class="tesla-main">
@@ -34,7 +36,7 @@
         </div>
         @if(LoginMode)
         {
-            <LoginCtl Login="OnLogin" />
+            <LoginCtl Login="OnUserLogin"  />
         }
     </ServiceModeFrame>
     <div class="tesla-bottom-bar">
@@ -62,6 +64,7 @@
         View3d = 4,
         Clipboard = 9
     }
+
     private bool RightPanelVisible
     {
         get => (null != buttonData && buttonData.Length > (Byte)MainToolBarItem.Train) 
@@ -155,10 +158,15 @@
         LoginMode = true;
         StateHasChanged();
     }
-    protected void OnLogin((string username, string password) credentials)
+    protected async Task OnUserLogin((string username, string password) credentials)
     {
         // Aquí iría la lógica de autenticación real
         // Por ahora, simplemente salimos del modo de login
+        UserLoginModel modelo = new UserLoginModel();
+        SessionModel? sesion;
+        modelo.userName = credentials.username;
+        modelo.password = credentials.password;        
+        sesion = await AuthenticationService.Login(modelo);
         LoginMode = false;
         StateHasChanged();
     }

@@ -5,37 +5,45 @@
     using Tourmaline26.Components.Services.Logic;
 
     public class MediaMTXService : IHostedService, IDisposable
-    {
-        private readonly HttpClient _httpClient;
+    {        
         private readonly ILogger<MediaMTXService> mvarLogger;
         private readonly IConfiguration _configuration;
         private readonly TourmalineService mvarTourmalineService;
+        private IHttpClientFactory mvarHttpClientFactory;
+        private HttpClient mvarCliente;
 
-        public MediaMTXService(HttpClient httpClient, ILogger<MediaMTXService> logger, IConfiguration configuration, TourmalineService tourmaline)
+        public MediaMTXService(IHttpClientFactory httpClientFactory, ILogger<MediaMTXService> logger, IConfiguration configuration, TourmalineService tourmaline)
         {
-            _httpClient = httpClient;
-            mvarLogger = logger;
-            _configuration = configuration;
-            mvarTourmalineService = tourmaline;
-        }
+            mvarHttpClientFactory = httpClientFactory;
+			_configuration = configuration;
+			mvarTourmalineService = tourmaline;
+			mvarLogger = logger;
+		}
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            int cuenta = mvarTourmalineService.SystemConfig.Cameras.Count;
-            mvarLogger.LogInformation("Eliminando cámaras configuradas en MediaMTX para iniciar nueva configuración...");
-            await DeleteAllCamerasAsync(cancellationToken);
-            mvarLogger.LogInformation("Iniciando configuración de {0} cámaras en MediaMTX...",
-                cuenta);
-
-            // Esperar un poco a que MediaMTX esté completamente levantado
-            await Task.Delay(3000, cancellationToken);
-            cuenta = 0;
-            foreach (CameraInfo auxCamera in mvarTourmalineService.SystemConfig.Cameras)
-            {
-                if (await AddCameraAsync(auxCamera, cancellationToken)) cuenta++;
-            }                
-            mvarLogger.LogInformation("Configuración de {0} cámaras finalizada.",cuenta);
+            //await InitCameras(cancellationToken);
+            mvarCliente = mvarHttpClientFactory.CreateClient("CameraService");
         }
+
+        private async Task<bool> InitCameras(CancellationToken cancellationToken)
+        {
+			int cuenta = mvarTourmalineService.SystemConfig.Cameras.Count;
+			mvarLogger.LogInformation("Eliminando cámaras configuradas en MediaMTX para iniciar nueva configuración...");
+			await DeleteAllCamerasAsync(cancellationToken);
+			mvarLogger.LogInformation("Iniciando configuración de {0} cámaras en MediaMTX...",
+				cuenta);
+
+			// Esperar un poco a que MediaMTX esté completamente levantado
+			await Task.Delay(3000, cancellationToken);
+			cuenta = 0;
+			foreach (CameraInfo auxCamera in mvarTourmalineService.SystemConfig.Cameras)
+			{
+				if (await AddCameraAsync(auxCamera, cancellationToken)) cuenta++;
+			}
+			mvarLogger.LogInformation("Configuración de {0} cámaras finalizada.", cuenta);
+            return cuenta==mvarTourmalineService.SystemConfig.Cameras.Count;
+		}
         /// <summary>
         /// Añade una cámara a la api de MediaMTX
         /// </summary>
@@ -60,7 +68,7 @@
                         sourceOnDemandCloseAfter = "30s"          // ← como string con "s"
                     };
 
-                    var response = await _httpClient.PostAsJsonAsync(
+                    var response = await mvarCliente.PostAsJsonAsync(
                         $"http://127.0.0.1:9997/v3/config/paths/add/cc{cam.Id}",
                         payload,
                         cancellationToken);
@@ -102,7 +110,7 @@
             {
                 mvarLogger.LogInformation("Eliminando todas las cámaras configuradas...");
 
-                var response = await _httpClient.GetAsync("http://127.0.0.1:9997/v3/config/paths/list", cancellationToken);
+                var response = await mvarCliente.GetAsync("http://127.0.0.1:9997/v3/config/paths/list", cancellationToken);
                 if (!response.IsSuccessStatusCode) return;
 
                 var json = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -136,7 +144,7 @@
         {
             try
             {
-                var response = await _httpClient.DeleteAsync(
+                var response = await mvarCliente.DeleteAsync(
                     $"http://127.0.0.1:9997/v3/config/paths/delete/{cameraName}",
                     cancellationToken);
 
@@ -161,7 +169,7 @@
             try
             {
                 // Intentamos obtener la lista de paths (la API más básica)
-                var response = await _httpClient.GetAsync(
+                var response = await mvarCliente.GetAsync(
                     "http://127.0.0.1:9997/v3/config/paths/list",
                     cancellationToken);
 
