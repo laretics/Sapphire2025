@@ -1,6 +1,7 @@
 using Tourmaline26.Components;
 using Tourmaline26.Components.Services;
 using Sapphire2025.Storage;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,12 +16,14 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSingleton<TourmalineService>();
 builder.Services.AddHttpContextAccessor();
 
-string auxApiAddress = builder.Configuration["ApiBaseAddress"] ?? "http://material.trensfm/api/";
+string auxApiAddress = builder.Configuration["ApiBaseAddress"] ?? "https://material.trensfm.com:5031/tourmaline/";
 Console.WriteLine($"API Address for SFM: {auxApiAddress}");
 
 Uri apiBaseUri;
 apiBaseUri = new Uri(auxApiAddress);
 Console.WriteLine($"Final API URI: {apiBaseUri}");
+//builder.Services.AddDbContext<Sapphire2026.Data.DataStorage>(options =>
+//options.UseSqlite("Data Source=tourmaline.db"));
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBaseUri });
 
@@ -39,6 +42,10 @@ builder.Services.AddHttpClient<MediaMTXService>("CameraService", client =>
 });
 
 var app = builder.Build();
+
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+logger.LogInformation("API Address for SFM: {ApiAddress}", auxApiAddress);
+logger.LogInformation("Final API URI: {ApiBaseUri}", apiBaseUri);
 
 
 // Configure the HTTP request pipeline.

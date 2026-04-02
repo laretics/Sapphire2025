@@ -28,6 +28,9 @@
                         case "cli":
                             <SideOptionClientSapphire></SideOptionClientSapphire>
                             break;
+                        case "sys":
+                            <SideOptionSystemConfig></SideOptionSystemConfig>
+                            break;
                         default:
                             <div></div>
                             break;
@@ -48,6 +51,7 @@
     new MenuOptionModel("cam","CCTV",@<ColorIcon Name="CCTV" Size="64" />),
     new MenuOptionModel("saph","Zafiro",@<ColorIcon Name="Edata" Size="64" />),
     new MenuOptionModel("cli","Client",@<ColorIcon Name="OutboundConnect" Color="red" Size="64" />,true),
+    new MenuOptionModel("sys","Config",@<ColorIcon Name="Wrench" Color="red" Size="64" />,true),
     new MenuOptionModel("info","Información",@<ColorIcon Name="Info" Size="64" />),
     }.ToList();
     protected override void OnInitialized()

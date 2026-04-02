@@ -1,4 +1,5 @@
-﻿namespace Tourmaline26.Components.Services.Logic
+﻿using Sapphire2025Models.Authentication;
+namespace Tourmaline26.Components.Services.Logic
 {
     /// <summary>
     /// Estos valores pertenecen a la sesión actual del tren.
@@ -15,5 +16,6 @@
         public bool AutoCameras { get; set; } = true; //Indica si las cámaras se activan automáticamente en las paradas con habilitación de puertas.
         public bool ManualCameras { get; set; } = true; //Indica si el botón de cámaras está habilitado.
         public Enums.InformationLevel InformationLevel { get; set; } = Enums.InformationLevel.Route; //Nivel de información actual.
+        public SessionModel? Session { get; set; } = null; //Información sobre el usuario actual
     }
 }

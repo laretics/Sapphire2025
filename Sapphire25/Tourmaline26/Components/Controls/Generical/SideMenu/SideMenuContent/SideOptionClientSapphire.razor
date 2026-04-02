@@ -21,24 +21,46 @@
             <td>@TourmalineService.SystemConfig.SapphireUrl</td>
         </tr>
         <tr>
-            <td>Current User</td>
-            <td>@CurrentUserString</td>
+            <td>Versión Zafiro</td>
+            <td>@Common.SapphireSoftwareVersion</td>
         </tr>
         <tr>
-            <td>Carlos Ruiz</td>
-            <td>Pendiente</td>
+            <td>Id</td>
+            <td style="color: @Common.VersionColor;">ZAFIRO</td>
         </tr>
+        @if(null==TourmalineService.SessionConfig.Session)
+        {
+            <tr>
+                <td>No session</td>
+                <td></td>
+            </tr>
+        }
+        else
+        {
+            <tr>
+                <td>Current User</td>
+                <td>@CurrentUserString</td>
+            </tr>
+            <tr>
+                <td>Session Token</td>
+                <td>@CurrentTokenString</td>
+            </tr>
+        }
     </tbody>
 </table>
 @code {
     private string LastRelease { get => Utils.autoDate(TourmalineService.SystemConfig.LastRelease); }
-    UserModelBase? mvarUser;
     protected override async Task OnInitializedAsync()
     {
-        mvarUser = await AuthenticationService.GetCurrentUser();
-
     }
 
-    private string CurrentUserString { get => (null == mvarUser) ? "[Offline]" : string.Format("{0} ({1})", mvarUser.CF, mvarUser.Name); }
+    private string CurrentUserString { get => (null == TourmalineService.SessionConfig.Session) ? 
+        "[Offline]" : 
+        string.Format("{0} ({1})", TourmalineService.SessionConfig.Session.User.CF, TourmalineService.SessionConfig.Session.User.Name);
+    }
+    private string CurrentTokenString { get => (null == TourmalineService.SessionConfig.Session) ?
+    "-" :
+    TourmalineService.SessionConfig.Session.Token.ToString();
+    }
 
 }

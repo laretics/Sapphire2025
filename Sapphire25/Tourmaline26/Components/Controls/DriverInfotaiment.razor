@@ -1,12 +1,12 @@
 ﻿@* <VirtualKeyboard></VirtualKeyboard> *@
+@using System.Threading.Tasks
 @using Tourmaline26.Components.Controls.Cameras
 @using Tourmaline26.Components.Controls.Generical
 @using Tourmaline26.Components.Controls.Floatings
 @using Tourmaline26.Components.Controls.Generical.SideMenu
 @using Tourmaline26.Components.Services
 @using Tourmaline26.Components.Services.Logic.Generical
-@using Sapphire2025Models.Authentication
-@inject Sapphire2025.Storage.AuthenticationClient AuthenticationService
+@inject ILogger<DriverInfotaiment> Logger
 <div class="tesla-root">
     <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="@mvarTourmaline.SessionConfig.ServiceMode">
         <div class="tesla-main">
@@ -62,7 +62,8 @@
         CCTV = 2,
         Microphone = 3,
         View3d = 4,
-        Clipboard = 9
+        Clipboard = 8,
+        UserSession = 9
     }
 
     private bool RightPanelVisible
@@ -134,6 +135,7 @@
     private void OnButtonInternalChanged()
     {
         //Aprovechamos para validar la lógica de los botones de la barra de tareas.
+        buttonData[(byte)MainToolBarItem.UserSession].Selected = (null != mvarTourmaline.SessionConfig.Session);
         //No se puede abrir ninguno de los botones si está seleccionado el modo de cámaras.
         if(buttonData[(byte)MainToolBarItem.CCTV].Selected)
         {
@@ -153,22 +155,21 @@
             _ = JS.InvokeVoidAsync("TeslaToolBar_registerKeyHandler", DotNetObjectReference.Create(this));
         }
     }
-    protected void OnLoginRequest()
+    protected async Task OnLoginRequest()
     {
-        LoginMode = true;
-        StateHasChanged();
+        if(null==mvarTourmaline.SessionConfig.Session)
+            LoginMode = true;
+        else
+            await mvarTourmaline.UserLogout();
+        OnButtonInternalChanged();
     }
     protected async Task OnUserLogin((string username, string password) credentials)
     {
         // Aquí iría la lógica de autenticación real
         // Por ahora, simplemente salimos del modo de login
-        UserLoginModel modelo = new UserLoginModel();
-        SessionModel? sesion;
-        modelo.userName = credentials.username;
-        modelo.password = credentials.password;        
-        sesion = await AuthenticationService.Login(modelo);
+        await mvarTourmaline.UserLogin(credentials.username, credentials.password);
         LoginMode = false;
-        StateHasChanged();
+        OnButtonInternalChanged();
     }
     public void Dispose()
     {

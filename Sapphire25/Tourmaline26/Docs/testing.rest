@@ -1,0 +1,13 @@
+PUT https://material.trensfm.com:5031/tourmaline/sapphireauthentication/userlogin
+Content-Type: application/json
+
+{
+ "userName": "usuario",
+ "password": "contraseña"
+}
+
+GET https://material.trensfm.com:5031/tourmaline/sapphireauthentication/ping
+
+
+
+

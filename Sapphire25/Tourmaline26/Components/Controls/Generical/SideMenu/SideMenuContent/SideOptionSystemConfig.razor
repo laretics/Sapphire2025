@@ -1,0 +1,41 @@
+﻿@using Tourmaline26.Components.Controls.Floatings
+@inject Tourmaline26.Components.Services.TourmalineService TourmalineService
+<p>Parámetros del servicio Tourmaline</p>
+<table class="table table-striped table-bordered mt-4">
+    <thead>
+        <tr>
+            <th>Sección</th>
+            <th>Campo</th>
+            <th>Valor</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Tren</td>
+            <td>Serie</td>
+            <td>@TourmalineService.SystemConfig.Series.ToString()</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>UT</td>
+            <td>@TourmalineService.SystemConfig.Name</td>
+        </tr>
+        <tr>
+            <td>@TourmalineService.SystemConfig.Cameras.Count cámaras</td>
+            <td></td>
+            <td></td>
+        </tr>
+        @foreach(CameraInfo cameraInfo in TourmalineService.SystemConfig.Cameras)
+        {
+            <tr>
+                <td>@cameraInfo.Id</td>
+                <td>@cameraInfo.Name @cameraInfo.CameraType.ToString()</td>
+                <td>@cameraInfo.IpAddress.ToString()</td>                                                                                
+            </tr>            
+        }
+    </tbody>
+</table>
+
+@code {
+
+}

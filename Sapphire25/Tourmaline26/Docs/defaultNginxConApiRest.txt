@@ -1,0 +1,50 @@
+server {
+    listen 80;
+    server_name 88.99.33.109 material.trensfm.com www.material.trensfm.com;
+    return 301 https://material.trensfm.com$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name material.trensfm.com www.material.trensfm.com;
+
+    ssl_certificate /etc/ssl/corporate/fullchain.pem;
+    ssl_certificate_key /etc/ssl/corporate/certificate.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    root /home/Zafiro/Client;
+    index index.html;
+
+    # 1. API para Blazor - máxima prioridad
+    location ^~ /api/ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    # 2. TOURMALINE - máxima prioridad absoluta
+    location ^~ /tourmaline/ {
+        proxy_pass http://127.0.0.1:5000/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    # 3. Blazor SPA - último recurso
+    location / {
+        try_files $uri $uri/ @blazor_spa;
+    }
+
+    location @blazor_spa {
+        rewrite ^ /index.html break;
+    }
+}
