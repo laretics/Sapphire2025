@@ -101,7 +101,7 @@
             new(""),            
             new(""),                                    
             new("Clipboard",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Damage Clipboard"),
-            new("Key",null,false,EventCallback.Factory.Create(this, () => OnLoginRequest()),"Login"),
+            new("KeyOff","Key",false,EventCallback.Factory.Create(this, () => OnLoginRequest()),"Login"),
         };
         mvarTourmaline.HMIUpdateRequested += OnExternalEventChanged;
     }
@@ -144,8 +144,8 @@
         }
         //No se puede abrir la sección de partes de avería si está seleccionado el menú principal.
         if (buttonData[(byte)MainToolBarItem.Train].Selected)
-            buttonData[(byte)MainToolBarItem.Clipboard].Selected = false;
-        StateHasChanged();
+            buttonData[(byte)MainToolBarItem.Clipboard].Selected = false;        
+        mvarTourmaline.RaiseEvents(false);
     }    
     protected override void OnAfterRender(bool firstRender)
     {

@@ -1,7 +1,18 @@
 ﻿@using Tourmaline26.Components.Images
+@inject Tourmaline26.Components.Services.TourmalineService Tourmaline
 <div class="tesla-top-right-bar">
-    <ColorIcon Name="WhiteSun" Size="16" Color="#EEEE00"></ColorIcon>
-    <ColorIcon Name="Bezier" Size="16" Color="#EEEE00"></ColorIcon>
+    @if(null!=Tourmaline.SessionConfig.Session && null!=Tourmaline.SessionConfig.Session.User)
+    {
+        <span><RoleIcon 
+            Size="24" 
+            Credentials="Tourmaline.SessionConfig.Session.Roles"/>
+        </span>
+        <span>
+            <b>@Tourmaline.SessionConfig.Session.User.Name</b>
+        </span>
+    }
+    <ColorIcon Name="WhiteSun" Size="24" ></ColorIcon>
+    <ColorIcon Name="Bezier" Size="24" ></ColorIcon>
     <span class="clock">@currentTime.ToString("HH:mm")</span>
 </div>
 

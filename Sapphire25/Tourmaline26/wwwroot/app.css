@@ -86,3 +86,15 @@ h1:focus {
     --menu-text: #eee;
     --menu-selected-text: #fff;
 }
+
+.btn.btn-transparent {
+    background-color: transparent !important;
+    border: 2px solid #007bff !important;
+    color: #007bff !important;
+    transition: transform 0.1s, border-color 0.1s;
+}
+
+    .btn.btn-transparent:active {
+        transform: scale(0.95);
+        border-color: #0056b3;
+    }

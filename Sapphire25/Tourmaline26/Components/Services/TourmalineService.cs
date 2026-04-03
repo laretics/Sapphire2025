@@ -86,6 +86,15 @@ namespace Tourmaline26.Components.Services
 					mvarLogger.LogError("Fallo técnico en inicio de sesión de {User}: {Symptoms}", username, ex.Message);
 				}
 			}
+            if (null!=sesion)
+            {
+                //Actualizo los roles que tiene el usuario que acaba de abrir sesión.
+                foreach(Sapphire2025Models.Common.UserRole rol in sesion.Roles)
+                {
+                    mvarLogger.LogInformation("Usuario {User} tiene rol {Role}", username, rol.ToString());
+                    sesion.User.CredentialKey |=(byte)rol;
+                }
+            }
             SessionConfig.Session = sesion;           
 		}
         public async Task UserLogout()
