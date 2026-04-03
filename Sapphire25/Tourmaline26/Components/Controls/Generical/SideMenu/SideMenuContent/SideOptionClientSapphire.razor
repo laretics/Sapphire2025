@@ -1,58 +1,123 @@
 ﻿@inject Tourmaline26.Components.Services.TourmalineService TourmalineService
+@inject Tourmaline26.Components.Services.Logic.TourmalineContext database
 @inject Sapphire2025.Storage.AuthenticationClient AuthenticationService
+@inject Sapphire2025.Storage.AeneasClient AeneasService
+@using Sapphire2026.Data.Models
 @using Sapphire2025Models
 @using Sapphire2025Models.Authentication
-<h3>Configuración Acceso Remoto</h3>
-<p>Parámetros del servicio Tourmaline</p>
-<table class="table table-striped table-bordered mt-4">
-    <thead>
-        <tr>
-            <th>Campo</th>
-            <th>Valor</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>Last Release</td>
-            <td>@LastRelease</td>
-        </tr>
-        <tr>
-            <td>URL Zafiro</td>
-            <td>@TourmalineService.SystemConfig.SapphireUrl</td>
-        </tr>
-        <tr>
-            <td>Versión Zafiro</td>
-            <td>@Common.SapphireSoftwareVersion</td>
-        </tr>
-        <tr>
-            <td>Id</td>
-            <td style="color: @Common.VersionColor;">ZAFIRO</td>
-        </tr>
-        @if(null==TourmalineService.SessionConfig.Session)
-        {
+@using Sapphire2025Models.Aeneas
+@if(mvarDownloading)
+{
+    <h1>¡Descargando!</h1>
+    <h3>@mvarProcessInfo</h3>
+}
+else
+{
+    <h3>Configuración Acceso Remoto</h3>
+    <p>Parámetros del servicio Tourmaline</p>
+    <table class="table table-striped table-bordered mt-4">
+        <thead>
             <tr>
-                <td>No session</td>
-                <td></td>
+                <th>Campo</th>
+                <th>Valor</th>
             </tr>
-        }
-        else
-        {
+        </thead>
+        <tbody>
             <tr>
-                <td>Current User</td>
-                <td>@CurrentUserString</td>
+                <td>Last Release</td>
+                <td>@LastRelease</td>
             </tr>
             <tr>
-                <td>Session Token</td>
-                <td>@CurrentTokenString</td>
+                <td>URL Zafiro</td>
+                <td>@TourmalineService.SystemConfig.SapphireUrl</td>
             </tr>
-        }
-    </tbody>
-</table>
-<button class="btn btn-transparent">Download Info</button>
+            <tr>
+                <td>Versión Zafiro</td>
+                <td>@Common.SapphireSoftwareVersion</td>
+            </tr>
+            <tr>
+                <td>Id</td>
+                <td style="color: @Common.VersionColor;">ZAFIRO</td>
+            </tr>
+            @if (null == TourmalineService.SessionConfig.Session)
+            {
+                <tr>
+                    <td>No session</td>
+                    <td></td>
+                </tr>
+            }
+            else
+            {
+                <tr>
+                    <td>Current User</td>
+                    <td>@CurrentUserString</td>
+                </tr>
+                <tr>
+                    <td>Session Token</td>
+                    <td>@CurrentTokenString</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button @onclick="DownloadInfo" class="btn btn-outline-secondary">Download Info</button>
+}
 @code {
+    private bool mvarDownloading = false;
+    private string mvarProcessInfo = string.Empty;
     private string LastRelease { get => Utils.autoDate(TourmalineService.SystemConfig.LastRelease); }
     protected override async Task OnInitializedAsync()
     {
+
+    }
+    private async Task DownloadInfo()
+    {
+
+        mvarProcessInfo = "Conectando con Zafiro...";
+        mvarDownloading = true;
+        IEnumerable<TrainModel> auxDestination = await AeneasService.trainsList();
+        mvarProcessInfo = string.Format("Transfiriendo trenes {0} a base de datos...", auxDestination.Count()); ;
+        StateHasChanged();
+        await database.Database.EnsureCreatedAsync(); //Genero la base de datos si no existe
+        database.Trains.RemoveRange(database.Trains);
+        await database.SaveChangesAsync();
+        foreach(TrainModel train in auxDestination)
+        {
+            database.Trains.Add(new Train()
+            {
+                Guid = train.id,
+                Name = train.name,
+                Comment = train.lastNote,
+                NameCloud = train.nameCloud??"",
+                LastStatus = (byte)train.lastStatus                
+            });
+        }
+        await database.SaveChangesAsync();        
+        mvarProcessInfo = "Obteniendo usuarios de Zafiro...";
+        StateHasChanged();
+        database.Users.RemoveRange(database.Users);
+        await database.SaveChangesAsync();
+        IEnumerable<UserModel>? auxUsers = await AuthenticationService.completeUsersList();
+        if(null!=auxUsers)
+        {
+            mvarProcessInfo = string.Format("Transfiriendo {0} usuarios a base de datos...",auxUsers.Count());
+            StateHasChanged();
+            foreach (UserModel user in auxUsers)
+                database.Users.Add(new User
+                {
+                    guid = user.guid,
+                    CF = user.CF,
+                    TelegramEnabled = user.TelegramEnabled,
+                    UserEnabled = user.UserEnabled,
+                    UserName = user.Name,
+                    Email = user.Email,
+                    PhoneNumber = user.PhoneNumber,
+                    ShortPhoneNumber = user.ShortPhoneNumber
+                });
+            await database.SaveChangesAsync();
+        }
+        mvarProcessInfo = "Finalizando";
+        await Task.Delay(2000);
+        mvarDownloading = false;
     }
 
     private string CurrentUserString { get => (null == TourmalineService.SessionConfig.Session) ? 
