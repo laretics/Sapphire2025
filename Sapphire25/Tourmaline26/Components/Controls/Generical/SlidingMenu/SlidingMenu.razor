@@ -27,8 +27,13 @@
     public async Task ManagePhysicalKeyboard(string key)
     {
         if(key=="ArrowUp")
-        {
+        {            
             SelectedIndex--;
+            if (!mvarTourmaline.SessionConfig.ServiceMode)
+            {
+                while (SelectedIndex >= 0 && Options[SelectedIndex].ServiceMode)
+                    SelectedIndex--;
+            }
             if (SelectedIndex < 0)
                 SelectedIndex = 0;
             SelectOption(SelectedIndex);
@@ -36,6 +41,11 @@
         else if(key=="ArrowDown")
         {
             SelectedIndex++;
+            if (!mvarTourmaline.SessionConfig.ServiceMode)
+            {
+                while (SelectedIndex <Options.Count && Options[SelectedIndex].ServiceMode)
+                    SelectedIndex++;
+            }
             if (SelectedIndex >= Options.Count)
                 SelectedIndex = Options.Count - 1;
             SelectOption(SelectedIndex);

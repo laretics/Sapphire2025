@@ -1,4 +1,5 @@
 ﻿@using Tourmaline26.Components.Images
+@using System.Net.Http;
 @inject Tourmaline26.Components.Services.TourmalineService Tourmaline
 <div class="tesla-top-right-bar">
     @if(null!=Tourmaline.SessionConfig.Session && null!=Tourmaline.SessionConfig.Session.User)
@@ -11,24 +12,47 @@
             <b>@Tourmaline.SessionConfig.Session.User.Name</b>
         </span>
     }
-    <ColorIcon Name="WhiteSun" Size="24" ></ColorIcon>
-    <ColorIcon Name="Bezier" Size="24" ></ColorIcon>
-    <span class="clock">@currentTime.ToString("HH:mm")</span>
+    <ColorIcon Name="NoLocation" Size="24" ></ColorIcon>
+    @if(mvarInternetAvailable)
+    {
+        <ColorIcon Name="Internet" Size="24"></ColorIcon>
+    }
+    else
+    {
+        <ColorIcon Name="NoInternet" Size="24"></ColorIcon>
+    }    
+    <span class="clock">@Tourmaline.Now.ToString("HH:mm:ss")</span>
 </div>
 
 @code {
-    private DateTime currentTime = DateTime.Now;
     private System.Threading.Timer? timer;
+    private bool mvarInternetAvailable = false;
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        currentTime = DateTime.Now;
         timer = new System.Threading.Timer(_ =>
         {
-            currentTime = DateTime.Now;
+            Tourmaline.Now = DateTime.Now;
             InvokeAsync(StateHasChanged);
-        }, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+            if (Tourmaline.Now.Second % 10 == 0)
+                InvokeAsync(InternetAvailable);
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+    }
+
+    private async Task InternetAvailable()
+    {
+        try
+        {
+            using HttpClient auxClient = new HttpClient();
+            auxClient.Timeout = TimeSpan.FromSeconds(3);
+            using HttpResponseMessage response = await auxClient.GetAsync("https://www.google.com");
+            mvarInternetAvailable = response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            mvarInternetAvailable = false;
+        }
     }
 
     public void Dispose()
