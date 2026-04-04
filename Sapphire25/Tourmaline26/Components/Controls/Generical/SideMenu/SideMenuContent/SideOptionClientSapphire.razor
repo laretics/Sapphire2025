@@ -2,10 +2,14 @@
 @inject Tourmaline26.Components.Services.Logic.TourmalineContext database
 @inject Sapphire2025.Storage.AuthenticationClient AuthenticationService
 @inject Sapphire2025.Storage.AeneasClient AeneasService
+@using Microsoft.EntityFrameworkCore;
 @using Sapphire2026.Data.Models
+@using Tourmaline26.Components.Services.LocalDataModel
 @using Sapphire2025Models
 @using Sapphire2025Models.Authentication
 @using Sapphire2025Models.Aeneas
+@using System.IO;
+@using Microsoft.Data.Sqlite;
 @if(mvarDownloading)
 {
     <h1>¡Descargando!</h1>
@@ -59,19 +63,35 @@ else
             }
         </tbody>
     </table>
-    <button @onclick="DownloadInfo" class="btn btn-outline-secondary">Download Info</button>
+    <p>Este comando inicia la estructura local del tren. Al accionarlo se elimina la información previa y se sincronizan los datos con los existentes en Zafiro.</p>
+    <button @onclick="DownloadInfo" class="btn btn-outline-secondary">Restore Local Storage</button>
+    <p>Reinicio de los datos a la versión de fábrica. Con este comando se pierde toda la información local almacenada.</p>
+    <button @onclick="ResetInfo" class="btn btn-outline-secondary">Reset Local Storage</button>
+    <p>-</p>
 }
 @code {
     private bool mvarDownloading = false;
     private string mvarProcessInfo = string.Empty;
     private string LastRelease { get => Utils.autoDate(TourmalineService.SystemConfig.LastRelease); }
+    private DBLocalSystem? mvarLocalSystemDB = null;
     protected override async Task OnInitializedAsync()
     {
 
     }
+    private async Task ResetInfo()
+    {
+        string connectionString = database.Database.GetDbConnection().ConnectionString;
+        var builder = new SqliteConnectionStringBuilder(connectionString);
+        string dbPath = builder.DataSource;
+        // Elimina el archivo si existe
+        if (File.Exists(dbPath))
+        {
+            File.Delete(dbPath);
+        }
+        TourmalineService.SystemConfig.TrainId = Guid.Empty;
+    }
     private async Task DownloadInfo()
     {
-
         mvarProcessInfo = "Conectando con Zafiro...";
         mvarDownloading = true;
         IEnumerable<TrainModel> auxDestination = await AeneasService.trainsList();
@@ -92,6 +112,10 @@ else
             });
         }
         await database.SaveChangesAsync();        
+        //Relacionando el tren de la tabla de configuración con su versión de Zafiro.
+        database.LocalSystem.RemoveRange(database.LocalSystem);
+        await database.SaveChangesAsync();
+        await TourmalineService.InitData(); //Hace fetch del tren
         mvarProcessInfo = "Obteniendo usuarios de Zafiro...";
         StateHasChanged();
         database.Users.RemoveRange(database.Users);

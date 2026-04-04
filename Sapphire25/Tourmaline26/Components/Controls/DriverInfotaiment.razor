@@ -1,5 +1,6 @@
 ﻿@* <VirtualKeyboard></VirtualKeyboard> *@
 @using System.Threading.Tasks
+@using Tourmaline26.Components.Controls.Aeneas
 @using Tourmaline26.Components.Controls.Cameras
 @using Tourmaline26.Components.Controls.Generical
 @using Tourmaline26.Components.Controls.Floatings
@@ -7,6 +8,7 @@
 @using Tourmaline26.Components.Services
 @using Tourmaline26.Components.Services.Logic.Generical
 @inject ILogger<DriverInfotaiment> Logger
+@inject Sapphire2025.Storage.IntStorageService InternalStorage
 <div class="tesla-root">
     <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="@mvarTourmaline.SessionConfig.ServiceMode">
         <div class="tesla-main">
@@ -20,14 +22,15 @@
                     <SimulatorStream></SimulatorStream>
                 }                
                 <TeslaTopRightBar></TeslaTopRightBar>
+                <FloatDestinationInput>Hola Mundo</FloatDestinationInput>
                 @if(RightPanelVisible)
                 {
                     <SideMenu @ref="mvarSideMenu"></SideMenu>
                 }
-                else
+                else if (AeneasPanelVisible)
                 {
-                    <FloatDestinationInput>Hola Mundo</FloatDestinationInput>
-                }
+                    <AeneasLog></AeneasLog>
+                }                
             </div>        
             @if (CameraViewMode)
             {
@@ -65,7 +68,11 @@
         Clipboard = 8,
         UserSession = 9
     }
-
+    private bool AeneasPanelVisible
+    {
+        get =>(null!=buttonData && buttonData.Length>(byte)MainToolBarItem.Clipboard)
+        ? buttonData[(byte)MainToolBarItem.Clipboard].Selected : false;
+    }
     private bool RightPanelVisible
     {
         get => (null != buttonData && buttonData.Length > (Byte)MainToolBarItem.Train) 
@@ -168,6 +175,7 @@
         // Aquí iría la lógica de autenticación real
         // Por ahora, simplemente salimos del modo de login
         await mvarTourmaline.UserLogin(credentials.username, credentials.password);
+        await InternalStorage.SetSessionInfo(mvarTourmaline.SessionConfig.Session);
         LoginMode = false;
         OnButtonInternalChanged();
     }

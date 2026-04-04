@@ -6,6 +6,7 @@ using System.Text;
 using TimeNet2026.DBStorage;
 using TimeNet2026Data;
 using TimeNet2026Data.DBStorage;
+using Tourmaline26.Components.Services.LocalDataModel;
 
 namespace Tourmaline26.Components.Services.Logic
 {
@@ -17,6 +18,7 @@ namespace Tourmaline26.Components.Services.Logic
         public DbSet<StatusChange> StatusChanges { get; set; }
         public DbSet<Train> Trains { get; set; }
         public DbSet<Note> Notes { get; set; }
+        public DbSet<DBLocalSystem> LocalSystem { get; set; } //Info local sobre el tren.
 
         #region TimeNet
         protected override void OnModelCreating(ModelBuilder modelBuilder)

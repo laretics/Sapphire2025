@@ -1,0 +1,62 @@
+﻿@using Sapphire2026.Data.Models
+@using Sapphire2025Models.Aeneas
+@using Sapphire2025Models.Authentication
+<div class="d-flex @alineacion mb-3">
+	<div class="card shadow-sm" style="max-width: 75%;">
+		<div class="card-header @bgType text-white">
+			<span><RoleIcon Credentials="@(mvarUser?.CredentialKey ?? 0)" Color="@(null==mvarUser?"gray":"white")"/></span>
+			<strong class="me-2">@userName</strong>
+			<small class="text-white float-end">@textoFecha</small>
+		</div>
+		<div class="card-body">
+			<p class="card-text">@Note.Text</p>
+		</div>
+	</div>
+</div>
+@code {
+	[Parameter]
+	public NoteModel Note { get; set; } = new NoteModel();
+	[CascadingParameter]
+	public Dictionary<Guid, UserModelBase>? Users { get; set; }
+	private UserModelBase? mvarUser { get; set; } = null;
+	private Sapphire2025Models.Common.UserRole Role 
+	{ 
+		get => 
+		(null == mvarUser ? Sapphire2025Models.Common.UserRole.Anonymous : 
+			(Sapphire2025Models.Common.UserRole)mvarUser.CredentialKey); 
+	}
+	private string bgType
+	{
+		get 
+		{
+			switch(Note.Type)
+			{
+				case 1: return "bg-primary";
+				case 2: return "bg-secondary";
+				case 3: return "bg-warning";
+				default: return "bg-light";
+			}
+		}
+	}
+	private string userName
+	{
+		get => ((null == mvarUser) ? "[Desconocido]" : mvarUser.Name!);
+	}
+	private string alineacion
+	{
+		get => (1 == Note.Type ? "justify-content-start" : "justify-content-end");
+	}
+	private string textoFecha
+	{
+		//get => Sapphire2025Models.Common.timeString(Note.TimeStamp.ToLocalTime());
+		get => Sapphire2025Models.Utils.autoDate(Note.TimeStamp);
+	}
+	protected override void OnParametersSet()
+	{
+		if (null != Users && Users.ContainsKey(Note.UserId)) 
+			mvarUser = Users[Note.UserId];
+		else
+			mvarUser = null;
+		base.OnParametersSet();
+	}
+}

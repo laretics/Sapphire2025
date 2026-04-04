@@ -17,5 +17,6 @@ namespace Tourmaline26.Components.Services.Logic
         public bool ManualCameras { get; set; } = true; //Indica si el botón de cámaras está habilitado.
         public Enums.InformationLevel InformationLevel { get; set; } = Enums.InformationLevel.Route; //Nivel de información actual.
         public SessionModel? Session { get; set; } = null; //Información sobre el usuario actual
+        public Dictionary<Guid, UserModelBase>? ColUsers = null; //Colección de usuarios del tren, con su Guid de Zafiro como clave.
     }
 }
