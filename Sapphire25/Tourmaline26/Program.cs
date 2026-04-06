@@ -2,6 +2,7 @@ using Tourmaline26.Components;
 using Tourmaline26.Components.Services;
 using Sapphire2025.Storage;
 using Microsoft.EntityFrameworkCore;
+using Tourmaline26.Components.Services.Logic;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,8 +23,8 @@ Console.WriteLine($"API Address for SFM: {auxApiAddress}");
 Uri apiBaseUri;
 apiBaseUri = new Uri(auxApiAddress);
 Console.WriteLine($"Final API URI: {apiBaseUri}");
-//builder.Services.AddDbContext<Sapphire2026.Data.DataStorage>(options =>
-//options.UseSqlite("Data Source=tourmaline.db"));
+builder.Services.AddDbContext<TourmalineContext>(options =>
+options.UseSqlite("Data Source=tourmaline.db"));
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBaseUri });
 

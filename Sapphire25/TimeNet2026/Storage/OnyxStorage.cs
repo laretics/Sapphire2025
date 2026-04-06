@@ -28,8 +28,6 @@ namespace TimeNet2026.Storage
 	
 		public Dictionary<Guid,TopoStorage> Storages { get => mcolTopoStorages; }
 
-
-
 		/// <summary>
 		/// Carga el nodo que viene y deserializa automáticamente lo que contenga.
 		/// </summary>
@@ -52,6 +50,16 @@ namespace TimeNet2026.Storage
 			}
 			result.Message = "This XML is not a valid node containing data. Please check input file.";
 			return result;
+		}
+		/// <summary>
+		/// Vamos a usar esto para exportar un TopoStorage completo a XML.
+		/// Esta función se usa para cargar datos en el tren desde el servidor Zafiro.
+		/// </summary>
+		/// <returns></returns>
+		public string ExportToXML()
+		{
+			//TODO: Implementar esta función.
+			return string.Empty; 
 		}
 		internal CompileResult ImportTopoFromXML(XElement root)
 		{

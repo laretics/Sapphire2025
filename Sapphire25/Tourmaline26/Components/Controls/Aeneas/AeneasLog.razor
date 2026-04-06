@@ -1,0 +1,145 @@
+﻿@using Tourmaline26.Components.Controls.Floatings
+@using Sapphire2026.Data.Models
+@using Sapphire2025Models.Aeneas
+@using Microsoft.EntityFrameworkCore;
+@using Tourmaline26.Components.Services.LocalDataModel
+@inject TourmalineContext database
+@inject Tourmaline26.Components.Services.TourmalineService TourmalineService
+@inject Sapphire2025.Storage.AeneasClient AeneasService
+<FloatRightContainer>
+    @if (mvarIsLoading)
+    {
+        <div class="d-flex justify-content-center align-items-center" style="height: 200px;">
+            <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;">
+                <span class="visually-hidden">@mvarProcessMessage</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        @if (Guid.Empty == TourmalineService.SystemConfig.TrainId)
+        {
+            <h2>No se han iniciado los datos</h2>
+            <p>El sistema de información al viajero necesita una primera sincronización con la base de datos para obtener la información de este tren y, por tanto, sus datos de taller.</p>
+            <p>Si considera que debe tener acceso a esta información póngase en contacto con el personal de mantenimiento.</p>
+        }
+        @if (mvarErrorMessage.Length > 0)
+        {
+            <h2>Error</h2>
+            <p>@mvarErrorMessage</p>
+        }
+        @if (mvarNotes.Count > 0)
+        {
+            <h3>Historial de taller</h3>
+            <div style="max-height: 580px; overflow-y: auto;">
+                <CascadingValue Value="TourmalineService.SessionConfig.ColUsers">
+                    @foreach (NoteModel note in mvarNotes)
+                    {
+                        <NoteChatEntry Note="note" />
+                    }
+                </CascadingValue>
+            </div>
+        }
+        else
+        {
+            <p>El historial de mantenimiento está vacío</p>
+        }
+    }
+</FloatRightContainer>
+    @code {
+    private string mvarErrorMessage = string.Empty;
+    private List<NoteModel> mvarNotes = new List<NoteModel>();
+    private bool mvarIsLoading = true;
+    private string mvarProcessMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        mvarIsLoading = true;
+        mvarProcessMessage = "Recuperando información de la base de datos...";
+        await InvokeAsync(StateHasChanged);
+
+        await TourmalineService.InitData();
+
+        if(null== TourmalineService.SessionConfig.ColUsers)
+        {
+            mvarProcessMessage = "Obteniendo colección de usuarios...";
+            await InvokeAsync(StateHasChanged);
+
+            await TourmalineService.RetrieveUsers();
+        }        
+
+        mvarProcessMessage = "Conectando con Zafiro...";
+        await InvokeAsync(StateHasChanged);
+
+        await SyncAeneas();
+
+        mvarProcessMessage = "Obteniendo notas...";
+        await InvokeAsync(StateHasChanged);
+
+        mvarNotes = await GetNotes();
+
+        mvarIsLoading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+    /// <summary>
+    /// Intenta sincronizar la base de datos con Zafiro. Si no lo consigue, mostrará la base de datos local.
+    /// </summary>
+    /// <returns></returns>
+    private async Task SyncAeneas()
+    {
+        try
+        {
+            List<NoteModel> auxLista
+            = await AeneasService.retrieveNotes(TourmalineService.SystemConfig.TrainId, "", 100);
+            if(auxLista.Count>0)
+            {
+                //Sustituyo el contenido íntegro de la tabla local por el que acabo de descargar.
+                database.Notes.RemoveRange(database.Notes);
+                foreach(NoteModel note in auxLista)
+                {
+                    database.Notes.Add(new Note
+                    {
+                        Id = Guid.NewGuid(),
+                        Parent = note.parent,
+                        UserId = note.UserId,
+                        TimeStamp = note.TimeStamp,
+                        Text = note.Text,
+                        Type= note.Type
+                    });
+                }
+                await database.SaveChangesAsync();                
+                //Actualizamos la fecha de sincronización.
+                DBLocalSystem? localSystem = await database.LocalSystem.FirstOrDefaultAsync();
+                if(null!=localSystem)
+                {
+                    localSystem.LastAeneasSync = DateTime.Now;
+                    await database.SaveChangesAsync();
+                }
+            }
+        }
+        catch(Exception ex)
+        {
+            mvarErrorMessage = string.Format("No se han podido sincronizar los datos con Zafiro. Se mostrarán los datos almacenados en la base de datos local. Detalle del error: {0}", ex.Message);
+        }
+    }
+    private async Task<List<NoteModel>> GetNotes()
+    {
+        List<NoteModel> result = new List<NoteModel>();
+        List<Note> auxLista = database.Notes.OrderByDescending(n => n.TimeStamp).ToList();
+        foreach(Note note in auxLista)
+        {
+            result.Add(new NoteModel
+            {
+                parent = note.Parent,
+                UserId = note.UserId,
+                TimeStamp = note.TimeStamp,
+                Text = note.Text,
+                Type = note.Type
+            });
+        }
+        return result;
+    }
+
+
+
+}

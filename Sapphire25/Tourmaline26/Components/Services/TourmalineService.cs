@@ -1,12 +1,9 @@
-﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.Extensions.Logging;
-using Sapphire2025.Storage;
-using Sapphire2025Models.Aeneas;
+﻿using Sapphire2025.Storage;
 using Sapphire2025Models.Authentication;
-using System.Net;
-using TimeNet2026.Models;
-using Tourmaline26.Components.Controls;
+using Sapphire2026.Data.Models;
 using Tourmaline26.Components.Services.Logic;
+using Microsoft.EntityFrameworkCore;
+using Tourmaline26.Components.Services.LocalDataModel;
 namespace Tourmaline26.Components.Services
 {
     /// <summary>
@@ -19,8 +16,7 @@ namespace Tourmaline26.Components.Services
         private Enums.InformationLevel mvarCurrentInformationLevel = Enums.InformationLevel.Route;
         private ILogger<TourmalineService> mvarLogger;
         private IServiceProvider mvarServiceProvider;
-
-
+        private IConfiguration mvarConfig;
 		private Timer? mvarTimer;
 		public DateTime Now { get; set; } //Hora actual sincronizada para todos los paneles.
         public event EventHandler? PassengerUpdateRequested; //Ha ocurrido algo que requiere actualizar los TFT
@@ -45,6 +41,7 @@ namespace Tourmaline26.Components.Services
         }
         private void auxInitDevices(IConfiguration config)
         {
+            mvarConfig = config;
             IConfigurationSection section = config.GetSection("Devices");
             foreach (IConfigurationSection deviceSection in section.GetChildren())
             {
@@ -66,8 +63,60 @@ namespace Tourmaline26.Components.Services
         {
             get => mvarSessionConfig;
         }
-
-        public async Task UserLogin(string username, string pwd)
+        /// <summary>
+        /// Carga los valores de configuración desde la base de datos.
+        /// </summary>
+        /// <returns></returns>
+        public async Task InitData()
+        {
+            using (IServiceScope scope = mvarServiceProvider.CreateScope())
+            {
+                TourmalineContext db = scope.ServiceProvider.GetRequiredService<TourmalineContext>();
+                Train? auxTrain = await db.Trains.FirstOrDefaultAsync(t => t.Name.Contains(SystemConfig.Name));
+                DBLocalSystem? auxLocalSystem = await db.LocalSystem.FirstOrDefaultAsync();
+                if(null!=auxTrain)
+                {
+                    if (null == auxLocalSystem)
+                    {
+                        auxLocalSystem = new DBLocalSystem{
+                            LastSapphireDownload = DateTime.Now,
+                            LastAeneasSync = DateTime.MinValue,
+                            LastTopoSync = DateTime.MinValue,
+                            LastRautaSync = DateTime.MinValue
+                        };
+                        db.LocalSystem.Add(auxLocalSystem);
+                    }                        
+                    auxLocalSystem.TrainName = SystemConfig.Name;
+                    auxLocalSystem.TrainId = auxTrain.Guid;
+                    await db.SaveChangesAsync();
+                    SystemConfig.TrainId = auxLocalSystem.TrainId;
+                    SystemConfig.Name = auxLocalSystem.TrainName;
+                }
+            }
+        }
+        /// <summary>
+        /// Carga la colección de usuarios del tren desde la base de datos.
+        /// </summary>
+        /// <returns></returns>
+        public async Task RetrieveUsers()
+        {
+            SessionConfig.ColUsers = new Dictionary<Guid, UserModelBase>();
+            using (IServiceScope scope = mvarServiceProvider.CreateScope())
+            {
+                TourmalineContext db = scope.ServiceProvider.GetRequiredService<TourmalineContext>();
+                IEnumerable<User> usuarios = await db.Users.ToListAsync();
+                foreach (User usuario in usuarios)
+                {
+                    UserModelBase nuevo = new UserModelBase();
+                    nuevo.guid = usuario.guid;
+                    nuevo.CF = usuario.CF;
+                    nuevo.Name = usuario.UserName;
+                    nuevo.CredentialKey = 0;
+                    SessionConfig.ColUsers.Add(nuevo.guid, nuevo);
+                }
+            }
+        }
+        public async Task<SessionModel?> UserLogin(string username, string pwd)
         {
             UserLoginModel modelo = new UserLoginModel();
             SessionModel? sesion = null;
@@ -76,17 +125,27 @@ namespace Tourmaline26.Components.Services
             using (IServiceScope scope = mvarServiceProvider.CreateScope())
             {
                 AuthenticationClient auxCliente = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
-				try
-				{
-					mvarLogger.LogInformation("Enviando credenciales para inicio de sesión de {User}", username);
-					sesion = await auxCliente.Login(modelo);
-				}
-				catch (Exception ex)
-				{
-					mvarLogger.LogError("Fallo técnico en inicio de sesión de {User}: {Symptoms}", username, ex.Message);
-				}
-			}
-            SessionConfig.Session = sesion;           
+                try
+                {
+                    mvarLogger.LogInformation("Enviando credenciales para inicio de sesión de {User}", username);
+                    sesion = await auxCliente.Login(modelo);
+                }
+                catch (Exception ex)
+                {
+                    mvarLogger.LogError("Fallo técnico en inicio de sesión de {User}: {Symptoms}", username, ex.Message);
+                }
+            }
+            if (null != sesion)
+            {
+                //Actualizo los roles que tiene el usuario que acaba de abrir sesión.
+                foreach (Sapphire2025Models.Common.UserRole rol in sesion.Roles)
+                {
+                    mvarLogger.LogInformation("Usuario {User} tiene rol {Role}", username, rol.ToString());
+                    sesion.User.CredentialKey |= (byte)rol;
+                }
+            }
+            SessionConfig.Session = sesion;
+            return SessionConfig.Session;
 		}
         public async Task UserLogout()
         {
@@ -111,33 +170,6 @@ namespace Tourmaline26.Components.Services
 			}
 			SessionConfig.Session = null; //En cualquier caso, cierro la sesión abierta.
 		}
-
-        /// <summary>
-        /// Al establecer contacto con la api-rest, aprovechamos para cargar la información
-        /// que tenemos sobre este tren (sobre todo los partes de avería), que podremos
-        /// consultar tranquilamente en el HMI.
-        /// </summary>
-        private async Task auxFetchTrainMaterial()
-        {
-            using(IServiceScope scope = mvarServiceProvider.CreateScope()) 
-            {
-                AeneasClient auxCliente = scope.ServiceProvider.GetRequiredService<AeneasClient>();
-                try
-                {
-                    IEnumerable<TrainModel> auxLista = await auxCliente.trainsList();
-                    foreach (TrainModel auxModel in auxLista)
-                        if(auxModel.name.Contains(SystemConfig.Name))
-                        {
-                            SystemConfig.Train = auxModel;
-                            return;
-                        }
-                }
-                catch(Exception ex)
-                {
-                    mvarLogger.LogError("Intentando leer las series de material móvil desde Zafiro: {message}",ex.Message);
-				}
-            }
-        }
         public void RaiseEvents(bool passenger = false)
         {
             HMIUpdateRequested?.Invoke(this, EventArgs.Empty);

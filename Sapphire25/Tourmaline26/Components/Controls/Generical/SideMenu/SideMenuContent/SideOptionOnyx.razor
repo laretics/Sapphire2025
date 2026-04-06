@@ -1,0 +1,79 @@
+﻿@using TimeNet2026.Models
+@inject Sapphire2025.Storage.TimeNetClient TimeNetService
+@inject Tourmaline26.Components.Services.TourmalineService TourmalineService
+@if(TourmalineService.SessionConfig.ServiceMode)
+{
+    @if(mvarDownloading)
+    {
+        <h1>¡Descargando!</h1>        
+    }
+    else
+    {
+        @if (null != mcolTopoStorageHeaders)
+        {
+            <h3>Topologías disponibles</h3>
+            <table class="table table-striped table-bordered mt-4">
+                <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Nombre</th>
+                        <th>Info</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (TopoStorageHeaderModel header in mcolTopoStorageHeaders)
+                    {
+                        <tr>
+                            <td>
+                                @header.header.Id.ToString()
+                                <button @onclick="() => InitDownloadTopoStorage(header.header.Id)">Load</button>
+                            </td>
+                            <td>@header.header.Name</td>
+                            <td>@header.header.Comment</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+}
+
+@code {
+    IEnumerable<TopoStorageHeaderModel>? mcolTopoStorageHeaders = null;
+    private bool mvarDownloading = false;
+    protected override async Task OnInitializedAsync()
+    {
+        if(TourmalineService.SessionConfig.ServiceMode)
+        {
+            //Cargamos desde Zafiro todos los TopoStorage disponibles
+            await LoadTopoStorages();
+
+        }
+        await base.OnInitializedAsync();
+    }
+
+    /// <summary>
+    /// Carga todos los TopoStorages disponbles en Zafiro para usarlos en la base de datos.   
+    /// </summary>
+    /// <returns></returns>
+    private async Task LoadTopoStorages()
+    {
+        mcolTopoStorageHeaders = await TimeNetService.GetTopoStorages();
+
+    }
+    private async Task InitDownloadTopoStorage(Guid guid)
+    {
+        mvarDownloading = true;
+        StateHasChanged();
+        await DownloadTopoStorage(guid);
+        mvarDownloading = false;
+        StateHasChanged();
+    }
+    private async Task DownloadTopoStorage(Guid guid)
+    {
+        //Descargamos el TopoStorage completo desde Zafiro
+
+
+    }
+
+}

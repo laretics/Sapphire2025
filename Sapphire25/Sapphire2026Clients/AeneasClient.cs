@@ -70,7 +70,6 @@ namespace Sapphire2025.Storage
 			if(null==auxLista) return new List<StatusChangeModel>();
 			return auxLista;
 		}
-
 		public async Task<IEnumerable<StatusChangeModel>> recentChangeList(DateTime timeStamp)
 		{
 			DateTime auxUtc = timeStamp.Kind == DateTimeKind.Utc

@@ -77,6 +77,7 @@ h1:focus {
     --menu-selected-border: #e0e0e0;
     --menu-text: #222;
     --menu-selected-text: #222;
+    --menu-button-border: #222;
 }
 
 .night {
@@ -85,4 +86,17 @@ h1:focus {
     --menu-selected-border: #444;
     --menu-text: #eee;
     --menu-selected-text: #fff;
+    --menu-button-border: #fff;
 }
+
+.btn.btn-transparent {
+    background-color: transparent !important;
+    border: var(--menu-button-border) !important;
+    color: var(--menu-text) !important;
+    transition: transform 0.1s, border-color 0.1s;
+}
+
+    .btn.btn-transparent:active {
+        transform: scale(0.95);
+        border-color: var(--menu-button-border);
+    }

@@ -1,6 +1,62 @@
-﻿@using Tourmaline26.Components.Controls.Floatings
+﻿@using TimeNetComponents.TreeView
+@using Tourmaline26.Components.Controls.Floatings
+@using Tourmaline26.Components.Services.LocalDataModel
+@using Sapphire2025Models
+@using Microsoft.EntityFrameworkCore
 @inject Tourmaline26.Components.Services.TourmalineService TourmalineService
-<p>Parámetros del servicio Tourmaline</p>
+@inject TourmalineContext database
+@if(null==mvarLocalSystem)
+{
+    <p>No se ha abierto el registro interno</p>
+}
+else
+{
+    <p>Registro</p>
+    <table class="table table-striped table-bordered mt-4">
+        <thead>
+            <tr>                
+                <th>Campo</th>
+                <th>Valor</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>TrainId</td>
+                <td>@mvarLocalSystem.TrainId.ToString()</td>
+            </tr>
+            <tr>
+                <td>Name</td>
+                <td>@mvarLocalSystem.TrainName</td>
+            </tr>
+            <tr>
+                <td>Ult. Sinc. Datos</td>
+                <td>@(Utils.autoDate(mvarLocalSystem.LastSapphireDownload))</td>
+            </tr>
+            @if(mvarLocalSystem.LastAeneasSync>DateTime.MinValue)
+            {
+                <tr>
+                    <td>Ult. Sinc. Taller</td>
+                    <td>@(Utils.autoDate(mvarLocalSystem.LastAeneasSync))</td>
+                </tr>
+            }
+            @if (mvarLocalSystem.LastTopoSync > DateTime.MinValue)
+            {
+                <tr>
+                    <td>Ult. Sinc. Topology</td>
+                    <td>@(Utils.autoDate(mvarLocalSystem.LastTopoSync))</td>
+                </tr>
+            }
+            @if (mvarLocalSystem.LastRautaSync > DateTime.MinValue)
+            {
+                <tr>
+                    <td>Ult. Sinc. Rauta</td>
+                    <td>@(Utils.autoDate(mvarLocalSystem.LastRautaSync))</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+<p>Archivo de Configuración</p>
 <table class="table table-striped table-bordered mt-4">
     <thead>
         <tr>
@@ -10,11 +66,6 @@
         </tr>
     </thead>
     <tbody>
-        <tr>
-            <td>Tren</td>
-            <td>Serie</td>
-            <td>@TourmalineService.SystemConfig.Series.ToString()</td>
-        </tr>
         <tr>
             <td></td>
             <td>UT</td>
@@ -37,5 +88,14 @@
 </table>
 
 @code {
+    private DBLocalSystem? mvarLocalSystem;
+    protected async override Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await database.Database.EnsureCreatedAsync(); //Genero la base de datos si no existe
+        mvarLocalSystem = await database.LocalSystem.FirstOrDefaultAsync();
+    }
+
+
 
 }
