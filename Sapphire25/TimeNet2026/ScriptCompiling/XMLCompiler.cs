@@ -457,12 +457,12 @@ namespace TimeNet2026.ScriptCompiling
 					case "block":
 						CirculationBlock? auxBlock = CompileCirculationBlock(hijo, plan, storage);
 						if (null != auxBlock)
-							plan.CirculationBlocks.Add(auxBlock);
+							plan.AllCirculationBlocks.Add(auxBlock);
 						break;
 					case "cir":
 						CirculationBlock? auxBlock2 = CompileStandAloneCirculation(hijo, storage);
 						if (null != auxBlock2)
-							plan.CirculationBlocks.Add(auxBlock2);
+							plan.AllCirculationBlocks.Add(auxBlock2);
 						break;
 				}
 			}

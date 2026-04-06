@@ -35,7 +35,9 @@ namespace TimeNet2026Data.Serialization
 			List<DBCirculation> auxCirculations = await mvarContext.Circulations.ToListAsync();
 			List<DBSchedule> auxSchedules = await mvarContext.Schedules.ToListAsync();
 			List<DBScheduleUnit> auxScheduleUnits = await mvarContext.ScheduleUnits.ToListAsync();
-			mvarContext.Headers.RemoveRange(auxHeaders);
+			List<DBAsimilation> auxAsimilations = await mvarContext.Asimilations.ToListAsync();
+			List<DBAsimilationStep> auxAsimilationSteps = await mvarContext.AsimilationSteps.ToListAsync();
+            mvarContext.Headers.RemoveRange(auxHeaders);
 			mvarContext.RefPunctuals.RemoveRange(auxRefPunctuals);
 			mvarContext.Stations.RemoveRange(auxStations);
 			mvarContext.Axis.RemoveRange(auxAxis);
@@ -46,7 +48,9 @@ namespace TimeNet2026Data.Serialization
 			mvarContext.Circulations.RemoveRange(auxCirculations);
 			mvarContext.Schedules.RemoveRange(auxSchedules);
 			mvarContext.ScheduleUnits.RemoveRange(auxScheduleUnits);
-			await mvarContext.SaveChangesAsync();
+			mvarContext.Asimilations.RemoveRange(auxAsimilations);
+			mvarContext.AsimilationSteps.RemoveRange(auxAsimilationSteps);
+            await mvarContext.SaveChangesAsync();
 		}
 
 		#region ExternalSerializer

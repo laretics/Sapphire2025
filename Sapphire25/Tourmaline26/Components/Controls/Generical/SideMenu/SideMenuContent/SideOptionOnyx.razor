@@ -1,16 +1,65 @@
-﻿@using TimeNet2026.Models
+﻿@using System.Threading.Tasks
+@using TimeNet2026.Models
+@inject IServiceProvider ScopeFactory
 @inject Sapphire2025.Storage.TimeNetClient TimeNetService
 @inject Tourmaline26.Components.Services.TourmalineService TourmalineService
+@using TimeNet2026.Topo
+@using TimeNet2026.Timed
+@using Tourmaline26.Components.Pages
+@if(null==mvarSelectedRauta)
+{
+    <h2>No existen horarios cargados</h2>
+}
+else
+{
+    <h2>Horarios</h2>
+    <RadioButton Options="mcolPlanIds" 
+        SelectedIndex="0" 
+        SelectedIndexChanged="@((int v) => SelectPlan(v))" />
+    <h2>Hoy</h2>
+    <RadioButton Options="mcolWeekDays"
+        SelectedIndex="0"
+        />
+        <p>-</p>
+}
 @if(TourmalineService.SessionConfig.ServiceMode)
 {
-    @if(mvarDownloading)
+    @if(1==mvarDownloading)
     {
-        <h1>¡Descargando!</h1>        
+        <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" aria-modal="true" role="dialog">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content text-center">
+                    <div class="modal-body">
+                        <div class="spinner-border text-primary mb-3" style="width: 4rem; height: 4rem;" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <h4 class="mb-2">Descargando datos</h4>
+                        <p>Por favor, espere.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if(2==mvarDownloading)
+    {
+        <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" aria-modal="true" role="dialog">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content text-center">
+                    <div class="modal-body">
+                        <div class="spinner-border text-success mb-3" style="width: 4rem; height: 4rem;" role="status">
+                            <span class="visually-hidden">Procesando...</span>
+                        </div>
+                        <h4 class="mb-2">Componiendo base de datos</h4>
+                        <p>Por favor, espere mientras se procesa la información.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     }
     else
     {
         <button @onclick="() => DownloadDatabase()">Download Database</button>
-        @if (null != mcolTopoStorageHeaders)
+        @if (TourmalineService.TimeNetStorage.Storages.Count>0)
         {
             <h3>Topologías disponibles</h3>
             <table class="table table-striped table-bordered mt-4">
@@ -21,16 +70,56 @@
                         <th>Info</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @foreach (TopoStorageHeaderModel header in mcolTopoStorageHeaders)
+                <tbody>                    
+                    @foreach (TopoStorage element in TourmalineService.TimeNetStorage.Storages.Values)
                     {
                         <tr>
                             <td>
-                                @header.header.Id.ToString()
-                                <button @onclick="() => InitDownloadTopoStorage(header.header.Id)">Load</button>
+                                @element.Header.Id
+                                @if (element == mvarSelectedTopoStorage)
+                                {
+                                    <p>Seleccionado</p>
+                                }
+                                else
+                                {
+                                    <button @onclick="() => SelectTopoStorage(element.Header.Id)">Load</button>
+                                }
                             </td>
-                            <td>@header.header.Name</td>
-                            <td>@header.header.Comment</td>
+                            <td>@element.Header.Name</td>
+                            <td>@element.Header.Comment</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        @if(null!=mvarSelectedTopoStorage)
+        {
+            <h3>Libros de Horarios</h3>
+            <table class="table table-striped table-bordered mt-4">
+                <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Nombre</th>
+                        <th>Info</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (Rauta rauta in mvarSelectedTopoStorage.ColRauta.Values)
+                    {
+                        <tr>
+                            <td>
+                                @rauta.Header.Id
+                                @if (rauta == mvarSelectedRauta)
+                                {
+                                    <p>Seleccionado</p>
+                                }
+                                else
+                                {
+                                    <button @onclick="() => SelectRauta(rauta.Header.Id)">Load</button>
+                                }
+                            </td>
+                            <td>@rauta.Header.Name</td>
+                            <td>@rauta.Header.Comment</td>
                         </tr>
                     }
                 </tbody>
@@ -40,49 +129,87 @@
 }
 
 @code {
-    IEnumerable<TopoStorageHeaderModel>? mcolTopoStorageHeaders = null;
-    private bool mvarDownloading = false;
+    private byte mvarDownloading = 0;
+    private TopoStorage? mvarSelectedTopoStorage = null;
+    private Rauta? mvarSelectedRauta = null;
+    private List<string> mcolPlanIds
+    {
+        get
+        {
+            List<string> salida = new List<string>();
+            if (null != mvarSelectedRauta)
+            {
+                foreach (Plan plan in mvarSelectedRauta.Plans.Values)
+                    salida.Add(plan.Name);
+            }
+            return salida;
+        }
+    }
+    private List<string> mcolWeekDays
+    {
+        get => new string[]{
+            "L",
+            "M",
+            "X",
+            "J",
+            "V",
+            "S",
+            "D",
+            "Fest"
+        }.ToList();
+    }
+    private void SelectPlan(int index)
+    {
+        //Seleccionamos el plan que queremos usar para cargar la base de datos
+    }
     protected override async Task OnInitializedAsync()
     {
-        if(TourmalineService.SessionConfig.ServiceMode)
-        {
-            //Cargamos desde Zafiro todos los TopoStorage disponibles
-            await LoadTopoStorages();
-
-        }
+        await TourmalineService.EnsureInitialized();
+        mvarSelectedTopoStorage = await TourmalineService.GetCurrentTopoStorage();
+        mvarSelectedRauta = await TourmalineService.GetCurrentRauta();
         await base.OnInitializedAsync();
     }
 
-    /// <summary>
-    /// Carga todos los TopoStorages disponbles en Zafiro para usarlos en la base de datos.   
-    /// </summary>
-    /// <returns></returns>
-    private async Task LoadTopoStorages()
-    {
-        mcolTopoStorageHeaders = await TimeNetService.GetTopoStorages();
-
-    }
     /// <summary>
     /// Cargamos una réplica de la base de datos en local para trabajar con estas entidades
     /// </summary>
     /// <returns></returns>
     private async Task DownloadDatabase()
     {
+        mvarDownloading = 1;
+        StateHasChanged();
         TimeNetDataExportDto? paquete = await TimeNetService.DownloadJsonPackageAsync(Guid.NewGuid());
-    }
-    private async Task InitDownloadTopoStorage(Guid guid)
-    {
-        mvarDownloading = true;
+        mvarDownloading = 2;
         StateHasChanged();
-        await DownloadTopoStorage(guid);
-        mvarDownloading = false;
+        if (null != paquete)
+        {
+            using (IServiceScope scope = ScopeFactory.CreateScope())
+            {
+                TourmalineContext auxContext = scope.ServiceProvider.GetRequiredService<TourmalineContext>();
+                TimeNet2026Data.Serialization.DBSerializer auxSerializer =
+                    new TimeNet2026Data.Serialization.DBSerializer(auxContext);
+                await auxSerializer.ImportFromDtoAsync(paquete, true);                
+            }
+            await TourmalineService.DoTimeNetSync();
+            await TourmalineService.InitializeTimeNet(); //Cargo en memoria lo que he descargado.
+        }        
+        mvarDownloading = 0;
         StateHasChanged();
     }
-    private async Task DownloadTopoStorage(Guid guid)
+    private async Task SelectTopoStorage(Guid guid)
     {
-        //Descargamos el TopoStorage completo desde Zafiro
-
-
+        //Seleccionamos el TopoStorage que queremos usar para cargar la base de datos
+        await TourmalineService.DoTopologySelect(guid);
+        mvarSelectedTopoStorage = await TourmalineService.GetCurrentTopoStorage();
+        mvarSelectedRauta = await TourmalineService.GetCurrentRauta();
+        StateHasChanged();
+    }
+    private async Task SelectRauta(Guid guid)
+    {
+        //Seleccionamos el Rauta que queremos usar para cargar la base de datos
+        await TourmalineService.DoRautatieSelect(guid);
+        mvarSelectedRauta = await TourmalineService.GetCurrentRauta();
+        StateHasChanged();
     }
 
 }

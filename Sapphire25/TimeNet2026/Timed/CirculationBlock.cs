@@ -20,7 +20,7 @@ namespace TimeNet2026.Timed
 	{
 		public List<Circulation> Circulations { get; internal set; }
 		public Asimilation? asimilation { get; set; }
-		public byte weekdayMask { get; set; }
+		public Weekday weekdayMask { get; set; }
 		public string pattern { get; set; } = "####";
 		public bool Ready => null != asimilation && null !=asimilation.duration;
 		private string[] mvarColor;

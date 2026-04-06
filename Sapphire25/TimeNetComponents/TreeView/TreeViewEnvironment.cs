@@ -84,7 +84,7 @@ namespace TimeNetComponents.TreeView
 				case TreeNode.NodeType.Asimilation:	//La asimilación devuelve las circulaciones asimiladas que la usan.
 					if(null!=enviro.Asimilation && null!=enviro.Plan)
 					{
-						foreach(CirculationBlock candidato in enviro.Plan.CirculationBlocks)
+						foreach(CirculationBlock candidato in enviro.Plan.CirculationBlocksByDay)
 						{
 							if(candidato.asimilation==enviro.Asimilation)
 							{
@@ -131,7 +131,7 @@ namespace TimeNetComponents.TreeView
 					if(null!=enviro.Plan)
 					{
 						Dictionary<Asimilation, List<CirculationBlock>> blocks = new Dictionary<Asimilation, List<CirculationBlock>>();
-						foreach (CirculationBlock bloque in enviro.Plan.CirculationBlocks)
+						foreach (CirculationBlock bloque in enviro.Plan.CirculationBlocksByDay)
 						{
 							if (null != bloque.asimilation)
 							{

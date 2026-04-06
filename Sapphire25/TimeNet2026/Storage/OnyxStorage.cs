@@ -18,7 +18,6 @@ namespace TimeNet2026.Storage
 		public OnyxStorage()
 		{
 			mcolTopoStorages = new Dictionary<Guid, TopoStorage>();
-			//mvarStorage.Database.EnsureCreated(); //Se asegura de que existe la base de datos.
 		}
 		public async Task EmptyDatabase(ITimeNetContextStorage context) 
 		{
@@ -196,14 +195,14 @@ namespace TimeNet2026.Storage
 						nuevoPlan.Color1 = auxPlan.mvarColor[1] ?? "white";
 						auxSerializer.Add(nuevoPlan);
 						await auxSerializer.SaveChangesAsync();
-						foreach (CirculationBlock auxBlock in auxPlan.CirculationBlocks)
+						foreach (CirculationBlock auxBlock in auxPlan.AllCirculationBlocks)
 						{
 							if (null != auxBlock.asimilation)
 							{
 								DBCirculationBlock nuevoBlock = new DBCirculationBlock();
 								nuevoBlock.PlanId = nuevoPlan.Id;
 								nuevoBlock.AsimilationId = auxBlock.asimilation.id;
-								nuevoBlock.WeekdayMask = auxBlock.weekdayMask;
+								nuevoBlock.WeekdayMask = (byte)auxBlock.weekdayMask;
 								nuevoBlock.Pattern = auxBlock.pattern;
 								auxSerializer.Add(nuevoBlock);
 								await auxSerializer.SaveChangesAsync();
@@ -222,13 +221,13 @@ namespace TimeNet2026.Storage
 						}
 						await auxSerializer.SaveChangesAsync();
 
-						foreach (Schedule auxSchedule in auxPlan.Schedules)
+						foreach (Schedule auxSchedule in auxPlan.AllSchedules)
 						{
 							DBSchedule nuevoSchedule = new DBSchedule();
 							nuevoSchedule.PlanId = nuevoPlan.Id;
 							nuevoSchedule.Name = auxSchedule.NameCloudString;
 							nuevoSchedule.Comment = auxSchedule.Comment;
-							nuevoSchedule.WeekdayMask = auxSchedule.weekdayMask;
+							nuevoSchedule.WeekdayMask = (byte)auxSchedule.weekdayMask;
 							nuevoSchedule.Color1 = auxSchedule.Color[0] ?? "black";
 							nuevoSchedule.Color2 = auxSchedule.Color[1] ?? "white";
 							nuevoSchedule.CoordinateX = auxSchedule.Coordinates[0];
@@ -307,9 +306,9 @@ namespace TimeNet2026.Storage
 							{
 								CirculationBlock nuevoBlock = new CirculationBlock();
 								nuevoBlock.asimilation = topoStorage.mcolAsimilations[block.AsimilationId];
-								nuevoBlock.weekdayMask = block.WeekdayMask;
+								nuevoBlock.weekdayMask = (Weekday)block.WeekdayMask;
 								nuevoBlock.pattern = block.Pattern;
-								nuevoPlan.CirculationBlocks.Add(nuevoBlock);
+								nuevoPlan.AllCirculationBlocks.Add(nuevoBlock);
 								List<DBCirculation> circulacionesEnBloque = await auxSerializer.GetCirculations(block.Id);
 								foreach (DBCirculation auxCirculation in circulacionesEnBloque)
 								{
@@ -330,7 +329,7 @@ namespace TimeNet2026.Storage
 							Schedule nuevoSchedule = new Schedule();
 							nuevoSchedule.Name = schedule.Name;
 							nuevoSchedule.Comment = schedule.Comment;
-							nuevoSchedule.weekdayMask = schedule.WeekdayMask;
+							nuevoSchedule.weekdayMask = (Weekday)schedule.WeekdayMask;
 							nuevoSchedule.Color[0] = schedule.Color1 ?? "black";
 							nuevoSchedule.Color[1] = schedule.Color2 ?? "white";
 							nuevoSchedule.Coordinates[0] = schedule.CoordinateX;

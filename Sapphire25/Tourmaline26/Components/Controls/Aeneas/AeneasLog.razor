@@ -57,9 +57,7 @@
         mvarIsLoading = true;
         mvarProcessMessage = "Recuperando información de la base de datos...";
         await InvokeAsync(StateHasChanged);
-
-        await TourmalineService.InitData();
-
+        await TourmalineService.EnsureInitialized();
         if(null== TourmalineService.SessionConfig.ColUsers)
         {
             mvarProcessMessage = "Obteniendo colección de usuarios...";
@@ -107,14 +105,8 @@
                         Type= note.Type
                     });
                 }
-                await database.SaveChangesAsync();                
-                //Actualizamos la fecha de sincronización.
-                DBLocalSystem? localSystem = await database.LocalSystem.FirstOrDefaultAsync();
-                if(null!=localSystem)
-                {
-                    localSystem.LastAeneasSync = DateTime.Now;
-                    await database.SaveChangesAsync();
-                }
+                await database.SaveChangesAsync();
+                await TourmalineService.DoAeneasSync();
             }
         }
         catch(Exception ex)

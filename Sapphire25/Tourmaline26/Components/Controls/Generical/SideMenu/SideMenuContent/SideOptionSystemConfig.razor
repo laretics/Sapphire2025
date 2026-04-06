@@ -39,19 +39,26 @@ else
                     <td>@(Utils.autoDate(mvarLocalSystem.LastAeneasSync))</td>
                 </tr>
             }
-            @if (mvarLocalSystem.LastTopoSync > DateTime.MinValue)
+            @if (mvarLocalSystem.LastTimeNetSync > DateTime.MinValue)
             {
                 <tr>
-                    <td>Ult. Sinc. Topology</td>
-                    <td>@(Utils.autoDate(mvarLocalSystem.LastTopoSync))</td>
+                    <td>Descarga TimeNet(Ónice)</td>
+                    <td>@(Utils.autoDate(mvarLocalSystem.LastTimeNetSync))</td>
                 </tr>
-            }
-            @if (mvarLocalSystem.LastRautaSync > DateTime.MinValue)
-            {
-                <tr>
-                    <td>Ult. Sinc. Rauta</td>
-                    <td>@(Utils.autoDate(mvarLocalSystem.LastRautaSync))</td>
-                </tr>
+                @if (mvarLocalSystem.LastTopoSync > DateTime.MinValue)
+                {
+                    <tr>
+                        <td>Ult. Sinc. Topology</td>
+                        <td>@(Utils.autoDate(mvarLocalSystem.LastTopoSync))</td>
+                    </tr>
+                }
+                @if (mvarLocalSystem.LastRautaSync > DateTime.MinValue)
+                {
+                    <tr>
+                        <td>Ult. Sinc. Rauta</td>
+                        <td>@(Utils.autoDate(mvarLocalSystem.LastRautaSync))</td>
+                    </tr>
+                }
             }
         </tbody>
     </table>
@@ -92,7 +99,6 @@ else
     protected async override Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        await database.Database.EnsureCreatedAsync(); //Genero la base de datos si no existe
         mvarLocalSystem = await database.LocalSystem.FirstOrDefaultAsync();
     }
 

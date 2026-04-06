@@ -33,7 +33,7 @@ namespace TimeNet2026.Timed
 
 		internal int[] Coordinates { get; set; } //Coordenadas X,Y en la presentación gráfica.
 		internal string Comment { get; set; }
-		internal byte weekdayMask { get; set; } //Días de la semana en que está operativo este horario.
+		internal Weekday weekdayMask { get; set; } //Días de la semana en que está operativo este horario.
 		internal string[] Color { get; set; }
 		string Entity.name { get => Name; set => Name = value; }
 		string Entity.comment { get => Comment; set => Comment = value; }

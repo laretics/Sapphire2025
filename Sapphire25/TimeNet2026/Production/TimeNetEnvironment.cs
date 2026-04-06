@@ -139,7 +139,7 @@ namespace TimeNet2026.Production
                 }
                 else if (null != Asimilation)
                 {
-                    foreach (CirculationBlock block in Plan.CirculationBlocks)
+                    foreach (CirculationBlock block in Plan.CirculationBlocksByDay)
                     {
                         if (block.asimilation == Asimilation)
                         {

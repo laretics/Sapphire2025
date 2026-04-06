@@ -15,38 +15,60 @@ namespace TimeNet2026.Timed
 {
 	public class Plan : Entity
 	//Plan de explotación
-	{		
+	{
+		public Weekday CurrentDay { get; set; } = Weekday.Monday;
 		public string[] mvarColor { get; set; }
 		public string Color { get => mvarColor[0]; }
 		public string Name { get; set; }
 		public string Comment { get; set; }
         public string Id { get; set; } //Identificador del plan
 		public TopoStorage Parent { get; private set; }
-		public int CirculationCount
+		public int CirculationCount { get => CirculationsByDay.Count(); }
+		
+		public IEnumerable<Schedule> AllSchedules { get => mcolSchedules; }
+		public IEnumerable<Schedule> SchedulesByDay
 		{
 			get
 			{
-				int cuenta = 0;
-				foreach(CirculationBlock bloque in CirculationBlocks)
-					cuenta += bloque.Circulations.Count;
-				return cuenta;
-			}
+                foreach (Schedule auxSchedule in mcolSchedules)
+                {
+                    if (auxSchedule.weekdayMask.HasFlag(CurrentDay))
+                        yield return auxSchedule;
+                }
+            }
 		}
-		public IEnumerable<Schedule> Schedules { get => mcolSchedules; }
-		public IEnumerable<Schedule> SchedulesByDay(byte dayOfWeek)
+		public List<CirculationBlock> AllCirculationBlocks { get; private set; }
+		public List<CirculationBlock> CirculationBlocksByDay
+		{
+			get
+			{
+				List<CirculationBlock> salida = new List<CirculationBlock>();
+				foreach (CirculationBlock bloque in AllCirculationBlocks)					
+				{
+					if (bloque.weekdayMask.HasFlag(CurrentDay))
+						salida.Add(bloque);
+                }
+				return salida;
+			}
+        }
+        public IEnumerable<Circulation> CirculationsByDay
+		{
+			get
+			{
+				foreach (CirculationBlock bloque in AllCirculationBlocks)
+				{
+					foreach (Circulation circula in bloque.Circulations)
+						yield return circula;
+				}
+			}
+        }
+
+        internal List<Schedule> mcolSchedules; //No puedo hacer un diccionario porque puede haber varios turnos con el mismo nombre en días diferentes.
+		internal Schedule? Schedule(string name,Weekday dayOfWeek)
 		{
 			foreach (Schedule auxSchedule in mcolSchedules)
 			{
-				if ((auxSchedule.weekdayMask & (1 << (dayOfWeek - 1))) != 0) yield return auxSchedule;
-			}
-		}
-		public List<CirculationBlock> CirculationBlocks { get; private set; }
-		internal List<Schedule> mcolSchedules; //No puedo hacer un diccionario porque puede haber varios turnos con el mismo nombre en días diferentes.
-		internal Schedule? Schedule(string name,byte dayOfWeek)
-		{
-			foreach (Schedule auxSchedule in mcolSchedules)
-			{
-				if ((auxSchedule.Name == name) && ((auxSchedule.weekdayMask & (1 << (dayOfWeek - 1))) != 0)) return auxSchedule;
+				if ((auxSchedule.Name == name) && auxSchedule.weekdayMask.HasFlag(dayOfWeek)) return auxSchedule;
 			}
 			return null;
 		}
@@ -57,19 +79,16 @@ namespace TimeNet2026.Timed
 		internal List<Circulation> nextCirculationsByStation(Station station, TimeSpan time)
 		{
 			List<Circulation> salida = new List<Circulation>();
-			//Obtiene el próximo tren en partir a partir de esta hora...
-			foreach(CirculationBlock bloque in CirculationBlocks)
-			{
-				foreach(Circulation auxCircula in bloque.Circulations)
-				{
-					TimeSpan auxTime = auxCircula.departureFrom(station);
-					if ((auxTime < TimeSpan.MaxValue) && (auxTime >= time))
-					{
-						auxCircula.cacheDeparture = auxTime;
-						salida.Add(auxCircula);
-					}
-				}
-			}
+            //Obtiene el próximo tren en partir a partir de esta hora...
+            foreach (Circulation auxCircula in CirculationsByDay)
+            {
+                TimeSpan auxTime = auxCircula.departureFrom(station);
+                if ((auxTime < TimeSpan.MaxValue) && (auxTime >= time))
+                {
+                    auxCircula.cacheDeparture = auxTime;
+                    salida.Add(auxCircula);
+                }
+            }
 			salida.Sort();
 			return salida;
 		}
@@ -78,19 +97,16 @@ namespace TimeNet2026.Timed
 			Circulation? candidate = null;
 			double nearestCandidate = double.MaxValue;
 			double auxNearest = double.MaxValue;
-			foreach(CirculationBlock bloque in CirculationBlocks)
-			{
-				foreach (Circulation auxCircula in bloque.Circulations)
-				{
-					TimeSpan auxTime = auxCircula.departureFrom(station);
-					auxNearest = Math.Abs(time.TotalMilliseconds - auxTime.TotalMilliseconds);
-					if (auxNearest < nearestCandidate)
-					{
-						nearestCandidate = auxNearest;
-						candidate = auxCircula;
-					}
-				}
-			}
+            foreach (Circulation auxCircula in CirculationsByDay)
+            {
+                TimeSpan auxTime = auxCircula.departureFrom(station);
+                auxNearest = Math.Abs(time.TotalMilliseconds - auxTime.TotalMilliseconds);
+                if (auxNearest < nearestCandidate)
+                {
+                    nearestCandidate = auxNearest;
+                    candidate = auxCircula;
+                }
+            }
 			return candidate;
 		}
 		internal TimeLapseCollection TotalTimeLapse
@@ -98,13 +114,8 @@ namespace TimeNet2026.Timed
 			get
 			{
 				TimeLapseCollection salida = new TimeLapseCollection();
-				foreach (CirculationBlock bloque in CirculationBlocks)
-				{
-					foreach (Circulation cir in bloque.Circulations)
-					{
-						salida.Add(cir.TimeLapse);
-					}
-				}
+				foreach (Circulation cir in  CirculationsByDay)
+                    salida.Add(cir.TimeLapse);
 				return salida;
 			}
 		}
@@ -116,11 +127,11 @@ namespace TimeNet2026.Timed
 		}
 		internal Circulation? getCirculationById(string rhs)
 		{
-			foreach (CirculationBlock bloque in CirculationBlocks)
+			foreach (Circulation circulation in CirculationsByDay)
 			{
-				Circulation? salida = bloque.GetCirculation(rhs);
-				if (null != salida) return salida;
-			}
+				if (circulation.name == rhs) 
+					return circulation;
+            }
 			return null;
 		}
 		internal Schedule? scheduleByCirculation(Circulation rhs)
@@ -140,7 +151,7 @@ namespace TimeNet2026.Timed
 			Name = string.Empty;
 			Comment = string.Empty;
 			mvarColor = new string[2];
-			CirculationBlocks = new List<CirculationBlock>();			
+			AllCirculationBlocks = new List<CirculationBlock>();			
 			mcolSchedules = new List<Schedule>();
 		}
 	}

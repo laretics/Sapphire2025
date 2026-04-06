@@ -1,4 +1,5 @@
 ﻿using Sapphire2025Models.Authentication;
+using TimeNet2026.Models;
 namespace Tourmaline26.Components.Services.Logic
 {
     /// <summary>
@@ -15,6 +16,7 @@ namespace Tourmaline26.Components.Services.Logic
         public bool ExternalTeleindicatorsEnabled { get; set; } = true; //Indica si los paneles de destino están habilitados.
         public bool AutoCameras { get; set; } = true; //Indica si las cámaras se activan automáticamente en las paradas con habilitación de puertas.
         public bool ManualCameras { get; set; } = true; //Indica si el botón de cámaras está habilitado.
+        
         public Enums.InformationLevel InformationLevel { get; set; } = Enums.InformationLevel.Route; //Nivel de información actual.
         public SessionModel? Session { get; set; } = null; //Información sobre el usuario actual
         public Dictionary<Guid, UserModelBase>? ColUsers = null; //Colección de usuarios del tren, con su Guid de Zafiro como clave.

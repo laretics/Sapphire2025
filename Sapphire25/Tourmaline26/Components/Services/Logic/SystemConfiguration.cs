@@ -10,6 +10,6 @@ namespace Tourmaline26.Components.Services.Logic
         public string Name { get; set; } = "Tren";
 		public DateTime LastRelease { get; set; } //Fecha de la última instalación de hardware.
 		public List<CameraInfo> Cameras { get; set; } = new List<CameraInfo>(); //Cámaras del tren.
-		public string SapphireUrl { get; set; } = "http://192.168.0.1"; //Url para hacer peticiones al servidor REST de Zafiro
+        public string SapphireUrl { get; set; } = "http://192.168.0.1"; //Url para hacer peticiones al servidor REST de Zafiro
 	}
 }

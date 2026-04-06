@@ -40,7 +40,7 @@ namespace TimeNet2026.Production
             ResetSelection();
             if(null!=enviro.TopoStorage && null!=enviro.Rauta && null!=enviro.Plan && null!=asimilation)
             {
-                foreach(CirculationBlock circulationBlock in enviro.Plan.CirculationBlocks)
+                foreach(CirculationBlock circulationBlock in enviro.Plan.CirculationBlocksByDay)
                 {
                     if(circulationBlock.asimilation == asimilation)
                     {

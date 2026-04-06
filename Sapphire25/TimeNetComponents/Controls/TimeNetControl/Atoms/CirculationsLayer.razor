@@ -12,7 +12,7 @@
         if (null != trainColorIndexString)
             int.TryParse(trainColorIndexString, out trainColorIndex);
 
-        foreach (CirculationBlock block in Environment.Environment.Plan.CirculationBlocks)
+        foreach (CirculationBlock block in Environment.Environment.Plan.CirculationBlocksByDay)
         {
             if(null!=block.asimilation && Traces.ContainsKey(block.asimilation.id))
             {

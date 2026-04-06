@@ -10,43 +10,69 @@
 @inject ILogger<DriverInfotaiment> Logger
 @inject Sapphire2025.Storage.IntStorageService InternalStorage
 <div class="tesla-root">
-    <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="@mvarTourmaline.SessionConfig.ServiceMode">
-        <div class="tesla-main">
-            <div class="tesla-left @panelClass">
-                @*  *@
-                @* <Speedometer /> *@
-            </div>
-            <div class="tesla-right @panelClass">                
-                @if(View3DEnabled)
+    @if(mvarInitialized)
+    {
+        <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="@mvarTourmaline.SessionConfig.ServiceMode">
+            <div class="tesla-main">
+                <div class="tesla-left @panelClass">
+                    @*  *@
+                    @* <Speedometer /> *@
+                </div>
+                <div class="tesla-right @panelClass">
+                    @if (View3DEnabled)
+                    {
+                        <SimulatorStream></SimulatorStream>
+                    }
+                    <TeslaTopRightBar></TeslaTopRightBar>
+                    <FloatDestinationInput>
+                        <h1>Manacor</h1>
+                    </FloatDestinationInput>
+                    @if (RightPanelVisible)
+                    {
+                        <SideMenu @ref="mvarSideMenu"></SideMenu>
+                    }
+                    else if (AeneasPanelVisible)
+                    {
+                        <AeneasLog></AeneasLog>
+                    }
+                </div>
+                @if (CameraViewMode)
                 {
-                    <SimulatorStream></SimulatorStream>
-                }                
-                <TeslaTopRightBar></TeslaTopRightBar>
-                <FloatDestinationInput>
-                    <h1>Manacor</h1>
-                </FloatDestinationInput>
-                @if(RightPanelVisible)
-                {
-                    <SideMenu @ref="mvarSideMenu"></SideMenu>
+                    <CamerasView></CamerasView>
                 }
-                else if (AeneasPanelVisible)
-                {
-                    <AeneasLog></AeneasLog>
-                }                
-            </div>        
-            @if (CameraViewMode)
+            </div>
+            @if (LoginMode)
             {
-                <CamerasView></CamerasView>
+                <LoginCtl Login="OnUserLogin" />
             }
+        </ServiceModeFrame>
+        <div class="tesla-bottom-bar">
+            <TeslaToolBar Buttons="buttonData" @ref="mvarTeclado" />
         </div>
-        @if(LoginMode)
-        {
-            <LoginCtl Login="OnUserLogin"  />
-        }
-    </ServiceModeFrame>
-    <div class="tesla-bottom-bar">
-        <TeslaToolBar Buttons="buttonData" @ref="mvarTeclado"/>
-    </div>
+    }
+    else
+            {
+            <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.95); z-index: 2000;" aria-modal="true" role="dialog">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content bg-dark text-light border-0 shadow-lg" style="background: transparent;">
+                        <div class="modal-body text-center">
+                            <div class="mb-4">
+                                <div class="spinner-border text-primary" style="width: 5rem; height: 5rem;" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                            </div>
+                            <h2 class="fw-bold mb-3" style="letter-spacing: 2px;">Iniciando sistema</h2>
+                            <p class="lead mb-4">Por favor, espera unos segundos.<br />Estamos preparando tu experiencia de viaje...</p>
+                            <div class="d-flex justify-content-center gap-3">
+                                <i class="bi bi-train-front fs-1 text-info"></i>
+                                <i class="bi bi-lightning-charge fs-1 text-warning"></i>
+                                <i class="bi bi-stars fs-1 text-primary"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    }
 </div>
 @code {
     [Inject]
@@ -60,6 +86,7 @@
     private TeslaToolBar? mvarTeclado{ get; set; }
     private SideMenu? mvarSideMenu{ get; set; }
     private bool LoginMode { get; set; } = false;
+    private bool mvarInitialized = false;
     public enum MainToolBarItem:byte
     {
         Train=0,
@@ -96,9 +123,8 @@
     }
 
     private TeslaButton[] buttonData = Array.Empty<TeslaButton>();
-    protected override void OnInitialized()
+    protected async override Task OnInitializedAsync()
     {
-        base.OnInitialized();
         buttonData = new TeslaButton[]
         {
             new("Train",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Main Menu"),
@@ -107,12 +133,21 @@
             new("Microphone",null,true,null,"Microphone"),
             new("3DOn","3DOff",true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "View3D"),
             new(""),
-            new(""),            
-            new(""),                                    
+            new(""),
+            new(""),
             new("Clipboard",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Damage Clipboard"),
             new("KeyOff","Key",false,EventCallback.Factory.Create(this, () => OnLoginRequest()),"Login"),
-        };
-        mvarTourmaline.HMIUpdateRequested += OnExternalEventChanged;
+        };        
+    }
+    protected async override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {            
+            _ = JS.InvokeVoidAsync("TeslaToolBar_registerKeyHandler", DotNetObjectReference.Create(this));
+            mvarTourmaline.HMIUpdateRequested += OnExternalEventChanged;
+            mvarInitialized = await mvarTourmaline.EnsureInitialized();
+            StateHasChanged();
+        }        
     }
 
     private string panelClass
@@ -156,14 +191,7 @@
             buttonData[(byte)MainToolBarItem.Clipboard].Selected = false;        
         mvarTourmaline.RaiseEvents(false);
     }    
-    protected override void OnAfterRender(bool firstRender)
-    {
-        if (firstRender)
-        {
-            // Registrar el evento de teclado
-            _ = JS.InvokeVoidAsync("TeslaToolBar_registerKeyHandler", DotNetObjectReference.Create(this));
-        }
-    }
+
     protected async Task OnLoginRequest()
     {
         if(null==mvarTourmaline.SessionConfig.Session)

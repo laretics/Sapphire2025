@@ -9,12 +9,8 @@ namespace Sapphire2025.Storage
 {
 	public class TimeNetClient:HttpClientBase
 	{
-		//Almacén local TimeNet para poder "jugar" con la estructura en modo local sin sobrecargar las comunicaciones.
-		public OnyxStorage LocalStorage { get; set; }
 		public TimeNetClient(HttpClient http, IntStorageService intStorage) : base(http, intStorage, "SapphireTimeNet") 
-		{
-			LocalStorage = new OnyxStorage();
-		}
+		{}
 		public async Task<CompileResult?> UploadXML(string xmlSourceCode, string fileName)
 		{
 			using MultipartFormDataContent contenido = new MultipartFormDataContent();
