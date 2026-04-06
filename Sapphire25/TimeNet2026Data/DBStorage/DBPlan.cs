@@ -1,17 +1,25 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using MessagePack;
 
 namespace TimeNet2026.DBStorage
 {
-    public class DBPlan
-    {
-        [Key]
-        public int Id { get; set; } //Id interno del plan.
-        public int RautaId { get; set; } //Identificador del Rauta al que pertenece.
-        public string PlanId { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public string Comment { get; set; } = string.Empty;
-        public string Color0 { get; set; } = string.Empty;
-        public string Color1 { get; set; } = string.Empty;
-
-    }
+	[MessagePack.MessagePackObject]
+	public class DBPlan
+	{
+		[System.ComponentModel.DataAnnotations.Key]
+		[MessagePack.Key(0)]		
+		public int Id { get; set; }
+		[MessagePack.Key(1)]
+		public int RautaId { get; set; }
+		[MessagePack.Key(2)]
+		public string PlanId { get; set; } = string.Empty;
+		[MessagePack.Key(3)]
+		public string Name { get; set; } = string.Empty;
+		[MessagePack.Key(4)]
+		public string Comment { get; set; } = string.Empty;
+		[MessagePack.Key(5)]
+		public string Color0 { get; set; } = string.Empty;
+		[MessagePack.Key(6)]
+		public string Color1 { get; set; } = string.Empty;
+	}
 }

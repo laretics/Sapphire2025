@@ -3,6 +3,7 @@ using System.Text;
 using TimeNet2026.Storage;
 using TimeNet2026.ScriptCompiling;
 using TimeNet2026.Models;
+using MessagePack;
 
 namespace Sapphire2025.Storage
 {
@@ -45,5 +46,24 @@ namespace Sapphire2025.Storage
 
 			return null;
 		}
+
+		public async Task<TimeNetDataExportDto?> DownloadJsonPackageAsync(Guid token)
+		{
+			var response = await sendPostRequest("tnjsoncontent", System.Text.Json.JsonSerializer.Serialize(token));
+			if (response.IsSuccessStatusCode)
+				return await response.Content.ReadFromJsonAsync<TimeNetDataExportDto>();
+			return null;
+		}
+		public async Task<TimeNetDataExportDto?> DownloadBinaryPackageAsync(Guid token)
+		{
+			var response = await sendPostRequest("tnbincontent", System.Text.Json.JsonSerializer.Serialize(token));
+			if (response.IsSuccessStatusCode)
+			{
+				var buffer = await response.Content.ReadAsByteArrayAsync();
+				return MessagePackSerializer.Deserialize<TimeNetDataExportDto>(buffer);
+			}
+			return null;
+		}
+
 	}
 }

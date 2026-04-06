@@ -9,6 +9,7 @@
     }
     else
     {
+        <button @onclick="() => DownloadDatabase()">Download Database</button>
         @if (null != mcolTopoStorageHeaders)
         {
             <h3>Topologías disponibles</h3>
@@ -60,6 +61,14 @@
     {
         mcolTopoStorageHeaders = await TimeNetService.GetTopoStorages();
 
+    }
+    /// <summary>
+    /// Cargamos una réplica de la base de datos en local para trabajar con estas entidades
+    /// </summary>
+    /// <returns></returns>
+    private async Task DownloadDatabase()
+    {
+        TimeNetDataExportDto? paquete = await TimeNetService.DownloadJsonPackageAsync(Guid.NewGuid());
     }
     private async Task InitDownloadTopoStorage(Guid guid)
     {

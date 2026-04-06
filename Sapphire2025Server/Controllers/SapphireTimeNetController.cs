@@ -10,6 +10,7 @@ using TimeNet2026.Topo;
 using System.Linq.Expressions;
 using TimeNet2026.Models;
 using TimeNet2026.Timed;
+using TimeNet2026Data.Serialization;
 
 namespace Sapphire2025Server.Controllers
 {
@@ -23,6 +24,24 @@ namespace Sapphire2025Server.Controllers
 		{
 			
 		}			
+
+		[HttpPost("tnjsoncontent")]
+		public async Task<TimeNetDataExportDto> GetJsonSerial([FromBody] Guid Token)
+		{
+			ITimeNetContextStorage contexto = new DataStorage(mvarConfig);
+			DBSerializer serializer = new DBSerializer(contexto);
+			TimeNetDataExportDto salida = await serializer.BuildExportDtoAsync();
+			return salida;
+		}
+		[HttpPost("tnbincontent")]
+		public async Task<IActionResult> GetBinSerial([FromBody] Guid Token)
+		{
+			ITimeNetContextStorage contexto = new DataStorage(mvarConfig);
+			DBSerializer serializer = new DBSerializer(contexto);
+			TimeNetDataExportDto salida = await serializer.BuildExportDtoAsync();
+			byte[] buffer = DBSerializer.ToBinary(salida);
+			return File(buffer,"application/x-msgpack");
+		}
 
 		[HttpPost("uploadxml")]
 		public async Task<CompileResult> UploadXML([FromForm] IFormFile file)
@@ -125,6 +144,6 @@ namespace Sapphire2025Server.Controllers
 					topo.Header.Name, topo.Header.Author);
 				return previousResult;
 			}
-		}
+		}		
 	}
 }

@@ -8,9 +8,9 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public const string SapphireSoftwareVersion = "26.04.02";
-		public const string LastChangesText = "Api Rest para Tourmaline";
-		public const string VersionColor = "#FFD010"; //Color de la versión para diferenciar una de otra.
+		public const string SapphireSoftwareVersion = "26.04.06";
+		public const string LastChangesText = "Api Rest para Tourmaline|Version string|Serialización TimeNet";
+		public const string VersionColor = "#FFD030"; //Color de la versión para diferenciar una de otra.
 
 		/// <summary>
 		/// Estados posibles en los que puede encontrarse un tren
@@ -71,6 +71,22 @@ namespace Sapphire2025Models
 			Available = 4, //Trenes disponibles.
 		}
 
+		public static string GetVersionString
+		{
+			  get 
+			  {
+				StringBuilder salida = new StringBuilder();
+				salida.AppendLine("Sapphire 2025 HTTP Server");
+				salida.AppendLine("=========================");
+				salida.AppendFormat("Version {0}\n", SapphireSoftwareVersion);
+				salida.AppendLine("Last changes:");
+				string[] lineas = LastChangesText.Split('|');
+				foreach (string line in lineas)
+					salida.AppendLine(line);
+				salida.AppendFormat("Current local time is {0:HH:mm}", DateTime.Now);
+				return salida.ToString();
+			  }
+		}
 
 		/// <summary>
 		/// Transiciones de estado permitidas

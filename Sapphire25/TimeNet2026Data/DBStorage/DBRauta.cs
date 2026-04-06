@@ -1,12 +1,16 @@
 ﻿using System.ComponentModel.DataAnnotations;
 namespace TimeNet2026Data.DBStorage
 {
-    public class DBRauta
+	[MessagePack.MessagePackObject]
+	public class DBRauta
     {
-        [Key]
-        public int Id { get; set; } //Id interno del Rauta.
-        public Guid HeaderId { get; set; } //Id del header.
-        public int TopoStorageId { get; set; } //Id interno del topoStorage.
+		[System.ComponentModel.DataAnnotations.Key]
+		[MessagePack.Key(0)]
+		public int Id { get; set; } //Id interno del Rauta.
+		[MessagePack.Key(1)]
+		public Guid HeaderId { get; set; } //Id del header.
+		[MessagePack.Key(2)]
+		public int TopoStorageId { get; set; } //Id interno del topoStorage.
 
     }
 }

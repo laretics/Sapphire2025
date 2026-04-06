@@ -26,6 +26,11 @@ namespace Sapphire2025Server.Controllers
 		{
 			return Ok("Pong");
 		}
+		[HttpGet("version")]
+		public IActionResult GetVersion() 
+		{
+			return Ok(Common.GetVersionString);
+		}
 
 		/// <summary>
 		/// Busca la fecha de última actualización de la caché de una tabla

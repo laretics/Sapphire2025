@@ -1,14 +1,16 @@
-﻿using System;
+﻿using MessagePack;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection.PortableExecutable;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
+using System.Xml.Schema;
 using TimeNet2026.DBStorage;
 using TimeNet2026Data.DBStorage;
-using Microsoft.EntityFrameworkCore;
-using System.Xml.Schema;
 
 namespace TimeNet2026Data.Serialization
 {
@@ -46,6 +48,79 @@ namespace TimeNet2026Data.Serialization
 			mvarContext.ScheduleUnits.RemoveRange(auxScheduleUnits);
 			await mvarContext.SaveChangesAsync();
 		}
+
+		#region ExternalSerializer
+		// Serialización JSON
+		public static string ToJson(TimeNetDataExportDto dto)
+			=> JsonSerializer.Serialize(dto);
+
+		public static TimeNetDataExportDto? FromJson(string json)
+			=> JsonSerializer.Deserialize<TimeNetDataExportDto>(json);
+
+		// Serialización binaria (MessagePack)
+		public static byte[] ToBinary(TimeNetDataExportDto dto)
+			=> MessagePackSerializer.Serialize(dto);
+
+		public static TimeNetDataExportDto? FromBinary(byte[] data)
+			=> MessagePackSerializer.Deserialize<TimeNetDataExportDto>(data);
+
+		/// <summary>
+		/// Genera el paquete de exportación.
+		/// Con este paquete, podemos usar la función ToJson, o ToBinary
+		/// En cada caso generamos un gran string o un gran array de bytes.
+		/// </summary>
+		/// <returns>El objeto paquete de exportación con el contenido de la base de datos</returns>
+		public async Task<TimeNetDataExportDto> BuildExportDtoAsync()
+		{
+			return new TimeNetDataExportDto
+			{
+				Headers = await mvarContext.Headers.ToListAsync(),
+				TopoStorages = await mvarContext.TopoStorages.ToListAsync(),
+				Axis = await mvarContext.Axis.ToListAsync(),
+				Stations = await mvarContext.Stations.ToListAsync(),
+				RefPunctuals = await mvarContext.RefPunctuals.ToListAsync(),
+				Rautatie = await mvarContext.Rautatie.ToListAsync(),
+				Plans = await mvarContext.Plans.ToListAsync(),
+				CirculationBlocks = await mvarContext.CirculationBlocks.ToListAsync(),
+				Circulations = await mvarContext.Circulations.ToListAsync(),
+				Schedules = await mvarContext.Schedules.ToListAsync(),
+				ScheduleUnits = await mvarContext.ScheduleUnits.ToListAsync(),
+				Asimilations = await mvarContext.Asimilations.ToListAsync(),
+				AsimilationSteps = await mvarContext.AsimilationSteps.ToListAsync()
+			};
+		}
+
+		/// <summary>
+		/// Recibimos el paquete de importación desde internet. Se lo pasamos como parámetro
+		/// a este método y él solito se encarga de replicar en local todo el contenido de la
+		/// base de datos del servidor.
+		/// </summary>
+		/// <param name="dto">Objeto de importación recuperado de FromJson o FromBinary</param>
+		/// <param name="clearDatabase">Añadir datos a otros existentes o eliminar el contenido actual</param>
+		public async Task ImportFromDtoAsync(TimeNetDataExportDto dto, bool clearDatabase = true)
+		{
+			if (clearDatabase)
+				await ClearDatabase();
+
+			// El orden importa para las claves foráneas
+			await mvarContext.Headers.AddRangeAsync(dto.Headers);
+			await mvarContext.TopoStorages.AddRangeAsync(dto.TopoStorages);
+			await mvarContext.Axis.AddRangeAsync(dto.Axis);
+			await mvarContext.Stations.AddRangeAsync(dto.Stations);
+			await mvarContext.RefPunctuals.AddRangeAsync(dto.RefPunctuals);
+			await mvarContext.Rautatie.AddRangeAsync(dto.Rautatie);
+			await mvarContext.Plans.AddRangeAsync(dto.Plans);
+			await mvarContext.CirculationBlocks.AddRangeAsync(dto.CirculationBlocks);
+			await mvarContext.Circulations.AddRangeAsync(dto.Circulations);
+			await mvarContext.Schedules.AddRangeAsync(dto.Schedules);
+			await mvarContext.ScheduleUnits.AddRangeAsync(dto.ScheduleUnits);
+			await mvarContext.Asimilations.AddRangeAsync(dto.Asimilations);
+			await mvarContext.AsimilationSteps.AddRangeAsync(dto.AsimilationSteps);
+
+			await mvarContext.SaveChangesAsync();
+		}
+
+		#endregion ExternalSerializer
 
 		#region Headers
 		public void Add(DBHeader header) { mvarContext.Headers.Add(header); }
