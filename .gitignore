@@ -60,3 +60,4 @@ artifacts/
 # Backup files
 *.bak
 *~
+/Sapphire25/Tourmaline26/tourmaline.db
