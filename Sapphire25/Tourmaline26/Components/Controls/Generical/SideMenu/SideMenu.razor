@@ -34,6 +34,9 @@
                         case "sys":
                             <SideOptionSystemConfig></SideOptionSystemConfig>
                             break;
+                        case "mvb":
+                            <SideOptionMVB></SideOptionMVB>
+                            break;
                         default:
                             <div></div>
                             break;
@@ -55,6 +58,7 @@
     new MenuOptionModel("onyx","Onice",@<ColorIcon Name="Edata" Size="64" />),
     new MenuOptionModel("cli","Client",@<ColorIcon Name="OutboundConnect" Color="red" Size="64" />,true),
     new MenuOptionModel("sys","Config",@<ColorIcon Name="Wrench" Color="red" Size="64" />,true),
+    new MenuOptionModel("mvb","MVB",@<ColorIcon Name="MVB" Color="red" Size="64" />,true),
     new MenuOptionModel("info","Información",@<ColorIcon Name="Info" Size="64" />),
     }.ToList();
     protected override void OnInitialized()
