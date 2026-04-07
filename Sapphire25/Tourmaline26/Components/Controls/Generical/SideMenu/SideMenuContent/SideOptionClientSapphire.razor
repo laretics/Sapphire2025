@@ -89,6 +89,7 @@ else
             File.Delete(dbPath);
         }
         TourmalineService.SystemConfig.TrainId = Guid.Empty;
+        await database.Database.EnsureCreatedAsync();
     }
     private async Task DownloadInfo()
     {

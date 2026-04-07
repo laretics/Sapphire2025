@@ -32,11 +32,18 @@ namespace Sapphire2025.Storage
 		public async Task<IEnumerable<TrainModel>> trainsList()
 		{
 			string request = composeCommand("trains");
-			HttpResponseMessage respuesta = await sendGetRequest(request);
-			IEnumerable<TrainModel>? auxLista = await respuesta.Content.ReadFromJsonAsync<IEnumerable<TrainModel>>();
-			if(null == auxLista) return new List<TrainModel>();
-			return auxLista;
-		}
+			try
+			{
+                HttpResponseMessage respuesta = await sendGetRequest(request);
+                IEnumerable<TrainModel>? auxLista = await respuesta.Content.ReadFromJsonAsync<IEnumerable<TrainModel>>();
+				if (null != auxLista) return auxLista;
+            }
+			catch (Exception ex)
+			{
+				Console.WriteLine(ex.Message);
+			}
+            return new List<TrainModel>();
+        }
 		public async Task<IEnumerable<PlatformModel>> platformsList()
 		{
 			string request = composeCommand("platforms");

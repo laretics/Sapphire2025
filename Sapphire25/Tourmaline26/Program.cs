@@ -41,6 +41,7 @@ builder.Services.AddHttpClient<MediaMTXService>("CameraService", client =>
 {
 	client.Timeout = TimeSpan.FromSeconds(30);
 });
+builder.Services.AddHttpClient<MVBService>();
 
 var app = builder.Build();
 

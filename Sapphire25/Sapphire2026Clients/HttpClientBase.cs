@@ -1,8 +1,6 @@
 ﻿using Sapphire2025Models.Authentication;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text;
-using System.Text.Json;
 
 namespace Sapphire2025.Storage
 {

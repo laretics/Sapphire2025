@@ -1,6 +1,210 @@
-﻿<h3>Conexión MVB del tren</h3>
-
-
+﻿@inject Services.MVBService MVBService
+<h3>Conexión MVB</h3>
+<button @onclick="() => LoadMVBData()">Load MVB Data</button>
+@if(null==mvarData || mvarErrorMessage.Length>0)
+{    
+    @if(mvarErrorMessage.Length>0)
+    {
+        <p>Error: @mvarErrorMessage</p>
+    }
+    else
+    {
+        <p>No data</p>
+    }
+}
+else
+{
+    <table class="table table-striped table-bordered mt-4">
+        <thead>
+            <tr>
+                <th>Field</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Brake</td>
+                <td>@mvarData.brake</td>
+            </tr>
+            <tr>
+                <td>Brake loop m1</td>
+                <td>@mvarData.brake_loop_m1</td>
+            </tr>
+            <tr>
+                <td>Brake loop m2</td>
+                <td>@mvarData.brake_loop_m2</td>
+            </tr>
+            <tr>
+                <td>Brake loop n1</td>
+                <td>@mvarData.brake_loop_n1</td>
+            </tr>
+            <tr>
+                <td>Brake loop n2</td>
+                <td>@mvarData.brake_loop_n2</td>
+            </tr>
+            <tr>
+                <td>Cabin enabled M1</td>
+                <td>@mvarData.cab_enabled_m1</td>
+            </tr>
+            <tr>
+                <td>Cabin enabled M2</td>
+                <td>@mvarData.cab_enabled_m2</td>
+            </tr>
+            <tr>
+                <td>Speed</td>
+                <td>@mvarData.current_speed</td>
+            </tr>
+            <tr>
+                <td>Doors Left</td>
+                <td>@mvarData.doors_enabled_left</td>
+            </tr>
+            <tr>
+                <td>Doors Right</td>
+                <td>@mvarData.doors_enabled_right</td>
+            </tr>
+            <tr>
+                <td>Doors Loop</td>
+                <td>@mvarData.doors_loop</td>
+            </tr>
+            <tr>
+                <td>Drive Command</td>
+                <td>@mvarData.drive_command</td>
+            </tr>
+            <tr>
+                <td>Handler Brake</td>
+                <td>@mvarData.handler_brake</td>
+            </tr>
+            <tr>
+                <td>Handler Emergency Brake</td>
+                <td>@mvarData.handler_emergency_brake</td>
+            </tr>
+            <tr>
+                <td>Handler Neutral</td>
+                <td>@mvarData.handler_neutral</td>
+            </tr>
+            <tr>
+                <td>Handler Traction</td>
+                <td>@mvarData.handler_traction</td>
+            </tr>
+            <tr>
+                <td>Temp In M1</td>
+                <td>@mvarData.inside_temp_m1</td>
+            </tr>
+            <tr>
+                <td>Temp In M2</td>
+                <td>@mvarData.inside_temp_m2</td>
+            </tr>
+            <tr>
+                <td>Temp In N1</td>
+                <td>@mvarData.inside_temp_n1</td>
+            </tr>
+            <tr>
+                <td>Temp In N2</td>
+                <td>@mvarData.inside_temp_n2</td>
+            </tr>
+            <tr>
+                <td>Temp Out M1</td>
+                <td>@mvarData.outside_temp_m1</td>
+            </tr>
+            <tr>
+                <td>Temp Out M2</td>
+                <td>@mvarData.outside_temp_m2</td>
+            </tr>
+            <tr>
+                <td>Temp Out N1</td>
+                <td>@mvarData.outside_temp_n1</td>
+            </tr>
+            <tr>
+                <td>Temp Out N2</td>
+                <td>@mvarData.outside_temp_n2</td>
+            </tr>
+            <tr>
+                <td>Inverter Iddle</td>
+                <td>@mvarData.inverter_disconnected</td>
+            </tr>
+            <tr>
+                <td>Inverter Forward</td>
+                <td>@mvarData.inverter_forward</td>
+            </tr>
+            <tr>
+                <td>Inverter Shunting</td>
+                <td>@mvarData.inverter_manoeuvre</td>
+            </tr>
+            <tr>
+                <td>Inverter Reverse</td>
+                <td>@mvarData.inverter_reverse</td>
+            </tr>
+            <tr>
+                <td>Inverter Tunnel</td>
+                <td>@mvarData.inverter_tunnel</td>
+            </tr>
+            <tr>
+                <td>Odometer</td>
+                <td>@mvarData.odometer</td>
+            </tr>
+            <tr>
+                <td>Salon Light M1</td>
+                <td>@mvarData.passenger_light_m1</td>
+            </tr>
+            <tr>
+                <td>Salon Light M2</td>
+                <td>@mvarData.passenger_light_m2</td>
+            </tr>
+            <tr>
+                <td>Salon Light N1</td>
+                <td>@mvarData.passenger_light_n1</td>
+            </tr>
+            <tr>
+                <td>Salon Light N2</td>
+                <td>@mvarData.passenger_light_n2</td>
+            </tr>
+            <tr>
+                <td>Speed validator?</td>
+                <td>@mvarData.speed_validator</td>
+            </tr>
+            <tr>
+                <td>Speed Zero</td>
+                <td>@mvarData.speed_zero</td>
+            </tr>
+            <tr>
+                <td>Time</td>
+                <td>@mvarData.system_time</td>
+            </tr>
+            <tr>
+                <td>Traction %</td>
+                <td>@mvarData.traction</td>
+            </tr>
+            <tr>
+                <td>Traction dir M1</td>
+                <td>@mvarData.traction_dir_m1</td>
+            </tr>
+            <tr>
+                <td>Traction dir M2</td>
+                <td>@mvarData.traction_dir_m2</td>
+            </tr>
+            <tr>
+                <td>Traction Loop</td>
+                <td>@mvarData.traction_loop</td>
+            </tr>
+        </tbody>
+    </table>
+}
 @code {
+    MVB8100Data? mvarData{ get; set; }
+    private string mvarErrorMessage = string.Empty;
+
+    private async Task LoadMVBData()
+    {
+        try
+        {
+            mvarData = await MVBService.GetMVBDataAsync();
+            mvarErrorMessage = string.Empty; // Clear any previous error message
+        }
+        catch (Exception ex)
+        {
+            mvarErrorMessage = ex.Message;
+        }
+        StateHasChanged();
+    }
 
 }
