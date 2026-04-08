@@ -10,7 +10,7 @@
 @inject ILogger<DriverInfotaiment> Logger
 @inject Sapphire2025.Storage.IntStorageService InternalStorage
 <div class="tesla-root">
-    @if(mvarInitialized)
+    @if(mvarTourmaline.SystemInitialized)
     {
         <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="@mvarTourmaline.SessionConfig.ServiceMode">
             <div class="tesla-main">
@@ -86,7 +86,6 @@
     private TeslaToolBar? mvarTeclado{ get; set; }
     private SideMenu? mvarSideMenu{ get; set; }
     private bool LoginMode { get; set; } = false;
-    private bool mvarInitialized = false;
     public enum MainToolBarItem:byte
     {
         Train=0,
@@ -137,19 +136,24 @@
             new(""),
             new("Clipboard",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Damage Clipboard"),
             new("KeyOff","Key",false,EventCallback.Factory.Create(this, () => OnLoginRequest()),"Login"),
-        };        
+        };     
+        mvarTourmaline.HMIUpdateRequested += auxHMIRefresh;
+
     }
+    private void auxHMIRefresh(object? sender, EventArgs e) { InvokeAsync(StateHasChanged); }
+
     protected async override Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {            
             _ = JS.InvokeVoidAsync("TeslaToolBar_registerKeyHandler", DotNetObjectReference.Create(this));
-            mvarTourmaline.HMIUpdateRequested += OnExternalEventChanged;
-            mvarInitialized = await mvarTourmaline.EnsureInitialized();
-            StateHasChanged();
         }        
     }
-
+    public void Dispose()
+    {
+        _ = JS.InvokeVoidAsync("TeslaToolBar_unregisterKeyHandler");
+        mvarTourmaline.HMIUpdateRequested -= auxHMIRefresh;
+    }
     private string panelClass
     {
         get => string.Format("teslapanel {0}", NightMode ? "night" : "day");        
@@ -172,10 +176,8 @@
     [Parameter]
     public string MaintenanceMessage { get; set; } = "Modo de Mantenimiento";
 
-    private void OnExternalEventChanged(object? sender, EventArgs e)
-    {
-        InvokeAsync(StateHasChanged);
-    }
+
+
     private void OnButtonInternalChanged()
     {
         //Aprovechamos para validar la lógica de los botones de la barra de tareas.
@@ -189,7 +191,7 @@
         //No se puede abrir la sección de partes de avería si está seleccionado el menú principal.
         if (buttonData[(byte)MainToolBarItem.Train].Selected)
             buttonData[(byte)MainToolBarItem.Clipboard].Selected = false;        
-        mvarTourmaline.RaiseEvents(false);
+        StateHasChanged();
     }    
 
     protected async Task OnLoginRequest()
@@ -209,9 +211,5 @@
         LoginMode = false;
         OnButtonInternalChanged();
     }
-    public void Dispose()
-    {
-        _ = JS.InvokeVoidAsync("TeslaToolBar_unregisterKeyHandler");
-        mvarTourmaline.HMIUpdateRequested -= OnExternalEventChanged;
-    }
+
 }

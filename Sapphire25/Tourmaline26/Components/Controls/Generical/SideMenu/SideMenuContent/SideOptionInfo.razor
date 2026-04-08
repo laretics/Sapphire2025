@@ -10,6 +10,6 @@
     private void SetServiceMode(bool value)
     {
         TourmalineService.SessionConfig.ServiceMode = value;
-        TourmalineService.RaiseEvents(true);
+        TourmalineService.RaiseHMIUpdate();
     }
 }

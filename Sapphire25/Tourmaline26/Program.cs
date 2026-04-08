@@ -15,6 +15,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddSingleton<TourmalineService>();
+builder.Services.AddHostedService<TourmalineBackground>();
 builder.Services.AddHttpContextAccessor();
 
 string auxApiAddress = builder.Configuration["ApiBaseAddress"] ?? "https://material.trensfm.com:5031/tourmaline/";
@@ -33,8 +34,8 @@ builder.Services.AddScoped<AuthenticationClient>();
 builder.Services.AddScoped<AeneasClient>();
 builder.Services.AddScoped<ExpertClient>();
 builder.Services.AddScoped<TimeNetClient>();
-
 builder.Services.AddHostedService<MediaMTXService>();
+
 
 // Configurar HttpClient para llamar a la API local
 builder.Services.AddHttpClient<MediaMTXService>("CameraService", client =>

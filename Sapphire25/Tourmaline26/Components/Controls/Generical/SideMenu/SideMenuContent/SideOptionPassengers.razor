@@ -20,31 +20,31 @@
     private void SetRouteMode(int index)
     {
         TourmalineService.SessionConfig.InformationLevel = (Enums.InformationLevel)(byte)index;
-        TourmalineService.RaiseEvents(true);
+        TourmalineService.RaiseHMIUpdate();
     }
     private void SetPASEnabled(bool value)
     {
         TourmalineService.SessionConfig.PASEnabled = value;
-        TourmalineService.RaiseEvents(true);
+        TourmalineService.RaiseHMIUpdate();
     }
     private void SetTFTEnabled(bool value)
     {
         TourmalineService.SessionConfig.TFTEnabled = value;
-        TourmalineService.RaiseEvents(true);
+        TourmalineService.RaiseHMIUpdate();
     }
     private void SetSoundEnabled(bool value)
     {
         TourmalineService.SessionConfig.SoundEnabled = value;
-        TourmalineService.RaiseEvents(true);
+        TourmalineService.RaiseHMIUpdate();
     }
     private void SetTeleindicatorsEnabled(bool value)
     {
         TourmalineService.SessionConfig.TeleindicatorsEnabled = value;
-        TourmalineService.RaiseEvents(true);
+        TourmalineService.RaiseHMIUpdate();
     }
      private void SetExternalTeleindicatorsEnabled(bool value)
     {
         TourmalineService.SessionConfig.ExternalTeleindicatorsEnabled = value;
-        TourmalineService.RaiseEvents(true);
+        TourmalineService.RaiseHMIUpdate();
     }
 }
