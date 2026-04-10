@@ -24,7 +24,19 @@ namespace TimeNet2026.Timed
             mvarParent = parent;
         }
         public Dictionary<string,Plan> Plans { get => mcolPlans; }
+        public Plan? PlanByName(string name)
+        {
+            foreach(Plan plan in mcolPlans.Values)
+            {
+                if (plan.Name == name) return plan;
+            }
+            return null;
+        }
         public TopoStorage Parent { get => mvarParent; }
+		public override string ToString()
+		{
+            return Header.Name;
+		}
    
     }
 }

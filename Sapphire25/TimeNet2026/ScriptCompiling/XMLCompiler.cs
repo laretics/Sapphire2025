@@ -242,7 +242,7 @@ namespace TimeNet2026.ScriptCompiling
 			currentAsimilation.Name = StringParam(root, "name");
 			currentAsimilation.MaxSpeed = IntParam(root, "type",100);
 			currentAsimilation.color[0] = StringParam(root, "color", "white", false);
-			currentAsimilation.color[1] = StringParam(root, "color", "black", false);
+			currentAsimilation.color[1] = StringParam(root, "darkcolor", "black", false);
 			currentAsimilation.Comment = StringParam(root, "comment","",false);
 			currentAsimilation.Origin = currentStation;
 			if (root is XElement element)

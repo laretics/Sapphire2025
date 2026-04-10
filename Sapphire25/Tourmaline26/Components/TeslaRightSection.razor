@@ -1,0 +1,86 @@
+﻿@using Tourmaline26.Components.Controls.Floatings
+@using Tourmaline26.Components.Controls.Generical
+@using Tourmaline26.Components.Services.Logic.Generical
+@using Tourmaline26.Components.Controls.Generical.SideMenu  
+@using Tourmaline26.Components.Controls
+@using TimeNet2026.Timed
+@inject Tourmaline26.Components.Services.TourmalineService Tourmaline
+    <CascadingValue Value="Tourmaline.SessionConfig">
+        <TeslaTopRightBar />
+        <CascadingValue Value="mvarSearchString">        
+        <FloatDestinationInput 
+            OnBeginSearchCirculation="BeginSearchCirculation"/>
+            @if (mvarSearchingCirculation)
+            {
+                <FloatDestinationMenu 
+                    OnCirculationSelected="CirculationSelected"/>
+
+                <VirtualKeyboard
+                    KeyPressed="KeyPressed"
+                    IsNumericByDefault="true"
+                    />
+            }
+            @if(null!=Tourmaline.SessionConfig && null!=Tourmaline.SessionConfig.TNEnvironment && null!=Tourmaline.SessionConfig.TNEnvironment.Circulation)
+            {
+                <FloatTrajectScheme OnTerminateCirculationRequest="TerminateCirculation"/>
+            }
+        </CascadingValue>           
+    </CascadingValue>
+@code {
+    private bool mvarSearchingCirculation { get; set; } = false;
+    private string? mvarSearchString = null;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();        
+        Tourmaline.HMIUpdateRequested += auxHMIRefresh;
+    }
+    public void Dispose()
+    {
+        Tourmaline.HMIUpdateRequested -= auxHMIRefresh;
+    }
+    private void auxHMIRefresh(object? sender, EventArgs e) 
+    { 
+        InvokeAsync(StateHasChanged); 
+    }
+    private void BeginSearchCirculation()
+    {
+        mvarSearchingCirculation = true;
+        InvokeAsync(StateHasChanged);
+    }
+    private void TerminateCirculation()
+    {
+        mvarSearchString = null;
+        if (null != Tourmaline.SessionConfig && null != Tourmaline.SessionConfig.TNEnvironment)
+            Tourmaline.SessionConfig.TNEnvironment.Circulation = null;
+    }
+    private void KeyPressed(char e)
+    {
+        if (e == '⌫')
+        {
+            if (null!=mvarSearchString && mvarSearchString.Length > 1)
+                mvarSearchString = mvarSearchString.Substring(0, mvarSearchString.Length - 1);
+            else
+            {
+                mvarSearchString = null;
+                mvarSearchingCirculation = false;
+            }           
+        }
+        else
+        {
+            if (null == mvarSearchString || mvarSearchString.Length < 1)
+                mvarSearchString = e.ToString();
+            else
+            {
+                if(mvarSearchString.Length<10)
+                    mvarSearchString = mvarSearchString + e.ToString();
+            }            
+        }
+    }
+    private void CirculationSelected(Circulation cir)
+    {
+        mvarSearchingCirculation = false;
+        if(null!=Tourmaline.SessionConfig && null!=Tourmaline.SessionConfig.TNEnvironment)
+            Tourmaline.SessionConfig.TNEnvironment.Circulation = cir;
+    }
+}

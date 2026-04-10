@@ -1,62 +1,63 @@
 ﻿@using Tourmaline26.Components.Images
 @using System.Net.Http;
-@inject Tourmaline26.Components.Services.TourmalineService Tourmaline
+@using Tourmaline26.Components.Services.Logic
+@using TimeNetComponents.Controls
 <div class="tesla-top-right-bar">
-    @if(null!=Tourmaline.SessionConfig.Session && null!=Tourmaline.SessionConfig.Session.User)
+    @if(null!=mvarConfig)
     {
-        <span><RoleIcon 
-            Size="24" 
-            Credentials="Tourmaline.SessionConfig.Session.Roles"/>
-        </span>
-        <span>
-            <b>@Tourmaline.SessionConfig.Session.User.Name</b>
-        </span>
+        @if(null!=mvarConfig.Session && null!=mvarConfig.Session.User)
+        {
+            <span><RoleIcon 
+                Size="24" 
+                Credentials="mvarConfig.Session.Roles"/>
+            </span>
+            <span>
+                <b>@mvarConfig.Session.User.Name</b>
+            </span>
+        }
+        @if(mvarConfig.MVBEnabled)
+        {
+            if(null==mvarConfig.CurrentMVBData)
+            {
+                <ColorIcon Name="MVB" Size="24" Color="red"></ColorIcon>
+            }
+            else
+            {
+                <ColorIcon Name="MVB" Size="24"></ColorIcon>
+            }
+        }
+        @if(mvarConfig.GPSEnabled)
+        {
+            if (mvarConfig.GPSOK)
+            {
+                <ColorIcon Name="Satellite" Size="24"></ColorIcon>
+            }
+            else
+            {
+                <ColorIcon Name="NoLocation" Size="24"></ColorIcon>
+            }
+        }        
+        @if(mvarConfig.InternetEnabled)
+        {
+            @if (mvarConfig.InternetOK)
+            {
+                <ColorIcon Name="Internet" Size="24"></ColorIcon>
+            }
+            else
+            {
+                <ColorIcon Name="NoInternet" Size="24"></ColorIcon>
+            }
+        }        
+        @if(null!=mvarConfig.TNEnvironment)
+        {
+            <WeekDayShow Day="mvarConfig.TNEnvironment.Weekday"/>    
+            <span class="clock">@mvarConfig.TNEnvironment.Now.ToString("HH:mm:ss")</span>
+        }                
     }
-    @if(Tourmaline.SessionConfig.MVBEnabled)
-    {
-        if(null==Tourmaline.SessionConfig.CurrentMVBData)
-        {
-            <ColorIcon Name="MVB" Size="24" Color="red"></ColorIcon>
-        }
-        else
-        {
-            <ColorIcon Name="MVB" Size="24"></ColorIcon>
-        }
-    }
-    @if(Tourmaline.SessionConfig.GPSEnabled)
-    {
-        if (Tourmaline.SessionConfig.GPSOK)
-        {
-            <ColorIcon Name="Satellite" Size="24"></ColorIcon>
-        }
-        else
-        {
-            <ColorIcon Name="NoLocation" Size="24"></ColorIcon>
-        }
-    }        
-    @if(Tourmaline.SessionConfig.InternetEnabled)
-    {
-        @if (Tourmaline.SessionConfig.InternetOK)
-        {
-            <ColorIcon Name="Internet" Size="24"></ColorIcon>
-        }
-        else
-        {
-            <ColorIcon Name="NoInternet" Size="24"></ColorIcon>
-        }
-    }
-    <span class="clock">@Tourmaline.Now.ToString("HH:mm:ss")</span>
+    
 </div>
 
 @code {
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        Tourmaline.HMIUpdateRequested += auxHMIRefresh;
-    }
-    public void Dispose()
-    {
-        Tourmaline.HMIUpdateRequested -= auxHMIRefresh;
-    }
-    private void auxHMIRefresh(object? sender, EventArgs e) { InvokeAsync(StateHasChanged); }
+    [CascadingParameter]
+    public SessionConfiguration? mvarConfig{get;set;}
 }

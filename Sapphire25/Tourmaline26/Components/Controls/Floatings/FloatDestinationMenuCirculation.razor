@@ -1,0 +1,79 @@
+﻿@using TimeNet2026.Timed
+@using Sapphire2025Models
+@if(null!=Circulation)
+{
+    @if(NightMode)
+    {
+        <button class="btn btn-gradient"
+                style="--btn-bg:@BackColor; color:@ForeColor;"
+                @onclick="@OnClick">
+            @Circulation.name
+        </button>
+    }
+    else
+    {
+        <button class="btn btn-gradient"
+                style="--btn-bg:@ForeColor; color:@BackColor;"
+                @onclick="@OnClick">
+            @Circulation.name
+        </button>
+    }
+    @Utils.autoInterval(Circulation.departure, true, false)
+}
+@code {
+    [Parameter]
+    public Circulation? Circulation{ get; set; }
+    [CascadingParameter]
+    public bool NightMode{ get; set; }
+    [Parameter]
+    public EventCallback<Circulation> OnCirculationSelected{ get; set; }
+
+    private async Task OnClick()
+    {
+        if (null != Circulation)
+            await OnCirculationSelected.InvokeAsync(Circulation);
+    }
+
+    private string BackColor
+    {
+        get
+        {
+            if (null != Circulation)
+            {
+                if (null != Circulation.Parent)
+                {
+                    if (null != Circulation.Parent.asimilation)
+                        return Circulation.Parent.asimilation.BackColor;
+                    else
+                        return Circulation.Parent.color[0];
+                }
+                else
+                    return Circulation.color[0];
+            }
+            else
+                return "white";
+        }
+    }
+
+    private string ForeColor
+    {
+        get
+        {
+            if (null != Circulation)
+            {
+                if (null != Circulation.Parent)
+                {
+                    if (null != Circulation.Parent.asimilation)
+                        return Circulation.Parent.asimilation.ForeColor;
+                    else
+                        return Circulation.Parent.color[1];
+                }
+                else
+                    return Circulation.color[1];
+            }
+            else
+                return "black";
+        }
+    }
+
+}

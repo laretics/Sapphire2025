@@ -1,0 +1,22 @@
+﻿@using Tourmaline26.Components.Images
+<div class="floating-destination-panel @panelClass">
+    <button class="btn btn-outline-dark border-0" onclick="@onTerminateCirculation"><ColorIcon Name="Exit" Size="64"/></button>
+</div>
+@code {
+    [CascadingParameter]
+    public bool NightMode { get; set; }
+    [CascadingParameter]
+    public string? mvarSearchString { get; set; }
+    [CascadingParameter]
+    SessionConfiguration? Environment { get; set; }
+    [Parameter]
+    public EventCallback OnTerminateCirculationRequest{ get; set; }
+    private string panelClass
+    {
+        get => string.Format("floating-panel {0}", NightMode ? "night" : "day");
+    }
+    private async Task onTerminateCirculation()
+    {
+        await OnTerminateCirculationRequest.InvokeAsync();
+    }
+}

@@ -64,7 +64,7 @@ else
     bool settingScreen = true;
     string TrainNumber = "4915";
     string Destination = "Manacor";
-    string CurrentTime =>  mvarTourmaline.Now.ToString("HH:mm");
+    string CurrentTime =>  (null==mvarTourmaline.SessionConfig.TNEnvironment)?"": mvarTourmaline.SessionConfig.TNEnvironment.Now.ToString("HH:mm");
     string DepartureInfo = "Sortida en 1 min";
     string DepartureTime = "09:46";
     int Direction = 1;

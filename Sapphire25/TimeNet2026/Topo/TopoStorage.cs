@@ -21,6 +21,10 @@ namespace TimeNet2026.Topo
 		string Entity.comment { get => Header.Comment; set => Header.Comment=value; }
 		string[] Entity.color { get => mcolColor; set => mcolColor=value; }
 		private string[] mcolColor = new string[2] { "#000000", "#FFFFFF" };
+		public override string ToString()
+		{
+			return Header.Name;
+		}
 		public TopoStorage()
 		{
 			Header = new Header();

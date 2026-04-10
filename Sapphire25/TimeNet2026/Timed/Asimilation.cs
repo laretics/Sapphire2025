@@ -46,6 +46,10 @@ namespace TimeNet2026.Timed
 				return Destination.pk > Origin.pk;
 			}				
 		}
+		public string TourmalineString
+		{
+			get => string.Format("{0} - {1}",Origin?.Name,Destination?.Name);
+		}
 		public string id { get; set; }
 		public string Name { get; internal set; }
 		string Entity.name { get => Name; set => Name=value; }
@@ -55,6 +59,17 @@ namespace TimeNet2026.Timed
 		public string[] color { get => mvarColor; set => mvarColor = value; }
 		string[] Entity.color { get => mvarColor; set => mvarColor = value; }	
 		internal List<AsimilationStep> mcolSteps;
+		public string ForeColor { get => mvarColor[1]; }
+		public string BackColor 
+		{
+			  get 
+			  {
+				if (mvarColor[0] == mvarColor[1])
+					return Entity.AtenuateColor(mvarColor[0]);
+				else
+					return ForeColor;
+			  }
+		}
 		public IEnumerable<AsimilationStep> Steps { get => mcolSteps; }
 		internal bool containsStation(Station rhs)
 		{

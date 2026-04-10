@@ -15,8 +15,6 @@ namespace TimeNetComponents.Controls
     /// </summary>
     public class TimeNetControlStyle
     {
- 
-
         internal ViewingTheme Theme { get; private set; }
         internal Dictionary<string, ViewingTheme> mcolThemes;
         public bool CurrentTime { get; set; }

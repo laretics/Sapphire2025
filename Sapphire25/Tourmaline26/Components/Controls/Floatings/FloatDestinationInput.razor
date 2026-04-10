@@ -1,15 +1,46 @@
-﻿<div class="floating-destination-panel @panelClass">
-    @ChildContent
+﻿@using Tourmaline26.Components.Images
+@using Tourmaline26.Components.Services.Logic
+<div class="floating-destination-panel @panelClass">
+    @if(null!=Environment && null!=Environment.TNEnvironment)
+    {
+        @if(null==Environment.TNEnvironment.Circulation)
+        {
+            <ColorIcon Name="Search" Size="32"/>
+            <span class="fs-4">
+            @if(null!=mvarSearchString && mvarSearchString.Length>0)
+            {
+                @mvarSearchString
+            }
+            else
+            {
+                <button class="btn btn-outline-dark border-0" onclick="@onSearchCirculation">Destino</button>
+            }     
+            </span>
+        }
+        else
+        {
+            <span class="fs-2">@Environment.TNEnvironment.Circulation.name</span>
+            <span class="fs-5">  @Environment.TNEnvironment.Circulation.TourmalineString</span>
+        }
+    }
 </div>
 
 @code {
-    [Parameter]
-    public RenderFragment? ChildContent { get; set; }
     [CascadingParameter]
     public bool NightMode { get; set; }
+    [CascadingParameter]
+    public string? mvarSearchString{ get; set; }
+    [CascadingParameter]
+    SessionConfiguration? Environment{ get; set; }
+    [Parameter]
+    public EventCallback OnBeginSearchCirculation{ get; set; }
 
     private string panelClass
     {
         get => string.Format("floating-panel {0}", NightMode ? "night" : "day");
+    }
+    private async Task onSearchCirculation()
+    {
+        await OnBeginSearchCirculation.InvokeAsync();
     }
 }

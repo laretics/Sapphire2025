@@ -24,7 +24,10 @@ namespace TimeNet2026.Timed
         public string Id { get; set; } //Identificador del plan
 		public TopoStorage Parent { get; private set; }
 		public int CirculationCount { get => CirculationsByDay.Count(); }
-		
+		public override string ToString()
+		{
+			return this.Name;
+		}
 		public IEnumerable<Schedule> AllSchedules { get => mcolSchedules; }
 		public IEnumerable<Schedule> SchedulesByDay
 		{

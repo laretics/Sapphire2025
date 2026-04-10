@@ -1,12 +1,11 @@
 ﻿@* <VirtualKeyboard></VirtualKeyboard> *@
 @using System.Threading.Tasks
-@using Tourmaline26.Components.Controls.Aeneas
 @using Tourmaline26.Components.Controls.Cameras
 @using Tourmaline26.Components.Controls.Generical
-@using Tourmaline26.Components.Controls.Floatings
-@using Tourmaline26.Components.Controls.Generical.SideMenu
 @using Tourmaline26.Components.Services
+@using Tourmaline26.Components.Controls.Aeneas
 @using Tourmaline26.Components.Services.Logic.Generical
+@using Tourmaline26.Components.Controls.Generical.SideMenu
 @inject ILogger<DriverInfotaiment> Logger
 @inject Sapphire2025.Storage.IntStorageService InternalStorage
 <div class="tesla-root">
@@ -21,19 +20,16 @@
                 <div class="tesla-right @panelClass">
                     @if (View3DEnabled)
                     {
-                        <SimulatorStream></SimulatorStream>
+                        <SimulatorStream/>
                     }
-                    <TeslaTopRightBar></TeslaTopRightBar>
-                    <FloatDestinationInput>
-                        <h1>Manacor</h1>
-                    </FloatDestinationInput>
+                    <TeslaRightSection />
                     @if (RightPanelVisible)
                     {
-                        <SideMenu @ref="mvarSideMenu"></SideMenu>
+                        <SideMenu @ref="mvarSideMenu"/>
                     }
                     else if (AeneasPanelVisible)
                     {
-                        <AeneasLog></AeneasLog>
+                        <AeneasLog/>
                     }
                 </div>
                 @if (CameraViewMode)

@@ -1,5 +1,5 @@
 ﻿using Sapphire2025Models.Authentication;
-using TimeNet2026.Models;
+using TimeNet2026.Production;
 namespace Tourmaline26.Components.Services.Logic
 {
     /// <summary>
@@ -28,6 +28,7 @@ namespace Tourmaline26.Components.Services.Logic
         
         public Enums.InformationLevel InformationLevel { get; set; } = Enums.InformationLevel.Route; //Nivel de información actual.
         public SessionModel? Session { get; set; } = null; //Información sobre el usuario actual
-        public Dictionary<Guid, UserModelBase>? ColUsers = null; //Colección de usuarios del tren, con su Guid de Zafiro como clave.
+        public Dictionary<Guid, UserModelBase>? ColUsers{ get; set; } = null; //Colección de usuarios del tren, con su Guid de Zafiro como clave.
+        public TimeNetEnvironment? TNEnvironment { get; set; }= null; //Todo lo que necesita el programa para mostrar una circulación
     }
 }

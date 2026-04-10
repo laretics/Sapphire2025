@@ -18,6 +18,7 @@ namespace Tourmaline26.Components.Services
         public bool SystemInitialized { get; private set; } = false;
         public event EventHandler? PassengerUpdateRequested; //Ha ocurrido algo que requiere actualizar los TFT
         public event EventHandler? HMIUpdateRequested;
+        private DateTime mvarLastDate = DateTime.MinValue; //Uso este valor para cambiar de fecha automáticamente.
 
         private Task<bool>? mvarGpsTask;
         private Task<MVB8100Data?>? mvarMvbTask;
@@ -93,7 +94,14 @@ namespace Tourmaline26.Components.Services
                     mvarLogger.LogError(ex, "Error en el ciclo de TourmalineBackground.");
                 }
                 await Task.Delay(500, stoppingToken);
-                mvarTourmaline.Now = DateTime.Now; //Actualizamos la hora actual
+                if(null!=mvarTourmaline.SessionConfig.TNEnvironment)
+                {
+					mvarTourmaline.SessionConfig.TNEnvironment.Now = DateTime.Now; //Actualizamos la hora actual
+                    if(mvarLastDate.Day!=DateTime.Today.Day)
+						mvarTourmaline.SessionConfig.TNEnvironment.SetWeekDate(); //Actualiza el día de la semana actual
+                    mvarLastDate = DateTime.Today;
+				}
+                    
                 mvarTourmaline.RaiseHMIUpdate();
                 if (cycleCount > 4)
                 {

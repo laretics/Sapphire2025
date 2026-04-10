@@ -1,0 +1,99 @@
+﻿@using TimeNet2026
+@using TimeNet2026.Production
+@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
+
+<div class="mb-2">
+    <div class="btn-group mb-3" role="group" aria-label="Weekday selector">
+        @if (IsFilter)
+        {
+            @foreach (var option in FilterOptions)
+            {
+                <input type="checkbox"
+                       class="btn-check"
+                       id="@option.Value"
+                       value="@option.Value"
+                       checked="@IsChecked(option.Value)"
+                       @onchange="() => ToggleOption(option.Value)" />
+                <label class="btn btn-outline-dark" for="@option.Value">@option.Label</label>
+            }
+        }
+        else
+        {
+            @foreach (var option in SelectorOptions)
+            {
+                <input type="radio"
+                       class="btn-check"
+                       name="weekday"
+                       id="@option.Value"
+                       value="@option.Value"
+                       checked="@(Value == option.Value)"
+                       @onchange="() => SelectOption(option.Value)" />
+                <label class="btn btn-outline-dark" for="@option.Value">@option.Label</label>
+            }
+        }
+    </div>
+</div>
+
+@code {
+        [Parameter] public bool IsFilter { get; set; } = false;
+        [Parameter] public Weekday Value { get; set; }
+        [Parameter] public EventCallback<Weekday> ValueChanged { get; set; }
+        [Parameter] public bool SelectTodayByDefault { get; set; } = true;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        if(SelectTodayByDefault)
+        {
+            DateTime hoy = DateTime.Now;
+            SelectOption(TimeNetEnvironment.GetWeekDay(hoy));
+        }
+    }
+
+    private record Option(Weekday Value, string Label);
+
+    private static readonly Option[] SelectorOptions = new[]
+    {
+        new Option(Weekday.Monday, "L"),
+        new Option(Weekday.Tuesday, "M"),
+        new Option(Weekday.Wednesday, "X"),
+        new Option(Weekday.Thursday, "J"),
+        new Option(Weekday.Friday, "V"),
+        new Option(Weekday.Saturday, "S"),
+        new Option(Weekday.Sunday, "D"),
+        new Option(Weekday.Festive, "F")
+    };
+
+    private static readonly Option[] FilterOptions = new[]
+    {
+        new Option(Weekday.Monday, "Lun"),
+        new Option(Weekday.Tuesday, "Mar"),
+        new Option(Weekday.Wednesday, "Mié"),
+        new Option(Weekday.Thursday, "Jue"),
+        new Option(Weekday.Friday, "Vie"),
+        new Option(Weekday.Saturday, "Sáb"),
+        new Option(Weekday.Sunday, "Dom"),
+        new Option(Weekday.Festive, "Fes"),
+        new Option(Weekday.Labour, "Lab"),
+        new Option(Weekday.Weekend, "FSem"),
+        new Option(Weekday.AllFestives, "TFest"),
+        new Option(Weekday.All, "Todos")
+    };
+
+    private void SelectOption(Weekday option)
+    {
+        Value = option;
+        ValueChanged.InvokeAsync(Value);
+    }
+
+    private void ToggleOption(Weekday option)
+    {
+        if ((Value & option) == option)
+            Value &= ~option;
+        else
+            Value |= option;
+        ValueChanged.InvokeAsync(Value);
+    }
+
+    private bool IsChecked(Weekday option) => (Value & option) == option;
+}

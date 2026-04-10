@@ -5,8 +5,9 @@
         <input type="radio" class="btn-check" name="@Name" id="@optionId"
                value="@i"
                checked="@(i == SelectedIndex)"
-               @onchange="OnRadioChanged" />
-        <label class="btn btn-outline-dark" for="@optionId">@Options[i]</label>
+               @onchange="OnRadioChanged"
+               @onclick="OnRadioClick"/>
+        <label class="btn btn-outline-dark mb-3" for="@optionId">@Options[i]</label>
     }
 </div>
 
@@ -24,5 +25,12 @@
             SelectedIndex = index;
             await SelectedIndexChanged.InvokeAsync(index);
         }
+    }
+    private async Task OnRadioClick()
+    {
+        //Cuando sólo hay una opción no cambia el índice. Necesitamos
+        //poder asignar también.
+        if (Options.Count == 1)
+            await SelectedIndexChanged.InvokeAsync(0);
     }
 }
