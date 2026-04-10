@@ -37,19 +37,26 @@ namespace Tourmaline26.Components.Services
         ILogger<TourmalineService> logger
         )
         {
-            auxInitDevices(config);
-            mvarLogger = logger;   
-            mvarSessionConfig = new SessionConfiguration();
+			mvarSessionConfig = new SessionConfiguration();
+			InitConfig(config);
+            mvarLogger = logger;               
             mvarServiceProvider = serviceProvider;
             TimeNetStorage = new OnyxStorage();
-            SystemConfiguration? auxConfig = config.GetSection("SystemConfiguration").Get<SystemConfiguration>();
-            if (null == auxConfig)
-                SystemConfig = new SystemConfiguration();
-            else
-                SystemConfig = auxConfig;
             Now = DateTime.Now;
         }
-        private void auxInitDevices(IConfiguration config)
+		private void InitConfig(IConfiguration config)
+		{
+			auxInitDevices(config);
+			SystemConfiguration? auxConfig = config.GetSection("SystemConfiguration").Get<SystemConfiguration>();            
+			if (null == auxConfig)
+				SystemConfig = new SystemConfiguration();
+			else
+				SystemConfig = auxConfig;
+            IConfigurationSection debugStartupSession = config.GetSection("debugStartSession");
+            if (debugStartupSession.Exists())
+                debugStartupSession.Bind(mvarSessionConfig);
+		}
+		private void auxInitDevices(IConfiguration config)
         {
             //mvarConfig = config;
             IConfigurationSection section = config.GetSection("Devices");
@@ -78,6 +85,7 @@ namespace Tourmaline26.Components.Services
             await InitializeLocalRegister(); //Inicia el registro en la base de datos.
             await InitializeTimeNet(); //Carga los datos de TimeNet en el almacenamiento local.
         }
+
         public async Task<bool> EnsureInitialized()
         {
             if(!mvarTourmalineInitialized)

@@ -6,7 +6,7 @@
 @inject TourmalineContext database
 @inject Tourmaline26.Components.Services.TourmalineService TourmalineService
 @inject Sapphire2025.Storage.AeneasClient AeneasService
-@inject Logger<AeneasLog> logger
+@inject ILogger<AeneasLog> logger
 <FloatRightContainer>
     @if (mvarIsLoading)
     {
