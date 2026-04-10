@@ -61,3 +61,5 @@ artifacts/
 *.bak
 *~
 /Sapphire25/Tourmaline26/tourmaline.db
+/Sapphire25/Tourmaline26/tourmaline.db-shm
+/Sapphire25/Tourmaline26/tourmaline.db-wal
