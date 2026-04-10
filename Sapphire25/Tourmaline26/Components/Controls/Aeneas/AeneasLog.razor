@@ -6,6 +6,7 @@
 @inject TourmalineContext database
 @inject Tourmaline26.Components.Services.TourmalineService TourmalineService
 @inject Sapphire2025.Storage.AeneasClient AeneasService
+@inject Logger<AeneasLog> logger
 <FloatRightContainer>
     @if (mvarIsLoading)
     {
@@ -73,8 +74,17 @@
 
         mvarProcessMessage = "Obteniendo notas...";
         await InvokeAsync(StateHasChanged);
+        try
+        {
+            mvarNotes = await GetNotes();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message);
+        }
 
-        mvarNotes = await GetNotes();
+
+        
 
         mvarIsLoading = false;
         await InvokeAsync(StateHasChanged);

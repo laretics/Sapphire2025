@@ -12,12 +12,12 @@
     private async Task SetAutoCameras(bool value)
     {
         TourmalineService.SessionConfig.AutoCameras = value;
-        TourmalineService.RaiseEvents();
+        TourmalineService.RaiseHMIUpdate();
     }
     private async Task SetManualCameras(bool value)
     {
         TourmalineService.SessionConfig.ManualCameras = value;
-        TourmalineService.RaiseEvents();
+        TourmalineService.RaiseHMIUpdate();
     }
 
 }

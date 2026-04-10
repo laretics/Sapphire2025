@@ -18,17 +18,20 @@ namespace Tourmaline26.Components.Services
     {
         private bool mvarTourmalineInitialized = false; //Indica si el sistema ha terminado su inicialización.
         private SessionConfiguration mvarSessionConfig; //Contenedor de la configuración de la sesión actual.
-        public SystemConfiguration SystemConfig { get; private set; }
+        public SystemConfiguration SystemConfig { get; private set; } //Configuración del sistema (desde archivo de config)
         public DeviceCollection Devices { get; private set; } = new DeviceCollection();
         private ILogger<TourmalineService> mvarLogger;
-        private IServiceProvider mvarServiceProvider;
-        //private IConfiguration mvarConfig;
-		private Timer? mvarTimer;
+        private IServiceProvider mvarServiceProvider;		
 		public DateTime Now { get; set; } //Hora actual sincronizada para todos los paneles.
-        public event EventHandler? PassengerUpdateRequested; //Ha ocurrido algo que requiere actualizar los TFT
-        public event EventHandler? HMIUpdateRequested;
         //Almacén local TimeNet para poder "jugar" con la estructura en modo local sin sobrecargar las comunicaciones.
         public OnyxStorage TimeNetStorage { get; set; }
+
+        public event EventHandler? PassengerUpdateRequested;
+        public event EventHandler? HMIUpdateRequested;        
+        public bool SystemInitialized => mvarTourmalineInitialized;
+
+        public void RaiseHMIUpdate() => HMIUpdateRequested?.Invoke(this, EventArgs.Empty);
+        public void RaisePassengerUpdate() => PassengerUpdateRequested?.Invoke(this, EventArgs.Empty);
         public TourmalineService(IConfiguration config,
         IServiceProvider serviceProvider,
         ILogger<TourmalineService> logger
@@ -45,7 +48,6 @@ namespace Tourmaline26.Components.Services
             else
                 SystemConfig = auxConfig;
             Now = DateTime.Now;
-            mvarTimer = new Timer(UpdateClock, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
         }
         private void auxInitDevices(IConfiguration config)
         {
@@ -62,10 +64,6 @@ namespace Tourmaline26.Components.Services
                     deviceSection["PublicId"]);
                 Devices.Add(nuevo);
             }
-        }
-        private void UpdateClock(object? state)
-        {
-            this.Now = DateTime.Now;
         }
         public SessionConfiguration SessionConfig
         {
@@ -327,14 +325,5 @@ namespace Tourmaline26.Components.Services
 			}
 			SessionConfig.Session = null; //En cualquier caso, cierro la sesión abierta.
 		}
-        public void RaiseEvents(bool passenger = false)
-        {
-            HMIUpdateRequested?.Invoke(this, EventArgs.Empty);
-            if(passenger) PassengerUpdateRequested?.Invoke(this, EventArgs.Empty);
-        }
-        public void Dispose()
-        {
-            mvarTimer?.Dispose();
-        }
     }
 }

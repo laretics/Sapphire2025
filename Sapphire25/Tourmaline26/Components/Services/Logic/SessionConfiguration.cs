@@ -9,6 +9,15 @@ namespace Tourmaline26.Components.Services.Logic
     public class SessionConfiguration
     {
         public bool ServiceMode { get; set; } = false; //Indica si el sistema de información al viajero está en modo de servicio.
+        public bool MVBEnabled { get; set; } = true; //Estado del bus MVB.        
+        public MVB8100Data? CurrentMVBData { get; set; }//Último paquete de datos recibido del bus MVB.
+        public string MVBError { get; set; } = ""; //Mensaje de error relacionado con el bus MVB, si lo hubiera.
+        public DateTime MVBLastUpdate { get; set; } = DateTime.MinValue; //Última vez que se recibió una actualización del bus MVB.
+        public bool GPSEnabled { get; set; } = true; //Módulo de posicionamiento.
+        public bool GPSOK { get; set; } = true; //Indica si el GPS está recibiendo señal.
+        public DateTime GPSLastUpdate { get; set; } = DateTime.MinValue; //Última vez que se recibió una actualización del GPS.
+        public bool InternetEnabled { get; set; } = true; //Indica si el sistema tiene habilitada la conexión a internet.
+        public bool InternetOK { get; set; } = true; //Indica si el sistema tiene conexión a internet.
         public bool PASEnabled { get; set; } = true; //Indica si el sistema de información al viajero está en modo de servicio.
         public bool SoundEnabled { get; set; } = true; //Indica si los altavoces están habilitados.
         public bool TFTEnabled { get; set; } = true; //Indica si los monitores TFT están habilitados.
