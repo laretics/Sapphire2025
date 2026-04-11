@@ -14,6 +14,7 @@ namespace Tourmaline26.Components.Services.Logic
         public string MVBError { get; set; } = ""; //Mensaje de error relacionado con el bus MVB, si lo hubiera.
         public DateTime MVBLastUpdate { get; set; } = DateTime.MinValue; //Última vez que se recibió una actualización del bus MVB.
         public bool GPSEnabled { get; set; } = true; //Módulo de posicionamiento.
+        public GPSData? CurrentGPSData{ get; set; } //Última lectura del GPS
         public bool GPSOK { get; set; } = true; //Indica si el GPS está recibiendo señal.
         public DateTime GPSLastUpdate { get; set; } = DateTime.MinValue; //Última vez que se recibió una actualización del GPS.
         public bool InternetEnabled { get; set; } = true; //Indica si el sistema tiene habilitada la conexión a internet.

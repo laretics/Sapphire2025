@@ -1,6 +1,27 @@
 ﻿@using Tourmaline26.Components.Images
-<div class="floating-destination-panel @panelClass">
-    <button class="btn btn-outline-dark border-0" onclick="@onTerminateCirculation"><ColorIcon Name="Exit" Size="64"/></button>
+<div class="floating-traject-card shadow @panelClass">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="fw-bold fs-5">14:05</span>
+        <span class="mx-2 text-secondary">10 min</span>
+        <span class="mx-2 text-secondary">4,8 km</span>
+        <span class="d-flex align-items-center mx-2">
+            <i class="bi bi-battery-half me-1"></i>
+            <span class="text-secondary">69%</span>
+        </span>
+    </div>
+    <div class="d-flex align-items-center mb-1">
+        <span class="fw-semibold text-secondary" style="min-width: 60px;">Casa</span>
+        <div class="flex-grow-1 position-relative mx-2">
+            <div class="progress" style="height: 4px; background: #e0e0e0;">
+                <div class="progress-bar" style="width: 60%; background: #2196f3;"></div>
+            </div>
+            <span class="position-absolute" style="left: 60%; top: -8px; color: #e53935;">&#9654;</span>
+        </div>
+    </div>
+    <div class="d-flex justify-content-between align-items-center mt-2">
+        <button class="btn btn-outline-secondary w-100" onclick="@onTerminateCirculation">Finalizar</button>
+        <span class="ms-2 text-secondary" style="font-size: 1.5rem;">&#8942;</span>
+    </div>
 </div>
 @code {
     [CascadingParameter]

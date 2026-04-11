@@ -1,0 +1,14 @@
+﻿@using Tourmaline26.Components.Controls.Generical
+@inject Tourmaline26.Components.Services.TourmalineService TourmalineService
+<h3>Ubicación del tren</h3>
+<Switch Label="GPS" Value="@TourmalineService.SessionConfig.GPSEnabled"
+        ValueChanged="@((bool v) => SetGPS(v))" />
+@code {
+
+
+    private void SetGPS(bool rhs)
+    {
+        TourmalineService.SessionConfig.GPSEnabled = rhs;
+    }
+
+}

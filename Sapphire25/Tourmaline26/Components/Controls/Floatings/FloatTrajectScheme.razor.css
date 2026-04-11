@@ -1,16 +1,11 @@
-﻿.floating-destination-panel {
+﻿.floating-traject-card {
 	position: absolute;
-	top: 340px;
+	top: 590px;
 	left: 16px;
 	width: 300px;
-	height: 60px;
+	height: 150px;
 	border-radius: 16px;
 	box-shadow: 0 4px 24px rgba(0,0,0,0.15);
-	padding: 12px;
+	padding: 16px 18px 12px 18px;
 	z-index: 100;
-}
-
-.no-border {
-	border: none !important;
-	box-shadow: none !important;
 }

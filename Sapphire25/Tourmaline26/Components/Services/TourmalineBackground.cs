@@ -11,6 +11,7 @@ namespace Tourmaline26.Components.Services
     {
         private readonly ILogger<TourmalineBackground> mvarLogger;
         private readonly TourmalineService mvarTourmaline;
+        private readonly GPSService mvarGPSService;
         private readonly MVBService mvarMVBService;
         /// <summary>
         /// Flag para indicar al sistema que han terminado de cargar los datos.
@@ -27,11 +28,13 @@ namespace Tourmaline26.Components.Services
         public TourmalineBackground(
             ILogger<TourmalineBackground> logger,
             TourmalineService tourmalineService,
-            MVBService mvbService)
+            MVBService mvbService,
+            GPSService gpsService)
         {
             mvarLogger = logger;
             mvarTourmaline = tourmalineService;
             mvarMVBService = mvbService;
+            mvarGPSService = gpsService;
         }
         /// <summary>
         /// Actualización express de los paneles HMI.
@@ -118,8 +121,20 @@ namespace Tourmaline26.Components.Services
         {
             if (mvarTourmaline.SessionConfig.GPSEnabled)
             {
-
-            }
+                try
+                {
+					if(mvarGPSService.ReadLoop())
+                    {
+                        mvarTourmaline.SessionConfig.GPSLastUpdate = DateTime.Now;
+                        mvarTourmaline.SessionConfig.CurrentGPSData = mvarGPSService.CurrentData;
+                        return true;
+                    }
+			    }
+				catch (Exception ex)
+				{
+					mvarLogger.LogError(ex, "Error al obtener datos de localización GPS. {0}", ex.Message);
+				}
+			}
             return false;
         }
         private async Task<MVB8100Data?> PoolMVB()

@@ -21,6 +21,7 @@ namespace TimeNet2026.Production
         public TopoStorage? TopoStorage { get; set; }
 		public Rauta? Rauta { get; set; } //Almacén donde están los planes
 		public Axis? Axis { get; set; } //El eje se necesita para los nodos de los árboles.
+        public long PK { get; set; } //Punto kilométrico donde tengo ahora ubicado al tren.
 		public Asimilation? ViewAsimilation { get; set; } //Asimilación que marca la vista de la malla.
         public Asimilation? Asimilation { get; set; }//Asimilación a mostrar o asimilación vigente.        
         public Plan? Plan { get; set; } //Plan donde están los trenes que hay que visualizar.

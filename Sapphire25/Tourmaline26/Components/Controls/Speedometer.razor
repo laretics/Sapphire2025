@@ -1,122 +1,164 @@
 ﻿@using System.Globalization
-@code {
-    // Velocidad actual y máxima permitida
-    double Speed = 80; // km/h
-    double MaxAllowedSpeed = 120; // km/h
-
-    // Escala
-    double MinSpeed = 0;
-    double MaxSpeed = 200;
-    double StartAngle = -120; // izquierda
-    double EndAngle = 120;    // derecha
-
-    // Valores de la escala principal
-    int[] ScaleValues = new int[] { 0, 40, 80, 120, 160, 200 };
-
-    // Calcula el ángulo para una velocidad dada
-    double GetAngle(double value) =>
-        StartAngle + (EndAngle - StartAngle) * ((value - MinSpeed) / (MaxSpeed - MinSpeed));
-
-    // Para la franja de velocidad máxima permitida
-    string GetMaxArcPath()
-    {
-        var r = 80;
-        var startAngle = GetAngle(MinSpeed);
-        var endAngle = GetAngle(Math.Min(MaxAllowedSpeed, MaxSpeed));
-        var startRad = Math.PI * startAngle / 180.0;
-        var endRad = Math.PI * endAngle / 180.0;
-        var x1 = 100 + r * Math.Cos(startRad);
-        var y1 = 100 + r * Math.Sin(startRad);
-        var x2 = 100 + r * Math.Cos(endRad);
-        var y2 = 100 + r * Math.Sin(endRad);
-        var largeArc = (endAngle - startAngle) > 180 ? 1 : 0;
-        return $"M{x1.ToString(CultureInfo.InvariantCulture)},{y1.ToString(CultureInfo.InvariantCulture)} A{r.ToString(CultureInfo.InvariantCulture)},{r.ToString(CultureInfo.InvariantCulture)} 0 {largeArc} 1 {x2.ToString(CultureInfo.InvariantCulture)},{y2.ToString(CultureInfo.InvariantCulture)}";
-    }
-
-    // Aguja
-    double NeedleAngle => GetAngle(Speed);
-    double NeedleX => 100 + (80 * Math.Cos(Math.PI * NeedleAngle / 180.0));
-    double NeedleY => 100 + (80 * Math.Sin(Math.PI * NeedleAngle / 180.0));
-}
-
-<div class="speedometer-container">
-    <svg viewBox="0 0 200 200" class="speedometer-svg">
+<div class="ratio ratio-1x1">
+    <svg viewBox="0 0 200 200" width="100%" height="100%" style="background: transparent;">
         <defs>
-            <radialGradient id="dialGradient" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#fff" />
-                <stop offset="100%" stop-color="#e0e3e8" />
-            </radialGradient>
-            <linearGradient id="needleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#e53935" />
-                <stop offset="100%" stop-color="#b71c1c" />
-            </linearGradient>
-            <linearGradient id="maxArcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#4fc3f7" stop-opacity="0.7" />
-                <stop offset="100%" stop-color="#0288d1" stop-opacity="0.7" />
-            </linearGradient>
+            <filter id="halo" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#7d8ae6" flood-opacity="0.7" />
+            </filter>
         </defs>
-        <!-- Fondo -->
-        <ellipse cx="100" cy="100" rx="90" ry="90" fill="url(#dialGradient)" stroke="#bbb" stroke-width="4" />
-        <!-- Franja de velocidad máxima -->
-        <path d="@GetMaxArcPath()" fill="none" stroke="url(#maxArcGradient)" stroke-width="12" stroke-linecap="round" />
-        <!-- Ticks y números -->
-        @foreach (var value in ScaleValues)
-        {
-            var angle = GetAngle(value);
-            var rad = Math.PI * angle / 180.0;
-            var x1 = 100 + 78 * Math.Cos(rad);
-            var y1 = 100 + 78 * Math.Sin(rad);
-            var x2 = 100 + 88 * Math.Cos(rad);
-            var y2 = 100 + 88 * Math.Sin(rad);
-            var tx = 100 + 62 * Math.Cos(rad);
-            var ty = 100 + 62 * Math.Sin(rad) + 6;
-            <line x1="@x1.ToString(CultureInfo.InvariantCulture)" y1="@y1.ToString(CultureInfo.InvariantCulture)" x2="@x2.ToString(CultureInfo.InvariantCulture)" y2="@y2.ToString(CultureInfo.InvariantCulture)" stroke="#888" stroke-width="3" />
-            <svg:text x="@tx.ToString(CultureInfo.InvariantCulture)" y="@ty.ToString(CultureInfo.InvariantCulture)" text-anchor="middle" font-size="18" fill="#222" font-family="Segoe UI">@value</svg:text>
-        }
-        <!-- Ticks menores -->
-        @for (int i = 0; i < ScaleValues.Length - 1; i++)
-        {
-            for (int j = 1; j < 4; j++)
-            {
-                var value = ScaleValues[i] + (ScaleValues[i + 1] - ScaleValues[i]) * j / 4.0;
-                var angle = GetAngle(value);
-                var rad = Math.PI * angle / 180.0;
-                var x1 = 100 + 82 * Math.Cos(rad);
-                var y1 = 100 + 82 * Math.Sin(rad);
-                var x2 = 100 + 88 * Math.Cos(rad);
-                var y2 = 100 + 88 * Math.Sin(rad);
-                <line x1="@x1.ToString(CultureInfo.InvariantCulture)" y1="@y1.ToString(CultureInfo.InvariantCulture)" x2="@x2.ToString(CultureInfo.InvariantCulture)" y2="@y2.ToString(CultureInfo.InvariantCulture)" stroke="#bbb" stroke-width="1.5" />
+        <g transform="rotate(180,100,100) scale(-1,1) translate(-200,0)">
+            <!-- Arco exterior: velocidad máxima -->
+            <path d="@MaxSpeedPath"
+                  fill="none"
+                  stroke="#cccccc"
+                  stroke-width="5"
+                  filter="url(#halo)" />
+
+            @{
+                // Ángulo final del arco de velocidad máxima
+                double angle = SpeedToAngle(MaxSpeed);
+                // Punto de inicio (borde exterior)
+                var (x1, y1) = PolarToCartesian(100, 100, 88, angle);
+                // Punto de fin (10 unidades hacia el centro)
+                var (x2, y2) = PolarToCartesian(100, 100, 74, angle);
             }
-        }
-        <!-- Aguja -->
-        <g>
-            <line x1="100" y1="100" x2="@NeedleX.ToString(CultureInfo.InvariantCulture)" y2="@NeedleY.ToString(CultureInfo.InvariantCulture)" stroke="url(#needleGradient)" stroke-width="6" stroke-linecap="round" />
-            <circle cx="100" cy="100" r="10" fill="#fff" stroke="#e53935" stroke-width="4" />
+            <line x1="@x1.ToString(CultureInfo.InvariantCulture)"
+                  y1="@y1.ToString(CultureInfo.InvariantCulture)"
+                  x2="@x2.ToString(CultureInfo.InvariantCulture)"
+                  y2="@y2.ToString(CultureInfo.InvariantCulture)"
+                  stroke="#cccccc" stroke-width="3" filter="url(#halo)" />
+
+            <!-- Rayas radiales: velocidad actual con degradado -->
+            @{
+                var ticks = GetCurrentSpeedTicks().ToList();
+                int total = ticks.Count;
+                for (int i = 0; i < total; i++)
+                {
+                    var tick = ticks[i];
+                    // Degradado de azul claro a azul oscuro
+                    string color = InterpolateColor("#bfc6f7", "#7d8ae6", i / (double)total);                
+                    <line x1="@tick.X1.ToString(CultureInfo.InvariantCulture)"
+                      y1="@tick.Y1.ToString(CultureInfo.InvariantCulture)"
+                      x2="@tick.X2.ToString(CultureInfo.InvariantCulture)"
+                      y2="@tick.Y2.ToString(CultureInfo.InvariantCulture)"
+                          stroke="@color" stroke-width="5" />
+                }
+            }
+            <!-- Arco interior: velocidad neutral -->
+            <path d="@NeutralSpeedPath"
+                  fill="none"
+                  stroke="#bfc6f7"
+                  stroke-width="5"
+                  filter="url(#halo)" />
         </g>
-        <!-- Indicador digital -->
-        <svg:text x="100" y="135" text-anchor="middle" font-size="38" fill="#222" font-family="Segoe UI" font-weight="bold">@((int)Speed)</svg:text>
-        <svg:text x="100" y="155" text-anchor="middle" font-size="18" fill="#888" font-family="Segoe UI">km/h</svg:text>
-        <!-- Efecto cristal superior -->
-        <ellipse cx="100" cy="80" rx="60" ry="20" fill="#fff" opacity="0.18" />
+        <!-- Velocidad actual (negro, centrado) -->
+        <text x="100" y="100"
+              text-anchor="middle"
+              dominant-baseline="middle"
+              font-size="53"
+              font-family="Segoe UI, Arial, sans-serif"
+              fill="#222">
+            @CurrentSpeed
+        </text>
+        <text x="100" y="135"
+              text-anchor="middle"
+              font-size="16"
+              font-family="Segoe UI, Arial, sans-serif"
+              fill="#444">
+            Km h
+        </text>
+
+        <!-- Tiempo de demora (rojo, abajo izquierda) -->
+        <text x="95" y="188"
+              text-anchor="end"
+              font-size="32"
+              font-family="Segoe UI, Arial, sans-serif"
+              fill="#e53935"
+              font-weight="bold">
+            @DelayMinutes
+            <tspan dy="-12" font-size="16">@DelaySeconds</tspan>
+            <tspan dy="12" x="88" font-size="16" fill="#e53935">m</tspan>
+        </text>
     </svg>
 </div>
+@code {
+    [Parameter]
+    public int CurrentSpeed { get; set; } = 85;
+    [Parameter]
+    public int MaxSpeed { get; set; } = 100;
+    [Parameter]
+    public int NeutralSpeed { get; set; } = 20;
+    [Parameter]
+    public int MaxRepresentableSpeed { get; set; } = 120;
+    [Parameter]
+    public TimeSpan CurrentDelay { get; set; } = new TimeSpan(0,1,3);
 
-<style>
-    .speedometer-container {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: transparent;
-        overflow: hidden;
+    private string MaxSpeedPath => DescribeArc(100, 100, 86, 0, SpeedToAngle(MaxSpeed));
+    private string NeutralSpeedPath => DescribeArc(100, 100, 66, 0, SpeedToAngle(NeutralSpeed));
+
+    private string DelayMinutes { get => string.Format("{0}", CurrentDelay.Minutes); }
+    private string DelaySeconds { get => string.Format("{0}", CurrentDelay.Seconds); }
+
+    private IEnumerable<(double X1, double Y1, double X2, double Y2)> GetCurrentSpeedTicks()
+    {
+        int tickCount = 36;
+        double minAngle = 2;
+        double maxAngle = SpeedToAngle(CurrentSpeed)+2;
+        double r1 = 70;
+        double r2 = 82;
+
+        if (maxAngle < minAngle) yield break;
+
+        for (int i = 0; i <= tickCount; i++)
+        {
+            double angle = minAngle + (maxAngle - minAngle) * i / tickCount;
+            var (x1, y1) = PolarToCartesian(100, 100, r1, angle);
+            var (x2, y2) = PolarToCartesian(100, 100, r2, angle);
+            yield return (x1, y1, x2, y2);
+        }
     }
 
-    .speedometer-svg {
-        width: 100%;
-        height: 100%;
-        max-width: 100%;
-        max-height: 100%;
-        display: block;
+    private string DescribeArc(double cx, double cy, double r, double startAngle, double endAngle)
+    {
+        var start = PolarToCartesian(cx, cy, r, endAngle);
+        var end = PolarToCartesian(cx, cy, r, startAngle);
+        var largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+        return string.Format(CultureInfo.InvariantCulture,
+            "M {0} {1} A {2} {2} 0 {3} 0 {4} {5}",
+            start.X, start.Y, r, largeArcFlag, end.X, end.Y);
     }
-</style>
+
+    private (double X, double Y) PolarToCartesian(double cx, double cy, double r, double angleDeg)
+    {
+        double angleRad = (angleDeg - 90) * Math.PI / 180.0;
+        return (cx + r * Math.Cos(angleRad), cy + r * Math.Sin(angleRad));
+    }
+
+    private double SpeedToAngle(int speed)
+    {
+        double minAngle = 0;
+        double maxAngle = 270;
+        double angle = minAngle + (maxAngle - minAngle) * (speed / (double)MaxRepresentableSpeed);
+        return angle;
+    }
+
+    // Interpolación lineal de color entre dos hexadecimales
+    private string InterpolateColor(string hex1, string hex2, double t)
+    {
+        (int r1, int g1, int b1) = HexToRgb(hex1);
+        (int r2, int g2, int b2) = HexToRgb(hex2);
+        int r = (int)(r1 + (r2 - r1) * t);
+        int g = (int)(g1 + (g2 - g1) * t);
+        int b = (int)(b1 + (b2 - b1) * t);
+        return $"rgb({r},{g},{b})";
+    }
+
+    private (int, int, int) HexToRgb(string hex)
+    {
+        hex = hex.Replace("#", "");
+        int r = int.Parse(hex.Substring(0, 2), NumberStyles.HexNumber);
+        int g = int.Parse(hex.Substring(2, 2), NumberStyles.HexNumber);
+        int b = int.Parse(hex.Substring(4, 2), NumberStyles.HexNumber);
+        return (r, g, b);
+    }
+}

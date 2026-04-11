@@ -17,25 +17,28 @@
                     @switch (auxOptions[mvarSlidingMenu?.SelectedIndex ?? -0].Id)
                     {
                         case "pass":
-                            <SideOptionPassengers></SideOptionPassengers>
+                            <SideOptionPassengers/>
                             break;
                         case "cam":
-                            <SideOptionCameras></SideOptionCameras>
+                            <SideOptionCameras/>
                             break;
                         case "onyx":
-                            <SideOptionOnyx></SideOptionOnyx>
+                            <SideOptionOnyx/>
                             break;
                         case "info":
-                            <SideOptionInfo></SideOptionInfo>
+                            <SideOptionInfo/>
                             break;
                         case "cli":
-                            <SideOptionClientSapphire></SideOptionClientSapphire>
+                            <SideOptionClientSapphire/>
                             break;
                         case "sys":
-                            <SideOptionSystemConfig></SideOptionSystemConfig>
+                            <SideOptionSystemConfig/>
+                            break;
+                        case "gps":
+                            <SideOptionDummyLocation/>
                             break;
                         case "mvb":
-                            <SideOptionMVB></SideOptionMVB>
+                            <SideOptionMVB/>
                             break;
                         default:
                             <div></div>
@@ -59,6 +62,7 @@
     new MenuOptionModel("cli","Client",@<ColorIcon Name="OutboundConnect" Color="red" Size="64" />,true),
     new MenuOptionModel("sys","Config",@<ColorIcon Name="Wrench" Color="red" Size="64" />,true),
     new MenuOptionModel("mvb","MVB",@<ColorIcon Name="MVB" Color="red" Size="64" />,true),
+    new MenuOptionModel("gps","GPS",@<ColorIcon Name="Satellite" Color="red" Size="64" />,true),
     new MenuOptionModel("info","Información",@<ColorIcon Name="Info" Size="64" />),
     }.ToList();
     protected override void OnInitialized()
