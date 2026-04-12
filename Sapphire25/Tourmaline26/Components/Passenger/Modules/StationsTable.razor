@@ -1,22 +1,37 @@
 ﻿@using TimeNet2026.Topo
-@using Tourmaline26.Components.Services.Logic
+@using TimeNet2026.Timed
 <div class="route-box">
     <div class="route-title">Pròximes aturades</div>
     <table class="route-table">
-        @if(null!=Stations)
+        @if(null!=Circulation)
         {
             <tbody>
-                @for (int idx = 0; idx < Stations.Count; idx++)
+                @for (int index = 0; index<mcolItinerary.Length;index++)
                 {
                     <tr>
-                        <td>
-                            <span class="stop-dot"></span>
-                        </td>
-                        <td class="stop-name">@Stations[idx].Name</td>
-                        @if (null!=EstimatedTimes && EstimatedTimes.Count() > idx)
+                        @if(null!=mcolItinerary[index].Station)
                         {
-                            <td class="stop-time">@Enums.autoInterval(EstimatedTimes[idx],false,false)</td>
-                        }                        
+                            <td>
+                                <span class="stop-dot"></span>
+                            </td>
+                            @if(mcolItinerary[index].Station?.ShortName==mcolItinerary[index].Station?.ShortName.ToUpper())
+                            {
+                                <td class="stop-name-high">@mcolItinerary[index].Station?.Name</td>
+                            }
+                            else
+                            {
+                                <td class="stop-name">@mcolItinerary[index].Station?.Name</td>
+                            }                            
+                            @if(ShowEstimatedTimes && mcolItinerary[index].Arrival.Ticks>0)
+                            {
+                                <td class="stop-time">@Enums.autoInterval(mcolItinerary[index].Arrival,true,false)</td>
+                            }
+                        }
+                        else
+                        {
+                            <td></td>
+                            <td><p>...</p></td>
+                        }
                     </tr>
                 }
             </tbody>
@@ -24,12 +39,144 @@
     </table>
 </div>
 @code {
+    [CascadingParameter]
+    public Circulation? Circulation{ get; set; }
+    [CascadingParameter]
+    public TimeSpan CurrentDelay{ get; set; }
+    [CascadingParameter]
+    public Station? NextStation{ get; set; }
     [Parameter]
-    public List<Station>? Stations { get; set; }
+    public int Rows { get; set; } = 4; //Número de filas que puede representar esta tabla.
     [Parameter]
-    public List<TimeSpan>? EstimatedTimes { get; set; }
+    public bool ShowEstimatedTimes { get; set; } //Muestra (u oculta las horas estimadas de llegada)
+    private RowContent[] mcolItinerary = new RowContent[0];
 
-    
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        auxRecalculateDestinations();
+    }
+
+    private void auxRecalculateDestinations()
+    {
+        mcolItinerary = Array.Empty<RowContent>();
+
+        if (null==Circulation || 
+            null==Circulation.Parent || 
+            null ==Circulation.Parent.asimilation ||
+            null == Circulation.Parent.asimilation.Origin)
+            return;
+
+        // 1. Construimos la lista completa del itinerario (como ya tenías)
+        var auxItinerary = new List<RowContent>();        
+        TimeSpan cumul = Circulation.departure;
+
+        if (CurrentDelay.Ticks > 0)
+            cumul += CurrentDelay; //No quiero alarmar a los viajeros si vamos con adelanto.
+
+        bool auxActive = (Circulation.Parent.asimilation.Origin == NextStation ||null==NextStation);
+
+        // Estación de origen (solo si es la siguiente estación actual)
+        if (auxActive)
+        {
+            auxItinerary.Add(new RowContent
+            {
+                Station = Circulation.Parent.asimilation.Origin,
+                Arrival = cumul
+            });
+        }
+
+        foreach (AsimilationStep paso in Circulation.Parent.asimilation.Steps)
+        {
+            cumul += paso.tripTime;
+
+            if (paso.stopTime.Ticks > 0) // Solo estaciones con parada
+            {
+                if (paso.destination == NextStation)
+                    auxActive = true;
+
+                if (auxActive)
+                {
+                    auxItinerary.Add(new RowContent
+                    {
+                        Station = paso.destination,
+                        Arrival = cumul
+                    });
+                }
+
+                cumul += paso.stopTime;
+            }
+        }
+
+        // ==================== APLICACIÓN DE LAS REGLAS ====================
+
+        if (auxItinerary.Count == 0)
+            return;
+
+        // Buscamos el índice donde aparece NextStation (debe existir según regla 2)
+        int startIndex = auxItinerary.FindIndex(r => r.Station?.Equals(NextStation) == true);
+
+        if (startIndex == -1)
+        {
+            // Seguridad: si por algún motivo no encontramos NextStation, tomamos desde el principio
+            startIndex = 0;
+        }
+
+        var relevantStations = auxItinerary.Skip(startIndex).ToList();
+
+        // Ahora aplicamos las reglas de truncado
+        if (relevantStations.Count <= Rows)
+        {
+            // Caso simple: caben todas
+            mcolItinerary = relevantStations.ToArray();
+        }
+        else
+        {
+            // Caso complejo: hay más estaciones de las que caben
+            var result = new List<RowContent>(Rows);
+
+            // Regla 2: La primera siempre es NextStation
+            result.Add(relevantStations[0]);
+
+            // Regla 3: Si sobran estaciones → penúltimo = separador, último = destino final
+            if (Rows >= 3)
+            {
+                // Añadimos estaciones intermedias (si hay espacio)
+                int middleCount = Rows - 2; // reservamos 1 para separador y 1 para destino
+
+                for (int i = 1; i <= middleCount && i < relevantStations.Count - 1; i++)
+                {
+                    result.Add(relevantStations[i]);
+                }
+
+                // Penúltimo: separador
+                result.Add(new RowContent { Separator = true });
+
+                // Último: siempre el destino final
+                result.Add(relevantStations[^1]); // último elemento
+            }
+            else if (Rows == 2)
+            {
+                // Caso especial: solo caben 2 → NextStation + Destino final (sin separador)
+                result.Add(relevantStations[^1]);
+            }
+            else // Rows == 1
+            {
+                // Solo cabe NextStation
+            }
+
+            mcolItinerary = result.ToArray();
+        }
+    }
+
+    private struct RowContent
+    {
+        public Station? Station { get; set; } //Estación.
+        public TimeSpan Arrival{ get; set; } //Hora estimada de llegada.
+        public bool Separator{ get; set; } //Representa una separación en la tabla.
+        public bool Pointer{ get; set; } //Marca la estación con un puntero.
+    }
+
 
 
 }

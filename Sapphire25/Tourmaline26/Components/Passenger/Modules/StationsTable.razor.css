@@ -3,13 +3,6 @@
     min-width: 0;
 }
 
-.stop-time {
-    color: #2e8b00;
-    font-size: 3vw;
-    text-align: right;
-    padding-left: 2vw;
-}
-
 .route-title {
     font-size: 2vw;
     color: #888;
@@ -41,3 +34,39 @@
         font-size: 3.2vw; /* igual que antes para los nombres */
         vertical-align: middle;
     }
+
+.stop-dot {
+    width: 3vw;
+    height: 3vw;
+    min-width: 22px;
+    min-height: 22px;
+    margin-right: 1.5vw;
+    border: 0.5vw solid #bbb;
+}
+
+.stop-time {
+    color: #2e8b00;
+    font-size: 3vw;
+    text-align: right;
+    padding-left: 2vw;
+}
+.stop-name {
+    color: #444;
+    font-weight: 400;
+    font-size: 3.2vw;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stop-name-high {
+    color: #1a237e; /* Azul oscuro para destacar */
+    font-weight: 700;
+    font-size: 3.4vw;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

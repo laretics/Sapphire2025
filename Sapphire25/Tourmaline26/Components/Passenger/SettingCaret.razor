@@ -1,5 +1,10 @@
-﻿<div class="test-card-grid">
-    <img src="~/favicon.png" class="test-card-logo" alt="Montefaro" />
+﻿@using Tourmaline26.Components.Services
+@inject TourmalineService mvarTourmaline
+<div class="test-card-grid">
+    <img src="favicon.png" class="test-card-logo" alt="Montefaro" />
+    <div class="test-card-time">
+        @CurrentTime
+    </div>
     <div class="test-card-circle"></div>
     <div class="test-card-content">
         <!-- Barras de color -->
@@ -43,6 +48,21 @@
     [CascadingParameter]
     public DeviceMapped? Device { get; set; }
 
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        mvarTourmaline.PassengerUpdateRequested += OnChangeRequest;
+    }
+
+    private void OnChangeRequest(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        mvarTourmaline.PassengerUpdateRequested -= OnChangeRequest;
+    }
     private string CoachDescription
     {
         get
@@ -53,4 +73,5 @@
             return string.Format("\"{0}\" ({1},{2})", coachId, auxNum, auxSide);
         }
     }
+    private string CurrentTime => (null == mvarTourmaline.SessionConfig.TNEnvironment) ? "" : mvarTourmaline.SessionConfig.TNEnvironment.Now.ToString("HH:mm");
 }

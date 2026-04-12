@@ -4,6 +4,13 @@
 <h4>Información al viajero</h4>
 <Switch Label="Conexión" Value="@TourmalineService.SessionConfig.PASEnabled" 
     ValueChanged="@((bool v) => SetPASEnabled(v))" />
+@if(TourmalineService.SessionConfig.ServiceMode)
+{
+    <h3 class="bg-danger">Modo de servicio</h3>
+    <Switch Label="Carta de Ajuste" Value="@TourmalineService.SessionConfig.PassengerCaretOnServiceMode"
+            ValueChanged="@((bool v) => SetCaret(v))" />
+    <btn class="btn btn-outline-danger" @onclick="@TogglePassengerScreenOnHMI">Ver Viajeros</btn>
+}
 <h4>Anunciador</h4>
 <RadioButton Options="@(new List<string> {"Desactivado","Ruta", "Tren Sin Servicio" })"
              SelectedIndex="@( (int)(byte)TourmalineService.SessionConfig.InformationLevel )"
@@ -17,6 +24,18 @@
 <Switch Label="Frontales" Value="@TourmalineService.SessionConfig.ExternalTeleindicatorsEnabled"
         ValueChanged="@((bool v) => SetExternalTeleindicatorsEnabled(v))" />
 @code {
+    [CascadingParameter]
+    public Action? UpdateView { get; set; }
+    private void SetCaret(bool value)
+    {
+        TourmalineService.SessionConfig.PassengerCaretOnServiceMode = value;
+        TourmalineService.RaisePassengerUpdate();
+    }
+    private void TogglePassengerScreenOnHMI()
+    {
+        TourmalineService.SessionConfig.PassengerScreenOnHMI = true;
+        UpdateView?.Invoke();
+    }
     private void SetRouteMode(int index)
     {
         TourmalineService.SessionConfig.InformationLevel = (Enums.InformationLevel)(byte)index;

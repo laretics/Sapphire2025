@@ -1,0 +1,72 @@
+﻿@using Tourmaline26.Components.Images
+@using Tourmaline26.Components.Passenger.Modules
+@using Tourmaline26.Components.Services
+@using TimeNet2026.Topo
+@using TimeNet2026.Timed
+@inject TourmalineService mvarTourmaline
+    <div class="panel-root">            
+            <div class="panel-header">
+                @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Disabled 
+                ||null==Circulation
+                ||null==Circulation.Parent
+                ||null==Circulation.Parent.asimilation)
+                {
+                    <span class="train-number"></span>
+                    <span class="panel-time">@CurrentTime</span>
+                    <div class="destination"></div>
+                }
+                else if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route)
+                {
+                    <span class="train-number">
+                        <ColorIcon Name="Train"
+                                   Color="@Circulation.Parent.asimilation.color[0]"
+                                   Size="72"
+                                   Glow="false"
+                                    GlowColor="@Circulation.Parent.asimilation.color[1]"/>
+                        @Circulation.name destinació</span>
+                    <span class="panel-time">@CurrentTime</span>
+                    <div class="destination">
+                        @Circulation.Parent.asimilation.Destination?.Name
+                    </div>
+                }
+                else
+                {
+                    <span class="train-number"></span>
+                    <span class="panel-time">@CurrentTime</span>
+                    <div class="destination">Tren sense servei</div>
+                }
+            </div>
+            <div class="panel-body">
+                @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route)
+                {
+                    <StationsTable Rows="4" ShowEstimatedTimes="true"/>
+                    <div class="info-box">
+                        <div class="departure-row">
+                            <span class="departure-info">[Info]</span>
+                            <span class="departure-time">[DepTime]</span>
+                        </div>
+                        <div class="direction-row">
+                            <span class="direction-arrow">&#8593; Flecha</span>
+                        </div>
+                        <div class="car-row">
+                            <span class="car-icon">&#128648;</span>
+                            <span class="car-number">@Device?.PublicId.ToString()</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+@code {
+    [CascadingParameter]
+    public Circulation? Circulation { get; set; }
+    [CascadingParameter]
+    public TimeSpan CurrentDelay { get; set; }
+    [CascadingParameter]
+    public DeviceMapped? Device { get; set; }
+          
+    private string CurrentTime => (null == mvarTourmaline.SessionConfig.TNEnvironment) ? "" : mvarTourmaline.SessionConfig.TNEnvironment.Now.ToString("HH:mm");
+    
+
+
+
+}

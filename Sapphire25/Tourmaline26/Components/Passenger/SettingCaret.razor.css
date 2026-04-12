@@ -214,3 +214,18 @@
 	text-shadow: 0 0 6px #000;
 	text-align: center;
 }
+
+.test-card-time {
+	position: absolute;
+	top: 16px;
+	right: 32px;
+	font-size: 2rem;
+	font-weight: bold;
+	color: #222;
+	background: rgba(255,255,255,0.85);
+	padding: 0.25em 0.75em;
+	border-radius: 0.5em;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+	z-index: 10;
+	letter-spacing: 0.1em;
+}

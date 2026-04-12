@@ -43,7 +43,8 @@ namespace TimeNet2026.Production
                 }
                 ViewAsimilation = Asimilation;
             }
-        } 
+        }
+        public TimeSpan CurrentDelay { get; set; } = new TimeSpan(0);
         public Weekday Weekday { get; set; } //Filtro para seleccionar trenes por días
         public DateTime Now{ get; set; } = DateTime.Now; //Hora actual, para sincronizar la malla con la información al viajero.
 		public void SetWeekDate()

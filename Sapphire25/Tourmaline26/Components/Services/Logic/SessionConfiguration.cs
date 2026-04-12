@@ -26,6 +26,8 @@ namespace Tourmaline26.Components.Services.Logic
         public bool ExternalTeleindicatorsEnabled { get; set; } = true; //Indica si los paneles de destino están habilitados.
         public bool AutoCameras { get; set; } = true; //Indica si las cámaras se activan automáticamente en las paradas con habilitación de puertas.
         public bool ManualCameras { get; set; } = true; //Indica si el botón de cámaras está habilitado.
+        public bool PassengerCaretOnServiceMode { get; set; } = true; //Muestra la carta de ajuste en los monitores de viajeros cuando está en modo servicio.
+        public bool PassengerScreenOnHMI{  get; set; }  = false; //Muestra el monitor de viajeros en el HMI (para ajustar el sistema con una sola pantalla)
         
         public Enums.InformationLevel InformationLevel { get; set; } = Enums.InformationLevel.Route; //Nivel de información actual.
         public SessionModel? Session { get; set; } = null; //Información sobre el usuario actual

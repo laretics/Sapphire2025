@@ -1,108 +1,54 @@
 ﻿@* PassengerInfoPanel.razor *@
 @using Tourmaline26.Components.Passenger.Modules
 @using Tourmaline26.Components.Services
+@using TimeNet2026.Timed
 @using TimeNet2026.Topo
 @inject TourmalineService mvarTourmaline
-@if (mvarTourmaline.SessionConfig.ServiceMode)
-{
-    <SettingCaret></SettingCaret>
-}
-else
-{
-    <div class="panel-root">
-        @if(mvarTourmaline.SessionConfig.PASEnabled && mvarTourmaline.SessionConfig.TFTEnabled)
-        {
-            <div class="panel-header">
-                @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Disabled)
+<div @onclick="OnScreenClick">
+    <CascadingValue Value="CurrentCirculation">
+        <CascadingValue Value="CurrentDelay">
+            @if (mvarTourmaline.SessionConfig.PASEnabled && mvarTourmaline.SessionConfig.TFTEnabled)
+            {
+                @if (mvarTourmaline.SessionConfig.ServiceMode && mvarTourmaline.SessionConfig.PassengerCaretOnServiceMode)
                 {
-                    <span class="train-number"></span>
-                    <span class="panel-time">@CurrentTime</span>
-                    <div class="destination"></div>
-                }
-                else if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route)
-                {
-                    <span class="train-number">@TrainNumber destinació</span>
-                    <span class="panel-time">@CurrentTime</span>
-                    <div class="destination">@Destination</div>
+                    <SettingCaret></SettingCaret>
                 }
                 else
                 {
-                    <span class="train-number"></span>
-                    <span class="panel-time">@CurrentTime</span>
-                    <div class="destination">Tren sense servei</div>
+                    <OnRouteInfo></OnRouteInfo>
                 }
-            </div>
-            <div class="panel-body">
-                @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route)
-                {
-                    <StationsTable Stations="StationsFactory()" EstimatedTimes="EstimatedFactory()">
-                    </StationsTable>
-                    <div class="info-box">
-                        <div class="departure-row">
-                            <span class="departure-info">@DepartureInfo</span>
-                            <span class="departure-time">@DepartureTime</span>
-                        </div>
-                        <div class="direction-row">
-                            <span class="direction-arrow">&#8593; @Direction</span>
-                        </div>
-                        <div class="car-row">
-                            <span class="car-icon">&#128648;</span>
-                            <span class="car-number">@CarId</span>
-                        </div>
-                    </div>
-                }
-            </div>
-        }
-    </div>
-}
+            }
+        </CascadingValue>
+    </CascadingValue>
+</div>
 
 @code {
     [CascadingParameter]
     public DeviceMapped? Device{ get; set; }
+    [CascadingParameter]
+    public Action? UpdateView{ get; set; }
 
-    // Variables locales para datos dinámicos
-    bool settingScreen = true;
-    string TrainNumber = "4915";
-    string Destination = "Manacor";
-    string CurrentTime =>  (null==mvarTourmaline.SessionConfig.TNEnvironment)?"": mvarTourmaline.SessionConfig.TNEnvironment.Now.ToString("HH:mm");
-    string DepartureInfo = "Sortida en 1 min";
-    string DepartureTime = "09:46";
-    int Direction = 1;
+    private Circulation? CurrentCirculation 
+    {
+        get
+        {
+            if (null != mvarTourmaline.SessionConfig.TNEnvironment &&
+            null != mvarTourmaline.SessionConfig.TNEnvironment.Circulation)
+                return mvarTourmaline.SessionConfig.TNEnvironment.Circulation;
 
-    private string CarId { get => (null == Device) ? "" : Device.PublicId; }
+            return null;
+        }
+    }
+    private TimeSpan CurrentDelay
+    {
+        get => null == mvarTourmaline.SessionConfig.TNEnvironment ? new TimeSpan(0) : mvarTourmaline.SessionConfig.TNEnvironment.CurrentDelay;
+    }
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
         mvarTourmaline.PassengerUpdateRequested += OnChangeRequest;
     }
-
-    private List<Station> StationsFactory()
-    {
-        List<Station> salida = new List<Station>();
-        Axis eje = new Axis();
-        salida.Add(new Station("001", "Jacint Verdaguer", "JCV", eje, 10, 10));
-        salida.Add(new Station("002", "Son Costa-Son Forteza", "scf", eje, 20, 20));
-        salida.Add(new Station("003", "Son Fuster", "SFT", eje, 30, 30));
-        salida.Add(new Station("004", "Son Cladera-Es Vivero", "cld", eje, 40, 40));
-        salida.Add(new Station("005", "Verge de Lluç", "vll", eje, 50, 50));
-        salida.Add(new Station("006", "Pont d'Inca", "pdi", eje, 60, 60));
-        return salida;
-    }
-    private List<TimeSpan> EstimatedFactory()
-    {
-        List<TimeSpan> salida = new List<TimeSpan>();
-        salida.Add(new TimeSpan(0, 0, 0));
-        salida.Add(new TimeSpan(0, 3, 0));
-        salida.Add(new TimeSpan(0, 6, 0));
-        salida.Add(new TimeSpan(0, 9, 0));
-        salida.Add(new TimeSpan(0, 12, 0));
-        salida.Add(new TimeSpan(0, 15, 0));
-        return salida;
-    }
-
-    int CurrentStopIndex = 0;
-
     private void OnChangeRequest(object? sender, EventArgs e)
     {
         InvokeAsync(StateHasChanged);
@@ -110,5 +56,10 @@ else
     public void Dispose()
     {
         mvarTourmaline.PassengerUpdateRequested -= OnChangeRequest;
-    }   
+    }
+    private void OnScreenClick()
+    {
+        mvarTourmaline.SessionConfig.PassengerScreenOnHMI = false;
+        UpdateView?.Invoke();
+    }
 }

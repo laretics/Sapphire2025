@@ -5,28 +5,29 @@
 @inject Tourmaline26.Components.Services.TourmalineService TourmalineService
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 <PageTitle>Tourmaline</PageTitle>
+<CascadingValue Value="@UpdateView">
 @if (device is null)
 {
     <h3>Dispositivo no reconocido</h3>
     <p>IP detectada: @clientIp</p>
 }
+else if (device.Type == Enums.DeviceType.TFT || TourmalineService.SessionConfig.PassengerScreenOnHMI)
+{
+    <CascadingValue Value="@device">
+        <PassengerInfoPanel />
+    </CascadingValue>
+}
 else if (device.Type == Enums.DeviceType.HMI)
 {
     <CascadingValue Value="@device">
-        <CascadingValue Value=@NightMode>
-            <CascadingValue Value=@ToggleNightMode>
-                <DriverInfotaiment></DriverInfotaiment>
-            </CascadingValue>
-        </CascadingValue>
+        <CascadingValue Value=@NightMode>            
+                <CascadingValue Value=@ToggleNightMode>
+                    <DriverInfotaiment></DriverInfotaiment>
+                </CascadingValue>
+            </CascadingValue>        
     </CascadingValue>
-}
-else if (device.Type == Enums.DeviceType.TFT)
-{
-    <CascadingValue Value="@device">
-        <PassengerInfoPanel/>
-    </CascadingValue>    
-}
-
+    }
+</CascadingValue>
 @code {
     private DeviceMapped? device;
     private string? clientIp;
@@ -35,6 +36,10 @@ else if (device.Type == Enums.DeviceType.TFT)
     private void ToggleNightMode(bool newValue)
     {
         NightMode = newValue;
+        StateHasChanged();
+    }
+    private void UpdateView()
+    {
         StateHasChanged();
     }
 
