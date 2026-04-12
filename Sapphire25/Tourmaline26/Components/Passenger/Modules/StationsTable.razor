@@ -61,22 +61,18 @@
     {
         mcolItinerary = Array.Empty<RowContent>();
 
-        if (null==Circulation || 
-            null==Circulation.Parent || 
-            null ==Circulation.Parent.asimilation ||
-            null == Circulation.Parent.asimilation.Origin)
+        if (Circulation?.Parent?.asimilation?.Origin == null)
             return;
 
-        // 1. Construimos la lista completa del itinerario (como ya tenías)
-        var auxItinerary = new List<RowContent>();        
+        var auxItinerary = new List<RowContent>();
+
         TimeSpan cumul = Circulation.departure;
-
         if (CurrentDelay.Ticks > 0)
-            cumul += CurrentDelay; //No quiero alarmar a los viajeros si vamos con adelanto.
+            cumul += CurrentDelay;
 
-        bool auxActive = (Circulation.Parent.asimilation.Origin == NextStation ||null==NextStation);
+        bool auxActive = (Circulation.Parent.asimilation.Origin == NextStation || NextStation == null);
 
-        // Estación de origen (solo si es la siguiente estación actual)
+        // Estación de origen
         if (auxActive)
         {
             auxItinerary.Add(new RowContent
@@ -90,7 +86,7 @@
         {
             cumul += paso.tripTime;
 
-            if (paso.stopTime.Ticks > 0) // Solo estaciones con parada
+            if (paso.stopTime.Ticks > 0 || paso.destination == Circulation.Parent.asimilation.Destination)
             {
                 if (paso.destination == NextStation)
                     auxActive = true;
@@ -108,42 +104,34 @@
             }
         }
 
-        // ==================== APLICACIÓN DE LAS REGLAS ====================
-
         if (auxItinerary.Count == 0)
             return;
 
-        // Buscamos el índice donde aparece NextStation (debe existir según regla 2)
+        // Buscar desde dónde empezar (NextStation)
         int startIndex = auxItinerary.FindIndex(r => r.Station?.Equals(NextStation) == true);
-
         if (startIndex == -1)
-        {
-            // Seguridad: si por algún motivo no encontramos NextStation, tomamos desde el principio
             startIndex = 0;
-        }
 
         var relevantStations = auxItinerary.Skip(startIndex).ToList();
 
-        // Ahora aplicamos las reglas de truncado
+        // === LÓGICA DE TRUNCADO CORREGIDA ===
         if (relevantStations.Count <= Rows)
         {
-            // Caso simple: caben todas
             mcolItinerary = relevantStations.ToArray();
         }
         else
         {
-            // Caso complejo: hay más estaciones de las que caben
             var result = new List<RowContent>(Rows);
 
-            // Regla 2: La primera siempre es NextStation
+            // 1. Primera estación = NextStation
             result.Add(relevantStations[0]);
 
-            // Regla 3: Si sobran estaciones → penúltimo = separador, último = destino final
             if (Rows >= 3)
             {
-                // Añadimos estaciones intermedias (si hay espacio)
-                int middleCount = Rows - 2; // reservamos 1 para separador y 1 para destino
+                // Añadimos estaciones intermedias (las que quepan entre la primera y el separador)
+                int middleCount = Rows - 2;
 
+                // Cogemos desde la segunda estación hasta donde quepa
                 for (int i = 1; i <= middleCount && i < relevantStations.Count - 1; i++)
                 {
                     result.Add(relevantStations[i]);
@@ -152,18 +140,15 @@
                 // Penúltimo: separador
                 result.Add(new RowContent { Separator = true });
 
-                // Último: siempre el destino final
-                result.Add(relevantStations[^1]); // último elemento
+                // Último: SIEMPRE el destino final
+                result.Add(relevantStations[^1]);
             }
             else if (Rows == 2)
             {
-                // Caso especial: solo caben 2 → NextStation + Destino final (sin separador)
+                // Solo NextStation + Destino final
                 result.Add(relevantStations[^1]);
             }
-            else // Rows == 1
-            {
-                // Solo cabe NextStation
-            }
+            // Rows == 1 → solo la primera (NextStation)
 
             mcolItinerary = result.ToArray();
         }

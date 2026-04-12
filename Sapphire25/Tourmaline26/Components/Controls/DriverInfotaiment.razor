@@ -111,10 +111,40 @@
     [JSInvokable]
     public async Task HandleKey(string key)
     {
-        if (byte.TryParse(key, out _) && null != mvarTeclado)
-            await mvarTeclado.ManagePhysicalKeyboard(key);
-        if(buttonData[(byte)MainToolBarItem.Train].Selected && null!=mvarSideMenu)
-            await mvarSideMenu.ManagePhysicalKeyboard(key);
+        if (mvarTourmaline.SessionConfig.ServiceKeyboard)
+            HandleServiceKey(key);
+        else
+        {
+            if (byte.TryParse(key, out _) && null != mvarTeclado)
+                await mvarTeclado.ManagePhysicalKeyboard(key);
+            if (buttonData[(byte)MainToolBarItem.Train].Selected && null != mvarSideMenu)
+                await mvarSideMenu.ManagePhysicalKeyboard(key);
+        }
+    }
+
+    /// <summary>
+    /// Esta función utiliza el teclado físico para probar de forma dinámica los
+    /// elementos activos del sistema.
+    /// </summary>
+    /// <param name="key"></param>
+    private void HandleServiceKey(string key)
+    {
+        SessionConfiguration auxConfig = mvarTourmaline.SessionConfig;
+        switch(key)
+        {
+            case "ArrowUp": //Aumentar velocidad.                
+                auxConfig.CurrentSpeed += 10; break;
+            case "ArrowDown": //Reducir velocidad.
+                auxConfig.CurrentSpeed -= 10; break;
+            case "2": //Aumentar límite.
+                auxConfig.CurrentLimitSpeed += 10; break;
+            case "1": //Reducir límite.
+                auxConfig.CurrentLimitSpeed -= 10; break;
+            case "4": //Aumentar objetivo.
+                auxConfig.CurrentNeutralSpeed += 10; break;
+            case "3": //Reducir objetivo.
+                auxConfig.CurrentNeutralSpeed -= 10; break;
+        }
     }
 
     private TeslaButton[] buttonData = Array.Empty<TeslaButton>();

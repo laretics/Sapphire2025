@@ -15,6 +15,10 @@
                 <b>@mvarConfig.Session.User.Name</b>
             </span>
         }
+        @if(mvarConfig.ServiceKeyboard)
+        {
+            <ColorIcon Size="24" Color="#902020" Name="DebugKeyboard"/>    
+        }        
         @if(mvarConfig.MVBEnabled)
         {
             if(null==mvarConfig.CurrentMVBData)
@@ -23,29 +27,29 @@
             }
             else
             {
-                <ColorIcon Name="MVB" Size="24"></ColorIcon>
+                <ColorIcon Name="MVB" Size="24" ></ColorIcon>
             }
         }
         @if(mvarConfig.GPSEnabled)
         {
             if (mvarConfig.GPSOK)
             {
-                <ColorIcon Name="Satellite" Size="24"></ColorIcon>
+                <ColorIcon Name="Satellite" Size="24" ></ColorIcon>
             }
             else
             {
-                <ColorIcon Name="NoLocation" Size="24"></ColorIcon>
+                <ColorIcon Name="NoLocation" Size="24" ></ColorIcon>
             }
         }        
         @if(mvarConfig.InternetEnabled)
         {
             @if (mvarConfig.InternetOK)
             {
-                <ColorIcon Name="Internet" Size="24"></ColorIcon>
+                <ColorIcon Name="Internet" Size="24" ></ColorIcon>
             }
             else
             {
-                <ColorIcon Name="NoInternet" Size="24"></ColorIcon>
+                <ColorIcon Name="NoInternet" Size="24" ></ColorIcon>
             }
         }        
         @if(null!=mvarConfig.TNEnvironment)

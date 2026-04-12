@@ -84,6 +84,9 @@ h1:focus {
     --onyx-speed-current: #bfc6f7;
     --onyx-speed-limit: #cccccc;
     --onyx-speed-neutral: #bfc6f7;
+    --onyx-speed-cyphers:#222;
+    --onyx-speed-units:#444;
+    --overlay-text:#101010;
 }
 
 .night {
@@ -94,11 +97,14 @@ h1:focus {
     --menu-selected-text: #fff;
     --menu-button-border: #fff;
     --toolbar-button-foreground-selected: #f05050;
-    --toolbar-button-foreground: #903030;
+    --toolbar-button-foreground: #622;
     --toolbar-button-foreground-disabled: #701010;
-    --onyx-speed-current: #c01010;
-    --onyx-speed-limit: #901010;
-    --onyx-speed-neutral: #a02020;
+    --onyx-speed-current: #622;
+    --onyx-speed-limit: #a02020;
+    --onyx-speed-neutral: #605050;
+    --onyx-speed-cyphers: #622;
+    --onyx-speed-units: #422;
+    --overlay-text: #622;
 }
 
 .btn.btn-transparent {

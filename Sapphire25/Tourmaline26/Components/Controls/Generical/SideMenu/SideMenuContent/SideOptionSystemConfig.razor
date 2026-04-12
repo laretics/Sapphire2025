@@ -5,6 +5,8 @@
 @using Microsoft.EntityFrameworkCore
 @inject Tourmaline26.Components.Services.TourmalineService TourmalineService
 @inject TourmalineContext database
+<Switch Label="Dummy Keyboard" Value="@TourmalineService.SessionConfig.ServiceKeyboard"
+        ValueChanged="@((bool v) => SetDebugKeyboard(v))" />
 @if(null==mvarLocalSystem)
 {
     <p>No se ha abierto el registro interno</p>
@@ -101,7 +103,10 @@ else
         await base.OnInitializedAsync();
         mvarLocalSystem = await database.LocalSystem.FirstOrDefaultAsync();
     }
-
+    private void SetDebugKeyboard(bool rhs)
+    {
+        TourmalineService.SessionConfig.ServiceKeyboard = rhs;
+    }
 
 
 }

@@ -1,7 +1,26 @@
 ﻿@using Tourmaline26.Components.Controls
+@using Tourmaline26.Components.Services
+@inject TourmalineService Tourmaline
 <div class="d-flex flex-column justify-content-end h-100">
-          <Speedometer />
+          <Speedometer 
+              CurrentSpeed="Tourmaline.SessionConfig.CurrentSpeed"
+              MaxSpeed="Tourmaline.SessionConfig.CurrentLimitSpeed"
+              NeutralSpeed="Tourmaline.SessionConfig.CurrentNeutralSpeed"
+              />
 </div>
 @code {
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Tourmaline.HMIUpdateRequested += auxHMIRefresh;
+    }
+    public void Dispose()
+    {
+        Tourmaline.HMIUpdateRequested -= auxHMIRefresh;
+    }
+    private void auxHMIRefresh(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
 
 }

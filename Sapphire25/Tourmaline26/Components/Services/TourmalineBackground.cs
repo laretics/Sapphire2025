@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.FileSystemGlobbing.Internal.PathSegments;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
@@ -104,7 +105,7 @@ namespace Tourmaline26.Components.Services
 						mvarTourmaline.SessionConfig.TNEnvironment.SetWeekDate(); //Actualiza el día de la semana actual
                     mvarLastDate = DateTime.Today;
 				}
-                    
+                CalculateTelemetry();
                 mvarTourmaline.RaiseHMIUpdate();
                 if (cycleCount > 4)
                 {
@@ -159,7 +160,6 @@ namespace Tourmaline26.Components.Services
             }
             return null;
         }
-
         private async Task<bool> PoolInternet()
         {
             if (mvarTourmaline.SessionConfig.InternetEnabled)
@@ -176,6 +176,26 @@ namespace Tourmaline26.Components.Services
                 }
             }
             return false;
-        }
+        }    
+        /// <summary>
+        /// Hace las actualizaciones de los controles y los cálculos de la malla
+        /// </summary>
+        private void CalculateTelemetry()
+        {
+            SessionConfiguration auxSesion = mvarTourmaline.SessionConfig;
+            if (auxSesion.CurrentSpeed < 0)
+                auxSesion.CurrentSpeed = 0;
+            if(auxSesion.CurrentSpeed>140)
+                auxSesion.CurrentSpeed=140;
+			if (auxSesion.CurrentLimitSpeed < 0)
+				auxSesion.CurrentLimitSpeed = 0;
+			if (auxSesion.CurrentLimitSpeed > 140)
+				auxSesion.CurrentLimitSpeed = 140;
+			if (auxSesion.CurrentNeutralSpeed < 0)
+				auxSesion.CurrentNeutralSpeed = 0;
+			if (auxSesion.CurrentNeutralSpeed > 140)
+				auxSesion.CurrentNeutralSpeed = 140;
+		}
     }
+
 }

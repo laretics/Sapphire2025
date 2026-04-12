@@ -6,13 +6,14 @@
     align-items: center;
     gap: 1rem;
     z-index: 100;
-    background: transparent;    
+    background: transparent;
     padding: 0.3rem 0.2rem;
     font-size: 1.2rem;
+    color: var(--overlay-text);
 }
 
     .tesla-top-right-bar .clock {
         font-size: 1.9rem;
         font-weight: bold;
-        letter-spacing: 0.1em;
+        letter-spacing: 0.1em;        
     }

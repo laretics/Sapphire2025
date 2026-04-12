@@ -1,94 +1,107 @@
-﻿html, body, .panel-root {
+﻿.panel-root {
 	width: 100vw;
 	height: 100vh;
 	margin: 0;
 	padding: 0;
 	box-sizing: border-box;
-}
-
-.panel-root {
-	height: 100vh;
 	display: flex;
 	flex-direction: column;
-	width: 100vw;
 	background: #222;
 	color: #fff;
 	font-family: 'Segoe UI', Arial, sans-serif;
-	border-radius: 0;
 	overflow: hidden;
-	box-shadow: none;
 }
 
 .panel-header {
-	flex: 0 0 25vh; /* Ocupa el 25% de la pantalla */
-	max-height: 25vh;
-	min-height: 0;
+	flex: 0 0 28vh;
+	min-height: 160px;
 	background: #222;
-	padding: 4vh 4vw 0.5vh 4vw;
+	padding: 3vh 4vw 1vh 4vw;
 	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5vh;
+	overflow: hidden;
 }
 
 .train-number {
-	font-size: 4vw;
+	font-size: clamp(2.8vw, 4.5vw, 5.5vw);
 	font-weight: bold;
 	opacity: 0.95;
+	display: flex;
+	align-items: center;
+	gap: 1.5vw;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .panel-time {
 	position: absolute;
 	right: 4vw;
 	top: 3vh;
-	font-size: 4vw;
+	font-size: clamp(3vw, 4.2vw, 5vw);
 	font-weight: bold;
 }
 
 .destination {
-	font-size: 11vw;
+	font-size: clamp(7vw, 11vw, 13vw);
 	font-weight: bold;
-	margin-top: 0.5vh;
+	line-height: 1.05;
 	word-break: break-word;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
 }
 
+/* ==================== PANEL BODY ==================== */
+
 .panel-body {
-	flex: 1 1 0;
+	flex: 1 1 auto;
 	min-height: 0;
 	background: #f5f5f5;
 	color: #222;
 	padding: 2vh 4vw;
-	gap: 4vw;
-	overflow: auto;
+	overflow: hidden;
 }
 
-
-.active-dot {
-	background: #222;
-	border-color: #222;
+.panel-body-content {
+	display: flex;
+	flex-direction: row;
+	gap: 3vw;
+	height: 100%;
+	overflow: hidden;
 }
 
-
-.current-stop .stop-name {
-	font-weight: bold;
-	color: #222;
+.stations-container {
+	flex: 3; 
+	min-width: 0;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
 }
 
 .info-box {
-	flex: 1 1 0;
+	flex: 2; 
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
 	background: #fff;
-	border-radius: 1vw;
-	padding: 2vh 2vw;
+	border-radius: 1.5vw;
+	padding: 2.5vh 3vw;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 	min-width: 0;
-	box-shadow: 0 2px 8px #0002;
+	overflow: hidden;
 }
 
+/* Estilos internos de info-box */
 .departure-row {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	font-size: 2vw;
-	margin-bottom: 2vh;
+	font-size: clamp(1.8vw, 2.2vw, 2.8vw);
 }
 
 .departure-info {
@@ -97,29 +110,25 @@
 
 .departure-time {
 	color: #2e8b00;
-	font-size: 3vw;
+	font-size: clamp(2.4vw, 3vw, 3.8vw);
 	font-weight: bold;
 }
 
 .direction-row {
-	font-size: 3vw;
+	font-size: clamp(2.6vw, 3.2vw, 4vw);
 	text-align: center;
-	margin-bottom: 2vh;
+	margin: 1.5vh 0;
 }
 
 .car-row {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 3vw;
-	gap: 1vw;
+	gap: 1.5vw;
+	font-size: clamp(2.6vw, 3.2vw, 4vw);
+	font-weight: bold;
 }
 
 .car-icon {
-	font-size: 3vw;
-}
-
-.car-number {
-	font-size: 3vw;
-	font-weight: bold;
+	font-size: clamp(3vw, 3.8vw, 4.5vw);
 }

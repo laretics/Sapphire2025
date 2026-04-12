@@ -9,6 +9,7 @@ namespace Tourmaline26.Components.Services.Logic
     public class SessionConfiguration
     {
         public bool ServiceMode { get; set; } = false; //Indica si el sistema de información al viajero está en modo de servicio.
+        public bool ServiceKeyboard { get; set; } = false; //Captura los eventos de teclado para simular sucesos de Onice.
         public bool MVBEnabled { get; set; } = true; //Estado del bus MVB.        
         public MVB8100Data? CurrentMVBData { get; set; }//Último paquete de datos recibido del bus MVB.
         public string MVBError { get; set; } = ""; //Mensaje de error relacionado con el bus MVB, si lo hubiera.
@@ -28,8 +29,16 @@ namespace Tourmaline26.Components.Services.Logic
         public bool ManualCameras { get; set; } = true; //Indica si el botón de cámaras está habilitado.
         public bool PassengerCaretOnServiceMode { get; set; } = true; //Muestra la carta de ajuste en los monitores de viajeros cuando está en modo servicio.
         public bool PassengerScreenOnHMI{  get; set; }  = false; //Muestra el monitor de viajeros en el HMI (para ajustar el sistema con una sola pantalla)
-        
-        public Enums.InformationLevel InformationLevel { get; set; } = Enums.InformationLevel.Route; //Nivel de información actual.
+
+        #region Telemetria
+        public int CurrentSpeed { get; set; } = 0; //Velocidad actual, leída de GPS o MVB
+        public int CurrentLimitSpeed { get; set; } = 100; //Velocidad máxima del tren en este tramo
+        public int CurrentNeutralSpeed { get; set; } = 0; //Velocidad objetivo calculada por ónice
+
+
+		#endregion Telemetria
+
+		public Enums.InformationLevel InformationLevel { get; set; } = Enums.InformationLevel.Route; //Nivel de información actual.
         public SessionModel? Session { get; set; } = null; //Información sobre el usuario actual
         public Dictionary<Guid, UserModelBase>? ColUsers{ get; set; } = null; //Colección de usuarios del tren, con su Guid de Zafiro como clave.
         public TimeNetEnvironment? TNEnvironment { get; set; }= null; //Todo lo que necesita el programa para mostrar una circulación
