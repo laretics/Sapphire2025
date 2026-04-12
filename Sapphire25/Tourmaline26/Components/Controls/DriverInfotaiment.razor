@@ -8,7 +8,7 @@
 @using Tourmaline26.Components.Controls.Generical.SideMenu
 @inject ILogger<DriverInfotaiment> Logger
 @inject Sapphire2025.Storage.IntStorageService InternalStorage
-<div class="tesla-root">
+<div class="tesla-root @(NightMode?" night":"")">
     @if(mvarTourmaline.SystemInitialized)
     {
         <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="@mvarTourmaline.SessionConfig.ServiceMode">

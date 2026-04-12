@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using BlazorBootstrap;
+using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 
 namespace Tourmaline26.Components.Services.Logic.Generical
@@ -35,6 +36,7 @@ namespace Tourmaline26.Components.Services.Logic.Generical
         {
             this.Pressed = false;
         }
+        public bool SameIcon => mcolIcon[0] == mcolIcon[1];
         public string Icon 
         { 
             get
@@ -49,6 +51,22 @@ namespace Tourmaline26.Components.Services.Logic.Generical
         public bool Pressed { get; set; } //Pulsación del botón
         public bool Selected { get; set; } //Toggle activado
 
+        public bool Glow
+        {
+            get => Enabled && Selected && (mcolIcon[0]==mcolIcon[1]);
+        }
+        public string ForegroundColor
+        {
+            get
+            {
+                if (Pressed|| (Selected && (mcolIcon[0] == mcolIcon[1])))
+                    return "var(--toolbar-button-foreground-selected)";
+                if(!Enabled)
+					return "var(--toolbar-button-foreground-disabled)";
+				
+                    return "var(--toolbar-button-foreground)";
+			}
+        }
         public string Class
         { 
             get

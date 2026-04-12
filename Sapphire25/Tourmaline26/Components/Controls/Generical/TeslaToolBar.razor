@@ -9,12 +9,17 @@
                 @onpointerup="() => ReleaseButton(auxButton)"
                 @onclick="() => OnButtonClick(auxButton)"
                 disabled="@(!auxButton.Enabled)">
-                <ColorIcon Name="@auxButton.Icon"></ColorIcon>
+                <ColorIcon 
+                    Name="@auxButton.Icon"
+                    Color="@auxButton.ForegroundColor"
+                    />
         </button>
     }
 </div>
 
 @code {
+    [CascadingParameter]
+    public bool NightMode { get; set; }
     // Define los datos de los botones aquí
     [Parameter]
     public TeslaButton[] Buttons{ get; set; }  = new TeslaButton[]

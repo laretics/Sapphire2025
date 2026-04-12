@@ -10,7 +10,7 @@
             <!-- Arco exterior: velocidad máxima -->
             <path d="@MaxSpeedPath"
                   fill="none"
-                  stroke="#cccccc"
+                  stroke="var(--onyx-speed-limit)"
                   stroke-width="5"
                   filter="url(#halo)" />
 
@@ -36,18 +36,17 @@
                 {
                     var tick = ticks[i];
                     // Degradado de azul claro a azul oscuro
-                    string color = InterpolateColor("#bfc6f7", "#7d8ae6", i / (double)total);                
                     <line x1="@tick.X1.ToString(CultureInfo.InvariantCulture)"
                       y1="@tick.Y1.ToString(CultureInfo.InvariantCulture)"
                       x2="@tick.X2.ToString(CultureInfo.InvariantCulture)"
                       y2="@tick.Y2.ToString(CultureInfo.InvariantCulture)"
-                          stroke="@color" stroke-width="5" />
+                          stroke="var(--onyx-speed-current)" stroke-width="5" />
                 }
             }
             <!-- Arco interior: velocidad neutral -->
             <path d="@NeutralSpeedPath"
                   fill="none"
-                  stroke="#bfc6f7"
+                  stroke="var(--onyx-speed-neutral)"
                   stroke-width="5"
                   filter="url(#halo)" />
         </g>
@@ -140,17 +139,6 @@
         double maxAngle = 270;
         double angle = minAngle + (maxAngle - minAngle) * (speed / (double)MaxRepresentableSpeed);
         return angle;
-    }
-
-    // Interpolación lineal de color entre dos hexadecimales
-    private string InterpolateColor(string hex1, string hex2, double t)
-    {
-        (int r1, int g1, int b1) = HexToRgb(hex1);
-        (int r2, int g2, int b2) = HexToRgb(hex2);
-        int r = (int)(r1 + (r2 - r1) * t);
-        int g = (int)(g1 + (g2 - g1) * t);
-        int b = (int)(b1 + (b2 - b1) * t);
-        return $"rgb({r},{g},{b})";
     }
 
     private (int, int, int) HexToRgb(string hex)

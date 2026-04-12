@@ -1,36 +1,53 @@
 ﻿@if (CurrentIcon is not null)
 {
-    <svg xmlns="http://www.w3.org/2000/svg"
-         width="@Size"
-         height="@Size"
-         fill="@Color"
-         viewBox="@CurrentIcon.ViewBox"
-         @if (Glow) { filter="url(#@FilterId)" }>
+    @if(Glow)
+    {
+        <svg xmlns="http://www.w3.org/2000/svg"
+             width="@Size"
+             height="@Size"
+             fill="@Color"
+             viewBox="@CurrentIcon.ViewBox"
+             filter="url(#@FilterId)">
 
-        @if (Glow)
-        {
             <defs>
                 <filter id="@FilterId"
                         x="-50%" y="-50%"
                         width="200%" height="200%">
                     <feDropShadow dx="0"
-                                  dy="0"
-                                  stdDeviation="@GlowBlur"
-                                  flood-color="@GlowColor"
-                                  flood-opacity="@GlowOpacity" />
+                                    dy="0"
+                                    stdDeviation="@GlowBlur"
+                                    flood-color="@GlowColor"
+                                    flood-opacity="@GlowOpacity" />
                 </filter>
             </defs>
-        }
 
-        @if (CurrentIcon.UseFillRule)
-        {
-            <path fill-rule="evenodd" d="@CurrentIcon.Path" />
-        }
-        else
-        {
-            <path d="@CurrentIcon.Path" />
-        }
-    </svg>
+            @if (CurrentIcon.UseFillRule)
+            {
+                <path fill-rule="evenodd" d="@CurrentIcon.Path" />
+            }
+            else
+            {
+                <path d="@CurrentIcon.Path" />
+            }
+        </svg>
+    }
+    else
+    {
+        <svg xmlns="http://www.w3.org/2000/svg"
+             width="@Size"
+             height="@Size"
+             fill="@Color"
+             viewBox="@CurrentIcon.ViewBox">
+            @if (CurrentIcon.UseFillRule)
+            {
+                <path fill-rule="evenodd" d="@CurrentIcon.Path" />
+            }
+            else
+            {
+                <path d="@CurrentIcon.Path" />
+            }
+        </svg>
+    }
 }
 @code {
     [Parameter] public string Name { get; set; } = "";

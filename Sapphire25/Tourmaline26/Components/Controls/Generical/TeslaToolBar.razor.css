@@ -13,7 +13,7 @@
     background: none;
     border: none;
     outline: none;
-    color: #707070;
+    color: var(--toolbar-button-foreground);
     padding: 0.5rem 0;
     border-radius: 1rem;
     transition: background 0.2s;
@@ -26,12 +26,7 @@
 }
 
     .toolbar-btn.disabled {
-        color: #202020;
-        pointer-events: none;
-    }
-
-    .toolbar-btn.selected {
-        color: #e0e0e0;
+        color: var(--toolbar-button-foreground-disabled);
     }
 
 @keyframes button-press {
@@ -53,4 +48,5 @@
 
 .toolbar-btn.pressed {
     animation: button-press 0.18s cubic-bezier(.4,0,.2,1);
+    color: var(--toolbar-button-foreground-selected);
 }

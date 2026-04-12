@@ -1,6 +1,7 @@
 ﻿@using Tourmaline26.Components.Images
 @using Tourmaline26.Components.Passenger.Modules
 @using Tourmaline26.Components.Services
+@using Tourmaline26.Components.Controls
 @using TimeNet2026.Topo
 @using TimeNet2026.Timed
 @inject TourmalineService mvarTourmaline
@@ -37,7 +38,7 @@
                 }
             </div>
             <div class="panel-body">
-                @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route)
+                @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route && null!=Circulation)
                 {
                     <StationsTable Rows="4" ShowEstimatedTimes="true"/>
                     <div class="info-box">
@@ -53,6 +54,10 @@
                             <span class="car-number">@Device?.PublicId.ToString()</span>
                         </div>
                     </div>
+                }
+                else
+                {
+                    <SimulatorStream/>
                 }
             </div>
         </div>

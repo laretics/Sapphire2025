@@ -78,6 +78,12 @@ h1:focus {
     --menu-text: #222;
     --menu-selected-text: #222;
     --menu-button-border: #222;
+    --toolbar-button-foreground-selected: #d0d0d0;
+    --toolbar-button-foreground: #707070;
+    --toolbar-button-foreground-disabled: #505050;
+    --onyx-speed-current: #bfc6f7;
+    --onyx-speed-limit: #cccccc;
+    --onyx-speed-neutral: #bfc6f7;
 }
 
 .night {
@@ -87,6 +93,12 @@ h1:focus {
     --menu-text: #eee;
     --menu-selected-text: #fff;
     --menu-button-border: #fff;
+    --toolbar-button-foreground-selected: #f05050;
+    --toolbar-button-foreground: #903030;
+    --toolbar-button-foreground-disabled: #701010;
+    --onyx-speed-current: #c01010;
+    --onyx-speed-limit: #901010;
+    --onyx-speed-neutral: #a02020;
 }
 
 .btn.btn-transparent {
