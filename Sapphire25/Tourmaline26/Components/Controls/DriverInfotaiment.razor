@@ -89,12 +89,13 @@
         CCTV = 2,
         Microphone = 3,
         View3d = 4,
+        TimeNet = 7,
         Clipboard = 8,
         UserSession = 9
     }
     private bool AeneasPanelVisible
     {
-        get =>(null!=buttonData && buttonData.Length>(byte)MainToolBarItem.Clipboard)
+        get => (null != buttonData && ZeroSpeed && buttonData.Length > (byte)MainToolBarItem.Clipboard)
         ? buttonData[(byte)MainToolBarItem.Clipboard].Selected : false;
     }
     private bool RightPanelVisible
@@ -146,7 +147,7 @@
                 auxConfig.CurrentNeutralSpeed -= 10; break;
         }
     }
-
+    private bool ZeroSpeed { get => mvarTourmaline.SessionConfig.CurrentSpeed < 10; }
     private TeslaButton[] buttonData = Array.Empty<TeslaButton>();
     protected async override Task OnInitializedAsync()
     {
@@ -159,14 +160,22 @@
             new("3DOn","3DOff",true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "View3D"),
             new(""),
             new(""),
-            new(""),
-            new("Clipboard",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Damage Clipboard"),
-            new("KeyOff","Key",false,EventCallback.Factory.Create(this, () => OnLoginRequest()),"Login"),
+            new("Bezier",null,true,null,"Time Net",true),
+            new("Clipboard",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Damage Clipboard",true),
+            new("KeyOff","Key",false,EventCallback.Factory.Create(this, () => OnLoginRequest()),"Login",true),
         };     
         mvarTourmaline.HMIUpdateRequested += auxHMIRefresh;
 
     }
-    private void auxHMIRefresh(object? sender, EventArgs e) { InvokeAsync(StateHasChanged); }
+    private void auxHMIRefresh(object? sender, EventArgs e) 
+    {
+        bool zeroSpeed = ZeroSpeed;
+        buttonData[(byte)MainToolBarItem.TimeNet].Enabled = zeroSpeed;
+        buttonData[(byte)MainToolBarItem.UserSession].Enabled = zeroSpeed;
+        buttonData[(byte)MainToolBarItem.Clipboard].Enabled = zeroSpeed;
+
+        InvokeAsync(StateHasChanged); 
+    }
 
     protected async override Task OnAfterRenderAsync(bool firstRender)
     {

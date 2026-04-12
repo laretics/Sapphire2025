@@ -78,9 +78,9 @@ h1:focus {
     --menu-text: #222;
     --menu-selected-text: #222;
     --menu-button-border: #222;
-    --toolbar-button-foreground-selected: #d0d0d0;
-    --toolbar-button-foreground: #707070;
-    --toolbar-button-foreground-disabled: #505050;
+    --toolbar-button-foreground-selected: #eee;
+    --toolbar-button-foreground: #777;
+    --toolbar-button-foreground-disabled: #333;
     --onyx-speed-current: #bfc6f7;
     --onyx-speed-limit: #cccccc;
     --onyx-speed-neutral: #bfc6f7;
@@ -96,9 +96,9 @@ h1:focus {
     --menu-text: #eee;
     --menu-selected-text: #fff;
     --menu-button-border: #fff;
-    --toolbar-button-foreground-selected: #f05050;
+    --toolbar-button-foreground-selected: #f55;
     --toolbar-button-foreground: #622;
-    --toolbar-button-foreground-disabled: #701010;
+    --toolbar-button-foreground-disabled: #322;
     --onyx-speed-current: #622;
     --onyx-speed-limit: #a02020;
     --onyx-speed-neutral: #605050;
