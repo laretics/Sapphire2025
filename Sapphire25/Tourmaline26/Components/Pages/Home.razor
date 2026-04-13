@@ -11,23 +11,25 @@
     <h3>Dispositivo no reconocido</h3>
     <p>IP detectada: @clientIp</p>
 }
-else if (device.Type == Enums.DeviceType.TFT || TourmalineService.SessionConfig.PassengerScreenOnHMI)
+else
 {
     <CascadingValue Value="@device">
-        <PassengerInfoPanel />
-    </CascadingValue>
-}
-else if (device.Type == Enums.DeviceType.HMI)
-{
-    <CascadingValue Value="@device">
-        <CascadingValue Value=@NightMode>            
+        @if (device.Type == Enums.DeviceType.TFT || TourmalineService.SessionConfig.PassengerScreenOnHMI)
+        {        
+            <PassengerInfoPanel />
+        }
+        else if (device.Type == Enums.DeviceType.HMI)
+        {
+            <CascadingValue Value=@NightMode>            
                 <CascadingValue Value=@ToggleNightMode>
                     <DriverInfotaiment></DriverInfotaiment>
                 </CascadingValue>
-            </CascadingValue>        
+            </CascadingValue>                
+        } 
     </CascadingValue>
-    }
+}
 </CascadingValue>
+
 @code {
     private DeviceMapped? device;
     private string? clientIp;

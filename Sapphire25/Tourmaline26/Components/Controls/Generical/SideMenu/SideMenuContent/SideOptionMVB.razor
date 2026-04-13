@@ -262,7 +262,19 @@ else
     {
         TourmalineService.SessionConfig.MVBEnabled = value;
     }
-
+        protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        TourmalineService.HMIUpdateRequested += auxHMIRefresh;
+    }
+        public void Dispose()
+    {
+        TourmalineService.HMIUpdateRequested -= auxHMIRefresh;
+    }
+    private void auxHMIRefresh(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
    
 
 }

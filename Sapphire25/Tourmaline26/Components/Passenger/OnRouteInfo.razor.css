@@ -13,8 +13,7 @@
 }
 
 .panel-header {
-	flex: 0 0 28vh;
-	min-height: 160px;
+	flex: 0 0 auto;	
 	background: #222;
 	padding: 3vh 4vw 1vh 4vw;
 	position: relative;
@@ -54,6 +53,17 @@
 	display: -webkit-box;
 	-webkit-line-clamp: 2;
 	-webkit-box-orient: vertical;
+}
+
+.external-temperature {
+	position: absolute;
+	right: 4vw;
+	top: 11vh; /* Ajusta este valor según la separación que desees respecto a la hora */
+	font-size: clamp(2vw, 3vw, 4vw);
+	font-weight: 500;
+	color: #fff;
+	text-align: right;
+	z-index: 2;
 }
 
 /* ==================== PANEL BODY ==================== */

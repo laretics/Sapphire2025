@@ -8,6 +8,7 @@ namespace Tourmaline26.Components.Services.Logic
     /// </summary>
     public class SessionConfiguration
     {
+        public bool Initialized { get; set; } = false; //Indica si el sistema ha terminado de cargar los datos.
         public bool ServiceMode { get; set; } = false; //Indica si el sistema de información al viajero está en modo de servicio.
         public bool ServiceKeyboard { get; set; } = false; //Captura los eventos de teclado para simular sucesos de Onice.
         public bool MVBEnabled { get; set; } = true; //Estado del bus MVB.        
@@ -29,6 +30,7 @@ namespace Tourmaline26.Components.Services.Logic
         public bool ManualCameras { get; set; } = true; //Indica si el botón de cámaras está habilitado.
         public bool PassengerCaretOnServiceMode { get; set; } = true; //Muestra la carta de ajuste en los monitores de viajeros cuando está en modo servicio.
         public bool PassengerScreenOnHMI{  get; set; }  = false; //Muestra el monitor de viajeros en el HMI (para ajustar el sistema con una sola pantalla)
+        public float Temperature { get; set; } = 20.0f; //Temperatura interior del tren, leída de sensores o MVB
 
         #region Telemetria
         public int CurrentSpeed { get; set; } = 0; //Velocidad actual, leída de GPS o MVB

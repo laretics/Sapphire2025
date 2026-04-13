@@ -17,7 +17,6 @@ namespace Tourmaline26.Components.Services
     /// </summary>
     public class TourmalineService
     {
-        private bool mvarTourmalineInitialized = false; //Indica si el sistema ha terminado su inicialización.
         private SessionConfiguration mvarSessionConfig; //Contenedor de la configuración de la sesión actual.
         public SystemConfiguration SystemConfig { get; private set; } //Configuración del sistema (desde archivo de config)
         public DeviceCollection Devices { get; private set; } = new DeviceCollection();
@@ -27,8 +26,7 @@ namespace Tourmaline26.Components.Services
         public OnyxStorage TimeNetStorage { get; set; }
 
         public event EventHandler? PassengerUpdateRequested;
-        public event EventHandler? HMIUpdateRequested;        
-        public bool SystemInitialized => mvarTourmalineInitialized;
+        public event EventHandler? HMIUpdateRequested;             
 
         public void RaiseHMIUpdate() => HMIUpdateRequested?.Invoke(this, EventArgs.Empty);
         public void RaisePassengerUpdate() => PassengerUpdateRequested?.Invoke(this, EventArgs.Empty);
@@ -66,6 +64,8 @@ namespace Tourmaline26.Components.Services
                     deviceSection["Type"],
                     deviceSection["Coach"],
                     deviceSection["Side"],
+                    int.Parse(deviceSection["HeaderSize"]),
+                    int.Parse(deviceSection["Lines"]),                    
                     deviceSection["PublicId"]);
                 Devices.Add(nuevo);
             }
@@ -86,14 +86,14 @@ namespace Tourmaline26.Components.Services
 
         public async Task<bool> EnsureInitialized()
         {
-            if(!mvarTourmalineInitialized)
+            if(!mvarSessionConfig.Initialized)
             {
                 mvarLogger.LogInformation("Iniciando sistema de información al viajero Tourmaline...");
                 await InitData();
-                mvarTourmalineInitialized = true;
+                mvarSessionConfig.Initialized = true;
                 mvarLogger.LogInformation("Sistema de información al viajero Tourmaline iniciado correctamente.");
             }
-            return mvarTourmalineInitialized;
+            return mvarSessionConfig.Initialized;
         }
         public async Task InitializeTimeNet()
         {

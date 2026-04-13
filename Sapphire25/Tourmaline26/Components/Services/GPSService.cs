@@ -15,7 +15,7 @@ namespace Tourmaline26.Components.Services
 		private ILogger<GPSService> mvarLogger;
 		private readonly object mvarLock = new ();
 		private SerialPort? mvarSerialPort;
-		public GPSData? CurrentData{ get; private set; }
+		public GPSData CurrentData{ get; private set; }
 
 		public bool IsConfigured { get; private set; } = false;
 
@@ -24,6 +24,7 @@ namespace Tourmaline26.Components.Services
 			IConfiguration config)
 		{
 			mvarLogger = logger;
+			CurrentData = new GPSData();
 
 			var gpsSection = config.GetSection("SystemConfiguration:gps");
 			if (!gpsSection.Exists())
@@ -123,55 +124,122 @@ namespace Tourmaline26.Components.Services
 			}
 			return null;
 		}
-		private GPSData? ParseNmea(string line)
-		{
-			// Ejemplo $GPRMC,hhmmss.ss,A,llll.ll,a,yyyyy.yy,a,x.x,x.x,ddmmyy,x.x,a*hh
-			// Ejemplo $GPGGA,hhmmss.ss,llll.ll,a,yyyyy.yy,a,x,xx,x.x,x.x,M,x.x,M,x.x,xxxx
-			try
-			{
-				var parts = line.Split(',');
-				if (parts[0] == "$GPRMC" && parts.Length > 6 && parts[2] == "A")
-				{
-					GPSData nuevo = new GPSData();
-					var lat = ParseNmeaLat(parts[3], parts[4]);
-					var lon = ParseNmeaLon(parts[5], parts[6]);
-					var time = ParseNmeaTime(parts[1], parts[9]);
-					lock (this)
-					{
-						if(null!=lat)
-							nuevo.Latitude = (double)lat;
-						if(null!=lon)
-							nuevo.Longitude = (double)lon;
-						if(null!=time)
-							nuevo.Time = (DateTime)time;
-					}
-					return nuevo;
-				}
-				else if (parts[0] == "$GPGGA" && parts.Length > 6 && parts[6] != "0")
-				{
-					GPSData nuevo = new GPSData();
-					var lat = ParseNmeaLat(parts[2], parts[3]);
-					var lon = ParseNmeaLon(parts[4], parts[5]);
-					var time = ParseNmeaTime(parts[1], null);
-					lock (this)
-					{
-						if (null != lat)
-							nuevo.Latitude = (double)lat;
-						if (null != lon)
-							nuevo.Longitude = (double)lon;
-						if (null != time)
-							nuevo.Time = (DateTime)time;
-					}
-					return nuevo;
-				}
-			}
-			catch
-			{
-				// Ignorar errores de parseo
-			}
-			return null;
-		}
-		public bool ReadLoop()
+        private void ParseNmea(string line, GPSData output)
+        {
+			if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("$"))
+				return; 
+            try
+            {
+                var parts = line.Split(',');
+
+                if (parts.Length < 6)
+                    return;
+
+                string sentenceType = parts[0]; // ej: $GPRMC, $GNRMC, $GPGGA, etc.
+				GPSData nuevo = output;
+
+                // ====================== $GPRMC / $GNRMC ======================
+                if ((sentenceType == "$GPRMC" || sentenceType == "$GNRMC") && parts.Length > 9)
+                {
+                    if (parts[2] != "A") // "V" = inválido
+                        return;     // o quita este return si quieres datos aunque sea inválido
+
+                    // Latitud y Longitud (reutilizo tus métodos)
+                    var lat = ParseNmeaLat(parts[3], parts[4]);
+                    var lon = ParseNmeaLon(parts[5], parts[6]);
+                    var time = ParseNmeaTime(parts[1], parts[9]);
+
+                    if (lat != null) nuevo.Latitude = (double)lat;
+                    if (lon != null) nuevo.Longitude = (double)lon;
+                    if (time != null) nuevo.Time = (DateTime)time;
+
+                    // Velocidad
+                    if (double.TryParse(parts[7], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double knots))
+                    {
+                        nuevo.SpeedKnots = knots;
+                        nuevo.SpeedKmh = knots * 1.852;
+                        nuevo.SpeedMs = knots * 0.514444;
+                    }
+
+                    // Rumbo (Course Over Ground)
+                    if (double.TryParse(parts[8], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double course))
+                    {
+                        nuevo.Course = course;
+                    }
+
+                    lock (this)
+                    {
+                        return;
+                    }
+                }
+
+                // ====================== $GPGGA / $GNGGA ======================
+                else if ((sentenceType == "$GPGGA" || sentenceType == "$GNGGA") && parts.Length > 9)
+                {
+                    if (parts[6] == "0") // 0 = sin fix
+                        return;
+
+                    var lat = ParseNmeaLat(parts[2], parts[3]);
+                    var lon = ParseNmeaLon(parts[4], parts[5]);
+                    var time = ParseNmeaTime(parts[1], null);
+
+                    if (lat != null) nuevo.Latitude = (double)lat;
+                    if (lon != null) nuevo.Longitude = (double)lon;
+                    if (time != null) nuevo.Time = (DateTime)time;
+
+                    // Calidad del fix
+                    if (int.TryParse(parts[6], out int quality))
+                        nuevo.FixQuality = quality;
+
+                    // Número de satélites
+                    if (int.TryParse(parts[7], out int sats))
+                        nuevo.SatellitesUsed = sats;
+
+                    // HDOP
+                    if (double.TryParse(parts[8], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double hdop))
+                        nuevo.HDOP = hdop;
+
+                    // Altitud
+                    if (double.TryParse(parts[9], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double alt))
+                        nuevo.Altitude = alt;
+
+                    lock (this)
+                    {
+                        return;
+                    }
+                }
+
+                // ====================== $GPVTG / $GNVTG (mejor para velocidad y rumbo) ======================
+                else if ((sentenceType == "$GPVTG" || sentenceType == "$GNVTG") && parts.Length > 7)
+                {
+                    // Velocidad en km/h (campo 7 suele ser más directo)
+                    if (double.TryParse(parts[7], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double kmh))
+                    {
+                        nuevo.SpeedKmh = kmh;
+                        nuevo.SpeedKnots = kmh / 1.852;
+                        nuevo.SpeedMs = kmh / 3.6;
+                    }
+
+                    // Rumbo verdadero (campo 1)
+                    if (double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double course))
+                    {
+                        nuevo.Course = course;
+                    }
+
+                    lock (this)
+                    {
+                        return;   // VTG normalmente no trae posición, solo velocidad/rumbo
+                    }
+                }
+            }
+            catch
+            {
+                // Ignorar líneas mal formadas o con errores de parseo
+            }
+
+            return;
+        }
+        public bool ReadLoop()
 		{
 			try
 			{
@@ -191,7 +259,7 @@ namespace Tourmaline26.Components.Services
 
 					if (line != null && (line.StartsWith("$GPRMC") || line.StartsWith("$GPGGA")))
 					{
-						CurrentData = ParseNmea(line);
+						ParseNmea(line,CurrentData);
 						return true;
 					}
 				}

@@ -1,0 +1,4 @@
+Avance manual de estaciones con teclas físicas y ventana flotante. ***
+Datos reales en ventana flotante de trayecto ***
+Vista de malla ónice sobre velocímetro ***
+Carga de horarios de TimeNet por día de la semana. No va bien. ***
