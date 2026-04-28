@@ -1,0 +1,35 @@
+﻿@using Tourmaline26.Components.Controls.Floatings
+@using TimeNetComponents.Controls
+@using TimeNetComponents.Controls.TimeNetControl
+@using TimeNet2026.Production
+@using Tourmaline26.Components.Services
+@inject TourmalineService Tourmaline
+<FloatRightContainer>
+    <div style="display:flex; flex-direction:column; gap:0; align-items:flex-start;">
+        <div style="display:flex; flex-direction:row; gap:0;">
+            <TimeNetSliderY Environment="@mvarEnvironment"
+                            StateChanged="@auxStateChanged" />
+
+            <TimeNetControl Environment="@mvarEnvironment"
+                            Style="@mvarStyle"
+                            Selections="@mvarSelection"
+                            Splines="false" />
+        </div>
+
+        <TimeNetSliderX Environment="@mvarEnvironment"
+                        StateChanged="@auxStateChanged" />
+    </div>
+</FloatRightContainer>
+@code {
+    private TimeNetControlEnvironment? mvarEnvironment { get; set; }
+    private TimeNetControlStyle mvarStyle { get; set; } = new TimeNetControlStyle();
+    private TimeNetSelection mvarSelection { get; set; } = new TimeNetSelection();
+    private void auxStateChanged() { StateHasChanged(); }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        mvarEnvironment = new TimeNetControlEnvironment(600, 580);
+        mvarEnvironment.Environment = Tourmaline.SessionConfig.TNEnvironment;
+    }
+}

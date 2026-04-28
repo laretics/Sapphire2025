@@ -26,51 +26,53 @@ else
         </defs>
 
         @RenderAxes()
-        
-        <!-- 1. Etiquetas de estaciones: Solo Y -->
-        <g transform="translate(0,@Environment.YY.UpperMargin.ToString(CultureInfo.InvariantCulture))" clip-path="url(#clip-y-column)">
-            <g transform="translate(0,@Environment.YY.DisplayOffsetYPx.ToString(CultureInfo.InvariantCulture))">
-                <YColumnLabelsLayer Environment="@Environment" X0="0" Y0="0" />
-            </g>
-        </g>
 
-        <!-- 2. Textos de la regla horaria: Solo X, SIN clip -->
-        <g transform="translate(@Environment.XX.LeftMargin.ToString(CultureInfo.InvariantCulture),@Environment.YY.UpperMargin.ToString(CultureInfo.InvariantCulture))">
-            <g transform="translate(@Environment.XX.DisplayOffsetXPx.ToString(CultureInfo.InvariantCulture),0)">
-                <XTimeRulerLabelsLayer Environment="@Environment" Sunrise="@sunrise" Sunset="@sunset" X0="0" Y0="0" />
+        <g transform="translate(@((-1*Environment.XX.LeftMargin).ToString(CultureInfo.InvariantCulture))),0">
+            <!-- 1. Etiquetas de estaciones: Solo Y -->
+            <g transform="translate(0,@Environment.YY.UpperMargin.ToString(CultureInfo.InvariantCulture))" clip-path="url(#clip-y-column)">
+                <g transform="translate(0,@Environment.YY.DisplayOffsetYPx.ToString(CultureInfo.InvariantCulture))">
+                    <YColumnLabelsLayer Environment="@Environment" X0="0" Y0="0" />
+                </g>
             </g>
-        </g>
 
-        <!-- 3. Líneas de la regla horaria + CurrentTime: Solo X, CON clip -->
-        <g transform="translate(@Environment.XX.LeftMargin.ToString(CultureInfo.InvariantCulture),@Environment.YY.UpperMargin.ToString(CultureInfo.InvariantCulture))" clip-path="url(#clip-content)">
-            <g transform="translate(@Environment.XX.DisplayOffsetXPx.ToString(CultureInfo.InvariantCulture),0)">
-                <XTimeRulerLinesLayer Environment="@Environment" Sunrise="@sunrise" Sunset="@sunset" ShowCurrentTime="@Style.CurrentTime" X0="0" Y0="0" />
+            <!-- 2. Textos de la regla horaria: Solo X, SIN clip -->
+            <g transform="translate(@Environment.XX.LeftMargin.ToString(CultureInfo.InvariantCulture),@Environment.YY.UpperMargin.ToString(CultureInfo.InvariantCulture))">
+                <g transform="translate(@Environment.XX.DisplayOffsetXPx.ToString(CultureInfo.InvariantCulture),0)">
+                    <XTimeRulerLabelsLayer Environment="@Environment" Sunrise="@sunrise" Sunset="@sunset" X0="0" Y0="0" />
+                </g>
             </g>
-        </g>
 
-        <!-- 4. Líneas horizontales de estaciones: Solo Y, CON clip -->
-        <g transform="translate(@Environment.XX.LeftMargin.ToString(CultureInfo.InvariantCulture),@Environment.YY.UpperMargin.ToString(CultureInfo.InvariantCulture))" clip-path="url(#clip-content)">
-            <g transform="translate(0,@Environment.YY.DisplayOffsetYPx.ToString(CultureInfo.InvariantCulture))">
-                <YColumnLinesLayer Environment="@Environment" X0="0" Y0="0" />
+            <!-- 3. Líneas de la regla horaria + CurrentTime: Solo X, CON clip -->
+            <g transform="translate(@Environment.XX.LeftMargin.ToString(CultureInfo.InvariantCulture),@Environment.YY.UpperMargin.ToString(CultureInfo.InvariantCulture))" clip-path="url(#clip-content)">
+                <g transform="translate(@Environment.XX.DisplayOffsetXPx.ToString(CultureInfo.InvariantCulture),0)">
+                    <XTimeRulerLinesLayer Environment="@Environment" Sunrise="@sunrise" Sunset="@sunset" ShowCurrentTime="@Style.CurrentTime" X0="0" Y0="0" />
+                </g>
             </g>
-        </g>
 
-        <!-- 5. Contenido principal: X + Y, CON clip -->
-        <g transform="translate(@Environment.XX.LeftMargin.ToString(CultureInfo.InvariantCulture),@Environment.YY.UpperMargin.ToString(CultureInfo.InvariantCulture))" clip-path="url(#clip-content)">
-            <g transform="translate(@Environment.XX.DisplayOffsetXPx.ToString(CultureInfo.InvariantCulture),@Environment.YY.DisplayOffsetYPx.ToString(CultureInfo.InvariantCulture))">
-                <rect x="0" y="-@Environment.YY.UpperMargin" width="@Environment.XX.mvarGraphicalWidth.ToString(CultureInfo.InvariantCulture)" height="@Environment.YY.UpperMargin" fill="url(#time-gradient)" />
-                <CirculationsLayer Environment="@Environment" Style="@Style" Selections="@Selections" Traces="@traces" CirculationClicked="@CirculationClicked" X0="0" Y0="0" />
+            <!-- 4. Líneas horizontales de estaciones: Solo Y, CON clip -->
+            <g transform="translate(@Environment.XX.LeftMargin.ToString(CultureInfo.InvariantCulture),@Environment.YY.UpperMargin.ToString(CultureInfo.InvariantCulture))" clip-path="url(#clip-content)">
+                <g transform="translate(0,@Environment.YY.DisplayOffsetYPx.ToString(CultureInfo.InvariantCulture))">
+                    <YColumnLinesLayer Environment="@Environment" X0="0" Y0="0" />
+                </g>
             </g>
-            <rect x="0" y="@Environment.YY.MiddleSize" width="@Environment.XX.mvarGraphicalWidth.ToString(CultureInfo.InvariantCulture)" height="@Environment.YY.DownSize.ToString(CultureInfo.InvariantCulture)" fill="url(#time-gradient)" />
-        </g>
 
-        <!-- 6. Capa de selección: Solo X, CON clip -->
-        <g transform="translate(@Environment.XX.LeftMargin.ToString(CultureInfo.InvariantCulture),@Environment.YY.UpperMargin.ToString(CultureInfo.InvariantCulture))" clip-path="url(#clip-content)">
-            <g transform="translate(@Environment.XX.DisplayOffsetXPx.ToString(CultureInfo.InvariantCulture),0)">
-                <SelectionLayer Environment="@Environment" Selections="@Selections" X0="0" Y0="0" />
+            <!-- 5. Contenido principal: X + Y, CON clip -->
+            <g transform="translate(@Environment.XX.LeftMargin.ToString(CultureInfo.InvariantCulture),@Environment.YY.UpperMargin.ToString(CultureInfo.InvariantCulture))" clip-path="url(#clip-content)">
+                <g transform="translate(@Environment.XX.DisplayOffsetXPx.ToString(CultureInfo.InvariantCulture),@Environment.YY.DisplayOffsetYPx.ToString(CultureInfo.InvariantCulture))">
+                    <rect x="0" y="-@Environment.YY.UpperMargin" width="@Environment.XX.mvarGraphicalWidth.ToString(CultureInfo.InvariantCulture)" height="@Environment.YY.UpperMargin" fill="url(#time-gradient)" />
+                    <CirculationsLayer Environment="@Environment" Style="@Style" Selections="@Selections" Traces="@traces" CirculationClicked="@CirculationClicked" X0="0" Y0="0" />
+                </g>
+                <rect x="0" y="@Environment.YY.MiddleSize" width="@Environment.XX.mvarGraphicalWidth.ToString(CultureInfo.InvariantCulture)" height="@Environment.YY.DownSize.ToString(CultureInfo.InvariantCulture)" fill="url(#time-gradient)" />
+            </g>
+
+            <!-- 6. Capa de selección: Solo X, CON clip -->
+            <g transform="translate(@Environment.XX.LeftMargin.ToString(CultureInfo.InvariantCulture),@Environment.YY.UpperMargin.ToString(CultureInfo.InvariantCulture))" clip-path="url(#clip-content)">
+                <g transform="translate(@Environment.XX.DisplayOffsetXPx.ToString(CultureInfo.InvariantCulture),0)">
+                    <SelectionLayer Environment="@Environment" Selections="@Selections" X0="0" Y0="0" />
+                </g>
             </g>
         </g>
-    </svg>
+    </svg>       
     
 @*     <div class="mb-2">
         <button @onclick="SwitchTheme">@Style.Theme.Name</button>
@@ -165,7 +167,7 @@ else
     private string GetXString(int seconds, double offset = 0)
     {
         double x = Environment!.XX.GetX(seconds);
-        return x < 0 ? string.Empty : (x + offset).ToString(CultureInfo.InvariantCulture);
+        return x < 0 ? string.Empty : (x + offset).ToString(CultureInfo.InvariantCulture);        
     }
 
     private TraceInfo GetTrace(Asimilation asimila) => Environment!.YY.PkMode && Splines ? GetSplinePathSVG(asimila) ?? GetPolylineSVG(asimila) : GetPolylineSVG(asimila);

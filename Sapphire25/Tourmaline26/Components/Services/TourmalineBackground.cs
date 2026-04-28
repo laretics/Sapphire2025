@@ -16,8 +16,7 @@ namespace Tourmaline26.Components.Services
         private readonly MVBService mvarMVBService;
         /// <summary>
         /// Flag para indicar al sistema que han terminado de cargar los datos.
-        /// </summary>
-        public bool SystemInitialized { get; private set; } = false;
+        /// </summary>        
         public event EventHandler? PassengerUpdateRequested; //Ha ocurrido algo que requiere actualizar los TFT
         public event EventHandler? HMIUpdateRequested;
         private DateTime mvarLastDate = DateTime.MinValue; //Uso este valor para cambiar de fecha automáticamente.
@@ -52,8 +51,11 @@ namespace Tourmaline26.Components.Services
         {
             int cycleCount = 0;
             HMIUpdateRequested?.Invoke(this, EventArgs.Empty); //Actualizamos HMI
-            SystemInitialized = await mvarTourmaline.EnsureInitialized();
-            HMIUpdateRequested?.Invoke(this, EventArgs.Empty); //Actualizamos HMI
+            var initTask = Task.Run(async () =>
+            {
+                mvarTourmaline.SessionConfig.Initialized = await mvarTourmaline.EnsureInitialized();
+                HMIUpdateRequested?.Invoke(this, EventArgs.Empty); // Actualizamos HMI cuando termina
+            });
             mvarLogger.LogInformation("TourmalineBackground iniciado.");
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -115,7 +117,6 @@ namespace Tourmaline26.Components.Services
                 }
                 cycleCount++;
             }
-
             mvarLogger.LogInformation("TourmalineBackground detenido.");
         }
         private async Task<bool> PoolGPS()

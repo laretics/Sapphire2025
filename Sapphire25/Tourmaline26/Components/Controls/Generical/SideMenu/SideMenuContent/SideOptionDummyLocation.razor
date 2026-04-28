@@ -3,12 +3,122 @@
 <h3>Ubicación del tren</h3>
 <Switch Label="GPS" Value="@TourmalineService.SessionConfig.GPSEnabled"
         ValueChanged="@((bool v) => SetGPS(v))" />
-@code {
+@if(null!=mvarCurrentData)
+{
+<h3>Realtime</h3>
+<table class="table table-striped table-bordered mt-4">
+    <tr>
+        <th>Parameter</th>
+        <th>Value</th>
+    </tr>
+    <thead>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Latitude</td>
+            <td>@mvarCurrentData?.Latitude</td>            
+        </tr>
+        <tr>
+            <td>Longitude</td>
+            <td>@mvarCurrentData?.Longitude</td>            
+        </tr>
+        <tr>
+            <td>Time</td>
+            <td>@mvarCurrentData?.Time</td>
+        </tr>
+        <tr>
+            <td>Speed</td>
+            <td>@mvarCurrentData?.SpeedKmh Km/h 
+                @mvarCurrentData?.SpeedKnots Knots
+                @mvarCurrentData?.SpeedMs m/s
+                </td>
+        </tr>
+        <tr>
+            <td>Course</td>
+            <td>@mvarCurrentData?.Course</td>
+        </tr>
+        <tr>
+            <td>Altitude</td>
+            <td>@mvarCurrentData?.Altitude</td>
+        </tr>
+            <tr>
+                <td>FixQuality</td>
+                <td>@mvarCurrentData?.FixQuality</td>
+            </tr>
+            <tr>
+                <td>Satellites Used</td>
+                <td>@mvarCurrentData?.SatellitesUsed</td>
+            </tr>
+            <tr>
+                <td>Precission</td>
+                <td>@mvarCurrentData?.HDOP</td>
+            </tr>
+    </tbody>
+</table>    
+}
 
+<h3>Configuration</h3>
+<table class="table table-striped table-bordered mt-4">
+    <tr>
+        <th>Parameter</th>
+        <th>Value</th>
+    </tr>
+    <thead>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+            </td>
+            <td>
+            </td>
+        </tr>
+        <tr>
+            <td>
+            </td>
+            <td>
+            </td>
+        </tr>
+        <tr>
+            <td>
+            </td>
+            <td>
+            </td>
+        </tr>
+        <tr>
+            <td>
+            </td>
+            <td>
+            </td>
+        </tr>
+        <tr>
+            <td>
+            </td>
+            <td>
+            </td>
+        </tr>
+    </tbody>
+</table>
+@code {
+    private GPSData? mvarCurrentData = null;
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        TourmalineService.HMIUpdateRequested += auxHMIRefresh;
+    }
+        public void Dispose()
+    {
+        TourmalineService.HMIUpdateRequested -= auxHMIRefresh;
+    }
+    private void auxHMIRefresh(object? sender, EventArgs e)
+    {
+        mvarCurrentData = TourmalineService.SessionConfig.CurrentGPSData;
+        InvokeAsync(StateHasChanged);
+    }
 
     private void SetGPS(bool rhs)
     {
         TourmalineService.SessionConfig.GPSEnabled = rhs;
     }
+
 
 }

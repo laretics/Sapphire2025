@@ -8,15 +8,9 @@
 @inject TourmalineService mvarTourmaline
 
 <div class="panel-root">
-    <div class="panel-header">
-        @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Disabled ||
-                      Circulation == null || Circulation.Parent == null || Circulation.Parent.asimilation == null)
-        {
-            <span class="train-number"></span>
-            <span class="panel-time">@CurrentTime</span>
-            <div class="destination"></div>
-        }
-        else if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route)
+    <div class="panel-header" style="height:@(HeaderSize)vh;">
+        @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route && 
+        null!=Circulation && null !=Circulation.Parent && null != Circulation.Parent.asimilation)
         {
             <span class="train-number">
                 <ColorIcon Name="Train"
@@ -31,12 +25,24 @@
                 @Circulation.Parent.asimilation.Destination?.Name
             </div>
         }
+        else if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Disabled)
+        {
+            <span class="train-number"></span>
+            <span class="panel-time">@CurrentTime</span>
+            <div class="destination"></div>
+        }        
         else
         {
             <span class="train-number"></span>
             <span class="panel-time">@CurrentTime</span>
-            <div class="destination">Tren sense servei</div>
+            <div class="destination">Sense servei</div>
         }
+            @if (!float.IsNaN(ExternalTemperature))
+            {
+                <div class="external-temperature">
+                    @($"{ExternalTemperature:F1} °C")
+                </div>
+            }
     </div>
 
     <div class="panel-body">
@@ -45,7 +51,7 @@
             <div class="panel-body-content">
                 <!-- StationsTable ocupa 3/4 del ancho -->
                 <div class="stations-container">
-                    <StationsTable Rows="7" ShowEstimatedTimes="true" />
+                    <StationsTable Rows="@Lines" ShowEstimatedTimes="true" />
                 </div>
 
                 <!-- Info-box ocupa 1/4 del ancho -->
@@ -78,4 +84,7 @@
     [CascadingParameter] public DeviceMapped? Device { get; set; }
 
     private string CurrentTime => mvarTourmaline.SessionConfig.TNEnvironment?.Now.ToString("HH:mm") ?? "";
+    private int Lines => (null==Device)?7:Device.Lines;
+    private int HeaderSize => (null == Device) ? 100 : Device.HeaderSize;
+    private float ExternalTemperature => mvarTourmaline.SessionConfig.Temperature;
 }

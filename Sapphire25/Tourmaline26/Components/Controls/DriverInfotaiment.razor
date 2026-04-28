@@ -6,16 +6,16 @@
 @using Tourmaline26.Components.Controls.Aeneas
 @using Tourmaline26.Components.Services.Logic.Generical
 @using Tourmaline26.Components.Controls.Generical.SideMenu
+@using Tourmaline26.Components.Controls.TimeNet
 @inject ILogger<DriverInfotaiment> Logger
 @inject Sapphire2025.Storage.IntStorageService InternalStorage
 <div class="tesla-root @(NightMode?" night":"")">
-    @if(mvarTourmaline.SystemInitialized)
+    @if(mvarTourmaline.SessionConfig.Initialized)
     {
         <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="@mvarTourmaline.SessionConfig.ServiceMode">
             <div class="tesla-main">
                 <div class="tesla-left @panelClass">
-                    <TeslaLeftSection/>
-                    
+                    <TeslaLeftSection/>                    
                 </div>
                 <div class="tesla-right @panelClass">
                     @if (View3DEnabled)
@@ -30,6 +30,10 @@
                     else if (AeneasPanelVisible)
                     {
                         <AeneasLog/>
+                    }
+                    else if(TimeNetPanelVisible)
+                    {
+                        <TimeNetFloatingView/>
                     }
                 </div>
                 @if (CameraViewMode)
@@ -97,6 +101,11 @@
     {
         get => (null != buttonData && ZeroSpeed && buttonData.Length > (byte)MainToolBarItem.Clipboard)
         ? buttonData[(byte)MainToolBarItem.Clipboard].Selected : false;
+    }
+    private bool TimeNetPanelVisible
+    {
+        get => (null != buttonData && ZeroSpeed && buttonData.Length > (byte)MainToolBarItem.TimeNet)
+        ? buttonData[(byte)MainToolBarItem.TimeNet].Selected : false;
     }
     private bool RightPanelVisible
     {
@@ -222,10 +231,18 @@
         {
             buttonData[(byte)MainToolBarItem.Train].Selected = false;
             buttonData[(byte)MainToolBarItem.Clipboard].Selected = false;
+            buttonData[(byte)MainToolBarItem.TimeNet].Selected = false;
         }
         //No se puede abrir la sección de partes de avería si está seleccionado el menú principal.
         if (buttonData[(byte)MainToolBarItem.Train].Selected)
+        {
             buttonData[(byte)MainToolBarItem.Clipboard].Selected = false;        
+            buttonData[(byte)MainToolBarItem.TimeNet].Selected = false;
+        }
+        if (buttonData[(byte)MainToolBarItem.Clipboard].Selected)
+        {
+            buttonData[(byte)MainToolBarItem.TimeNet].Selected = false;
+        }
         StateHasChanged();
     }    
 
