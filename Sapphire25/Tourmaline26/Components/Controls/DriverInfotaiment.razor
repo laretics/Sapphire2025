@@ -20,7 +20,7 @@
                 <div class="tesla-right @panelClass">
                     @if (View3DEnabled)
                     {
-                        <SimulatorStream/>
+                        <SimulatorStream StreamHost="http://LocalHost:5005/stream" />
                     }
                     <TeslaRightSection />
                     @if (RightPanelVisible)

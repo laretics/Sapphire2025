@@ -1,23 +1,50 @@
-﻿<div class="simulator-stream-container">
+﻿@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="simulator-stream-container" style="width:100%;height:100%;">
     @if (StreamDisponible)
     {
-        <img src="/stream"
-             class="simulator-stream-img"
-             @onerror="OnStreamError" />
+        <canvas id="videoCanvas" class="simulator-stream-canvas" style="width:100%;height:100%;display:block;"></canvas>
     }
     else
     {
-        <img src="img/TourmalineBack.png"
-             class="simulator-stream-img" />
+        <img src="img/TourmalineBack.png" class="simulator-stream-img" style="width:100%;height:100%;object-fit:fill;" />
     }
 </div>
 
 @code {
-    private bool StreamDisponible = true;
+    [Parameter]
+    public string? StreamHost { get; set; }
 
-    private void OnStreamError()
+    private bool StreamDisponible = true;
+    private bool mvarJsInteropEnabled = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !string.IsNullOrEmpty(StreamHost))
+        {
+            mvarJsInteropEnabled = true;
+            await JS.InvokeVoidAsync("startWebSocketStreamWithFallback", StreamHost, DotNetObjectReference.Create(this));
+        }
+    }
+
+    protected override bool ShouldRender()
+    {
+        return true;
+    }
+
+    [JSInvokable]
+    public void OnStreamError()
     {
         StreamDisponible = false;
         StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (mvarJsInteropEnabled)
+        {
+            await JS.InvokeVoidAsync("stopWebSocketStream");
+        }
     }
 }
