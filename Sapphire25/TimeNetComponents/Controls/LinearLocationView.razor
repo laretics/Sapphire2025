@@ -1,0 +1,72 @@
+﻿@using TimeNet2026.Topo
+
+@if (Location is not null)
+{
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Ubicación Lineal</h5>
+            <dl class="row mb-0">
+                @if(null==Location.Axis)
+                {
+                    <dd class="col-sm-8">Fuera de rango</dd>
+                }
+                else
+                {
+                    <dt class="col-sm-4">Eje</dt>
+                    <dd class="col-sm-8">@((Location.Axis is not null) ? Location.Axis.Name : "Sin asignar")</dd>
+                    @if(Location.PKRef<0)
+                    {
+                        <dd class="col-sm-8">Sin datos</dd>
+                    }
+                    else
+                    {
+                        <dt class="col-sm-4">PK (km+m)</dt>
+                        <dd class="col-sm-8">@FormatPK(Location.PKRef)</dd>
+
+                        <dt class="col-sm-4">Fuente</dt>
+                        <dd class="col-sm-8">@Location.Source</dd>
+                        @if(Location.LastManualInput>Location.LastSatelliteInput)
+                        {
+                            <dt class="col-sm-4">Última entrada manual</dt>
+                            <dd class="col-sm-8">@FormatDate(Location.LastManualInput)</dd>
+                        }
+                        @if(Location.LastOdometerUpdate>Location.LastSatelliteInput)
+                        {
+                            <dt class="col-sm-4">Última actualización odómetro</dt>
+                            <dd class="col-sm-8">@FormatDate(Location.LastOdometerUpdate)</dd>
+                        }
+                        @if(Location.LastSatelliteInput>DateTime.MinValue)
+                        {
+                            <dt class="col-sm-4">Última lectura satélite</dt>
+                            <dd class="col-sm-8">@FormatDate(Location.LastSatelliteInput)</dd>
+                        }
+                    }
+                }
+            </dl>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-secondary">
+        No hay información de ubicación lineal disponible.
+    </div>
+}
+
+@code {
+    [Parameter]
+    public LinearLocation? Location { get; set; }
+
+    private string FormatPK(long pk)
+    {
+        if (pk < 0) return "Sin asignar";
+        long km = pk / 1000;
+        long m = pk % 1000;
+        return $"{km:00}+{m:000}";
+    }
+
+    private string FormatDate(DateTime dt)
+    {
+        return dt == default ? "Sin datos" : dt.ToString("dd/MM/yyyy HH:mm:ss");
+    }
+}

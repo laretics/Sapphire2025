@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -42,17 +43,20 @@ namespace TimeNet2026.Topo
 				return mcolAsimilations[id];
 			return null;
 		}
-		internal List<Axis> getNearestAxis(GeoLocation point, double range = 1000) //Obtiene el eje más cercano al punto dado
+		internal List<Axis> getNearestAxis(GeoLocation point, double range = 1000)
 		{
 			List<Axis> colSalida = new List<Axis>();
-			double auxDistance;
 			foreach (Axis eje in mcolAxis.Values)
 			{
-				if(null!=eje.Topology)
+				if (eje.Topology != null)
 				{
 					if (eje.Topology.contains(point))
 					{
-						auxDistance = eje.Topology.distanceToPoint(point);
+						colSalida.Add(eje);
+					}
+					else
+					{
+						double auxDistance = eje.Topology.distanceToPoint(point);
 						if (auxDistance < range)
 							colSalida.Add(eje);
 					}

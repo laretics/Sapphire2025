@@ -23,4 +23,14 @@ namespace TimeNet2026
         AllFestives = Saturday | Sunday | Festive,
         All = Monday | Tuesday | Wednesday | Thursday | Friday | Saturday | Sunday | Festive
     }
+
+    //Indica la procedencia de la ubicación lineal
+    public enum LinearLocationSource:byte
+    {
+        None=0, //No hay ubicación
+        Manual = 1, //Datos introducidos a mano
+        Odometer = 2, //Actualizados por odómetro
+        Satellite = 3, //Obtenida de GPS o Galileo
+        Other = 255 //Cualquier otro medio
+    }
 }

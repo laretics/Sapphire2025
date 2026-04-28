@@ -131,7 +131,7 @@ namespace TimeNet2026.Timed
 			}
 			return TimeSpan.Zero;
 		}
-		internal Axis axisByPk(long pk) //Calcula el eje de este Pk
+		internal Axis? axisByPk(long pk) //Calcula el eje de este Pk
 		{
 			if (isAscendent)
 			{
@@ -148,6 +148,27 @@ namespace TimeNet2026.Timed
 				}
 			}
 			return null;
+		}
+		internal Axis? axisByGeoLocation(GeoLocation rhs)
+		{
+			if (mcolSteps.Count < 1) return null;
+			Axis candidate = mcolSteps[0].axis;
+			double candidateDistance = double.MaxValue;
+			for(int i = 0;i<mcolSteps.Count;i++)
+			{
+				Axis? auxEje = mcolSteps[i].axis;
+
+				if(null!=auxEje && null!=auxEje.Topology && auxEje !=candidate)
+				{
+					double auxDistance = auxEje.Topology.distanceToPoint(rhs);					
+					if(auxDistance<candidateDistance)
+					{
+						candidate = auxEje;
+						candidateDistance = auxDistance;
+					}
+				}
+			}
+			return candidate;
 		}
 
 		internal TimeSpan calculateDelay(long currentPk, TimeSpan timeFromDeparture)

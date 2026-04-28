@@ -463,12 +463,9 @@ namespace TimeNet2026.Storage
 						nuevoAxis.Topology.Points.Add(auxxStation);
 						nuevoAxis.Stations.Add(auxxStation);
 					}
-					else
-					{
-						RefPunctual nuevoPunctual = new RefPunctual(auxPunctual.Latitude, auxPunctual.Longitude);
-						nuevoPunctual.pk = auxPunctual.Pk;
-						nuevoAxis.Topology.Points.Add(nuevoPunctual);
-					}
+					RefPunctual nuevoPunctual = new RefPunctual(auxPunctual.Latitude, auxPunctual.Longitude);
+					nuevoPunctual.pk = auxPunctual.Pk;
+					nuevoAxis.Topology.Points.Add(nuevoPunctual);
 				}
 				#region todos
 				// ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###

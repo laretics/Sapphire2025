@@ -1,0 +1,90 @@
+﻿@page "/locator"
+@rendermode InteractiveServer
+@using TimeNet2026.Topo
+@using System.Globalization
+@using TimeNet2026Data
+@using TimeNet2026.Storage
+@using TimeNet2026.Production
+@inject TimeNetContext context
+@inject OnyxStorage mvarStorage
+<div class="container py-4">
+    <h2 class="mb-4">Depurador de Ubicación Lineal</h2>
+    <form class="row g-3">
+        <div class="col-md-6">
+            <label for="coordsInput" class="form-label">Coordenadas (lat, lng) de Google Maps</label>
+            <input type="text" class="form-control" id="coordsInput" placeholder="Ej: 40.416775, -3.703790" @bind="RawCoords" @bind:event="oninput" />
+        </div>
+        <div class="col-md-3">
+            <label for="latInput" class="form-label">Latitud</label>
+            <input type="text" class="form-control" id="latInput" @bind="Latitude" readonly />
+        </div>
+        <div class="col-md-3">
+            <label for="lngInput" class="form-label">Longitud</label>
+            <input type="text" class="form-control" id="lngInput" @bind="Longitude" readonly />
+        </div>
+        <div class="col-12">
+            <button type="button" class="btn btn-primary" @onclick="ConvertirUbicacion">Convertir a ubicación lineal</button>
+        </div>
+    </form>
+    <div class="mt-4">
+        <h5>Resultado:</h5>
+        <LinearLocationView Location="mvarLocation"/>
+    </div>
+</div>
+
+@code {
+    private LinearLocation mvarLocation = new LinearLocation();
+    private string TopoStorageId = "EBDDF796-1441-42D0-AA2D-0993ACB3D5B4";
+    private TopoStorage? mvarTopoStorage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await mvarStorage.DeserializeMemory(context);
+        mvarTopoStorage = mvarStorage.Storages[Guid.Parse(TopoStorageId)];
+    }
+
+    private string _rawCoords = "";
+    private string RawCoords
+    {
+        get => _rawCoords;
+        set
+        {
+            _rawCoords = value;
+            ParseCoords();
+        }
+    }
+
+    private string Latitude { get; set; } = "";
+    private string Longitude { get; set; } = "";
+
+    private void ParseCoords()
+    {
+        if (!string.IsNullOrWhiteSpace(_rawCoords))
+        {
+            var parts = _rawCoords.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (parts.Length == 2)
+            {
+                Latitude = parts[0];
+                Longitude = parts[1];
+            }
+            else
+            {
+                Latitude = "";
+                Longitude = "";
+            }
+        }
+        else
+        {
+            Latitude = "";
+            Longitude = "";
+        }
+    }
+
+    private void ConvertirUbicacion()
+    {
+        GeoLocation auxGeo = new GeoLocation(double.Parse(Latitude.Replace(',', '.'), CultureInfo.InvariantCulture),
+                                double.Parse(Longitude.Replace(',', '.'), CultureInfo.InvariantCulture));
+        mvarLocation.TryLocateBySatellite(auxGeo, mvarTopoStorage);
+
+    }
+}
