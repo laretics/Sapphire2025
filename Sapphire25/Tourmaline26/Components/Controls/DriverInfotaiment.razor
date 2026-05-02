@@ -20,7 +20,7 @@
                 <div class="tesla-right @panelClass">
                     @if (View3DEnabled)
                     {
-                        <SimulatorStream StreamHost="http://192.168.0.9:5005/stream" />
+                        <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
                     }
                     <TeslaRightSection />
                     @if (RightPanelVisible)
@@ -85,6 +85,7 @@
     public Action<bool>? ToggleNightMode { get; set; }
     private TeslaToolBar? mvarTeclado{ get; set; }
     private SideMenu? mvarSideMenu{ get; set; }
+    string mvarStreamUrl = "http://localhost:5005/stream";
     private bool LoginMode { get; set; } = false;
     public enum MainToolBarItem:byte
     {
@@ -96,6 +97,26 @@
         TimeNet = 7,
         Clipboard = 8,
         UserSession = 9
+    }
+    private bool ZeroSpeed { get => mvarTourmaline.SessionConfig.CurrentSpeed < 10; }
+    private TeslaButton[] buttonData = Array.Empty<TeslaButton>();
+    protected async override Task OnInitializedAsync()
+    {
+        buttonData = new TeslaButton[]
+        {
+            new("Train",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Main Menu"),
+            new("BlackSun","WhiteSun",true,EventCallback.Factory.Create(this, () => NightModeChanged()),"Night Mode"),
+            new("CCTV",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()),"Cameras"),
+            new("Microphone",null,true,null,"Microphone"),
+            new("3DOn","3DOff",true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "View3D"),
+            new(""),
+            new(""),
+            new("Bezier",null,true,null,"Time Net",true),
+            new("Clipboard",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Damage Clipboard",true),
+            new("KeyOff","Key",false,EventCallback.Factory.Create(this, () => OnLoginRequest()),"Login",true),
+        };
+        mvarTourmaline.HMIUpdateRequested += auxHMIRefresh;
+
     }
     private bool AeneasPanelVisible
     {
@@ -156,26 +177,7 @@
                 auxConfig.CurrentNeutralSpeed -= 10; break;
         }
     }
-    private bool ZeroSpeed { get => mvarTourmaline.SessionConfig.CurrentSpeed < 10; }
-    private TeslaButton[] buttonData = Array.Empty<TeslaButton>();
-    protected async override Task OnInitializedAsync()
-    {
-        buttonData = new TeslaButton[]
-        {
-            new("Train",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Main Menu"),
-            new("BlackSun","WhiteSun",true,EventCallback.Factory.Create(this, () => NightModeChanged()),"Night Mode"),
-            new("CCTV",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()),"Cameras"),
-            new("Microphone",null,true,null,"Microphone"),
-            new("3DOn","3DOff",true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "View3D"),
-            new(""),
-            new(""),
-            new("Bezier",null,true,null,"Time Net",true),
-            new("Clipboard",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Damage Clipboard",true),
-            new("KeyOff","Key",false,EventCallback.Factory.Create(this, () => OnLoginRequest()),"Login",true),
-        };     
-        mvarTourmaline.HMIUpdateRequested += auxHMIRefresh;
 
-    }
     private void auxHMIRefresh(object? sender, EventArgs e) 
     {
         bool zeroSpeed = ZeroSpeed;
