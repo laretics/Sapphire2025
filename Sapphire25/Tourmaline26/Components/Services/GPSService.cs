@@ -19,6 +19,13 @@ namespace Tourmaline26.Components.Services
 
 		public bool IsConfigured { get; private set; } = false;
 
+		public string? Port { get => mvarPort; }
+		public int Bauds{ get => mvarBauds; }
+		public int DataBits { get => mvarDataBits; }
+		public Parity Parity { get => mvarParity; }
+		public StopBits StopBits { get => mvarStopBits; }
+		public Handshake Handshake { get => mvarHandshake; }
+
 		public GPSService(
 			ILogger<GPSService> logger,
 			IConfiguration config)

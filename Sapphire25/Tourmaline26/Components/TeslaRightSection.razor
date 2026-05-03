@@ -10,20 +10,25 @@
         <CascadingValue Value="mvarSearchString">        
         <FloatDestinationInput 
             OnBeginSearchCirculation="BeginSearchCirculation"/>
-            @if (mvarSearchingCirculation)
-            {
-                <FloatDestinationMenu 
-                    OnCirculationSelected="CirculationSelected"/>
+        @if (mvarSearchingCirculation)
+        {
+            <FloatDestinationMenu 
+                OnCirculationSelected="CirculationSelected"/>
 
-                <VirtualKeyboard
-                    KeyPressed="KeyPressed"
-                    IsNumericByDefault="true"
-                    />
-            }
-            @if(null!=Tourmaline.SessionConfig && null!=Tourmaline.SessionConfig.TNEnvironment && null!=Tourmaline.SessionConfig.TNEnvironment.Circulation)
-            {
-                <FloatTrajectScheme OnTerminateCirculationRequest="TerminateCirculation"/>
-            }
+            <VirtualKeyboard
+                KeyPressed="KeyPressed"
+                IsNumericByDefault="true"
+                />
+        }
+        @if(null!=Tourmaline.SessionConfig && null!=Tourmaline.SessionConfig.TNEnvironment && null!=Tourmaline.SessionConfig.TNEnvironment.Circulation)
+        {
+            <FloatTrajectScheme OnTerminateCirculationRequest="TerminateCirculation"/>
+        }
+        @if(null!=Tourmaline.SessionConfig && null!= Tourmaline.SessionConfig.TNEnvironment &&
+            null!=Tourmaline.SessionConfig.TNEnvironment.Axis && Tourmaline.SessionConfig.TNEnvironment.PK>=0)
+        {
+            <FloatVehicleLocation />
+        }        
         </CascadingValue>           
     </CascadingValue>
 @code {

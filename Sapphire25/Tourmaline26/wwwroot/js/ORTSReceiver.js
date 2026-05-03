@@ -14,9 +14,19 @@ window.startWebSocketStreamWithFallback = (wsUrl, dotNetRef) => {
     }
 
     const canvas = document.getElementById('videoCanvas');
-    if (!canvas) return;
+    if (!canvas) {
+        return;
+    }
     const ctx = canvas.getContext('2d');
     let received = false;
+    let timeoutId = setTimeout(() => { 
+        console.log("Timeout de 5 segundos alcanzado. Received:", received);
+        if (!received && dotNetRef) {
+            console.warn("No se recibió ningún frame en 5 segundos.");
+            dotNetRef.invokeMethodAsync('OnStreamError');
+        }
+        try { ws.close(); } catch { }
+    }, 5000);
 
     function resizeCanvas() {
         canvas.width = canvas.clientWidth;
@@ -28,7 +38,10 @@ window.startWebSocketStreamWithFallback = (wsUrl, dotNetRef) => {
     ws.binaryType = "arraybuffer";
     ws.onmessage = function (event) {
         try {
-            received = true;
+            if (!received) {
+                received = true;
+                clearTimeout(timeoutId);
+            }
             const blob = new Blob([event.data], { type: "image/jpeg" });
             const url = URL.createObjectURL(blob);
             const img = new Image();
@@ -36,29 +49,29 @@ window.startWebSocketStreamWithFallback = (wsUrl, dotNetRef) => {
                 resizeCanvas();
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 URL.revokeObjectURL(url);
+                console.log("Imagen dibujada en canvas.");
             };
             img.onerror = function () {
+                console.error("Error al cargar la imagen.");
                 if (dotNetRef) dotNetRef.invokeMethodAsync('OnStreamError');
             };
             img.src = url;
         } catch (err) {
+            console.error("Error en onmessage:", err);
             if (dotNetRef) dotNetRef.invokeMethodAsync('OnStreamError');
         }
     };
 
-    ws.onerror = function () {
+    ws.onerror = function (e) {
+        console.error("WebSocket error:", e);
         if (dotNetRef) dotNetRef.invokeMethodAsync('OnStreamError');
         try { ws.close(); } catch { }
     };
 
     ws.onclose = function () {
+        console.warn("WebSocket cerrado. received:", received);
         if (!received && dotNetRef) dotNetRef.invokeMethodAsync('OnStreamError');
     };
-
-    setTimeout(() => {
-        if (!received && dotNetRef) dotNetRef.invokeMethodAsync('OnStreamError');
-        try { ws.close(); } catch { }
-    }, 5000);
 };
 
 window.stopWebSocketStream = () => {

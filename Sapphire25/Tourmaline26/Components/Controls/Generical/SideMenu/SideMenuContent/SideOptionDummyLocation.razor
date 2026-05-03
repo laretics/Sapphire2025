@@ -1,8 +1,13 @@
 ﻿@using Tourmaline26.Components.Controls.Generical
 @inject Tourmaline26.Components.Services.TourmalineService TourmalineService
+@inject Tourmaline26.Components.Services.GPSService GPSService
 <h3>Ubicación del tren</h3>
 <Switch Label="GPS" Value="@TourmalineService.SessionConfig.GPSEnabled"
         ValueChanged="@((bool v) => SetGPS(v))" />
+
+<Switch Label="Dummy" Value="@TourmalineService.SessionConfig.GPSDummy"
+        ValueChanged="@((bool v) => SetDummyGPS(v))"/>
+
 @if(null!=mvarCurrentData)
 {
 <h3>Realtime</h3>
@@ -67,34 +72,28 @@
     </thead>
     <tbody>
         <tr>
-            <td>
-            </td>
-            <td>
-            </td>
+            <td>Port</td>
+            <td>@GPSService.Port</td>
         </tr>
         <tr>
-            <td>
-            </td>
-            <td>
-            </td>
+            <td>BaudRate</td>
+            <td>@GPSService.Bauds</td>
         </tr>
         <tr>
-            <td>
-            </td>
-            <td>
-            </td>
+            <td>DataBits</td>
+            <td>@GPSService.DataBits</td>
         </tr>
         <tr>
-            <td>
-            </td>
-            <td>
-            </td>
+            <td>Parity</td>
+            <td>@GPSService.Parity</td>
         </tr>
         <tr>
-            <td>
-            </td>
-            <td>
-            </td>
+            <td>StopBits</td>
+            <td>@GPSService.StopBits</td>
+        </tr>
+        <tr>
+            <td>Handshake</td>
+            <td>@GPSService.Handshake</td>
         </tr>
     </tbody>
 </table>
@@ -105,7 +104,7 @@
         base.OnInitialized();
         TourmalineService.HMIUpdateRequested += auxHMIRefresh;
     }
-        public void Dispose()
+    public void Dispose()
     {
         TourmalineService.HMIUpdateRequested -= auxHMIRefresh;
     }
@@ -118,6 +117,13 @@
     private void SetGPS(bool rhs)
     {
         TourmalineService.SessionConfig.GPSEnabled = rhs;
+        if (!rhs)
+            TourmalineService.SessionConfig.CurrentGPSData = null;
+    }
+    private void SetDummyGPS(bool rhs)
+    {
+        TourmalineService.SessionConfig.CurrentGPSData = null;
+        TourmalineService.SessionConfig.GPSDummy = rhs;            
     }
 
 

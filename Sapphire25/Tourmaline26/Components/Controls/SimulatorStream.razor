@@ -18,33 +18,40 @@
 
     private bool StreamDisponible = true;
     private bool mvarJsInteropEnabled = false;
+    private int reintentos = 0;
+    private const int MaxReintentos = 5;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !string.IsNullOrEmpty(StreamHost))
+        if ((firstRender || !StreamDisponible) && 
+            !string.IsNullOrEmpty(StreamHost) &&
+            reintentos<MaxReintentos)
         {
             mvarJsInteropEnabled = true;
+            StreamDisponible = true;
             await JS.InvokeVoidAsync("startWebSocketStreamWithFallback", StreamHost, DotNetObjectReference.Create(this));
         }
     }
 
-    protected override bool ShouldRender()
-    {
-        return true;
-    }
-
     [JSInvokable]
-    public void OnStreamError()
+    public async Task OnStreamError()
     {
         StreamDisponible = false;
+        reintentos++;
         StateHasChanged();
+        await Task.Delay(1000);
+        await InvokeAsync(StateHasChanged);
     }
 
     public async ValueTask DisposeAsync()
     {
         if (mvarJsInteropEnabled)
         {
-            await JS.InvokeVoidAsync("stopWebSocketStream");
+            try
+            {
+                await JS.InvokeVoidAsync("stopWebSocketStream");
+            }
+            catch(JSDisconnectedException){}        
         }
     }
 }

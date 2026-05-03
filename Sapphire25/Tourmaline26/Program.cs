@@ -3,6 +3,7 @@ using Tourmaline26.Components.Services;
 using Sapphire2025.Storage;
 using Microsoft.EntityFrameworkCore;
 using Tourmaline26.Components.Services.Logic;
+using Tourmaline26.Components.Services.TourmalineExperience;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,6 +44,7 @@ builder.Services.AddHttpClient<MediaMTXService>("CameraService", client =>
 	client.Timeout = TimeSpan.FromSeconds(30);
 });
 builder.Services.AddHttpClient<MVBService>();
+builder.Services.AddHttpClient<TourmalineExperienceService>();
 
 var app = builder.Build();
 

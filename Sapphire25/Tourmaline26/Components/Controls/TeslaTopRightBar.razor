@@ -30,11 +30,15 @@
                 <ColorIcon Name="MVB" Size="24" ></ColorIcon>
             }
         }
-        @if(mvarConfig.GPSEnabled)
+        @if(mvarConfig.GPSEnabled ||mvarConfig.GPSDummy)
         {
             if (mvarConfig.GPSOK)
             {
                 <ColorIcon Name="Satellite" Size="24" ></ColorIcon>
+            }
+            else if (mvarConfig.GPSDummy)
+            {
+                <ColorIcon Name="Satellite" Color="#902020" Size="24"></ColorIcon>
             }
             else
             {

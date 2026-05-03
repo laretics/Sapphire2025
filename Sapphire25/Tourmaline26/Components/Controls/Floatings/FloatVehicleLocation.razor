@@ -1,0 +1,15 @@
+﻿@using Tourmaline26.Components.Images
+<div class="floating-location-panel @panelClass">
+
+
+</div>
+
+@code {
+    [CascadingParameter]
+    public bool NightMode { get; set; }
+
+    private string panelClass
+    {
+        get => string.Format("floating-panel {0}", NightMode ? "night" : "day");
+    }
+}

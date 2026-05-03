@@ -1,0 +1,222 @@
+﻿@using Tourmaline26.Components.Services.TourmalineExperience
+@inject TourmalineExperienceService Experience
+
+<EditForm Model="@launchRequest" OnValidSubmit="OnLaunchAsync">
+    <DataAnnotationsValidator />
+    <div class="mb-3">
+        <label class="form-label">Ruta</label>
+        <InputText class="form-control" @bind-Value="launchRequest.Route" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Actividad</label>
+        <InputText class="form-control" @bind-Value="launchRequest.RoutePath" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Consist</label>
+        <InputText class="form-control" @bind-Value="launchRequest.Consist" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Hora</label>
+        <InputText class="form-control" @bind-Value="launchRequest.Now" />
+    </div>
+    <div class="d-flex gap-2 mb-3">
+        <button type="submit" class="btn btn-success" disabled="@isBusy">
+            @if (isBusy && lastAction == "launch")
+            {
+                <span class="spinner-border spinner-border-sm me-2"></span>
+            }
+            Lanzar simulación
+        </button>
+        <button type="button" class="btn btn-danger" @onclick="OnStopAsync" disabled="@isBusy">
+            @if (isBusy && lastAction == "stop")
+            {
+                <span class="spinner-border spinner-border-sm me-2"></span>
+            }
+            Detener simulación
+        </button>
+    </div>
+    <ValidationSummary />
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <div class="alert alert-info mt-3">@message</div>
+    }
+</EditForm>
+
+<hr />
+
+<div class="mb-3">
+    <div class="btn-group flex-wrap" role="group" aria-label="Climas">
+        @foreach (var weather in Enum.GetValues<TourmalineExperienceService.SampleWeatherType>())
+        {
+            <button type="button"
+                    class="btn btn-outline-primary mb-1"
+                    @onclick="() => OnSetWeatherAsync(weather)"
+                    disabled="@isBusy">
+                @weather.ToString()
+            </button>
+        }
+    </div>
+</div>
+<div class="mb-3">
+    <div class="btn-group flex-wrap" role="group" aria-label="Views">
+        <button type="button"
+            class="btn btn-outline-secondary mb-1"
+                @onclick="() => OnSetCameraAsync( TourmalineCameraOrder.Cenital, mvarSide)"
+                disabled="@isBusy">
+                Mapa
+        </button>
+        <button type="button"
+                class="btn btn-outline-primary mb-1"
+                @onclick="() => mvarSide=false"
+                disabled="@isBusy">
+            Izq
+        </button>
+        <button type="button"
+                class="btn btn-outline-primary mb-1"
+                @onclick="() => mvarSide = true"
+                disabled="@isBusy">
+            Der
+        </button>
+        <button type="button"
+                class="btn btn-outline-secondary mb-1"
+                @onclick="() => OnSetCameraAsync(TourmalineCameraOrder.Brakeman, mvarSide)"
+                disabled="@isBusy">
+            Frontal
+        </button>
+        <button type="button"
+                class="btn btn-outline-secondary mb-1"
+                @onclick="() => OnSetCameraAsync(TourmalineCameraOrder.Orbit, mvarSide)"
+                disabled="@isBusy">
+            Órbita
+        </button>
+        <button type="button"
+                class="btn btn-outline-secondary mb-1"
+                @onclick="() => OnSetCameraAsync(TourmalineCameraOrder.TrackSide, mvarSide)"
+                disabled="@isBusy">
+            Frikis
+        </button>
+        <button type="button"
+                class="btn btn-outline-secondary mb-1"
+                @onclick="() => OnSetCameraAsync(TourmalineCameraOrder.Lateral, mvarSide)"
+                disabled="@isBusy">
+            Lateral
+        </button>
+        <button type="button"
+                class="btn btn-outline-secondary mb-1"
+                @onclick="() => OnSetCameraAsync(TourmalineCameraOrder.Drone, mvarSide)"
+                disabled="@isBusy">
+            Elevada
+        </button>
+    </div>
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Velocidad objetivo</label>
+    <div class="input-group">
+        <InputNumber class="form-control" @bind-Value="targetSpeed" />
+        <button class="btn btn-primary" type="button" @onclick="OnSetSpeedAsync" disabled="@isBusy">
+            Cambiar velocidad
+        </button>
+    </div>
+</div>
+
+@code {
+    private LaunchRequest launchRequest = new();
+    private bool isBusy = false;
+    private bool mvarSide = false;
+    private string? message;
+    private string? lastAction;
+    private int targetSpeed = 0;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        launchRequest.Now = DateTime.Now.ToString("HH:mm");
+    }
+   
+
+
+    private async Task OnLaunchAsync()
+    {
+        isBusy = true;
+        lastAction = "launch";
+        message = null;
+        try
+        {
+            var result = await Experience.Launch(launchRequest);
+            message = result ? "Simulación lanzada correctamente." : "No se pudo lanzar la simulación.";
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+        }
+        isBusy = false;
+    }
+
+    private async Task OnStopAsync()
+    {
+        isBusy = true;
+        lastAction = "stop";
+        message = null;
+        try
+        {
+            var result = await Experience.Stop();
+            message = result ? "Simulación detenida correctamente." : "No se pudo detener la simulación.";
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+        }
+        isBusy = false;
+    }
+
+    private async Task OnSetWeatherAsync(TourmalineExperienceService.SampleWeatherType weather)
+    {
+        isBusy = true;
+        lastAction = "weather";
+        message = null;
+        try
+        {
+            await Experience.SetWeather(weather);
+            message = $"Clima cambiado a {weather}.";
+        }
+        catch (Exception ex)
+        {
+            message = $"Error al cambiar el clima: {ex.Message}";
+        }
+        isBusy = false;
+    }
+    private async Task OnSetCameraAsync(TourmalineCameraOrder order, bool side= false)
+    {
+        isBusy = true;
+        lastAction = "cam";
+        message = null;
+        try
+        {
+            await Experience.SetCamera(order, side);
+            message = $"Vista cambiada a {order}.";
+        }
+        catch (Exception ex)
+        {
+            message = $"Error al cambiar la vista: {ex.Message}";
+        }
+        isBusy = false;
+    }
+
+    private async Task OnSetSpeedAsync()
+    {
+        isBusy = true;
+        lastAction = "speed";
+        message = null;
+        try
+        {
+            await Experience.SetSpeed(targetSpeed);
+            message = $"Velocidad objetivo cambiada a {targetSpeed} km/h.";
+        }
+        catch (Exception ex)
+        {
+            message = $"Error al cambiar la velocidad: {ex.Message}";
+        }
+        isBusy = false;
+    }
+}
