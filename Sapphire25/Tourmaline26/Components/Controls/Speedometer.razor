@@ -1,4 +1,5 @@
 ﻿@using System.Globalization
+@inject Tourmaline26.Components.Services.TourmalineService Tourmaline
 <div class="ratio ratio-1x1">
     <svg viewBox="0 0 200 200" width="100%" height="100%" style="background: transparent;">
         <defs>
@@ -83,11 +84,8 @@
     </svg>
 </div>
 @code {
-    [Parameter] public int CurrentSpeed { get; set; } = 85;
-    [Parameter] public int MaxSpeed { get; set; } = 95;
-    [Parameter] public int NeutralSpeed { get; set; } = 70;
     [Parameter] public int MaxRepresentableSpeed { get; set; } = 120;
-    [Parameter] public TimeSpan CurrentDelay { get; set; } = new TimeSpan(0, 1, 3);
+    [Parameter] public TimeSpan CurrentDelay { get; set; } = new TimeSpan(0, 1, 3);       
 
     // Valores que se animan en pantalla
     private int ScreenCurrentSpeed;
@@ -99,9 +97,10 @@
     protected override void OnInitialized()
     {
         // Inicializamos con los valores iniciales de los parámetros
-        ScreenCurrentSpeed = CurrentSpeed;
-        ScreenMaxSpeed = MaxSpeed;
-        ScreenNeutralSpeed = NeutralSpeed;
+        ScreenCurrentSpeed = 0;
+        ScreenMaxSpeed = 0;
+        ScreenNeutralSpeed = 0;
+        Tourmaline.HMIUpdateRequested += auxHMIRefresh;
         base.OnInitialized();
     }
 
@@ -114,7 +113,16 @@
 
         await AnimateGaugeAsync(_animationCts.Token);
     }
-
+    private async void auxHMIRefresh(object? sender, EventArgs e)
+    {
+        if (_animationCts != null)
+        {
+            _animationCts.Cancel();
+            _animationCts.Dispose();
+        }
+        _animationCts = new CancellationTokenSource();
+        await AnimateGaugeAsync(_animationCts.Token);
+    }
     private async Task AnimateGaugeAsync(CancellationToken token)
     {
         const int animationDurationMs = 850;   // duración total de la animación
@@ -126,6 +134,16 @@
 
         var startTime = DateTime.UtcNow;
 
+        int auxCurrentSpeed = 0;
+        int auxMaxSpeed = 0;
+        int auxNeutralSpeed = 0;
+        if(null!=Tourmaline.SessionConfig)
+        {
+            auxCurrentSpeed = Tourmaline.SessionConfig.CurrentSpeed;
+            auxMaxSpeed = Tourmaline.SessionConfig.CurrentLimitSpeed;
+            auxNeutralSpeed = Tourmaline.SessionConfig.CurrentNeutralSpeed;
+        }
+
         try
         {
             while (!token.IsCancellationRequested)
@@ -136,11 +154,11 @@
                 // Easing cúbico (se siente muy premium y natural)
                 progress = 1 - Math.Pow(1 - progress, 3);
 
-                ScreenCurrentSpeed = (int)Math.Round(startCurrent + (CurrentSpeed - startCurrent) * progress);
-                ScreenMaxSpeed = (int)Math.Round(startMax + (MaxSpeed - startMax) * progress);
-                ScreenNeutralSpeed = (int)Math.Round(startNeutral + (NeutralSpeed - startNeutral) * progress);
+                ScreenCurrentSpeed = (int)Math.Round(startCurrent + (auxCurrentSpeed - startCurrent) * progress);
+                ScreenMaxSpeed = (int)Math.Round(startMax + (auxMaxSpeed - startMax) * progress);
+                ScreenNeutralSpeed = (int)Math.Round(startNeutral + (auxNeutralSpeed - startNeutral) * progress);
 
-                StateHasChanged();
+                await InvokeAsync(StateHasChanged);
 
                 if (progress >= 1.0) break;
 
@@ -150,10 +168,12 @@
         catch (OperationCanceledException) { /* animación cancelada, normal */ }
 
         // Nos aseguramos de que al final queden los valores exactos
-        ScreenCurrentSpeed = CurrentSpeed;
-        ScreenMaxSpeed = MaxSpeed;
-        ScreenNeutralSpeed = NeutralSpeed;
-        StateHasChanged();
+
+
+        ScreenCurrentSpeed = auxCurrentSpeed;
+        ScreenMaxSpeed = auxMaxSpeed;
+        ScreenNeutralSpeed = auxNeutralSpeed;
+        //await InvokeAsync(StateHasChanged);
     }
 
     // ------------------------------------------------------------------
@@ -210,6 +230,7 @@
     // Opcional: limpieza al destruir el componente
     public void Dispose()
     {
+        Tourmaline.HMIUpdateRequested -= auxHMIRefresh;
         _animationCts?.Cancel();
         _animationCts?.Dispose();
     }

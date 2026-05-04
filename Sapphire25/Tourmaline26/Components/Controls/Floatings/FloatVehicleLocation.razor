@@ -1,15 +1,40 @@
 ﻿@using Tourmaline26.Components.Images
+@using Tourmaline26.Components.Services
+@inject Tourmaline26.Components.Services.TourmalineService Tourmaline
+
 <div class="floating-location-panel @panelClass">
-
-
+    @if (Tourmaline?.SessionConfig?.LinearLocation != null && Tourmaline.SessionConfig.LinearLocation.Axis != null)
+    {
+        var pk = Tourmaline.SessionConfig.LinearLocation.PKRef;
+        var km = pk / 1000;
+        var hm = pk % 1000;
+        <div class="pk-row">
+            <span class="pk-km">@km</span>
+            <span class="pk-plus">+</span>
+            <span class="pk-hm">@hm.ToString("D3")</span>
+        </div>
+        <div class="axis-name">@Tourmaline.SessionConfig.LinearLocation.Axis.Name</div>
+    }
 </div>
 
 @code {
     [CascadingParameter]
     public bool NightMode { get; set; }
-
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Tourmaline.HMIUpdateRequested += auxHMIRefresh;
+    }
     private string panelClass
     {
-        get => string.Format("floating-panel {0}", NightMode ? "night" : "day");
+        get => $"floating-panel {(NightMode ? "night" : "day")}";
+    }
+    private void auxHMIRefresh(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    public void Dispose()
+    {
+        Tourmaline.HMIUpdateRequested -= auxHMIRefresh;
     }
 }

@@ -4,7 +4,9 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using TimeNet2026.Production;
 using Tourmaline26.Components.Services.Logic;
+using Tourmaline26.Components.Services.TourmalineExperience;
 
 namespace Tourmaline26.Components.Services
 {
@@ -12,6 +14,7 @@ namespace Tourmaline26.Components.Services
     {
         private readonly ILogger<TourmalineBackground> mvarLogger;
         private readonly TourmalineService mvarTourmaline;
+        private readonly TourmalineExperienceService mvarExperience;
         private readonly GPSService mvarGPSService;
         private readonly MVBService mvarMVBService;
         /// <summary>
@@ -24,15 +27,18 @@ namespace Tourmaline26.Components.Services
         private Task<bool>? mvarGpsTask;
         private Task<MVB8100Data?>? mvarMvbTask;
         private Task<bool>? mvarInternetTask;
+        private Task<bool>? mvarLocationTask;
 
         public TourmalineBackground(
             ILogger<TourmalineBackground> logger,
             TourmalineService tourmalineService,
+            TourmalineExperienceService experienceService,
             MVBService mvbService,
             GPSService gpsService)
         {
             mvarLogger = logger;
             mvarTourmaline = tourmalineService;
+            mvarExperience = experienceService;
             mvarMVBService = mvbService;
             mvarGPSService = gpsService;
         }
@@ -94,6 +100,12 @@ namespace Tourmaline26.Components.Services
                     }
                     if (null == mvarInternetTask) 
                         mvarInternetTask = PoolInternet();
+
+                    if (null != mvarLocationTask && mvarLocationTask.IsCompleted)
+                        mvarLocationTask = null;
+
+                    if(null==mvarLocationTask)
+                        mvarLocationTask = PoolLinearLocation();
                 }
                 catch (Exception ex)
                 {
@@ -121,23 +133,80 @@ namespace Tourmaline26.Components.Services
         }
         private async Task<bool> PoolGPS()
         {
-            if (mvarTourmaline.SessionConfig.GPSEnabled)
+            if(mvarTourmaline.SessionConfig.GPSDummy)
             {
+                //En modo Dummy obtenemos la posición usando la API Rest de Tourmaline Experience
+                //El simulador nos ofrece una posición.
                 try
                 {
-					if(mvarGPSService.ReadLoop())
+                    TourmalineTelemetryResponse? auxTelemetry = await mvarExperience.GetTelemetry();
+                    if (null != auxTelemetry)
                     {
                         mvarTourmaline.SessionConfig.GPSLastUpdate = DateTime.Now;
-                        mvarTourmaline.SessionConfig.CurrentGPSData = mvarGPSService.CurrentData;
+                        GPSData nuevo = new GPSData();
+                        nuevo.Altitude = 0;
+                        nuevo.Latitude = auxTelemetry.Latitude;
+                        nuevo.Longitude = auxTelemetry.Longitude;
+                        nuevo.FixQuality = 1;
+                        nuevo.SatellitesUsed = 8;
+                        nuevo.SpeedKmh = auxTelemetry.Speed;
+                        nuevo.Time = DateTime.Now;
+                        mvarTourmaline.SessionConfig.CurrentGPSData = nuevo;
                         return true;
                     }
-			    }
-				catch (Exception ex)
-				{
-					mvarLogger.LogError(ex, "Error al obtener datos de localización GPS. {0}", ex.Message);
-				}
-			}
+                }
+                catch(Exception ex)
+                {
+                    mvarLogger.LogError(ex, "Error al obtener datos dummy de localización desde Tourmaline Experience. {0}", ex.Message);
+                }
+            }
+            else
+            {
+                if (mvarTourmaline.SessionConfig.GPSEnabled)
+                {
+                    try
+                    {
+                        if (mvarGPSService.ReadLoop())
+                        {
+                            mvarTourmaline.SessionConfig.GPSLastUpdate = DateTime.Now;
+                            mvarTourmaline.SessionConfig.CurrentGPSData = mvarGPSService.CurrentData;
+                            return true;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        mvarLogger.LogError(ex, "Error al obtener datos de localización GPS. {0}", ex.Message);
+                    }
+                }
+                else
+                {
+                    //Si no tengo localización por satélite, devuelvo null.
+                    mvarTourmaline.SessionConfig.CurrentGPSData = null;
+                }
+            }
             return false;
+        }
+        //Activamos la localización del tren (si es posible)
+        private async Task<bool> PoolLinearLocation()
+        {
+            if (null == mvarTourmaline.SessionConfig.CurrentGPSData)
+                return false;
+            if(null == mvarTourmaline.SessionConfig.TNEnvironment)
+                return false;
+            TimeNetEnvironment auxEnvironment = mvarTourmaline.SessionConfig.TNEnvironment;
+            if (null == auxEnvironment.TopoStorage)
+                return false;
+            if(null==auxEnvironment.Circulation)
+            {
+                //Localización por ejes cercanos.
+                //Axis? auxAxis = auxEnvironment.TopoStorage.ColAxis.ne
+                return mvarTourmaline.SessionConfig.LinearLocation.TryLocateBySatellite(mvarTourmaline.SessionConfig.CurrentGPSData.GeoLocation, auxEnvironment.TopoStorage);
+            }
+            else
+            {
+                //TODO: Modificar esto para poner el eje en el que estamos.
+                return mvarTourmaline.SessionConfig.LinearLocation.TryLocateBySatellite(mvarTourmaline.SessionConfig.CurrentGPSData.GeoLocation, auxEnvironment.TopoStorage);
+            }
         }
         private async Task<MVB8100Data?> PoolMVB()
         {
@@ -184,10 +253,6 @@ namespace Tourmaline26.Components.Services
         private void CalculateTelemetry()
         {
             SessionConfiguration auxSesion = mvarTourmaline.SessionConfig;
-            if (auxSesion.CurrentSpeed < 0)
-                auxSesion.CurrentSpeed = 0;
-            if(auxSesion.CurrentSpeed>140)
-                auxSesion.CurrentSpeed=140;
 			if (auxSesion.CurrentLimitSpeed < 0)
 				auxSesion.CurrentLimitSpeed = 0;
 			if (auxSesion.CurrentLimitSpeed > 140)
