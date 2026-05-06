@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 
-namespace Tourmaline26.Components.Services.Logic.Generical
+namespace Tourmaline26.Logic.Generical
 {
     /// <summary>
     /// Necesitaba una clase que contuviera toda la lógica de los botones de la barra de Tesla

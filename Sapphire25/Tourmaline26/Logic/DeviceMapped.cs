@@ -1,7 +1,7 @@
 ﻿using System.Net;
 using System.Runtime.Serialization;
 
-namespace Tourmaline26.Components.Services.Logic
+namespace Tourmaline26.Logic
 {
     /// <summary>
     /// Esto es uno de los dispositivos del sistema de información al viajero.

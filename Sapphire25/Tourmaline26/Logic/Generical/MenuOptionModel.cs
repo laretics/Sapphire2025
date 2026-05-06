@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components;
 
-namespace Tourmaline26.Components.Services.Logic.Generical
+namespace Tourmaline26.Logic.Generical
 {
     public class MenuOptionModel
     {

@@ -2,8 +2,8 @@ using Tourmaline26.Components;
 using Tourmaline26.Components.Services;
 using Sapphire2025.Storage;
 using Microsoft.EntityFrameworkCore;
-using Tourmaline26.Components.Services.Logic;
 using Tourmaline26.Components.Services.TourmalineExperience;
+using Tourmaline26.Logic;
 
 var builder = WebApplication.CreateBuilder(args);
 

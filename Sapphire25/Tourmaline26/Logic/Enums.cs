@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace Tourmaline26.Components.Services.Logic
+namespace Tourmaline26.Logic
 {
 	public static class Enums
 	{

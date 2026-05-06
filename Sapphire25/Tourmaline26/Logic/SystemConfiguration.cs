@@ -1,5 +1,5 @@
 ﻿using Sapphire2025Models.Aeneas;
-namespace Tourmaline26.Components.Services.Logic
+namespace Tourmaline26.Logic
 {
 	/// <summary>
 	/// Este elemento contiene toda la información necesaria sobre la unidad de tren.

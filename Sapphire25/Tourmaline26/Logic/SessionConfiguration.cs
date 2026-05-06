@@ -1,7 +1,7 @@
 ﻿using Sapphire2025Models.Authentication;
 using TimeNet2026.Production;
 using TimeNet2026.Topo;
-namespace Tourmaline26.Components.Services.Logic
+namespace Tourmaline26.Logic
 {
     /// <summary>
     /// Estos valores pertenecen a la sesión actual del tren.

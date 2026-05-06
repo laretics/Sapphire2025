@@ -8,7 +8,7 @@ using TimeNet2026.Storage;
 using TimeNet2026.Timed;
 using TimeNet2026.Topo;
 using Tourmaline26.Components.Services.LocalDataModel;
-using Tourmaline26.Components.Services.Logic;
+using Tourmaline26.Logic;
 namespace Tourmaline26.Components.Services
 {
     /// <summary>

@@ -1,6 +1,6 @@
 ﻿using System.Net;
 
-namespace Tourmaline26.Components.Services.Logic
+namespace Tourmaline26.Logic
 {
 	/// <summary>
 	/// Este objeto contiene información sobre una de las cámaras del tren

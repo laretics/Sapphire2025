@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using System.IO.Ports;
 using System.Threading;
-using Tourmaline26.Components.Services.Logic;
+using Tourmaline26.Logic;
 namespace Tourmaline26.Components.Services
 {
 	public class GPSService

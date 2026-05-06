@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Tourmaline26.Components.Services.Logic;
+using Tourmaline26.Logic;
 namespace Tourmaline26.Components.Services
 {
     public class MVBService

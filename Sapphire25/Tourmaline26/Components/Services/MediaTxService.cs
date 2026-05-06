@@ -1,10 +1,10 @@
 ﻿namespace Tourmaline26.Components.Services
 {
-    using Microsoft.AspNetCore.Components;
-    using System.Text.Json;
-    using Tourmaline26.Components.Services.Logic;
+	using Microsoft.AspNetCore.Components;
+	using System.Text.Json;
+	using Tourmaline26.Logic;
 
-    public class MediaMTXService : IHostedService, IDisposable
+	public class MediaMTXService : IHostedService, IDisposable
     {        
         private readonly ILogger<MediaMTXService> mvarLogger;
         private readonly IConfiguration _configuration;

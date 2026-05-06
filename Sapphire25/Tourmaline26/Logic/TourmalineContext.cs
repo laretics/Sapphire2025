@@ -8,7 +8,7 @@ using TimeNet2026Data;
 using TimeNet2026Data.DBStorage;
 using Tourmaline26.Components.Services.LocalDataModel;
 
-namespace Tourmaline26.Components.Services.Logic
+namespace Tourmaline26.Logic
 {
     public class TourmalineContext:DbContext, ITimeNetContextStorage
     {

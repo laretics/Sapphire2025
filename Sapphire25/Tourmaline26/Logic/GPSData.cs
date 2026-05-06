@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using TimeNet2026.Topo;
 
-namespace Tourmaline26.Components.Services.Logic
+namespace Tourmaline26.Logic
 {
     public class GPSData
     {

@@ -1,4 +1,4 @@
-﻿namespace Tourmaline26.Components.Services.Logic
+﻿namespace Tourmaline26.Logic
 {
     public class MVB8100Data
     {
