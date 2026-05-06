@@ -80,10 +80,13 @@ namespace Tourmaline26.Services
 
                     if (null!=mvarMvbTask && mvarMvbTask.IsCompleted)
                     {
-                        if (mvarMvbTask.IsCompletedSuccessfully)
-                            mvarTourmaline.SessionConfig.CurrentMVBData = mvarMvbTask.Result;
-                        else
-                            mvarTourmaline.SessionConfig.CurrentMVBData = null;
+                        if(!mvarTourmaline.SessionConfig.MVBDummy)
+                        {
+							if (mvarMvbTask.IsCompletedSuccessfully && null!=mvarMvbTask.Result)
+								mvarTourmaline.SessionConfig.CurrentMVBData = new MVBData(mvarMvbTask.Result);
+							else
+								mvarTourmaline.SessionConfig.CurrentMVBData = null;
+						}                        
                         mvarMvbTask = null;
                     }
                     if(null == mvarMvbTask)
@@ -232,7 +235,7 @@ namespace Tourmaline26.Services
             {
                 if(null==mvarTourmaline.SessionConfig.CurrentMVBData)
                 {
-                    mvarTourmaline.SessionConfig.CurrentMVBData = new MVB8100Data();
+                    mvarTourmaline.SessionConfig.CurrentMVBData = new MVBData();
                     mvarTourmaline.SessionConfig.MVBLastUpdate = DateTime.Now;
                 }
             }

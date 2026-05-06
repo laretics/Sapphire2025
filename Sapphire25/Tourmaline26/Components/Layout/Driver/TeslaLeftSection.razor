@@ -1,12 +1,95 @@
 ﻿@using Tourmaline26.Components.Controls
+@using Tourmaline26.Components.Images
 @inject TourmalineService Tourmaline
+<div class="icon-grid">
+    <!--Fila 0 -->
+    <div class="icon-cell">        
+        <!--0  Luz de viajeros apagada-->
+        <ColorIcon Name="BulbOff" Color="#606040" Glow="true" GlowColor="#808060" /> />
+    </div>
+    <div class="icon-cell">
+        <!--1  -->
+    </div>
+    <div class="icon-cell">
+        <!--2 Emergencia--> 
+        @if(mvarMVB.WarningSign)
+        {
+            <ColorIcon Name="Warning" Color="#a02020" Glow="true" GlowColor="#C04040" />
+        }
+        
+    </div>
+    <div class="icon-cell">
+        <!--3  -->
+    </div>
+    <div class="icon-cell">
+        <!--4 Megafonía anunciando -->
+        @if(mvarConfig.SpeakersAnnouncing)
+        {
+            <ColorIcon Name="Speaker" Color="#808050" Glow="true" GlowColor="#A0A070" />
+        }
+        else
+        {
+            <ColorIcon Name="Speaker" Color="#20202060" />
+        }
+
+    </div>
+    <!--Fila 1 -->
+    <div class="icon-cell">
+        <!--0 Puerta izquierda -->
+        @if (mvarMVB.LeftDoors)
+        {
+            <ColorIcon Name="LeftDoor" Color="#208020" Glow="true" GlowColor="#40A040" />        
+        }
+        else if (mvarConfig.ServiceMode)
+        {
+            <ColorIcon Name="LeftDoor" Color="#20202060" />
+        }
+    </div>
+    <div class="icon-cell">
+        <!--1 Lazo de tracción -->
+        @if(!mvarMVB.TractionLoop)
+        {
+            <ColorIcon Name="TrLoop" Color="#802020" Glow="true" GlowColor="#A04040" />
+        }
+        else if (mvarConfig.ServiceMode)
+        {
+            <ColorIcon Name="TrLoop" Color="#80202060" />
+        }
+
+    </div>
+    <div class="icon-cell">        
+        <!--2 Lazo de puertas -->
+        <ColorIcon Name="DrLoop" Color="#802020" Glow="true" GlowColor="#A04040" />
+    </div>
+    <div class="icon-cell">
+        <!--3 Lazo de freno -->
+        <ColorIcon Name="BrLoop" Color="#802020" Glow="true" GlowColor="#A04040" />
+    </div>
+    <div class="icon-cell">
+        <!--4 Puerta derecha -->
+        @if(mvarMVB.RightDoors)
+        {
+            <ColorIcon Name="RightDoor" Color="#208020" Glow="true" GlowColor="#40A040" />
+        }
+        else if(mvarConfig.ServiceMode)
+        {
+            <ColorIcon Name="RightDoor" Color="#20202020" />
+        }
+    </div>
+</div>
 <div class="d-flex flex-column justify-content-end h-100">
-          <Speedometer />
+    @if(SpeedometerVisible)
+    {
+        <Speedometer />
+    }    
 </div>
 @code {
+    private SessionConfiguration mvarConfig = new();
+    private MVBData mvarMVB = new();
     protected override void OnInitialized()
     {
         base.OnInitialized();
+        mvarConfig = Tourmaline.SessionConfig;
         Tourmaline.HMIUpdateRequested += auxHMIRefresh;
     }
     public void Dispose()
@@ -15,7 +98,28 @@
     }
     private void auxHMIRefresh(object? sender, EventArgs e)
     {
+        if (null != mvarConfig.CurrentMVBData)
+            mvarMVB = mvarConfig.CurrentMVBData;
         InvokeAsync(StateHasChanged);
+    }
+
+
+    private bool SpeedometerVisible
+    {
+        get
+        {
+            if (null == mvarConfig.CurrentMVBData)                
+            {
+                if (null != mvarConfig.CurrentGPSData)
+                    return true; //Si tenemos satélite, mostramos velocímetro.
+            }
+            else
+            { //Teniendo datos MVB, el velocímetro se muestra cuando el tren no está parado
+                if (!mvarConfig.CurrentMVBData.ZeroSpeed || mvarConfig.CurrentSpeed>10)
+                    return true;
+            }
+            return false;
+        }
     }
 
 }

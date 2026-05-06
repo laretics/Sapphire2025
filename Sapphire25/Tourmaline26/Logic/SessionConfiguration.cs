@@ -14,7 +14,7 @@ namespace Tourmaline26.Logic
         public bool ServiceKeyboard { get; set; } = false; //Captura los eventos de teclado para simular sucesos de Onice.
         public bool MVBEnabled { get; set; } = true; //Estado del bus MVB.
         public bool MVBDummy{ get; set;  } = false; //Emulación del bus MVB para probar interface.                                                     
-        public MVB8100Data? CurrentMVBData { get; set; }//Último paquete de datos recibido del bus MVB.
+        public MVBData? CurrentMVBData { get; set; }//Último paquete de datos recibido del bus MVB.
         public string MVBError { get; set; } = ""; //Mensaje de error relacionado con el bus MVB, si lo hubiera.
         public DateTime MVBLastUpdate { get; set; } = DateTime.MinValue; //Última vez que se recibió una actualización del bus MVB.
         public bool GPSEnabled { get; set; } = true; //Módulo de posicionamiento
@@ -34,6 +34,7 @@ namespace Tourmaline26.Logic
         public bool PassengerCaretOnServiceMode { get; set; } = true; //Muestra la carta de ajuste en los monitores de viajeros cuando está en modo servicio.
         public bool PassengerScreenOnHMI{  get; set; }  = false; //Muestra el monitor de viajeros en el HMI (para ajustar el sistema con una sola pantalla)
         public float Temperature { get; set; } = 20.0f; //Temperatura interior del tren, leída de sensores o MVB
+        public bool SpeakersAnnouncing { get; set; } = false; //Los altavoces de sala están haciendo un anuncio a los viajeros.
 
         #region Telemetria
         public int CurrentSpeed //Velocidad actual, leída de GPS o MVB
@@ -42,7 +43,7 @@ namespace Tourmaline26.Logic
             {
                 //Prioridad MVB
                 if ((MVBEnabled||MVBDummy) && null != CurrentMVBData)
-                    return (int)CurrentMVBData.current_speed;
+                    return (int)CurrentMVBData.Speed;
                 if ((GPSEnabled || GPSDummy) && null != CurrentGPSData)
                     return (int)CurrentGPSData.SpeedKmh;
 
