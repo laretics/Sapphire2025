@@ -1,16 +1,1 @@
-﻿.icon-grid {
-	display: grid;
-	grid-template-columns: repeat(5, 1fr);
-	grid-template-rows: repeat(2, 1fr);
-	gap: 0;
-	width: 100%;
-	height: 20%; /* Ajusta la altura según lo que necesites */
-}
-
-.icon-cell {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	height: 100%;
-}
+﻿

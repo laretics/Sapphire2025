@@ -43,7 +43,7 @@
 		public bool TractionLoop{ get; set; }
 		public bool SpeedValidation{ get; set; }
 		public bool DriveCommand{ get; set; }
-		public bool ZeroSpeed{ get; set; }
+		public bool ZeroSpeed { get; set; } = true;
 		public int Odometer{ get; set; }
 		public int Speed{ get; set; }
 
@@ -147,8 +147,6 @@
 			coche.OutsideTemp = source.outside_temp_m2;
 			coche.InsideTemp = source.inside_temp_m2;
 			coche.BrakeLoop = source.brake_loop_m2;
-
-
 		}
 
 		/// <summary>
@@ -159,7 +157,7 @@
 			get
 			{
 				//Hay múltiples razones por las que se podría encender el warning
-				if (OpenLoop) return true;
+				if (!TractionLoop || !BrakeLoop) return true;
 
 
 				return false;
@@ -168,17 +166,25 @@
 		public bool BrakeLoop
 		{ 
 			get => 
-			Wagons[0].BrakeLoop && Wagons[1].BrakeLoop && Wagons[2].BrakeLoop && Wagons[3].BrakeLoop &&
-			TractionLoop && (Cabin == Habilitation.M1 || Cabin == Habilitation.M2);
+			Wagons[0].BrakeLoop && Wagons[1].BrakeLoop && Wagons[2].BrakeLoop && Wagons[3].BrakeLoop && //No está activado ningún freno de servicio.
+			(Cabin == Habilitation.M1 || Cabin == Habilitation.M2) && //Existe una cabina habilitada.
+			!(Handler == HandlerPosition.EmergencyBrake) && //No se ha pulsado la seta ni el manipulador en freno de emergencia.
+			(Inverter != InverterPosition.Iddle) && //El inversor debe estar con alguna marcha seleccionada.
+			(ZeroSpeed || DoorsLoop); //Las puertas no se han quedado abiertas a más de 3Km/h.
 		}
 		public bool OpenLoop { get => !TractionLoop || !DoorsLoop || !BrakeLoop; }
+		public bool PassengerLight
+		{
+			get => Wagons[0].PassengerLight;
+			set => Wagons[0].PassengerLight = value;
+		}
 
 		public void SimulateLoops()
 		{
 			DoorsLoop = (!LeftDoors && !RightDoors);
-			TractionLoop = DoorsLoop && 
-				(Inverter != InverterPosition.Iddle)&&
-				(Handler==HandlerPosition.Iddle || Handler==HandlerPosition.Traction);
+			TractionLoop =
+				Inverter != InverterPosition.Iddle && BrakeLoop;
+			ZeroSpeed = Speed < 5;
 		}
 
 	}
@@ -187,6 +193,6 @@
 		public bool PassengerLight{ get; set; } //Luz de viajeros.
 		public int OutsideTemp{ get; set; } //Temperatura de entrada del aire.
 		public int InsideTemp { get; set; } //Temperatura de salida del aire a los viajeros.
-		public bool BrakeLoop{ get; set; } //Lazo de freno en el coche
+		public bool BrakeLoop { get; set; } = true; //Lazo de freno en el coche
 	}
 }

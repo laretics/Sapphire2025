@@ -266,6 +266,22 @@ else
                     checked="@mvarData.RightDoors"
                     @onchange="e => SetDoorsEnabledRight((bool)e.Value)" />
         </div>
+        <div class="mb-3">
+            <label>Cabin</label>
+            <select class="form-select"
+                    @bind="mvarData.Cabin"
+                    >
+                <option value="@MVBData.Habilitation.None">Ninguna</option>
+                <option value="@MVBData.Habilitation.M1">M1</option>
+                <option value="@MVBData.Habilitation.M2">M2</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label>Passenger Light</label>
+            <input type="checkbox"
+                   checked="@mvarData.PassengerLight"
+                   @onchange="e => SetPassengerLight((bool)e.Value)" />
+        </div>
     }
 }
 
@@ -322,7 +338,10 @@ else
     void SetCurrentSpeedValue(string? value)
     {
         if (int.TryParse(value, out var v))
+        {
             mvarData.Speed = v;
+            mvarData.SimulateLoops();
+        }        
     }
     void SetDoorsEnabledLeft(bool value)
     {
@@ -332,6 +351,11 @@ else
     void SetDoorsEnabledRight(bool value)
     {
         mvarData.RightDoors = value;
+        mvarData.SimulateLoops();
+    }
+    void SetPassengerLight(bool value)
+    {
+        mvarData.PassengerLight = value;
         mvarData.SimulateLoops();
     }
 }
