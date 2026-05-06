@@ -162,7 +162,11 @@
 
                 if (progress >= 1.0) break;
 
-                await Task.Delay(frameDelayMs, token);
+                // Comprobación previa antes de esperar
+                if (token.IsCancellationRequested)
+                    break;
+
+                await Task.Delay(frameDelayMs);
             }
         }
         catch (OperationCanceledException) { /* animación cancelada, normal */ }
