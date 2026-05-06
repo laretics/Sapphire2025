@@ -1,6 +1,5 @@
 ﻿@using Tourmaline26.Components.Images
-@using Tourmaline26.Components.Services
-@inject Tourmaline26.Components.Services.TourmalineService Tourmaline
+@inject TourmalineService Tourmaline
 
 <div class="floating-location-panel @panelClass">
     @if (Tourmaline?.SessionConfig?.LinearLocation != null && Tourmaline.SessionConfig.LinearLocation.Axis != null)

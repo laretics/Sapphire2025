@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-namespace Tourmaline26.Components.Services.LocalDataModel
+namespace Tourmaline26.Services.LocalDataModel
 {
     /// <summary>
     /// Configuración local del tren a serializar.

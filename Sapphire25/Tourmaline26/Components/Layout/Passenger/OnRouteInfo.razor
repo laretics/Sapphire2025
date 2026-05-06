@@ -1,13 +1,10 @@
 ﻿@using Tourmaline26.Components.Images
 @using Tourmaline26.Components.Layout.Passenger.Modules
-@using Tourmaline26.Components.Services
 @using Tourmaline26.Components.Controls
 @using TimeNet2026.Topo
 @using TimeNet2026.Timed
 
 @inject TourmalineService mvarTourmaline
-<PassengerInvocableArea/>
-
 <div class="panel-root">
     <div class="panel-header" style="height:@(HeaderSize)vh;">
         @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route && 

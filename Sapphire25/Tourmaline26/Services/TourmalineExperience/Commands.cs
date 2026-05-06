@@ -1,4 +1,4 @@
-﻿namespace Tourmaline26.Components.Services.TourmalineExperience
+﻿namespace Tourmaline26.Services.TourmalineExperience
 {
 	/// <summary>
 	/// Comandos y respuestas de la TourmalineExperience

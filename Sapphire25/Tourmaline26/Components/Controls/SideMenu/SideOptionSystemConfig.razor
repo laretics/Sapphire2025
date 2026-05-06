@@ -1,9 +1,9 @@
 ﻿@using TimeNetComponents.TreeView
 @using Tourmaline26.Components.Controls.Floatings
-@using Tourmaline26.Components.Services.LocalDataModel
+@using Tourmaline26.Services.LocalDataModel
 @using Sapphire2025Models
 @using Microsoft.EntityFrameworkCore
-@inject Tourmaline26.Components.Services.TourmalineService TourmalineService
+@inject TourmalineService TourmalineService
 @inject TourmalineContext database
 <Switch Label="Dummy Keyboard" Value="@TourmalineService.SessionConfig.ServiceKeyboard"
         ValueChanged="@((bool v) => SetDebugKeyboard(v))" />

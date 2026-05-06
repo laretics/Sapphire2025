@@ -6,7 +6,7 @@ using System.Text;
 using TimeNet2026.DBStorage;
 using TimeNet2026Data;
 using TimeNet2026Data.DBStorage;
-using Tourmaline26.Components.Services.LocalDataModel;
+using Tourmaline26.Services.LocalDataModel;
 
 namespace Tourmaline26.Logic
 {

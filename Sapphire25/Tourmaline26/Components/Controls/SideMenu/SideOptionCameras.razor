@@ -1,5 +1,5 @@
 ﻿@using Tourmaline26.Components.Controls.Generical
-@inject Tourmaline26.Components.Services.TourmalineService TourmalineService
+@inject TourmalineService TourmalineService
 <Switch Label="Cámaras automáticas" Value="@TourmalineService.SessionConfig.AutoCameras"
         ValueChanged="@((bool v) => SetAutoCameras(v))" />
 <div class="alert alert-light fs-5 text-secondary mt-3 mb-3" role="alert">

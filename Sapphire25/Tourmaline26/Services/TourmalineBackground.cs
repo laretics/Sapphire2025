@@ -5,10 +5,10 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using TimeNet2026.Production;
-using Tourmaline26.Components.Services.TourmalineExperience;
 using Tourmaline26.Logic;
+using Tourmaline26.Services.TourmalineExperience;
 
-namespace Tourmaline26.Components.Services
+namespace Tourmaline26.Services
 {
     public class TourmalineBackground : BackgroundService
     {

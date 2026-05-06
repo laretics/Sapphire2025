@@ -7,9 +7,9 @@ using TimeNet2026.Production;
 using TimeNet2026.Storage;
 using TimeNet2026.Timed;
 using TimeNet2026.Topo;
-using Tourmaline26.Components.Services.LocalDataModel;
 using Tourmaline26.Logic;
-namespace Tourmaline26.Components.Services
+using Tourmaline26.Services.LocalDataModel;
+namespace Tourmaline26.Services
 {
     /// <summary>
     /// Este es el procesador principal del sistema de información al viajero.

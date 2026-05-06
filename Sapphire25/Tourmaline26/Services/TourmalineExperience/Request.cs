@@ -1,4 +1,4 @@
-﻿namespace Tourmaline26.Components.Services.TourmalineExperience
+﻿namespace Tourmaline26.Services.TourmalineExperience
 {
 	using System.ComponentModel;
 	using System.ComponentModel.DataAnnotations;

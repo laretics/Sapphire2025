@@ -1,4 +1,4 @@
-﻿namespace Tourmaline26.Components.Services
+﻿namespace Tourmaline26.Services
 {
 	using Microsoft.AspNetCore.Components;
 	using System.Text.Json;

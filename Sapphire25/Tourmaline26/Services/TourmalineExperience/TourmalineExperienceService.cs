@@ -2,7 +2,7 @@
 using Org.BouncyCastle.Asn1.Ocsp;
 using System.Text.Json;
 
-namespace Tourmaline26.Components.Services.TourmalineExperience
+namespace Tourmaline26.Services.TourmalineExperience
 {
 	/// <summary>
 	/// Cliente de TourmalineExperience
