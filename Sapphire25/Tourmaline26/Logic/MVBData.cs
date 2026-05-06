@@ -53,13 +53,14 @@
 
 		public MVBData()
 		{
-			Wagons = new MVBWagon[4];
+			Wagons = new MVBWagon[4] { new MVBWagon(), new MVBWagon(), new MVBWagon(), new MVBWagon() };
 			Handler = HandlerPosition.Iddle;
 			Inverter = InverterPosition.Iddle;
+			SimulateLoops();
 		}
 		public MVBData(MVB8100Data source)
 		{
-			Wagons = new MVBWagon[4];
+			Wagons = new MVBWagon[4] { new MVBWagon(), new MVBWagon(), new MVBWagon(), new MVBWagon() };
 			//Inversor
 			if (source.inverter_disconnected)
 				Inverter = InverterPosition.Iddle;
@@ -157,12 +158,28 @@
 		{
 			get
 			{
+				//Hay múltiples razones por las que se podría encender el warning
+				if (OpenLoop) return true;
 
 
-			return false;
+				return false;
 			}
 		}
+		public bool BrakeLoop
+		{ 
+			get => 
+			Wagons[0].BrakeLoop && Wagons[1].BrakeLoop && Wagons[2].BrakeLoop && Wagons[3].BrakeLoop &&
+			TractionLoop && (Cabin == Habilitation.M1 || Cabin == Habilitation.M2);
+		}
+		public bool OpenLoop { get => !TractionLoop || !DoorsLoop || !BrakeLoop; }
 
+		public void SimulateLoops()
+		{
+			DoorsLoop = (!LeftDoors && !RightDoors);
+			TractionLoop = DoorsLoop && 
+				(Inverter != InverterPosition.Iddle)&&
+				(Handler==HandlerPosition.Iddle || Handler==HandlerPosition.Traction);
+		}
 
 	}
 	public class MVBWagon

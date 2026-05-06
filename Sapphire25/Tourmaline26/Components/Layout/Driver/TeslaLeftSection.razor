@@ -16,7 +16,11 @@
         {
             <ColorIcon Name="Warning" Color="#a02020" Glow="true" GlowColor="#C04040" />
         }
-        
+        else
+        {
+            <ColorIcon Name="Warning" Color="#a0202020"/>
+        }
+
     </div>
     <div class="icon-cell">
         <!--3  -->
@@ -29,7 +33,7 @@
         }
         else
         {
-            <ColorIcon Name="Speaker" Color="#20202060" />
+            <ColorIcon Name="Speaker" Color="#20202020" />
         }
 
     </div>
@@ -42,7 +46,7 @@
         }
         else if (mvarConfig.ServiceMode)
         {
-            <ColorIcon Name="LeftDoor" Color="#20202060" />
+            <ColorIcon Name="LeftDoor" Color="#20202020" />
         }
     </div>
     <div class="icon-cell">
@@ -53,17 +57,33 @@
         }
         else if (mvarConfig.ServiceMode)
         {
-            <ColorIcon Name="TrLoop" Color="#80202060" />
+            <ColorIcon Name="TrLoop" Color="#80202020" />
         }
 
     </div>
     <div class="icon-cell">        
         <!--2 Lazo de puertas -->
-        <ColorIcon Name="DrLoop" Color="#802020" Glow="true" GlowColor="#A04040" />
+        @if(!mvarMVB.DoorsLoop)
+        {
+            <ColorIcon Name="DrLoop" Color="#802020" Glow="true" GlowColor="#A04040" />
+        }
+        else
+        {
+            <ColorIcon Name="DrLoop" Color="#80202020" />
+        }
+        
     </div>
     <div class="icon-cell">
         <!--3 Lazo de freno -->
-        <ColorIcon Name="BrLoop" Color="#802020" Glow="true" GlowColor="#A04040" />
+        @if(!mvarMVB.BrakeLoop)
+        {
+            <ColorIcon Name="BrLoop" Color="#802020" Glow="true" GlowColor="#A04040" />
+        }
+        else
+        {
+            <ColorIcon Name="BrLoop" Color="#80202020"/>
+        }
+
     </div>
     <div class="icon-cell">
         <!--4 Puerta derecha -->
