@@ -2,7 +2,14 @@
 {
 	using System.ComponentModel;
 	using System.ComponentModel.DataAnnotations;
+	using System.Text.Json;
 
+	public class TourmalineResponse
+	{
+		public bool success { get; set; }
+		public string message { get; set; } = string.Empty;
+		public string? response { get; set; }
+	}
 	public class LaunchRequest
 	{
 		/// <summary>

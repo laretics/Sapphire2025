@@ -24,8 +24,7 @@
         {
             <FloatTrajectScheme OnTerminateCirculationRequest="TerminateCirculation"/>
         }
-        @if(null!=Tourmaline.SessionConfig && null!= Tourmaline.SessionConfig.TNEnvironment &&
-            null!=Tourmaline.SessionConfig.TNEnvironment.Axis && Tourmaline.SessionConfig.TNEnvironment.PK>=0)
+        @if(null!=Tourmaline.SessionConfig && null!=Tourmaline.SessionConfig.LinearLocation.Axis)
         {
             <FloatVehicleLocation />
         }        

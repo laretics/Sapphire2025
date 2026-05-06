@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
+using TimeNet2026.Topo;
 
 namespace Tourmaline26.Components.Services.Logic
 {
@@ -15,7 +16,7 @@ namespace Tourmaline26.Components.Services.Logic
         public int FixQuality { get; set; }          // 0=inválido, 1=GPS, 2=DGPS, 4=RTK Fix...
         public int SatellitesUsed { get; set; }
         public double HDOP { get; set; }             // menor = mejor precisión
-
+        public GeoLocation GeoLocation => new GeoLocation(Latitude, Longitude);      
         public bool IsValid => FixQuality > 0 && Latitude != 0 && Longitude != 0;
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Sapphire2025Models.Authentication;
 using TimeNet2026.Production;
+using TimeNet2026.Topo;
 namespace Tourmaline26.Components.Services.Logic
 {
     /// <summary>
@@ -34,10 +35,22 @@ namespace Tourmaline26.Components.Services.Logic
         public float Temperature { get; set; } = 20.0f; //Temperatura interior del tren, leída de sensores o MVB
 
         #region Telemetria
-        public int CurrentSpeed { get; set; } = 0; //Velocidad actual, leída de GPS o MVB
+        public int CurrentSpeed //Velocidad actual, leída de GPS o MVB
+        { 
+            get
+            {
+                //Prioridad MVB
+                if (MVBEnabled && null != CurrentMVBData)
+                    return (int)CurrentMVBData.current_speed;
+                if ((GPSEnabled || GPSDummy) && null != CurrentGPSData)
+                    return (int)CurrentGPSData.SpeedKmh;
+
+                return 0; //Cuando todo lo demás falla, devuelve cero.
+            }
+        } 
         public int CurrentLimitSpeed { get; set; } = 100; //Velocidad máxima del tren en este tramo
         public int CurrentNeutralSpeed { get; set; } = 0; //Velocidad objetivo calculada por ónice
-
+        public LinearLocation LinearLocation { get; set; } = new LinearLocation(); //Ubicación lineal de este tren (si la puedo sacar)
 
 		#endregion Telemetria
 

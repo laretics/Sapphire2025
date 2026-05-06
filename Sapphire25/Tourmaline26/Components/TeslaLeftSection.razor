@@ -2,11 +2,7 @@
 @using Tourmaline26.Components.Services
 @inject TourmalineService Tourmaline
 <div class="d-flex flex-column justify-content-end h-100">
-          <Speedometer 
-              CurrentSpeed="Tourmaline.SessionConfig.CurrentSpeed"
-              MaxSpeed="Tourmaline.SessionConfig.CurrentLimitSpeed"
-              NeutralSpeed="Tourmaline.SessionConfig.CurrentNeutralSpeed"
-              />
+          <Speedometer />
 </div>
 @code {
     protected override void OnInitialized()

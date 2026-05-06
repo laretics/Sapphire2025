@@ -83,6 +83,15 @@ namespace Tourmaline26.Components.Services.TourmalineExperience
 			}
 		}
 
+		public async Task<TourmalineTelemetryResponse> GetTelemetry()
+		{
+			TourmalineCommand parentCommand = new TourmalineCommand();
+			TourmalineTrainCommand command = new TourmalineTrainCommand();
+			parentCommand.Type = TourmalineCommandType.Simulation;
+			parentCommand.Data = command;
+			return await PostCommand(parentCommand);
+		}
+
 		/// <summary>
 		/// Cambia la velocidad del tren
 		/// </summary>
@@ -98,7 +107,7 @@ namespace Tourmaline26.Components.Services.TourmalineExperience
 			return await PostCommand(parentCommand);
 		}
 
-		public async Task<TourmalineTelemetryResponse> SetCamera(TourmalineCameraOrder order, bool side)
+		public async Task<TourmalineTelemetryResponse?> SetCamera(TourmalineCameraOrder order, bool side)
 		{
 			TourmalineCommand parentCommand = new TourmalineCommand();
 			TourmalineCameraCommand command = new TourmalineCameraCommand();
@@ -120,7 +129,7 @@ namespace Tourmaline26.Components.Services.TourmalineExperience
 			Snow=7,
 			Foggy=8
 		}
-		public async Task<TourmalineTelemetryResponse> SetWeather(SampleWeatherType weather)
+		public async Task<TourmalineTelemetryResponse?> SetWeather(SampleWeatherType weather)
 		{
 			TourmalineCommand parentCommand = new TourmalineCommand();
 			TourmalineWeatherCommand command = new TourmalineWeatherCommand();
@@ -186,7 +195,7 @@ namespace Tourmaline26.Components.Services.TourmalineExperience
 			return await PostCommand(parentCommand);
 		}
 
-		private async Task<TourmalineTelemetryResponse> PostCommand(TourmalineCommand cmd)
+		private async Task<TourmalineTelemetryResponse?> PostCommand(TourmalineCommand cmd)
 		{
 			try
 			{
@@ -197,9 +206,16 @@ namespace Tourmaline26.Components.Services.TourmalineExperience
 				mvarLogger.LogDebug("Requesting to {0}", auxWholeUrl);
 				HttpResponseMessage? auxResponse = await mvarHttpClient.PostAsync(auxWholeUrl, content, cts.Token);
 				auxResponse.EnsureSuccessStatusCode();
-				string auxResponseContent = await auxResponse.Content.ReadAsStringAsync();
-				TourmalineTelemetryResponse? salida = JsonSerializer.Deserialize<TourmalineTelemetryResponse>(auxResponseContent);
-				return salida;
+				using (var stream = await auxResponse.Content.ReadAsStreamAsync())
+				{
+                    TourmalineResponse? auxObject = await JsonSerializer.DeserializeAsync<TourmalineResponse>(stream);
+                    if (auxObject != null && !string.IsNullOrEmpty(auxObject.response))
+                    {
+                        var salida = JsonSerializer.Deserialize<TourmalineTelemetryResponse>(auxObject.response);
+                        return salida;
+                    }
+                    return null;
+                }
 			}
 			catch (TaskCanceledException)
 			{

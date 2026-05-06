@@ -55,7 +55,7 @@ namespace Tourmaline26.Components.Services
 		private void auxInitDevices(IConfiguration config)
         {
             //mvarConfig = config;
-            IConfigurationSection section = config.GetSection("Devices");
+            IConfigurationSection section = config.GetSection("SystemConfiguration:Devices");
             foreach (IConfigurationSection deviceSection in section.GetChildren())
             {
                 DeviceMapped nuevo = new DeviceMapped();
