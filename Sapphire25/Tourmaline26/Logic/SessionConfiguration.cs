@@ -12,7 +12,8 @@ namespace Tourmaline26.Logic
         public bool Initialized { get; set; } = false; //Indica si el sistema ha terminado de cargar los datos.
         public bool ServiceMode { get; set; } = false; //Indica si el sistema de información al viajero está en modo de servicio.
         public bool ServiceKeyboard { get; set; } = false; //Captura los eventos de teclado para simular sucesos de Onice.
-        public bool MVBEnabled { get; set; } = true; //Estado del bus MVB.        
+        public bool MVBEnabled { get; set; } = true; //Estado del bus MVB.
+        public bool MVBDummy{ get; set;  } = false; //Emulación del bus MVB para probar interface.                                                     
         public MVB8100Data? CurrentMVBData { get; set; }//Último paquete de datos recibido del bus MVB.
         public string MVBError { get; set; } = ""; //Mensaje de error relacionado con el bus MVB, si lo hubiera.
         public DateTime MVBLastUpdate { get; set; } = DateTime.MinValue; //Última vez que se recibió una actualización del bus MVB.
@@ -40,7 +41,7 @@ namespace Tourmaline26.Logic
             get
             {
                 //Prioridad MVB
-                if (MVBEnabled && null != CurrentMVBData)
+                if ((MVBEnabled||MVBDummy) && null != CurrentMVBData)
                     return (int)CurrentMVBData.current_speed;
                 if ((GPSEnabled || GPSDummy) && null != CurrentGPSData)
                     return (int)CurrentGPSData.SpeedKmh;

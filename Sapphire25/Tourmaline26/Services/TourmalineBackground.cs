@@ -228,6 +228,14 @@ namespace Tourmaline26.Services
                     mvarTourmaline.SessionConfig.MVBError = ex.Message;
                 }
             }
+            else if (mvarTourmaline.SessionConfig.MVBDummy)
+            {
+                if(null==mvarTourmaline.SessionConfig.CurrentMVBData)
+                {
+                    mvarTourmaline.SessionConfig.CurrentMVBData = new MVB8100Data();
+                    mvarTourmaline.SessionConfig.MVBLastUpdate = DateTime.Now;
+                }
+            }
             return null;
         }
         private async Task<bool> PoolInternet()

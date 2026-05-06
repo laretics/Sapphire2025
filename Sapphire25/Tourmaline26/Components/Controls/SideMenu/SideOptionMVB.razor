@@ -21,7 +21,7 @@ else
         @TourmalineService.SessionConfig.MVBError
     </div>
 }
-@if(null!=TourmalineService.SessionConfig.CurrentMVBData)
+@if(TourmalineService.SessionConfig.MVBEnabled && null!=TourmalineService.SessionConfig.CurrentMVBData)
 {
     <table class="table table-striped table-bordered mt-4">
         <thead>
@@ -255,26 +255,45 @@ else
             </tr>
         </tbody>
     </table>
-
 }
+else
+{
+    <Tourmaline26.Components.Controls.Generical.Switch Label="MVB Dummy"
+                                                       Value="@TourmalineService.SessionConfig.MVBEnabled"
+                                                       ValueChanged="@((bool v) => SetMVBEnabled(v))" />
+
+    @if(TourmalineService.SessionConfig.MVBDummy)
+    {
+        
+    }
+}
+
+
+
 @code {
     private void SetMVBEnabled(bool value)
     {
         TourmalineService.SessionConfig.MVBEnabled = value;
     }
-        protected override void OnInitialized()
+
+    private void SetMVBDummy(bool value)
+    {
+        TourmalineService.SessionConfig.MVBDummy = value;
+    }
+        
+    protected override void OnInitialized()
     {
         base.OnInitialized();
         TourmalineService.HMIUpdateRequested += auxHMIRefresh;
     }
-        public void Dispose()
+        
+    public void Dispose()
     {
         TourmalineService.HMIUpdateRequested -= auxHMIRefresh;
     }
+    
     private void auxHMIRefresh(object? sender, EventArgs e)
     {
         InvokeAsync(StateHasChanged);
-    }
-   
-
+    }  
 }

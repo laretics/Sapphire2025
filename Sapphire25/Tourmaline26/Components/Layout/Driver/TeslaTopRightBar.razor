@@ -18,7 +18,7 @@
         {
             <ColorIcon Size="24" Color="#902020" Name="DebugKeyboard"/>    
         }        
-        @if(mvarConfig.MVBEnabled)
+        @if(mvarConfig.MVBEnabled || mvarConfig.MVBDummy)
         {
             if(null==mvarConfig.CurrentMVBData)
             {
