@@ -5,12 +5,15 @@
      class="img-fluid rounded shadow mx-auto d-block my-4"
      style="max-width: 420px;" />
 <p>Software @ReleaseInfo</p>
-<ul>
-    <li>Zafiro: @auxConfig.SapphireUrl</li>
-    <li>MVB: @auxConfig.MVBUrl</li>
-    <li>T.Experience: @auxConfig.TExperienceUrl</li>
-    <li>T.E. Stream: @auxConfig.TExperienceStr</li>
-</ul>
+@if(TourmalineService.SessionConfig.ServiceMode)
+{
+    <ul>
+        <li>Zafiro: @auxConfig.SapphireUrl</li>
+        <li>MVB: @auxConfig.MVBUrl</li>
+        <li>T.Experience: @auxConfig.TExperienceUrl</li>
+        <li>T.E. Stream: @auxConfig.TExperienceStr</li>
+    </ul>
+}
 <Switch Label="Modo de Servicio" Value="@TourmalineService.SessionConfig.ServiceMode"
         ValueChanged="@((bool v) => SetServiceMode(v))" />
 @code {

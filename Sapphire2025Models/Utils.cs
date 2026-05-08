@@ -6,6 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -280,5 +281,68 @@ namespace Sapphire2025Models
             }			
 		}
 
+		public string CheckGenerate(string order, DateTime expiry)
+		{
+			// Solo nos importa la fecha (día, mes, año)
+			string datePart = expiry.Date.ToString("yyyyMMdd");
+			// Concatenamos la orden y la fecha
+			string input = order + "|" + datePart;
+
+			// Hash SHA256 y lo convertimos a base36 para hacerlo alfanumérico
+			byte[] hash;
+			using (var sha = SHA256.Create())
+				hash = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
+
+			// Tomamos los primeros 5 bytes para el código
+			string code = Base36Encode(hash.Take(5).ToArray()).PadLeft(5, '0').Substring(0, 5);
+
+			// Calculamos el CRC (simple XOR de los caracteres)
+			char crc = CalcCRC(code);
+
+			// El código final es de 6 caracteres: 5 del hash + 1 de CRC
+			return code + crc;
+		}
+		public bool CheckCheck(string code, string order, DateTime expiry)
+		{
+			if (string.IsNullOrWhiteSpace(code) || code.Length != 6)
+				return false;
+
+			string codePart = code.Substring(0, 5);
+			char crc = code[5];
+
+			// Verificamos el CRC
+			if (CalcCRC(codePart) != crc)
+				return false;
+
+			// Generamos el código esperado para la orden y fecha
+			string expected = CheckGenerate(order, expiry);
+
+			// Comparamos solo los primeros 6 caracteres
+			return string.Equals(code, expected, StringComparison.OrdinalIgnoreCase);
+		}
+
+		// Base36: 0-9 + A-Z
+		private static string Base36Encode(byte[] bytes)
+		{
+			const string chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+			var value = BitConverter.ToUInt64(bytes.Concat(new byte[8 - bytes.Length]).ToArray(), 0);
+			var result = new StringBuilder();
+			for (int i = 0; i < 6 && value > 0; i++)
+			{
+				result.Insert(0, chars[(int)(value % 36)]);
+				value /= 36;
+			}
+			return result.ToString();
+		}
+
+		// CRC simple: XOR de todos los caracteres, convertido a base36
+		private static char CalcCRC(string code)
+		{
+			int crc = 0;
+			foreach (char c in code)
+				crc ^= c;
+			const string chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+			return chars[Math.Abs(crc) % 36];
+		}
 	}
 }
