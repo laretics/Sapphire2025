@@ -68,7 +68,7 @@ else
                                     <h4>Rol</h4>
                                 </HeaderContent>
                                 <ChildContent>
-                                    <RoleIcon RoleId="@context.roleId" Color="black" />
+                                    <RoleIcon Role="@((Sapphire2025Models.Common.UserRole)context.roleId)" Color="black" />
                                     @context.Name
                                 </ChildContent>
                             </GridColumn>

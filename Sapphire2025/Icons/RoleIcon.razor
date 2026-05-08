@@ -5,23 +5,29 @@
 	public byte Credentials { get; set; }
 	[Parameter]
 	public string Color { get; set; } = "defaultColor";
+	[Parameter]
+	public Common.UserRole Role { get; set; } = Common.UserRole.Anonymous;
 
 	private RenderFragment userIcon()
 	{
-		if (Utils.hasRole(Credentials, Common.UserRole.Root))
-			return roleIconSimple(Common.UserRole.Root);
-		if (Utils.hasRole(Credentials, Common.UserRole.Engineer))
-			return roleIconSimple(Common.UserRole.Engineer);
-		if (Utils.hasRole(Credentials, Common.UserRole.Inspector))
-			return roleIconSimple(Common.UserRole.Inspector);
-		if (Utils.hasRole(Credentials, Common.UserRole.Expert))
-			return roleIconSimple(Common.UserRole.Expert);
-		if (Utils.hasRole(Credentials, Common.UserRole.Oficial))
-			return roleIconSimple(Common.UserRole.Oficial);
-		if (Utils.hasRole(Credentials, Common.UserRole.Mechanic))
-			return roleIconSimple(Common.UserRole.Mechanic);
-
-		return roleIconSimple(Common.UserRole.Anonymous);
+		if (Role == Common.UserRole.Anonymous)
+		{
+			if (Utils.hasRole(Credentials, Common.UserRole.Root))
+				return roleIconSimple(Common.UserRole.Root);
+			if (Utils.hasRole(Credentials, Common.UserRole.Engineer))
+				return roleIconSimple(Common.UserRole.Engineer);
+			if (Utils.hasRole(Credentials, Common.UserRole.Inspector))
+				return roleIconSimple(Common.UserRole.Inspector);
+			if (Utils.hasRole(Credentials, Common.UserRole.Expert))
+				return roleIconSimple(Common.UserRole.Expert);
+			if (Utils.hasRole(Credentials, Common.UserRole.Oficial))
+				return roleIconSimple(Common.UserRole.Oficial);
+			if (Utils.hasRole(Credentials, Common.UserRole.Mechanic))
+				return roleIconSimple(Common.UserRole.Mechanic);
+			return roleIconSimple(Common.UserRole.Anonymous);
+		}
+		else
+			return roleIconSimple(Role);		
 	}
 
     private RenderFragment roleIconSimple(Common.UserRole role)

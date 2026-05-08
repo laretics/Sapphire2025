@@ -71,6 +71,13 @@
                     Tooltip="Opciones para Análisis de Información"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Engineer}" />
 
+    <NexusNavOption Selected="@(9 == SelectedNavItem)"
+                    OnClick="@(()=>SelectNavItem(9))"
+                    Link="submenu/anonymous" Caption="Movimiento"
+                    Image="bi bi-expert-day-nav-menu"
+                    Tooltip="Maquinistas y personal de trenes"
+                    Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Anonymous}" />
+
 </CascadingValue>
 <div class="sfmlogo-bg">
     <Image Src="img/sfmImg.png" Style="width:75%; margin:5%;" />
