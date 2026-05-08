@@ -36,14 +36,14 @@ namespace Tourmaline26.Services
         )
         {
 			mvarSessionConfig = new SessionConfiguration();
-			SystemConfig = new SystemConfiguration();
-			InitConfig(config);
+			SystemConfig = new SystemConfiguration();			
             mvarLogger = logger;               
             mvarServiceProvider = serviceProvider;
+            InitConfig(config);
             TimeNetStorage = new OnyxStorage();            
         }
 		private void InitConfig(IConfiguration config)
-		{
+		{           
 			auxInitDevices(config);
 			SystemConfiguration? auxConfig = config.GetSection("SystemConfiguration").Get<SystemConfiguration>();            
 			if (null != auxConfig)
@@ -52,10 +52,10 @@ namespace Tourmaline26.Services
             if (debugStartupSession.Exists())
                 debugStartupSession.Bind(mvarSessionConfig);
 		}
-		private void auxInitDevices(IConfiguration config)
+        private void auxInitDevices(IConfiguration config)
         {
-            //mvarConfig = config;
             IConfigurationSection section = config.GetSection("Devices");
+            int deviceCount = 0;
             foreach (IConfigurationSection deviceSection in section.GetChildren())
             {
                 DeviceMapped nuevo = new DeviceMapped();
@@ -65,10 +65,23 @@ namespace Tourmaline26.Services
                     deviceSection["Coach"],
                     deviceSection["Side"],
                     int.Parse(deviceSection["HeaderSize"]),
-                    int.Parse(deviceSection["Lines"]),                    
+                    int.Parse(deviceSection["Lines"]),
                     deviceSection["PublicId"]);
                 Devices.Add(nuevo);
+
+                mvarLogger.LogInformation(
+                    "Dispositivo detectado: Address={Address}, Type={Type}, Coach={Coach}, Side={Side}, HeaderSize={HeaderSize}, Lines={Lines}, PublicId={PublicId}",
+                    deviceSection["Address"],
+                    deviceSection["Type"],
+                    deviceSection["Coach"],
+                    deviceSection["Side"],
+                    deviceSection["HeaderSize"],
+                    deviceSection["Lines"],
+                    deviceSection["PublicId"]
+                );
+                deviceCount++;
             }
+            mvarLogger.LogInformation("Total de dispositivos detectados: {DeviceCount}", deviceCount);
         }
         public SessionConfiguration SessionConfig
         {

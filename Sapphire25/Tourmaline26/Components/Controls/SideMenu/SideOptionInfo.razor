@@ -4,12 +4,29 @@
      alt="Imagen informativa"
      class="img-fluid rounded shadow mx-auto d-block my-4"
      style="max-width: 420px;" />
+<p>Software @ReleaseInfo</p>
+<ul>
+    <li>Zafiro: @auxConfig.SapphireUrl</li>
+    <li>MVB: @auxConfig.MVBUrl</li>
+    <li>T.Experience: @auxConfig.TExperienceUrl</li>
+    <li>T.E. Stream: @auxConfig.TExperienceStr</li>
+</ul>
 <Switch Label="Modo de Servicio" Value="@TourmalineService.SessionConfig.ServiceMode"
         ValueChanged="@((bool v) => SetServiceMode(v))" />
 @code {
+    private SystemConfiguration auxConfig { get; set; }
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        auxConfig = TourmalineService.SystemConfig;
+    }
     private void SetServiceMode(bool value)
     {
         TourmalineService.SessionConfig.ServiceMode = value;
         TourmalineService.RaiseHMIUpdate();
+    }
+    private string ReleaseInfo
+    {
+        get => $"{auxConfig.Version} - {auxConfig.Release:dd-MM-y}";
     }
 }
