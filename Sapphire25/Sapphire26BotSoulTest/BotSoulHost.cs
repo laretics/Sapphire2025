@@ -14,3 +14,35 @@ namespace Sapphire26BotSoulTest
 		}
 	}
 }
+
+
+/*
+ * 
+ Código de GitHub para ML.
+ * 
+using Microsoft.ML;
+using Microsoft.ML.Data;
+using Microsoft.ML.TorchSharp;
+
+var mlContext = new MLContext(seed: 1);
+
+// Carga datos
+var data = mlContext.Data.LoadFromTextFile<IntentData>("datos_intents.csv", separatorChar: ',', hasHeader: true);
+
+// Pipeline
+var pipeline = mlContext.Transforms.Text.NormalizeText("Text")
+    .Append(mlContext.Transforms.Text.TokenizeIntoWords("Tokens", "Text"))
+    .Append(mlContext.Transforms.Text.RemoveDefaultStopWords("Tokens"))
+    .Append(mlContext.Transforms.Conversion.MapValueToKey("Label"))
+    .Append(mlContext.MulticlassClassification.Trainers.TextClassification(
+        labelColumnName: "Label",
+        sentenceColumnName: "Text",
+        architecture: TextClassificationArchitecture.NAS_BERT,
+        maxEpochs: 10));
+
+// Entrena
+var model = pipeline.Fit(data);
+
+// Guarda el modelo
+mlContext.Model.Save(model, data.Schema, "intent_model.zip");
+ */ 
