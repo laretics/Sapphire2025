@@ -8,9 +8,9 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public const string SapphireSoftwareVersion = "26.05.07";
-		public const string LastChangesText = "Perfiles de personal de movimiento activos";
-		public const string VersionColor = "#CC90CC"; //Color de la versión para diferenciar una de otra.
+		public const string SapphireSoftwareVersion = "26.05.10";
+		public const string LastChangesText = "Perfiles de personal de movimiento activos|Modo servicio de Tourmaline|Mensaje de cambio de versión|Avisos generales antes y después de inicio de sesión|Correcciones menores";
+		public const string VersionColor = "#CF80CF"; //Color de la versión para diferenciar una de otra.
 
 		/// <summary>
 		/// Estados posibles en los que puede encontrarse un tren
@@ -76,7 +76,7 @@ namespace Sapphire2025Models
 			  get 
 			  {
 				StringBuilder salida = new StringBuilder();
-				salida.AppendLine("Sapphire 2025 HTTP Server");
+				salida.AppendLine("Sapphire 2026 HTTP Server");
 				salida.AppendLine("=========================");
 				salida.AppendFormat("Version {0}\n", SapphireSoftwareVersion);
 				salida.AppendLine("Last changes:");

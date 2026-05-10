@@ -8,6 +8,7 @@ using Sapphire2025Models.Authentication;
 using Sapphire2025Models;
 using Sapphire2025Server.Comunications;
 using Microsoft.AspNetCore.SignalR;
+using Org.BouncyCastle.Crypto.Operators;
 
 
 namespace Sapphire2025Server.Controllers
@@ -29,7 +30,7 @@ namespace Sapphire2025Server.Controllers
 		[HttpGet("version")]
 		public IActionResult GetVersion() 
 		{
-			return Ok(Common.GetVersionString);
+			return Ok(Common.SapphireSoftwareVersion);
 		}
 
 		/// <summary>
@@ -126,6 +127,32 @@ namespace Sapphire2025Server.Controllers
 				}
 			}
 			return salida;
+		}
+		[HttpPut("setregistervalue")]
+		public async Task<bool> SetRegisterValue(CommandModel? request)
+		{
+			if (null != request && null != request.CommandId && null != request.Parameter)
+			{
+				using (DataStorage almacen = new DataStorage(mvarConfig))
+				{
+					await almacen.SetRegisterValue(Guid.Empty, request.CommandId, request.Parameter);
+					return true;
+				}
+			}
+			return false;
+		}
+		[HttpPut("getregistervalue")]
+		public async Task<string?> GetRegisterValue(CommandModel? request)
+		{
+			if (null != request && null != request.CommandId)
+			{
+				using (DataStorage almacen = new DataStorage(mvarConfig))
+				{
+					string? salida = await almacen.GetRegisterValue(Guid.Empty, request.CommandId, "");
+					return salida;
+				}
+			}
+			return null;
 		}
 
 		[HttpPut("setregister")]
@@ -339,6 +366,7 @@ namespace Sapphire2025Server.Controllers
 			}
 			return false;
 		}
+			
 		[HttpPut("userinfo")]
 		public async Task<ExtendedUserModel> UserInfo(UserInfoRequestModel? request)
 		{

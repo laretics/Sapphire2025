@@ -1,8 +1,36 @@
 ﻿@page "/"
+@using System.Threading.Tasks
 @inject NavigationManager mvarNavigator
+@inject AuthenticationClient AuthClient
 <PageTitle>Zafiro</PageTitle>
 
 <div class="container min-vh-100">
+    @if (!string.IsNullOrEmpty(mvarNewVersion))
+    {
+        <div class="row justify-content-center mt-4">
+            <div class="col-12 col-md-8 col-lg-6">
+                <div class="alert alert-warning border-2 rounded-4 shadow-sm text-center fs-6" role="alert" style="background:rgba(255,255,224,0.97);">
+                    <Sapphire2025.Icons.Actions.Scheduler height="6"/>
+                    Importante:
+                    <p>La versión que está utilizando usted es la @mvarCurrentVersion.</p>
+                    <p>El programa deberá ser actualizado a la versión @mvarNewVersion.</p>
+                    <p>Para ello puede pulsar las teclas Ctrl + F5, borrar los datos de navegación, vaciar el historial de esta página o eliminar las cookies de navegación.</p>
+                    <p>Seguirá viendo este aviso mientras su versión no coincida con la actual. Mientras tanto se podrían producir errores. Sus datos en el sistema permanecen almacenados de forma segura.</p>                    
+                </div>
+            </div>
+        </div>
+    }
+    @if(!string.IsNullOrEmpty(mvarNotify))
+    {
+        <div class="row justify-content-center mt-4">
+            <div class="col-12 col-md-8 col-lg-6">
+                <div class="alert alert-primary border-2 rounded-4 shadow-sm text-center fs-5" role="alert" style="background:rgba(255,255,255,0.95);">                    
+                    <Sapphire2025.Icons.Actions.Exec/>
+                    @mvarNotify
+                </div>
+            </div>
+        </div>
+    }
     @if(showPanels)
     {
         <!-- Semipantalla superior: Paneles -->
@@ -123,11 +151,27 @@
 </div>
 
 @code {
+    [CascadingParameter]
+    public SessionModel? mvarSession{ get; set; }
     string[]? auxTexto;
     bool showPanels { get; set; } = false;
+    string? mvarNotify { get; set; }
+    string mvarCurrentVersion => Sapphire2025Models.Common.SapphireSoftwareVersion;
+    string mvarNewVersion { get; set; } = "";
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        string auxVersion = await AuthClient.GetCurrentServerVersion();
+        //auxVersion += "p"; //Prueba de cambio de versión forzado.
+        mvarNotify = null;
+        if (auxVersion != Sapphire2025Models.Common.SapphireSoftwareVersion)
+            mvarNewVersion = auxVersion;
+
+        if (null == mvarSession)
+            mvarNotify = await AuthClient.GetRegisterValue("prelogms", "");
+        else
+            mvarNotify = await AuthClient.GetRegisterValue("postlogms", "");
+
         var cadena = Sapphire2025Models.Common.LastChangesText;
         if (!string.IsNullOrWhiteSpace(cadena))
             auxTexto = cadena.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

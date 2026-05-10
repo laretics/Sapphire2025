@@ -31,7 +31,7 @@
 		/// </summary>
 		[Required]
 		[DefaultValue("440")]
-		public string Consist { get; set; } = "440";
+		public string Consist { get; set; } = "coso8100";
 
 		/// <summary>
 		/// Hora de inicio de la simulación

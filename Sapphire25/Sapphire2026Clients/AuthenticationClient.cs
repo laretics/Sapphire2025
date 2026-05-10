@@ -15,6 +15,22 @@ namespace Sapphire2025.Storage
 	{       
         public AuthenticationClient(HttpClient httpClient, IntStorageService intStorage): base(httpClient, intStorage, "sapphireauthentication") {}
 
+        /// <summary>
+        /// Obtiene la versión actual del servidor. Si no coincide con la actual mostrará un mensaje de advertencia a los usuarios.
+        /// </summary>
+        /// <returns>Versión del servidor</returns>
+        public async Task<string> GetCurrentServerVersion()
+        {
+            string uri = composeUri("version");
+            HttpResponseMessage respuesta = await sendGetRequest(uri);
+            if(respuesta.IsSuccessStatusCode)
+            {
+                string salida = await respuesta.Content.ReadAsStringAsync();
+                return salida;
+            }
+            return Common.GetVersionString; //En caso de no tener comunicación, devolvemos la del cliente.
+        }
+
 		#region Register
 		public async Task<bool> SetRegister(string key, string value)
 		{
@@ -45,7 +61,49 @@ namespace Sapphire2025.Storage
 
 			return null;
 		}
-        public async Task<int> GetRegisterInt(string key, int defaultValue = 0)
+        //Esta versión permite textos mucho más largos.
+		public async Task<bool> SetRegisterValue(string key, string value)
+		{
+			Guid auxToken = await mvarIntStorage.getToken();
+			CommandModel request = new CommandModel();
+			request.CommandId = key;
+			request.Parameter = value;
+			request.SessionToken = auxToken;
+			string jsonString = JsonSerializer.Serialize(request);
+			HttpResponseMessage respuesta = await sendPutRequest("setregistervalue", jsonString);
+			bool salida = await respuesta.Content.ReadFromJsonAsync<bool>();
+			return salida;
+		}
+		public async Task<bool> SetRegisterValue(string key, int value)
+		{ return await SetRegisterValue(key, value.ToString()); }
+		public async Task<string?> GetRegisterValue(string key, string defaultValue = "")
+		{
+			Guid auxToken = await mvarIntStorage.getToken();
+			CommandModel request = new CommandModel();
+			request.CommandId = key;
+			request.Parameter = defaultValue;
+			request.SessionToken = auxToken;
+			string jsonString = JsonSerializer.Serialize(request);
+			HttpResponseMessage respuesta = await sendPutRequest("getregistervalue", jsonString);
+
+			if (!respuesta.IsSuccessStatusCode)
+				return defaultValue;
+
+			var content = await respuesta.Content.ReadAsStringAsync();
+			if (string.IsNullOrWhiteSpace(content))
+				return defaultValue;
+
+			try
+			{
+				// Si el backend devuelve un string plano, simplemente devuélvelo
+				return content;
+			}
+			catch
+			{
+				return defaultValue;
+			}
+		}
+		public async Task<int> GetRegisterInt(string key, int defaultValue = 0)
         {
             string? auxString = await GetRegister(key, defaultValue.ToString());
             if (null != auxString && int.TryParse(auxString, out int salida))
@@ -53,8 +111,6 @@ namespace Sapphire2025.Storage
             return defaultValue;
 		}
 		#endregion Register
-
-
 		public async Task<string?> GetTelegramPairingCode(Guid userId)
         {
             Guid auxToken = await mvarIntStorage.getToken();

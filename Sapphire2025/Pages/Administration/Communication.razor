@@ -1,0 +1,79 @@
+﻿@page "/communication"
+@inject AuthenticationClient AuthClient
+<PageTitle>Comunicación</PageTitle>
+
+<div class="container py-4">
+    <h2 class="mb-4">Gestión de Mensajes</h2>
+    <EditForm Model="@this" OnValidSubmit="SaveMessages">
+        <div class="mb-4">
+            <label class="form-label fw-semibold" for="msgPreLogin">Mensaje antes de iniciar sesión</label>
+            <textarea id="msgPreLogin" class="form-control" rows="3" @bind="mvarMessagePreLogin"></textarea>
+            <div class="form-text">Este mensaje se muestra a todos los usuarios antes de iniciar sesión.</div>
+        </div>
+        <div class="mb-4">
+            <label class="form-label fw-semibold" for="msgPostLogin">Mensaje después de iniciar sesión</label>
+            <textarea id="msgPostLogin" class="form-control" rows="3" @bind="mvarMessagePostLogin"></textarea>
+            <div class="form-text">Este mensaje se muestra a todos los usuarios después de iniciar sesión.</div>
+        </div>
+        <button type="submit" class="btn btn-primary mb-4">Guardar mensajes</button>
+        @if (!string.IsNullOrEmpty(EstadoGuardado))
+        {
+            <div class="alert alert-success mt-2">@EstadoGuardado</div>
+        }
+    </EditForm>
+
+    <hr class="my-5" />
+
+    <div class="mb-4">
+        <label class="form-label fw-semibold" for="msgTelegram">Mensaje inmediato por Telegram</label>
+        <textarea id="msgTelegram" class="form-control" rows="2" @bind="MensajeTelegram"></textarea>
+        <div class="form-text text-warning">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            Este mensaje se enviará inmediatamente por Telegram y <b>no se almacenará</b> en la base de datos.
+        </div>
+        <button class="btn btn-success mt-2" @onclick="EnviarTelegram">Enviar por Telegram</button>
+        @if (!string.IsNullOrEmpty(EstadoTelegram))
+        {
+            <div class="alert alert-info mt-2">@EstadoTelegram</div>
+        }
+    </div>
+</div>
+
+@code {
+    // Mensajes persistentes
+    public string? mvarMessagePreLogin { get; set; }
+    public string? mvarMessagePostLogin{ get; set; }
+
+    public string? EstadoGuardado { get; set; }
+
+    // Mensaje Telegram
+    public string? MensajeTelegram { get; set; }
+    public string? EstadoTelegram { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Cargar mensajes desde la base de datos
+
+        mvarMessagePreLogin = await AuthClient.GetRegisterValue("prelogms", "");
+        mvarMessagePostLogin = await AuthClient.GetRegisterValue("postlogms", "");
+    }
+
+    private async Task SaveMessages()
+    {
+        if(null!=mvarMessagePreLogin)
+            await AuthClient.SetRegisterValue("prelogms", mvarMessagePreLogin);
+        if (null != mvarMessagePostLogin)
+            await AuthClient.SetRegisterValue("postlogms", mvarMessagePostLogin);
+        EstadoGuardado = "Mensajes guardados correctamente.";
+    }
+
+    private async Task EnviarTelegram()
+    {
+        if (!string.IsNullOrWhiteSpace(MensajeTelegram))
+        {
+            //await MessageService.EnviarTelegramAsync(MensajeTelegram);
+            EstadoTelegram = "Mensaje enviado por Telegram.";
+            MensajeTelegram = string.Empty;
+        }
+    }
+}

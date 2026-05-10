@@ -1,0 +1,86 @@
+﻿@page "/tourmalineServiceMode"
+@inject AeneasClient AeneasClient
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6 col-md-8">
+            <div class="card shadow border-0">
+                <div class="card-body p-4">
+                    <h3 class="card-title text-center mb-4 text-primary">Modo de Servicio Tourmaline</h3>
+                    <p class="text-muted mb-4">
+                        El modo de servicio o modo de taller de los trenes equipados con Tourmaline permite acceder a los parámetros de configuración de un vehículo. Si el tren tiene habilitado el acceso a internet entrará en este modo automáticamente cuando sea apartado a talleres, tanto para operaciones de correctivo como de preventivo.
+                        En caso de falta de cobertura o de avería del dispositivo de conexión a internet, existe una forma de entrar en este modo a través de esta página.                        
+                    </p>
+                    @if (IsLoading)
+                    {
+                        <LoadingTab ElementText="Cargando vehículos" />
+                    }
+                    else
+                    {
+                        <form>
+                            <div class="mb-3">
+                                <label for="vehicleSelect" class="form-label fw-semibold">Vehículo</label>
+                                <select id="vehicleSelect" class="form-select" @bind="SelectedVehicleId">
+                                    <option value="">Seleccione un vehículo...</option>
+                                    @foreach (var v in Trains)
+                                    {
+                                        <option value="@v.id">@v.name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="d-grid mb-3">
+                                <button type="button" class="btn btn-primary btn-lg" @onclick="OnGenerateCode" disabled="@(null==SelectedVehicleId)">
+                                    Generar código de servicio
+                                </button>
+                            </div>
+                            <div class="alert alert-info mt-3" role="alert">
+                                <strong>Instrucciones:</strong>
+                                Seleccione un vehículo de la lista, pulse el botón de generación del código de servicio, apunte el valor de seis caracteres que aparecerá e introdúzcalo en la sección correspondiente de la consola de Tourmaline. Este código tiene validez sólo para este vehículo y para la fecha actual.                            
+                            </div>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<ModalDialog @ref="modalDialog" />
+
+@code {
+    private List<TrainModel> Trains { get; set; } = new();
+    private Guid? SelectedVehicleId { get; set; }
+    private bool IsLoading { get; set; } = true;
+    private ModalDialog? modalDialog;
+
+    protected override async Task OnInitializedAsync()
+    {
+        IsLoading = true;
+        IEnumerable<TrainModel>? auxLista = await AeneasClient.trainsList();
+        if (auxLista != null)
+            Trains = auxLista.OrderBy(t => t.name).ToList();
+        IsLoading = false;
+    }
+
+    private async void OnGenerateCode()
+    {
+        if (SelectedVehicleId is Guid id && null!= modalDialog)
+        {
+            string salida = Sapphire2025Models.Utils.CheckGenerate("service", DateTime.Today, id);
+
+            if(Sapphire2025Models.Utils.CheckCheck(salida,"service",DateTime.Today,id))
+            {
+                await modalDialog.show(
+                    "Código de Servicio",
+                    salida,
+                    "Aceptar"
+                );
+            }
+            else
+                await modalDialog.show(
+                    "El código NO ha sido validado",
+                    salida,
+                    "Aceptar"
+                );
+        }
+    }
+}
