@@ -19,7 +19,9 @@ namespace Sapphire2026Telegram
 		internal IConfiguration config;
 		private Dictionary<long,BotTask> mcolTasks = new Dictionary<long, BotTask>(); //Contenedor de conversaciones activas. Las conversaciones van por ID de telegram.	
 		internal PairingQuew mvarPairingQuew = new PairingQuew();
-		internal Worker mvarService;
+		internal Worker? mvarService;
+		public static string DummyResponse { get; set; } = "";
+		public static bool DummyMode { get; set; } = false;
 		private readonly ILogger<Worker> mvarLogger;
 		/// <summary>
 		/// Este valor está en el archivo config. Me dice si arranca el bot al arrancar el servicio.
@@ -28,25 +30,33 @@ namespace Sapphire2026Telegram
 		/// </summary>
 		private bool IsTelegramEnabled { get => config["TelegramBot:Enabled"] == "true"; }
 
-		public BotSoul (ILogger<Worker> logger, IConfiguration configuration, Worker worker)
+		public BotSoul (ILogger<Worker> logger, IConfiguration configuration, Worker? worker=null)
 		{
 			config = configuration;
 			mvarService = worker;
 			mvarLogger = logger;
-			mvarLogger.LogInformation("Iniciando bot de Telegram...");
-			string? auxToken = config["TelegramBot:Secret"];
-			Debug.Assert(null != auxToken,"Valor nulo en token de Telegram desde Config");
-			mvarBot = new TelegramBotClient(auxToken);
-			CancellationTokenSource cts = new CancellationTokenSource();
-			if (IsTelegramEnabled)
+			DummyMode = null == worker;
+			if(DummyMode)
 			{
-				mvarBot.StartReceiving
-					(
-					HandleUpdateAsync,
-					HandleErrorAsync,
-					new ReceiverOptions { AllowedUpdates = Array.Empty<UpdateType>() },
-					cancellationToken: cts.Token
-					);
+				mvarLogger.LogInformation("Iniciando bot en modo consola...");
+			}
+			else
+			{
+				mvarLogger.LogInformation("Iniciando bot de Telegram...");
+				string? auxToken = config["TelegramBot:Secret"];
+				Debug.Assert(null != auxToken, "Valor nulo en token de Telegram desde Config");
+				mvarBot = new TelegramBotClient(auxToken);
+				CancellationTokenSource cts = new CancellationTokenSource();
+				if (IsTelegramEnabled)
+				{
+					mvarBot.StartReceiving
+						(
+						HandleUpdateAsync,
+						HandleErrorAsync,
+						new ReceiverOptions { AllowedUpdates = Array.Empty<UpdateType>() },
+						cancellationToken: cts.Token
+						);
+				}
 			}
 		}
 
@@ -93,6 +103,12 @@ namespace Sapphire2026Telegram
 				await auxTarea.TextToBot(message.Text);
 				await auxTarea.ResponseFromBot();
 			}
+		}
+		public async Task HandleDummyConsoleMessage(string text)
+		{
+			BotTask auxTarea = await OpenTask(0);
+			await auxTarea.TextToBot(text);
+			await auxTarea.ResponseFromBot();
 		}
 
 		/// <summary>

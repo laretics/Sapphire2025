@@ -7,4 +7,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Sapphire2026Clients\Sapphire2026Clients.csproj" />
+    <ProjectReference Include="..\Sapphire2026Telegram\Sapphire2026Telegram.csproj" />
+  </ItemGroup>
+
 </Project>

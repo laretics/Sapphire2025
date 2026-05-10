@@ -57,7 +57,12 @@ namespace Sapphire2026Telegram.Semantics
 		{
 			byte indice = (byte)generador.Next(0, maxResponses);
 			if(-1!=userContext.TelegramId)
-				await client.SendMessage(userContext.TelegramId, internalResponse());
+			{
+				if (BotSoul.DummyMode)
+					BotSoul.DummyResponse = internalResponse();
+				else
+					await client.SendMessage(userContext.TelegramId, internalResponse());
+			}				
 		}
 	}
 	public class ImageResponse:TextResponse
@@ -66,20 +71,27 @@ namespace Sapphire2026Telegram.Semantics
 		internal override async Task Send(ITelegramBotClient client, UserContext userContext)
 		{
 			if (-1 != userContext.TelegramId)
-			{
+			{				
 				if (null == ImageUrl)
 					await base.Send(client, userContext);
 				else
 				{
-					string rutaRelativa = Path.Combine("Resources", "Images", ImageUrl);
-					string rutaFisica = Path.Combine(Directory.GetCurrentDirectory(), rutaRelativa);
-					using (FileStream cadena = File.OpenRead(rutaFisica))
+					if(BotSoul.DummyMode)
 					{
-						await client.SendPhoto(
-							chatId: userContext.TelegramId,
-							photo: cadena,
-							caption: internalResponse());
+						BotSoul.DummyResponse = $"[Imagen {ImageUrl} ({internalResponse()}]";
 					}
+					else
+					{
+						string rutaRelativa = Path.Combine("Resources", "Images", ImageUrl);
+						string rutaFisica = Path.Combine(Directory.GetCurrentDirectory(), rutaRelativa);
+						using (FileStream cadena = File.OpenRead(rutaFisica))
+						{
+							await client.SendPhoto(
+								chatId: userContext.TelegramId,
+								photo: cadena,
+								caption: internalResponse());
+						}
+					}					
 				}
 			}
 		}
