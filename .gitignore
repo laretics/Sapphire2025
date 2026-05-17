@@ -63,3 +63,5 @@ artifacts/
 /Sapphire25/Tourmaline26/tourmaline.db
 /Sapphire25/Tourmaline26/tourmaline.db-shm
 /Sapphire25/Tourmaline26/tourmaline.db-wal
+/Sapphire25/Tourmaline26/appsettings.Development.json
+/Sapphire25/Tourmaline26/appsettings.Production.json
