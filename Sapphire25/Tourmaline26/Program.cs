@@ -37,6 +37,7 @@ builder.Services.AddScoped<ExpertClient>();
 builder.Services.AddScoped<TimeNetClient>();
 builder.Services.AddHostedService<MediaMTXService>();
 builder.Services.AddSingleton<GPSService>();
+builder.Services.AddHttpClient<LEDDisplayService>();
 
 // Configurar HttpClient para llamar a la API local
 builder.Services.AddHttpClient<MediaMTXService>("CameraService", client =>

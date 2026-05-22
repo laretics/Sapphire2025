@@ -20,7 +20,7 @@ namespace Tourmaline26.Logic
         public void SetParameters(string? address, 
             string? type, string? coach, string? side,string? headerSize, string? lines, string? publicId)
         {
-            Address = IPAddress.Parse(address);
+            Address = IPAddress.Parse(address??"0.0.0.0");
             Type = (Enums.DeviceType)Enum.Parse(typeof(Enums.DeviceType), type??"Led");
             Coach = (Enums.CoachEnum)Enum.Parse(typeof(Enums.CoachEnum), coach??"?");
             Side = (Enums.Orientation)Enum.Parse(typeof(Enums.Orientation), side??"Forward");

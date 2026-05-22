@@ -1,14 +1,17 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using BlazorBootstrap;
+using Microsoft.EntityFrameworkCore;
 using Org.BouncyCastle.Crypto.Operators;
 using Sapphire2025.Storage;
 using Sapphire2025Models.Authentication;
 using Sapphire2026.Data.Models;
+using System.Threading.Tasks;
 using TimeNet2026.Production;
 using TimeNet2026.Storage;
 using TimeNet2026.Timed;
 using TimeNet2026.Topo;
 using Tourmaline26.Logic;
 using Tourmaline26.Services.LocalDataModel;
+using static System.Net.Mime.MediaTypeNames;
 namespace Tourmaline26.Services
 {
     /// <summary>
@@ -52,7 +55,7 @@ namespace Tourmaline26.Services
             if (debugStartupSession.Exists())
                 debugStartupSession.Bind(mvarSessionConfig);
 		}
-        private void auxInitDevices(IConfiguration config)
+        private async Task auxInitDevices(IConfiguration config)
         {
             IConfigurationSection section = config.GetSection("Devices");
             int deviceCount = 0;
@@ -82,6 +85,9 @@ namespace Tourmaline26.Services
                 deviceCount++;
             }
             mvarLogger.LogInformation("Total de dispositivos detectados: {DeviceCount}", deviceCount);
+            await ClearLEDPanels();
+            //await PushLEDPanels("Tourmaline 2026. Iniciando estructura del programa " + DateTime.Now.ToString(),true,Alignment.None);
+            await PushBitmapLEDPanels("bmp//Tren81.bmp");
         }
         public SessionConfiguration SessionConfig
         {
@@ -270,10 +276,53 @@ namespace Tourmaline26.Services
             }
         }
 
+        #region PanelesLed
+        /// <summary>
+        /// Borra el contenido actual de todos los paneles LED conectados
+        /// </summary>
+        public async Task ClearLEDPanels()
+        {
+            using (IServiceScope? scope = mvarServiceProvider.CreateScope())
+            {
+                LEDDisplayService auxLed = scope.ServiceProvider.GetRequiredService<LEDDisplayService>();
+                foreach (DeviceMapped auxDevice in Devices)
+                {
+                    if(auxDevice.Type== Enums.DeviceType.Led)
+                        await auxLed.ClearAsync(auxDevice.Address);
+                }
 
-		#region Authentication
+            }
+        }
+        public async Task PushLEDPanels(string text, bool scroll,Alignment alignment)
+        {
+            using (IServiceScope? scope = mvarServiceProvider.CreateScope())
+            {
+                LEDDisplayService auxLed = scope.ServiceProvider.GetRequiredService<LEDDisplayService>();
+                foreach (DeviceMapped auxDevice in Devices)
+                {
+                    if (auxDevice.Type == Enums.DeviceType.Led)
+                        await auxLed.PushMessageAsync(auxDevice.Address, text, scroll, alignment);
+                }
+            }
+        }
+        public async Task PushBitmapLEDPanels(string fileName)
+        {
+            byte[] bmpBytes = await File.ReadAllBytesAsync(fileName);
+            using (IServiceScope? scope = mvarServiceProvider.CreateScope())
+            {
+                LEDDisplayService auxLed = scope.ServiceProvider.GetRequiredService<LEDDisplayService>();
+                foreach (DeviceMapped auxDevice in Devices)
+                {
+                    if (auxDevice.Type == Enums.DeviceType.Led)
+                        await auxLed.PushBitmapAsync(auxDevice.Address, bmpBytes);
+                }
+            }
+        }
+        #endregion PanelesLed
 
-		public async Task<SessionModel?> UserLogin(string username, string pwd)
+        #region Authentication
+
+        public async Task<SessionModel?> UserLogin(string username, string pwd)
 		{
 			UserLoginModel modelo = new UserLoginModel();
 			SessionModel? sesion = null;
