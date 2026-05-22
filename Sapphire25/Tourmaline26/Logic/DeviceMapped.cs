@@ -17,15 +17,20 @@ namespace Tourmaline26.Logic
         public Enums.CameraType CameraType { get; private set; } = Enums.CameraType.None;
         public Enums.CameraCodec CameraCodec { get; private set; } = Enums.CameraCodec.None;
         public string PublicId { get; private set; } = "Coche 1"; //Esto es lo que se muestra en público en el panel.
-        public void SetParameters(string address, string type, string coach, string side,int headerSize, int lines, string publicId)
+        public void SetParameters(string? address, 
+            string? type, string? coach, string? side,string? headerSize, string? lines, string? publicId)
         {
             Address = IPAddress.Parse(address);
-            Type = (Enums.DeviceType)Enum.Parse(typeof(Enums.DeviceType), type);
-            Coach = (Enums.CoachEnum)Enum.Parse(typeof(Enums.CoachEnum), coach);
-            Side = (Enums.Orientation)Enum.Parse(typeof(Enums.Orientation), side);
-            this.HeaderSize = headerSize;
-            this.Lines = lines;
-            PublicId = publicId;
+            Type = (Enums.DeviceType)Enum.Parse(typeof(Enums.DeviceType), type??"Led");
+            Coach = (Enums.CoachEnum)Enum.Parse(typeof(Enums.CoachEnum), coach??"?");
+            Side = (Enums.Orientation)Enum.Parse(typeof(Enums.Orientation), side??"Forward");
+            int auxSize = 0;
+            int auxLines = 0;
+            if (int.TryParse(headerSize ?? "0", out auxSize))
+                this.HeaderSize = auxSize;
+            if (int.TryParse(lines ?? "0", out auxLines))
+                this.Lines = auxLines;
+            PublicId = publicId??"[]";
         }
         public void SetCameraParameters(string cameraType, string cameraCodec)
         {

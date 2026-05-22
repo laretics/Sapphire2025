@@ -64,8 +64,8 @@ namespace Tourmaline26.Services
                     deviceSection["Type"],
                     deviceSection["Coach"],
                     deviceSection["Side"],
-                    int.Parse(deviceSection["HeaderSize"]),
-                    int.Parse(deviceSection["Lines"]),
+                    deviceSection["HeaderSize"],
+                    deviceSection["Lines"],
                     deviceSection["PublicId"]);
                 Devices.Add(nuevo);
 
