@@ -106,7 +106,7 @@ namespace Sapphire2026Telegram
 		}
 		public async Task HandleDummyConsoleMessage(string text)
 		{
-			BotTask auxTarea = await OpenTask(0);
+			BotTask auxTarea = await OpenTask(-1);
 			await auxTarea.TextToBot(text);
 			await auxTarea.ResponseFromBot();
 		}

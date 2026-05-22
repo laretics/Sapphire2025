@@ -12,4 +12,10 @@
     <ProjectReference Include="..\Sapphire2026Telegram\Sapphire2026Telegram.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
