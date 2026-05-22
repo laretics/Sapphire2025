@@ -30,8 +30,8 @@
 		/// Nombre del consist o locomotora
 		/// </summary>
 		[Required]
-		[DefaultValue("440")]
-		public string Consist { get; set; } = "coso8100";
+		[DefaultValue("Triple81")]
+		public string Consist { get; set; } = "Triple81";
 
 		/// <summary>
 		/// Hora de inicio de la simulación

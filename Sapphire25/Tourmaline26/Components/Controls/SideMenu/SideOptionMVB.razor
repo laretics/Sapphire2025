@@ -3,6 +3,7 @@
 @using Tourmaline26.Components.Controls.Floatings
 @using Tourmaline26.Components.Images
 @inject Services.TourmalineService Tourmaline
+@inject Services.TourmalineExperience.TourmalineExperienceService Experience
 <Tourmaline26.Components.Controls.Generical.Switch 
     Label="MVB Main" 
     Value="@Tourmaline.SessionConfig.MVBEnabled"
@@ -285,8 +286,6 @@ else
     }
 }
 
-
-
 @code {
     private MVBData mvarData = new();
     protected override void OnInitialized()
@@ -335,11 +334,12 @@ else
         if (int.TryParse(value, out var v))
             mvarData.TractionPower = v;
     }
-    void SetCurrentSpeedValue(string? value)
+    async Task SetCurrentSpeedValue(string? value)
     {
         if (int.TryParse(value, out var v))
         {
             mvarData.Speed = v;
+            await Experience.SetSpeed(v * 4);
             mvarData.SimulateLoops();
         }        
     }

@@ -104,7 +104,14 @@ namespace Tourmaline26.Services.TourmalineExperience
 			parentCommand.Type = TourmalineCommandType.Simulation;
 			parentCommand.Data = command;
 			command.objectiveSpeed = speed;
-			return await PostCommand(parentCommand);
+			try
+			{
+                return await PostCommand(parentCommand);
+            }
+			catch
+			{
+				return null;
+			}			
 		}
 
 		public async Task<TourmalineTelemetryResponse?> SetCamera(TourmalineCameraOrder order, bool side)
