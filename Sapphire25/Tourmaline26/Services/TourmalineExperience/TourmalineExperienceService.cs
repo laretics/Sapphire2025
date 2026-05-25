@@ -25,8 +25,10 @@ namespace Tourmaline26.Services.TourmalineExperience
 			this.mvarHttpClient = httpClient;
 			mvarHttpClient.Timeout = TimeSpan.FromSeconds(2);
 			this.mvarLogger = logger;
-			mvarUrl = config.GetSection("SystemConfiguration")["TExperienceUrl"]??
-				throw new InvalidOperationException("Url for Tourmaline Experience is missing from appsettings.json");
+
+			mvarUrl = config.GetSection("SystemConfiguration")["TExperienceUrl"] ?? "";
+			if(mvarUrl.Length<1)
+				mvarLogger.LogError("Url for Tourmaline Experience is missing from appsettings.json");
 		}
 
 		/// <summary>

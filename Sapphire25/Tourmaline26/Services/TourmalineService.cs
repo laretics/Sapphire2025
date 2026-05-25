@@ -24,7 +24,8 @@ namespace Tourmaline26.Services
         public SystemConfiguration SystemConfig { get; private set; } //Configuración del sistema (desde archivo de config)
         public DeviceCollection Devices { get; private set; } = new DeviceCollection();
         private ILogger<TourmalineService> mvarLogger;
-        private IServiceProvider mvarServiceProvider;		
+        private IServiceProvider mvarServiceProvider;
+        private LEDDisplayService mvarLedDisplayService;
         //Almacén local TimeNet para poder "jugar" con la estructura en modo local sin sobrecargar las comunicaciones.
         public OnyxStorage TimeNetStorage { get; set; }
 
@@ -35,15 +36,17 @@ namespace Tourmaline26.Services
         public void RaisePassengerUpdate() => PassengerUpdateRequested?.Invoke(this, EventArgs.Empty);
         public TourmalineService(IConfiguration config,
         IServiceProvider serviceProvider,
-        ILogger<TourmalineService> logger
+        ILogger<TourmalineService> logger,
+        LEDDisplayService ledDisplayService
         )
         {
 			mvarSessionConfig = new SessionConfiguration();
 			SystemConfig = new SystemConfiguration();			
             mvarLogger = logger;               
             mvarServiceProvider = serviceProvider;
+            TimeNetStorage = new OnyxStorage();
+            mvarLedDisplayService = ledDisplayService;
             InitConfig(config);
-            TimeNetStorage = new OnyxStorage();            
         }
 		private void InitConfig(IConfiguration config)
 		{           
@@ -85,9 +88,11 @@ namespace Tourmaline26.Services
                 deviceCount++;
             }
             mvarLogger.LogInformation("Total de dispositivos detectados: {DeviceCount}", deviceCount);
-            await ClearLEDPanels();
+            mvarLedDisplayService.Init(Devices);
+            await mvarLedDisplayService.ClearAsync();
+            await mvarLedDisplayService.PushAsync("Tourmaline 2026");
             //await PushLEDPanels("Tourmaline 2026. Iniciando estructura del programa " + DateTime.Now.ToString(),true,Alignment.None);
-            await PushBitmapLEDPanels("bmp//Tren81.bmp");
+            //await PushBitmapLEDPanels("bmp//Tren81.bmp");
         }
         public SessionConfiguration SessionConfig
         {
@@ -275,50 +280,6 @@ namespace Tourmaline26.Services
                 }
             }
         }
-
-        #region PanelesLed
-        /// <summary>
-        /// Borra el contenido actual de todos los paneles LED conectados
-        /// </summary>
-        public async Task ClearLEDPanels()
-        {
-            using (IServiceScope? scope = mvarServiceProvider.CreateScope())
-            {
-                LEDDisplayService auxLed = scope.ServiceProvider.GetRequiredService<LEDDisplayService>();
-                foreach (DeviceMapped auxDevice in Devices)
-                {
-                    if(auxDevice.Type== Enums.DeviceType.Led)
-                        await auxLed.ClearAsync(auxDevice.Address);
-                }
-
-            }
-        }
-        public async Task PushLEDPanels(string text, bool scroll,Alignment alignment)
-        {
-            using (IServiceScope? scope = mvarServiceProvider.CreateScope())
-            {
-                LEDDisplayService auxLed = scope.ServiceProvider.GetRequiredService<LEDDisplayService>();
-                foreach (DeviceMapped auxDevice in Devices)
-                {
-                    if (auxDevice.Type == Enums.DeviceType.Led)
-                        await auxLed.PushMessageAsync(auxDevice.Address, text, scroll, alignment);
-                }
-            }
-        }
-        public async Task PushBitmapLEDPanels(string fileName)
-        {
-            byte[] bmpBytes = await File.ReadAllBytesAsync(fileName);
-            using (IServiceScope? scope = mvarServiceProvider.CreateScope())
-            {
-                LEDDisplayService auxLed = scope.ServiceProvider.GetRequiredService<LEDDisplayService>();
-                foreach (DeviceMapped auxDevice in Devices)
-                {
-                    if (auxDevice.Type == Enums.DeviceType.Led)
-                        await auxLed.PushBitmapAsync(auxDevice.Address, bmpBytes);
-                }
-            }
-        }
-        #endregion PanelesLed
 
         #region Authentication
 
