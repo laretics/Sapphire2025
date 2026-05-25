@@ -114,7 +114,12 @@ namespace Tourmaline26.Services
                 {
                     mvarLogger.LogError(ex, "Error en el ciclo de TourmalineBackground.");
                 }
-                await Task.Delay(500, stoppingToken);
+                try
+                {
+					await Task.Delay(500, stoppingToken);
+				}
+                catch(TaskCanceledException)
+                { }                
                 if(null!=mvarTourmaline.SessionConfig.TNEnvironment)
                 {
 					mvarTourmaline.SessionConfig.TNEnvironment.Now = DateTime.Now; //Actualizamos la hora actual
@@ -213,10 +218,16 @@ namespace Tourmaline26.Services
         }
         private async Task<MVB8100Data?> PoolMVB()
         {
+            if(!mvarMVBService.IsOK)
+            {
+                mvarTourmaline.SessionConfig.MVBEnabled = false;
+                mvarTourmaline.SessionConfig.MVBDummy = true;
+            }
+
             if (mvarTourmaline.SessionConfig.MVBEnabled)
             {
                 try
-                {
+                {                    
                     MVB8100Data? salida = await mvarMVBService.GetMVBDataAsync();
                     if (null != salida)
                     {
@@ -252,8 +263,9 @@ namespace Tourmaline26.Services
                     using HttpResponseMessage response = await auxClient.GetAsync("https://www.google.com");
                     return response.IsSuccessStatusCode;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    mvarLogger.LogWarning(ex, "Error comprobando conexión a Internet");
                 }
             }
             return false;

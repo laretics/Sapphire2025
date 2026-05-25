@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore.Storage.Json;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
+using System.Reflection.Metadata.Ecma335;
 using System.Text.Json;
 using Tourmaline26.Logic;
 namespace Tourmaline26.Services
@@ -19,9 +20,14 @@ namespace Tourmaline26.Services
             this.mvarHttpClient = mvarHttpClient;
             mvarHttpClient.Timeout = TimeSpan.FromSeconds(2); // Set a timeout for the HTTP client
             this.mvarLogger = logger;
-            mvarUrl = config.GetSection("SystemConfiguration")["MVBUrl"]
-                ?? throw new InvalidOperationException("MVB parameter missing in configuration");
+            mvarUrl = config.GetSection("SystemConfiguration")["MVBUrl"] ?? string.Empty;
+            if (mvarUrl.Length < 1)
+            {
+				mvarLogger.LogError("MVB parameter missing in configuration");
+			}
+                
         }
+        public bool IsOK { get => mvarUrl.Length > 0; }
         public async Task<MVB8100Data?> GetMVBDataAsync()
         {
             try
