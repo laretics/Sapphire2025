@@ -17,6 +17,7 @@ namespace Tourmaline26.Services
         private readonly TourmalineExperienceService mvarExperience;
         private readonly GPSService mvarGPSService;
         private readonly MVBService mvarMVBService;
+        private readonly LEDDisplayService mvarLedService;
         /// <summary>
         /// Flag para indicar al sistema que han terminado de cargar los datos.
         /// </summary>        
@@ -34,13 +35,15 @@ namespace Tourmaline26.Services
             TourmalineService tourmalineService,
             TourmalineExperienceService experienceService,
             MVBService mvbService,
-            GPSService gpsService)
+            GPSService gpsService,
+            LEDDisplayService ledService)
         {
             mvarLogger = logger;
             mvarTourmaline = tourmalineService;
             mvarExperience = experienceService;
             mvarMVBService = mvbService;
             mvarGPSService = gpsService;
+            mvarLedService = ledService;
         }
         /// <summary>
         /// Actualización express de los paneles HMI.
@@ -269,7 +272,30 @@ namespace Tourmaline26.Services
                 }
             }
             return false;
-        }    
+        }
+
+        /// <summary>
+        /// Actualiza los teleindicadores LED
+        /// </summary>
+        /// <returns></returns>
+        private async Task<bool> PoolLedPanels()
+        {
+            if(mvarTourmaline.SessionConfig.TeleindicatorsEnabled)
+            {
+                //Prioridad de los avisos:
+                //* 1 Mensaje emergente de Armandito
+                //* 2 Próxima parada
+                //* 3 Destino
+                //* 4 Hora y temperatura
+
+            }
+            else
+            {
+                await mvarLedService.ClearAsync();
+            }
+            return false;
+        }        
+        
         /// <summary>
         /// Hace las actualizaciones de los controles y los cálculos de la malla
         /// </summary>
