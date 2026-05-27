@@ -29,6 +29,7 @@ namespace Tourmaline26.Services
         private Task<MVB8100Data?>? mvarMvbTask;
         private Task<bool>? mvarInternetTask;
         private Task<bool>? mvarLocationTask;
+        private Task<bool>? mvarLedPanelsTask;
 
         public TourmalineBackground(
             ILogger<TourmalineBackground> logger,
@@ -94,6 +95,9 @@ namespace Tourmaline26.Services
                     }
                     if(null == mvarMvbTask)
                         mvarMvbTask = PoolMVB();
+
+                    if (null == mvarLedPanelsTask)
+                        mvarLedPanelsTask = PoolLedPanels();
 
                     if (null != mvarInternetTask && mvarInternetTask.IsCompleted)
                     {
@@ -280,8 +284,9 @@ namespace Tourmaline26.Services
         /// <returns></returns>
         private async Task<bool> PoolLedPanels()
         {
-            if(mvarTourmaline.SessionConfig.TeleindicatorsEnabled)
+            if(mvarTourmaline.SessionConfig.TeleindicatorsEnabled && mvarTourmaline.SessionConfig.PASEnabled)
             {
+                
                 //Prioridad de los avisos:
                 //* 1 Mensaje emergente de Armandito
                 //* 2 Próxima parada
