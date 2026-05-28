@@ -7,9 +7,9 @@ IConfiguration auxConfig = new ConfigurationBuilder()
 	.Build();
 
 using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-ILogger<Worker> auxLogger = loggerFactory.CreateLogger<Worker>();
+ILogger<BotSoul> auxLogger = loggerFactory.CreateLogger<BotSoul>();
 
-BotSoul mvarBotSoul = new BotSoul(auxLogger, auxConfig);
+BotSoul mvarBotSoul = new BotSoul(auxLogger, auxConfig, Guid.Parse("a6fa037e-bc0f-4799-9678-ad5024c910b9"));
 
 bool active = true;
 while(active)

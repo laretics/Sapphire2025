@@ -10,19 +10,21 @@ using Sapphire2025Models;
 using Sapphire2026Telegram;
 using System.Threading.Tasks;
 using System.Diagnostics.Eventing.Reader;
+using Sapphire2026.Data.Models;
 
 namespace Sapphire2026Telegram
 {
 	public class BotSoul
 	{
-		internal TelegramBotClient mvarBot;
+		internal TelegramBotClient? mvarBot;
 		internal IConfiguration config;
 		private Dictionary<long,BotTask> mcolTasks = new Dictionary<long, BotTask>(); //Contenedor de conversaciones activas. Las conversaciones van por ID de telegram.	
 		internal PairingQuew mvarPairingQuew = new PairingQuew();
 		internal Worker? mvarService;
 		public static string DummyResponse { get; set; } = "";
+		private  Sapphire2025Models.Authentication.UserModel? mvarDummyUser{ get; set; }
 		public static bool DummyMode { get; set; } = false;
-		private readonly ILogger<Worker> mvarLogger;
+		private readonly ILogger<BotSoul> mvarLogger;
 		/// <summary>
 		/// Este valor está en el archivo config. Me dice si arranca el bot al arrancar el servicio.
 		/// Lo uso, sobre todo, cuando tengo el servidor en producción y quiero desarrollar en pruebas.
@@ -30,34 +32,33 @@ namespace Sapphire2026Telegram
 		/// </summary>
 		private bool IsTelegramEnabled { get => config["TelegramBot:Enabled"] == "true"; }
 
-		public BotSoul (ILogger<Worker> logger, IConfiguration configuration, Worker? worker=null)
+		public BotSoul (ILogger<BotSoul> logger, IConfiguration configuration, Worker worker)
 		{
 			config = configuration;
 			mvarService = worker;
 			mvarLogger = logger;
-			DummyMode = null == worker;
-			if(DummyMode)
+			DummyMode = false;
+			mvarLogger.LogInformation("Iniciando bot de Telegram...");
+			string? auxToken = config["TelegramBot:Secret"];
+			Debug.Assert(null != auxToken, "Valor nulo en token de Telegram desde Config");
+			mvarBot = new TelegramBotClient(auxToken);
+			CancellationTokenSource cts = new CancellationTokenSource();
+			if (IsTelegramEnabled)
 			{
-				mvarLogger.LogInformation("Iniciando bot en modo consola...");
+				mvarBot.StartReceiving
+					(
+					HandleUpdateAsync,
+					HandleErrorAsync,
+					new ReceiverOptions { AllowedUpdates = Array.Empty<UpdateType>() },
+					cancellationToken: cts.Token
+					);
 			}
-			else
-			{
-				mvarLogger.LogInformation("Iniciando bot de Telegram...");
-				string? auxToken = config["TelegramBot:Secret"];
-				Debug.Assert(null != auxToken, "Valor nulo en token de Telegram desde Config");
-				mvarBot = new TelegramBotClient(auxToken);
-				CancellationTokenSource cts = new CancellationTokenSource();
-				if (IsTelegramEnabled)
-				{
-					mvarBot.StartReceiving
-						(
-						HandleUpdateAsync,
-						HandleErrorAsync,
-						new ReceiverOptions { AllowedUpdates = Array.Empty<UpdateType>() },
-						cancellationToken: cts.Token
-						);
-				}
-			}
+		}
+		public BotSoul(ILogger<BotSoul> logger, IConfiguration configuration, Guid dummyUserId)
+		{
+			config = configuration;
+			mvarLogger = logger;
+			mvarLogger.LogInformation("Iniciando bot en modo consola...");
 		}
 
 		private async Task HandleUpdateAsync(ITelegramBotClient botClient,
@@ -106,10 +107,23 @@ namespace Sapphire2026Telegram
 		}
 		public async Task HandleDummyConsoleMessage(string text)
 		{
-			BotTask auxTarea = await OpenTask(-1);
-			await auxTarea.TextToBot(text);
-			await auxTarea.ResponseFromBot();
+			if(await RetrieveDummyUser())
+			{
+				BotTask auxTarea = await OpenTask(-1);
+				await auxTarea.TextToBot(text);
+				await auxTarea.ResponseFromBot();
+			}
+
 		}
+		private async Task<bool> RetrieveDummyUser()
+		{
+			if(null==mvarDummyUser)
+			{
+
+			}
+			return null != mvarDummyUser;
+		}
+
 
 		/// <summary>
 		/// Abre una conversación en base a una cuenta de Telegram

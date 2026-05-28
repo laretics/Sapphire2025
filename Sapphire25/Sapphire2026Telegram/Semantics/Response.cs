@@ -55,14 +55,11 @@ namespace Sapphire2026Telegram.Semantics
 		protected virtual byte maxResponses { get => 1; } //Número máximo de respuestas que puede devolver el objeto. Por defecto es 1, pero se puede sobreescribir en las clases hijas.
 		internal override async Task Send(ITelegramBotClient client, UserContext userContext)
 		{
-			byte indice = (byte)generador.Next(0, maxResponses);
-			if(-1!=userContext.TelegramId)
-			{
-				if (BotSoul.DummyMode)
-					BotSoul.DummyResponse = internalResponse();
-				else
-					await client.SendMessage(userContext.TelegramId, internalResponse());
-			}				
+			//byte indice = (byte)generador.Next(0, maxResponses);
+			if (BotSoul.DummyMode)
+				BotSoul.DummyResponse = internalResponse();
+			else
+				await client.SendMessage(userContext.TelegramId, internalResponse());
 		}
 	}
 	public class ImageResponse:TextResponse

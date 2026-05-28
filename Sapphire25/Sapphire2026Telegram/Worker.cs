@@ -6,13 +6,13 @@ namespace Sapphire2026Telegram
 {
 	public class Worker : BackgroundService
 	{
-		private readonly ILogger<Worker> mvarLogger;
+		private readonly ILogger<BotSoul> mvarLogger;
 		private readonly HubConnection? mvarHubConnection;
 		private readonly IConfiguration mvarConfiguration;
 		internal readonly BotSoul mvarBotSoul;
 		private readonly bool mvarHubEnabled;
 
-	public Worker(ILogger<Worker> logger, HubConnection? hubConnection, IConfiguration configuration)
+	public Worker(ILogger<BotSoul> logger, HubConnection? hubConnection, IConfiguration configuration)
 	{
 		mvarLogger = logger;
 		mvarHubConnection = hubConnection;
