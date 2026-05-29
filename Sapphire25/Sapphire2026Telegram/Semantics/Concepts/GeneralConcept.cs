@@ -8,18 +8,19 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 	/// </summary>
 	internal abstract class GeneralConcept
 	{
-		internal List<string>  mcolTokens; //Colección de tokens que va a detectar el algoritmo.
 		internal IConfiguration mvarConfig;
 		protected GeneralConcept(IConfiguration config)
 		{
 			mvarConfig = config;
-			//Montamos la nube de tokens:
-			mcolTokens = new List<string>();
+			//Montamos la nube de tokens:	
 		}
-		protected void AddTokens(string[] tokens)
+		/// <summary>
+		/// Añade aclaraciones al concepto para poder obtener los parámetros por parte del usuario.
+		/// </summary>
+		/// <param name="text"></param>
+		internal async virtual Task AddText(string text)
 		{
-			foreach (string token in tokens)
-				mcolTokens.Add(token.ToUpper().Trim());
+			//Por defecto NO añadimos nada al concepto.
 		}
 	}
 }

@@ -2,24 +2,21 @@
 using Sapphire2026Telegram.Semantics.Concepts;
 using System.Diagnostics;
 using Telegram.Bot;
+using Telegram.Bot.Types;
 
 namespace Sapphire2026Telegram.Semantics.Conversations
 {
 	internal class InitialTheme:BotTheme
 	{
-		private bool mvarError { get; set; }
-		private IAConceptPerceptron mvarPerceptron;
+		private bool mvarError { get; set; }		
 		internal InitialTheme(BotTask parent):base(parent)
 		{
-			mvarPerceptron = new IAConceptPerceptron();
 		}
 
 		//private string mvarErrorText;
 
 		internal override async Task InternalResponseFromBot(ITelegramBotClient client)
 		{
-			if(null==mvarPerceptron)
-				initConcepts();
 		
 			if(mvarError)
 			{
@@ -47,44 +44,39 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 					
 			}						
 		}
-		private void initConcepts()
+		private async Task<BotTheme?> Match(string text)
 		{
-			mvarError = false;
-			mvarPerceptron = new IAConceptPerceptron();
-			mvarPerceptron.addConcept(new TrainNoteConcept(mvarParent.mvarConfig,true)); //Abrir un parte de averías.
-			mvarPerceptron.addConcept(new TrainNoteConcept(mvarParent.mvarConfig, false)); //Abrir una nota
-			mvarPerceptron.addConcept( new ReportRequestConcept(mvarParent.mvarConfig)); //Pedir un informe
+			switch(IntentClassifier.Instance.Predict(text))
+			{
+				case "AbrirIncidencia":
+					TrainNoteConcept auxNota = new TrainNoteConcept(mvarParent.mvarConfig, true);
+					await auxNota.AddText(text);
+					return new TrainIncidenceTheme(mvarParent, auxNota, text);
 
-			mvarPerceptron.addConcept(new TrainOrderConcept(mvarParent.mvarConfig,Sapphire2025Models.Common.OperationType.BeginCorrective)); //Entrar en taller.
 
+				case "Nota":
+					TrainNoteConcept auxNota2 = new TrainNoteConcept(mvarParent.mvarConfig, false);
+					await auxNota2.AddText(text);
+					return new TrainIncidenceTheme(mvarParent, auxNota2, text);
 
-						
+				case "Disponibles": //Tengo que hacer un concepto sólo para ver el material disponible.
+				case "EstadoTren": //Tengo que hacer un concepto sólo para ver el estado de un tren.
+				case "EnTaller": //Hacer un concepto para ver los trenes que están en taller y su estado.
+				case "VerInforme":
+					//return new ReportRequestConcept(mvarParent.mvarConfig);
+				default:
+					return null;
+			}
 		}
 
 
+
 		internal async override Task InternalTextToBot(string text)
-		{
-			Debug.Assert(null != mvarPerceptron);
-			NlpProcessor auxProcessor = new NlpProcessor();
-			string[] auxTokens = auxProcessor.Process(text);
-			GeneralConcept? detectado = await mvarPerceptron.ConceptMatch(auxTokens);
+		{	
+			BotTheme? detectado = await Match(text);
 			mvarError = (null == detectado);
 			if(null!=detectado)
-			{
-				if(detectado.GetType() == typeof(TrainNoteConcept))
-				{// Queremos abrir un parte de avería.
-					//this.child = new TrainIncidenceTheme(mvarParent,detectado,text);
-				}
-			//	if (detectado.name.Equals("InformeEstado"))
-			//	{
-
-			//	}
-			//	else if (detectado.name.Equals("Train_Incidence_Report"))
-			//		this.child = new TrainDamageTheme(mvarParent, text);
-			//	else
-			//		mvarError = true;
-			}
-			//mvarErrorText = string.Join("|", auxTokens);
+				this.child = detectado;
 
 			mvarError = true;
 		}

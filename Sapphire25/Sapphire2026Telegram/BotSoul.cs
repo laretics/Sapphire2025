@@ -22,7 +22,7 @@ namespace Sapphire2026Telegram
 		internal PairingQuew mvarPairingQuew = new PairingQuew();
 		internal Worker? mvarService;
 		public static string DummyResponse { get; set; } = "";
-		private  Sapphire2025Models.Authentication.UserModel? mvarDummyUser{ get; set; }
+		private Sapphire2026.Data.Models.User? mvarDummyUser{ get; set; }
 		public static bool DummyMode { get; set; } = false;
 		private readonly ILogger<BotSoul> mvarLogger;
 		/// <summary>
@@ -54,11 +54,12 @@ namespace Sapphire2026Telegram
 					);
 			}
 		}
-		public BotSoul(ILogger<BotSoul> logger, IConfiguration configuration, Guid dummyUserId)
+		public BotSoul(ILogger<BotSoul> logger, IConfiguration configuration)
 		{
 			config = configuration;
 			mvarLogger = logger;
 			mvarLogger.LogInformation("Iniciando bot en modo consola...");
+			DummyMode = true;
 		}
 
 		private async Task HandleUpdateAsync(ITelegramBotClient botClient,
@@ -109,7 +110,8 @@ namespace Sapphire2026Telegram
 		{
 			if(await RetrieveDummyUser())
 			{
-				BotTask auxTarea = await OpenTask(-1);
+				Debug.Assert(null != mvarDummyUser);
+				BotTask auxTarea = await OpenTask(mvarDummyUser.TelegramId);
 				await auxTarea.TextToBot(text);
 				await auxTarea.ResponseFromBot();
 			}
@@ -119,7 +121,16 @@ namespace Sapphire2026Telegram
 		{
 			if(null==mvarDummyUser)
 			{
+				string? userId = config["DummyUserId"];
+				if(null!=userId)
+				{
+					using (DataStorage storage = new DataStorage(config))
+					{
+						mvarDummyUser = await storage.Users.Where(x => x.Id == userId).FirstOrDefaultAsync();
 
+	
+					}
+				}
 			}
 			return null != mvarDummyUser;
 		}

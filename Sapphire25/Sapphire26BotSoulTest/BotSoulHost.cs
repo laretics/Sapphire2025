@@ -7,10 +7,10 @@ namespace Sapphire26BotSoulTest
 	internal static class BotSoulHost
 	{
 		internal static BotSoul? mvarInstance{ get; private set; }
-		public static void Initialize (ILogger<BotSoul> logger, IConfiguration config, BotSoul soul, Guid dummyUserId)
+		public static void Initialize (ILogger<BotSoul> logger, IConfiguration config, BotSoul soul)
 		{
 			if (null == mvarInstance)
-				mvarInstance = new BotSoul(logger, config,dummyUserId);	
+				mvarInstance = new BotSoul(logger, config);	
 		}
 	}
 }

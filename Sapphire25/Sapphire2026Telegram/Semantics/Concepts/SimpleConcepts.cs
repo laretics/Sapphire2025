@@ -11,9 +11,6 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 	{
 		internal ReportRequestConcept(IConfiguration config) :base(config) 
 		{
-			AddTokens(new string[]
-			{"disponible","disponibilidad","disponibles","trenes","disposición",
-			"informe","lista"});
 		}		
 	}
 	//internal class CancelConcept:GeneralConcept

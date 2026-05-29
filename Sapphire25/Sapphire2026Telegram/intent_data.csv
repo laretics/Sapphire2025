@@ -1,0 +1,60 @@
+Text,Label
+"Quiero abrir una incidencia",AbrirIncidencia
+"Hay una avería en el tren 123",AbrirIncidencia
+"Registrar una incidencia nueva",AbrirIncidencia
+"Quiero abrir un parte al tren 123",AbrirIncidencia
+"Me gustaría poner un parte de avería al tren 123",AbrirIncidencia
+"Abrir un parte",AbrirIncidencia
+"Poner un parte",AbrirIncidencia
+"Escribir un parte",AbrirIncidencia
+"Poner una incidencia",AbrirIncidencia
+"Parte de avería",AbrirIncidencia
+"Parte de incidencia",AbrirIncidencia
+"Este tren está roto",AbrirIncidencia
+"El tren está averiado",AbrirIncidencia
+"Nuevo parte",AbrirIncidencia
+"Avería",AbrirIncidencia
+"Incidencia",AbrirIncidencia
+"Quiero abrir una nota al tren 123",Nota
+"Anotación de un tren",Nota
+"Nota",Nota
+"¿Puedo anotar algo de un tren?",Nota
+"Comentar un tren",Nota
+"Comentario",Nota
+"Escribir comentario",Nota
+"Escribir nota",Nota
+"Escribir anotación",Nota
+"Registrar anotación",Nota
+"Anotación",Nota
+"Muéstrame el informe del tren 456",VerInforme
+"Ver informe de tren",VerInforme
+"¿Puedes enseñarme el estado del tren 456?",VerInforme
+"Necesito el informe de actividad",VerInforme
+"Quiero consultar el historial de un tren",VerInforme
+"¿Cómo está el tren 456?",EstadoTren
+"¿Cuál es el estado del tren 789?",EstadoTren
+"Estado del tren 101",EstadoTren
+"¿Está disponible el tren 202?",EstadoTren
+"¿Qué material hay disponible?",Disponibles
+"Quiero saber qué trenes están disponibles",Disponibles
+"¿Qué trenes están circulando?",Disponibles
+"Trenes disponibles",Disponibles
+"Disponibilidad",Disponibles
+"¿Qué trenes están en taller?",EnTaller
+"Necesito saber los trenes que están apartados",EnTaller
+"Taller",EnTaller
+"Trenes apartados",EnTaller
+"Cuántos trenes están apartados",EnTaller
+"¿Qué reparaciones se están haciendo?",EnTaller
+"Reparaciones en curso",EnTaller
+"Trenes en mantenimiento",EnTaller
+"Salir",Salir
+"Finalizar sesión",Salir
+"Adiós",Salir
+"Hola",Saludo
+"Buenos días",Saludo
+"¿Quién eres?",Saludo
+"Gracias",Agradecimiento
+"Muchas gracias",Agradecimiento
+"Ok",Otro
+"No entiendo",Otro

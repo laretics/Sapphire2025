@@ -15,10 +15,6 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 		public TrainNoteConcept(IConfiguration config, bool incidence):base(config)
 		{
 			Incidence= incidence;
-			if(incidence)			
-				AddTokens(new string[]{ "averia","incidencia","incidence","parte","hoja"});
-			else
-				AddTokens(new string[] { "aviso","nota","observacion","anotacion","apunte","detalle" });
 		}
 		public bool Validated
 		{
@@ -29,7 +25,20 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 					mvarConfirmed = value;
 			}
 		}
+		internal async override Task AddText(string text)
+		{
+			if (mcolTrains.Count < 1)
+				await base.AddText(text);
+			else if (string.IsNullOrEmpty(mvarSympthoms))
+				Sympthoms = text;
+			else
+			{
+				mvarConfirmed = text.ToUpper().Contains('S');
+				//Procesa el parte
 
+			}
+		}
+	
 		public TextResponse Confirmation()
 		{
 			if(mcolTrains.Count<1)

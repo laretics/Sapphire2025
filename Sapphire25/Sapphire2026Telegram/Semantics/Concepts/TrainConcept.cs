@@ -20,11 +20,15 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 		internal List<Train> mcolTrains;
 		public TrainConcept(IConfiguration config):base(config)
 		{
-			AddTokens(new string[]{"ut","tren","material","movil","unidad",
-				"coche","remolque","vehículo","convoy" });
 			mcolTrains = new List<Train>(); 
 		}
 
+		internal async override Task AddText(string text)
+		{
+			await base.AddText(text);
+			string[] auxTokens = text.Split(' ');
+			await LocateTrains(auxTokens);
+		}
 		/// <summary>
 		/// Esta función busca los trenes de la flota en la base de datos e intenta encontrar alusiones a ellos en la
 		/// lista de tokens.
@@ -36,17 +40,22 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
 				List<Train> dbTrains = await almacen.Trains.ToListAsync();
-                foreach (var item in dbTrains)
+				foreach (var item in dbTrains)
                 {
                     if(!mcolTrains.Contains(item))
 					{
 						foreach(string trainToken in item.NameCloud.Split(","))
 						{
-							if (tokens.Contains(trainToken))
+							// Sustituye '#' por una expresión regular que acepte '-', '_' o nada
+							string pattern = "^" + Regex.Escape(trainToken).Replace("\\#", "[-_]?") + "$";
+							foreach(string token in tokens)
 							{
-								mcolTrains.Add(item);
-								break; //Sale del bucle. No quiero añadir dos veces un tren.
-							}								
+							   if(Regex.IsMatch(token,pattern, RegexOptions.IgnoreCase))
+							   {
+									mcolTrains.Add(item);
+									break; //Sale del bucle. No quiero añadir dos veces un tren.
+								}
+							}
 						}
 					}
                 }

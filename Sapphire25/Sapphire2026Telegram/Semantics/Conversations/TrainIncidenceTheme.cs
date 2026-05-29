@@ -13,31 +13,38 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 		internal TrainIncidenceTheme(BotTask parent, GeneralConcept concept, string message) : base(parent)
 		{
 			mvarMessage = message;
-			if(concept is TrainNoteConcept)
-				mvarConcept = (TrainNoteConcept)concept;
+
+			if (concept is TrainNoteConcept noteConcept)
+			{			
+				mvarConcept = noteConcept;
+			}				
 		}
 		internal async override Task InternalTextToBot(string text)
-		{
-			if (null == mvarConcept) this.endTheme();
-			else
+		{			
+			if (null == mvarConcept) 
 			{
-
-
+				this.endTheme();
+				return;
 			}
-				//mvarMessage = string.Concat(text, mvarMessage);
-				//if (null == mvarConcept)
-				//{
-				//	mvarConcept = new TrainIncidenceConcept(mvarParent.mvarConfig);
-				//	await mvarConcept.match(mvarMessage.Split(' ').ToList());
-				//}
-				//if (mvarConcept.mcolTrains.Count>0)
-				//{
-				//	await mvarConcept.match(text.Split(',').ToList());
-				//}
-				//else if(null==mvarConcept.Sympthoms)
-				//{
-				//	mvarConcept.Sympthoms = text;
-				//}				
+
+			//Petición de cancelación explícita
+			string auxTexto = text.Trim();
+			if(auxTexto.Equals("cancelar",StringComparison.OrdinalIgnoreCase) ||
+			auxTexto.Equals("salir",StringComparison.OrdinalIgnoreCase) ||
+			auxTexto.Equals("no",StringComparison.OrdinalIgnoreCase))
+			{
+				this.endTheme();
+				return;
+			}			
+			await mvarConcept.AddText(text);
+			if(mvarConcept.Validated)
+			{
+				//Aquí se genera el parte...
+
+				this.endTheme();
+				return;
+			}
+
 		}
 		internal async override Task InternalResponseFromBot(ITelegramBotClient client)
 		{
