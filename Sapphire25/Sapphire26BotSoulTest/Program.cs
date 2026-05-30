@@ -4,18 +4,38 @@ using Sapphire2026Telegram;
 using Microsoft.ML;
 using Microsoft.ML.Data;
 using Sapphire2026Telegram.Semantics;
+using Sapphire2025.Storage;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 
-IConfiguration auxConfig = new ConfigurationBuilder()
-	.SetBasePath(Directory.GetCurrentDirectory())
-	.AddJsonFile("appsettings.json", optional: true)
-	.AddJsonFile("appsettings.Development.json", optional: true)
-	.AddEnvironmentVariables()
-	.Build();
+IHost? host = Host.CreateDefaultBuilder(args)
+.ConfigureAppConfiguration((context, config) =>
+{
+	config.SetBasePath(Directory.GetCurrentDirectory());
+	config.AddJsonFile("appsettings.json", optional: true);
+	config.AddJsonFile("appsettings.Development.json", optional: true);
+	config.AddEnvironmentVariables();
+})
+.ConfigureServices((context, services) =>
+{
+	string auxApiBaseAddress = context.Configuration["ApiBaseAddress"] ?? "http://localhost:5031/api/";
+	services.AddSingleton(sp => new HttpClient { BaseAddress = new Uri(auxApiBaseAddress)});
+	services.AddSingleton<IntStorageService>();
+	services.AddSingleton<AuthenticationClient>();
+	services.AddSingleton<AeneasClient>();
+	services.AddSingleton<ExpertClient>();
+	services.AddSingleton<TimeNetClient>();
+})
+.Build();
+
+using AsyncServiceScope auxScope = host.Services.CreateAsyncScope();
+IServiceProvider auxServices = auxScope.ServiceProvider;
+IConfiguration auxConfig = auxServices.GetRequiredService<IConfiguration>();
 
 using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
 ILogger<BotSoul> auxLogger = loggerFactory.CreateLogger<BotSoul>();
 
-BotSoul mvarBotSoul = new BotSoul(auxLogger, auxConfig);
+BotSoul mvarBotSoul = new BotSoul(auxLogger, auxConfig,auxServices);
 
 bool active = true;
 while(active)

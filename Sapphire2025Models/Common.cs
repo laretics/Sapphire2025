@@ -8,9 +8,9 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public const string SapphireSoftwareVersion = "26.05.10";
-		public const string LastChangesText = "Perfiles de personal de movimiento activos|Modo servicio de Tourmaline|Mensaje de cambio de versión|Avisos generales antes y después de inicio de sesión|Correcciones menores";
-		public const string VersionColor = "#CF80CF"; //Color de la versión para diferenciar una de otra.
+		public const string SapphireSoftwareVersion = "26.06.02";
+		public const string LastChangesText = "Vista de tiempo Ingeniería|Bot de Telegram interactivo";
+		public const string VersionColor = "#40A0A0"; //Color de la versión para diferenciar una de otra.
 
 		/// <summary>
 		/// Estados posibles en los que puede encontrarse un tren

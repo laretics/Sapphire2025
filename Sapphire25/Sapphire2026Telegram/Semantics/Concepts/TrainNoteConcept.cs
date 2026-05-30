@@ -69,10 +69,20 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 				auxConfirmationMessage.addKey("ut", TrainVerbose(false,true));
 				auxConfirmationMessage.addKey("utf", TrainVerbose(true, false));
 				auxConfirmationMessage.addKey("sym", Sympthoms);
-				auxConfirmationMessage.addText("Se está abriendo un parte de incidencia #ut con la siguiente descripción: \"#sym\". ¿Es correcto?");
-				auxConfirmationMessage.addText("#utf está a punto de abrir un parte de incidencia por #sym. ¿Procedo?");
-				auxConfirmationMessage.addText("Si acepta #utf, se abrirá un parte de avería con esta descripción: \"#sym\" ¿De acuerdo?");
-				auxConfirmationMessage.addText("#utf va a acumular un parte de avería con esta descripción: \"#sym\" ¿Es correcto?");
+				if(Incidence)
+				{
+					auxConfirmationMessage.addText("Se está abriendo un parte de incidencia #ut con la siguiente descripción: \"#sym\". ¿Es correcto?");
+					auxConfirmationMessage.addText("#utf está a punto de abrir un parte de incidencia por #sym. ¿Procedo?");
+					auxConfirmationMessage.addText("Si acepta #utf, se abrirá un parte de avería con esta descripción: \"#sym\" ¿De acuerdo?");
+					auxConfirmationMessage.addText("#utf va a acumular un parte de avería con esta descripción: \"#sym\" ¿Es correcto?");
+				}
+				else
+				{
+					auxConfirmationMessage.addText("Está creando una nota en Zafiro para #ut con la siguiente descripción: \"#sym\". ¿Es correcto?");
+					auxConfirmationMessage.addText("#utf está a punto de abrir una nota en Zafiro por #sym. ¿Procedo?");
+					auxConfirmationMessage.addText("Si acepta #utf, se abrirá una nueva nota con esta descripción: \"#sym\" ¿De acuerdo?");
+					auxConfirmationMessage.addText("#utf va a acumular una nota con esta descripción: \"#sym\" ¿Es correcto?");
+				}
 				return auxConfirmationMessage;
 			}
 			else if(Validated)

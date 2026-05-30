@@ -63,21 +63,22 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 				case "EstadoTren": //Tengo que hacer un concepto sólo para ver el estado de un tren.
 				case "EnTaller": //Hacer un concepto para ver los trenes que están en taller y su estado.
 				case "VerInforme":
-					//return new ReportRequestConcept(mvarParent.mvarConfig);
+					return new TrainReportTheme(mvarParent);
 				default:
 					return null;
 			}
 		}
-
-
 
 		internal async override Task InternalTextToBot(string text)
 		{	
 			BotTheme? detectado = await Match(text);
 			mvarError = (null == detectado);
 			if(null!=detectado)
+			{
 				this.child = detectado;
-
+				mvarError = false;
+				return;
+			}
 			mvarError = true;
 		}
 

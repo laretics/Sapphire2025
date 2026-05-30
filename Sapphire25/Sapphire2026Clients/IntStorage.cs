@@ -16,19 +16,24 @@ namespace Sapphire2025.Storage
 	/// </summary>
 	public class IntStorageService
 	{
-        private readonly IJSRuntime mvarJsRuntime;
-        //private readonly InteractiveService mvarInteractiveService;
+        private readonly IJSRuntime? mvarJsRuntime;
+        private Dictionary<string, string> mcolSessionValues; //Este diccionario se usa desde el módulo Telegram
 		
 		internal const string LOCAL_STORAGE_ID = "localStorage";
 		internal const string SESSION_STORAGE_ID = "sessionStorage";
 
         internal const string SESSION_INFO = "sessioninfo";
 
-		public IntStorageService(IJSRuntime jsRuntime)//, InteractiveService interactive)
+		public IntStorageService(IJSRuntime jsRuntime)
         {
             mvarJsRuntime = jsRuntime;
-            //mvarInteractiveService = interactive;
+            mcolSessionValues = new Dictionary<string, string>();
         }
+        public IntStorageService()
+        {
+            mvarJsRuntime = null;
+			mcolSessionValues = new Dictionary<string, string>();
+		}
 
         internal string internalRequestString(bool session, string command)
         {
@@ -299,17 +304,38 @@ namespace Sapphire2025.Storage
 		public async Task ResetValue(string key, bool session)
         {
             string auxStorageId = internalRequestString(session, "removeItem");
-            await mvarJsRuntime.InvokeVoidAsync(auxStorageId, key);
+            if (null == mvarJsRuntime)
+                mcolSessionValues.Remove(key);
+            else
+                await mvarJsRuntime.InvokeVoidAsync(auxStorageId, key);
         }
 		public async Task SetStringValue(string key, string? value, bool session)
         {            
             string auxStorageId = internalRequestString(session, "setItem");
-			await mvarJsRuntime.InvokeVoidAsync(auxStorageId, key, value);
+            if(null==mvarJsRuntime)
+            {
+                if (!mcolSessionValues.ContainsKey(key))
+                    mcolSessionValues.Add(key, "");
+                System.Diagnostics.Debug.Assert(mcolSessionValues.ContainsKey(key));
+                if (null == value)
+                    mcolSessionValues.Remove(key);
+                else
+                    mcolSessionValues[key]= value;
+            }
+            else
+    			await mvarJsRuntime.InvokeVoidAsync(auxStorageId, key, value);
         }
         public async Task<string?> GetStringValue(string key, bool session)
         {
 			string auxStorageId = internalRequestString(session, "getItem");
-			return await mvarJsRuntime.InvokeAsync<string>(auxStorageId, key);
+            if(null==mvarJsRuntime)
+            {
+                if(mcolSessionValues.ContainsKey(key))
+                    return mcolSessionValues[key];
+                return null;
+            }
+            else
+    			return await mvarJsRuntime.InvokeAsync<string>(auxStorageId, key);
         }
         public async Task SetIntValue(string key, int value, bool session)
         {

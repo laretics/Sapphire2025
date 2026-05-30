@@ -1,4 +1,5 @@
 ﻿using Sapphire2026Telegram.Operative;
+using System.Text;
 using Telegram.Bot;
 namespace Sapphire2026Telegram.Semantics
 {
@@ -60,6 +61,65 @@ namespace Sapphire2026Telegram.Semantics
 				BotSoul.DummyResponse = internalResponse();
 			else
 				await client.SendMessage(userContext.TelegramId, internalResponse());
+		}
+	}
+	public class TableResponse: Response
+	{
+		private List<object> mcolTable = new();
+		private List<string> mcolFields = new(); //Nombre de las propiedades a mostrar
+		private List<string>? mcolHeaders = null; //Encabezados
+
+		public void SetFields(params string[] fields)
+		{
+			mcolFields = fields.ToList();
+		}
+		public void SetHeaders(params string[] headers)
+		{
+			mcolHeaders = headers.ToList();
+		}
+		public void AddRow(object row)
+		{
+			mcolTable.Add(row);
+		}
+		public void AddRows(IEnumerable<object> rows)
+		{
+			mcolTable.AddRange(rows);
+		}
+		private string BuildTable()
+		{
+			if (mcolTable.Count < 1 || mcolFields.Count < 1)
+				return "No hay datos para mostrar";
+
+			//Preparando encabezados
+			List<string> auxHeaders = mcolHeaders ?? mcolFields;
+			StringBuilder salida = new StringBuilder();
+
+			salida.AppendLine(string.Join(" | ", auxHeaders));
+			salida.AppendLine(new string('-', auxHeaders.Sum(h => h.Length + 3)));
+
+			//Registros
+			foreach(object row in mcolTable)
+			{
+				IEnumerable<string>? values = mcolFields.Select(f =>
+				{
+					System.Reflection.PropertyInfo? prop = row.GetType().GetProperty(f);
+					if (null != prop)
+						return prop.GetValue(row)?.ToString() ?? "";
+					System.Reflection.FieldInfo? field = row.GetType().GetField(f);
+					return field?.GetValue(row)?.ToString() ?? "";
+				});
+				salida.AppendLine(string.Join(" | ", values));
+			}
+			return salida.ToString();
+		}
+
+		internal override async Task Send(ITelegramBotClient client, UserContext userContext)
+		{
+			string tabla = BuildTable();
+			if (BotSoul.DummyMode)
+				BotSoul.DummyResponse = tabla;
+			else
+				await client.SendMessage(userContext.TelegramId, tabla);
 		}
 	}
 	public class ImageResponse:TextResponse

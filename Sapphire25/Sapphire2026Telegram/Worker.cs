@@ -12,12 +12,12 @@ namespace Sapphire2026Telegram
 		internal readonly BotSoul mvarBotSoul;
 		private readonly bool mvarHubEnabled;
 
-	public Worker(ILogger<BotSoul> logger, HubConnection? hubConnection, IConfiguration configuration)
+	public Worker(ILogger<BotSoul> logger, HubConnection? hubConnection,IServiceProvider servicesProvider, IConfiguration configuration)
 	{
 		mvarLogger = logger;
 		mvarHubConnection = hubConnection;
 		mvarConfiguration = configuration;
-		mvarBotSoul = new BotSoul(mvarLogger, mvarConfiguration, this);
+		mvarBotSoul = new BotSoul(mvarLogger, mvarConfiguration,servicesProvider, this);
 		mvarHubEnabled = mvarHubConnection != null &&
 						 configuration.GetValue<bool>("SignalR:Enabled", false);
 		

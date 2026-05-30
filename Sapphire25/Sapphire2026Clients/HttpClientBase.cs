@@ -11,7 +11,7 @@ namespace Sapphire2025.Storage
 	{
 		public string controllerId { get;private set; }
 		internal readonly HttpClient mvarClient;
-		internal readonly IntStorageService mvarIntStorage;
+		internal readonly IntStorageService? mvarIntStorage;
 
 		public HttpClientBase(HttpClient httpClient,IntStorageService intStorageService, string controllerId)
 		{

@@ -1,5 +1,7 @@
 ﻿
+using ICSharpCode.SharpZipLib.Core;
 using Microsoft.EntityFrameworkCore;
+using Sapphire2025.Storage;
 using Sapphire2025Models;
 using Sapphire2025Models.Authentication;
 using Sapphire2026.Data;
@@ -20,6 +22,16 @@ namespace Sapphire2026Telegram.Operative
     {
         internal User? mvarUser { get; private set; }
         internal IConfiguration mvarConfig;
+		private IntStorageService? mvarIntStorage;
+		internal IntStorageService IntStorage
+		{ 
+			get 
+			{
+				if(null==mvarIntStorage)
+					mvarIntStorage = new IntStorageService();
+				return mvarIntStorage;
+			}
+		}
         private long mvarTelegramId { get; set; } = -1;
 		internal List<ExtendedUserModel.RoleInfo> ColRoles = new List<ExtendedUserModel.RoleInfo>();
 
@@ -55,7 +67,6 @@ namespace Sapphire2026Telegram.Operative
 				}
 			}
 		}
-
 		private async Task<Dictionary<uint, ExtendedUserModel.RoleInfo>> retrieveRolesDictionary()
 		{
 			Dictionary<uint, ExtendedUserModel.RoleInfo> salida = new Dictionary<uint, ExtendedUserModel.RoleInfo>();

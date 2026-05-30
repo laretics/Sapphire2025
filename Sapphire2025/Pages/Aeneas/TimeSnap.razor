@@ -78,7 +78,7 @@
 
 @code {
     // Opciones de intervalo
-    private string[] intervalOptions = { "Semanal", "Mensual", "Trimestral", "Anual" };
+    private string[] intervalOptions = { "Semanal","Quincenal", "Mensual", "Anual" };
     private string interval = "Semanal";
 
     // Fecha de comienzo
@@ -217,7 +217,6 @@
         var today = DateTime.Today;
         var diff = (int)today.DayOfWeek == 0 ? 6 : (int)today.DayOfWeek - 1;
         startDate = today.AddDays(-diff);
-        //_ = RefreshData();
     }
 
     private void SetLastWeek()
@@ -225,7 +224,6 @@
         var today = DateTime.Today;
         var diff = (int)today.DayOfWeek == 0 ? 6 : (int)today.DayOfWeek - 1;
         startDate = today.AddDays(-diff - 7);
-        //_ = RefreshData();
     }
     private async Task ToggleSerie(string serie)
     {
@@ -237,8 +235,8 @@
     private TimeSpan intervalSpan => interval switch
     {
         "Semanal" => TimeSpan.FromDays(7),
+        "Quincenal" => TimeSpan.FromDays(14),
         "Mensual" => TimeSpan.FromDays(30),
-        "Trimestral" => TimeSpan.FromDays(90),
         "Anual" => TimeSpan.FromDays(365),
         _ => TimeSpan.FromDays(7)
     };

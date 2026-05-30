@@ -8,8 +8,7 @@ namespace Sapphire2025.Storage
 	public class AeneasClient:HttpClientBase
 	{
 		public AeneasClient(HttpClient httpClient, IntStorageService intStorage) : base(httpClient, intStorage, "sapphireaeneas") { }
-
-
+		
 		public async Task<bool> openFailReport(TrainModel? train)
 		{
 

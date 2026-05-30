@@ -1,4 +1,8 @@
-﻿using Sapphire2026Telegram.Semantics.Concepts;
+﻿using Sapphire2025.Storage;
+using Sapphire2025Models.Aeneas;
+using Sapphire2026.Data.Models;
+using Sapphire2026Telegram.Operative;
+using Sapphire2026Telegram.Semantics.Concepts;
 using Telegram.Bot;
 
 namespace Sapphire2026Telegram.Semantics.Conversations
@@ -7,13 +11,13 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 	{
 		protected TrainNoteConcept? mvarConcept { get; set; } = null;
 		private string mvarMessage { get; set; }
+		private IServiceCollection mcolServices;
 
 
 
 		internal TrainIncidenceTheme(BotTask parent, GeneralConcept concept, string message) : base(parent)
 		{
 			mvarMessage = message;
-
 			if (concept is TrainNoteConcept noteConcept)
 			{			
 				mvarConcept = noteConcept;
@@ -40,11 +44,31 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 			if(mvarConcept.Validated)
 			{
 				//Aquí se genera el parte...
+				Console.WriteLine("Realizando el proceso del parte de incidencia o anotación");
+				AeneasClient auxCliente = mvarParent.parent.services.GetRequiredService<AeneasClient>();
+				foreach (Train tren in mvarConcept.mcolTrains)
+					await OpenNoteToTrain(tren,auxCliente);
 
 				this.endTheme();
 				return;
 			}
 
+		}
+		private async Task OpenNoteToTrain(Train train, AeneasClient client)
+		{
+			//TODO: Meter el código de cliente aquí.
+			NoteModel auxNota = new NoteModel();
+			auxNota.parent = train.Guid;
+			
+
+
+			//if (null != mvarConcept.tr)
+
+
+				
+			//await auxCliente.addNote(auxNota);
+			//if (1 == auxNota.Type)
+				//await auxCliente.openFailReport(auxNota.tr)
 		}
 		internal async override Task InternalResponseFromBot(ITelegramBotClient client)
 		{

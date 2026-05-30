@@ -18,6 +18,7 @@ namespace Sapphire2026Telegram
 	{
 		internal TelegramBotClient? mvarBot;
 		internal IConfiguration config;
+		internal IServiceProvider services; //Referencias a los servicios inyectables.
 		private Dictionary<long,BotTask> mcolTasks = new Dictionary<long, BotTask>(); //Contenedor de conversaciones activas. Las conversaciones van por ID de telegram.	
 		internal PairingQuew mvarPairingQuew = new PairingQuew();
 		internal Worker? mvarService;
@@ -32,9 +33,10 @@ namespace Sapphire2026Telegram
 		/// </summary>
 		private bool IsTelegramEnabled { get => config["TelegramBot:Enabled"] == "true"; }
 
-		public BotSoul (ILogger<BotSoul> logger, IConfiguration configuration, Worker worker)
+		public BotSoul (ILogger<BotSoul> logger, IConfiguration configuration,IServiceProvider servicesProvider, Worker worker)
 		{
 			config = configuration;
+			services = servicesProvider;
 			mvarService = worker;
 			mvarLogger = logger;
 			DummyMode = false;
@@ -54,9 +56,10 @@ namespace Sapphire2026Telegram
 					);
 			}
 		}
-		public BotSoul(ILogger<BotSoul> logger, IConfiguration configuration)
+		public BotSoul(ILogger<BotSoul> logger, IConfiguration configuration,IServiceProvider servicesProvider)
 		{
 			config = configuration;
+			services = servicesProvider;
 			mvarLogger = logger;
 			mvarLogger.LogInformation("Iniciando bot en modo consola...");
 			DummyMode = true;

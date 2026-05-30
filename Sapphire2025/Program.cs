@@ -13,7 +13,7 @@ builder.Configuration.AddJsonFile("appsettings.Development.json", optional: true
 
 builder.Services.AddBlazorBootstrap();
 
-string auxApiAddress = builder.Configuration["ApiBaseAddress"] ?? "http://localhost:5000/api/";
+string auxApiAddress = builder.Configuration["ApiBaseAddress"] ?? "http://localhost:5031/api/";
 Console.WriteLine($"API Address for SFM: {auxApiAddress}");
 
 Uri apiBaseUri;
