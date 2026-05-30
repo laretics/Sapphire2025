@@ -15,6 +15,7 @@ namespace Sapphire2025Models.Authentication
 		public bool TelegramEnabled { get; set; } //true si el usuario tiene habilitado el telegram
 		public string TelegramRules { get; set; } //Reglas de uso del telegram
 		public bool TelegramPaired { get; set; } //true si el usuario tiene el telegram emparejado
+		public long TelegramId { get; set; } //Sesión de Telegram.
 
 		public ExtendedUserModel() : base()
 		{

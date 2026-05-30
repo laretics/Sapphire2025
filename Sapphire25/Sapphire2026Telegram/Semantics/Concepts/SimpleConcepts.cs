@@ -9,7 +9,7 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 
 	internal class ReportRequestConcept:GeneralConcept
 	{
-		internal ReportRequestConcept(IConfiguration config) :base(config) 
+		internal ReportRequestConcept(IConfiguration config, IServiceProvider provider) :base(config,provider) 
 		{
 		}		
 	}

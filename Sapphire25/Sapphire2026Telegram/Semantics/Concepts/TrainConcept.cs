@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
+using Sapphire2025.Storage;
 using Sapphire2026.Data;
 using Sapphire2026.Data.Models;
 using System.Diagnostics;
@@ -17,10 +18,10 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 	/// </summary>
 	internal class TrainConcept: GeneralConcept
 	{
-		internal List<Train> mcolTrains;
-		public TrainConcept(IConfiguration config):base(config)
+		internal List<Sapphire2025Models.Aeneas.TrainModel> mcolTrains;
+		public TrainConcept(IConfiguration config, IServiceProvider provider):base(config,provider)
 		{
-			mcolTrains = new List<Train>(); 
+			mcolTrains = new List<Sapphire2025Models.Aeneas.TrainModel>(); 
 		}
 
 		internal async override Task AddText(string text)
@@ -37,29 +38,26 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 		/// <returns>Nada... la lista de trenes se carga en mcolTrains</returns>
 		internal async Task LocateTrains(string[] tokens)
 		{
-			using (DataStorage almacen = new DataStorage(mvarConfig))
+			AeneasClient auxCliente = mvarServiceProvider.GetRequiredService<AeneasClient>();
+			List<Sapphire2025Models.Aeneas.TrainModel> auxColTrains = new List<Sapphire2025Models.Aeneas.TrainModel>();
+			foreach (Sapphire2025Models.Aeneas.TrainModel item in auxColTrains)
 			{
-				List<Train> dbTrains = await almacen.Trains.ToListAsync();
-				foreach (var item in dbTrains)
-                {
-                    if(!mcolTrains.Contains(item))
+				if(!mcolTrains.Contains(item))
+				{
+					foreach(string trainToken in item.nameCloud.Split(","))
 					{
-						foreach(string trainToken in item.NameCloud.Split(","))
+						string pattern = "^" + Regex.Escape(trainToken).Replace("\\#", "[-_]?") + "$";
+						foreach (string token in tokens)
 						{
-							// Sustituye '#' por una expresión regular que acepte '-', '_' o nada
-							string pattern = "^" + Regex.Escape(trainToken).Replace("\\#", "[-_]?") + "$";
-							foreach(string token in tokens)
+							if(Regex.IsMatch(token,pattern,RegexOptions.IgnoreCase))
 							{
-							   if(Regex.IsMatch(token,pattern, RegexOptions.IgnoreCase))
-							   {
-									mcolTrains.Add(item);
-									break; //Sale del bucle. No quiero añadir dos veces un tren.
-								}
+								mcolTrains.Add(item);
+								break; //Sale del bucle. No quiero añadir dos veces un tren.
 							}
 						}
 					}
-                }
-            }
+				}
+			}
 		}
 
 		/// <summary>
@@ -90,16 +88,16 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 				if(female)
 				{
 					if(acusative)
-						return string.Format("a la unidad {0}",mcolTrains.First().Name);
+						return string.Format("a la unidad {0}",mcolTrains.First().name);
 					else
-						return string.Format("la unidad {0}", mcolTrains.First().Name);
+						return string.Format("la unidad {0}", mcolTrains.First().name);
 				}
 				else
 				{
 					if (acusative)
-						return string.Format("al tren {0}", mcolTrains.First().Name);
+						return string.Format("al tren {0}", mcolTrains.First().name);
 					else
-						return string.Format("el tren {0}", mcolTrains.First().Name);
+						return string.Format("el tren {0}", mcolTrains.First().name);
 				}
 			}
 			else
@@ -131,7 +129,7 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 				else if (item != mcolTrains.First())
 					salida.Append(", ");
 
-				salida.Append(item.Name);					
+				salida.Append(item.name);					
 			}
 			return salida.ToString();
 		}

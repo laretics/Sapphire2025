@@ -4,6 +4,7 @@ using Sapphire2026.Data.Models;
 using Sapphire2026Telegram.Semantics.Conversations;
 using Sapphire2026Telegram.Semantics;
 using Sapphire2026Telegram.Operative;
+using Sapphire2025.Storage;
 
 namespace Sapphire2026Telegram
 {
@@ -30,7 +31,8 @@ namespace Sapphire2026Telegram
 		}
 		internal async Task Initialize()
 		{
-			await user.Init();
+			AuthenticationClient auxClient = parent.services.GetRequiredService<AuthenticationClient>();
+			await user.Init(auxClient);
 			await theme.Preprocess();
 		}
 
@@ -39,7 +41,8 @@ namespace Sapphire2026Telegram
 		/// </summary>
 		private async Task VerifyPairing()
 		{
-			await mvarUser.Init();
+			AuthenticationClient auxClient = parent.services.GetRequiredService<AuthenticationClient>();
+			await mvarUser.Init(auxClient);
 
 			//Si ya no está emparejado, eliminamos el resto de la conversación.
 			if(!mvarUser.Paired)

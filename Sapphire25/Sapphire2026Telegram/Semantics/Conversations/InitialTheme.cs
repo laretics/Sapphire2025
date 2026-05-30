@@ -49,13 +49,15 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 			switch(IntentClassifier.Instance.Predict(text))
 			{
 				case "AbrirIncidencia":
-					TrainNoteConcept auxNota = new TrainNoteConcept(mvarParent.mvarConfig, true);
+					TrainNoteConcept auxNota = 
+						new TrainNoteConcept(mvarParent.mvarConfig,mvarParent.parent.services, true);
 					await auxNota.AddText(text);
 					return new TrainIncidenceTheme(mvarParent, auxNota, text);
 
 
 				case "Nota":
-					TrainNoteConcept auxNota2 = new TrainNoteConcept(mvarParent.mvarConfig, false);
+					TrainNoteConcept auxNota2 = 
+						new TrainNoteConcept(mvarParent.mvarConfig,mvarParent.parent.services , false);
 					await auxNota2.AddText(text);
 					return new TrainIncidenceTheme(mvarParent, auxNota2, text);
 

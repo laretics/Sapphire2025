@@ -46,7 +46,7 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 				//Aquí se genera el parte...
 				Console.WriteLine("Realizando el proceso del parte de incidencia o anotación");
 				AeneasClient auxCliente = mvarParent.parent.services.GetRequiredService<AeneasClient>();
-				foreach (Train tren in mvarConcept.mcolTrains)
+				foreach (Sapphire2025Models.Aeneas.TrainModel tren in mvarConcept.mcolTrains)
 					await OpenNoteToTrain(tren,auxCliente);
 
 				this.endTheme();
@@ -54,11 +54,11 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 			}
 
 		}
-		private async Task OpenNoteToTrain(Train train, AeneasClient client)
+		private async Task OpenNoteToTrain(TrainModel train, AeneasClient client)
 		{
 			//TODO: Meter el código de cliente aquí.
 			NoteModel auxNota = new NoteModel();
-			auxNota.parent = train.Guid;
+			auxNota.parent = train.id;
 			
 
 

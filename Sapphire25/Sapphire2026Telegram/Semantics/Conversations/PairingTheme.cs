@@ -1,7 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Sapphire2025.Storage;
 using Sapphire2026.Data;
 using Sapphire2026Telegram.Operative;
 using Telegram.Bot;
+using TorchSharp.Modules;
 
 namespace Sapphire2026Telegram.Semantics.Conversations
 {
@@ -32,7 +34,8 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 					auxUser.TelegramId = telegramChatId;
 					await almacen.SaveChangesAsync();
 					mvarParent.user = new UserContext(telegramChatId, mvarParent.mvarConfig);
-					await mvarParent.user.Init();
+					AuthenticationClient auxClient = mvarParent.parent.services.GetRequiredService<AuthenticationClient>();
+					await mvarParent.user.Init(auxClient);
 				}
 			}
 		}

@@ -12,7 +12,7 @@ namespace Sapphire2026Telegram.Semantics.Concepts
     internal class TrainOrderConcept:TrainConcept
     {
         internal Sapphire2025Models.Common.OperationType Operation { get; private set; } //Esta es la orden que esperamos leer.
-        internal TrainOrderConcept(IConfiguration config, Sapphire2025Models.Common.OperationType operation):base(config) 
+        internal TrainOrderConcept(IConfiguration config,IServiceProvider provider, Sapphire2025Models.Common.OperationType operation):base(config,provider) 
         {
             this.Operation = operation;
         }

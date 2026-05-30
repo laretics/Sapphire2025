@@ -9,9 +9,11 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 	internal abstract class GeneralConcept
 	{
 		internal IConfiguration mvarConfig;
-		protected GeneralConcept(IConfiguration config)
+		internal IServiceProvider mvarServiceProvider;
+		protected GeneralConcept(IConfiguration config, IServiceProvider provider)
 		{
 			mvarConfig = config;
+			mvarServiceProvider = provider;
 			//Montamos la nube de tokens:	
 		}
 		/// <summary>

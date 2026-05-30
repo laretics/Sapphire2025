@@ -12,7 +12,7 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 		public string? Sympthoms { get => mvarSympthoms; set => mvarSympthoms = value; }
 		public bool mvarConfirmed; //El usuario ha validado esta información.
 		internal bool Incidence { get; private set; }
-		public TrainNoteConcept(IConfiguration config, bool incidence):base(config)
+		public TrainNoteConcept(IConfiguration config,IServiceProvider provider, bool incidence):base(config,provider)
 		{
 			Incidence= incidence;
 		}

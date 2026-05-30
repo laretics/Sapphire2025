@@ -20,7 +20,7 @@ namespace Sapphire2026Telegram.Operative
     /// </summary>
     internal class UserContext
     {
-        internal User? mvarUser { get; private set; }
+        internal Sapphire2025Models.Authentication.ExtendedUserModel? mvarUser { get; private set; }	
         internal IConfiguration mvarConfig;
 		private IntStorageService? mvarIntStorage;
 		internal IntStorageService IntStorage
@@ -33,7 +33,6 @@ namespace Sapphire2026Telegram.Operative
 			}
 		}
         private long mvarTelegramId { get; set; } = -1;
-		internal List<ExtendedUserModel.RoleInfo> ColRoles = new List<ExtendedUserModel.RoleInfo>();
 
         internal UserContext(long telegramChatId, IConfiguration config)
         {
@@ -42,69 +41,24 @@ namespace Sapphire2026Telegram.Operative
         }
 		internal bool Paired { get => (null != mvarUser); }
 		internal long TelegramId { get => null==mvarUser?mvarTelegramId:mvarUser.TelegramId; }
-		internal string Name { get => (null == mvarUser || null==mvarUser.UserName) ? "Desconocido" : mvarUser.UserName; }
-        internal async Task Init()
+		internal string Name { get => (null == mvarUser || null==mvarUser.Name) ? "Desconocido" : mvarUser.Name; }
+        internal async Task Init(AuthenticationClient client)
         {
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{
-				mvarUser = await almacen.Users
-					.Where(x => x.TelegramId == mvarTelegramId).FirstOrDefaultAsync();
-            }
-			ColRoles.Clear();			
-			if (null==mvarUser)
-			{
+			mvarUser = await client.userByTelegramId(mvarTelegramId);			
+		}
 
-			}
-			else
-			{
-				//Ahora recuperamos los roles del usuario	
-				Dictionary<uint, ExtendedUserModel.RoleInfo> auxRoles = await retrieveRolesDictionary();
-				List<uint> listaRoles = await retrieveUserRoles(mvarUser.guid);
-				foreach (uint elemento in listaRoles)
-				{
-					if (auxRoles.ContainsKey(elemento))
-						ColRoles.Add(auxRoles[elemento]);
-				}
-			}
-		}
-		private async Task<Dictionary<uint, ExtendedUserModel.RoleInfo>> retrieveRolesDictionary()
-		{
-			Dictionary<uint, ExtendedUserModel.RoleInfo> salida = new Dictionary<uint, ExtendedUserModel.RoleInfo>();
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{
-				List<RoleDictionary> auxDictionary = await almacen.RoleDictionary.OrderBy(x => x.RoleId).ToListAsync();
-				foreach (RoleDictionary auxEntrada in auxDictionary)
-				{
-					ExtendedUserModel.RoleInfo nuevoRol = new ExtendedUserModel.RoleInfo();
-					nuevoRol.roleId = auxEntrada.RoleId;
-					nuevoRol.Name = auxEntrada.Name;
-					nuevoRol.Comment = auxEntrada.Comment;
-					salida.Add(auxEntrada.RoleId, nuevoRol);
-				}
-			}
-			return salida;
-		}
-		internal async Task<List<uint>> retrieveUserRoles(Guid userId)
-		{
-			List<uint> salida = new List<uint>();
-			string userString = userId.ToString();
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{
-				List<UserAndRole> entrada = await almacen.UserAndRoles.Where(x => x.UserId.Equals(userString)).ToListAsync();
-				foreach (UserAndRole role in entrada)
-					salida.Add(role.RoleId);
-			}
-			return salida;
-		}
 		internal bool MatchRole(Common.UserRole[] roles)
 		{
-			foreach (ExtendedUserModel.RoleInfo auxInfo in ColRoles)
+			if(null!=mvarUser)
 			{
-				if(auxInfo.roleId<256)
+				foreach (ExtendedUserModel.RoleInfo auxInfo in mvarUser.roles.Values)
 				{
-					if (roles.Contains((Common.UserRole)auxInfo.roleId))
+					if (auxInfo.roleId < 256)
 					{
-						return true;
+						if (roles.Contains((Common.UserRole)auxInfo.roleId))
+						{
+							return true;
+						}
 					}
 				}
 			}

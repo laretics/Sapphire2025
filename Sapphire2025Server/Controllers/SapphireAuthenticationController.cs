@@ -416,6 +416,7 @@ namespace Sapphire2025Server.Controllers
 						salida.NullPassword = (null == auxUsuario.PasswordHash) || (auxUsuario.PasswordHash.Length < 1);
 						salida.TelegramEnabled = auxUsuario.TelegramEnabled;
 						salida.TelegramPaired = auxUsuario.TelegramId != 0;
+						salida.TelegramId = auxUsuario.TelegramId;
 						salida.TelegramRules = await almacen.GetRegisterValue(auxUsuario.guid, "TGRULES", string.Empty);
 					}
 				}
