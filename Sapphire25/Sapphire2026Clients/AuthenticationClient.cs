@@ -224,6 +224,16 @@ namespace Sapphire2025.Storage
 
             return await respuesta.Content.ReadFromJsonAsync<ExtendedUserModel?>();
         }
+        public async Task<ExtendedUserModel?> userByTelegramId(long telegramId)
+        {
+            Guid auxToken = await mvarIntStorage.getToken();
+            UserInfoRequestModel peticion = new UserInfoRequestModel(auxToken, telegramId);
+            string jsonString = JsonSerializer.Serialize(peticion);
+
+            HttpResponseMessage respuesta = await sendPutRequest("userinfo", jsonString);
+
+            return await respuesta.Content.ReadFromJsonAsync<ExtendedUserModel?>();
+        }
 
         public async Task<bool> changeRoles(string tokenId, string userId, string enroles, string deroles)
         {

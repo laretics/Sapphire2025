@@ -391,7 +391,14 @@ namespace Sapphire2025Server.Controllers
 				//Cargo toda la información que puedo sacar de la base de datos..
 				using (DataStorage almacen = new DataStorage(mvarConfig))
 				{
-					auxUsuarioNulo = await almacen.Users.Where(x => x.Id.Equals(request.UserId.ToString())).FirstOrDefaultAsync();
+					if(0!=request.TelegramId)
+					{
+						auxUsuarioNulo = await almacen.Users.Where(x => x.TelegramId.Equals(request.TelegramId)).FirstOrDefaultAsync();
+					}
+					else
+					{
+						auxUsuarioNulo = await almacen.Users.Where(x => x.Id.Equals(request.UserId.ToString())).FirstOrDefaultAsync();
+					}
 					if (null != auxUsuarioNulo)
 					{
 						auxUsuario = auxUsuarioNulo;

@@ -11,6 +11,7 @@ using Sapphire2026Telegram;
 using System.Threading.Tasks;
 using System.Diagnostics.Eventing.Reader;
 using Sapphire2026.Data.Models;
+using Sapphire2025.Storage;
 
 namespace Sapphire2026Telegram
 {
@@ -23,7 +24,8 @@ namespace Sapphire2026Telegram
 		internal PairingQuew mvarPairingQuew = new PairingQuew();
 		internal Worker? mvarService;
 		public static string DummyResponse { get; set; } = "";
-		private Sapphire2026.Data.Models.User? mvarDummyUser{ get; set; }
+		private Sapphire2025Models.Authentication.ExtendedUserModel? mvarDummyUser{ get; set; }
+		private long mvarDummyUserTelegramId { get; set; } = -1;
 		public static bool DummyMode { get; set; } = false;
 		private readonly ILogger<BotSoul> mvarLogger;
 		/// <summary>
@@ -114,7 +116,8 @@ namespace Sapphire2026Telegram
 			if(await RetrieveDummyUser())
 			{
 				Debug.Assert(null != mvarDummyUser);
-				BotTask auxTarea = await OpenTask(mvarDummyUser.TelegramId);
+
+				BotTask auxTarea = await OpenTask(mvarDummyUserTelegramId);
 				await auxTarea.TextToBot(text);
 				await auxTarea.ResponseFromBot();
 			}
@@ -125,14 +128,13 @@ namespace Sapphire2026Telegram
 			if(null==mvarDummyUser)
 			{
 				string? userId = config["DummyUserId"];
-				if(null!=userId)
+				string? auxTelegramId = config["DummyUserTelegramId"];
+				if(null!=userId && null!=auxTelegramId)
 				{
-					using (DataStorage storage = new DataStorage(config))
-					{
-						mvarDummyUser = await storage.Users.Where(x => x.Id == userId).FirstOrDefaultAsync();
-
-	
-					}
+					Guid auxUserId = Guid.Parse(userId);
+					mvarDummyUserTelegramId = long.Parse(auxTelegramId);
+					AuthenticationClient auxClient = services.GetRequiredService<AuthenticationClient>();
+					mvarDummyUser = await auxClient.userInfo(auxUserId);
 				}
 			}
 			return null != mvarDummyUser;
