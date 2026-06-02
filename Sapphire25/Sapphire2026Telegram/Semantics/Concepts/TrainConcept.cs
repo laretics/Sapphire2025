@@ -39,20 +39,23 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 		internal async Task LocateTrains(string[] tokens)
 		{
 			AeneasClient auxCliente = mvarServiceProvider.GetRequiredService<AeneasClient>();
-			List<Sapphire2025Models.Aeneas.TrainModel> auxColTrains = new List<Sapphire2025Models.Aeneas.TrainModel>();
+			IEnumerable<Sapphire2025Models.Aeneas.TrainModel> auxColTrains = await auxCliente.trainsList();
 			foreach (Sapphire2025Models.Aeneas.TrainModel item in auxColTrains)
 			{
 				if(!mcolTrains.Contains(item))
 				{
-					foreach(string trainToken in item.nameCloud.Split(","))
+					if(!string.IsNullOrEmpty(item.nameCloud))
 					{
-						string pattern = "^" + Regex.Escape(trainToken).Replace("\\#", "[-_]?") + "$";
-						foreach (string token in tokens)
+						foreach (string trainToken in item.nameCloud.Split(","))
 						{
-							if(Regex.IsMatch(token,pattern,RegexOptions.IgnoreCase))
+							string pattern = "^" + Regex.Escape(trainToken).Replace("\\#", "[-_]?") + "$";
+							foreach (string token in tokens)
 							{
-								mcolTrains.Add(item);
-								break; //Sale del bucle. No quiero añadir dos veces un tren.
+								if (Regex.IsMatch(token, pattern, RegexOptions.IgnoreCase))
+								{
+									mcolTrains.Add(item);
+									break; //Sale del bucle. No quiero añadir dos veces un tren.
+								}
 							}
 						}
 					}
