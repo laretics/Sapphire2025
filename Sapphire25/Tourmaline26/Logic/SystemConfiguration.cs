@@ -12,6 +12,7 @@ namespace Tourmaline26.Logic
         public string Name { get; set; } = "Tren";
 		public DateTime LastRelease { get; set; } //Fecha de la última instalación de hardware.
 		public List<CameraInfo> Cameras { get; set; } = new List<CameraInfo>(); //Cámaras del tren.
+		public string ToniCruz { get; set; } = "right";
         public string SapphireUrl { get; set; } = "https://material.trensfm.com:5031"; //Url para hacer peticiones al servidor REST de Zafiro
 		public string MVBUrl { get; set; } = "http://172.16.20.11:8000/data";
 		public string TExperienceUrl { get; set; } = "http://172.16.20.12:5005/server"; //Servidor API REST de Tourmaline Experiencwe

@@ -13,28 +13,57 @@
     {
         <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="@mvarTourmaline.SessionConfig.ServiceMode">
             <div class="tesla-main">
-                <div class="tesla-left @panelClass">
-                    <TeslaLeftSection/>                    
-                </div>
-                <div class="tesla-right @panelClass">
-                    @if (View3DEnabled)
-                    {
-                        <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
-                    }
-                    <TeslaRightSection />
-                    @if (RightPanelVisible)
-                    {
-                        <SideMenu @ref="mvarSideMenu"/>
-                    }
-                    else if (AeneasPanelVisible)
-                    {
-                        <AeneasLog/>
-                    }
-                    else if(TimeNetPanelVisible)
-                    {
-                        <TimeNetFloatingView/>
-                    }
-                </div>
+                @if(mvarTourmaline.SystemConfig.ToniCruz=="right")
+                {
+                    <div class="tesla-left @panelClass">
+                        <TeslaLeftSection />
+                    </div>
+                    <div class="tesla-right @panelClass">
+                        @if (View3DEnabled)
+                        {
+                            <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
+                        }
+                        <TeslaRightSection />
+                        @if (RightPanelVisible)
+                        {
+                            <SideMenu @ref="mvarSideMenu" />
+                        }
+                        else if (AeneasPanelVisible)
+                        {
+                            <AeneasLog />
+                        }
+                        else if (TimeNetPanelVisible)
+                        {
+                            <TimeNetFloatingView />
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="tesla-right @panelClass">
+                        @if (View3DEnabled)
+                        {
+                            <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
+                        }
+                        <TeslaRightSection />
+                        @if (RightPanelVisible)
+                        {
+                            <SideMenu @ref="mvarSideMenu" />
+                        }
+                        else if (AeneasPanelVisible)
+                        {
+                            <AeneasLog />
+                        }
+                        else if (TimeNetPanelVisible)
+                        {
+                            <TimeNetFloatingView />
+                        }
+                    </div>
+                    <div class="tesla-left @panelClass">
+                        <TeslaLeftSection />
+                    </div>
+                }
+
                 @if (CameraViewMode)
                 {
                     <CamerasView></CamerasView>
@@ -50,27 +79,8 @@
         </div>
     }
     else
-            {
-            <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.95); z-index: 2000;" aria-modal="true" role="dialog">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content bg-dark text-light border-0 shadow-lg" style="background: transparent;">
-                        <div class="modal-body text-center">
-                            <div class="mb-4">
-                                <div class="spinner-border text-primary" style="width: 5rem; height: 5rem;" role="status">
-                                    <span class="visually-hidden">Cargando...</span>
-                                </div>
-                            </div>
-                            <h2 class="fw-bold mb-3" style="letter-spacing: 2px;">Iniciando sistema</h2>
-                            <p class="lead mb-4">Por favor, espera unos segundos.<br />Estamos preparando tu experiencia de viaje...</p>
-                            <div class="d-flex justify-content-center gap-3">
-                                <i class="bi bi-train-front fs-1 text-info"></i>
-                                <i class="bi bi-lightning-charge fs-1 text-warning"></i>
-                                <i class="bi bi-stars fs-1 text-primary"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    {
+        <SystemLoadingDialog/>        
     }
 </div>
 @code {
@@ -101,8 +111,10 @@
     private TeslaButton[] buttonData = Array.Empty<TeslaButton>();
     protected async override Task OnInitializedAsync()
     {
-        buttonData = new TeslaButton[]
+        if(mvarTourmaline.SystemConfig.ToniCruz=="right")
         {
+            buttonData = new TeslaButton[]
+            {
             new("Train",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Main Menu"),
             new("BlackSun","WhiteSun",true,EventCallback.Factory.Create(this, () => NightModeChanged()),"Night Mode"),
             new("CCTV",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()),"Cameras"),
@@ -113,9 +125,25 @@
             new("Bezier",null,true,null,"Time Net",true),
             new("Clipboard",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Damage Clipboard",true),
             new("KeyOff","Key",false,EventCallback.Factory.Create(this, () => OnLoginRequest()),"Login",true),
-        };
+            };
+        }
+        else
+        {
+            buttonData = new TeslaButton[]
+            {
+            new("KeyOff","Key",false,EventCallback.Factory.Create(this, () => OnLoginRequest()),"Login",true),
+            new("Clipboard",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Damage Clipboard",true),
+            new("Bezier",null,true,null,"Time Net",true),
+            new(""),
+            new(""),
+            new("3DOn","3DOff",true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "View3D"),
+            new("Microphone",null,true,null,"Microphone"),
+            new("CCTV",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()),"Cameras"),
+            new("BlackSun","WhiteSun",true,EventCallback.Factory.Create(this, () => NightModeChanged()),"Night Mode"),
+            new("Train",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Main Menu"),            
+            };
+        }
         mvarTourmaline.HMIUpdateRequested += auxHMIRefresh;
-
     }
     private bool AeneasPanelVisible
     {
