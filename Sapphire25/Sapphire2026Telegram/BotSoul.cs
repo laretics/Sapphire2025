@@ -1,17 +1,19 @@
 ﻿
+using Microsoft.EntityFrameworkCore;
+using Sapphire2025.Storage;
+using Sapphire2025Models;
+using Sapphire2025Models.Authentication;
 using Sapphire2026.Data;
+using Sapphire2026.Data.Models;
+using Sapphire2026Telegram;
 using System.Diagnostics;
+using System.Diagnostics.Eventing.Reader;
+using System.Threading.Tasks;
 using Telegram.Bot;
+using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Polling;
-using Microsoft.EntityFrameworkCore;
-using Sapphire2025Models;
-using Sapphire2026Telegram;
-using System.Threading.Tasks;
-using System.Diagnostics.Eventing.Reader;
-using Sapphire2026.Data.Models;
-using Sapphire2025.Storage;
+using TorchSharp.Modules;
 
 namespace Sapphire2026Telegram
 {
@@ -187,10 +189,10 @@ namespace Sapphire2026Telegram
 		{
 			if(await GetTelegramEnabled())
 			{
-				List<Sapphire2026.Data.Models.User> auxUsers = new List<Sapphire2026.Data.Models.User>();
-				List<Sapphire2026.Data.Models.User> auxOrigin = await auxAvailableUsers(priority);
+				List<UserModel> auxUsers = new List<UserModel>();
+				IEnumerable<UserModel> auxOrigin = await auxAvailableUsers(priority);
 				string[] auxFilters = filters.ToUpper().Split(',');
-				foreach (Sapphire2026.Data.Models.User candidato in auxOrigin)
+				foreach (UserModel candidato in auxOrigin)
 				{
 					if (candidato.TelegramEnabled || priority)
 					{
@@ -213,9 +215,9 @@ namespace Sapphire2026Telegram
 		{
 			if(await GetTelegramEnabled())
 			{
-				List<Sapphire2026.Data.Models.User> auxUsers = new List<Sapphire2026.Data.Models.User>();
-				List<Sapphire2026.Data.Models.User> auxOrigin = await auxAvailableUsers(priority);
-				foreach (Sapphire2026.Data.Models.User candidato in auxOrigin)
+				List<UserModel> auxUsers = new List<UserModel>();
+				IEnumerable<UserModel> auxOrigin = await auxAvailableUsers(priority);
+				foreach (UserModel candidato in auxOrigin)
 				{
 					if (priority || candidato.TelegramEnabled)
 					{
@@ -232,13 +234,14 @@ namespace Sapphire2026Telegram
 				await Broadcast(message, auxUsers, priority);
 			}
 		}
-		private async Task Broadcast(string message, List<Sapphire2026.Data.Models.User> users, bool includeOffline = false)
+		private async Task Broadcast(string message, List<UserModel> users, bool includeOffline = false)
 		{
 			//Llamamos a esta función desde algún sitio donde comprobemos que el bot de Telegram está activo.
 			if(await GetTelegramEnabled())
 			{
-				foreach (Sapphire2026.Data.Models.User usuario in users)
+				foreach (UserModel usuario in users)
 				{
+
 					if (0 != usuario.TelegramId && (includeOffline || usuario.TelegramEnabled))
 						await mvarBot.SendMessage(usuario.TelegramId, message);
 				}
@@ -287,15 +290,13 @@ namespace Sapphire2026Telegram
 			return string.Empty;
 		}
 
-		private async Task<List<Sapphire2026.Data.Models.User>> auxAvailableUsers(bool priority)
+		private async Task<IEnumerable<UserModel>> auxAvailableUsers(bool priority)
 		{
-			using (DataStorage almacen = new DataStorage(config))
-			{
-				if(priority)
-					return await almacen.Users.Where(x => 0 != x.TelegramId).ToListAsync();
-				else
-					return await almacen.Users.Where(x => x.TelegramEnabled && 0 != x.TelegramId).ToListAsync();
-			}				
+			using IServiceScope scope = services.CreateScope();
+			AuthenticationClient auxClient = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
+			IEnumerable<UserModel>? salida = await auxClient.telegramUsersList(priority);
+			if (null == salida) return new List<UserModel>();
+			return salida;
 		}
 
 		private Task HandleErrorAsync(ITelegramBotClient botClient,
@@ -321,12 +322,11 @@ namespace Sapphire2026Telegram
 		{
 			if(IsTelegramEnabled)
 			{
-				using (DataStorage almacen = new DataStorage(config))
-				{
-					string? auxCadena = await almacen.GetRegisterValue("Telegram", "false");
-					if (null != auxCadena)
-						return auxCadena.Equals("true");
-				}
+				using IServiceScope scope = services.CreateScope();
+				AuthenticationClient auxClient = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
+				string? auxCadena = await auxClient.GetRegisterValue("Telegram", "false", Common.TelegramToken);
+				if(null!=auxCadena)
+					return auxCadena.Equals("true");			
 			}
 			return false;
 		}

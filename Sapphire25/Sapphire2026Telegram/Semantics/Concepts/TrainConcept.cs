@@ -10,6 +10,7 @@ using System.Net.Http.Headers;
 using System.Net.Mime;
 using System.Text;
 using System.Text.RegularExpressions;
+using TorchSharp.Modules;
 
 namespace Sapphire2026Telegram.Semantics.Concepts
 {
@@ -38,7 +39,8 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 		/// <returns>Nada... la lista de trenes se carga en mcolTrains</returns>
 		internal async Task LocateTrains(string[] tokens)
 		{
-			AeneasClient auxCliente = mvarServiceProvider.GetRequiredService<AeneasClient>();
+			using IServiceScope scope = mvarServiceProvider.CreateScope();
+			AeneasClient auxCliente = scope.ServiceProvider.GetRequiredService<AeneasClient>();
 			IEnumerable<Sapphire2025Models.Aeneas.TrainModel> auxColTrains = await auxCliente.trainsList();
 			foreach (Sapphire2025Models.Aeneas.TrainModel item in auxColTrains)
 			{

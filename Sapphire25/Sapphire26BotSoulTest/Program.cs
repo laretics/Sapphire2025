@@ -35,6 +35,18 @@ IConfiguration auxConfig = auxServices.GetRequiredService<IConfiguration>();
 using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
 ILogger<BotSoul> auxLogger = loggerFactory.CreateLogger<BotSoul>();
 
+AuthenticationClient auxAuthenticationClient = auxServices.GetRequiredService<AuthenticationClient>();
+try{
+	if (await auxAuthenticationClient.ping())
+		auxLogger.LogInformation("Server connection verified");
+	else
+		auxLogger.LogError("Server connection error!");
+	}
+	catch (Exception ex)
+	{
+		auxLogger.LogCritical($"Could not connect to API rest server: {ex.Message}");
+	}
+
 BotSoul mvarBotSoul = new BotSoul(auxLogger, auxConfig,auxServices);
 
 bool active = true;

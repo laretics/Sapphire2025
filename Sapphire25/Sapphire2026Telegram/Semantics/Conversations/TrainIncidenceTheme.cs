@@ -1,23 +1,20 @@
 ﻿using Sapphire2025.Storage;
+using Sapphire2025Models;
 using Sapphire2025Models.Aeneas;
 using Sapphire2026.Data.Models;
 using Sapphire2026Telegram.Operative;
 using Sapphire2026Telegram.Semantics.Concepts;
 using Telegram.Bot;
+using TorchSharp.Modules;
 
 namespace Sapphire2026Telegram.Semantics.Conversations
 {
 	internal class TrainIncidenceTheme:BotTheme
 	{
 		protected TrainNoteConcept? mvarConcept { get; set; } = null;
-		private string mvarMessage { get; set; }
-		private IServiceCollection mcolServices;
 
-
-
-		internal TrainIncidenceTheme(BotTask parent, GeneralConcept concept, string message) : base(parent)
+		internal TrainIncidenceTheme(BotTask parent, GeneralConcept concept) : base(parent)
 		{
-			mvarMessage = message;
 			if (concept is TrainNoteConcept noteConcept)
 			{			
 				mvarConcept = noteConcept;
@@ -45,8 +42,9 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 			{
 				//Aquí se genera el parte...
 				Console.WriteLine("Realizando el proceso del parte de incidencia o anotación");
-				AeneasClient auxCliente = mvarParent.parent.services.GetRequiredService<AeneasClient>();
-				foreach (Sapphire2025Models.Aeneas.TrainModel tren in mvarConcept.mcolTrains)
+				using IServiceScope scope = mvarParent.parent.services.CreateScope();
+				AeneasClient auxCliente = scope.ServiceProvider.GetRequiredService<AeneasClient>();
+				foreach (TrainModel tren in mvarConcept.mcolTrains)
 					await OpenNoteToTrain(tren,auxCliente);
 
 				this.endTheme();
@@ -57,18 +55,22 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 		private async Task OpenNoteToTrain(TrainModel train, AeneasClient client)
 		{
 			//TODO: Meter el código de cliente aquí.
+			System.Diagnostics.Debug.Assert(null != mvarConcept);
+			System.Diagnostics.Debug.Assert(null != mvarParent.user && null != mvarParent.user.mvarUser);
 			NoteModel auxNota = new NoteModel();
 			auxNota.parent = train.id;
-			
-
-
-			//if (null != mvarConcept.tr)
-
-
-				
-			//await auxCliente.addNote(auxNota);
-			//if (1 == auxNota.Type)
-				//await auxCliente.openFailReport(auxNota.tr)
+			auxNota.TimeStamp = DateTime.UtcNow;
+			auxNota.Text = mvarConcept.Sympthoms;
+			auxNota.UserId = mvarParent.user.mvarUser.guid;
+			auxNota.SessionToken = Common.TelegramToken;
+			auxNota.Type = (byte)(mvarConcept.Incidence ? 1 : 0);
+			using IServiceScope scope = mvarParent.parent.services.CreateScope();
+			AeneasClient auxCliente = scope.ServiceProvider.GetRequiredService<AeneasClient>();
+			await auxCliente.addNote(auxNota);
+			if (mvarConcept.Incidence)
+			{
+				await auxCliente.openFailReport(train);
+			}						
 		}
 		internal async override Task InternalResponseFromBot(ITelegramBotClient client)
 		{

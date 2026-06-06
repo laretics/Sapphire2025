@@ -76,6 +76,34 @@ namespace Sapphire2025.Storage
 		}
 		public async Task<bool> SetRegisterValue(string key, int value)
 		{ return await SetRegisterValue(key, value.ToString()); }
+
+		public async Task<string?> GetRegisterValue(string key, string defaultValue, Guid sessionToken)
+        {
+			CommandModel request = new CommandModel();
+			request.CommandId = key;
+			request.Parameter = defaultValue;
+			request.SessionToken = sessionToken;
+			string jsonString = JsonSerializer.Serialize(request);
+			HttpResponseMessage respuesta = await sendPutRequest("getregistervalue", jsonString);
+
+			if (!respuesta.IsSuccessStatusCode)
+				return defaultValue;
+
+			var content = await respuesta.Content.ReadAsStringAsync();
+			if (string.IsNullOrWhiteSpace(content))
+				return defaultValue;
+
+			try
+			{
+				// Si el backend devuelve un string plano, simplemente devuélvelo
+				return content;
+			}
+			catch
+			{
+				return defaultValue;
+			}
+		}
+
 		public async Task<string?> GetRegisterValue(string key, string defaultValue = "")
 		{
 			Guid auxToken = await mvarIntStorage.getToken();
@@ -164,12 +192,31 @@ namespace Sapphire2025.Storage
             return await mvarIntStorage.GetCurrentUser();
 		}
 
-        /// <summary>
-        /// Preguntamos al servidor cuándo fue el último cambio de una tabla concreta
-        /// </summary>
-        /// <param name="tableKey">Código de la tabla que preguntamos</param>
-        /// <returns>Fecha del último cambio. Si no se lee nada, la fecha será ahora</returns>
-        public async Task<DateTime> LastTableServerUpdate(Common.CacheTableKey tableKey)
+        public async Task<bool> ping()
+        {
+            try
+            {
+                string uri = composeUri("ping");
+                HttpResponseMessage respuesta = await sendGetRequest(uri);
+                if(respuesta.IsSuccessStatusCode)
+                {
+                    string contenido = await respuesta.Content.ReadAsStringAsync();
+                    return contenido.Trim().Equals("Pong", StringComparison.OrdinalIgnoreCase);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error en ping: {ex.Message}.");
+            }
+            return false;
+        }
+
+		/// <summary>
+		/// Preguntamos al servidor cuándo fue el último cambio de una tabla concreta
+		/// </summary>
+		/// <param name="tableKey">Código de la tabla que preguntamos</param>
+		/// <returns>Fecha del último cambio. Si no se lee nada, la fecha será ahora</returns>
+		public async Task<DateTime> LastTableServerUpdate(Common.CacheTableKey tableKey)
         {
             Guid auxToken = await mvarIntStorage.getToken();
 			LastUpdateCacheTableModel question = new LastUpdateCacheTableModel();
@@ -199,6 +246,19 @@ namespace Sapphire2025.Storage
 
 			return await respuesta.Content.ReadFromJsonAsync<IEnumerable<UserModel>?>();
         }
+
+        public async Task<IEnumerable<UserModel>?> telegramUsersList(bool priority)
+        {
+            TelegramUsersRequestModel question = new TelegramUsersRequestModel();
+            question.SessionToken = Common.TelegramToken;
+            question.Priority = priority;
+            string jsonString = JsonSerializer.Serialize(question);
+
+            HttpResponseMessage respuesta = await sendPutRequest("telegramuserslist", jsonString);
+
+            return await respuesta.Content.ReadFromJsonAsync<IEnumerable<UserModel>?>();
+        }
+
         /// <summary>
         /// Devuelve la lista de usuarios básicos.
         /// </summary>
@@ -224,16 +284,7 @@ namespace Sapphire2025.Storage
 
             return await respuesta.Content.ReadFromJsonAsync<ExtendedUserModel?>();
         }
-        public async Task<ExtendedUserModel?> userByTelegramId(long telegramId)
-        {
-            Guid auxToken = await mvarIntStorage.getToken();
-            UserInfoRequestModel peticion = new UserInfoRequestModel(auxToken, telegramId);
-            string jsonString = JsonSerializer.Serialize(peticion);
 
-            HttpResponseMessage respuesta = await sendPutRequest("userinfo", jsonString);
-
-            return await respuesta.Content.ReadFromJsonAsync<ExtendedUserModel?>();
-        }
 
         public async Task<bool> changeRoles(string tokenId, string userId, string enroles, string deroles)
         {
@@ -294,6 +345,17 @@ namespace Sapphire2025.Storage
             }
             return false;                
         }
+
+		public async Task<ExtendedUserModel?> userByTelegramId(long telegramId)
+		{
+			UserInfoRequestModel peticion = new UserInfoRequestModel(Common.TelegramToken, telegramId);
+			string jsonString = JsonSerializer.Serialize(peticion);
+			Console.WriteLine($"userByTelegramId jsonString: {jsonString}.");
+			HttpResponseMessage respuesta = await sendPutRequest("userinfo", jsonString);
+
+			return await respuesta.Content.ReadFromJsonAsync<ExtendedUserModel?>();
+		}
+
 
 
 		/// <summary>

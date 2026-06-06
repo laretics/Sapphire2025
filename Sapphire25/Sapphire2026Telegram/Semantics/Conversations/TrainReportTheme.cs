@@ -14,7 +14,8 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 		{
 			TextResponse respuesta = new TextResponse();
 			respuesta.addText("Ahora estaría mostrando un informe de estado de los trenes en la base de datos.");
-			await respuesta.Send(client, mvarParent.user);		
+			await respuesta.Send(client, mvarParent.user);
+			this.endTheme();
 		}
 
 	}

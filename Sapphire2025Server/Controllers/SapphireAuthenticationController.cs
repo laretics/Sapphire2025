@@ -135,7 +135,7 @@ namespace Sapphire2025Server.Controllers
 			{
 				using (DataStorage almacen = new DataStorage(mvarConfig))
 				{
-					await almacen.SetRegisterValue(Guid.Empty, request.CommandId, request.Parameter);
+					await almacen.SetRegisterValue(request.CommandId, request.Parameter);
 					return true;
 				}
 			}
@@ -148,7 +148,7 @@ namespace Sapphire2025Server.Controllers
 			{
 				using (DataStorage almacen = new DataStorage(mvarConfig))
 				{
-					string? salida = await almacen.GetRegisterValue(Guid.Empty, request.CommandId, "");
+					string? salida = await almacen.GetRegisterValue(request.CommandId, "");
 					return salida;
 				}
 			}
@@ -380,9 +380,14 @@ namespace Sapphire2025Server.Controllers
 				hasPermission = true;
 
 			//El propio usuario puede acceder a sus propios datos
-			ActiveSessionModel? auxSession = await retrieveSession(request.SessionToken);
-			if (null != auxSession && auxSession.UserId.Equals(request.UserId.ToString()))
+			if (request.SessionToken.Equals(Common.TelegramToken))
 				hasPermission = true;
+			else
+			{
+				ActiveSessionModel? auxSession = await retrieveSession(request.SessionToken);
+				if (null != auxSession && auxSession.UserId.Equals(request.UserId.ToString()))
+					hasPermission = true;
+			}
 
 			if (hasPermission)
 			{
@@ -457,6 +462,29 @@ namespace Sapphire2025Server.Controllers
 				}
 			}
 			return false;
+		}
+		[HttpPut("telegramuserslist")]
+		public async Task<IEnumerable<UserModel>> TelegramUsersList(TelegramUsersRequestModel request)
+		{
+			List<UserModel> salida = new List<UserModel>();
+			if (null != request)
+			{
+				if (await hasBasicPermission(request, Common.UserRole.Root))
+				{
+					using (DataStorage almacen = new DataStorage(mvarConfig))
+					{
+						IEnumerable<User> entrada;
+						if (request.Priority)
+							entrada = await almacen.Users.Where(x => 0 != x.TelegramId).ToListAsync();
+						else
+							entrada = await almacen.Users.Where(x => x.TelegramEnabled && 0 != x.TelegramId).ToListAsync();
+
+						foreach (User user in entrada)
+							salida.Add(await modeloFromUser(user, mvarConfig));
+					}
+				}
+			}
+			return salida;
 		}
 
 		/// <summary>
@@ -772,6 +800,8 @@ namespace Sapphire2025Server.Controllers
 			salida.CredentialKey = await userIcon(user,config);
 			salida.TelegramEnabled = user.TelegramEnabled;
 			salida.HasTelegramId = (0!=user.TelegramId);
+			salida.TelegramId = user.TelegramId;
+			salida.TelegramRules = user.TelegramRules??"";
 			return salida;
 		}
 		private async Task<UserModelBase> modeloFromBaseUser(User user)

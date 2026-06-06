@@ -26,7 +26,8 @@ namespace Sapphire2025Models.Authentication
 		public string? Name { get; set; }
 		public string? PhoneNumber { get; set; }
 		public string? ShortPhoneNumber { get; set; }//Extensión.
-
+		public long TelegramId{ get; set; }
+		public string TelegramRules{ get; set; }
 		public byte CredentialKey { get; set; } //Clave de 8 bits con 8 posibles activaciones para mostrar u ocultar componentes en la parte del cliente
 	}
 	public class UserModel:UserModelBase

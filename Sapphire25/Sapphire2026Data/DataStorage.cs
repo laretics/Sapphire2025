@@ -105,12 +105,9 @@ namespace Sapphire2026.Data
 			if(null == auxReg)
 			{
 				//Si esta clave no existe en el registro la creamos con el valor por defecto.
-				auxReg = new Register();
-				auxReg.Key = key;
-				auxReg.Value = defaultValue;
-				Register.Add(auxReg);
-				await SaveChangesAsync();
-			}
+				await SetRegisterValue(key, defaultValue);
+				return defaultValue;
+			}		
 			return auxReg.Value;
 		}
 		public async Task SetRegisterValue(string key, string value)

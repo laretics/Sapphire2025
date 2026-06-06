@@ -101,6 +101,7 @@ namespace Sapphire2025Server.Controllers
 		{
 			if (Guid.Empty.Equals(tokenId)) return false;
 			if (VIP_TOKEN_GUID.Equals(tokenId)) return true;
+			if (Common.TelegramToken.Equals(tokenId)) return true; //Petición desde Telegram.
 
 			ActiveSessionModel? auxSession = await retrieveSession(tokenId);
 			if (null != auxSession)

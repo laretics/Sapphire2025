@@ -8,9 +8,11 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public const string SapphireSoftwareVersion = "26.06.02";
+		public const string SapphireSoftwareVersion = "26.06.06";
 		public const string LastChangesText = "Vista de tiempo Ingeniería|Bot de Telegram interactivo";
 		public const string VersionColor = "#40A0A0"; //Color de la versión para diferenciar una de otra.
+
+		public static readonly Guid TelegramToken = new Guid("3a7f9c2e-8b4d-4f1a-9e6c-7d2b5a8f3e1c"); //Token de sesión sólo para operaciones desde Telegram.
 
 		/// <summary>
 		/// Estados posibles en los que puede encontrarse un tren

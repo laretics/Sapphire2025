@@ -31,7 +31,8 @@ namespace Sapphire2026Telegram
 		}
 		internal async Task Initialize()
 		{
-			AuthenticationClient auxClient = parent.services.GetRequiredService<AuthenticationClient>();
+			using IServiceScope scope = parent.services.CreateScope();
+			AuthenticationClient auxClient = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
 			await user.Init(auxClient);
 			await theme.Preprocess();
 		}
@@ -41,7 +42,8 @@ namespace Sapphire2026Telegram
 		/// </summary>
 		private async Task VerifyPairing()
 		{
-			AuthenticationClient auxClient = parent.services.GetRequiredService<AuthenticationClient>();
+			using IServiceScope scope = parent.services.CreateScope();
+			AuthenticationClient auxClient = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
 			await mvarUser.Init(auxClient);
 
 			//Si ya no está emparejado, eliminamos el resto de la conversación.

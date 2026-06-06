@@ -52,14 +52,14 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 					TrainNoteConcept auxNota = 
 						new TrainNoteConcept(mvarParent.mvarConfig,mvarParent.parent.services, true);
 					await auxNota.AddText(text);
-					return new TrainIncidenceTheme(mvarParent, auxNota, text);
+					return new TrainIncidenceTheme(mvarParent, auxNota);
 
 
 				case "Nota":
 					TrainNoteConcept auxNota2 = 
 						new TrainNoteConcept(mvarParent.mvarConfig,mvarParent.parent.services , false);
 					await auxNota2.AddText(text);
-					return new TrainIncidenceTheme(mvarParent, auxNota2, text);
+					return new TrainIncidenceTheme(mvarParent, auxNota2);
 
 				case "Disponibles": //Tengo que hacer un concepto sólo para ver el material disponible.
 				case "EstadoTren": //Tengo que hacer un concepto sólo para ver el estado de un tren.
