@@ -19,14 +19,18 @@
                 IsNumericByDefault="true"
                 />
         }
-        @if(null!=Tourmaline.SessionConfig && null!=Tourmaline.SessionConfig.TNEnvironment && null!=Tourmaline.SessionConfig.TNEnvironment.Circulation)
+        @if(null!=Tourmaline.SessionConfig)
         {
-            <FloatTrajectScheme OnTerminateCirculationRequest="TerminateCirculation"/>
+            @if (null != Tourmaline.SessionConfig.TNEnvironment && 
+            null != Tourmaline.SessionConfig.TNEnvironment.Circulation)
+            {
+                <FloatTrajectScheme OnTerminateCirculationRequest="TerminateCirculation" />
+            }
+            @if (null != Tourmaline.SessionConfig.LinearLocation.Axis)
+            {
+                <FloatVehicleLocation />
+            }
         }
-        @if(null!=Tourmaline.SessionConfig && null!=Tourmaline.SessionConfig.LinearLocation.Axis)
-        {
-            <FloatVehicleLocation />
-        }        
         </CascadingValue>           
     </CascadingValue>
 @code {

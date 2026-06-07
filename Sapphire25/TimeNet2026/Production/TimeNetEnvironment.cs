@@ -17,17 +17,50 @@ namespace TimeNet2026.Production
     /// </summary>
     public class TimeNetEnvironment
     {
+        private long mvarPreviousPkLocation = -1;
+        private long mvarPk;
         public OnyxStorage OnyxStorage { get; private set; }
         public TopoStorage? TopoStorage { get; set; }
 		public Rauta? Rauta { get; set; } //Almacén donde están los planes
 		public Axis? Axis { get; set; } //El eje se necesita para los nodos de los árboles.
-        public long PK { get; set; } //Punto kilométrico donde tengo ahora ubicado al tren.
-		public Asimilation? ViewAsimilation { get; set; } //Asimilación que marca la vista de la malla.
+        public long PK //Punto kilométrico donde tengo ahora ubicado al tren.
+        { 
+            get => mvarPk; 
+            set
+            {
+                mvarPk = value;
+                if (Math.Abs(mvarPk - mvarPreviousPkLocation) > 500)
+                {
+                    //Actualiza el sentido de la marcha en función de la lectura del GPS
+                    PKIncreasing = (mvarPreviousPkLocation < mvarPk);
+                    mvarPreviousPkLocation = mvarPk;
+                }
+            }
+        } 
+        public bool PKIncreasing { get; set; } = true; //Orientación de la marcha del tren (Increasing avanza hacia un PK mayor)
+        public Asimilation? ViewAsimilation { get; set; } //Asimilación que marca la vista de la malla.
         public Asimilation? Asimilation { get; set; }//Asimilación a mostrar o asimilación vigente.        
         public Plan? Plan { get; set; } //Plan donde están los trenes que hay que visualizar.
         public CirculationBlock? CirculationBlock { get; set; } //Bloque de circulaciones que se está editando.
         internal Circulation? mvarCirculation;
-		public Circulation? Circulation //Circulación que se está editando.
+		//Buscamos una asimilación cualquiera que contenga el eje en el que estamos.
+        //Necesito esta función para mostrar la vista de itinerario incluso cuando 
+        //todavía no haya introducido la misión.
+        public void SetAsimilationByAxis()
+        {
+            if(null!=Axis && null!=TopoStorage)
+            {
+                foreach(Asimilation auxAsimila in TopoStorage.ColAsimilations.Values)
+                {
+                    if (auxAsimila.containsAxis(Axis, PK) >= 0)
+                    {
+                        Asimilation = auxAsimila;
+                        break;
+                    }                        
+                }
+            }
+        }        
+        public Circulation? Circulation //Circulación que se está editando.
 		{
             get => mvarCirculation;
             set

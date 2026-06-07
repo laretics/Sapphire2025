@@ -1,6 +1,7 @@
 ﻿using Sapphire2025Models.Authentication;
 using TimeNet2026.Production;
 using TimeNet2026.Topo;
+using Tourmaline26.Services.OpenMeteo;
 namespace Tourmaline26.Logic
 {
     /// <summary>
@@ -15,6 +16,7 @@ namespace Tourmaline26.Logic
         public bool MVBEnabled { get; set; } = true; //Estado del bus MVB.
         public bool MVBDummy{ get; set;  } = false; //Emulación del bus MVB para probar interface.                                                     
         public MVBData? CurrentMVBData { get; set; }//Último paquete de datos recibido del bus MVB.
+        public WeatherValue? CurrentWeather { get; set; } //Estado meteorológico actual
         public string MVBError { get; set; } = ""; //Mensaje de error relacionado con el bus MVB, si lo hubiera.
         public DateTime MVBLastUpdate { get; set; } = DateTime.MinValue; //Última vez que se recibió una actualización del bus MVB.
         public bool GPSEnabled { get; set; } = true; //Módulo de posicionamiento
@@ -32,8 +34,7 @@ namespace Tourmaline26.Logic
         public bool AutoCameras { get; set; } = true; //Indica si las cámaras se activan automáticamente en las paradas con habilitación de puertas.
         public bool ManualCameras { get; set; } = true; //Indica si el botón de cámaras está habilitado.
         public bool PassengerCaretOnServiceMode { get; set; } = true; //Muestra la carta de ajuste en los monitores de viajeros cuando está en modo servicio.
-        public bool PassengerScreenOnHMI{  get; set; }  = false; //Muestra el monitor de viajeros en el HMI (para ajustar el sistema con una sola pantalla)
-        public float Temperature { get; set; } = 20.0f; //Temperatura interior del tren, leída de sensores o MVB
+        public bool PassengerScreenOnHMI{  get; set; }  = false; //Muestra el monitor de viajeros en el HMI (para ajustar el sistema con una sola pantalla)        
         public bool SpeakersAnnouncing { get; set; } = false; //Los altavoces de sala están haciendo un anuncio a los viajeros.
 
         #region Telemetria
@@ -49,7 +50,7 @@ namespace Tourmaline26.Logic
 
                 return 0; //Cuando todo lo demás falla, devuelve cero.
             }
-        } 
+        }        
         public int CurrentLimitSpeed { get; set; } = 100; //Velocidad máxima del tren en este tramo
         public int CurrentNeutralSpeed { get; set; } = 0; //Velocidad objetivo calculada por ónice
         public LinearLocation LinearLocation { get; set; } = new LinearLocation(); //Ubicación lineal de este tren (si la puedo sacar)

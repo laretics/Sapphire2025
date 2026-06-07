@@ -18,6 +18,7 @@ namespace Tourmaline26.Services
         private readonly GPSService mvarGPSService;
         private readonly MVBService mvarMVBService;
         private readonly LEDDisplayService mvarLedService;
+        private readonly MeteoService mvarMeteoService;
         /// <summary>
         /// Flag para indicar al sistema que han terminado de cargar los datos.
         /// </summary>        
@@ -30,6 +31,7 @@ namespace Tourmaline26.Services
         private Task<bool>? mvarInternetTask;
         private Task<bool>? mvarLocationTask;
         private Task<bool>? mvarLedPanelsTask;
+        private Task<bool>? mvarMeteoTask; //Proceso de meteorología.
 
         public TourmalineBackground(
             ILogger<TourmalineBackground> logger,
@@ -37,7 +39,8 @@ namespace Tourmaline26.Services
             TourmalineExperienceService experienceService,
             MVBService mvbService,
             GPSService gpsService,
-            LEDDisplayService ledService)
+            LEDDisplayService ledService,
+            MeteoService meteoService)
         {
             mvarLogger = logger;
             mvarTourmaline = tourmalineService;
@@ -45,6 +48,7 @@ namespace Tourmaline26.Services
             mvarMVBService = mvbService;
             mvarGPSService = gpsService;
             mvarLedService = ledService;
+            mvarMeteoService = meteoService;
         }
         /// <summary>
         /// Actualización express de los paneles HMI.
@@ -66,6 +70,7 @@ namespace Tourmaline26.Services
                 mvarTourmaline.SessionConfig.Initialized = await mvarTourmaline.EnsureInitialized();
                 HMIUpdateRequested?.Invoke(this, EventArgs.Empty); // Actualizamos HMI cuando termina
             });
+            DateTime auxLastMeteoCheck = DateTime.Today; //Momento de la última comprobación de la meteorología
             mvarLogger.LogInformation("TourmalineBackground iniciado.");
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -116,6 +121,14 @@ namespace Tourmaline26.Services
 
                     if(null==mvarLocationTask)
                         mvarLocationTask = PoolLinearLocation();
+                    
+                    if (null != mvarMeteoTask && mvarMeteoTask.IsCompleted)
+                        mvarMeteoTask = null;
+                    if (null == mvarMeteoTask && auxLastMeteoCheck < DateTime.Now)
+                    {
+                        mvarMeteoTask = PoolMeteo();
+                        auxLastMeteoCheck = DateTime.Now.AddSeconds(30);
+                    }                        
                 }
                 catch (Exception ex)
                 {
@@ -145,6 +158,21 @@ namespace Tourmaline26.Services
                 cycleCount++;
             }
             mvarLogger.LogInformation("TourmalineBackground detenido.");
+        }
+        private async Task<bool> PoolMeteo()
+        {
+            if (mvarTourmaline.SessionConfig.InternetEnabled)
+            {
+                try
+                {
+                    return await mvarMeteoService.ReadLoop();
+                }
+                catch (Exception ex)
+                {
+                    mvarLogger.LogError(ex, "Error al obtener datos de meteorología. {0}", ex.Message);
+                }
+            }
+            return false;
         }
         private async Task<bool> PoolGPS()
         {
@@ -214,14 +242,27 @@ namespace Tourmaline26.Services
             if(null==auxEnvironment.Circulation)
             {
                 //Localización por ejes cercanos.
-                //Axis? auxAxis = auxEnvironment.TopoStorage.ColAxis.ne
-                return mvarTourmaline.SessionConfig.LinearLocation.TryLocateBySatellite(mvarTourmaline.SessionConfig.CurrentGPSData.GeoLocation, auxEnvironment.TopoStorage);
+                //Buscamos el eje en el que estamos y obtenemos cualquiera de las asimilaciones.
+                if (mvarTourmaline.SessionConfig.LinearLocation.TryLocateBySatellite(mvarTourmaline.SessionConfig.CurrentGPSData.GeoLocation, auxEnvironment.TopoStorage))
+                {
+                    auxEnvironment.PK = mvarTourmaline.SessionConfig.LinearLocation.PKRef;
+                    if(null==auxEnvironment.Asimilation)
+                    {
+                        auxEnvironment.SetAsimilationByAxis();
+                    }
+                    return true;
+                }
             }
             else
             {
                 //TODO: Modificar esto para poner el eje en el que estamos.
-                return mvarTourmaline.SessionConfig.LinearLocation.TryLocateBySatellite(mvarTourmaline.SessionConfig.CurrentGPSData.GeoLocation, auxEnvironment.TopoStorage);
+                if( mvarTourmaline.SessionConfig.LinearLocation.TryLocateBySatellite(mvarTourmaline.SessionConfig.CurrentGPSData.GeoLocation, auxEnvironment.TopoStorage))
+                {
+                    auxEnvironment.PK = mvarTourmaline.SessionConfig.LinearLocation.PKRef;
+
+                }
             }
+            return false;
         }
         private async Task<MVB8100Data?> PoolMVB()
         {
@@ -277,6 +318,8 @@ namespace Tourmaline26.Services
             }
             return false;
         }
+
+
 
         /// <summary>
         /// Actualiza los teleindicadores LED

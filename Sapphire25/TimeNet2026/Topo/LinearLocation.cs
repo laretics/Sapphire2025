@@ -15,12 +15,12 @@ namespace TimeNet2026.Topo
 	/// </summary>
 	public class LinearLocation
 	{
+		
 		public Axis? Axis { get; internal set; } = null; //Eje en el que estamos.
 		public Asimilation? Asimilation { get; set; } = null; //Si estamos siguiendo a un tren, sólo trabajamos con sus ejes
 		public long PKRef { get; internal set; } = -1; //Distancia en metros al origen del eje.
-		public LinearLocationSource Source { get; internal set; } //Procedencia del último dato actualizado.
-
-		public DateTime LastManualInput { get; internal set; } = DateTime.MinValue; //Antigüedad del último dato introducido a mano.
+		public LinearLocationSource Source { get; internal set; } //Procedencia del último dato actualizado.        
+        public DateTime LastManualInput { get; internal set; } = DateTime.MinValue; //Antigüedad del último dato introducido a mano.
 		public DateTime LastOdometerUpdate{ get;internal set; } = DateTime.MinValue; //Antigüedad del último dato actualizado por odómetro.
 		public DateTime LastSatelliteInput{ get; internal set; } = DateTime.MinValue; //Antigüedad de la última lectura por satélite.
 
@@ -34,7 +34,6 @@ namespace TimeNet2026.Topo
 			else
 				auxAxis = Asimilation.axisByGeoLocation(geo);
 				
-
 			if(null!=auxAxis && null!=auxAxis.Topology)
 			{
 				long auxSalida = auxAxis.Topology.getPk(geo);
@@ -44,6 +43,7 @@ namespace TimeNet2026.Topo
 					Axis = auxAxis;
 					Source = LinearLocationSource.Satellite;
 					LastSatelliteInput = DateTime.Now;
+					return true;
 				}
 			}
 			return false;

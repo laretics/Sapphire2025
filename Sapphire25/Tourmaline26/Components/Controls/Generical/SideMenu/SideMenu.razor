@@ -40,6 +40,9 @@
                         case "3de":
                             <SideOptionTourmalineExperience/>
                             break;
+                        case "cre":
+                            <SideOptionCredits/>
+                            break;
                         default:
                             <div></div>
                             break;
@@ -64,6 +67,7 @@
     new MenuOptionModel("mvb","MVB",@<ColorIcon Name="MVB" Color="red" Size="64" />,true),
     new MenuOptionModel("gps","GPS",@<ColorIcon Name="Satellite" Color="red" Size="64" />,true),
     new MenuOptionModel("3de","Experience",@<ColorIcon Name="3DOn" Color="red" Size="64" />,true),
+    new MenuOptionModel("cre","Nosotros",@<ColorIcon Name="Team" Color="magenta" Size="64" />,true),
     new MenuOptionModel("info","Información",@<ColorIcon Name="Info" Size="64" />),
     }.ToList();
     protected override void OnInitialized()

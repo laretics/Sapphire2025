@@ -1,4 +1,5 @@
 ﻿.floating-location-panel {
+	/* NO TOCO NADA - tus estilos originales se mantienen */
 	position: absolute;
 	top: 40px;
 	left: 460px;
@@ -9,34 +10,101 @@
 	padding: 12px;
 	z-index: 100;
 }
+
+.content-wrapper {
+	height: 100%;
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	position: relative;
+}
+
+.main-content {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	max-width: 100%;
+}
+
+/* Icono */
+.location-icon {
+	font-size: 1.32rem;
+	flex-shrink: 0;
+	color: var(--accent-color, #3b82f6);
+	margin-top: -2px;
+}
+
+/* Contenedor PK + Nombre */
+.pk-and-name {
+	flex: 1;
+	min-width: 0;
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+
+/* PK Row */
 .pk-row {
 	display: flex;
 	align-items: baseline;
-	justify-content: center;
-	font-family: monospace;
+	justify-content: flex-start;
+	font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+	line-height: 1;
+	z-index: 2; /* por encima del nombre */
 }
 
 .pk-km {
-	font-size: 2em;
-	font-weight: bold;
+	font-size: 1.68rem;
+	font-weight: 700;
+	color: #1f2937;
 }
 
 .pk-plus {
-	font-size: 1.5em;
-	margin: 0 0.1em;
+	font-size: 1.35rem;
+	margin: 0 3px 0 2px;
+	font-weight: 600;
+	color: var(--accent-color, #3b82f6);
 }
 
 .pk-hm {
-	font-size: 1em;
-	font-weight: normal;
+	font-size: 1.08rem;
+	font-weight: 500;
+	color: #4b5563;
 }
 
+/* Nombre del eje - SOLAPAMIENTO */
 .axis-name {
+	position: absolute;
+	left: 17px;
+	right: 0;
+	bottom: 14px; /* sube un poco para solapar */
 	text-align: center;
-	font-size: 0.9em;
-	color: #888;
-	margin-top: 0.2em;
+	font-size: 0.81rem;
+	font-weight: 500;
+	color: #64748b;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	z-index: 1; /* detrás del número */
+	padding: 0 8px;
+	background: inherit; /* para que no se vea raro el solapamiento */
+	opacity: 0.92;
+}
+
+/* Modo Noche */
+.floating-location-panel.night .pk-km {
+	color: #a65030;
+}
+
+.floating-location-panel.night .pk-hm {
+	color: #835030;
+}
+
+.floating-location-panel.night .axis-name {
+	color: #944040;
+	opacity: 0.95;
 }

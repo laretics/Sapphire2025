@@ -65,6 +65,17 @@
 	text-align: right;
 	z-index: 2;
 }
+.current-speed {
+	position: absolute;
+	right: 4vw;
+	top: 22vh; /* Ajusta este valor según la separación que desees respecto a la hora */
+	font-size: clamp(2vw, 3vw, 4vw);
+	font-weight: 500;
+	color: #fff;
+	text-align: right;
+	z-index: 2;
+}
+
 
 /* ==================== PANEL BODY ==================== */
 
