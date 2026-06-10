@@ -49,9 +49,15 @@ namespace Tourmaline26.Services
             }
         }
 
-
-
-
-
+        public async Task Print(string message, bool scroll = true, Alignment alignment = Alignment.Center)
+        {
+            foreach (DeviceMapped auxDevice in mcolPanels)
+                await mvarController.Print(auxDevice.Address, message, scroll, alignment);
+        }
+        public async Task Cls()
+        {
+            foreach (DeviceMapped auxDevice in mcolPanels)
+                await mvarController.Cls(auxDevice.Address);
+        }
     }
 }

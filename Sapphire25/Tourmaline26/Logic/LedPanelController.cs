@@ -1,4 +1,5 @@
 ﻿using BlazorBootstrap;
+using Microsoft.AspNetCore.Components.Routing;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -137,6 +138,15 @@ Temperatura\s*\(.C\)\s*<!--STEMP-->\s*""(?<temp>[^""]*)""";
                 await ClearOneAsync(address);
                 await ReadStatus(address);
             }
+        }
+        public async Task Print(IPAddress address, string message, bool scroll = false, Alignment alignment = Alignment.Center)
+        {
+            await ClearAsync(address);
+            await PushMessageAsync(address, message, scroll,alignment);
+        }
+        public async Task Cls(IPAddress address)
+        {
+            await ClearAsync(address);
         }
         internal async Task<HttpResponseMessage> ClearOneAsync(IPAddress address)
         {

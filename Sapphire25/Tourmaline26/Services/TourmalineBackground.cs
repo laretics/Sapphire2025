@@ -121,6 +121,12 @@ namespace Tourmaline26.Services
 
                     if(null==mvarLocationTask)
                         mvarLocationTask = PoolLinearLocation();
+
+                    if (null != mvarLedPanelsTask && mvarLedPanelsTask.IsCompleted)
+                        mvarLedPanelsTask = null;
+
+                    if (null == mvarLedPanelsTask)
+                        mvarLedPanelsTask = PoolLedPanels();
                     
                     if (null != mvarMeteoTask && mvarMeteoTask.IsCompleted)
                         mvarMeteoTask = null;
@@ -159,6 +165,7 @@ namespace Tourmaline26.Services
             }
             mvarLogger.LogInformation("TourmalineBackground detenido.");
         }
+
         private async Task<bool> PoolMeteo()
         {
             if (mvarTourmaline.SessionConfig.InternetEnabled)
@@ -326,20 +333,30 @@ namespace Tourmaline26.Services
         /// </summary>
         /// <returns></returns>
         private async Task<bool> PoolLedPanels()
-        {
+        {           
             if(mvarTourmaline.SessionConfig.TeleindicatorsEnabled && mvarTourmaline.SessionConfig.PASEnabled)
             {
-                
                 //Prioridad de los avisos:
                 //* 1 Mensaje emergente de Armandito
                 //* 2 Próxima parada
-                //* 3 Destino
-                //* 4 Hora y temperatura
 
+                //* 3 Destino
+
+                //* 4 Hora y temperatura
+                string cadenaTemp = "";
+                string cadenaSpeed = "";
+                if (null != mvarTourmaline.SessionConfig.CurrentWeather)
+                    cadenaTemp = $"{mvarTourmaline.SessionConfig.CurrentWeather.Temperature2m}ºC";
+                if(mvarTourmaline.SessionConfig.CurrentSpeed>40)
+                {
+                    cadenaSpeed = $"{mvarTourmaline.SessionConfig.CurrentSpeed}Km/h";
+                }
+                string auxMensaje = $"{DateTime.Now:t}  {cadenaTemp}  {cadenaSpeed}";
+                await mvarLedService.Print(auxMensaje, false);
             }
             else
             {
-                await mvarLedService.ClearAsync();
+                await mvarLedService.Cls();    
             }
             return false;
         }        
