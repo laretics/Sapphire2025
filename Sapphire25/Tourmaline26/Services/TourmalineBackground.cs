@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using TimeNet2026.Production;
+using TimeNet2026.Timed;
 using Tourmaline26.Logic;
 using Tourmaline26.Services.TourmalineExperience;
 
@@ -33,13 +34,16 @@ namespace Tourmaline26.Services
         private Task<bool>? mvarLedPanelsTask;
         private Task<bool>? mvarMeteoTask; //Proceso de meteorología.
 
+        private byte mvarScreen; //Pantalla a mostrar ahora.
+        private DateTime mvarNextScreenChange = DateTime.MinValue; //Próximo cambio de pantalla
+
         public TourmalineBackground(
             ILogger<TourmalineBackground> logger,
             TourmalineService tourmalineService,
             TourmalineExperienceService experienceService,
             MVBService mvbService,
             GPSService gpsService,
-            LEDDisplayService ledService,
+            LEDDisplayService displayService,
             MeteoService meteoService)
         {
             mvarLogger = logger;
@@ -47,8 +51,8 @@ namespace Tourmaline26.Services
             mvarExperience = experienceService;
             mvarMVBService = mvbService;
             mvarGPSService = gpsService;
-            mvarLedService = ledService;
             mvarMeteoService = meteoService;
+            mvarLedService = displayService;
         }
         /// <summary>
         /// Actualización express de los paneles HMI.
@@ -71,11 +75,19 @@ namespace Tourmaline26.Services
                 HMIUpdateRequested?.Invoke(this, EventArgs.Empty); // Actualizamos HMI cuando termina
             });
             DateTime auxLastMeteoCheck = DateTime.Today; //Momento de la última comprobación de la meteorología
+            DateTime auxLastPanelsUpdate = DateTime.Today; //Momento de la última actualización de paneles led.            
             mvarLogger.LogInformation("TourmalineBackground iniciado.");
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
+                    if(mvarNextScreenChange<DateTime.Now)
+                    {
+                        mvarScreen++;
+                        if (mvarScreen > 1) mvarScreen = 0;
+                        mvarNextScreenChange = DateTime.Now.AddSeconds(40);
+                    }
+
                     if(null!=mvarGpsTask && mvarGpsTask.IsCompleted)
                     {
                         if (mvarGpsTask.IsCompletedSuccessfully)
@@ -101,9 +113,6 @@ namespace Tourmaline26.Services
                     if(null == mvarMvbTask)
                         mvarMvbTask = PoolMVB();
 
-                    if (null == mvarLedPanelsTask)
-                        mvarLedPanelsTask = PoolLedPanels();
-
                     if (null != mvarInternetTask && mvarInternetTask.IsCompleted)
                     {
                         if(mvarInternetTask.IsCompletedSuccessfully)
@@ -125,8 +134,11 @@ namespace Tourmaline26.Services
                     if (null != mvarLedPanelsTask && mvarLedPanelsTask.IsCompleted)
                         mvarLedPanelsTask = null;
 
-                    if (null == mvarLedPanelsTask)
+                    if (null == mvarLedPanelsTask && auxLastPanelsUpdate <DateTime.Now)
+                    {
                         mvarLedPanelsTask = PoolLedPanels();
+                        auxLastPanelsUpdate = DateTime.Now.AddSeconds(4);
+                    }                        
                     
                     if (null != mvarMeteoTask && mvarMeteoTask.IsCompleted)
                         mvarMeteoTask = null;
@@ -134,7 +146,8 @@ namespace Tourmaline26.Services
                     {
                         mvarMeteoTask = PoolMeteo();
                         auxLastMeteoCheck = DateTime.Now.AddSeconds(30);
-                    }                        
+                    }
+                    
                 }
                 catch (Exception ex)
                 {
@@ -336,6 +349,13 @@ namespace Tourmaline26.Services
         {           
             if(mvarTourmaline.SessionConfig.TeleindicatorsEnabled && mvarTourmaline.SessionConfig.PASEnabled)
             {
+                switch (mvarScreen)
+                {
+                    case 1: await LedPanelsShowDestination(); break;
+                    default: await LedPanelsShowTime(); break;
+                }
+
+
                 //Prioridad de los avisos:
                 //* 1 Mensaje emergente de Armandito
                 //* 2 Próxima parada
@@ -343,23 +363,48 @@ namespace Tourmaline26.Services
                 //* 3 Destino
 
                 //* 4 Hora y temperatura
-                string cadenaTemp = "";
-                string cadenaSpeed = "";
-                if (null != mvarTourmaline.SessionConfig.CurrentWeather)
-                    cadenaTemp = $"{mvarTourmaline.SessionConfig.CurrentWeather.Temperature2m}ºC";
-                if(mvarTourmaline.SessionConfig.CurrentSpeed>40)
-                {
-                    cadenaSpeed = $"{mvarTourmaline.SessionConfig.CurrentSpeed}Km/h";
-                }
-                string auxMensaje = $"{DateTime.Now:t}  {cadenaTemp}  {cadenaSpeed}";
-                await mvarLedService.Print(auxMensaje, false);
+                await LedPanelsShowTime();
             }
             else
             {
                 await mvarLedService.Cls();    
             }
             return false;
-        }        
+        }
+        
+        private async Task LedPanelsShowTime()
+        {
+            string cadenaTemp = "";
+            string cadenaSpeed = "";
+            if (null != mvarTourmaline.SessionConfig.CurrentWeather)
+                cadenaTemp = $"   {mvarTourmaline.SessionConfig.CurrentWeather.Temperature2m}.C";
+            int auxSpeed = Math.Min(mvarTourmaline.SessionConfig.CurrentSpeed, 100);
+            if (auxSpeed > 40)
+            {
+                cadenaSpeed = $"   {auxSpeed}Km/h";
+            }
+            string auxMensaje = $"{DateTime.Now:t}{cadenaTemp}{cadenaSpeed}";
+            await mvarLedService.Print(auxMensaje, false);
+        }
+        private async Task LedPanelsShowDestination()
+        {
+            TimeNetEnvironment? enviro = mvarTourmaline.SessionConfig.TNEnvironment;
+            if (null != enviro &&
+                null != enviro.Asimilation && 
+                mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route)
+            {
+                Asimilation asimila = enviro.Asimilation;
+                if (null != asimila && null!=asimila.Destination)
+                {
+                    string auxMensaje = $"Aquest tren es dirigeix a {asimila.Destination.Name}";
+                    await mvarLedService.Print(auxMensaje,true);
+                }
+                else
+                    await LedPanelsShowTime();                
+            }
+            else
+                await LedPanelsShowTime();
+        }
         
         /// <summary>
         /// Hace las actualizaciones de los controles y los cálculos de la malla

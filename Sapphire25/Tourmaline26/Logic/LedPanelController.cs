@@ -10,6 +10,7 @@ namespace Tourmaline26.Logic
     public class LedPanelController
     {
         private readonly HttpClient mvarClient;
+        private ILogger<LedPanelController> mvarLogger;
         private string Firmware { get; set; } = string.Empty;
         private string Checksum { get; set; } = string.Empty;
         private string Type { get; set; } = string.Empty;
@@ -17,9 +18,10 @@ namespace Tourmaline26.Logic
         private int LoadedPages { get; set; }
         private int ActiveAlarms { get; set; }
         private int Temperature { get; set; }
-        public LedPanelController(HttpClient client)
+        public LedPanelController(HttpClient client, ILogger<LedPanelController> logger)
         {
             mvarClient = client;
+            mvarLogger = logger;
             mvarClient.Timeout = new TimeSpan(0, 0, 2); //Tiempo corto para evitar grandes retrasos
         }
         private void auxWebScrap(string html)
@@ -78,31 +80,61 @@ Temperatura\s*\(.C\)\s*<!--STEMP-->\s*""(?<temp>[^""]*)""";
                     auxAlign = "Right"; break;
             }
 
-            var parametros = new Dictionary<string, string>
-            {
-                ["typepage"] = "P1S002",
-                ["lvs"] = "0",
-                ["diai"] = "0",
-                ["mesi"] = "0",
-                ["horai"] = "0",
-                ["mini"] = "0",
-                ["diaf"] = "0",
-                ["mesf"] = "0",
-                ["horaf"] = "0",
-                ["minf"] = "0",
-                ["data1"] = text,
-                ["jsfs1"] = auxAlign,
-                ["ofx1"] = scroll ? "Scroll" : "Static",
-                ["ffx1"] = "0",
-                ["falt1"] = "0",
-                ["accion"] = "update"
-            };
+            //var parametros = new Dictionary<string, string>
+            //{
+            //    ["typepage"] = "P1S002",
+            //    ["lvs"] = "0",
+            //    ["diai"] = "0",
+            //    ["mesi"] = "0",
+            //    ["horai"] = "0",
+            //    ["mini"] = "0",
+            //    ["diaf"] = "0",
+            //    ["mesf"] = "0",
+            //    ["horaf"] = "0",
+            //    ["minf"] = "0",
+            //    ["data1"] = text,
+            //    ["jsfs1"] = auxAlign,
+            //    ["ofx1"] = scroll ? "Scroll" : "Static",
+            //    ["ffx1"] = "0",
+            //    ["falt1"] = "0",
+            //    ["accion"] = "update"
+            //};
 
-            var auxContent = new FormUrlEncodedContent(parametros);
+            //var auxContent = new FormUrlEncodedContent(parametros);
+            //string auxUrl = $"http://{address}/pagina1.html";
+            //HttpResponseMessage respuesta = await mvarClient.PostAsync(auxUrl, auxContent);
+            //return respuesta;
+            string body =
+    $"typepage=P1S002" +
+    $"&lvs=0" +
+    $"&diai=0" +
+    $"&mesi=0" +
+    $"&horai=0" +
+    $"&mini=0" +
+    $"&diaf=0" +
+    $"&mesf=0" +
+    $"&horaf=0" +
+    $"&minf=0" +
+    $"&data1={Uri.EscapeDataString(text)}" +
+    $"&jsfs1={Uri.EscapeDataString(auxAlign)}" +
+    $"&ofx1={(scroll ? "Scroll" : "Static")}" +
+    $"&ffx1=0" +
+    $"&falt1=0" +
+    $"&accion=update";
+
+            using var content = new StringContent(body, Encoding.ASCII, "application/x-www-form-urlencoded");
             string auxUrl = $"http://{address}/pagina1.html";
-            HttpResponseMessage respuesta = await mvarClient.PostAsync(auxUrl, auxContent);
-
-            return respuesta;
+            HttpResponseMessage? response = null;
+            try
+            {
+                response = await mvarClient.PostAsync(auxUrl, content);
+                
+            }
+            catch (Exception ex)
+            {
+                mvarLogger.LogError($"Led panel error sending data to {address}. {ex.Message}");
+            }
+            return response;
         }
         public async Task<HttpResponseMessage> PushBitmapAsync(IPAddress address, byte[] bmpBytes)
         {
@@ -141,7 +173,7 @@ Temperatura\s*\(.C\)\s*<!--STEMP-->\s*""(?<temp>[^""]*)""";
         }
         public async Task Print(IPAddress address, string message, bool scroll = false, Alignment alignment = Alignment.Center)
         {
-            await ClearAsync(address);
+            //await ClearAsync(address);
             await PushMessageAsync(address, message, scroll,alignment);
         }
         public async Task Cls(IPAddress address)
