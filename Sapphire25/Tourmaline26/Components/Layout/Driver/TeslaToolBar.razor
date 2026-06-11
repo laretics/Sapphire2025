@@ -1,18 +1,8 @@
 ﻿@using Tourmaline26.Components.Images
 <div class="tesla-toolbar">
-    @foreach (TeslaButton auxButton in Buttons)
+    @foreach (TeslaButton? auxButton in Buttons.Values)
     {
-        <button @key="auxButton.Id"
-                class="toolbar-btn @auxButton.Class"
-                @onpointerdown="() => PressButton(auxButton)"
-                @onpointerup="() => ReleaseButton(auxButton)"
-                @onclick="() => OnButtonClick(auxButton)"
-                disabled="@(!auxButton.Enabled)">
-                <ColorIcon 
-                    Name="@auxButton.Icon"
-                    Color="@auxButton.ForegroundColor"
-                    />
-        </button>
+        <TeslaToolButton TeslaButton="auxButton"/>
     }
 </div>
 
@@ -21,10 +11,7 @@
     public bool NightMode { get; set; }
     // Define los datos de los botones aquí
     [Parameter]
-    public TeslaButton[] Buttons{ get; set; }  = new TeslaButton[]
-    {
-        new("Train", "MainMenu")
-    };
+    public Dictionary<string, TeslaButton> Buttons { get; set; } = new Dictionary<string, TeslaButton>();
     public async Task ManagePhysicalKeyboard(string key)
     {
         int btnIndex = key switch
@@ -41,15 +28,20 @@
             "0" => 9,
             _ => -1
         };
-        if (btnIndex >= 0 && btnIndex < Buttons.Length && Buttons[btnIndex].Enabled)
+        int index = 0;
+        foreach(TeslaButton auxButton in Buttons.Values)
         {
-            TeslaButton auxButton = Buttons[btnIndex];
-            if (auxButton.Enabled)
+            if(index==btnIndex)
             {
-                PressButton(auxButton);
-                await OnButtonClick(auxButton);
-                ReleaseButton(auxButton);
+                if (null!=auxButton && auxButton.Enabled)
+                {
+                    PressButton(auxButton);
+                    await OnButtonClick(auxButton);
+                    ReleaseButton(auxButton);
+                }
+                break;
             }
+            index++;
         }
     }
 

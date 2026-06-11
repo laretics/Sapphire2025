@@ -248,33 +248,53 @@ namespace Tourmaline26.Services
 		{
 			try
 			{
-				while (null!=mvarSerialPort && mvarSerialPort.IsOpen)
+				if (null == mvarSerialPort || !mvarSerialPort.IsOpen)
+					return false;
+
+				const int maxBufferedBytes = 4096;
+
+				if(mvarSerialPort.BytesToRead>maxBufferedBytes)
 				{
-					string? line = null;
-					try
-					{
-						line = mvarSerialPort.ReadLine();						
-					}
-					catch (TimeoutException) { continue; }
+					mvarLogger.LogWarning("GPS data overload. Purge.");
+					mvarSerialPort.DiscardInBuffer();
+					return false;
+				}
+				bool updated = false;
+				while(mvarSerialPort.BytesToRead>0)
+				{
+                    string? line = null;
+                    try
+                    {
+                        line = mvarSerialPort.ReadLine();
+                    }
+                    catch (TimeoutException)
+                    {
+                        break;
+                    }
 					catch (Exception ex)
 					{
-						mvarLogger.LogWarning($"Error leyendo del GPS: {ex.Message}");
+						mvarLogger.LogWarning($"GPS reading error: {ex.Message}");
 						return false;
 					}
 
-					if (line != null && (line.StartsWith("$GPRMC") || line.StartsWith("$GPGGA")))
+					if (string.IsNullOrWhiteSpace(line))
+						continue;
+
+                    if (line.StartsWith("$GPRMC") || line.StartsWith("$GNRMC") ||
+					line.StartsWith("$GPGGA") || line.StartsWith("$GNGGA") ||
+					line.StartsWith("$GPVTG") || line.StartsWith("$GNVTG"))
 					{
-						ParseNmea(line,CurrentData);
-						return true;
-					}
-				}
+                        ParseNmea(line, CurrentData);
+						updated = true;
+                    }
+                }
+				return updated;
 			}
 			catch (Exception ex)
 			{
-				mvarLogger.LogWarning($"Error en el bucle de lectura del GPS: {ex.Message}");				
+				mvarLogger.LogWarning($"Reading GPS Error: {ex.Message}");				
 			}
 			return false;
 		}
-
 	}
 }

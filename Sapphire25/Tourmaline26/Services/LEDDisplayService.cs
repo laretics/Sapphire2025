@@ -16,9 +16,9 @@ namespace Tourmaline26.Services
         internal string mvarLastMessage = string.Empty; //Último mensaje enviado.
         internal LedPanelController mvarController { get; private set; }
         internal List<DeviceMapped> mcolPanels { get; private set; }
-        public LEDDisplayService(HttpClient client)
+        public LEDDisplayService(LedPanelController controller)
         {
-            mvarController = new LedPanelController(client);
+            mvarController = controller;
             mcolPanels = new List<DeviceMapped>();          
         }
         internal void Init(List<DeviceMapped> devices)
@@ -49,9 +49,24 @@ namespace Tourmaline26.Services
             }
         }
 
-
-
-
-
+        public async Task Print(string message, bool scroll = true, Alignment alignment = Alignment.Center)
+        {
+            if(mvarLastMessage!=message)
+            {
+                //await Cls();
+                foreach (DeviceMapped auxDevice in mcolPanels)
+                    await mvarController.Print(auxDevice.Address, message, scroll, alignment);
+                mvarLastMessage = message;
+            }
+        }
+        public async Task Cls()
+        {
+            if(mvarLastMessage.Length>0)
+            {
+                foreach (DeviceMapped auxDevice in mcolPanels)
+                    await mvarController.Cls(auxDevice.Address);
+                mvarLastMessage = string.Empty;
+            }
+        }
     }
 }

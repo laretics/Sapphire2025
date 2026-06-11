@@ -3,6 +3,7 @@
 @using Tourmaline26.Components.Controls
 @using TimeNet2026.Topo
 @using TimeNet2026.Timed
+@using Tourmaline26.Services.OpenMeteo
 
 @inject TourmalineService mvarTourmaline
 <div class="panel-root">
@@ -35,16 +36,27 @@
             <span class="panel-time">@CurrentTime</span>
             <div class="destination">Sense servei</div>
         }
-            @if (!float.IsNaN(ExternalTemperature))
+        @if(null!=mvarTourmaline.SessionConfig)
+        {
+            @if (null != mvarTourmaline.SessionConfig.CurrentWeather)
             {
                 <div class="external-temperature">
-                    @($"{ExternalTemperature:F1} °C")
+                    @($"{mvarTourmaline.SessionConfig.CurrentWeather.Temperature2m}ºC")
+                    <img src="@OpenMeteoClient.GetWeatherIconUrl(mvarTourmaline.SessionConfig.CurrentWeather.WeatherCode)" />
                 </div>
             }
+            @if(mvarTourmaline.SessionConfig.CurrentSpeed>40)
+            {
+                <div class="current-speed">
+                    @($"{mvarTourmaline.SessionConfig.CurrentSpeed}Km/h")
+                </div>
+            }
+        }
+
     </div>
 
     <div class="panel-body">
-        @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route && Circulation != null)
+        @if (null!=mvarTourmaline.SessionConfig && mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route && Circulation != null)
         {
             <div class="panel-body-content">
                 <!-- StationsTable ocupa 3/4 del ancho -->
@@ -84,5 +96,4 @@
     private string CurrentTime => mvarTourmaline.SessionConfig.TNEnvironment?.Now.ToString("HH:mm") ?? "";
     private int Lines => (null==Device)?7:Device.Lines;
     private int HeaderSize => (null == Device) ? 100 : Device.HeaderSize;
-    private float ExternalTemperature => mvarTourmaline.SessionConfig.Temperature;
 }

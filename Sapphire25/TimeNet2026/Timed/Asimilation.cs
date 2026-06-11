@@ -80,6 +80,28 @@ namespace TimeNet2026.Timed
 			}
 			return false;
 		}
+		/// <summary>
+		/// Devuelve la estación con el PK más próximo al punto pasado.
+		/// O devuelve -1 si ninguna estación está contenida en este eje.
+		/// </summary>
+		/// <param name="axis">Referencia al eje</param>
+		/// <param name="auxPk">Pk en el que estamos</param>
+		/// <returns></returns>
+		public long containsAxis(Axis axis, long auxPk)
+		{
+			long candidateDistance = long.MaxValue;
+			long salida = -1;
+			foreach(AsimilationStep aux in mcolSteps)
+			{
+				long auxDistance = (long)(Math.Abs(aux.destination.pk - auxPk));
+				if(aux.axis==axis && auxDistance<candidateDistance)
+				{
+					candidateDistance = auxDistance;
+					salida = aux.destination.pk;
+				}
+			}
+			return salida;
+		}
 		internal Station? stationByName(string name)
 		{			
 			if (null!=Origin && name.Equals(Origin.Name)) return Origin;

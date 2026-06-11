@@ -89,8 +89,10 @@ namespace Tourmaline26.Services
             }
             mvarLogger.LogInformation("Total de dispositivos detectados: {DeviceCount}", deviceCount);
             mvarLedDisplayService.Init(Devices);
-            await mvarLedDisplayService.ClearAsync();
-            await mvarLedDisplayService.PushAsync("Tourmaline 2026");
+            await mvarLedDisplayService.Print("Serveis Ferroviaris de Mallorca",true);
+
+            //await mvarLedDisplayService.ClearAsync();
+            //await mvarLedDisplayService.PushAsync("Tourmaline 2026");
             //await PushLEDPanels("Tourmaline 2026. Iniciando estructura del programa " + DateTime.Now.ToString(),true,Alignment.None);
             //await PushBitmapLEDPanels("bmp//Tren81.bmp");
         }

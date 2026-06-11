@@ -1,18 +1,29 @@
 ﻿@using Tourmaline26.Components.Images
 @inject TourmalineService Tourmaline
 
-<div class="floating-location-panel @panelClass">
-    @if (Tourmaline?.SessionConfig?.LinearLocation != null && Tourmaline.SessionConfig.LinearLocation.Axis != null)
+<div class="floating-location-panel @panelClass" style="@GetAxisStyle()">
+    @if (Tourmaline?.SessionConfig?.LinearLocation?.Axis != null)
     {
-        var pk = Tourmaline.SessionConfig.LinearLocation.PKRef;
+        var loc = Tourmaline.SessionConfig.LinearLocation;
+        var pk = loc.PKRef;
         var km = pk / 1000;
         var hm = pk % 1000;
-        <div class="pk-row">
-            <span class="pk-km">@km</span>
-            <span class="pk-plus">+</span>
-            <span class="pk-hm">@hm.ToString("D3")</span>
+
+        <div class="content-wrapper">
+            <div class="main-content">
+                <span class="location-icon">
+                    <ColorIcon Size="16" Name="GoodLocation"/>
+                </span>
+                <div class="pk-and-name">
+                    <div class="pk-row">
+                        <span class="pk-km">@km</span>
+                        <span class="pk-plus">+</span>
+                        <span class="pk-hm">@hm.ToString("D3")</span>
+                    </div>
+                    <div class="axis-name" title="@loc.Axis.Name">@loc.Axis.Name</div>
+                </div>
+            </div>
         </div>
-        <div class="axis-name">@Tourmaline.SessionConfig.LinearLocation.Axis.Name</div>
     }
 </div>
 
@@ -31,6 +42,15 @@
     private void auxHMIRefresh(object? sender, EventArgs e)
     {
         InvokeAsync(StateHasChanged);
+    }
+    private string GetAxisStyle()
+    {
+        var axis = Tourmaline?.SessionConfig?.LinearLocation?.Axis;
+        string? auxColor = "#454510";
+        if (auxColor == null) return "";
+
+        // Usamos el color del Axis como acento
+        return $"--accent-color: {auxColor};";
     }
     public void Dispose()
     {

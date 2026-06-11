@@ -1,20 +1,33 @@
-﻿@using Tourmaline26.Components.Controls
+﻿@using TimeNetComponents.Controls.TimeNetControl
+@using Tourmaline26.Components.Controls
+@using TimeNetComponents.Controls
 @inject TourmalineService Tourmaline
 <TeslaLeftSectionIndicators/>
-
+@if(null!=mvarControlEnvironment && 
+null!=mvarControlEnvironment.Environment && 
+mvarControlEnvironment.Environment.IsViewComplete)
+{
+    <TimeNetControl Environment="mvarControlEnvironment"
+                    Style="mvarTimenetStyle" />
+}
 <div class="d-flex flex-column justify-content-end h-100">
     @if(SpeedometerVisible)
     {
-        <Speedometer />
+        <Speedometer/>
     }    
 </div>
 @code {
+    private TimeNetControlEnvironment mvarControlEnvironment;
+    private TimeNetControlStyle mvarTimenetStyle;
+
     private SessionConfiguration mvarConfig = new();   
     protected override void OnInitialized()
     {
         base.OnInitialized();
         mvarConfig = Tourmaline.SessionConfig;
         Tourmaline.HMIUpdateRequested += auxHMIRefresh;
+        mvarTimenetStyle = new TimeNetControlStyle();
+        mvarControlEnvironment = new TimeNetControlEnvironment(100, 100);        
     }
     public void Dispose()
     {
@@ -22,6 +35,7 @@
     }
     private void auxHMIRefresh(object? sender, EventArgs e)
     {
+        mvarControlEnvironment.Environment = Tourmaline.SessionConfig.TNEnvironment;
         InvokeAsync(StateHasChanged);
     }
 

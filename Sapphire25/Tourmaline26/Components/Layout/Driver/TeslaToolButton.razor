@@ -1,0 +1,52 @@
+﻿
+@using Tourmaline26.Components.Images
+@if(null==TeslaButton)
+{
+    <button
+        class="toolbar-btn"
+    >
+    </button>    
+}
+else
+{
+    <button @key="TeslaButton.Id"
+            class="toolbar-btn @TeslaButton.Class"
+            @onpointerdown="() => PressButton()"
+            @onpointerup="() => ReleaseButton()"
+            @onclick="() => OnButtonClick()"
+            disabled="@(!TeslaButton.Enabled)">
+            <ColorIcon Name="@TeslaButton.Icon"
+             Color="@TeslaButton.ForegroundColor" />
+    </button>    
+}
+
+@code {
+    [Parameter]
+    public TeslaButton? TeslaButton{ get; set; }
+
+    private void PressButton()
+    {
+        if(null!=TeslaButton)
+        {
+            TeslaButton.Press();
+            StateHasChanged();
+        }
+    }
+    private async void ReleaseButton()
+    {
+        if(null!=TeslaButton)
+        {
+            await Task.Delay(180);
+            TeslaButton.Release();
+            StateHasChanged();
+        }
+    }
+    private async Task OnButtonClick()
+    {
+        if(null!=TeslaButton)
+        {
+            TeslaButton.DoToggle();
+            await TeslaButton.Callback.InvokeAsync();
+        }
+    }
+}

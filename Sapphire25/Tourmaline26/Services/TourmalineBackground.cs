@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using TimeNet2026.Production;
+using TimeNet2026.Timed;
 using Tourmaline26.Logic;
 using Tourmaline26.Services.TourmalineExperience;
 
@@ -18,6 +19,7 @@ namespace Tourmaline26.Services
         private readonly GPSService mvarGPSService;
         private readonly MVBService mvarMVBService;
         private readonly LEDDisplayService mvarLedService;
+        private readonly MeteoService mvarMeteoService;
         /// <summary>
         /// Flag para indicar al sistema que han terminado de cargar los datos.
         /// </summary>        
@@ -30,6 +32,10 @@ namespace Tourmaline26.Services
         private Task<bool>? mvarInternetTask;
         private Task<bool>? mvarLocationTask;
         private Task<bool>? mvarLedPanelsTask;
+        private Task<bool>? mvarMeteoTask; //Proceso de meteorología.
+
+        private byte mvarScreen; //Pantalla a mostrar ahora.
+        private DateTime mvarNextScreenChange = DateTime.MinValue; //Próximo cambio de pantalla
 
         public TourmalineBackground(
             ILogger<TourmalineBackground> logger,
@@ -37,14 +43,16 @@ namespace Tourmaline26.Services
             TourmalineExperienceService experienceService,
             MVBService mvbService,
             GPSService gpsService,
-            LEDDisplayService ledService)
+            LEDDisplayService displayService,
+            MeteoService meteoService)
         {
             mvarLogger = logger;
             mvarTourmaline = tourmalineService;
             mvarExperience = experienceService;
             mvarMVBService = mvbService;
             mvarGPSService = gpsService;
-            mvarLedService = ledService;
+            mvarMeteoService = meteoService;
+            mvarLedService = displayService;
         }
         /// <summary>
         /// Actualización express de los paneles HMI.
@@ -66,11 +74,20 @@ namespace Tourmaline26.Services
                 mvarTourmaline.SessionConfig.Initialized = await mvarTourmaline.EnsureInitialized();
                 HMIUpdateRequested?.Invoke(this, EventArgs.Empty); // Actualizamos HMI cuando termina
             });
+            DateTime auxLastMeteoCheck = DateTime.Today; //Momento de la última comprobación de la meteorología
+            DateTime auxLastPanelsUpdate = DateTime.Today; //Momento de la última actualización de paneles led.            
             mvarLogger.LogInformation("TourmalineBackground iniciado.");
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
+                    if(mvarNextScreenChange<DateTime.Now)
+                    {
+                        mvarScreen++;
+                        if (mvarScreen > 1) mvarScreen = 0;
+                        mvarNextScreenChange = DateTime.Now.AddSeconds(40);
+                    }
+
                     if(null!=mvarGpsTask && mvarGpsTask.IsCompleted)
                     {
                         if (mvarGpsTask.IsCompletedSuccessfully)
@@ -96,9 +113,6 @@ namespace Tourmaline26.Services
                     if(null == mvarMvbTask)
                         mvarMvbTask = PoolMVB();
 
-                    if (null == mvarLedPanelsTask)
-                        mvarLedPanelsTask = PoolLedPanels();
-
                     if (null != mvarInternetTask && mvarInternetTask.IsCompleted)
                     {
                         if(mvarInternetTask.IsCompletedSuccessfully)
@@ -116,6 +130,24 @@ namespace Tourmaline26.Services
 
                     if(null==mvarLocationTask)
                         mvarLocationTask = PoolLinearLocation();
+
+                    if (null != mvarLedPanelsTask && mvarLedPanelsTask.IsCompleted)
+                        mvarLedPanelsTask = null;
+
+                    if (null == mvarLedPanelsTask && auxLastPanelsUpdate <DateTime.Now)
+                    {
+                        mvarLedPanelsTask = PoolLedPanels();
+                        auxLastPanelsUpdate = DateTime.Now.AddSeconds(4);
+                    }                        
+                    
+                    if (null != mvarMeteoTask && mvarMeteoTask.IsCompleted)
+                        mvarMeteoTask = null;
+                    if (null == mvarMeteoTask && auxLastMeteoCheck < DateTime.Now)
+                    {
+                        mvarMeteoTask = PoolMeteo();
+                        auxLastMeteoCheck = DateTime.Now.AddSeconds(30);
+                    }
+                    
                 }
                 catch (Exception ex)
                 {
@@ -145,6 +177,22 @@ namespace Tourmaline26.Services
                 cycleCount++;
             }
             mvarLogger.LogInformation("TourmalineBackground detenido.");
+        }
+
+        private async Task<bool> PoolMeteo()
+        {
+            if (mvarTourmaline.SessionConfig.InternetEnabled)
+            {
+                try
+                {
+                    return await mvarMeteoService.ReadLoop();
+                }
+                catch (Exception ex)
+                {
+                    mvarLogger.LogError(ex, "Error al obtener datos de meteorología. {0}", ex.Message);
+                }
+            }
+            return false;
         }
         private async Task<bool> PoolGPS()
         {
@@ -214,14 +262,27 @@ namespace Tourmaline26.Services
             if(null==auxEnvironment.Circulation)
             {
                 //Localización por ejes cercanos.
-                //Axis? auxAxis = auxEnvironment.TopoStorage.ColAxis.ne
-                return mvarTourmaline.SessionConfig.LinearLocation.TryLocateBySatellite(mvarTourmaline.SessionConfig.CurrentGPSData.GeoLocation, auxEnvironment.TopoStorage);
+                //Buscamos el eje en el que estamos y obtenemos cualquiera de las asimilaciones.
+                if (mvarTourmaline.SessionConfig.LinearLocation.TryLocateBySatellite(mvarTourmaline.SessionConfig.CurrentGPSData.GeoLocation, auxEnvironment.TopoStorage))
+                {
+                    auxEnvironment.PK = mvarTourmaline.SessionConfig.LinearLocation.PKRef;
+                    if(null==auxEnvironment.Asimilation)
+                    {
+                        auxEnvironment.SetAsimilationByAxis();
+                    }
+                    return true;
+                }
             }
             else
             {
                 //TODO: Modificar esto para poner el eje en el que estamos.
-                return mvarTourmaline.SessionConfig.LinearLocation.TryLocateBySatellite(mvarTourmaline.SessionConfig.CurrentGPSData.GeoLocation, auxEnvironment.TopoStorage);
+                if( mvarTourmaline.SessionConfig.LinearLocation.TryLocateBySatellite(mvarTourmaline.SessionConfig.CurrentGPSData.GeoLocation, auxEnvironment.TopoStorage))
+                {
+                    auxEnvironment.PK = mvarTourmaline.SessionConfig.LinearLocation.PKRef;
+
+                }
             }
+            return false;
         }
         private async Task<MVB8100Data?> PoolMVB()
         {
@@ -278,28 +339,72 @@ namespace Tourmaline26.Services
             return false;
         }
 
+
+
         /// <summary>
         /// Actualiza los teleindicadores LED
         /// </summary>
         /// <returns></returns>
         private async Task<bool> PoolLedPanels()
-        {
+        {           
             if(mvarTourmaline.SessionConfig.TeleindicatorsEnabled && mvarTourmaline.SessionConfig.PASEnabled)
             {
-                
+                switch (mvarScreen)
+                {
+                    case 1: await LedPanelsShowDestination(); break;
+                    default: await LedPanelsShowTime(); break;
+                }
+
+
                 //Prioridad de los avisos:
                 //* 1 Mensaje emergente de Armandito
                 //* 2 Próxima parada
-                //* 3 Destino
-                //* 4 Hora y temperatura
 
+                //* 3 Destino
+
+                //* 4 Hora y temperatura
+                await LedPanelsShowTime();
             }
             else
             {
-                await mvarLedService.ClearAsync();
+                await mvarLedService.Cls();    
             }
             return false;
-        }        
+        }
+        
+        private async Task LedPanelsShowTime()
+        {
+            string cadenaTemp = "";
+            string cadenaSpeed = "";
+            if (null != mvarTourmaline.SessionConfig.CurrentWeather)
+                cadenaTemp = $"   {mvarTourmaline.SessionConfig.CurrentWeather.Temperature2m}.C";
+            int auxSpeed = Math.Min(mvarTourmaline.SessionConfig.CurrentSpeed, 100);
+            if (auxSpeed > 40)
+            {
+                cadenaSpeed = $"   {auxSpeed}Km/h";
+            }
+            string auxMensaje = $"{DateTime.Now:t}{cadenaTemp}{cadenaSpeed}";
+            await mvarLedService.Print(auxMensaje, false);
+        }
+        private async Task LedPanelsShowDestination()
+        {
+            TimeNetEnvironment? enviro = mvarTourmaline.SessionConfig.TNEnvironment;
+            if (null != enviro &&
+                null != enviro.Asimilation && 
+                mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route)
+            {
+                Asimilation asimila = enviro.Asimilation;
+                if (null != asimila && null!=asimila.Destination)
+                {
+                    string auxMensaje = $"Aquest tren es dirigeix a {asimila.Destination.Name}";
+                    await mvarLedService.Print(auxMensaje,true);
+                }
+                else
+                    await LedPanelsShowTime();                
+            }
+            else
+                await LedPanelsShowTime();
+        }
         
         /// <summary>
         /// Hace las actualizaciones de los controles y los cálculos de la malla

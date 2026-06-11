@@ -1,9 +1,17 @@
 ﻿@using Tourmaline26.Components.Images
 @using System.Net.Http;
 @using TimeNetComponents.Controls
+@using Tourmaline26.Services.OpenMeteo
 <div class="tesla-top-right-bar">
     @if(null!=mvarConfig)
     {
+        @if(null!=mvarConfig.CurrentWeather)
+        {
+            <span><b>@(mvarConfig.CurrentWeather.Temperature2m)ºC</b></span>
+            <span>
+                <img src="@OpenMeteoClient.GetWeatherIconUrl(mvarConfig.CurrentWeather.WeatherCode)" style="width:36px;height:auto;" />
+            </span>
+        }
         @if(null!=mvarConfig.Session && null!=mvarConfig.Session.User)
         {
             <span><RoleIcon 

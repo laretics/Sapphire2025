@@ -11,7 +11,7 @@ namespace Tourmaline26.Logic.Generical
     {
         private string[] mcolIcon;
         private Guid mvarId;
-        public TeslaButton(string iconName, string? alternateIcon=null, bool toggled= false, EventCallback? callback= null, string? comment=null, bool disabled=false)
+        public TeslaButton(string iconName, string? alternateIcon=null, bool toggled= false, EventCallback? callback= null, bool disabled = false, bool disabledOnMoving = false,string? comment=null)
         {
             mvarId = Guid.NewGuid();
             mcolIcon = new[] { iconName,iconName };
@@ -47,6 +47,7 @@ namespace Tourmaline26.Logic.Generical
         public string Comment { get; private set; }
         public EventCallback Callback { get; set; }
         public bool Enabled { get; set; }
+        public bool DisableOnMotion { get; set; } //Este botón se debe deshabilitar en movimiento.
         public bool IsToggle { get; private set; }
         public bool Pressed { get; set; } //Pulsación del botón
         public bool Selected { get; set; } //Toggle activado

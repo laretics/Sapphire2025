@@ -18,52 +18,32 @@
                     <div class="tesla-left @panelClass">
                         <TeslaLeftSection />
                     </div>
-                    <div class="tesla-right @panelClass">
-                        @if (View3DEnabled)
-                        {
-                            <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
-                        }
-                        <TeslaRightSection />
-                        @if (RightPanelVisible)
-                        {
-                            <SideMenu @ref="mvarSideMenu" />
-                        }
-                        else if (AeneasPanelVisible)
-                        {
-                            <AeneasLog />
-                        }
-                        else if (TimeNetPanelVisible)
-                        {
-                            <TimeNetFloatingView />
-                        }
-                    </div>
                 }
-                else
+                <div class="tesla-right @panelClass">
+                    @if (View3DEnabled)
+                    {
+                        <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
+                    }
+                    <TeslaRightSection />
+                    @if (RightPanelVisible)
+                    {
+                        <SideMenu @ref="mvarSideMenu" />
+                    }
+                    else if (AeneasPanelVisible)
+                    {
+                        <AeneasLog />
+                    }
+                    else if (TimeNetPanelVisible)
+                    {
+                        <TimeNetFloatingView />
+                    }
+                </div>
+                @if (mvarTourmaline.SystemConfig.ToniCruz != "right")
                 {
-                    <div class="tesla-right @panelClass">
-                        @if (View3DEnabled)
-                        {
-                            <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
-                        }
-                        <TeslaRightSection />
-                        @if (RightPanelVisible)
-                        {
-                            <SideMenu @ref="mvarSideMenu" />
-                        }
-                        else if (AeneasPanelVisible)
-                        {
-                            <AeneasLog />
-                        }
-                        else if (TimeNetPanelVisible)
-                        {
-                            <TimeNetFloatingView />
-                        }
-                    </div>
                     <div class="tesla-left @panelClass">
                         <TeslaLeftSection />
                     </div>
                 }
-
                 @if (CameraViewMode)
                 {
                     <CamerasView></CamerasView>
@@ -108,62 +88,78 @@
         UserSession = 9
     }
     private bool ZeroSpeed { get => mvarTourmaline.SessionConfig.CurrentSpeed < 10; }
-    private TeslaButton[] buttonData = Array.Empty<TeslaButton>();
+    private Dictionary<string, TeslaButton?> buttonData = new Dictionary<string, TeslaButton>();
     protected async override Task OnInitializedAsync()
     {
-        if(mvarTourmaline.SystemConfig.ToniCruz=="right")
-        {
-            buttonData = new TeslaButton[]
-            {
-            new("Train",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Main Menu"),
-            new("BlackSun","WhiteSun",true,EventCallback.Factory.Create(this, () => NightModeChanged()),"Night Mode"),
-            new("CCTV",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()),"Cameras"),
-            new("Microphone",null,true,null,"Microphone"),
-            new("3DOn","3DOff",true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "View3D"),
-            new(""),
-            new(""),
-            new("Bezier",null,true,null,"Time Net",true),
-            new("Clipboard",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Damage Clipboard",true),
-            new("KeyOff","Key",false,EventCallback.Factory.Create(this, () => OnLoginRequest()),"Login",true),
-            };
-        }
-        else
-        {
-            buttonData = new TeslaButton[]
-            {
-            new("KeyOff","Key",false,EventCallback.Factory.Create(this, () => OnLoginRequest()),"Login",true),
-            new("Clipboard",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Damage Clipboard",true),
-            new("Bezier",null,true,null,"Time Net",true),
-            new(""),
-            new(""),
-            new("3DOn","3DOff",true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "View3D"),
-            new("Microphone",null,true,null,"Microphone"),
-            new("CCTV",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()),"Cameras"),
-            new("BlackSun","WhiteSun",true,EventCallback.Factory.Create(this, () => NightModeChanged()),"Night Mode"),
-            new("Train",null,true,EventCallback.Factory.Create(this, () => OnButtonInternalChanged()), "Main Menu"),            
-            };
-        }
+        buttonData.Add("Main Menu", new TeslaButton("Train", null, true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged())));
+        buttonData.Add("Night Mode",new TeslaButton( "BlackSun", "WhiteSun", true, EventCallback.Factory.Create(this, () => NightModeChanged())));
+        buttonData.Add("Cameras", new TeslaButton("CCTV", null, true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged())));
+        buttonData.Add("Microphone", new TeslaButton("Microphone", null, true, null));
+        buttonData.Add("View3D", new TeslaButton("3DOn", "3DOff", true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged())));
+        buttonData.Add("Spc0", null);
+        buttonData.Add("Spc1", null);
+        buttonData.Add("TimeNet", new TeslaButton("Bezier", null, true, null,false,true));
+        buttonData.Add("DamageClipboard", new TeslaButton("Clipboard", null, true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged()),false,true));
+        buttonData.Add("Login", new TeslaButton("KeyOff", "Key", false, EventCallback.Factory.Create(this, () => OnLoginRequest()), false, true));
+        if (mvarTourmaline.SystemConfig.ToniCruz == "left")
+            buttonData = buttonData.Reverse().ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
         mvarTourmaline.HMIUpdateRequested += auxHMIRefresh;
     }
-    private bool AeneasPanelVisible
+    private bool auxButtonSelected(string index)
     {
-        get => (null != buttonData && ZeroSpeed && buttonData.Length > (byte)MainToolBarItem.Clipboard)
-        ? buttonData[(byte)MainToolBarItem.Clipboard].Selected : false;
+        return null != buttonData && (buttonData[index]?.Selected ?? false);
+    }
+    private void auxButtonSelect(string index, bool rhs)
+    {
+        if (true == buttonData?.TryGetValue(index, out var button) && null!= button)
+            button.Selected = rhs;
+    }
+    private void OnButtonInternalChanged()
+    {
+        //Aprovechamos para validar la lógica de los botones de la barra de tareas.
+        auxButtonSelect("Login", null != mvarTourmaline.SessionConfig.Session) ;
+
+        //No se puede abrir ninguno de los botones si está seleccionado el modo de cámaras.
+        if(auxButtonSelected("Cameras"))
+        {
+            auxButtonSelect("Main Menu",false);
+            auxButtonSelect("DamageClipboard", false);
+            auxButtonSelect("TimeNet", false);
+        }
+        //No se puede abrir la sección de partes de avería si está seleccionado el menú principal.
+        if(auxButtonSelected("Main Menu"))
+        {
+            auxButtonSelect("DamageClipboard",false);
+            auxButtonSelect("TimeNet", false);
+        }
+        if (auxButtonSelected("DamageClipboard"))
+            auxButtonSelect("TimeNet", false);
+        StateHasChanged();
+    }
+    private bool AeneasPanelVisible
+    {        
+        get => auxButtonSelected("DamageClipboard") && ZeroSpeed;
     }
     private bool TimeNetPanelVisible
     {
-        get => (null != buttonData && ZeroSpeed && buttonData.Length > (byte)MainToolBarItem.TimeNet)
-        ? buttonData[(byte)MainToolBarItem.TimeNet].Selected : false;
+        get => auxButtonSelected("TimeNet") && ZeroSpeed;
     }
     private bool RightPanelVisible
     {
-        get => (null != buttonData && buttonData.Length > (Byte)MainToolBarItem.Train) 
-            ? buttonData[(Byte)MainToolBarItem.Train].Selected : false;
+        get => auxButtonSelected("Main Menu");
     }
     private bool CameraViewMode
     {
-        get =>(null!=buttonData && buttonData.Length > (Byte)MainToolBarItem.CCTV) 
-            ? buttonData[(Byte)MainToolBarItem.CCTV].Selected : false;
+        get => auxButtonSelected("Cameras");
+    }
+    private bool View3DEnabled
+    {
+        get => auxButtonSelected("View3D");
+    }
+    private void NightModeChanged()
+    {
+        ToggleNightMode?.Invoke(auxButtonSelected("Night Mode"));
     }
 
     [JSInvokable]
@@ -175,10 +171,11 @@
         {
             if (byte.TryParse(key, out _) && null != mvarTeclado)
                 await mvarTeclado.ManagePhysicalKeyboard(key);
-            if (buttonData[(byte)MainToolBarItem.Train].Selected && null != mvarSideMenu)
+            if(auxButtonSelected("Main Menu") &&null!=mvarSideMenu)
                 await mvarSideMenu.ManagePhysicalKeyboard(key);
         }
     }
+
 
     /// <summary>
     /// Esta función utiliza el teclado físico para probar de forma dinámica los
@@ -204,10 +201,11 @@
     private void auxHMIRefresh(object? sender, EventArgs e) 
     {
         bool zeroSpeed = ZeroSpeed;
-        buttonData[(byte)MainToolBarItem.TimeNet].Enabled = zeroSpeed;
-        buttonData[(byte)MainToolBarItem.UserSession].Enabled = zeroSpeed;
-        buttonData[(byte)MainToolBarItem.Clipboard].Enabled = zeroSpeed;
-
+        foreach (TeslaButton? auxBoton in buttonData.Values)
+        {
+            if (null != auxBoton && auxBoton.DisableOnMotion)
+                auxBoton.Enabled = zeroSpeed;
+        }
         InvokeAsync(StateHasChanged); 
     }
 
@@ -227,49 +225,14 @@
     {
         get => string.Format("teslapanel {0}", NightMode ? "night" : "day");        
     }
-    private bool View3DEnabled
-    {
-        get
-        {
-            byte index = (byte)MainToolBarItem.View3d;
-            if(null!=buttonData && buttonData.Length>index)
-                return !buttonData[index].Selected;
-            return true;            
-        }
-    }
-    private void NightModeChanged()
-    {
-        ToggleNightMode?.Invoke(buttonData[(byte)MainToolBarItem.NightMode].Selected);
-    }
+
 
     [Parameter]
     public string MaintenanceMessage { get; set; } = "Modo de Mantenimiento";
 
 
 
-    private void OnButtonInternalChanged()
-    {
-        //Aprovechamos para validar la lógica de los botones de la barra de tareas.
-        buttonData[(byte)MainToolBarItem.UserSession].Selected = (null != mvarTourmaline.SessionConfig.Session);
-        //No se puede abrir ninguno de los botones si está seleccionado el modo de cámaras.
-        if(buttonData[(byte)MainToolBarItem.CCTV].Selected)
-        {
-            buttonData[(byte)MainToolBarItem.Train].Selected = false;
-            buttonData[(byte)MainToolBarItem.Clipboard].Selected = false;
-            buttonData[(byte)MainToolBarItem.TimeNet].Selected = false;
-        }
-        //No se puede abrir la sección de partes de avería si está seleccionado el menú principal.
-        if (buttonData[(byte)MainToolBarItem.Train].Selected)
-        {
-            buttonData[(byte)MainToolBarItem.Clipboard].Selected = false;        
-            buttonData[(byte)MainToolBarItem.TimeNet].Selected = false;
-        }
-        if (buttonData[(byte)MainToolBarItem.Clipboard].Selected)
-        {
-            buttonData[(byte)MainToolBarItem.TimeNet].Selected = false;
-        }
-        StateHasChanged();
-    }    
+
 
     protected async Task OnLoginRequest()
     {
