@@ -243,7 +243,23 @@ namespace Sapphire2026Telegram
 				{
 
 					if (0 != usuario.TelegramId && (includeOffline || usuario.TelegramEnabled))
-						await mvarBot.SendMessage(usuario.TelegramId, message);
+					{
+						try
+						{
+							await mvarBot.SendMessage(usuario.TelegramId, message);
+						}
+						catch (Telegram.Bot.Exceptions.ApiRequestException ex) when (ex.ErrorCode == 403)
+						{
+							// Usuario ha bloqueado el bot → lo ignoramos silenciosamente o lo registramos
+							mvarLogger.LogWarning("Usuario {ChatId} ha bloqueado el bot", usuario.Name);
+							// Opcional: marcar al usuario como bloqueado en tu base de datos
+						}
+						catch (Exception ex)
+						{
+							mvarLogger.LogError(ex, "Error enviando mensaje a {ChatId}", usuario.Name);
+						}
+					}
+						
 				}
 			}
 		}
