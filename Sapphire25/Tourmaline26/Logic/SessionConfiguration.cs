@@ -10,42 +10,31 @@ namespace Tourmaline26.Logic
     /// </summary>
     public class SessionConfiguration
     {
-        public bool Initialized { get; set; } = false; //Indica si el sistema ha terminado de cargar los datos.
-        public bool ServiceMode { get; set; } = false; //Indica si el sistema de información al viajero está en modo de servicio.
-        public bool ServiceKeyboard { get; set; } = false; //Captura los eventos de teclado para simular sucesos de Onice.
-        public bool MVBEnabled { get; set; } = true; //Estado del bus MVB.
-        public bool MVBDummy{ get; set;  } = false; //Emulación del bus MVB para probar interface.                                                     
+        public bool Initialized { get; set; } = false; //Indica si el sistema ha terminado de cargar los datos.                
+        
         public MVBData? CurrentMVBData { get; set; }//Último paquete de datos recibido del bus MVB.
         public WeatherValue? CurrentWeather { get; set; } //Estado meteorológico actual
         public string MVBError { get; set; } = ""; //Mensaje de error relacionado con el bus MVB, si lo hubiera.
         public DateTime MVBLastUpdate { get; set; } = DateTime.MinValue; //Última vez que se recibió una actualización del bus MVB.
-        public bool GPSEnabled { get; set; } = true; //Módulo de posicionamiento
-        public bool GPSDummy { get; set; } //Posicionamiento Fake para pruebas
+        public bool GPSEnabled { get; set; } = true; //Módulo de posicionamiento       
         public GPSData? CurrentGPSData{ get; set; } //Última lectura del GPS
         public bool GPSOK { get; set; } = true; //Indica si el GPS está recibiendo señal.
         public DateTime GPSLastUpdate { get; set; } = DateTime.MinValue; //Última vez que se recibió una actualización del GPS.
         public bool InternetEnabled { get; set; } = true; //Indica si el sistema tiene habilitada la conexión a internet.
         public bool InternetOK { get; set; } = true; //Indica si el sistema tiene conexión a internet.
-        public bool PASEnabled { get; set; } = true; //Indica si el sistema de información al viajero está en modo de servicio.
-        public bool SoundEnabled { get; set; } = true; //Indica si los altavoces están habilitados.
-        public bool TFTEnabled { get; set; } = true; //Indica si los monitores TFT están habilitados.
-        public bool TeleindicatorsEnabled { get; set; } = true; //Indica si los paneles led están habilitados.
-        public bool ExternalTeleindicatorsEnabled { get; set; } = true; //Indica si los paneles de destino están habilitados.
-        public bool AutoCameras { get; set; } = true; //Indica si las cámaras se activan automáticamente en las paradas con habilitación de puertas.
-        public bool ManualCameras { get; set; } = true; //Indica si el botón de cámaras está habilitado.
-        public bool PassengerCaretOnServiceMode { get; set; } = true; //Muestra la carta de ajuste en los monitores de viajeros cuando está en modo servicio.
-        public bool PassengerScreenOnHMI{  get; set; }  = false; //Muestra el monitor de viajeros en el HMI (para ajustar el sistema con una sola pantalla)        
         public bool SpeakersAnnouncing { get; set; } = false; //Los altavoces de sala están haciendo un anuncio a los viajeros.
+        public FeatureSwitches MainSwitches { get; } = new FeatureSwitches();
+        public ServiceMode ServiceMode { get; } = new ServiceMode();
 
         #region Telemetria
         public int CurrentSpeed //Velocidad actual, leída de GPS o MVB
         { 
             get
             {
-                //Prioridad MVB
-                if ((MVBEnabled||MVBDummy) && null != CurrentMVBData)
+                //Prioridad MVB                
+                if ((ServiceMode.MVBEnabled|| ServiceMode.MVBDummy) && null != CurrentMVBData)
                     return (int)CurrentMVBData.Speed;
-                if ((GPSEnabled || GPSDummy) && null != CurrentGPSData)
+                if ((GPSEnabled || ServiceMode.GPSDummy) && null != CurrentGPSData)
                     return (int)CurrentGPSData.SpeedKmh;
 
                 return 0; //Cuando todo lo demás falla, devuelve cero.
@@ -58,6 +47,7 @@ namespace Tourmaline26.Logic
 		#endregion Telemetria
 
 		public Enums.InformationLevel InformationLevel { get; set; } = Enums.InformationLevel.Route; //Nivel de información actual.
+        public Enums.PassengerInformationMode InformationMode { get; set; } = Enums.PassengerInformationMode.Default; //Contenido de la info.
         public SessionModel? Session { get; set; } = null; //Información sobre el usuario actual
         public Dictionary<Guid, UserModelBase>? ColUsers{ get; set; } = null; //Colección de usuarios del tren, con su Guid de Zafiro como clave.
         public TimeNetEnvironment? TNEnvironment { get; set; }= null; //Todo lo que necesita el programa para mostrar una circulación

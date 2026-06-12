@@ -1,22 +1,22 @@
 ﻿@using Tourmaline26.Components.Controls.Generical
 @inject TourmalineService TourmalineService
-<Switch Label="Cámaras automáticas" Value="@TourmalineService.SessionConfig.AutoCameras"
+<Switch Label="Cámaras automáticas" Value="@TourmalineService.SessionConfig.MainSwitches.AutoCameras"
         ValueChanged="@((bool v) => SetAutoCameras(v))" />
 <div class="alert alert-light fs-5 text-secondary mt-3 mb-3" role="alert">
     Con una ruta seleccionada, el sistema conectará automáticamente la visualización de las cámaras en los últimos metros antes de la parada en la próxima estación y la desconectará en los primeros metros tras la salida de la misma.
 </div>
-<Switch Label="Visualización manual" Value="@TourmalineService.SessionConfig.ManualCameras"
+<Switch Label="Visualización manual" Value="@TourmalineService.SessionConfig.MainSwitches.ManualCameras"
         ValueChanged="@((bool v) => SetManualCameras(v))" />
 
 @code {
     private async Task SetAutoCameras(bool value)
     {
-        TourmalineService.SessionConfig.AutoCameras = value;
+        TourmalineService.SessionConfig.MainSwitches.AutoCameras = value;
         TourmalineService.RaiseHMIUpdate();
     }
     private async Task SetManualCameras(bool value)
     {
-        TourmalineService.SessionConfig.ManualCameras = value;
+        TourmalineService.SessionConfig.MainSwitches.ManualCameras = value;
         TourmalineService.RaiseHMIUpdate();
     }
 

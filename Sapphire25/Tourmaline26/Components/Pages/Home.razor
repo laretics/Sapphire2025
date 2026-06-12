@@ -14,7 +14,7 @@
 else
 {
     <CascadingValue Value="@device">
-        @if (device.Type == Enums.DeviceType.TFT || TourmalineService.SessionConfig.PassengerScreenOnHMI)
+        @if (device.Type == Enums.DeviceType.TFT || TourmalineService.SessionConfig.ServiceMode.PassengerScreenOnHMI)
         {        
             <PassengerInfoPanel />
         }

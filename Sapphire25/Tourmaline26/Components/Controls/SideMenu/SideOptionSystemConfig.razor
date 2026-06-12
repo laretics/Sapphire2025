@@ -5,7 +5,7 @@
 @using Microsoft.EntityFrameworkCore
 @inject TourmalineService TourmalineService
 @inject TourmalineContext database
-<Switch Label="Dummy Keyboard" Value="@TourmalineService.SessionConfig.ServiceKeyboard"
+<Switch Label="Dummy Keyboard" Value="@TourmalineService.SessionConfig.ServiceMode.ServiceKeyboard"
         ValueChanged="@((bool v) => SetDebugKeyboard(v))" />
 @if(null==mvarLocalSystem)
 {
@@ -105,7 +105,7 @@ else
     }
     private void SetDebugKeyboard(bool rhs)
     {
-        TourmalineService.SessionConfig.ServiceKeyboard = rhs;
+        TourmalineService.SessionConfig.ServiceMode.ServiceKeyboard = rhs;
     }
 
 

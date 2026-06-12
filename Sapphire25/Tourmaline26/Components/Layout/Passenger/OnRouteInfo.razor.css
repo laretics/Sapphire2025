@@ -105,7 +105,10 @@
 }
 
 .info-box {
-	flex: 2; 
+	flex: 0 0 auto;
+	width: min(100%, 25vw);
+	aspect-ratio: 4 / 3;
+	align-self: center;
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
@@ -116,6 +119,21 @@
 	min-width: 0;
 	overflow: hidden;
 }
+
+.centered-image-panel {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+}
+.centered-image {
+	width: 75%;
+	height: auto;
+	max-height: 75%;
+	object-fit: contain;
+	display: block;
+}
+
 
 /* Estilos internos de info-box */
 .departure-row {

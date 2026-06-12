@@ -11,7 +11,7 @@
 <div class="tesla-root @(NightMode?" night":"")">
     @if(mvarTourmaline.SessionConfig.Initialized)
     {
-        <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="@mvarTourmaline.SessionConfig.ServiceMode">
+        <ServiceModeFrame MaintenanceMessage="Mantenimiento" Maintenance="@mvarTourmaline.SessionConfig.ServiceMode.Main">
             <div class="tesla-main">
                 @if(mvarTourmaline.SystemConfig.ToniCruz=="right")
                 {
@@ -165,7 +165,7 @@
     [JSInvokable]
     public async Task HandleKey(string key)
     {
-        if (mvarTourmaline.SessionConfig.ServiceKeyboard)
+        if (mvarTourmaline.SessionConfig.ServiceMode.ServiceKeyboard)
             HandleServiceKey(key);
         else
         {

@@ -5,7 +5,7 @@
 <Switch Label="GPS" Value="@TourmalineService.SessionConfig.GPSEnabled"
         ValueChanged="@((bool v) => SetGPS(v))" />
 
-<Switch Label="Dummy" Value="@TourmalineService.SessionConfig.GPSDummy"
+<Switch Label="Dummy" Value="@TourmalineService.SessionConfig.ServiceMode.GPSDummy"
         ValueChanged="@((bool v) => SetDummyGPS(v))"/>
 
 @if(null!=mvarCurrentData)
@@ -123,7 +123,7 @@
     private void SetDummyGPS(bool rhs)
     {
         TourmalineService.SessionConfig.CurrentGPSData = null;
-        TourmalineService.SessionConfig.GPSDummy = rhs;            
+        TourmalineService.SessionConfig.ServiceMode.GPSDummy = rhs;            
     }
 
 

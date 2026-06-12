@@ -4,29 +4,25 @@
 @using TimeNet2026.Topo
 @inject TourmalineService mvarTourmaline
 <div @onclick="OnScreenClick">
-    <CascadingValue Value="CurrentCirculation">
-        <CascadingValue Value="CurrentDelay">
-            @if(mvarTourmaline.SessionConfig.TFTEnabled)
-            {
-                @if (mvarTourmaline.SessionConfig.ServiceMode && mvarTourmaline.SessionConfig.PassengerCaretOnServiceMode)
-                {
-                    <SettingCaret></SettingCaret>
-                }
-                else if (mvarTourmaline.SessionConfig.PASEnabled)
-                {
-                    <OnRouteInfo></OnRouteInfo>
-                }
-                else
-                {
-                    <div class="tft-blackout"></div>
-                }
-            }
-            else
-            {
-                <div class="tft-blackout"></div>
-            }
-        </CascadingValue>
-    </CascadingValue>
+    @if (mvarTourmaline.SessionConfig.MainSwitches.TFTEnabled)
+    {
+        @if (mvarTourmaline.SessionConfig.ServiceMode.PassengerCaretOnServiceMode)
+        {
+            <SettingCaret></SettingCaret>
+        }
+        else if (mvarTourmaline.SessionConfig.MainSwitches.PASEnabled)
+        {
+            <OnRouteInfo></OnRouteInfo>
+        }
+        else
+        {
+            <div class="tft-blackout"></div>
+        }
+    }
+    else
+    {
+        <div class="tft-blackout"></div>
+    }
 </div>
 
 @code {
@@ -66,7 +62,7 @@
     }
     private void OnScreenClick()
     {
-        mvarTourmaline.SessionConfig.PassengerScreenOnHMI = false;
+        mvarTourmaline.SessionConfig.ServiceMode.PassengerScreenOnHMI = false;
         UpdateView?.Invoke();
     }
 }

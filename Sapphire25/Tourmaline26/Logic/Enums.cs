@@ -67,6 +67,20 @@ namespace Tourmaline26.Logic
 			Route=1, //Anunciador al viajero en modo normal
 			Forbidden=2 //Tren no admite viajeros
 		}
+        /// <summary>
+        /// Las pantallas TFT y los paneles de todo el tren deben dar la misma información en el
+        /// mismo momento. Para asegurarnos de ello, tendremos una variable en SessionConfiguration
+        /// de este tipo enumerado.
+        /// </summary>
+        public enum PassengerInformationMode : byte
+        {
+            Default=0,          //Mostramos el destino y la información de viaje resumida.
+            BeginOfTrip=1,      //Trayecto no iniciado. Información antes de la salida.
+            NextStopsList=2,    //Lista de las próximas estaciones.
+            NextStopInfo=3,     //Correspondencias e información de la próxima estación.
+            Cruise=4,           //Tren viajando a velocidad de crucero
+            EndOfTrip=255       //Trayecto finalizado. Tren en destino
+        }
 
         /// <summary>
         /// Traduce un intervalo en texto

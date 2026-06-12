@@ -101,7 +101,7 @@ namespace Tourmaline26.Services
 
                     if (null!=mvarMvbTask && mvarMvbTask.IsCompleted)
                     {
-                        if(!mvarTourmaline.SessionConfig.MVBDummy)
+                        if(!mvarTourmaline.SessionConfig.ServiceMode.MVBDummy)
                         {
 							if (mvarMvbTask.IsCompletedSuccessfully && null!=mvarMvbTask.Result)
 								mvarTourmaline.SessionConfig.CurrentMVBData = new MVBData(mvarMvbTask.Result);
@@ -196,7 +196,7 @@ namespace Tourmaline26.Services
         }
         private async Task<bool> PoolGPS()
         {
-            if(mvarTourmaline.SessionConfig.GPSDummy)
+            if(mvarTourmaline.SessionConfig.ServiceMode.GPSDummy)
             {
                 //En modo Dummy obtenemos la posición usando la API Rest de Tourmaline Experience
                 //El simulador nos ofrece una posición.
@@ -288,11 +288,11 @@ namespace Tourmaline26.Services
         {
             if(!mvarMVBService.IsOK)
             {
-                mvarTourmaline.SessionConfig.MVBEnabled = false;
-                mvarTourmaline.SessionConfig.MVBDummy = true;
+                mvarTourmaline.SessionConfig.ServiceMode.MVBEnabled = false;
+                mvarTourmaline.SessionConfig.ServiceMode.MVBDummy = true;
             }
 
-            if (mvarTourmaline.SessionConfig.MVBEnabled)
+            if (mvarTourmaline.SessionConfig.ServiceMode.MVBEnabled)
             {
                 try
                 {                    
@@ -310,7 +310,7 @@ namespace Tourmaline26.Services
                     mvarTourmaline.SessionConfig.MVBError = ex.Message;
                 }
             }
-            else if (mvarTourmaline.SessionConfig.MVBDummy)
+            else if (mvarTourmaline.SessionConfig.ServiceMode.MVBDummy)
             {
                 if(null==mvarTourmaline.SessionConfig.CurrentMVBData)
                 {
@@ -347,7 +347,7 @@ namespace Tourmaline26.Services
         /// <returns></returns>
         private async Task<bool> PoolLedPanels()
         {           
-            if(mvarTourmaline.SessionConfig.TeleindicatorsEnabled && mvarTourmaline.SessionConfig.PASEnabled)
+            if(mvarTourmaline.SessionConfig.MainSwitches.TeleindicatorsEnabled && mvarTourmaline.SessionConfig.MainSwitches.PASEnabled)
             {
                 switch (mvarScreen)
                 {

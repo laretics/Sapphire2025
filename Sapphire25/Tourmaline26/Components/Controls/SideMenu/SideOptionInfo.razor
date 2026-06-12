@@ -5,7 +5,7 @@
      class="img-fluid rounded shadow mx-auto d-block my-4"
      style="max-width: 420px;" />
 <p>Software @ReleaseInfo</p>
-@if(TourmalineService.SessionConfig.ServiceMode)
+@if(TourmalineService.SessionConfig.ServiceMode.Main)
 {
     <ul>
         <li>Zafiro: @auxConfig.SapphireUrl</li>
@@ -14,7 +14,7 @@
         <li>T.E. Stream: @auxConfig.TExperienceStr</li>
     </ul>
 }
-<Switch Label="Modo de Servicio" Value="@TourmalineService.SessionConfig.ServiceMode"
+<Switch Label="Modo de Servicio" Value="@TourmalineService.SessionConfig.ServiceMode.Main"
         ValueChanged="@((bool v) => SetServiceMode(v))" />
 @code {
     private SystemConfiguration auxConfig { get; set; }
@@ -25,7 +25,7 @@
     }
     private void SetServiceMode(bool value)
     {
-        TourmalineService.SessionConfig.ServiceMode = value;
+        TourmalineService.SessionConfig.ServiceMode.Main = value;
         TourmalineService.RaiseHMIUpdate();
     }
     private string ReleaseInfo
