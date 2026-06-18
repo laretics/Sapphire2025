@@ -339,7 +339,7 @@ else
         if (int.TryParse(value, out var v))
         {
             mvarData.Speed = v;
-            await Experience.SetSpeed(v * 4);
+            await Experience.SetSpeed(v);
             mvarData.SimulateLoops();
         }        
     }
