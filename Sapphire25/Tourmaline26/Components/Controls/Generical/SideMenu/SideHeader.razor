@@ -1,4 +1,6 @@
 ﻿@using Tourmaline26.Components.Images
+@using Tourmaline26.Logic
+@inject TourmalineService mvarTourmaline
 <div class="side-panel-header">
     <div class="side-header-left">
         <input class="header-search" type="text" placeholder="Buscar" @bind="SearchText" />
@@ -6,15 +8,57 @@
     <div class="side-header-center">
         @TrainId
     </div>
-    <div class="side-header-right">
-        <ColorIcon Name="Bezier" Size="24" />
-        <ColorIcon Name="Bezier" Size="24" />
-        <ColorIcon Name="Bezier" Size="24" />
-        <span class="header-temp">15ºC</span>
-    </div>
+    @if(null!=mvarSession)
+    {
+        @if (null != mvarSession.Session && null != mvarSession.Session.User)
+        {
+            <span>
+                <RoleIcon Size="24"
+                          Credentials="mvarSession.Session.Roles" />
+            </span>
+            <span>
+                <b>@mvarSession.Session.User.Name</b>
+            </span>
+        }
+        <div class="side-header-right">
+            @if (mvarSession.ServiceMode.MVBEnabled || mvarSession.ServiceMode.MVBDummy)
+            {
+                if (null == mvarSession.CurrentMVBData)
+                {
+                    <ColorIcon Name="MVB" Size="24" Color="red"></ColorIcon>
+                }
+                else
+                {
+                    <ColorIcon Name="MVB" Size="24"></ColorIcon>
+                }
+            }
+            <ColorIcon Name="Bezier" Size="24" />
+            @if (mvarSession.ServiceMode.ServiceKeyboard)
+            {
+                <ColorIcon Size="24" Color="#902020" Name="DebugKeyboard" />
+            }
+            <ColorIcon Name="Bezier" Size="24" />
+            @if(null!=mvarSession.CurrentMVBData)
+            {
+                <span class="header-temp">@mvarSession.CurrentMVBData.Wagons[0].InsideTemp ºC</span>
+            }            
+        </div>
+    }
 </div>
 
 @code {
-    [Parameter] public string TrainId { get; set; } = "Identificador";
     [Parameter] public string SearchText { get; set; } = "";
+
+    SessionConfiguration? mvarSession;
+    SystemConfiguration? mvarSystem;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        mvarSession = mvarTourmaline.SessionConfig;
+        mvarSystem = mvarTourmaline.SystemConfig;
+    }
+
+    private string TrainId { get => null == mvarSystem ? "" : mvarSystem.Name; }
+
 }

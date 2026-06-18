@@ -1,6 +1,8 @@
-﻿using Sapphire2025Models.Authentication;
+﻿using Google.Protobuf.WellKnownTypes;
+using Sapphire2025Models.Authentication;
 using TimeNet2026.Production;
 using TimeNet2026.Topo;
+using Tourmaline26.Services.Armandito;
 using Tourmaline26.Services.OpenMeteo;
 namespace Tourmaline26.Logic
 {
@@ -20,9 +22,10 @@ namespace Tourmaline26.Logic
         public GPSData? CurrentGPSData{ get; set; } //Última lectura del GPS
         public bool GPSOK { get; set; } = true; //Indica si el GPS está recibiendo señal.
         public DateTime GPSLastUpdate { get; set; } = DateTime.MinValue; //Última vez que se recibió una actualización del GPS.
-        public bool InternetEnabled { get; set; } = true; //Indica si el sistema tiene habilitada la conexión a internet.
+        public bool InternetEnabled { get; set; } = true; //Indica si el sistema tiene habilitada la conexión a internet.        
         public bool InternetOK { get; set; } = true; //Indica si el sistema tiene conexión a internet.
         public bool SpeakersAnnouncing { get; set; } = false; //Los altavoces de sala están haciendo un anuncio a los viajeros.
+        public IReadOnlyList<ArmanditoMessage> EarthMessages { get; set; } = Array.Empty<ArmanditoMessage>(); //Lista de mensajes recibidos de tierra
         public FeatureSwitches MainSwitches { get; } = new FeatureSwitches();
         public ServiceMode ServiceMode { get; } = new ServiceMode();
 

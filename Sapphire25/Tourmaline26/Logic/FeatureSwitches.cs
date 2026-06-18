@@ -9,6 +9,6 @@
         public bool ExternalTeleindicatorsEnabled { get; set; } = true; //Indica si los paneles de destino están habilitados.
         public bool AutoCameras { get; set; } = true; //Indica si las cámaras se activan automáticamente en las paradas con habilitación de puertas.
         public bool ManualCameras { get; set; } = true; //Indica si el botón de cámaras está habilitado.
-
+        public bool ArmanditoEnabled { get; set; } = true; //El sistema puede recibir comunicaciones desde tierra.
     }
 }

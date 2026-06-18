@@ -20,6 +20,8 @@
              SelectedIndex="@( (int)(byte)TourmalineService.SessionConfig.InformationLevel )"
              SelectedIndexChanged="@((int v) => SetRouteMode(v))" />
              
+<Switch Label="Mensajes de Tierra" Value="@TourmalineService.SessionConfig.MainSwitches.ArmanditoEnabled" 
+    ValueChanged="@((bool v) => SetArmanditoEnabled(v))" />
 <Switch Label="Monitores Vídeo" Value="@TourmalineService.SessionConfig.MainSwitches.TFTEnabled" 
     ValueChanged="@((bool v) => SetTFTEnabled(v))" />
 <Switch Label="Sonido" Value="@TourmalineService.SessionConfig.MainSwitches.SoundEnabled"
@@ -71,9 +73,14 @@
         TourmalineService.SessionConfig.MainSwitches.TeleindicatorsEnabled = value;
         TourmalineService.RaiseHMIUpdate();
     }
-     private void SetExternalTeleindicatorsEnabled(bool value)
+    private void SetExternalTeleindicatorsEnabled(bool value)
     {
         TourmalineService.SessionConfig.MainSwitches.ExternalTeleindicatorsEnabled = value;
+        TourmalineService.RaiseHMIUpdate();
+    }
+    private void SetArmanditoEnabled(bool value)
+    {
+        TourmalineService.SessionConfig.MainSwitches.ArmanditoEnabled = value;
         TourmalineService.RaiseHMIUpdate();
     }
 }
