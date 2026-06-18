@@ -365,7 +365,12 @@ namespace Tourmaline26.Services
                     string auxServiceId = mvarTourmaline.SessionConfig.TNEnvironment.Circulation.name;
                     mvarTourmaline.SessionConfig.EarthMessages = await mvarArmandito.GetMessagesAsync(auxServiceId);
                 }
+                catch (Exception ex)
+                {
+                    mvarLogger.LogWarning(ex, "Earth messages error");
+                }
             }
+            return false;
         }
 
         /// <summary>

@@ -57,8 +57,17 @@
         base.OnInitialized();
         mvarSession = mvarTourmaline.SessionConfig;
         mvarSystem = mvarTourmaline.SystemConfig;
+        mvarTourmaline.HMIUpdateRequested += auxHMIRefresh;
+    }
+    public void Dispose()
+    {
+        mvarTourmaline.HMIUpdateRequested -= auxHMIRefresh;
     }
 
+    private void auxHMIRefresh(object? sender, EventArgs e)
+    {        
+        InvokeAsync(StateHasChanged);
+    }
     private string TrainId { get => null == mvarSystem ? "" : mvarSystem.Name; }
 
 }

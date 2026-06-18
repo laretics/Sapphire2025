@@ -1,9 +1,124 @@
 ﻿@using Tourmaline26.Logic
-@inject TourmalineService mvarTourmaline 
+@using Tourmaline26.Services.Armandito
+@using Tourmaline26.Components.Controls.Generical
+@inject TourmalineService mvarTourmaline
+@inject ArmanditoService mvarArmandito
 
+@if(null!=mvarSession)
+{
+<Switch Label="Recepción" Value="@mvarSession.MainSwitches.ArmanditoEnabled" 
+    ValueChanged="@((bool v) => SetArmanditoEnabled(v))" />    
+    <button type="button"
+            class="btn btn-sm btn-outline-primary mt-2"
+            @onclick="DummyTest">
+        Prueba
+    </button>
+}
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">Mensajes de tierra</span>
+        <span class="badge text-bg-primary">
+            @(mvarSession?.EarthMessages?.Count ?? 0)
+        </span>
+    </div>
 
+    <div class="card-body">
+        @if (mvarSession is null)
+        {
+            <div class="alert alert-secondary mb-0">
+                No hay sesión cargada.
+            </div>
+        }
+        else if (mvarSession.EarthMessages is null || mvarSession.EarthMessages.Count == 0)
+        {
+            <div class="alert alert-info mb-0">
+                No hay mensajes disponibles.
+            </div>
+        }
+        else
+        {
+            <div class="accordion" id="armanditoMessagesAccordion">
+                @for (int i = 0; i < mvarSession.EarthMessages.Count; i++)
+                {
+                    ArmanditoMessage message = mvarSession.EarthMessages[i];
+                    string itemId = $"{message.Codigo}-{message.Prioridad}";
+                    string collapseId = $"armandito-msg-{itemId}";
+                    string headingId = $"armandito-heading-{itemId}";
+                    string previewText = message.Texto.Count > 0 ? message.Texto[0].Texto : "Sin texto";
+
+                    <div class="accordion-item" @key="itemId">
+                        <h2 class="accordion-header" id="@headingId">
+                            <button class="accordion-button @(i == 0 ? "" : "collapsed")"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#@collapseId"
+                                    aria-expanded="@(i == 0 ? "true" : "false")"
+                                    aria-controls="@collapseId">
+                                <span class="me-2">#@message.Codigo</span>
+                                <span class="badge text-bg-secondary me-2">Prioridad @message.Prioridad</span>
+                                <span class="text-truncate">@previewText</span>
+                            </button>
+                        </h2>
+
+                        <div id="@collapseId"
+                             class="accordion-collapse collapse @(i == 0 ? "show" : "")"
+                             aria-labelledby="@headingId"
+                             data-bs-parent="#armanditoMessagesAccordion">
+                            <div class="accordion-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped table-bordered align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 120px;">Idioma</th>
+                                                <th>Texto</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (ArmanditoText texto in message.Texto)
+                                            {
+                                                <tr>
+                                                    <td class="text-nowrap">@texto.Idioma</td>
+                                                    <td>@texto.Texto</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
 
 @code {
-    
+    private SessionConfiguration? mvarSession;
+    private string mvarDummyServiceName = "XSFMX";
 
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        mvarSession = mvarTourmaline.SessionConfig;  
+        mvarTourmaline.HMIUpdateRequested += auxHMIRefresh;
+    }
+    public void Dispose()
+    {
+        mvarTourmaline.HMIUpdateRequested -= auxHMIRefresh;
+    }
+    private void auxHMIRefresh(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    private void SetArmanditoEnabled(bool value)
+    {
+        mvarTourmaline.SessionConfig.MainSwitches.ArmanditoEnabled = value;
+        mvarTourmaline.RaiseHMIUpdate();
+    }
+    private async Task DummyTest()
+    {
+        //Ejecuta una petición de prueba para ver si funciona Armandito.
+        mvarTourmaline.SessionConfig.EarthMessages = await mvarArmandito.GetMessagesAsync(mvarDummyServiceName);
+    }
 }
