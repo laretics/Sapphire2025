@@ -27,7 +27,7 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 				equivocado.addText("¿Perdón? ¿Qué querías decirme?");
 				equivocado.addText("¿Puedes repetir con otras palabras?");
 				//equivocado.addText(mvarErrorText);
-				await equivocado.Send(client, mvarParent.user);
+				await equivocado.Send(client, mvarParent.userContext);
 				mvarError = false;
 			}
 			else
@@ -36,10 +36,10 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 				auxPrompt.addText("Hola #username. ¿Qué te gustaría hacer?");
 				auxPrompt.addText("Bienvenido #username. Dime qué quieres de mí.");
 				auxPrompt.addText("¿Qué tal #username? Cuéntame qué puedo hacer por ti.");				
-				if(null!=mvarParent.user)
+				if(null!=mvarParent.userContext)
 				{
-					auxPrompt.addKey("username", mvarParent.user.Name);
-					await auxPrompt.Send(client, mvarParent.user);
+					auxPrompt.addKey("username", mvarParent.userContext.Name);
+					await auxPrompt.Send(client, mvarParent.userContext);
 				}
 					
 			}						

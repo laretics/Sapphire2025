@@ -20,18 +20,18 @@ namespace Sapphire2026Telegram.Operative
     /// </summary>
     internal class UserContext
     {
-        internal Sapphire2025Models.Authentication.ExtendedUserModel? mvarUser { get; private set; }	
+        internal ExtendedUserModel? mvarUser { get; private set; }	
         internal IConfiguration mvarConfig;
 		private IntStorageService? mvarIntStorage;
-		internal IntStorageService IntStorage
-		{ 
-			get 
-			{
-				if(null==mvarIntStorage)
-					mvarIntStorage = new IntStorageService();
-				return mvarIntStorage;
-			}
-		}
+		//internal IntStorageService IntStorage
+		//{ 
+		//	get 
+		//	{
+		//		if(null==mvarIntStorage)
+		//			mvarIntStorage = new IntStorageService();
+		//		return mvarIntStorage;
+		//	}
+		//}
         private long mvarTelegramId { get; set; } = -1;
 
         internal UserContext(long telegramChatId, IConfiguration config)

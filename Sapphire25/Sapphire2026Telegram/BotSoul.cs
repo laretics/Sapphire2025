@@ -227,7 +227,7 @@ namespace Sapphire2026Telegram
 						Debug.Assert(mcolTasks.ContainsKey(candidato.TelegramId));
 
 						BotTask auxTask = mcolTasks[candidato.TelegramId];
-						if (auxTask.user.MatchRole(roles))
+						if (auxTask.userContext.MatchRole(roles))
 							auxUsers.Add(candidato);
 					}
 				}

@@ -56,12 +56,12 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 		{
 			//TODO: Meter el código de cliente aquí.
 			System.Diagnostics.Debug.Assert(null != mvarConcept);
-			System.Diagnostics.Debug.Assert(null != mvarParent.user && null != mvarParent.user.mvarUser);
+			System.Diagnostics.Debug.Assert(null != mvarParent.userContext && null != mvarParent.userContext.mvarUser);
 			NoteModel auxNota = new NoteModel();
 			auxNota.parent = train.id;
 			auxNota.TimeStamp = DateTime.UtcNow;
 			auxNota.Text = mvarConcept.Sympthoms;
-			auxNota.UserId = mvarParent.user.mvarUser.guid;
+			auxNota.UserId = mvarParent.userContext.mvarUser.guid;
 			auxNota.SessionToken = Common.TelegramToken;
 			auxNota.Type = (byte)(mvarConcept.Incidence ? 1 : 0);
 			using IServiceScope scope = mvarParent.parent.services.CreateScope();
@@ -79,11 +79,11 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 				TextResponse auxQueryPrompt = new TextResponse();
 				auxQueryPrompt.addText("No te he entendido. ¿Puedes preguntar otra cosa?");
 				auxQueryPrompt.addText("No estoy preparado para manejar esta pregunta. Prueba con otra.");
-				await auxQueryPrompt.Send(client, mvarParent.user);
+				await auxQueryPrompt.Send(client, mvarParent.userContext);
 			}
 			else
 			{
-				await mvarConcept.Confirmation().Send(client, mvarParent.user);
+				await mvarConcept.Confirmation().Send(client, mvarParent.userContext);
 			}
 		}
 	}

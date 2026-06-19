@@ -5,6 +5,7 @@ using Sapphire2025Models.Authentication;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Net.Http.Json;
+using System.Security.AccessControl;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -259,6 +260,18 @@ namespace Sapphire2025.Storage
             return await respuesta.Content.ReadFromJsonAsync<IEnumerable<UserModel>?>();
         }
 
+        public async Task<bool> pairTelegram(Guid userId, long telegramId)
+        {
+            UpdateUserPersonalDataMessage message = new UpdateUserPersonalDataMessage();
+            message.UserId = userId;
+            message.TelegramId = telegramId;
+            string jsonString = JsonSerializer.Serialize(message);
+
+            HttpResponseMessage respuesta = await sendPutRequest("pairtelegram", jsonString);
+
+            return await respuesta.Content.ReadFromJsonAsync<bool>();
+        }
+
         /// <summary>
         /// Devuelve la lista de usuarios básicos.
         /// </summary>
@@ -277,14 +290,18 @@ namespace Sapphire2025.Storage
 		public async Task<ExtendedUserModel?> userInfo(Guid userId)
         {
             Guid auxToken = await mvarIntStorage.getToken();
-			UserInfoRequestModel peticion = new UserInfoRequestModel(auxToken,userId);
-            string jsonString = JsonSerializer.Serialize(peticion);
-          
-            HttpResponseMessage respuesta = await sendPutRequest("userinfo",jsonString);
-
-            return await respuesta.Content.ReadFromJsonAsync<ExtendedUserModel?>();
+            return await userInfo(auxToken, userId);
         }
 
+        public async Task<ExtendedUserModel?> userInfo(Guid tokenId, Guid userId)
+        {
+			UserInfoRequestModel peticion = new UserInfoRequestModel(tokenId, userId);
+			string jsonString = JsonSerializer.Serialize(peticion);
+
+			HttpResponseMessage respuesta = await sendPutRequest("userinfo", jsonString);
+
+			return await respuesta.Content.ReadFromJsonAsync<ExtendedUserModel?>();
+		}
 
         public async Task<bool> changeRoles(string tokenId, string userId, string enroles, string deroles)
         {
@@ -350,10 +367,17 @@ namespace Sapphire2025.Storage
 		{
 			UserInfoRequestModel peticion = new UserInfoRequestModel(Common.TelegramToken, telegramId);
 			string jsonString = JsonSerializer.Serialize(peticion);
-			Console.WriteLine($"userByTelegramId jsonString: {jsonString}.");
-			HttpResponseMessage respuesta = await sendPutRequest("userinfo", jsonString);
 
-			return await respuesta.Content.ReadFromJsonAsync<ExtendedUserModel?>();
+			HttpResponseMessage respuesta = await sendPutRequest("userinfo", jsonString);
+			if (!respuesta.IsSuccessStatusCode)
+				return null;
+
+			string contenido = await respuesta.Content.ReadAsStringAsync();
+			if (string.IsNullOrWhiteSpace(contenido))
+				return null;
+
+			JsonSerializerOptions opciones = new(JsonSerializerDefaults.Web);
+			return JsonSerializer.Deserialize<ExtendedUserModel>(contenido, opciones);
 		}
 
 
