@@ -25,6 +25,6 @@ namespace TimeNet2026Data
        DbSet<DBSchedule> Schedules { get; }
        DbSet<DBScheduleUnit> ScheduleUnits { get; }
        DbSet<DBCirculation> Circulations { get; }
-        Task<int> SaveChangesAsync();
+       Task<int> SaveChangesAsync();
 	}
 }
