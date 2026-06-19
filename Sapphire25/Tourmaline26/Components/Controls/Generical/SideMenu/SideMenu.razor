@@ -4,7 +4,7 @@
 @using Tourmaline26.Components.Images
 <div class="side-menu-container">    
     <FloatRightContainer>
-        <SideHeader TrainId="@(mvarConfig?.Name ?? "")"></SideHeader>
+        <SideHeader/>
         <div class="side-menu-content-row">
             <div class="sliding-menu">
                 <SlidingMenu Options="auxOptions" @ref="mvarSlidingMenu" OnSelectedIndexChanged="OnMenuChanged" />
@@ -21,6 +21,9 @@
                             break;
                         case "onyx":
                             <SideOptionOnyx/>
+                            break;
+                        case "arm":
+                            <SideOptionArmandito/>
                             break;
                         case "info":
                             <SideOptionInfo/>
@@ -62,7 +65,8 @@
     new MenuOptionModel("pass","Pasaje",@<ColorIcon Name="People" Size="64"/>),
     new MenuOptionModel("cam","CCTV",@<ColorIcon Name="CCTV" Size="64" />),
     new MenuOptionModel("onyx","Onice",@<ColorIcon Name="Edata" Size="64" />),
-    new MenuOptionModel("cli","Client",@<ColorIcon Name="OutboundConnect" Color="red" Size="64" />,true),
+    new MenuOptionModel("cli","Zafiro",@<ColorIcon Name="OutboundConnect" Color="red" Size="64" />,true),
+    new MenuOptionModel("arm","Tierra",@<ColorIcon Name="RemoteNews" Size="64" />),
     new MenuOptionModel("sys","Config",@<ColorIcon Name="Wrench" Color="red" Size="64" />,true),
     new MenuOptionModel("mvb","MVB",@<ColorIcon Name="MVB" Color="red" Size="64" />,true),
     new MenuOptionModel("gps","GPS",@<ColorIcon Name="Satellite" Color="red" Size="64" />,true),

@@ -2,11 +2,13 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using TimeNet2026.Production;
 using TimeNet2026.Timed;
 using Tourmaline26.Logic;
+using Tourmaline26.Services.Armandito;
 using Tourmaline26.Services.TourmalineExperience;
 
 namespace Tourmaline26.Services
@@ -15,6 +17,7 @@ namespace Tourmaline26.Services
     {
         private readonly ILogger<TourmalineBackground> mvarLogger;
         private readonly TourmalineService mvarTourmaline;
+        private readonly ArmanditoService mvarArmandito;
         private readonly TourmalineExperienceService mvarExperience;
         private readonly GPSService mvarGPSService;
         private readonly MVBService mvarMVBService;
@@ -29,6 +32,7 @@ namespace Tourmaline26.Services
 
         private Task<bool>? mvarGpsTask;
         private Task<MVB8100Data?>? mvarMvbTask;
+        private Task<bool>? mvarArmanditoTask;
         private Task<bool>? mvarInternetTask;
         private Task<bool>? mvarLocationTask;
         private Task<bool>? mvarLedPanelsTask;
@@ -40,6 +44,7 @@ namespace Tourmaline26.Services
         public TourmalineBackground(
             ILogger<TourmalineBackground> logger,
             TourmalineService tourmalineService,
+            ArmanditoService armanditoService,
             TourmalineExperienceService experienceService,
             MVBService mvbService,
             GPSService gpsService,
@@ -48,6 +53,7 @@ namespace Tourmaline26.Services
         {
             mvarLogger = logger;
             mvarTourmaline = tourmalineService;
+            mvarArmandito = armanditoService;
             mvarExperience = experienceService;
             mvarMVBService = mvbService;
             mvarGPSService = gpsService;
@@ -76,6 +82,7 @@ namespace Tourmaline26.Services
             });
             DateTime auxLastMeteoCheck = DateTime.Today; //Momento de la última comprobación de la meteorología
             DateTime auxLastPanelsUpdate = DateTime.Today; //Momento de la última actualización de paneles led.            
+            DateTime auxLastArmanditoUpdate = DateTime.Today; //Última recepción de mensajes de tierra
             mvarLogger.LogInformation("TourmalineBackground iniciado.");
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -101,7 +108,7 @@ namespace Tourmaline26.Services
 
                     if (null!=mvarMvbTask && mvarMvbTask.IsCompleted)
                     {
-                        if(!mvarTourmaline.SessionConfig.MVBDummy)
+                        if(!mvarTourmaline.SessionConfig.ServiceMode.MVBDummy)
                         {
 							if (mvarMvbTask.IsCompletedSuccessfully && null!=mvarMvbTask.Result)
 								mvarTourmaline.SessionConfig.CurrentMVBData = new MVBData(mvarMvbTask.Result);
@@ -146,6 +153,14 @@ namespace Tourmaline26.Services
                     {
                         mvarMeteoTask = PoolMeteo();
                         auxLastMeteoCheck = DateTime.Now.AddSeconds(30);
+                    }
+
+                    if (null != mvarArmanditoTask && mvarArmanditoTask.IsCompleted)
+                        mvarArmanditoTask = null;
+                    if(null==mvarArmanditoTask && auxLastArmanditoUpdate < DateTime.Now)
+                    {
+                        mvarArmanditoTask = PoolArmandito();
+                        auxLastArmanditoUpdate = DateTime.Now.AddSeconds(15);
                     }
                     
                 }
@@ -196,7 +211,7 @@ namespace Tourmaline26.Services
         }
         private async Task<bool> PoolGPS()
         {
-            if(mvarTourmaline.SessionConfig.GPSDummy)
+            if(mvarTourmaline.SessionConfig.ServiceMode.GPSDummy)
             {
                 //En modo Dummy obtenemos la posición usando la API Rest de Tourmaline Experience
                 //El simulador nos ofrece una posición.
@@ -288,11 +303,11 @@ namespace Tourmaline26.Services
         {
             if(!mvarMVBService.IsOK)
             {
-                mvarTourmaline.SessionConfig.MVBEnabled = false;
-                mvarTourmaline.SessionConfig.MVBDummy = true;
+                mvarTourmaline.SessionConfig.ServiceMode.MVBEnabled = false;
+                mvarTourmaline.SessionConfig.ServiceMode.MVBDummy = true;
             }
 
-            if (mvarTourmaline.SessionConfig.MVBEnabled)
+            if (mvarTourmaline.SessionConfig.ServiceMode.MVBEnabled)
             {
                 try
                 {                    
@@ -310,7 +325,7 @@ namespace Tourmaline26.Services
                     mvarTourmaline.SessionConfig.MVBError = ex.Message;
                 }
             }
-            else if (mvarTourmaline.SessionConfig.MVBDummy)
+            else if (mvarTourmaline.SessionConfig.ServiceMode.MVBDummy)
             {
                 if(null==mvarTourmaline.SessionConfig.CurrentMVBData)
                 {
@@ -339,7 +354,24 @@ namespace Tourmaline26.Services
             return false;
         }
 
-
+        private async Task<bool> PoolArmandito()
+        {
+            if(mvarTourmaline.SessionConfig.MainSwitches.ArmanditoEnabled && 
+                null!= mvarTourmaline.SessionConfig.TNEnvironment &&
+                null!= mvarTourmaline.SessionConfig.TNEnvironment.Circulation)
+            {
+                try
+                {
+                    string auxServiceId = mvarTourmaline.SessionConfig.TNEnvironment.Circulation.name;
+                    mvarTourmaline.SessionConfig.EarthMessages = await mvarArmandito.GetMessagesAsync(auxServiceId);
+                }
+                catch (Exception ex)
+                {
+                    mvarLogger.LogWarning(ex, "Earth messages error");
+                }
+            }
+            return false;
+        }
 
         /// <summary>
         /// Actualiza los teleindicadores LED
@@ -347,7 +379,7 @@ namespace Tourmaline26.Services
         /// <returns></returns>
         private async Task<bool> PoolLedPanels()
         {           
-            if(mvarTourmaline.SessionConfig.TeleindicatorsEnabled && mvarTourmaline.SessionConfig.PASEnabled)
+            if(mvarTourmaline.SessionConfig.MainSwitches.TeleindicatorsEnabled && mvarTourmaline.SessionConfig.MainSwitches.PASEnabled)
             {
                 switch (mvarScreen)
                 {

@@ -166,7 +166,7 @@
 		public bool BrakeLoop
 		{ 
 			get => 
-			Wagons[0].BrakeLoop && Wagons[1].BrakeLoop && Wagons[2].BrakeLoop && Wagons[3].BrakeLoop && //No está activado ningún freno de servicio.
+			Wagons[0].BrakeLoop && // Wagons[1].BrakeLoop && Wagons[2].BrakeLoop && Wagons[3].BrakeLoop && //No está activado ningún freno de servicio.
 			(Cabin == Habilitation.M1 || Cabin == Habilitation.M2) && //Existe una cabina habilitada.
 			!(Handler == HandlerPosition.EmergencyBrake) && //No se ha pulsado la seta ni el manipulador en freno de emergencia.
 			(Inverter != InverterPosition.Iddle) && //El inversor debe estar con alguna marcha seleccionada.

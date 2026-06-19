@@ -1,14 +1,14 @@
 ﻿@inject IJSRuntime JS
 @implements IAsyncDisposable
 
-<div class="simulator-stream-container" style="width:100%;height:100%;">
+<div class="simulator-stream-container">
     @if (StreamDisponible)
     {
-        <canvas id="videoCanvas" class="simulator-stream-canvas" style="width:100%;height:100%;display:block;"></canvas>
+        <canvas id="videoCanvas" class="simulator-stream-canvas" ></canvas>
     }
     else
     {
-        <img src="img/TourmalineBack.png" class="simulator-stream-img" style="width:100%;height:100%;object-fit:fill;" />
+        <img src="img/TourmalineBack.png" class="simulator-stream-img"/>
     }
 </div>
 

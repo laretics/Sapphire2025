@@ -2,38 +2,43 @@
 @inject TourmalineService TourmalineService
 
 <h4>Información al viajero</h4>
-<Switch Label="Conexión" Value="@TourmalineService.SessionConfig.PASEnabled" 
+<Switch Label="Conexión" Value="@TourmalineService.SessionConfig.MainSwitches.PASEnabled" 
     ValueChanged="@((bool v) => SetPASEnabled(v))" />
-@if(TourmalineService.SessionConfig.ServiceMode)
+@if(TourmalineService.SessionConfig.ServiceMode.Main)
 {
     <h3 class="bg-danger">Modo de servicio</h3>
-    <Switch Label="Carta de Ajuste" Value="@TourmalineService.SessionConfig.PassengerCaretOnServiceMode"
+    <Switch Label="Carta de Ajuste" Value="@TourmalineService.SessionConfig.ServiceMode.PassengerCaretOnServiceMode"
             ValueChanged="@((bool v) => SetCaret(v))" />
     <btn class="btn btn-outline-danger" @onclick="@TogglePassengerScreenOnHMI">Ver Viajeros</btn>
+    <h4 class="bg-danger">Anuncio</h4>
+    <RadioButton Options="@(new List<string> { "Def", "Init", "Route", "Arriv", "Cruise", "End" })"
+                 SelectedIndex="@( (int)(byte)TourmalineService.SessionConfig.InformationMode )"
+                 SelectedIndexChanged="@((int v) => SetPassengerMode(v))" />
 }
 <h4>Anunciador</h4>
-<RadioButton Options="@(new List<string> {"Desactivado","Ruta", "Tren Sin Servicio" })"
+<RadioButton Options="@(new List<string> { "Desactivado", "Ruta", "Tren Sin Servicio" })"
              SelectedIndex="@( (int)(byte)TourmalineService.SessionConfig.InformationLevel )"
              SelectedIndexChanged="@((int v) => SetRouteMode(v))" />
-<Switch Label="Monitores Vídeo" Value="@TourmalineService.SessionConfig.TFTEnabled" 
+             
+<Switch Label="Monitores Vídeo" Value="@TourmalineService.SessionConfig.MainSwitches.TFTEnabled" 
     ValueChanged="@((bool v) => SetTFTEnabled(v))" />
-<Switch Label="Sonido" Value="@TourmalineService.SessionConfig.SoundEnabled"
+<Switch Label="Sonido" Value="@TourmalineService.SessionConfig.MainSwitches.SoundEnabled"
         ValueChanged="@((bool v) => SetSoundEnabled(v))" />
-<Switch Label="Teleindicadores" Value="@TourmalineService.SessionConfig.TeleindicatorsEnabled"
+<Switch Label="Teleindicadores" Value="@TourmalineService.SessionConfig.MainSwitches.TeleindicatorsEnabled"
         ValueChanged="@((bool v) => SetTeleindicatorsEnabled(v))" />
-<Switch Label="Frontales" Value="@TourmalineService.SessionConfig.ExternalTeleindicatorsEnabled"
+<Switch Label="Frontales" Value="@TourmalineService.SessionConfig.MainSwitches.ExternalTeleindicatorsEnabled"
         ValueChanged="@((bool v) => SetExternalTeleindicatorsEnabled(v))" />
 @code {
     [CascadingParameter]
     public Action? UpdateView { get; set; }
     private void SetCaret(bool value)
     {
-        TourmalineService.SessionConfig.PassengerCaretOnServiceMode = value;
+        TourmalineService.SessionConfig.ServiceMode.PassengerCaretOnServiceMode = value;
         TourmalineService.RaisePassengerUpdate();
     }
     private void TogglePassengerScreenOnHMI()
     {
-        TourmalineService.SessionConfig.PassengerScreenOnHMI = true;
+        TourmalineService.SessionConfig.ServiceMode.PassengerScreenOnHMI = true;
         UpdateView?.Invoke();
     }
     private void SetRouteMode(int index)
@@ -41,29 +46,34 @@
         TourmalineService.SessionConfig.InformationLevel = (Enums.InformationLevel)(byte)index;
         TourmalineService.RaiseHMIUpdate();
     }
+    private void SetPassengerMode(int index)
+    {
+        TourmalineService.SessionConfig.InformationMode = (Enums.PassengerInformationMode)(byte)index;
+        TourmalineService.RaiseHMIUpdate();
+    }
     private void SetPASEnabled(bool value)
     {
-        TourmalineService.SessionConfig.PASEnabled = value;
+        TourmalineService.SessionConfig.MainSwitches.PASEnabled = value;
         TourmalineService.RaiseHMIUpdate();
     }
     private void SetTFTEnabled(bool value)
     {
-        TourmalineService.SessionConfig.TFTEnabled = value;
+        TourmalineService.SessionConfig.MainSwitches.TFTEnabled = value;
         TourmalineService.RaiseHMIUpdate();
     }
     private void SetSoundEnabled(bool value)
     {
-        TourmalineService.SessionConfig.SoundEnabled = value;
+        TourmalineService.SessionConfig.MainSwitches.SoundEnabled = value;
         TourmalineService.RaiseHMIUpdate();
     }
     private void SetTeleindicatorsEnabled(bool value)
     {
-        TourmalineService.SessionConfig.TeleindicatorsEnabled = value;
+        TourmalineService.SessionConfig.MainSwitches.TeleindicatorsEnabled = value;
         TourmalineService.RaiseHMIUpdate();
     }
-     private void SetExternalTeleindicatorsEnabled(bool value)
+    private void SetExternalTeleindicatorsEnabled(bool value)
     {
-        TourmalineService.SessionConfig.ExternalTeleindicatorsEnabled = value;
+        TourmalineService.SessionConfig.MainSwitches.ExternalTeleindicatorsEnabled = value;
         TourmalineService.RaiseHMIUpdate();
     }
 }

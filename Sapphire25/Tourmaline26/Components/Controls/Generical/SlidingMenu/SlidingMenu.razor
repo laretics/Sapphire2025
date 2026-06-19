@@ -4,7 +4,7 @@
     @for (int i = 0; i < Options.Count; i++)
     {
         var x = i;
-        @if(!Options[i].ServiceMode || mvarTourmaline.SessionConfig.ServiceMode)
+        @if(!Options[i].ServiceMode || mvarTourmaline.SessionConfig.ServiceMode.Main)
         {
             <MenuOption Title="@Options[i].Title"
                         Icon="@Options[i].Icon"
@@ -29,7 +29,7 @@
         if(key=="ArrowUp")
         {            
             SelectedIndex--;
-            if (!mvarTourmaline.SessionConfig.ServiceMode)
+            if (!mvarTourmaline.SessionConfig.ServiceMode.Main)
             {
                 while (SelectedIndex >= 0 && Options[SelectedIndex].ServiceMode)
                     SelectedIndex--;
@@ -41,7 +41,7 @@
         else if(key=="ArrowDown")
         {
             SelectedIndex++;
-            if (!mvarTourmaline.SessionConfig.ServiceMode)
+            if (!mvarTourmaline.SessionConfig.ServiceMode.Main)
             {
                 while (SelectedIndex <Options.Count && Options[SelectedIndex].ServiceMode)
                     SelectedIndex++;

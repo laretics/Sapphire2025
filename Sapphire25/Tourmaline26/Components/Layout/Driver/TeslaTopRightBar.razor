@@ -11,39 +11,14 @@
             <span>
                 <img src="@OpenMeteoClient.GetWeatherIconUrl(mvarConfig.CurrentWeather.WeatherCode)" style="width:36px;height:auto;" />
             </span>
-        }
-        @if(null!=mvarConfig.Session && null!=mvarConfig.Session.User)
-        {
-            <span><RoleIcon 
-                Size="24" 
-                Credentials="mvarConfig.Session.Roles"/>
-            </span>
-            <span>
-                <b>@mvarConfig.Session.User.Name</b>
-            </span>
-        }
-        @if(mvarConfig.ServiceKeyboard)
-        {
-            <ColorIcon Size="24" Color="#902020" Name="DebugKeyboard"/>    
         }        
-        @if(mvarConfig.MVBEnabled || mvarConfig.MVBDummy)
-        {
-            if(null==mvarConfig.CurrentMVBData)
-            {
-                <ColorIcon Name="MVB" Size="24" Color="red"></ColorIcon>
-            }
-            else
-            {
-                <ColorIcon Name="MVB" Size="24" ></ColorIcon>
-            }
-        }
-        @if(mvarConfig.GPSEnabled ||mvarConfig.GPSDummy)
+        @if(mvarConfig.GPSEnabled ||mvarConfig.ServiceMode.GPSDummy)
         {
             if (mvarConfig.GPSOK)
             {
                 <ColorIcon Name="Satellite" Size="24" ></ColorIcon>
             }
-            else if (mvarConfig.GPSDummy)
+            else if (mvarConfig.ServiceMode.GPSDummy)
             {
                 <ColorIcon Name="Satellite" Color="#902020" Size="24"></ColorIcon>
             }

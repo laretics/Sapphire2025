@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Tourmaline26.Logic;
 using Tourmaline26.Services;
 using Tourmaline26.Services.TourmalineExperience;
+using Tourmaline26.Services.Armandito;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,7 +49,15 @@ builder.Services.AddHttpClient<MediaMTXService>("CameraService", client =>
 });
 builder.Services.AddHttpClient<MVBService>();
 builder.Services.AddHttpClient<TourmalineExperienceService>();
-
+builder.Services.AddHttpClient<ArmanditoService>(client =>
+{
+    string baseUrl = builder.Configuration["SystemConfiguration:SfmInfoUrl"] ?? "https://info.trensfm.com:8084/";
+    client.BaseAddress = new Uri(baseUrl.EndsWith("/") ? baseUrl : baseUrl + "/");
+    client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+        "Bearer",
+        builder.Configuration["SystemConfiguration:SfmInfoToken"] ?? "SFM2026");
+    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+});
 var app = builder.Build();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();

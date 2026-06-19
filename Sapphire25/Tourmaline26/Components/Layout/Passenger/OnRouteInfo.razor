@@ -4,96 +4,146 @@
 @using TimeNet2026.Topo
 @using TimeNet2026.Timed
 @using Tourmaline26.Services.OpenMeteo
-
 @inject TourmalineService mvarTourmaline
 <div class="panel-root">
-    <div class="panel-header" style="height:@(HeaderSize)vh;">
-        @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route && 
-        null!=Circulation && null !=Circulation.Parent && null != Circulation.Parent.asimilation)
+    @if(null!=mvarTourmaline.SessionConfig)
+    {        
+        @if(InformationMode==Enums.PassengerInformationMode.Default)
         {
-            <span class="train-number">
-                <ColorIcon Name="Train"
-                           Color="@Circulation.Parent.asimilation.color[0]"
-                           Size="72"
-                           Glow="false"
-                           GlowColor="@Circulation.Parent.asimilation.color[1]" />
-                @Circulation.name destinació
-            </span>
-            <span class="panel-time">@CurrentTime</span>
-            <div class="destination">
-                @Circulation.Parent.asimilation.Destination?.Name
-            </div>
-        }
-        else if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Disabled)
-        {
-            <span class="train-number"></span>
-            <span class="panel-time">@CurrentTime</span>
-            <div class="destination"></div>
-        }        
-        else
-        {
-            <span class="train-number"></span>
-            <span class="panel-time">@CurrentTime</span>
-            <div class="destination">Sense servei</div>
-        }
-        @if(null!=mvarTourmaline.SessionConfig)
-        {
-            @if (null != mvarTourmaline.SessionConfig.CurrentWeather)
-            {
-                <div class="external-temperature">
-                    @($"{mvarTourmaline.SessionConfig.CurrentWeather.Temperature2m}ºC")
-                    <img src="@OpenMeteoClient.GetWeatherIconUrl(mvarTourmaline.SessionConfig.CurrentWeather.WeatherCode)" />
-                </div>
-            }
-            @if(mvarTourmaline.SessionConfig.CurrentSpeed>40)
-            {
-                <div class="current-speed">
-                    @($"{mvarTourmaline.SessionConfig.CurrentSpeed}Km/h")
-                </div>
-            }
-        }
-
-    </div>
-
-    <div class="panel-body">
-        @if (null!=mvarTourmaline.SessionConfig && mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route && Circulation != null)
-        {
-            <div class="panel-body-content">
-                <!-- StationsTable ocupa 3/4 del ancho -->
-                <div class="stations-container">
-                    <StationsTable Rows="@Lines" ShowEstimatedTimes="true" />
-                </div>
-
-                <!-- Info-box ocupa 1/4 del ancho -->
-                <div class="info-box">
-                    <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
-@*                     <div class="departure-row">
-                        <span class="departure-info">[Info]</span>
-                        <span class="departure-time">[DepTime]</span>
-                    </div>
-                    <div class="direction-row">
-                        <span class="direction-arrow">↑ Flecha</span>
-                    </div>
-                    <div class="car-row">
-                        <span class="car-icon">🚌</span>
-                        <span class="car-number">@Device?.PublicId</span>
-                    </div> *@
-                </div>
+            <div class="panel-body centered-image-panel">
+                <img class="centered-image" src="/img/81pic1.png"/>
             </div>
         }
         else
         {
-            <SimulatorStream />
+            <div class="panel-header" style="height:@(HeaderSize)vh;">
+                @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route &&
+                null != Circulation && null != Circulation.Parent && null != Circulation.Parent.asimilation)
+                {
+                    <span class="train-number">
+                        <ColorIcon Name="Train"
+                                   Color="@Circulation.Parent.asimilation.color[0]"
+                                   Size="72"
+                                   Glow="false"
+                                   GlowColor="@Circulation.Parent.asimilation.color[1]" />
+                        @Circulation.name destinació
+                    </span>
+                    <span class="panel-time">@CurrentTime</span>
+                    <div class="destination">
+                        @Circulation.Parent.asimilation.Destination?.Name
+                    </div>
+                }
+                else if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Disabled)
+                {
+                    <span class="train-number"></span>
+                    <span class="panel-time">@CurrentTime</span>
+                    <div class="destination"></div>
+                }
+                else
+                {
+                    <span class="train-number"></span>
+                    <span class="panel-time">@CurrentTime</span>
+                    <div class="destination">Sense servei</div>
+                }
+                @if (null != mvarTourmaline.SessionConfig.CurrentWeather)
+                {
+                    <div class="external-temperature">
+                        @($"{mvarTourmaline.SessionConfig.CurrentWeather.Temperature2m}ºC")
+                        <img src="@OpenMeteoClient.GetWeatherIconUrl(mvarTourmaline.SessionConfig.CurrentWeather.WeatherCode)" />
+                    </div>
+                }
+                @if (mvarTourmaline.SessionConfig.CurrentSpeed > 40)
+                {
+                    <div class="current-speed">
+                        @($"{mvarTourmaline.SessionConfig.CurrentSpeed}Km/h")
+                    </div>
+                }
+
+            </div>
+
+            <div class="panel-body">
+                @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route && Circulation != null)
+                {
+                    @if (InformationMode == Enums.PassengerInformationMode.BeginOfTrip)
+                    {
+
+                    }
+                    else if (InformationMode == Enums.PassengerInformationMode.NextStopInfo)
+                    {
+
+                    }
+                    else if (InformationMode == Enums.PassengerInformationMode.Cruise)
+                    {
+                        <SimulatorStream />
+                    }
+                    else if (InformationMode == Enums.PassengerInformationMode.EndOfTrip)
+                    {
+
+                    }
+                    else //Lista de paradas.
+                    {
+                        <div class="panel-body-content">
+                            <!-- StationsTable ocupa 3/4 del ancho -->
+                            <div class="stations-container">
+                                <StationsTable 
+                                    Circulation="@Circulation" 
+                                    CurrentDelay="@CurrentDelay"
+                                    Rows="@Lines" 
+                                    ShowEstimatedTimes="true" />
+                            </div>
+
+                            <!-- Info-box ocupa 1/4 del ancho -->
+                            <div class="info-box">
+                                <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
         }
-    </div>
+    }
 </div>
 
 @code {
-    [CascadingParameter] public Circulation? Circulation { get; set; }
-    [CascadingParameter] public TimeSpan CurrentDelay { get; set; }
     [CascadingParameter] public DeviceMapped? Device { get; set; }
+
+    private TimeSpan CurrentDelay
+    {
+        get
+        {
+            if(null!=mvarTourmaline.SessionConfig.TNEnvironment)
+                return mvarTourmaline.SessionConfig.TNEnvironment.CurrentDelay;
+
+            return new TimeSpan(0);
+        }
+    }
+
+    private Circulation? Circulation
+    {
+        get
+        {
+            if(null!=mvarTourmaline.SessionConfig.TNEnvironment)
+                return mvarTourmaline.SessionConfig.TNEnvironment.Circulation;
+
+            return null;
+        }
+    }
+    private Enums.PassengerInformationMode InformationMode  {get => mvarTourmaline.SessionConfig.InformationMode;}
 
     private string CurrentTime => mvarTourmaline.SessionConfig.TNEnvironment?.Now.ToString("HH:mm") ?? "";
     private int Lines => (null==Device)?7:Device.Lines;
     private int HeaderSize => (null == Device) ? 100 : Device.HeaderSize;
+    private void OnChangeRequest(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        mvarTourmaline.PassengerUpdateRequested += OnChangeRequest;
+    }
+    public void Dispose()
+    {
+        mvarTourmaline.PassengerUpdateRequested -= OnChangeRequest;
+    }
 }
