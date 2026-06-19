@@ -294,7 +294,7 @@ namespace Tourmaline26.Services
                 if( mvarTourmaline.SessionConfig.LinearLocation.TryLocateBySatellite(mvarTourmaline.SessionConfig.CurrentGPSData.GeoLocation, auxEnvironment.TopoStorage))
                 {
                     auxEnvironment.PK = mvarTourmaline.SessionConfig.LinearLocation.PKRef;
-
+                    auxEnvironment.Axis = mvarTourmaline.SessionConfig.LinearLocation.Axis;
                 }
             }
             return false;

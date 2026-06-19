@@ -16,6 +16,13 @@ namespace TimeNet2026.Timed
 			this.tripTime = tripTime;
 			this.stopTime = stopTime;
 		}
+		public AsimilationStep(AsimilationStep origin)
+		{
+			this.destination = origin.destination;
+			this.axis = origin.axis;
+			this.tripTime = origin.tripTime;
+			this.stopTime = origin.stopTime;
+		}
 		public Station destination { get; set; }
 		public Axis axis { get; set; } //Devuelve el eje al que pertenece este tramo
 		public TimeSpan tripTime { get; set; }

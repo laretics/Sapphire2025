@@ -29,17 +29,25 @@ namespace TimeNet2026.Production
             set
             {
                 mvarPk = value;
-                if (Math.Abs(mvarPk - mvarPreviousPkLocation) > 500)
-                {
-                    //Actualiza el sentido de la marcha en función de la lectura del GPS
-                    PKIncreasing = (mvarPreviousPkLocation < mvarPk);
-                    mvarPreviousPkLocation = mvarPk;
-                }
+                auxUpdateRoute();
             }
         } 
+        private void auxUpdateRoute()
+        {
+            if (Math.Abs(mvarPk - mvarPreviousPkLocation) > 500)
+            {
+                //Actualiza el sentido de la marcha en función de la lectura del GPS
+                PKIncreasing = (mvarPreviousPkLocation < mvarPk);
+                mvarPreviousPkLocation = mvarPk;
+            }
+            //Carga la asimilación residual.
+            if(null!=Asimilation && null!=Axis)
+                RouteAsimilation = Asimilation.SubAsimilation(Axis, mvarPk);
+        }
         public bool PKIncreasing { get; set; } = true; //Orientación de la marcha del tren (Increasing avanza hacia un PK mayor)
         public Asimilation? ViewAsimilation { get; set; } //Asimilación que marca la vista de la malla.
         public Asimilation? Asimilation { get; set; }//Asimilación a mostrar o asimilación vigente.        
+        public Asimilation? RouteAsimilation { get; set; } //Próximas estaciones
         public Plan? Plan { get; set; } //Plan donde están los trenes que hay que visualizar.
         public CirculationBlock? CirculationBlock { get; set; } //Bloque de circulaciones que se está editando.
         internal Circulation? mvarCirculation;
