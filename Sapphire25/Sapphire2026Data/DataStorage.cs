@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
 using TimeNet2026Data;
 using Sapphire2026Data.Models;
+using Sapphire2026Data.Models.GMAO;
 
 namespace Sapphire2026.Data
 {
@@ -91,7 +92,7 @@ namespace Sapphire2026.Data
 		DbSet<DBSchedule> ITimeNetContextStorage.Schedules => Schedules;
 		internal DbSet<DBScheduleUnit> ScheduleUnits { get; set; }
 		DbSet<DBScheduleUnit> ITimeNetContextStorage.ScheduleUnits => ScheduleUnits;
-
+		
 		async Task<int> ITimeNetContextStorage.SaveChangesAsync()
 		{
 			return await base.SaveChangesAsync();
@@ -250,8 +251,10 @@ namespace Sapphire2026.Data
 		public DbSet<Train> Trains { get; set; }
 		public DbSet<Note> Notes { get; set; }
 		public DbSet<Platform> Platforms { get; set; }
-        #endregion
-        #region Maquinistros
+		public DbSet<WorkCatalog> WorksCatalog { get; set; }
+		public DbSet<WorkOrder> WorkOrders { get; set; }
+		#endregion
+		#region Maquinistros
 		public DbSet<WorkShiftTemplateCollection> WorkShiftTemplateCollections { get; set; }
         public DbSet<WorkShiftTemplate> WorkShiftTemplates { get; set; }
 		public DbSet<WorkShiftContent> WorkShiftContents { get; set; }

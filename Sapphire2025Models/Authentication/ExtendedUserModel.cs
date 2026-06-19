@@ -92,6 +92,7 @@ namespace Sapphire2025Models.Authentication
 		public bool UpdateTelegramStatus { get; set; } //Modifica o no los ajustes de Telegram
 		public string? TelegramRules { get; set; }
 		public bool TelegramEnabled { get; set; } //true si el usuario tiene habilitado el telegram
+		public long? TelegramId{ get; set; } //Nuevo Id de Telegram del usuario.
 	}
 		public class ResetPasswordDataMessage:UpdateUserBase
 		{

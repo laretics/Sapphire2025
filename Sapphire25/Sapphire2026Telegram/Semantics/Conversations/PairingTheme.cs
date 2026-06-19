@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Sapphire2025.Storage;
+using Sapphire2025Models;
+using Sapphire2025Models.Authentication;
 using Sapphire2026.Data;
 using Sapphire2026Telegram.Operative;
 using Telegram.Bot;
@@ -25,19 +27,12 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 		/// <returns></returns>
 		internal async Task PairUser(Guid userId, long telegramChatId)
 		{
-			using (DataStorage almacen = new DataStorage(mvarParent.mvarConfig))
-			{
-				Sapphire2026.Data.Models.User? auxUser = await almacen.Users.Where(x => x.Id == userId.ToString()).FirstOrDefaultAsync();
-				if (null != auxUser)
-				{
-					auxUser.TelegramEnabled = true;
-					auxUser.TelegramId = telegramChatId;
-					await almacen.SaveChangesAsync();
-					mvarParent.user = new UserContext(telegramChatId, mvarParent.mvarConfig);
-					AuthenticationClient auxClient = mvarParent.parent.services.GetRequiredService<AuthenticationClient>();
-					await mvarParent.user.Init(auxClient);
-				}
-			}
+			//Tengo que obtener el usuario de la base de datos para hacer el emparejamiento.
+			using IServiceScope scope = mvarParent.parent.services.CreateScope();
+			AuthenticationClient auxClient = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
+			await auxClient.pairTelegram(userId, telegramChatId);
+			mvarParent.userContext = new UserContext(telegramChatId, mvarParent.mvarConfig);
+			await mvarParent.userContext.Init(auxClient);
 		}
 		private void initResponses()
 		{
@@ -51,7 +46,7 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 		}
         internal override async Task InternalPreprocess()
         {		
-			if (mvarParent.user.Paired)
+			if (mvarParent.userContext.Paired)
 			{
 				// El usuario está emparejado. Hay que ver qué pasa con el hijo.
 				if (null != child && child.isEnded)
@@ -67,9 +62,9 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 		{
 			//Saludo para el emparejamiento.
 			if(mvarFirstError)
-				await mvarSecondResponse.Send(client, mvarParent.user);
+				await mvarSecondResponse.Send(client, mvarParent.userContext);
 			else
-				await mvarFirstResponse.Send(client, mvarParent.user);
+				await mvarFirstResponse.Send(client, mvarParent.userContext);
 		}
 		internal override async Task InternalTextToBot(string text)
 		{
@@ -80,7 +75,7 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 			else
 			{
 				//Emparejamos el usuario y se lo asignamos al padre...
-				await PairUser(pairingUser, mvarParent.user.TelegramId);
+				await PairUser(pairingUser, mvarParent.userContext.TelegramId);
 			}
 		}
 	}

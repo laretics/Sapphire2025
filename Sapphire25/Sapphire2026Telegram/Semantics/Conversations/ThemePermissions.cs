@@ -10,7 +10,7 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 		internal ThemePermissions(BotTask parent) : base(parent){}
 		internal async override Task InitializeAsync()
 		{
-			mvarUser = await getUser(mvarParent.user.TelegramId);
+			mvarUser = await getUser(mvarParent.userContext.TelegramId);
 			if(null==mvarUser)
 			{
 				//No tenemos usuario... hay que emparejar

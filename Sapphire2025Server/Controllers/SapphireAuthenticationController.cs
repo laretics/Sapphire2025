@@ -368,12 +368,14 @@ namespace Sapphire2025Server.Controllers
 		}
 			
 		[HttpPut("userinfo")]
-		public async Task<ExtendedUserModel> UserInfo(UserInfoRequestModel? request)
+		public async Task<ExtendedUserModel?> UserInfo(UserInfoRequestModel? request)
 		{
 			//Obtiene toda la información posible de un determinado usuario según los permisos
 			//del token enviado
-			ExtendedUserModel salida = new ExtendedUserModel();
+			ExtendedUserModel? salida = null;
 			bool hasPermission = false;
+
+			if (null == request) return null; //Petición incorrecta.
 
 			//Administrador... puede acceder a toda la información de cualquier usuario
 			if (await hasBasicPermission(request.SessionToken, Common.UserRole.Root))
@@ -407,6 +409,7 @@ namespace Sapphire2025Server.Controllers
 					if (null != auxUsuarioNulo)
 					{
 						auxUsuario = auxUsuarioNulo;
+						salida = new ExtendedUserModel();
 						salida.CF = auxUsuario.CF;
 						salida.UserEnabled = auxUsuario.UserEnabled;
 						if (null != auxUsuario.UserName)
@@ -419,15 +422,15 @@ namespace Sapphire2025Server.Controllers
 							salida.Email = auxUsuario.Email;
 						salida.guid = auxUsuario.guid;
 						salida.NullPassword = (null == auxUsuario.PasswordHash) || (auxUsuario.PasswordHash.Length < 1);
-						salida.TelegramEnabled = auxUsuario.TelegramEnabled;
-						salida.TelegramPaired = auxUsuario.TelegramId != 0;
 						salida.TelegramId = auxUsuario.TelegramId;
+						salida.TelegramEnabled = auxUsuario.TelegramEnabled;
+						salida.TelegramPaired = auxUsuario.TelegramId != 0;						
 						salida.TelegramRules = await almacen.GetRegisterValue(auxUsuario.guid, "TGRULES", string.Empty);
+						salida.roles = await retrieveRolesDictionary();
 					}
-				}
-				salida.roles = await retrieveRolesDictionary();
+				}				
 				//Recuperamos los roles del usuario
-				if (null != auxUsuarioNulo)
+				if (null != auxUsuarioNulo && null!=salida)
 				{
 					List<uint> auxRoles = await retrieveUserRoles(auxUsuarioNulo.guid);
 					foreach (uint role in auxRoles)
@@ -447,6 +450,15 @@ namespace Sapphire2025Server.Controllers
 			{
 				return await almacen.GetRegisterValue(userId, "TGRULES", string.Empty);
 			}
+		}
+
+		[HttpPut("pairtelegram")]
+		public async Task<bool> pairUser(UpdateUserPersonalDataMessage? parameters)
+		{
+			if(null!=parameters && null !=parameters.TelegramId)
+				return await pairUser(parameters.UserId, (long)parameters.TelegramId);
+
+			return false;
 		}
 
 		public async Task<bool> pairUser(Guid userId, long telegramId)
@@ -655,6 +667,8 @@ namespace Sapphire2025Server.Controllers
 									await almacen.SetRegisterValue(auxGuid, "TGRULES", message.TelegramRules);
 								}
 							}
+							if (null != message.TelegramId)
+								usuario.TelegramId = (long)message.TelegramId;
 						}
 						return await almacen.SaveChangesAsync() > 0;
 					}

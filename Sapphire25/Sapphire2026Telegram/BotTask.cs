@@ -13,10 +13,10 @@ namespace Sapphire2026Telegram
 	/// </summary>
 	internal class BotTask
 	{
-		private UserContext mvarUser;
+		private UserContext mvarUserContext;
 		private bool mvarFirstMessage;
 		internal IConfiguration mvarConfig;
-		internal UserContext user { get => mvarUser; set => mvarUser = value; }
+		internal UserContext userContext { get => mvarUserContext; set => mvarUserContext = value; }
 
 		internal BotTheme theme { get; set; } //Tema de la conversación actual.
 		internal BotSoul parent { get; set; } // Alma de bot que posee todas las tareas
@@ -24,7 +24,7 @@ namespace Sapphire2026Telegram
 		{
 			//Tenemos que recuperar el usuario de la base de datos.
 			this.parent = parent;
-			mvarUser = new UserContext(chatId,config);
+			mvarUserContext = new UserContext(chatId,config);
 			mvarConfig = config;
 			mvarFirstMessage = true;
 			theme = new PairingTheme(this);
@@ -33,7 +33,9 @@ namespace Sapphire2026Telegram
 		{
 			using IServiceScope scope = parent.services.CreateScope();
 			AuthenticationClient auxClient = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
-			await user.Init(auxClient);
+			await userContext.Init(auxClient);
+			//Aquí, el usuario debería no ser null.
+			//System.Diagnostics.Debug.Assert(null != mvarUserContext.mvarUser);
 			await theme.Preprocess();
 		}
 
@@ -42,13 +44,15 @@ namespace Sapphire2026Telegram
 		/// </summary>
 		private async Task VerifyPairing()
 		{
-			using IServiceScope scope = parent.services.CreateScope();
-			AuthenticationClient auxClient = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
-			await mvarUser.Init(auxClient);
-
 			//Si ya no está emparejado, eliminamos el resto de la conversación.
-			if(!mvarUser.Paired)
+			if(!mvarUserContext.Paired)
+			{
+				using IServiceScope scope = parent.services.CreateScope();
+				AuthenticationClient auxClient = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
+				await mvarUserContext.Init(auxClient);
 				theme.child = null;
+			}
+	
 		}
 
 		/// <summary>
