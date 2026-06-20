@@ -8,9 +8,9 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public const string SapphireSoftwareVersion = "26.06.14";
-		public const string LastChangesText = "Emparejamiento de Telegram";
-		public const string VersionColor = "#40A030"; //Color de la versión para diferenciar una de otra.
+		public const string SapphireSoftwareVersion = "26.06.21";
+		public const string LastChangesText = "Lavado de trenes|Revisiones|Campañas";
+		public const string VersionColor = "#B0A030"; //Color de la versión para diferenciar una de otra.
 
 		public static readonly Guid TelegramToken = new Guid("3a7f9c2e-8b4d-4f1a-9e6c-7d2b5a8f3e1c"); //Token de sesión sólo para operaciones desde Telegram.
 
@@ -89,6 +89,11 @@ namespace Sapphire2025Models
 				return salida.ToString();
 			  }
 		}
+
+		public static Guid WorkOrderTypeManualWash = new Guid("2f8c7d4a-8e1b-4c3a-9d62-1b7e5a0f4c91");
+		public static Guid WorkOrderTypePlatformWash = new Guid("c6a1b3d9-3f5e-4e7a-8d21-0f9c6b4a2d78");
+		public static Guid WorkOrderTypeTunnelWash = new Guid("91e4c0b7-6a2d-4f18-b3c9-7d0e5a2f8b14");
+
 
 		/// <summary>
 		/// Transiciones de estado permitidas

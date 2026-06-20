@@ -1,6 +1,7 @@
 ﻿@inject AeneasClient mvarAeneasClient
 @inject NavigationManager mvarNavigationManager
 @inject IntStorageService mvarIntStorage
+<ModalDialog @ref="mvarConfirmationDialog" OnClose="OnConfirmClose" />
 @foreach (TrainCommand cmd in Commands.Where(c => c.ShowIf()))
 {
 	<Button Class="@cmd.CssClass" @onclick="@cmd.Action">
@@ -12,13 +13,6 @@
 		</Button>
 }
 
-
-
-
-
-
-
-
 @code {
 	//Esto es una barra de comandos para cambiar a los trenes de estado.
 	//Dependiendo de los permisos del usuario actual y del estado del tren,
@@ -26,11 +20,30 @@
 	private SessionModel? mvarSession{ get; set; }	
 	[Parameter]
 	public TrainModel? Train{ get; set; } //A partir de este modelo obtenemos el último estado del tren
+	private ModalDialog? mvarConfirmationDialog;
+	private TaskCompletionSource<bool>? mvarConfirmTcs;
+	private bool mvarPendantWash{ get; set; }
+
+	private async Task<bool> ConfirmAsync(string title, string text, string okLabel="Aceptar", string cancelLabel ="Cancelar")
+	{
+		mvarConfirmTcs = new TaskCompletionSource<bool>();
+		if (null != mvarConfirmationDialog && null!=Train)
+			await mvarConfirmationDialog.show(title, text, okLabel, cancelLabel);
+
+		return await mvarConfirmTcs.Task;
+	}
+	private Task OnConfirmClose(bool result)
+	{
+		mvarConfirmTcs?.TrySetResult(result);
+		return Task.CompletedTask;
+	}
 
 	protected async override Task OnParametersSetAsync()
 	{
 		await base.OnParametersSetAsync();
 		mvarSession = await mvarIntStorage.GetSessionInfo();
+		if(null!=Train)
+			mvarPendantWash = await mvarAeneasClient.HasPendantWashing(Train.id);
 	}
 
 	private List<TrainCommand> Commands => new()
@@ -48,7 +61,9 @@
 		new TrainCommand
 		{
 			Label="Material Disponible",
-			ShowIf = () => (isOfficial || isExpert) && (currentStatus == Sapphire2025Models.Common.TrainStatus.RequestToDiagnose),			
+			ShowIf = () => (isOfficial || isExpert) && 
+			(currentStatus == Sapphire2025Models.Common.TrainStatus.RequestToDiagnose) 
+			&& !mvarPendantWash,			
 			Action = diagnoseToAvailable,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.Available>(0);
@@ -58,7 +73,8 @@
 		new TrainCommand
 		{
 			Label="Retirar",
-			ShowIf = () => (isOfficial || isExpert) && (currentStatus == Sapphire2025Models.Common.TrainStatus.RequestToDiagnose),
+			ShowIf = () => (isOfficial || isExpert) && (currentStatus == Sapphire2025Models.Common.TrainStatus.RequestToDiagnose)
+			&& !mvarPendantWash,
 			Style="outline-warning",
 			Action = diagnoseToFault,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
@@ -69,7 +85,8 @@
 		new TrainCommand
 		{
 			Label="Retirar a Reparar",
-			ShowIf = () => isStation && (currentStatus== Sapphire2025Models.Common.TrainStatus.RequestToRepair),
+			ShowIf = () => isStation && (currentStatus== Sapphire2025Models.Common.TrainStatus.RequestToRepair)
+			&& !mvarPendantWash,
 			Style="outline-warning",
 			Action = sendToCorrective,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
@@ -80,7 +97,8 @@
 		new TrainCommand
 		{
 			Label="Reparación Terminada",
-			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.Repairing),
+			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.Repairing)
+			&& !mvarPendantWash,
 			Style="outline-success",
 			Action = sendToAvailable,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
@@ -91,7 +109,8 @@
 		new TrainCommand
 		{
 			Label="Solicitar Mantenimiento",
-			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.Available),
+			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.Available)
+			&& !mvarPendantWash,
 			Action = requestMaintenance,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.DepotRequested>(0);
@@ -100,8 +119,48 @@
 		},
 		new TrainCommand
 		{
+			Label="Lavado Manual",
+			ShowIf = () => isMechanic && 
+			(currentStatus==Sapphire2025Models.Common.TrainStatus.DepotAvailable ||
+				currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance)
+				&& !mvarPendantWash,
+				Action= requestManualWash,
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Actions.Wash>(0);
+				b.AddAttribute(1,"color","#a02020");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
+			Label="Lavado en Andén",
+			ShowIf = () => isMechanic &&
+			(currentStatus==Sapphire2025Models.Common.TrainStatus.DepotAvailable ||
+				currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance)
+				&& !mvarPendantWash,
+				Action= requestPlatformWash,
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Actions.Wash>(0);
+				b.AddAttribute(1,"color","#a0a020");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
+			Label="Lavado en Túnel",
+			ShowIf = () => isMechanic && isStation &&
+			(currentStatus==Sapphire2025Models.Common.TrainStatus.DepotAvailable ||
+				currentStatus== Sapphire2025Models.Common.TrainStatus.Available)
+				&& !mvarPendantWash,
+				Action= requestTunnelWash,
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Actions.Wash>(0);
+				b.AddAttribute(1,"color","@2020a0");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
 			Label="Anular Solicitud Mantenimiento",
-			ShowIf = () => isOfficial && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested),
+			ShowIf = () => isOfficial && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested)
+			&& !mvarPendantWash,
 			Action = undoSendToMaintenance,
 			Style="warning",
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
@@ -112,7 +171,8 @@
 		new TrainCommand
 		{
 			Label="Retirar a Mantenimiento",
-			ShowIf = () => isStation && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested),
+			ShowIf = () => isStation && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested)
+			&& !mvarPendantWash,
 			Action = acceptSendToMaintenance,			
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.DepotAvailable>(0);
@@ -122,7 +182,8 @@
 		new TrainCommand
 		{
 			Label="Ceder a Circulación",
-			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotAvailable),
+			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotAvailable)
+			&& !mvarPendantWash,
 			Action = rescueFromMaintenance,
 			Style="outline-warning",
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
@@ -133,7 +194,8 @@
 		new TrainCommand
 		{
 			Label="Empezar Intervención",
-			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotAvailable),
+			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotAvailable)
+			&& !mvarPendantWash,
 			Action = sendToMaintenance,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.Maintenance>(0);
@@ -143,7 +205,8 @@
 		new TrainCommand
 		{
 			Label="Terminar Intervención",
-			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance),
+			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance)
+			&& !mvarPendantWash,
 			Action = endMaintenance,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.Available>(0);
@@ -153,7 +216,8 @@
 		new TrainCommand
 		{
 			Label="Iniciar Tren (Correctivo)",
-			ShowIf = () => isOfficial && (currentStatus== Sapphire2025Models.Common.TrainStatus.Unknown),
+			ShowIf = () => isOfficial && (currentStatus== Sapphire2025Models.Common.TrainStatus.Unknown)
+			&& !mvarPendantWash,
 			Action = sendToCorrective,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.Repairing>(0);
@@ -163,7 +227,8 @@
 		new TrainCommand
 		{
 			Label="Stand Still",
-			ShowIf = () => isEngineer && readyForStandStill,
+			ShowIf = () => isEngineer && readyForStandStill
+			&& !mvarPendantWash,
 			Action = sendToStandStill,
 			Style="outline-danger",
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
@@ -174,7 +239,8 @@
 		new TrainCommand
 		{
 			Label="Reactivar",
-			ShowIf = () => isEngineer && (currentStatus == Sapphire2025Models.Common.TrainStatus.StandStill),
+			ShowIf = () => isEngineer && (currentStatus == Sapphire2025Models.Common.TrainStatus.StandStill)
+			&& !mvarPendantWash,
 			Action = sendToCorrective,
 			Style="outline-primary",
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
@@ -185,7 +251,8 @@
 		new TrainCommand
 		{
 			Label="Baja Definitiva",
-			ShowIf = () => isEngineer && (currentStatus == Sapphire2025Models.Common.TrainStatus.StandStill),
+			ShowIf = () => isEngineer && (currentStatus == Sapphire2025Models.Common.TrainStatus.StandStill)
+			&& !mvarPendantWash,
 			Action = sendToDisabled,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.Disabled>(0);
@@ -195,7 +262,8 @@
 		new TrainCommand
 		{
 			Label="Rehabilitar",
-			ShowIf = () => isEngineer && (currentStatus == Sapphire2025Models.Common.TrainStatus.Disabled),
+			ShowIf = () => isEngineer && (currentStatus == Sapphire2025Models.Common.TrainStatus.Disabled)
+			&& !mvarPendantWash,
 			Action = sendToStandStill,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.StandStill>(0);
@@ -247,10 +315,10 @@
 	private async Task onAddNote()
 	{
 		if(null!=Train)
-		if(isMechanic)
-			mvarNavigationManager.NavigateTo($"/addnote/{Train.id}/3");
-		else
-			mvarNavigationManager.NavigateTo($"/addnote/{Train.id}/2");
+			if(isMechanic)
+				mvarNavigationManager.NavigateTo($"/addnote/{Train.id}/3");
+			else
+				mvarNavigationManager.NavigateTo($"/addnote/{Train.id}/2");
 	}
 	/// <summary>
 	/// El tren ha sido diagnosticado y el inspector decide enviarlo a reparar.
@@ -258,73 +326,128 @@
 	/// </summary>
 	private async Task sendToCorrective()
 	{
-		if(null!=Train)
-		{
-			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.BeginCorrective))
-				endCommand();
-		}
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			"Confirmar acción",
+			$"¿Quiere retirar la UT {Train.name} de la circulación para que el personal de taller la repare?");
+		if (!confirmado) return;
+		if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.BeginCorrective))
+			endCommand();
 	}
 	/// <summary>
 	/// El tren ha terminado su reparación y reingresa al servicio activo.
 	/// </summary>
 	private async Task sendToAvailable()
 	{
-		if (null != Train)
-		{
-			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.EndCorrective))
-				endCommand();
-		}
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			"Confirmar acción",
+			$"¿Quiere devolver la UT {Train.name} a la circulación por haber terminado los trabajos del correctivo?");
+		if (!confirmado) return;
+		if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.EndCorrective))
+			endCommand();
 	}
 	/// <summary>
 	/// Un tren que está disponible es solicitado por talleres para realizar un mantenimiento.
 	/// </summary>
 	private async Task requestMaintenance()
 	{
-		if (null != Train)
-		{
-			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.DepotRequest))
-				endCommand();
-		}
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			"Confirmar acción",
+			$"Quiere solicitar la UT {Train.name} al Inspector de Operaciones para pasarla a preventivo?");
+		if (!confirmado) return;
+		if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.DepotRequest))
+			endCommand();
+	}
+	private async Task requestManualWash()
+	{
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			$"Lavado de {Train.name}",
+			$"¿Confirma que quiere comenzar el lavado manual del tren {Train.name}?");
+		if (!confirmado) return;
+
+		await mvarAeneasClient.createWorkOrder(Sapphire2025Models.Common.WorkOrderTypeManualWash,
+		null,
+		Train.id);
+		endCommand();
+	}
+	private async Task requestPlatformWash()
+	{
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			$"Lavado de {Train.name}",
+			$"¿Confirma que quiere comenzar el lavado en el andén del tren {Train.name}?");
+		if (!confirmado) return;
+
+		await mvarAeneasClient.createWorkOrder(Sapphire2025Models.Common.WorkOrderTypePlatformWash,
+		null,
+		Train.id);
+		endCommand();
+	}
+	private async Task requestTunnelWash()
+	{
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			$"Lavado de {Train.name}",
+			$"¿Confirma que quiere pasar el tren {Train.name} por el túnel de lavado?");
+		if (!confirmado) return;
+
+		await mvarAeneasClient.createWorkOrder(Sapphire2025Models.Common.WorkOrderTypeTunnelWash,
+null,
+Train.id);
+		endCommand();
 	}
 	private async Task acceptSendToMaintenance()
 	{
-		if (null != Train)
-		{
-			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.DepotRequestAccept))
-				endCommand();
-		}
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			"Confirmar acción",
+			$"Va a retirar la UT {Train.name} de la circulación para que el personal de taller realice operaciones de mantenimiento. ¿Está de acuerdo?");
+		if (!confirmado) return;
+		if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.DepotRequestAccept))
+			endCommand();
 	}
 	private async Task rescueFromMaintenance()
 	{
-		if (null != Train)
-		{
-			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.MaintenanceRescue))
-				endCommand();
-		}
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			"Confirmar acción",
+			$"¿Quiere ceder temporalmente la UT {Train.name} a Inspección de Operaciones? (La UT {Train.name} seguirá asignada para preventivo hasta que taller termine los trabajos)");
+		if (!confirmado) return;
+		if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.MaintenanceRescue))
+			endCommand();
 	}
 	private async Task undoSendToMaintenance()
 	{
-		if (null != Train)
-		{
-			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.DepotRequestDeny))
-				endCommand();
-		}
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			"Confirmar acción",
+			$"¿Quiere anular la solicitud de mantenimiento para la UT {Train.name}? (Se reincorporará al servicio y figurará como \"Disponible\")");
+		if (!confirmado) return;
+		if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.DepotRequestDeny))
+			endCommand();
 	}
 	private async Task sendToMaintenance()
 	{
-		if (null != Train)
-		{
-			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.BeginMaintenance))
-				endCommand();
-		}
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			"Confirmar acción",
+			$"¿Quiere empezar o reanudar los trabajos de mantenimiento en la UT {Train.name}?");
+		if (!confirmado) return;
+		if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.BeginMaintenance))
+			endCommand();
 	}
 	private async Task endMaintenance()
 	{
-		if (null != Train)
-		{
-			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.EndMaintenance))
-				endCommand();
-		}
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			"Confirmar acción",
+			$"¿Quiere dar por finalizados los trabajos de mantenimiento y declarar la UT {Train.name} como \"apta\" para la circulación?");
+		if (!confirmado) return;
+		if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.EndMaintenance))
+			endCommand();
 	}
 	private async Task openFailureReport()
 	{
@@ -335,35 +458,45 @@
 	}
 	private async Task diagnoseToFault()
 	{
-		if(null!= Train)
-		{
-			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.DiagnoseToFault))
-				endCommand();
-		}
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			"Confirmar acción",
+			$"Usted va a solicitar a Inspección de Operaciones que aparten la UT {Train.name} cuando sea posible. ¿Quiere proceder?");
+		if (!confirmado) return;
+		if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.DiagnoseToFault))
+			endCommand();
 	}
 	private async Task diagnoseToAvailable()
 	{
-		if (null != Train)
-		{
-			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.DiagnoseToAvailable))
-				endCommand();
-		}
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			"Confirmar acción",
+			$"Usted considera que la UT {Train.name} puede seguir disponible. ¿De acuerdo?");
+		if (!confirmado) return;
+		if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.DiagnoseToAvailable))
+			endCommand();
 	}
 	private async Task sendToStandStill()
 	{
-		if (null != Train)
-		{
-			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.SendToStandStill))
-				endCommand();
-		}
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			"Confirmar acción",
+			$"Va a cambiar la UT {Train.name} a Stand Still. ¿Seguro que quiere proceder?",
+			"Sí, continuar");
+		if (!confirmado) return;
+		if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.SendToStandStill))
+			endCommand();
 	}
 	private async Task sendToDisabled()
 	{
-		if(null!=Train)
-		{
-			if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.SendToDisabled))
-				endCommand();
-		}
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			"Confirmar acción",
+			$"Va a dar de baja definitivamente la UT {Train.name}. ¿Seguro que quiere proceder?",
+			"Sí, dar de baja");
+		if (!confirmado) return;
+		if (await mvarAeneasClient.commitTrainStatus(Train.id, Sapphire2025Models.Common.OperationType.SendToDisabled))
+			endCommand();
 	}
 	private void endCommand()
 	{

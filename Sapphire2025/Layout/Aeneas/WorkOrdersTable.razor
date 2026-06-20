@@ -1,0 +1,135 @@
+﻿@using Sapphire2025.Icons.Actions
+@using Sapphire2025.Icons.Headers
+@using Sapphire2025.Icons
+@using Sapphire2025Models.GMao
+@if (null != Orders)
+{
+	<div class="table-responsive" style="height:100%; max-height:70vh;">
+		<table class="table table-bordered table-sm align-middle mb-0 w-100">
+			<thead class="table-secondary text-light">
+				<tr>
+					<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
+						<Exec color="white" />
+					</th>
+					<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
+						<EventDateTime color="white" />
+					</th>
+					<th class="col-2" style="min-width: 100px; cursor:pointer;">
+						<User color="white" />
+					</th>
+					<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
+						<EventDateTime color="white" />
+					</th>
+					<th class="col-2" style="min-width: 100px; cursor:pointer;">
+						<User color="white" />
+					</th>
+					<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
+						<EventDateTime color="white" />
+					</th>
+					<th class="col-2" style="min-width: 100px; cursor:pointer;">
+						<User color="white" />
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+				@if (null!= Orders)
+				{
+					foreach (WorkOrderModel order in Orders)
+					{
+						UserModelBase? openUser = userFromOpenOrder(order);
+						UserModelBase? closeUser = userFromCloseOrder(order);
+						UserModelBase? verifyUser = userFromVerifyOrder(order);
+						<tr>
+							<td style="border-right:1px solid #dee2e6;">
+								@order.WorkType.ToString()
+							</td>
+							<td style="border-right:1px solid #dee2e6;">
+								@Sapphire2025Models.Utils.autoDate(order.OpenTime)
+							</td>
+							<td>
+								@if(null!=openUser)
+								{
+									<span>
+										<RoleIcon Credentials="openUser.CredentialKey" Color="gray"></RoleIcon>
+									</span>
+									@openUser.Name
+								}
+							</td>
+							<td style="border-right:1px solid #dee2e6;">
+								@if(null!=order.CloseTime)
+								{
+									@Sapphire2025Models.Utils.autoDate((DateTime)order.CloseTime)
+								}								
+							</td>
+							<td>
+								@if (null != closeUser)
+								{
+									<span>
+										<RoleIcon Credentials="closeUser.CredentialKey" Color="gray"></RoleIcon>
+									</span>
+									@closeUser.Name
+								}
+							</td>
+							<td style="border-right:1px solid #dee2e6;">
+								@if (null != order.VerifyTime)
+								{
+									@Sapphire2025Models.Utils.autoDate((DateTime)order.VerifyTime)
+								}
+							</td>
+							<td>
+								@if (null != verifyUser)
+								{
+									<span>
+										<RoleIcon Credentials="verifyUser.CredentialKey" Color="gray"></RoleIcon>
+									</span>
+									@verifyUser.Name
+								}
+							</td>
+						</tr>
+					}
+				}
+
+			</tbody>
+		</table>
+	</div>
+}
+@code {
+	[CascadingParameter]
+	public Dictionary<Guid, UserModelBase>? Users { get; set; }
+	[Parameter]
+	public IEnumerable<WorkOrderModel>? Orders{ get; set; }
+
+	private UserModelBase? userFromOpenOrder(WorkOrderModel rhs)
+	{
+		if (null != Users && Guid.Empty != rhs.OpenUserId)
+		{
+			if (Users.ContainsKey(rhs.OpenUserId))
+				return Users[rhs.OpenUserId];
+		}
+		return null;
+	}
+	private UserModelBase? userFromCloseOrder(WorkOrderModel rhs)
+	{
+		if (null!= rhs.CloseUserId && null != Users && Guid.Empty != rhs.CloseUserId)
+		{
+			if (Users.ContainsKey((Guid)rhs.CloseUserId))
+				return Users[(Guid)rhs.CloseUserId];
+		}
+		return null;
+	}
+	private UserModelBase? userFromVerifyOrder(WorkOrderModel rhs)
+	{
+		if (null != rhs.VerifyUserId && null != Users && Guid.Empty != rhs.VerifyUserId)
+		{
+			if (Users.ContainsKey((Guid)rhs.VerifyUserId))
+				return Users[(Guid)rhs.VerifyUserId];
+		}
+		return null;
+	}
+
+	private void sortFields(int rhs)
+	{
+		//TODO: Rellenar con código para ordenar.
+	}
+}
+

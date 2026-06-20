@@ -1,13 +1,15 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Sapphire2025Models;
 using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
+using Sapphire2025Models.GMao;
+using Sapphire2025Server.Comunications;
 using Sapphire2026.Data;
 using Sapphire2026.Data.Models;
-using Microsoft.AspNetCore.SignalR;
-using Sapphire2025Server.Comunications;
 using Sapphire2026Data.Models;
+using Sapphire2026Data.Models.GMAO;
 using System.Configuration;
 
 namespace Sapphire2025Server.Controllers
@@ -519,5 +521,196 @@ namespace Sapphire2025Server.Controllers
 			}
 		}
 
+		#region Ordenes GMao
+
+		[HttpGet("workcatalog")]
+		public async Task<List<WorkCatalogModel>> WorkCatalogRequest()
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				return await almacen.WorksCatalog
+					.AsNoTracking()
+					.Select(x => new WorkCatalogModel
+					{
+						Id = x.Id,
+						Name = x.Name ?? string.Empty,
+						Comment = x.Comment
+					})
+					.ToListAsync();
+			}
+		}
+
+		[HttpGet("workorders/{id:guid}")]
+		public async Task<WorkOrderModel?> WorkOrderById(Guid id)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				WorkOrder? aux = await almacen.WorkOrders
+					.AsNoTracking()
+					.FirstOrDefaultAsync(x => x.Id == id);
+
+				return aux is null ? null : ToWorkOrderModel(aux);
+			}
+		}
+
+		[HttpGet("workorders")]
+		public async Task<List<WorkOrderModel>> WorkOrdersRequest(
+			[FromQuery] Guid? trainId = null,
+			[FromQuery] Guid? workType = null,
+			[FromQuery] bool? open = null,
+			[FromQuery] DateTime? from = null,
+			[FromQuery] DateTime? to = null)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				IQueryable<WorkOrder> query = ApplyWorkOrderFilters(
+					almacen.WorkOrders.AsNoTracking(),
+					trainId,
+					workType,
+					open,
+					from,
+					to);
+
+				return await query
+					.OrderByDescending(x => x.OpenTime)
+					.Select(x => ToWorkOrderModel(x))
+					.ToListAsync();
+			}
+		}
+
+		[HttpPost("workorders")]
+		public async Task<WorkOrderModel?> CreateWorkOrder([FromBody] WorkOrderCreateRequestModel request)
+		{
+			if (request is null) return null;
+
+			User? user = await retrieveSessionUser(request.SessionToken);
+			if (user is null) return null;
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				WorkOrder nuevo = new WorkOrder
+				{
+					Id = Guid.NewGuid(),
+					WorkType = request.WorkType,
+					DestinationObjectId = request.DestinationObjectId,
+					TrainId = request.TrainId,
+					OpenUserId = user.guid,
+					OpenTime = DateTime.UtcNow
+				};
+
+				almacen.WorkOrders.Add(nuevo);
+
+				if (await almacen.SaveChangesAsync() > 0)
+					return ToWorkOrderModel(nuevo);
+
+				return null;
+			}
+		}
+
+		[HttpPost("workorders/close")]
+		public async Task<WorkOrderModel?> CloseWorkOrder([FromBody] WorkOrderActionRequestModel request)
+		{
+			if (request is null) return null;
+
+			User? user = await retrieveSessionUser(request.SessionToken);
+			if (user is null) return null;
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				WorkOrder? order = await almacen.WorkOrders
+					.FirstOrDefaultAsync(x => x.Id == request.WorkOrderId);
+
+				if (order is null) return null;
+				if (order.CloseTime is not null) return ToWorkOrderModel(order);
+
+				order.CloseUserId = user.guid;
+				order.CloseTime = DateTime.UtcNow;
+
+				await almacen.SaveChangesAsync();
+				return ToWorkOrderModel(order);
+			}
+		}
+		[HttpPost("workorders/verify")]
+		public async Task<WorkOrderModel?> VerifyWorkOrder([FromBody] WorkOrderActionRequestModel request)
+		{
+			if (request is null) return null;
+
+			User? user = await retrieveSessionUser(request.SessionToken);
+			if (user is null) return null;
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				WorkOrder? order = await almacen.WorkOrders
+					.FirstOrDefaultAsync(x => x.Id == request.WorkOrderId);
+
+				if (order is null) return null;
+				if (order.CloseTime is null) return null;
+
+				order.VerifyUserId = user.guid;
+				order.VerifyTime = DateTime.UtcNow;
+
+				await almacen.SaveChangesAsync();
+				return ToWorkOrderModel(order);
+			}
+		}
+
+		private static IQueryable<WorkOrder> ApplyWorkOrderFilters(
+			IQueryable<WorkOrder> query,
+			Guid? trainId,
+			Guid? workType,
+			bool? open,
+			DateTime? from,
+			DateTime? to)
+		{
+			if (trainId.HasValue && trainId.Value != Guid.Empty)
+				query = query.Where(x => x.TrainId == trainId.Value);
+
+			if (workType.HasValue && workType.Value != Guid.Empty)
+				query = query.Where(x => x.WorkType == workType.Value);
+
+			if (open.HasValue)
+			{
+				if (open.Value)
+					query = query.Where(x => null == x.CloseTime);
+				else
+					query = query.Where(x => null != x.CloseTime);
+			}
+
+			if (from.HasValue)
+				query = query.Where(x => x.OpenTime >= from.Value);
+
+			if (to.HasValue)
+				query = query.Where(x => x.OpenTime <= to.Value);
+
+			return query;
+		}
+
+		private static WorkCatalogModel ToWorkCatalogModel(WorkCatalog rhs)
+		{
+			return new WorkCatalogModel
+			{
+				Id = rhs.Id,
+				Name = rhs.Name ?? string.Empty,
+				Comment = rhs.Comment
+			};
+		}
+
+		private static WorkOrderModel ToWorkOrderModel(WorkOrder rhs)
+		{
+			return new WorkOrderModel
+			{
+				Id = rhs.Id,
+				WorkType = rhs.WorkType,
+				DestinationObjectId = rhs.DestinationObjectId,
+				TrainId = rhs.TrainId,
+				OpenUserId = rhs.OpenUserId,
+				CloseUserId = rhs.CloseUserId,
+				VerifyUserId = rhs.VerifyUserId,
+				OpenTime = rhs.OpenTime,
+				CloseTime = rhs.CloseTime,
+				VerifyTime = rhs.VerifyTime
+			};
+		}
+		#endregion Ordenes GMao
 	}
 }

@@ -1,5 +1,7 @@
 ﻿@page "/train/{id}"
+@using Sapphire2025.Layout.Aeneas
 @using Sapphire2025.Layout.Generic
+@using Sapphire2025Models.GMao
 @inject AeneasClient mvarAeneasClient
 @inject AuthenticationClient mvarAuthClient
 @inject NavigationManager mvarNavigationManager
@@ -54,14 +56,15 @@ else
 				<div class="table-responsive" style="width:100%; max-height:70vh;">
 					<Sapphire2025.Layout.Aeneas.StatusChangesTable StatusChanges="mcolChanges" />
 				</div>
+			</TabPage>			
+ 			<TabPage Text="Actuaciones">			
+				<div class="table-responsive" style="width:100%; max-height:70vh;">
+					<Sapphire2025.Layout.Aeneas.WorkOrdersTable Orders="mcolOrders" />
+				</div>				
 			</TabPage>
-@* 			<TabPage Text="Actuaciones">			
-				<Sapphire2025.Icons.AeneasScheme/>
-
+			<TabPage Text="Limpieza">
 			</TabPage>
-			<TabPage Text="Campañas">
-
-			</TabPage> *@
+			@* <Sapphire2025.Icons.AeneasScheme /> *@
 		</TabControl>
 	</CascadingValue>
 }
@@ -71,6 +74,7 @@ else
 
 	private Dictionary<Guid, UserModelBase>? Users = new Dictionary<Guid, UserModelBase>();
 	private IEnumerable<StatusChangeModel>? mcolChanges = new List<StatusChangeModel>();
+	private IEnumerable<WorkOrderModel>? mcolOrders = new List<WorkOrderModel>();
 	private TrainModel? mvarTrain = null;
 
 	private IEnumerable<PlatformModel> mcolPlatforms = new List<PlatformModel>();
@@ -83,6 +87,8 @@ else
 			Users = await mvarAuthClient.cachedUserList();
 			mcolPlatforms = await mvarAeneasClient.platformsList();
 			mvarTrain = await mvarAeneasClient.train(id);
+			if(null!=mvarTrain)
+				mcolOrders = await mvarAeneasClient.workOrdersByTrain(mvarTrain.id);
 			StateHasChanged();
 		}
 	}

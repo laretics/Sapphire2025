@@ -19,6 +19,6 @@ namespace Sapphire2026Data.Models.GMAO
 		public Guid? VerifyUserId{ get; set; } //Usuario del sistema que verifica el trabajo realizado.
 		public DateTime OpenTime{ get; set; } //Fecha de apertura de la orden
 		public DateTime? CloseTime{ get; set; } //Fecha de cierre de la orden
-
+		public DateTime? VerifyTime { get; set; } //Fecha de verificación
 	}
 }
