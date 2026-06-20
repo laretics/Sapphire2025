@@ -85,9 +85,8 @@
                         <div class="panel-body-content">
                             <!-- StationsTable ocupa 3/4 del ancho -->
                             <div class="stations-container">
-                                <StationsTable 
-                                    Circulation="@Circulation" 
-                                    CurrentDelay="@CurrentDelay"
+                                <StationsTable
+                                    Session="@mvarTourmaline.SessionConfig"
                                     Rows="@Lines" 
                                     ShowEstimatedTimes="true" />
                             </div>

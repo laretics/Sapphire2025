@@ -1,5 +1,6 @@
 ﻿@using TimeNet2026.Topo
 @using TimeNet2026.Timed
+@using TimeNet2026.Production
 <div class="route-box">
     <div class="route-title">Pròximes aturades</div>
     <table class="route-table">
@@ -40,16 +41,23 @@
 </div>
 @code {
     [Parameter]
-    public Circulation? Circulation{ get; set; }
-    [Parameter]
-    public TimeSpan CurrentDelay{ get; set; }
-    [CascadingParameter]
-    public Station? NextStation{ get; set; }
+    public SessionConfiguration? Session{ get; set; }
     [Parameter]
     public int Rows { get; set; } = 4; //Número de filas que puede representar esta tabla.
     [Parameter]
     public bool ShowEstimatedTimes { get; set; } //Muestra (u oculta las horas estimadas de llegada)
     private RowContent[] mcolItinerary = new RowContent[0];
+
+    private Circulation? Circulation
+    {
+        get
+        {
+            if(null!=Session && null!=Session.TNEnvironment && null!=Session.TNEnvironment.Circulation)
+                return Session.TNEnvironment.Circulation;
+
+            return null;
+        }
+    }
 
     protected override void OnParametersSet()
     {
@@ -60,47 +68,40 @@
     private void auxRecalculateDestinations()
     {
         mcolItinerary = Array.Empty<RowContent>();
+        if(null==Session || null==Session.TNEnvironment ||null == Circulation)
+            return;
 
-        if (Circulation?.Parent?.asimilation?.Origin == null)
+        TimeNetEnvironment? enviro = Session.TNEnvironment;
+
+        if (null == enviro.RouteAsimilation || null == enviro.RouteAsimilation.Origin)
             return;
 
         var auxItinerary = new List<RowContent>();
 
         TimeSpan cumul = Circulation.departure;
-        if (CurrentDelay.Ticks > 0)
-            cumul += CurrentDelay;
+        if (enviro.CurrentDelay.Ticks > 0)
+            cumul += enviro.CurrentDelay;
 
-        bool auxActive = (Circulation.Parent.asimilation.Origin == NextStation || NextStation == null);
 
         // Estación de origen
-        if (auxActive)
+        auxItinerary.Add(new RowContent
         {
-            auxItinerary.Add(new RowContent
-            {
-                Station = Circulation.Parent.asimilation.Origin,
-                Arrival = cumul
-            });
-        }
-
-        foreach (AsimilationStep paso in Circulation.Parent.asimilation.Steps)
+            Station = enviro.RouteAsimilation.Origin,
+            Arrival = cumul
+        });
+      
+        foreach (AsimilationStep paso in enviro.RouteAsimilation.Steps)
         {
             cumul += paso.tripTime;
 
-            if (paso.stopTime.Ticks > 0 || paso.destination == Circulation.Parent.asimilation.Destination)
+            if (paso.stopTime.Ticks > 0 || paso.destination == enviro.RouteAsimilation.Destination)
             {
-                if (paso.destination == NextStation)
-                    auxActive = true;
-
-                if (auxActive)
+                auxItinerary.Add(new RowContent
                 {
-                    auxItinerary.Add(new RowContent
-                    {
-                        Station = paso.destination,
-                        Arrival = cumul
-                    });
-                }
-
-                cumul += paso.stopTime;
+                    Station = paso.destination,
+                    Arrival = cumul
+                });
+                cumul += paso.stopTime;                
             }
         }
 
@@ -108,9 +109,7 @@
             return;
 
         // Buscar desde dónde empezar (NextStation)
-        int startIndex = auxItinerary.FindIndex(r => r.Station?.Equals(NextStation) == true);
-        if (startIndex == -1)
-            startIndex = 0;
+        int startIndex = 0;
 
         var relevantStations = auxItinerary.Skip(startIndex).ToList();
 
@@ -161,7 +160,5 @@
         public bool Separator{ get; set; } //Representa una separación en la tabla.
         public bool Pointer{ get; set; } //Marca la estación con un puntero.
     }
-
-
 
 }

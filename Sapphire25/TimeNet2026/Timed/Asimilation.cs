@@ -86,7 +86,7 @@ namespace TimeNet2026.Timed
 		/// </summary>
 		/// <param name="axis">Referencia al eje</param>
 		/// <param name="auxPk">Pk en el que estamos</param>
-		/// <returns></returns>
+		/// <returns>Pk del punto más cercano de la asimilación</returns>
 		public long containsAxis(Axis axis, long auxPk)
 		{
 			long candidateDistance = long.MaxValue;
@@ -102,6 +102,86 @@ namespace TimeNet2026.Timed
 			}
 			return salida;
 		}
+		/// <summary>
+		/// Devuelve la lista de pasos que quedan a esta asimilación desde 
+		/// la situación actual
+		/// </summary>
+		/// <param name="axis">Referencia al eje donde estamos</param>
+		/// <param name="pk">Pk donde estamos</param>
+		/// <returns>Lista de estaciones que nos quedan</returns>
+		public IEnumerable<AsimilationStep> StepsFromPk(Axis axis, long pk)
+		{
+			if (containsAxis(axis, pk) < 0) //Estamos fuera de ruta
+				return new List<AsimilationStep>(); //Lista vacía
+
+			bool auxAscendent = isAscendent;
+			TimeSpan cumul = new TimeSpan(0);
+			List<AsimilationStep> salida = new List<AsimilationStep>();
+			foreach(AsimilationStep aux in mcolSteps)
+			{
+				//Si ya tenemos elementos en la salida y los puntos que vienen NO están en el eje
+				//los añadimos, porque los recorreremos después.
+				AsimilationStep copia;
+
+                if (aux.axis != axis && salida.Count > 0)
+					{
+						copia = new AsimilationStep(aux);
+						copia.tripTime += cumul;
+						cumul = new TimeSpan(0);
+						salida.Add(copia);
+					}					
+				else if (aux.axis == axis)
+				{
+					if (auxAscendent && aux.destination.pk>pk)
+					{
+                        copia = new AsimilationStep(aux);
+                        copia.tripTime += cumul;
+                        cumul = new TimeSpan(0);
+                        salida.Add(copia);
+					}
+					else if(!auxAscendent && aux.destination.pk<pk)
+					{
+                        copia = new AsimilationStep(aux);
+                        copia.tripTime += cumul;
+                        cumul = new TimeSpan(0);
+                        salida.Add(copia);
+					}
+					else
+					{
+                        cumul += aux.stopTime;
+                        cumul += aux.tripTime;
+                    }
+				}
+				else
+				{
+                    cumul += aux.stopTime;
+					cumul += aux.tripTime;
+                }				
+			}
+			return salida;
+		}		
+
+		/// <summary>
+		/// Devuelve una parte de esta asimilación desde el eje y el PK pasados
+		/// </summary>
+		/// <param name="axis">Eje en el que estamos situados</param>
+		/// <param name="pk">PK en el que estamos situados</param>
+		/// <returns>Asimilación con todos los valores de ésta, pero con menos puntos</returns>
+		public Asimilation? SubAsimilation(Axis axis, long pk)
+		{
+			Asimilation salida = new Asimilation(Parent);
+			salida.Name = this.Name;
+			foreach (AsimilationStep step in StepsFromPk(axis,pk))
+			{
+				if (null == salida.Origin)
+					salida.Origin = step.destination;
+				else
+					salida.mcolSteps.Add(step);
+			}
+			if (salida.Steps.Count() < 1) return null; //Asimilación terminada o errónea.
+			return salida;
+		}
+
 		internal Station? stationByName(string name)
 		{			
 			if (null!=Origin && name.Equals(Origin.Name)) return Origin;
