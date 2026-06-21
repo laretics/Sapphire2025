@@ -1,4 +1,5 @@
 ﻿using BlazorBootstrap;
+using Sapphire2025Models.Authentication;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -29,6 +30,75 @@ namespace Sapphire2025Models
 		public static byte setBit(byte rhs, byte byteId)
 		{
 			return (byte)(rhs | (1 << byteId));
+		}
+
+		public static bool isRoot (SessionModel? session)
+		{
+			if(null!=session)
+				return session.Roles.Contains(Common.UserRole.Root);
+			return false;
+		}
+		public static bool isEngineer(SessionModel? session)
+		{
+			if (isRoot(session)) return true;
+			if (null != session)
+				return session.Roles.Contains(Common.UserRole.Engineer);
+			return false;
+		}
+		public static bool isExpert(SessionModel?session)
+		{
+			if (isRoot(session)) return true;
+			if (null != session)
+				return session.Roles.Contains(Common.UserRole.Expert);
+			return false;
+		}
+		public static bool isInspector(SessionModel? session)
+		{
+			if (isRoot(session)) return true;
+			if (null != session)
+				return session.Roles.Contains(Common.UserRole.Inspector);
+			return false;
+		}
+		public static bool isOfficial(SessionModel? session)
+		{
+			if (isEngineer(session)) return true;
+			if (null != session)
+				return session.Roles.Contains(Common.UserRole.Oficial);
+			return false;
+		}
+		public static bool isMechanic(SessionModel? session)
+		{
+			if (isOfficial(session)) return true;
+			if (null != session)
+				return session.Roles.Contains(Common.UserRole.Mechanic);
+			return false;
+		}
+		public static bool isStation(SessionModel? session)
+		{
+			if (isInspector(session)) return true;
+			if (null != session)
+				return session.Roles.Contains(Common.UserRole.Station);
+			return false;
+		}
+		public static bool isAnonymous(SessionModel? session)
+		{
+			if(isMechanic(session)||isStation(session)) return true;
+			if (null != session)
+				return session.Roles.Contains(Common.UserRole.Anonymous);
+			return false;
+		}
+
+		public static bool CanOpenTask(SessionModel? session)
+		{
+			return isMechanic(session);
+		}
+		public static bool CanCloseTask(SessionModel? session)
+		{
+			return isOfficial(session);
+		}
+		public static bool CanVerifyTask(SessionModel? session)
+		{
+			return isInspector(session);
 		}
 
 		public static string AtenuateColor(string rhs)

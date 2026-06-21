@@ -147,6 +147,18 @@ namespace Sapphire2025.Storage
 		}
 
 		#region Ordenes GMao
+		public async Task<Dictionary<Guid,WorkCatalogModel>> OrdersDictionary()
+		{
+			IEnumerable<WorkCatalogModel>? entrada = await workCatalogList();
+			Dictionary<Guid, WorkCatalogModel> salida = new Dictionary<Guid, WorkCatalogModel>();
+			foreach (WorkCatalogModel ent in entrada)
+			{
+				if (!salida.ContainsKey(ent.Id))
+					salida.Add(ent.Id, ent);
+			}
+			return salida;
+		}
+
 		public async Task<IEnumerable<WorkCatalogModel>> workCatalogList()
 		{
 			string request = composeCommand("workcatalog");

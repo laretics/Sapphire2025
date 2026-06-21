@@ -1,5 +1,5 @@
 ﻿@inject IJSRuntime mvarJs
-<div class="modal fade" id="myModal">
+<div class="modal fade" id="@mvarId">
 	<div class="modal-dialog">
 		<div class="modal-content">
 
@@ -30,6 +30,13 @@
 	[Parameter]
 	public bool Result { get; set; }
 
+	private string mvarId = "myModal";
+	protected override void OnInitialized()
+	{
+		base.OnInitialized();
+		mvarId = Guid.NewGuid().ToString();
+    }
+
 	public async Task show(string title, string text, string buttonContent , string cancelLabel = "Cancelar")
 	{
 		this.mvarText = text;
@@ -37,7 +44,7 @@
 		this.mvarCancelLabel = cancelLabel;
 		this.mvarTitle = title;
 		StateHasChanged();
-		await mvarJs.InvokeVoidAsync("showModal", "myModal");
+		await mvarJs.InvokeVoidAsync("showModal", mvarId);
 	}
 	private async Task Close(bool rhs)
 	{

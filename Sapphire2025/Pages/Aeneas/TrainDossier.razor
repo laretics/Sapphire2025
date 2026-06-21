@@ -20,7 +20,7 @@
 }
 else
 {
-	<CascadingValue Value="Users">
+	<CascadingValue Value="@Users">
 		<!-- Contenedor flex para botón y alert -->
 		<div class="d-flex align-items-stretch mb-3">
 			<button class="btn btn-secondary d-flex align-items-center justify-content-center px-3 me-2"
@@ -59,7 +59,7 @@ else
 			</TabPage>			
  			<TabPage Text="Actuaciones">			
 				<div class="table-responsive" style="width:100%; max-height:70vh;">
-					<Sapphire2025.Layout.Aeneas.WorkOrdersTable Orders="mcolOrders" />
+					<Sapphire2025.Layout.Aeneas.WorkOrdersTable Orders="mcolOrders" ColOrderCatalog="mcolOrderCatalog" />
 				</div>				
 			</TabPage>
 			<TabPage Text="Limpieza">
@@ -75,6 +75,7 @@ else
 	private Dictionary<Guid, UserModelBase>? Users = new Dictionary<Guid, UserModelBase>();
 	private IEnumerable<StatusChangeModel>? mcolChanges = new List<StatusChangeModel>();
 	private IEnumerable<WorkOrderModel>? mcolOrders = new List<WorkOrderModel>();
+	private Dictionary<Guid, WorkCatalogModel> mcolOrderCatalog = new Dictionary<Guid, WorkCatalogModel>();
 	private TrainModel? mvarTrain = null;
 
 	private IEnumerable<PlatformModel> mcolPlatforms = new List<PlatformModel>();
@@ -89,6 +90,7 @@ else
 			mvarTrain = await mvarAeneasClient.train(id);
 			if(null!=mvarTrain)
 				mcolOrders = await mvarAeneasClient.workOrdersByTrain(mvarTrain.id);
+			mcolOrderCatalog = await mvarAeneasClient.OrdersDictionary();
 			StateHasChanged();
 		}
 	}

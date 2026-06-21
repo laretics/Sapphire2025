@@ -1,9 +1,13 @@
 ﻿@using Sapphire2025.Icons.Actions
+@using Sapphire2025.Icons.Commands
 @using Sapphire2025.Icons.Headers
 @using Sapphire2025.Icons
 @using Sapphire2025Models.GMao
+@inject IntStorageService mvarIntStorage
+@inject AeneasClient mvarAeneasClient
 @if (null != Orders)
 {
+	<ModalDialog @ref="mvarConfirmationDialogOrderTable" OnClose="OnConfirmClose" />
 	<div class="table-responsive" style="height:100%; max-height:70vh;">
 		<table class="table table-bordered table-sm align-middle mb-0 w-100">
 			<thead class="table-secondary text-light">
@@ -11,23 +15,23 @@
 					<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
 						<Exec color="white" />
 					</th>
-					<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
+					<th class="col-1" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
 						<EventDateTime color="white" />
 					</th>
 					<th class="col-2" style="min-width: 100px; cursor:pointer;">
-						<User color="white" />
+						<User color="white" />		   <span>Inicio</span>
 					</th>
-					<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
+					<th class="col-1" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
 						<EventDateTime color="white" />
 					</th>
 					<th class="col-2" style="min-width: 100px; cursor:pointer;">
-						<User color="white" />
+						<User color="white" />		   <span>Cierre</span>
 					</th>
-					<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
+					<th class="col-1" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
 						<EventDateTime color="white" />
 					</th>
 					<th class="col-2" style="min-width: 100px; cursor:pointer;">
-						<User color="white" />
+						<User color="white" />		   <span>Verificación</span>
 					</th>
 				</tr>
 			</thead>
@@ -41,10 +45,14 @@
 						UserModelBase? verifyUser = userFromVerifyOrder(order);
 						<tr>
 							<td style="border-right:1px solid #dee2e6;">
-								@order.WorkType.ToString()
+								@if(ColOrderCatalog.ContainsKey(order.WorkType))
+								{
+									@ColOrderCatalog[order.WorkType].Name									
+								}
 							</td>
 							<td style="border-right:1px solid #dee2e6;">
-								@Sapphire2025Models.Utils.autoDate(order.OpenTime)
+								<CheckBox Checked="true"  Color="gray"/>
+								<span>@Sapphire2025Models.Utils.autoDate(order.OpenTime)</span>								
 							</td>
 							<td>
 								@if(null!=openUser)
@@ -55,10 +63,11 @@
 									@openUser.Name
 								}
 							</td>
-							<td style="border-right:1px solid #dee2e6;">
+							<td style="border-right:1px solid #dee2e6;" @onclick="() => HandleCompleteClicked(order)">
+								<CheckBox Checked="@(null!=order.CloseTime)" Color="@(EnableCheckClose(order)?"black":"gray")" />
 								@if(null!=order.CloseTime)
 								{
-									@Sapphire2025Models.Utils.autoDate((DateTime)order.CloseTime)
+									<span>@Sapphire2025Models.Utils.autoDate((DateTime)order.CloseTime)</span>									
 								}								
 							</td>
 							<td>
@@ -70,10 +79,11 @@
 									@closeUser.Name
 								}
 							</td>
-							<td style="border-right:1px solid #dee2e6;">
+							<td style="border-right:1px solid #dee2e6;" @onclick="() => HandleVerifyClicked(order)">
+								<CheckBox Checked="@(null!=order.VerifyTime)" Color="@(EnableCleckVerify(order)?"black":"gray")" />
 								@if (null != order.VerifyTime)
-								{
-									@Sapphire2025Models.Utils.autoDate((DateTime)order.VerifyTime)
+								{									
+									<span>@Sapphire2025Models.Utils.autoDate((DateTime)order.VerifyTime)</span>
 								}
 							</td>
 							<td>
@@ -98,6 +108,82 @@
 	public Dictionary<Guid, UserModelBase>? Users { get; set; }
 	[Parameter]
 	public IEnumerable<WorkOrderModel>? Orders{ get; set; }
+	[Parameter]
+	public Dictionary<Guid, WorkCatalogModel> ColOrderCatalog { get; set; } = new Dictionary<Guid, WorkCatalogModel>();
+
+	private SessionModel? mvarSession{ get; set; }
+	private bool UserCanCloseTask{ get; set; }
+	private bool UserCanVerifyTask{ get; set; }
+
+	private ModalDialog? mvarConfirmationDialogOrderTable;
+	private TaskCompletionSource<bool>? mvarConfirmTcs;
+
+	private bool EnableCheckClose(WorkOrderModel order)
+	{
+		return null == order.CloseTime && UserCanCloseTask;
+	}
+	private bool EnableCleckVerify(WorkOrderModel order)
+	{
+		return null == order.VerifyTime && UserCanVerifyTask && null != order.CloseTime;
+	}
+
+	private async Task HandleCompleteClicked(WorkOrderModel order)
+	{
+		if (!EnableCheckClose(order)) return; //Ignoramos si no puede completar
+		if (await ConfirmCloseWorkAsync(order))
+		{
+			await mvarAeneasClient.closeWorkOrder(order.Id);
+			StateHasChanged();
+		}
+	}
+	private async Task HandleVerifyClicked(WorkOrderModel order)
+	{
+		if (!EnableCleckVerify(order)) return; //Ignoramos si no puede verificar
+		if (await ConfirmVerifyWorkAsync(order))
+		{
+			await mvarAeneasClient.verifyWorkOrder(order.Id);
+			StateHasChanged();
+		}		
+	}
+
+	private async Task<bool> ConfirmCloseWorkAsync(WorkOrderModel order)
+	{
+		mvarConfirmTcs = new TaskCompletionSource<bool>();
+		if (null != mvarConfirmationDialogOrderTable && ColOrderCatalog.ContainsKey(order.WorkType))
+			await mvarConfirmationDialogOrderTable.show(
+				"Cierre de tarea",
+				$"¿Confirma que quiere cerrar la tarea de {ColOrderCatalog[order.WorkType].Name}?",
+				"Confirmar cierre",
+				"Cancelar");
+		return await mvarConfirmTcs.Task;
+	}
+	private async Task<bool> ConfirmVerifyWorkAsync(WorkOrderModel order)
+	{
+		mvarConfirmTcs = new TaskCompletionSource<bool>();
+		if (null != mvarConfirmationDialogOrderTable && ColOrderCatalog.ContainsKey(order.WorkType))
+			await mvarConfirmationDialogOrderTable.show(
+				"Cierre de tarea",
+				$"¿Confirma que quiere verificar que tarea de {ColOrderCatalog[order.WorkType].Name} ha finalizado correctamente?",
+				"Confirmar verificación",
+				"Cancelar");
+		return await mvarConfirmTcs.Task;
+	}
+
+	private Task OnConfirmClose(bool result)
+	{
+		mvarConfirmTcs?.TrySetResult(result);
+		return Task.CompletedTask;
+	}
+
+
+
+	protected override async Task OnParametersSetAsync()
+	{
+		await base.OnParametersSetAsync();
+		mvarSession = await mvarIntStorage.GetSessionInfo();
+		UserCanCloseTask = Sapphire2025Models.Utils.CanCloseTask(mvarSession);
+		UserCanVerifyTask = Sapphire2025Models.Utils.CanVerifyTask(mvarSession);
+	}
 
 	private UserModelBase? userFromOpenOrder(WorkOrderModel rhs)
 	{

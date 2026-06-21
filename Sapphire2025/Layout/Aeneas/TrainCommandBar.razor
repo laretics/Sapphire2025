@@ -281,14 +281,15 @@
 				b.CloseComponent();}))
 		}
 	};
-	private bool isAnonymous { get => (isRoot || isMechanic || isStation ||isInspector ||isExpert) || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Anonymous)); }
-	private bool isRoot { get => null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Root); }
-	private bool isOfficial { get => isRoot || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Oficial)); }
-	private bool isMechanic{ get => isOfficial ||( null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Mechanic)); }	
-	private bool isExpert { get => isRoot || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Expert)); }
-	private bool isInspector { get => isRoot || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Inspector)); }	
-	private bool isStation { get => isRoot || isInspector || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Station)); }
-	private bool isEngineer { get => isRoot || isOfficial || (null == mvarSession ? false : mvarSession.Roles.Contains(Sapphire2025Models.Common.UserRole.Engineer)); }
+
+	private bool isAnonymous { get => Sapphire2025Models.Utils.isAnonymous(mvarSession); }
+	private bool isStation { get => Sapphire2025Models.Utils.isStation(mvarSession); }
+	private bool isMechanic { get => Sapphire2025Models.Utils.isMechanic(mvarSession); }
+	private bool isOfficial { get => Sapphire2025Models.Utils.isOfficial(mvarSession); }
+	private bool isInspector { get => Sapphire2025Models.Utils.isInspector(mvarSession); }
+	private bool isExpert { get => Sapphire2025Models.Utils.isExpert(mvarSession); }
+	private bool isEngineer { get => Sapphire2025Models.Utils.isEngineer(mvarSession); }
+
 	private bool trainInCirculation
 	{
 		get => currentStatus == Sapphire2025Models.Common.TrainStatus.Available ||
