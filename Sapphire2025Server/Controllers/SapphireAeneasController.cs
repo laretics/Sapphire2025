@@ -109,16 +109,17 @@ namespace Sapphire2025Server.Controllers
 		/// </summary>
 		/// <param name="trainid"></param>
 		/// <returns>La lista de los cambios ordenados por fecha</returns>
-		[HttpGet("stchngs")]
-		public async Task<List<StatusChangeModel>> ChangesRequest(string trainid)
+		[HttpPost("stchngs")]
+		public async Task<List<StatusChangeModel>> ChangesRequest(StatusChangeRequestModel request)
 		{
 			List<StatusChangeModel> salida = new List<StatusChangeModel>();
-			Guid auxId = Guid.Empty;
-			Guid.TryParse(trainid, out auxId);
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				List<StatusChange> auxChanges = await almacen.StatusChanges.Where(x => x.TrainId == auxId).OrderByDescending(xx=>xx.TimeStamp).ToListAsync();
-				foreach(StatusChange auxChange in  auxChanges)
+				List<StatusChange> auxChanges = await
+				almacen.StatusChanges.Where(x => x.TrainId == request.trainId &&
+						x.TimeStamp > request.oldestRecord).
+						OrderByDescending(xx => xx.TimeStamp).ToListAsync();
+				foreach (StatusChange auxChange in auxChanges)
 					salida.Add(changeFromChange(auxChange));
 			}
 			return salida;
@@ -171,7 +172,6 @@ namespace Sapphire2025Server.Controllers
 			}
 			return salida;
 		}
-
 
 
 		[HttpPost("cmtstatus")]

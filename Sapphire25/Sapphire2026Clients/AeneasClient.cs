@@ -68,16 +68,6 @@ namespace Sapphire2025.Storage
 			HttpResponseMessage respuesta = await sendGetRequest(request);
 			return await respuesta.Content.ReadFromJsonAsync<Dictionary<Guid,UserModel>>();
 		}
-		public async Task<IEnumerable<StatusChangeModel>> trainChangesList(string trainId)
-		{
-			string request = composeCommand(
-				"stchngs",
-				new requestParam("trainid", trainId));
-			HttpResponseMessage respuesta = await sendGetRequest(request);
-			IEnumerable<StatusChangeModel>? auxLista = await respuesta.Content.ReadFromJsonAsync<IEnumerable<StatusChangeModel>>();
-			if(null==auxLista) return new List<StatusChangeModel>();
-			return auxLista;
-		}
 		public async Task<IEnumerable<StatusChangeModel>> recentChangeList(DateTime timeStamp)
 		{
 			DateTime auxUtc = timeStamp.Kind == DateTimeKind.Utc
@@ -99,6 +89,19 @@ namespace Sapphire2025.Storage
 				new requestParam("trainid",trainId));
 			HttpResponseMessage respuesta = await sendGetRequest(request);
 			return await respuesta.Content.ReadFromJsonAsync<Dictionary<Guid ,UserModel>>();
+		}
+
+		public async Task<IEnumerable<StatusChangeModel>> trainChangesList(Guid trainId, DateTime oldest)
+		{
+			IEnumerable<StatusChangeModel>? salida = null;
+			StatusChangeRequestModel request = new StatusChangeRequestModel(trainId, oldest);
+			string jsonData = System.Text.Json.JsonSerializer.Serialize(request);
+			HttpResponseMessage respuesta = await sendPostRequest("stchngs",jsonData);
+			if (respuesta.IsSuccessStatusCode)
+				salida =  await respuesta.Content.ReadFromJsonAsync<IEnumerable<StatusChangeModel>>();
+			
+				if (null == salida) return new List<StatusChangeModel>();
+			return salida;
 		}
 
 		public async Task<bool> addNote(NoteModel note)

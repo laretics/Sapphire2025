@@ -86,21 +86,6 @@ else
     private double svgTotalWidth => svgWidth + xOffset * 2;
     private int extraMarginBottom = 30;
 
-    // Paleta provisional
-    private Dictionary<Common.TrainStatus, string> statusColors = new()
-    {
-        { Common.TrainStatus.Maintenance, "#007bff" },
-        { Common.TrainStatus.Repairing, "#dc3545" },
-        { Common.TrainStatus.DepotRequested, "#ffc107" },
-        { Common.TrainStatus.RequestToDiagnose, "#17a2b8" },
-        { Common.TrainStatus.RequestToRepair, "#6f42c1" },
-        { Common.TrainStatus.StandStill, "#6c757d" },
-        { Common.TrainStatus.Available, "#28a745" },
-        { Common.TrainStatus.Disabled, "#fd7e14" },
-        { Common.TrainStatus.Unknown, "#20c997" },
-        // Otros estados...
-    };
-
     private bool IsExcludedStatus(Common.TrainStatus status) =>
         status == Common.TrainStatus.Available ||
         status == Common.TrainStatus.Disabled ||
@@ -160,7 +145,7 @@ else
                 double x = (auxMaximal.Subtract(startDate)).TotalSeconds / interval.TotalSeconds * svgWidth + xOffset;
                 double width = (next - auxMaximal).TotalSeconds / interval.TotalSeconds * svgWidth;
                 if (width > 0.01) // Evita segmentos nulos o negativos
-                    segments.Add((x, width, statusColors.GetValueOrDefault(prevStatus.Value, "#999"), Common.TrainStatusToString(prevStatus.Value),auxMaximal));
+                    segments.Add((x, width, GetStatusColor(prevStatus.Value), Common.TrainStatusToString(prevStatus.Value),auxMaximal));
             }
             prev = next;
             prevStatus = currentStatus;
@@ -174,7 +159,7 @@ else
                 double x = (auxMaximal.Subtract(startDate)).TotalSeconds / interval.TotalSeconds * svgWidth + xOffset;
                 double width = (endDate - auxMaximal).TotalSeconds / interval.TotalSeconds * svgWidth;
                 if (width > 0.01)
-                    segments.Add((x, width, statusColors.GetValueOrDefault(prevStatus.Value, "#999"), Common.TrainStatusToString(prevStatus.Value),auxMaximal));
+                    segments.Add((x, width, GetStatusColor(prevStatus.Value), Common.TrainStatusToString(prevStatus.Value),auxMaximal));
             }
         }
         else if (!trainChanges.Any())
@@ -182,10 +167,19 @@ else
             // Si el tren tiene un estado "taller" en el periodo, pero solo uno, pinta todo el rango
             if (!IsExcludedStatus(train.lastStatus))
             {
-                segments.Add((xOffset, svgWidth, statusColors.GetValueOrDefault(train.lastStatus, "#999"), Common.TrainStatusToString(train.lastStatus),startDate));
+                segments.Add((xOffset, svgWidth, GetStatusColor(train.lastStatus), Common.TrainStatusToString(train.lastStatus),startDate));
             }
         }
         return segments;
+    }
+
+    private string GetStatusColor(Sapphire2025Models.Common.TrainStatus status)
+    {
+        int index = (byte)status;
+        if (index >= 0 && index < Sapphire2025Models.Common.TrainStatusColor.Length)
+            return Sapphire2025Models.Common.TrainStatusColor[index];
+
+        return "#6c757d";
     }
 
     private async Task PrintSVG()

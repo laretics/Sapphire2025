@@ -1,4 +1,4 @@
-﻿@page "/train/{id}"
+﻿@page "/train/{idtxt}"
 @using Sapphire2025.Layout.Aeneas
 @using Sapphire2025.Layout.Generic
 @using Sapphire2025Models.GMao
@@ -53,22 +53,25 @@ else
 
 		<div class="btn-toolbar mb-3" role="toolbar" aria-label="Opciones del tren">
 			<div class="btn-group me-2" role="group" aria-label="Operaciones primarias">
-				<Sapphire2025.Layout.Aeneas.TrainCommandBar Train="mvarTrain" />
+				<TrainCommandBar Train="mvarTrain" />
 			</div>
 		</div>
 		<TabControl>
-			<TabPage Text="Principal">
-				<Sapphire2025.Layout.Aeneas.NoteChat 
+			<TabPage Text="General">
+				<NoteChatEx Parent="@mvarTrain.id" NoteType="2" MaxLines="20" />
+			</TabPage>
+			<TabPage Text="Chat">
+				<NoteChat 
 				Parent="@mvarTrain.id" NoteType="2" MaxLines="20"/>
 			</TabPage>
 			<TabPage Text="Historial">
 				<div class="table-responsive" style="width:100%; max-height:70vh;">
-					<Sapphire2025.Layout.Aeneas.StatusChangesTable StatusChanges="mcolChanges" />
+					<StatusChangesTable StatusChanges="mcolChanges" />
 				</div>
 			</TabPage>			
  			<TabPage Text="Actuaciones">			
 				<div class="table-responsive" style="width:100%; max-height:70vh;">
-					<Sapphire2025.Layout.Aeneas.WorkOrdersTable Train="mvarTrain" />
+					<WorkOrdersTable Train="mvarTrain" />
 				</div>				
 			</TabPage>
 			<TabPage Text="Limpieza">
@@ -79,7 +82,10 @@ else
 }
 @code {
 	[Parameter]
-	public string? id{ get; set; }
+	public string? idtxt{ get; set; }
+
+
+	public Guid id;
 
 	private Dictionary<Guid, UserModelBase>? Users = new Dictionary<Guid, UserModelBase>();
 	private IEnumerable<StatusChangeModel>? mcolChanges = new List<StatusChangeModel>();
@@ -90,16 +96,17 @@ else
 
 	protected async override Task OnInitializedAsync()
 	{
-		if(null!=id)
+		if(null!=idtxt)
 		{
-			mcolChanges = await mvarAeneasClient.trainChangesList(id);
+			Guid.TryParse(idtxt, out id);
+			mcolChanges = await mvarAeneasClient.trainChangesList(id, DateTime.MinValue);
 			Users = await mvarAuthClient.cachedUserList();
 			mcolPlatforms = await mvarAeneasClient.platformsList();
-			mvarTrain = await mvarAeneasClient.train(id);
-			if(null!=mvarTrain)
+			mvarTrain = await mvarAeneasClient.train(id.ToString());
+			if (null != mvarTrain)
 				mvarPendantWash = await mvarAeneasClient.HasPendantWashing(mvarTrain.id);
-			StateHasChanged();
 		}
+		StateHasChanged();
 	}
 	protected async Task OnPlatformChanged(PlatformModel? rhs)
 	{

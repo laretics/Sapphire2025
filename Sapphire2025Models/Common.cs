@@ -8,8 +8,8 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public const string SapphireSoftwareVersion = "26.06.21";
-		public const string LastChangesText = "Lavado de trenes|Revisiones|Campañas";
+		public const string SapphireSoftwareVersion = "26.06.23";
+		public const string LastChangesText = "Lavado de trenes|Revisiones|Campañas|Chat unificado";
 		public const string VersionColor = "#B0A030"; //Color de la versión para diferenciar una de otra.
 
 		public static readonly Guid TelegramToken = new Guid("3a7f9c2e-8b4d-4f1a-9e6c-7d2b5a8f3e1c"); //Token de sesión sólo para operaciones desde Telegram.
@@ -51,6 +51,19 @@ namespace Sapphire2025Models
 			"Preventivo",
 			"StandStill",
 			"De baja"
+		};
+		public static readonly string[] TrainStatusColor =
+		{
+			"#C7877B",	//Desconocido
+			"#A2F090",	//Disponible
+			"#90F0DD",	//Solicitado preventivo
+			"#6BB5A8",  //Apartado preventivo
+			"#D3D660",	//Pendiente decisión parada
+			"#D69160",	//A retirar
+			"#D95F5F",	//Correctivo
+			"#1CA38C",	//Preventivo
+			"#776EFF",	//Standstill
+			"#C2C2C2",	//De baja
 		};
 		public static readonly string[] TrainStatusTelegramString =
 		{

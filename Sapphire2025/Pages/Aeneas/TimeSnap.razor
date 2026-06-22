@@ -169,7 +169,7 @@
     private async Task loadChanges(TrainModel tren)
     {
         // 1. Cargar todos los cambios de estado del tren (puedes optimizar esto si tu API lo permite)
-        IEnumerable<StatusChangeModel> allChanges = (await mvarAeneasClient.trainChangesList(tren.id.ToString()))
+        IEnumerable<StatusChangeModel> allChanges = (await mvarAeneasClient.trainChangesList(tren.id, DateTime.MinValue))
             .OrderBy(c => c.timeStamp)
             .ToList();
 

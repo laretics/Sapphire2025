@@ -1,0 +1,171 @@
+﻿@using Sapphire2025.Icons.Headers
+@using Sapphire2025.Icons
+@inject AeneasClient mvarAeneasClient
+
+<div style="height:100%; max-height:70vh; overflow-y:auto;" class="bg-light rounded p-3">
+	@if (Loading)
+	{
+		<div class="text-muted text-center py-3">Cargando...</div>
+	}
+	else if (FeedItems.Count == 0)
+	{
+		<div class="text-muted text-center py-3">No hay notas ni cambios de estado.</div>
+	}
+	else
+	{
+		<CascadingValue Value="Users">
+			@foreach (FeedEntry entry in FeedItems)
+			{
+				if (entry.Kind == FeedKind.Note && entry.Note is not null)
+				{
+					<NoteChatEntry Note="@entry.Note" />
+				}
+				else if (entry.Kind == FeedKind.StatusChange && entry.StatusChange is not null)
+				{
+					UserModelBase? auxUser = userFromStatus(entry.StatusChange);
+					string statusColor = GetStatusColor(entry.StatusChange.status);
+
+					<div class="position-relative mb-4 py-3">
+						<div class="position-absolute top-50 start-0 w-100"
+							 style="height: 3rem; transform: translateY(-100%); z-index: 0;
+							background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, @statusColor 100%);">
+						</div>
+
+						<div class="position-absolute top-50 start-0 w-100 border-top border-2 opacity-25"
+							 style="transform: translateY(-50%); z-index: 1; border-color:@statusColor !important;">
+						</div>
+
+						<div class="d-flex justify-content-center position-relative" style="z-index: 2;">
+							<div class="card shadow-sm border-secondary" style="max-width: 75%;">
+								<div class="card-header bg-secondary text-white">
+									<span class="me-2">
+										@if (auxUser is not null)
+										{
+											<span>
+												<RoleIcon Credentials="auxUser.CredentialKey" Color="white" />
+											</span>
+											<strong>@auxUser.Name</strong>
+										}
+										else
+										{
+											<strong>[Desconocido]</strong>
+										}
+									</span>
+									<small class="float-end">@Sapphire2025Models.Utils.autoDate(entry.StatusChange.timeStamp)</small>
+								</div>
+								<div class="card-body">
+									<div class="d-flex align-items-center gap-2 mb-1">
+										<Sapphire2025.Icons.Status.IcoStatus status="@entry.StatusChange.status" color="white" />
+										<strong class="me-2">@entry.StatusChange.description</strong>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				}
+			}
+		</CascadingValue>
+	}
+</div>
+
+@code {
+	///El noteChat es un documento que muestra las entradas de texto (y en un futuro gráficos)
+	///correspondientes a un determinado tren, junto con sus horas de suceso.
+	///Es una especie de bitácora mostrada en un tono desenfadado que permite
+	///asimilar la información de una manera más amena. <summary>
+	/// El noteChat es un documento que muestra las entradas de texto (y en un futuro gráficos)
+	[Parameter]
+	public Guid Parent { get; set; } = Guid.Empty; //Guid del padre de las notas
+	[Parameter]
+	public string NoteType { get; set; } = "0"; //Tipo de nota que se va a mostrar en este chat
+	[Parameter]
+	public int MaxLines { get; set; } = 30; //Máximo de líneas a mostrar en el chat
+	[CascadingParameter]
+	public Dictionary<Guid, UserModelBase>? Users { get; set; }
+	private List<NoteModel>? Notes { get; set; } = new List<NoteModel>();
+	private IEnumerable<StatusChangeModel>? StatusChanges{ get; set; }
+	private Guid lastParent = Guid.Empty;
+	private string lastNoteType = string.Empty;
+	private int lastMaxLines = -1;
+
+	private List<FeedEntry> FeedItems { get; set; } = new();
+	private bool Loading { get; set; } = true;
+
+	protected async override Task OnParametersSetAsync()
+	{
+		Loading = true;
+		if (Parent != Guid.Empty &&
+		(Parent != lastParent || NoteType != lastNoteType || MaxLines != lastMaxLines))
+		{
+			Notes = await mvarAeneasClient.retrieveNotes(Parent, NoteType, MaxLines);
+			DateTime auxOldest = DateTime.MinValue;
+			if(null!=Notes)
+			{
+				auxOldest = Notes.OrderBy(x => x.TimeStamp).First().TimeStamp;				
+			}
+			StatusChanges = await mvarAeneasClient.trainChangesList(Parent,auxOldest);
+			lastParent = Parent;
+			lastNoteType = NoteType;
+			lastMaxLines = MaxLines;
+		}
+
+		BuildFeed();
+		Loading = false;
+	}
+
+	private string GetStatusColor(Sapphire2025Models.Common.TrainStatus status)
+	{
+		int index = (byte)status;
+		if (index >= 0 && index < Sapphire2025Models.Common.TrainStatusColor.Length)
+			return Sapphire2025Models.Common.TrainStatusColor[index];
+
+		return "#6c757d";
+	}
+
+	private enum FeedKind:byte
+	{
+		Note,
+		StatusChange
+	}
+	private sealed record FeedEntry
+	(
+		FeedKind Kind,
+		DateTime TimeStamp,
+		int sequence,
+		NoteModel? Note,
+		StatusChangeModel? StatusChange
+	);
+	private UserModelBase? userFromStatus(StatusChangeModel rhs)
+	{
+		if (null != Users && Guid.Empty != rhs.userId && Users.ContainsKey(rhs.userId))
+			return Users[rhs.userId];
+		return null;
+	}
+	private string BuildStatusSummary(StatusChangeModel rhs)
+	{
+		string userName = userFromStatus(rhs)?.Name ?? "[Desconocido]";
+		if(string.IsNullOrWhiteSpace(rhs.comment))
+			return $"{userName} · {rhs.description}";
+
+		return $"{userName} · {rhs.description} · {rhs.comment}";
+	}
+	private void BuildFeed()
+	{
+		List<FeedEntry> items = new();
+		int sequence = 0;
+		if(null!=Notes)
+		{
+			foreach (NoteModel note in Notes)
+				items.Add(new FeedEntry(FeedKind.Note, note.TimeStamp, sequence++, note, null));
+		}
+		if(null!=StatusChanges)
+		{
+			foreach (StatusChangeModel change in StatusChanges)
+				items.Add(new FeedEntry(FeedKind.StatusChange, change.timeStamp, sequence++, null, change));
+		}
+
+		FeedItems = items.OrderByDescending(x => x.TimeStamp)
+					.ThenBy(x => x.sequence)
+					.ToList();
+	}
+}
