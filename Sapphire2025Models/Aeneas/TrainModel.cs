@@ -37,6 +37,9 @@ namespace Sapphire2025Models.Aeneas
 		//Vía de estacionamiento asignada
 		public int PlatformId { get; set; }
 
+		//Último lavado del tren
+		public DateTime? LastWash{ get; set; }
+
 		[JsonIgnore]
 		public List<StatusChangeModel>? StatusChanges { get; set; }
 

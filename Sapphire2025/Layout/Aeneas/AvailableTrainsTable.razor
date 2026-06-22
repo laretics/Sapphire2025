@@ -7,20 +7,23 @@
 	<table class="table table-bordered table-stripped table-fixed mb-0">
 		<thead>
 			<tr>
-				<th class="bg-secondary text-white" style="width:100px;" @onclick="() => sortFields(2)">
+				<th class="bg-secondary text-white" style="width:90px;" @onclick="() => sortFields(2)">
 					<TrainStatus color="white" />
 				</th>
-				<th class="bg-secondary text-white" style="width:100px;" @onclick="() => sortFields(1)">
+				<th class="bg-secondary text-white" style="width:90px;" @onclick="() => sortFields(1)">
 					<UT color="white" />
 				</th>
-				<th class="bg-secondary text-white" style="width:100px;" @onclick="() => sortFields(5)">
+				<th class="bg-secondary text-white" style="width:90px;" @onclick="() => sortFields(5)">
 					<Location color="white" />
 				</th>
-				<th class="bg-secondary text-white" style="width:100px;" @onclick="() => sortFields(5)">
+				<th class="bg-secondary text-white" style="width:90px;" @onclick="() => sortFields(5)">
 					<TrainTrack color="white" />
 				</th>
-				<th class="bg-secondary text-white" style="width:100px;" @onclick="() => sortFields(0)">
+				<th class="bg-secondary text-white" style="width:90px;" @onclick="() => sortFields(0)">
 					<EventDateTime color="white" />
+				</th>
+				<th class="bg-secondary text-white" style="width:90px;" @onclick="() => sortFields(6)">
+					<Wash color="white" />
 				</th>
 				<th class="bg-secondary text-white" style="width:200px;" @onclick="() => sortFields(3)">
 					<User color="white" />
@@ -49,6 +52,9 @@
 					</td>
 					<td class="truncate">
 						@Sapphire2025Models.Utils.autoDate(train.lastUpdateTime)
+					</td>
+					<td class="truncate">
+						@Sapphire2025Models.Utils.autoDate(train.LastWash)
 					</td>
 					<td class="truncate">
 						@{

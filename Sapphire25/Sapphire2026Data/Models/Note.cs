@@ -16,6 +16,9 @@ namespace Sapphire2026.Data.Models
 		///El cero va a ser un texto de anotación de un mecánico.
 		///El uno será un parte de avería.
 		
-
+		public DateTime? ClosureTime{ get; set; }
+		//Fecha y hora del cierre de la nota.
+		public Guid? ClosureUser{ get; set; }
+		//Usuario que cierra la nota.
 	}
 }

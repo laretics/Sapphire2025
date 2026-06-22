@@ -146,11 +146,22 @@
 		new TrainCommand
 		{
 			Label="Lavado en Túnel",
-			ShowIf = () => isMechanic && isStation &&
+			ShowIf = () => isMechanic && // isStation &&  //Antes podían también los gestores.
 			(currentStatus==Sapphire2025Models.Common.TrainStatus.DepotAvailable ||
 				currentStatus== Sapphire2025Models.Common.TrainStatus.Available)
 				&& !mvarPendantWash,
 				Action= requestTunnelWash,
+			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
+			{b.OpenComponent<Sapphire2025.Icons.Actions.Wash>(0);
+				b.AddAttribute(1,"color","@2020a0");
+				b.CloseComponent();}))
+		},
+		new TrainCommand
+		{
+			Label="Fin Lavado",
+			ShowIf =() => isMechanic &&
+			mvarPendantWash,
+			Action = requestWashingEnd,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Actions.Wash>(0);
 				b.AddAttribute(1,"color","@2020a0");
@@ -398,6 +409,17 @@
 		await mvarAeneasClient.createWorkOrder(Sapphire2025Models.Common.WorkOrderTypeTunnelWash,
 null,
 Train.id);
+		endCommand();
+	}
+	private async Task requestWashingEnd()
+	{
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			$"Lavado de {Train.name}",
+			$"¿Confirma que quiere finalizar el lavado de este tren?");
+		if (!confirmado) return;
+
+		await mvarAeneasClient.TerminateWashing(Train.id);
 		endCommand();
 	}
 	private async Task acceptSendToMaintenance()

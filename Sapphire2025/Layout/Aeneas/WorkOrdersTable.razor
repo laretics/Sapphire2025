@@ -5,7 +5,7 @@
 @using Sapphire2025Models.GMao
 @inject IntStorageService mvarIntStorage
 @inject AeneasClient mvarAeneasClient
-@if (null != Orders)
+@if (null != mcolOrder)
 {
 	<ModalDialog @ref="mvarConfirmationDialogOrderTable" OnClose="OnConfirmClose" />
 	<div class="table-responsive" style="height:100%; max-height:70vh;">
@@ -36,69 +36,65 @@
 				</tr>
 			</thead>
 			<tbody>
-				@if (null!= Orders)
+				@foreach (WorkOrderModel order in mcolOrder)
 				{
-					foreach (WorkOrderModel order in Orders)
-					{
-						UserModelBase? openUser = userFromOpenOrder(order);
-						UserModelBase? closeUser = userFromCloseOrder(order);
-						UserModelBase? verifyUser = userFromVerifyOrder(order);
-						<tr>
-							<td style="border-right:1px solid #dee2e6;">
-								@if(ColOrderCatalog.ContainsKey(order.WorkType))
-								{
-									@ColOrderCatalog[order.WorkType].Name									
-								}
-							</td>
-							<td style="border-right:1px solid #dee2e6;">
-								<CheckBox Checked="true"  Color="gray"/>
-								<span>@Sapphire2025Models.Utils.autoDate(order.OpenTime)</span>								
-							</td>
-							<td>
-								@if(null!=openUser)
-								{
-									<span>
-										<RoleIcon Credentials="openUser.CredentialKey" Color="gray"></RoleIcon>
-									</span>
-									@openUser.Name
-								}
-							</td>
-							<td style="border-right:1px solid #dee2e6;" @onclick="() => HandleCompleteClicked(order)">
-								<CheckBox Checked="@(null!=order.CloseTime)" Color="@(EnableCheckClose(order)?"black":"gray")" />
-								@if(null!=order.CloseTime)
-								{
-									<span>@Sapphire2025Models.Utils.autoDate((DateTime)order.CloseTime)</span>									
-								}								
-							</td>
-							<td>
-								@if (null != closeUser)
-								{
-									<span>
-										<RoleIcon Credentials="closeUser.CredentialKey" Color="gray"></RoleIcon>
-									</span>
-									@closeUser.Name
-								}
-							</td>
-							<td style="border-right:1px solid #dee2e6;" @onclick="() => HandleVerifyClicked(order)">
-								<CheckBox Checked="@(null!=order.VerifyTime)" Color="@(EnableCleckVerify(order)?"black":"gray")" />
-								@if (null != order.VerifyTime)
-								{									
-									<span>@Sapphire2025Models.Utils.autoDate((DateTime)order.VerifyTime)</span>
-								}
-							</td>
-							<td>
-								@if (null != verifyUser)
-								{
-									<span>
-										<RoleIcon Credentials="verifyUser.CredentialKey" Color="gray"></RoleIcon>
-									</span>
-									@verifyUser.Name
-								}
-							</td>
-						</tr>
-					}
+					UserModelBase? openUser = userFromOpenOrder(order);
+					UserModelBase? closeUser = userFromCloseOrder(order);
+					UserModelBase? verifyUser = userFromVerifyOrder(order);
+					<tr>
+						<td style="border-right:1px solid #dee2e6;">
+							@if(mcolOrderCatalog.ContainsKey(order.WorkType))
+							{
+								@mcolOrderCatalog[order.WorkType].Name									
+							}
+						</td>
+						<td style="border-right:1px solid #dee2e6;">
+							<CheckBox Checked="true"  Color="gray"/>
+							<span>@Sapphire2025Models.Utils.autoDate(order.OpenTime)</span>								
+						</td>
+						<td>
+							@if(null!=openUser)
+							{
+								<span>
+									<RoleIcon Credentials="openUser.CredentialKey" Color="gray"></RoleIcon>
+								</span>
+								@openUser.Name
+							}
+						</td>
+						<td style="border-right:1px solid #dee2e6;" @onclick="() => HandleCompleteClicked(order)">
+							<CheckBox Checked="@(null!=order.CloseTime)" Color="@(EnableCheckClose(order)?"black":"gray")" />
+							@if(null!=order.CloseTime)
+							{
+								<span>@Sapphire2025Models.Utils.autoDate((DateTime)order.CloseTime)</span>									
+							}								
+						</td>
+						<td>
+							@if (null != closeUser)
+							{
+								<span>
+									<RoleIcon Credentials="closeUser.CredentialKey" Color="gray"></RoleIcon>
+								</span>
+								@closeUser.Name
+							}
+						</td>
+						<td style="border-right:1px solid #dee2e6;" @onclick="() => HandleVerifyClicked(order)">
+							<CheckBox Checked="@(null!=order.VerifyTime)" Color="@(EnableCleckVerify(order)?"black":"gray")" />
+							@if (null != order.VerifyTime)
+							{									
+								<span>@Sapphire2025Models.Utils.autoDate((DateTime)order.VerifyTime)</span>
+							}
+						</td>
+						<td>
+							@if (null != verifyUser)
+							{
+								<span>
+									<RoleIcon Credentials="verifyUser.CredentialKey" Color="gray"></RoleIcon>
+								</span>
+								@verifyUser.Name
+							}
+						</td>
+					</tr>
 				}
-
 			</tbody>
 		</table>
 	</div>
@@ -107,9 +103,10 @@
 	[CascadingParameter]
 	public Dictionary<Guid, UserModelBase>? Users { get; set; }
 	[Parameter]
-	public IEnumerable<WorkOrderModel>? Orders{ get; set; }
-	[Parameter]
-	public Dictionary<Guid, WorkCatalogModel> ColOrderCatalog { get; set; } = new Dictionary<Guid, WorkCatalogModel>();
+	public TrainModel? Train{ get; set; }
+
+	private Dictionary<Guid, WorkCatalogModel> mcolOrderCatalog { get; set; } = new Dictionary<Guid, WorkCatalogModel>();
+	private IEnumerable<WorkOrderModel>? mcolOrder{ get; set; }
 
 	private SessionModel? mvarSession{ get; set; }
 	private bool UserCanCloseTask{ get; set; }
@@ -133,6 +130,15 @@
 		if (await ConfirmCloseWorkAsync(order))
 		{
 			await mvarAeneasClient.closeWorkOrder(order.Id);
+
+			//Si la orden era de lavado, lo anota en la tabla de trenes.
+			if (Sapphire2025Models.Utils.OrderTypeIsWash(order.WorkType) && null!=order.TrainId)
+			{
+				TrainModel modelo = new TrainModel();
+				modelo.id = (Guid)order.TrainId;
+				await mvarAeneasClient.UpdateWash(modelo);
+			}			
+
 			StateHasChanged();
 		}
 	}
@@ -149,10 +155,10 @@
 	private async Task<bool> ConfirmCloseWorkAsync(WorkOrderModel order)
 	{
 		mvarConfirmTcs = new TaskCompletionSource<bool>();
-		if (null != mvarConfirmationDialogOrderTable && ColOrderCatalog.ContainsKey(order.WorkType))
+		if (null != mvarConfirmationDialogOrderTable && mcolOrderCatalog.ContainsKey(order.WorkType))
 			await mvarConfirmationDialogOrderTable.show(
 				"Cierre de tarea",
-				$"¿Confirma que quiere cerrar la tarea de {ColOrderCatalog[order.WorkType].Name}?",
+				$"¿Confirma que quiere cerrar la tarea de {mcolOrderCatalog[order.WorkType].Name}?",
 				"Confirmar cierre",
 				"Cancelar");
 		return await mvarConfirmTcs.Task;
@@ -160,10 +166,10 @@
 	private async Task<bool> ConfirmVerifyWorkAsync(WorkOrderModel order)
 	{
 		mvarConfirmTcs = new TaskCompletionSource<bool>();
-		if (null != mvarConfirmationDialogOrderTable && ColOrderCatalog.ContainsKey(order.WorkType))
+		if (null != mvarConfirmationDialogOrderTable && mcolOrderCatalog.ContainsKey(order.WorkType))
 			await mvarConfirmationDialogOrderTable.show(
 				"Cierre de tarea",
-				$"¿Confirma que quiere verificar que tarea de {ColOrderCatalog[order.WorkType].Name} ha finalizado correctamente?",
+				$"¿Confirma que quiere verificar que tarea de {mcolOrderCatalog[order.WorkType].Name} ha finalizado correctamente?",
 				"Confirmar verificación",
 				"Cancelar");
 		return await mvarConfirmTcs.Task;
@@ -180,6 +186,10 @@
 	protected override async Task OnParametersSetAsync()
 	{
 		await base.OnParametersSetAsync();
+		mcolOrderCatalog = await mvarAeneasClient.OrdersDictionary();
+		if (null != Train)
+			mcolOrder = await mvarAeneasClient.workOrdersByTrain(Train.id);
+
 		mvarSession = await mvarIntStorage.GetSessionInfo();
 		UserCanCloseTask = Sapphire2025Models.Utils.CanCloseTask(mvarSession);
 		UserCanVerifyTask = Sapphire2025Models.Utils.CanVerifyTask(mvarSession);

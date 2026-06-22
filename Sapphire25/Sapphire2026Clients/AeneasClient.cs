@@ -3,6 +3,7 @@ using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
 using Sapphire2025Models.GMao;
 using System.Net.Http.Json;
+using System.Reflection.Metadata.Ecma335;
 
 namespace Sapphire2025.Storage
 {
@@ -117,6 +118,17 @@ namespace Sapphire2025.Storage
 				return await respuesta.Content.ReadFromJsonAsync<bool>();
 			return false;	
 		}
+
+		//Actualiza el lavado del tren
+		public async Task<bool> UpdateWash(TrainModel train)
+		{
+			string jsonData = System.Text.Json.JsonSerializer.Serialize(train);
+			HttpResponseMessage respuesta = await sendPostRequest("updatewash", jsonData);
+			if (respuesta.IsSuccessStatusCode)
+				return await respuesta.Content.ReadFromJsonAsync<bool>();
+			return false;
+		}
+
 		//Obtiene las últimas notas de un determinado tren.
 		//Si el parámetro max es cero, devuelve todas las notas.
 		//Si tiene otro valor, devuelve el número de notas requerido.
@@ -180,6 +192,7 @@ namespace Sapphire2025.Storage
 			Guid? trainId = null,
 			Guid? workType = null,
 			bool? open = null,
+			bool? atomic = null,
 			DateTime? from = null,
 			DateTime? to = null)
 		{
@@ -193,6 +206,9 @@ namespace Sapphire2025.Storage
 
 			if (open.HasValue)
 				args.Add(new requestParam("open", open.Value.ToString()));
+
+			if (atomic.HasValue)
+				args.Add(new requestParam("atomic", atomic.Value.ToString()));
 
 			if (from.HasValue)
 			{
@@ -231,23 +247,40 @@ namespace Sapphire2025.Storage
 		public Task<IEnumerable<WorkOrderModel>> openWorkOrders(
 			Guid? trainId = null,
 			Guid? workType = null,
+			bool? atomic = null,
 			DateTime? from = null,
 			DateTime? to = null)
 		{
-			return workOrders(trainId: trainId, workType: workType, open: true, from: from, to: to);
+			return workOrders(trainId: trainId, workType: workType, open: true, atomic: atomic, from: from, to: to);
 		}
 
-		public async Task<bool> HasPendantWorks(Guid trainId)
+		public async Task<bool> HasPendantWorks(Guid trainId, bool? atomic = null)
 		{
-			IEnumerable<WorkOrderModel> pendants = await workOrders(trainId: trainId);
+			IEnumerable<WorkOrderModel> pendants = await workOrders(trainId: trainId, open:true, atomic:atomic);
 			return pendants.Any();
 		}
 		public async Task<bool> HasPendantWashing(Guid trainId)
 		{
-			IEnumerable<WorkOrderModel> pendants = await workOrders(trainId: trainId);
+			IEnumerable<WorkOrderModel> pendants = await workOrders(trainId: trainId, open:true, atomic:true);
 			return pendants.Where(x => x.WorkType == Common.WorkOrderTypeManualWash ||
 			x.WorkType == Common.WorkOrderTypePlatformWash ||
 			x.WorkType == Common.WorkOrderTypeTunnelWash).Any();
+		}
+
+		public async Task<bool> TerminateWashing(Guid trainId)
+		{
+			IEnumerable<WorkOrderModel> pendants = await workOrders(trainId: trainId, open: true, atomic: true);
+			bool salida = false;
+			foreach(WorkOrderModel order in pendants)
+			{
+				if(Sapphire2025Models.Utils.OrderTypeIsWash(order.WorkType))
+				{
+					if (await closeWorkOrder(order.Id))
+						await TerminateWashing(trainId);
+					salida = true;
+				}
+			}
+			return salida;
 		}
 
 		public Task<IEnumerable<WorkOrderModel>> closedWorkOrders(
@@ -278,7 +311,7 @@ namespace Sapphire2025.Storage
 			return await respuesta.Content.ReadFromJsonAsync<WorkOrderModel?>();
 		}
 
-		public async Task<WorkOrderModel?> closeWorkOrder(Guid workOrderId)
+		public async Task<bool> closeWorkOrder(Guid workOrderId)
 		{
 			Guid auxToken = await getCurrentToken();
 			WorkOrderActionRequestModel requestModel = new WorkOrderActionRequestModel
@@ -289,10 +322,10 @@ namespace Sapphire2025.Storage
 
 			string jsonData = System.Text.Json.JsonSerializer.Serialize(requestModel);
 			HttpResponseMessage respuesta = await sendPostRequest("workorders/close", jsonData);
-			return await respuesta.Content.ReadFromJsonAsync<WorkOrderModel?>();
+			return (null != respuesta.Content);
 		}
 
-		public async Task<WorkOrderModel?> verifyWorkOrder(Guid workOrderId)
+		public async Task<bool> verifyWorkOrder(Guid workOrderId)
 		{
 			Guid auxToken = await getCurrentToken();
 			WorkOrderActionRequestModel requestModel = new WorkOrderActionRequestModel
@@ -303,7 +336,7 @@ namespace Sapphire2025.Storage
 
 			string jsonData = System.Text.Json.JsonSerializer.Serialize(requestModel);
 			HttpResponseMessage respuesta = await sendPostRequest("workorders/verify", jsonData);
-			return await respuesta.Content.ReadFromJsonAsync<WorkOrderModel?>();
+			return (null != respuesta.Content);
 		}
 
 		#endregion Ordenes GMao

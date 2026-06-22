@@ -100,6 +100,12 @@ namespace Sapphire2025Models
 		{
 			return isInspector(session);
 		}
+		public static bool OrderTypeIsWash(Guid orderType)
+		{
+			return orderType == Common.WorkOrderTypeManualWash ||
+			orderType == Common.WorkOrderTypePlatformWash ||
+			orderType == Common.WorkOrderTypeTunnelWash;
+		}
 
 		public static string AtenuateColor(string rhs)
 		{
@@ -159,8 +165,12 @@ namespace Sapphire2025Models
 				return salida.ToString();
 			}
 		}
-		public static string autoDate(DateTime rhs)
+		public static string autoDate(DateTime? rhsh)
 		{
+			if (null == rhsh)
+				return "-";
+			
+			DateTime rhs = (rhsh.HasValue ? rhsh.Value : DateTime.MinValue);
 			// Si el DateTime no tiene Kind especificado, asumimos que es UTC
 			if (rhs.Kind == DateTimeKind.Unspecified)
 			{

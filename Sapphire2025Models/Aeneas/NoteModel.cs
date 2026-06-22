@@ -20,5 +20,9 @@ namespace Sapphire2025Models.Aeneas
 		public DateTime TimeStamp { get; set; } //Fecha y hora de la nota
 		public Guid UserId { get; set; } //Referencia al usuario que ha creado la nota
 
+		public DateTime? ClosureTime { get; set; }
+		//Fecha y hora del cierre de la nota.
+		public Guid? ClosureUser { get; set; }
+		//Usuario que cierra la nota.
 	}
 }

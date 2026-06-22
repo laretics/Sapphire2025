@@ -10,6 +10,7 @@ namespace Sapphire2025Models.GMao
 	{
 		public Guid Id { get; set; } //Código único de esta orden de trabajo
 		public Guid WorkType { get; set; } //Tipo de trabajo de la orden de trabajo
+		public bool Atomic { get; set; } //Este trabajo se considera atómico
 		public Guid? DestinationObjectId { get; set; } //Elemento del tren sobre el que se aplica esta orden de trabajo
 		public Guid? TrainId { get; set; } //Tren sobre el que se aplica esta orden en el momento de su apertura.
 										   //Es nullable porque se podría hacer un trabajo sobre una pieza de parque.

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sapphire2026.Data;
 
@@ -10,9 +11,11 @@ using Sapphire2026.Data;
 namespace Sapphire2026Data.Migrations
 {
     [DbContext(typeof(DataStorage))]
-    partial class DataStorageModelSnapshot : ModelSnapshot
+    [Migration("20260622102615_GMaoBasic3")]
+    partial class GMaoBasic3
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -101,12 +104,6 @@ namespace Sapphire2026Data.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<DateTime?>("ClosureTime")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<Guid?>("ClosureUser")
                         .HasColumnType("char(36)");
 
                     b.Property<Guid>("Parent")
@@ -263,9 +260,6 @@ namespace Sapphire2026Data.Migrations
 
                     b.Property<byte>("LastStatus")
                         .HasColumnType("tinyint unsigned");
-
-                    b.Property<DateTime?>("LastWash")
-                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Name")
                         .IsRequired()

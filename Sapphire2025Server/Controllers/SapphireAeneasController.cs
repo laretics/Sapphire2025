@@ -343,6 +343,23 @@ namespace Sapphire2025Server.Controllers
 			}
 			return false;
 		}
+
+		[HttpPost("updatewash")]
+		public async Task<bool> UpdateWash(TrainModel train)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				Train? auxTren = await almacen.Trains.Where(x => x.Guid == train.id).FirstOrDefaultAsync();
+				if (null != auxTren)
+				{
+					auxTren.LastWash = DateTime.UtcNow; //Actualizo la última fecha de lavado.
+					await almacen.SaveChangesAsync();
+					return true;
+				}
+			}
+			return false;
+		}
+
 		[HttpPost("getnotes")]
 		public async Task<List<NoteModel>> RetrieveNotes(NoteChatRequestModel model)
 		{
@@ -351,24 +368,26 @@ namespace Sapphire2025Server.Controllers
 			{
 				List<Note> auxNotas;
 				if (model.TakeMax > 0)
-				{
 					auxNotas = await almacen.Notes.Where(x => x.Parent == model.ParentId).OrderByDescending(x => x.TimeStamp).Take(model.TakeMax).ToListAsync();
-				}
 				else
-				{
 					auxNotas = await almacen.Notes.Where(x => x.Parent == model.ParentId).OrderByDescending(x => x.TimeStamp).ToListAsync();
-				}
+
 				foreach (Note auxNota in auxNotas)
-				{
-					NoteModel nuevoModelo = new NoteModel();
-					nuevoModelo.parent = auxNota.Parent;
-					nuevoModelo.Text = auxNota.Text;
-					nuevoModelo.TimeStamp = auxNota.TimeStamp;
-					nuevoModelo.UserId = auxNota.UserId;
-					nuevoModelo.Type = auxNota.Type;
-					salida.Add(nuevoModelo);
-				}
+					salida.Add(noteFromNote(auxNota));
 			}
+			return salida;
+		}
+
+		protected NoteModel noteFromNote(Note rhs)
+		{
+			NoteModel salida = new NoteModel();
+			salida.parent = rhs.Parent;
+			salida.Text = rhs.Text;
+			salida.TimeStamp = rhs.TimeStamp;
+			salida.UserId = rhs.UserId;
+			salida.Type = rhs.Type;
+			salida.ClosureTime = rhs.ClosureTime;
+			salida.ClosureUser = rhs.ClosureUser;
 			return salida;
 		}
 
@@ -409,6 +428,8 @@ namespace Sapphire2025Server.Controllers
 					nuevaNota.UserId = note.UserId;
 					nuevaNota.Text = note.Text;
 					nuevaNota.Type = note.Type;
+					nuevaNota.ClosureUser = note.ClosureUser;
+					nuevaNota.ClosureTime = note.ClosureTime;
 					almacen.Notes.Add(nuevaNota);
 					salida = (await almacen.SaveChangesAsync() > 0);
 				}
@@ -422,7 +443,8 @@ namespace Sapphire2025Server.Controllers
 			salida.name = train.Name;
 			salida.nameCloud = train.NameCloud;
 			salida.PlatformId = train.PlatformId;
-			salida.lastNote = await lastNoteStatic(train.Guid, config);
+			salida.LastWash = train.LastWash;
+			salida.lastNote = await lastNoteStatic(train.Guid, config);			
 			using (DataStorage almacen = new DataStorage(config))
 			{
 				//Ahora obtiene los últimos movimientos de este tren...
@@ -534,6 +556,7 @@ namespace Sapphire2025Server.Controllers
 					{
 						Id = x.Id,
 						Name = x.Name ?? string.Empty,
+						Atomic = x.Atomic,
 						Comment = x.Comment
 					})
 					.ToListAsync();
@@ -558,6 +581,7 @@ namespace Sapphire2025Server.Controllers
 			[FromQuery] Guid? trainId = null,
 			[FromQuery] Guid? workType = null,
 			[FromQuery] bool? open = null,
+			[FromQuery] bool? atomic = null,
 			[FromQuery] DateTime? from = null,
 			[FromQuery] DateTime? to = null)
 		{
@@ -568,6 +592,7 @@ namespace Sapphire2025Server.Controllers
 					trainId,
 					workType,
 					open,
+					atomic,
 					from,
 					to);
 
@@ -588,21 +613,27 @@ namespace Sapphire2025Server.Controllers
 
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				WorkOrder nuevo = new WorkOrder
+				WorkCatalog? auxOperation = await almacen.WorksCatalog.Where(x => x.Id == request.WorkType).FirstOrDefaultAsync();
+
+				if(null!= auxOperation)
 				{
-					Id = Guid.NewGuid(),
-					WorkType = request.WorkType,
-					DestinationObjectId = request.DestinationObjectId,
-					TrainId = request.TrainId,
-					OpenUserId = user.guid,
-					OpenTime = DateTime.UtcNow
-				};
+					WorkOrder nuevo = new WorkOrder
+					{
+						Id = Guid.NewGuid(),
+						WorkType = request.WorkType,
+						Atomic = auxOperation.Atomic, //La atomicidad de una operación podría cambiar en el tiempo
+						DestinationObjectId = request.DestinationObjectId,
+						TrainId = request.TrainId,
+						OpenUserId = user.guid,
+						OpenTime = DateTime.UtcNow
+					};
 
-				almacen.WorkOrders.Add(nuevo);
+					almacen.WorkOrders.Add(nuevo);
 
-				if (await almacen.SaveChangesAsync() > 0)
-					return ToWorkOrderModel(nuevo);
+					if (await almacen.SaveChangesAsync() > 0)
+						return ToWorkOrderModel(nuevo);
 
+				}
 				return null;
 			}
 		}
@@ -659,6 +690,7 @@ namespace Sapphire2025Server.Controllers
 			Guid? trainId,
 			Guid? workType,
 			bool? open,
+			bool? atomic,
 			DateTime? from,
 			DateTime? to)
 		{
@@ -676,6 +708,9 @@ namespace Sapphire2025Server.Controllers
 					query = query.Where(x => null != x.CloseTime);
 			}
 
+			if (atomic.HasValue)
+				query = query.Where(x => x.Atomic == atomic.Value);
+
 			if (from.HasValue)
 				query = query.Where(x => x.OpenTime >= from.Value);
 
@@ -690,6 +725,7 @@ namespace Sapphire2025Server.Controllers
 			return new WorkCatalogModel
 			{
 				Id = rhs.Id,
+				Atomic = rhs.Atomic,
 				Name = rhs.Name ?? string.Empty,
 				Comment = rhs.Comment
 			};
@@ -701,6 +737,7 @@ namespace Sapphire2025Server.Controllers
 			{
 				Id = rhs.Id,
 				WorkType = rhs.WorkType,
+				Atomic = rhs.Atomic,
 				DestinationObjectId = rhs.DestinationObjectId,
 				TrainId = rhs.TrainId,
 				OpenUserId = rhs.OpenUserId,
