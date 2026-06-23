@@ -319,6 +319,10 @@ namespace Tourmaline26.Services
                         return salida;
                     }
                 }
+                catch (TimeoutException ex)
+                {
+                    mvarLogger.LogWarning(ex, "Timeout en MVB.");
+                }
                 catch (Exception ex)
                 {
                     mvarLogger.LogError(ex, "Error al obtener datos MVB. {0}", ex.Message);

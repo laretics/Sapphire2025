@@ -9,6 +9,7 @@ namespace Sapphire2025Models.Aeneas
 	public class StatusChangeModel
 	{
 		public Common.TrainStatus status { get; set; }
+		public Common.OperationType operation { get; set; }
 		public DateTime timeStamp { get; set; }
 		public Guid guid { get; set; } //Referencia interna de la transacción
 		public Guid trainId { get; set; } //Referencia al tren sobre el que se ejecuta esta transacción

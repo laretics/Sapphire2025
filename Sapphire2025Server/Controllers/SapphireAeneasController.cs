@@ -482,6 +482,7 @@ namespace Sapphire2025Server.Controllers
 			modelo.guid = rhs.Guid;
 			modelo.trainId = rhs.TrainId;
 			modelo.status = rhs.Status;
+			modelo.operation = rhs.Operation;
 			modelo.userId = rhs.UserId;
 			modelo.timeStamp = rhs.TimeStamp;
 			return modelo;

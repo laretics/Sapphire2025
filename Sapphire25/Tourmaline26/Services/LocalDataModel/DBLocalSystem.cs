@@ -11,7 +11,7 @@ namespace Tourmaline26.Services.LocalDataModel
     {
         [Key]
         public Guid TrainId { get; set; }//Guid de este material móvil según Zafiro.
-        public string TrainName { get; set; } //Nombre de esta unidad tren.
+        public string TrainName { get; set; } = string.Empty; //Nombre de esta unidad tren.
         public Guid CurrentTopoStorage { get; set; } //TopoStorage con el que trabajamos.
         public Guid CurrentRauta { get; set; } //Rauta con el que trabajamos.
         public string CurrentPlan { get; set; } = string.Empty; //Plan de explotación con el que trabajamos.

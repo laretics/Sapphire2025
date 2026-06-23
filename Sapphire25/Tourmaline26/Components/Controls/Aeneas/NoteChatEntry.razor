@@ -1,10 +1,11 @@
 ﻿@using Sapphire2026.Data.Models
 @using Sapphire2025Models.Aeneas
 @using Sapphire2025Models.Authentication
+@using Tourmaline26.Components.Images
 <div class="d-flex @alineacion mb-3">
 	<div class="card shadow-sm" style="max-width: 75%;">
 		<div class="card-header @bgType text-white">
-			<span><RoleIcon Credentials="@(mvarUser?.CredentialKey ?? 0)" Color="@(null==mvarUser?"gray":"white")"/></span>
+			<span><RoleIcon Size="24" CredentialKey="@(mvarUser?.CredentialKey ?? 0)" Color="@(null==mvarUser?"gray":"white")"/></span>
 			<strong class="me-2">@userName</strong>
 			<small class="text-white float-end">@textoFecha</small>
 		</div>

@@ -8,21 +8,6 @@
     { 
         get
         {
-            if(null==Credentials)
-            {
-            if(Credentials.Contains(Common.UserRole.Root))
-                return Common.UserRole.Root;
-                if (Utils.hasRole(CredentialKey, Common.UserRole.Engineer))
-                return Common.UserRole.Engineer;
-                if (Utils.hasRole(CredentialKey, Common.UserRole.Inspector))
-                return Common.UserRole.Inspector;
-                if (Utils.hasRole(CredentialKey, Common.UserRole.Expert))
-                return Common.UserRole.Expert;
-                if (Utils.hasRole(CredentialKey, Common.UserRole.Oficial))
-                return Common.UserRole.Oficial;
-                if (Utils.hasRole(CredentialKey, Common.UserRole.Mechanic))
-                return Common.UserRole.Mechanic;                
-            }
             if (null != Credentials)
             {
                 if (Credentials.Contains(Common.UserRole.Root))
@@ -36,6 +21,21 @@
                 if (Credentials.Contains(Common.UserRole.Oficial))
                     return Common.UserRole.Oficial;
                 if (Credentials.Contains(Common.UserRole.Mechanic))
+                    return Common.UserRole.Mechanic;
+            }
+            else
+            {
+                if(Utils.getBit(CredentialKey,(byte)Common.UserRole.Root))
+                    return Common.UserRole.Root;
+                if (Utils.getBit(CredentialKey, (byte)Common.UserRole.Engineer))
+                    return Common.UserRole.Engineer;
+                if (Utils.getBit(CredentialKey, (byte)Common.UserRole.Inspector))
+                    return Common.UserRole.Inspector;
+                if (Utils.getBit(CredentialKey, (byte)Common.UserRole.Expert))
+                    return Common.UserRole.Expert;
+                if (Utils.getBit(CredentialKey, (byte)Common.UserRole.Oficial))
+                    return Common.UserRole.Oficial;
+                if (Utils.getBit(CredentialKey, (byte)Common.UserRole.Mechanic))
                     return Common.UserRole.Mechanic;
             }
             return Common.UserRole.Anonymous;

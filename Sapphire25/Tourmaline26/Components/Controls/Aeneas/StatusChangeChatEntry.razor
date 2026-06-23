@@ -1,0 +1,73 @@
+﻿@using Sapphire2025Models.Aeneas
+@using Sapphire2025Models.Authentication
+@using Tourmaline26.Components.Images
+@using Tourmaline26.Components.Images.Status
+	<div class="position-relative mb-4 py-3">
+		<div class="position-absolute top-50 start-0 w-100"
+				style="height: 3rem; transform: translateY(-100%); z-index: 0;
+			background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, @statusColor 100%);">
+		</div>
+
+		<div class="position-absolute top-50 start-0 w-100 border-top border-2 opacity-25"
+				style="transform: translateY(-50%); z-index: 1; border-color:@statusColor !important;">
+		</div>
+
+		<div class="d-flex justify-content-center position-relative" style="z-index: 2;">
+			<div class="card shadow-sm border-secondary" style="max-width: 75%;">
+				<div class="card-header bg-secondary text-white">
+					<span class="me-2">
+						@if (null!=User)
+						{
+							<span><RoleIcon Size="24" CredentialKey="User?.CredentialKey??0" Color="@(null == User ? "gray" : "white")" /></span>
+							<strong>@User.Name</strong>
+						}
+						else
+						{
+							<strong>[Desconocido]</strong>
+						}
+					</span>
+					<small class="float-end">@Sapphire2025Models.Utils.autoDate(ChangeModel.timeStamp)</small>
+				</div>
+				<div class="card-body">
+					<div class="d-flex align-items-center gap-2 mb-1">
+						<IcoStatus status="@ChangeModel.status" color="white" />
+						<strong class="me-2">@ChangeModel.description</strong>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+@code {
+	[Parameter]
+	public StatusChangeModel? ChangeModel{ get; set; }
+	[CascadingParameter]
+	public Dictionary<Guid,UserModelBase>? ColUsers{ get; set; }
+	private string statusColor { get; set; } = "defaultcolor";
+	private UserModelBase? User { get; set; } = null;
+	private string GetStatusColor(Sapphire2025Models.Common.TrainStatus status)
+	{
+		int index = (byte)status;
+		if (index >= 0 && index < Sapphire2025Models.Common.TrainStatusColor.Length)
+			return Sapphire2025Models.Common.TrainStatusColor[index];
+
+		return "#6c757d";
+	}
+	protected override void OnParametersSet()
+	{
+		base.OnParametersSet();
+		if(null!=ChangeModel)
+		{
+			statusColor = GetStatusColor(ChangeModel.status);
+			if(null!=ColUsers)
+			{
+				if (ColUsers.ContainsKey(ChangeModel.userId))
+					User = ColUsers[ChangeModel.userId];
+			}
+		}
+		
+		
+
+	}
+
+}

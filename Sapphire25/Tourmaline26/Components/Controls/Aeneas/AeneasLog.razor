@@ -1,6 +1,7 @@
 ﻿@using Tourmaline26.Components.Controls.Floatings
 @using Sapphire2026.Data.Models
 @using Sapphire2025Models.Aeneas
+@using Sapphire2025Models.Authentication
 @using Microsoft.EntityFrameworkCore;
 @using Tourmaline26.Services.LocalDataModel
 @inject Tourmaline26.Logic.TourmalineContext database
@@ -29,14 +30,21 @@
             <h2>Error</h2>
             <p>@mvarErrorMessage</p>
         }
-        @if (mvarNotes.Count > 0)
+        @if (mcolNotes.Count > 0)
         {
             <h3>Historial de taller</h3>
             <div style="max-height: 580px; overflow-y: auto;">
                 <CascadingValue Value="TourmalineService.SessionConfig.ColUsers">
-                    @foreach (NoteModel note in mvarNotes)
+                    @foreach(FeedEntry entry in FeedItems)
                     {
-                        <NoteChatEntry Note="note" />
+                        if(entry.Kind== FeedKind.Note && null!=entry.Note)
+                        {
+                            <NoteChatEntry Note="entry.Note" />
+                        }
+                        if(entry.Kind== FeedKind.StatusChange && null!=entry.StatusChange)
+                        {
+                            <StatusChangeChatEntry ChangeModel="entry.StatusChange" />
+                        }
                     }
                 </CascadingValue>
             </div>
@@ -49,7 +57,9 @@
 </FloatRightContainer>
     @code {
     private string mvarErrorMessage = string.Empty;
-    private List<NoteModel> mvarNotes = new List<NoteModel>();
+    private List<NoteModel> mcolNotes = new List<NoteModel>();
+    private List<StatusChangeModel> mcolStatusChanges = new List<StatusChangeModel>();
+    private List<FeedEntry> FeedItems { get; set; } = new();
     private bool mvarIsLoading = true;
     private string mvarProcessMessage = string.Empty;
 
@@ -76,25 +86,35 @@
         await InvokeAsync(StateHasChanged);
         try
         {
-            mvarNotes = await GetNotes();
+            mcolNotes = await GetNotes();
+            mcolStatusChanges = await GetChanges();
+            BuildFeed();
         }
         catch (Exception ex)
         {
             logger.LogError(ex.Message);
         }
 
-
-        
-
         mvarIsLoading = false;
         await InvokeAsync(StateHasChanged);
     }
+
+    private UserModelBase? userFromStatus(StatusChangeModel rhs)
+    {
+        System.Diagnostics.Debug.Assert(null != TourmalineService.SessionConfig.ColUsers);
+        Dictionary<Guid, UserModelBase> Users = TourmalineService.SessionConfig.ColUsers;
+        if (Guid.Empty != rhs.userId && Users.ContainsKey(rhs.userId))
+            return Users[rhs.userId];
+        return null;
+    }
+
     /// <summary>
     /// Intenta sincronizar la base de datos con Zafiro. Si no lo consigue, mostrará la base de datos local.
     /// </summary>
     /// <returns></returns>
     private async Task SyncAeneas()
     {
+        Note? oldest = null;
         try
         {
             List<NoteModel> auxLista
@@ -114,6 +134,28 @@
                         Text = note.Text,
                         Type= note.Type
                     });
+                }
+                await database.SaveChangesAsync();                
+                oldest = await database.Notes.OrderBy(x => x.TimeStamp).FirstOrDefaultAsync();
+                await TourmalineService.DoAeneasSync();
+            }
+            DateTime auxFecha = null == oldest ? DateTime.MinValue : oldest.TimeStamp;
+            IEnumerable<StatusChangeModel> auxChanges
+            = await AeneasService.trainChangesList(TourmalineService.SystemConfig.TrainId, auxFecha);
+            if(auxChanges.Any())
+            {
+                database.StatusChanges.RemoveRange(database.StatusChanges);
+                foreach(StatusChangeModel change in auxChanges)
+                {
+                    database.StatusChanges.Add(
+                        new StatusChange
+                            {
+                                Guid = change.guid,
+                                TrainId = change.trainId,
+                                TimeStamp = change.timeStamp,
+                                Operation = change.operation,
+                                UserId = change.userId
+                            });
                 }
                 await database.SaveChangesAsync();
                 await TourmalineService.DoAeneasSync();
@@ -141,7 +183,67 @@
         }
         return result;
     }
+    private async Task<List<StatusChangeModel>> GetChanges()
+    {
+        List<StatusChangeModel> result = new List<StatusChangeModel>();
+        List<StatusChange> auxLista = database.StatusChanges.OrderByDescending(n => n.TimeStamp).ToList();
+        foreach(StatusChange change in auxLista)
+        {
+            result.Add(new StatusChangeModel
+                {
+                    guid = change.Guid,
+                    trainId = change.TrainId,
+                    timeStamp = change.TimeStamp,
+                    operation = change.Operation,
+                    userId = change.UserId
+                });
+        }
+        return result;
+    }
 
+
+
+    private enum FeedKind : byte
+    {
+        Note,
+        StatusChange
+    }
+    private sealed record FeedEntry
+    (
+        FeedKind Kind,
+        DateTime TimeStamp,
+        int sequence,
+        NoteModel? Note,
+        StatusChangeModel? StatusChange
+    );
+
+    private string BuildStatusSummary(StatusChangeModel rhs)
+    {
+        string userName = userFromStatus(rhs)?.Name ?? "[Desconocido]";
+        if (string.IsNullOrWhiteSpace(rhs.comment))
+            return $"{userName} · {rhs.description}";
+
+        return $"{userName} · {rhs.description} · {rhs.comment}";
+    }
+    private void BuildFeed()
+    {
+        List<FeedEntry> items = new();
+        int sequence = 0;
+        if (null != mcolNotes)
+        {
+            foreach (NoteModel note in mcolNotes)
+                items.Add(new FeedEntry(FeedKind.Note, note.TimeStamp, sequence++, note, null));
+        }
+        if (null != mcolStatusChanges)
+        {
+            foreach (StatusChangeModel change in mcolStatusChanges)
+                items.Add(new FeedEntry(FeedKind.StatusChange, change.timeStamp, sequence++, null, change));
+        }
+
+        FeedItems = items.OrderByDescending(x => x.TimeStamp)
+                    .ThenBy(x => x.sequence)
+                    .ToList();
+    }
 
 
 }
