@@ -11,8 +11,8 @@ using Sapphire2026.Data;
 namespace Sapphire2026Data.Migrations
 {
     [DbContext(typeof(DataStorage))]
-    [Migration("20260218185309_platforms")]
-    partial class platforms
+    [Migration("20260627091446_Baseline")]
+    partial class Baseline
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -104,6 +104,12 @@ namespace Sapphire2026Data.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("ClosureTime")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("ClosureUser")
                         .HasColumnType("char(36)");
 
                     b.Property<Guid>("Parent")
@@ -260,6 +266,9 @@ namespace Sapphire2026Data.Migrations
 
                     b.Property<byte>("LastStatus")
                         .HasColumnType("tinyint unsigned");
+
+                    b.Property<DateTime?>("LastWash")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -561,6 +570,69 @@ namespace Sapphire2026Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("UserAndRole");
+                });
+
+            modelBuilder.Entity("Sapphire2026Data.Models.GMAO.WorkCatalog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<bool>("Atomic")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("GMAOWorksCatalog");
+                });
+
+            modelBuilder.Entity("Sapphire2026Data.Models.GMAO.WorkOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<bool>("Atomic")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("CloseTime")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("CloseUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid?>("DestinationObjectId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("OpenTime")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("OpenUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid?>("TrainId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("VerifyTime")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("VerifyUserId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("WorkType")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("GMAOWorkOrders");
                 });
 
             modelBuilder.Entity("Sapphire2026Data.Models.Platform", b =>
