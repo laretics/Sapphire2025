@@ -5,6 +5,7 @@ using Tourmaline26.Logic;
 using Tourmaline26.Services;
 using Tourmaline26.Services.TourmalineExperience;
 using Tourmaline26.Services.Armandito;
+using Tourmaline26.Services.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,6 +59,11 @@ builder.Services.AddHttpClient<ArmanditoService>(client =>
         builder.Configuration["SystemConfiguration:SfmInfoToken"] ?? "SFM2026");
     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddProvider(new TourmalineLogger(Path.Combine(AppContext.BaseDirectory, "Logs")));
+
 var app = builder.Build();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
