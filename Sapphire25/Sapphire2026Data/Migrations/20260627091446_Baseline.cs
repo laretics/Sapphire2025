@@ -7,11 +7,12 @@ using MySql.EntityFrameworkCore.Metadata;
 namespace Sapphire2026Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class Baseline : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+        /*
             migrationBuilder.AlterDatabase()
                 .Annotation("MySQL:Charset", "utf8mb4");
 
@@ -139,6 +140,43 @@ namespace Sapphire2026Data.Migrations
                 .Annotation("MySQL:Charset", "utf8mb4");
 
             migrationBuilder.CreateTable(
+                name: "GMAOWorkOrders",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
+                    WorkType = table.Column<Guid>(type: "char(36)", nullable: false),
+                    Atomic = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    DestinationObjectId = table.Column<Guid>(type: "char(36)", nullable: true),
+                    TrainId = table.Column<Guid>(type: "char(36)", nullable: true),
+                    OpenUserId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    CloseUserId = table.Column<Guid>(type: "char(36)", nullable: true),
+                    VerifyUserId = table.Column<Guid>(type: "char(36)", nullable: true),
+                    OpenTime = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    CloseTime = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    VerifyTime = table.Column<DateTime>(type: "datetime(6)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_GMAOWorkOrders", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "GMAOWorksCatalog",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
+                    Atomic = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    Name = table.Column<string>(type: "longtext", nullable: false),
+                    Comment = table.Column<string>(type: "longtext", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_GMAOWorksCatalog", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
                 name: "Notes",
                 columns: table => new
                 {
@@ -147,7 +185,9 @@ namespace Sapphire2026Data.Migrations
                     TimeStamp = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     UserId = table.Column<Guid>(type: "char(36)", nullable: false),
                     Text = table.Column<string>(type: "longtext", nullable: true),
-                    Type = table.Column<byte>(type: "tinyint unsigned", nullable: false)
+                    Type = table.Column<byte>(type: "tinyint unsigned", nullable: false),
+                    ClosureTime = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    ClosureUser = table.Column<Guid>(type: "char(36)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -167,6 +207,21 @@ namespace Sapphire2026Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_OwnerRegister", x => x.Guid);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "Platforms",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
+                    StationId = table.Column<string>(type: "longtext", nullable: false),
+                    PlatformId = table.Column<string>(type: "longtext", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Platforms", x => x.Id);
                 })
                 .Annotation("MySQL:Charset", "utf8mb4");
 
@@ -245,6 +300,241 @@ namespace Sapphire2026Data.Migrations
                 .Annotation("MySQL:Charset", "utf8mb4");
 
             migrationBuilder.CreateTable(
+                name: "TNAsimilations",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
+                    TopoStorageId = table.Column<int>(type: "int", nullable: false),
+                    AsimilationId = table.Column<string>(type: "longtext", nullable: false),
+                    Name = table.Column<string>(type: "longtext", nullable: false),
+                    Comment = table.Column<string>(type: "longtext", nullable: false),
+                    Color0 = table.Column<string>(type: "longtext", nullable: false),
+                    Color1 = table.Column<string>(type: "longtext", nullable: false),
+                    MaxSpeed = table.Column<int>(type: "int", nullable: false),
+                    OriginStationId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TNAsimilations", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "TNAsimilationSteps",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
+                    AsimilationId = table.Column<int>(type: "int", nullable: false),
+                    DestinationStationId = table.Column<int>(type: "int", nullable: false),
+                    AxisId = table.Column<int>(type: "int", nullable: false),
+                    tripTime = table.Column<TimeSpan>(type: "time(6)", nullable: false),
+                    stopTime = table.Column<TimeSpan>(type: "time(6)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TNAsimilationSteps", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "TNAxis",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
+                    AxisId = table.Column<string>(type: "longtext", nullable: false),
+                    StorageId = table.Column<int>(type: "int", nullable: false),
+                    Name = table.Column<string>(type: "longtext", nullable: false),
+                    Comment = table.Column<string>(type: "longtext", nullable: false),
+                    Color0 = table.Column<string>(type: "longtext", nullable: false),
+                    Color1 = table.Column<string>(type: "longtext", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TNAxis", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "TNCirculationBlocks",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
+                    PlanId = table.Column<int>(type: "int", nullable: false),
+                    AsimilationId = table.Column<string>(type: "longtext", nullable: false),
+                    WeekdayMask = table.Column<byte>(type: "tinyint unsigned", nullable: false),
+                    Pattern = table.Column<string>(type: "longtext", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TNCirculationBlocks", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "TNCirculations",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
+                    BlockId = table.Column<int>(type: "int", nullable: false),
+                    Name = table.Column<string>(type: "longtext", nullable: false),
+                    Departure = table.Column<TimeSpan>(type: "time(6)", nullable: false),
+                    Comment = table.Column<string>(type: "longtext", nullable: false),
+                    Color0 = table.Column<string>(type: "longtext", nullable: false),
+                    Color1 = table.Column<string>(type: "longtext", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TNCirculations", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "TNHeaders",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
+                    Name = table.Column<string>(type: "longtext", nullable: false),
+                    Description = table.Column<string>(type: "longtext", nullable: false),
+                    Comment = table.Column<string>(type: "longtext", nullable: false),
+                    License = table.Column<string>(type: "longtext", nullable: false),
+                    Author = table.Column<string>(type: "longtext", nullable: false),
+                    FirstDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    LastDate = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    Version = table.Column<string>(type: "longtext", nullable: false),
+                    Bitmap = table.Column<string>(type: "longtext", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TNHeaders", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "TNPlans",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
+                    RautaId = table.Column<int>(type: "int", nullable: false),
+                    PlanId = table.Column<string>(type: "longtext", nullable: false),
+                    Name = table.Column<string>(type: "longtext", nullable: false),
+                    Comment = table.Column<string>(type: "longtext", nullable: false),
+                    Color0 = table.Column<string>(type: "longtext", nullable: false),
+                    Color1 = table.Column<string>(type: "longtext", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TNPlans", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "TNRautatie",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
+                    HeaderId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    TopoStorageId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TNRautatie", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "TNRefPunctuals",
+                columns: table => new
+                {
+                    AxisId = table.Column<int>(type: "int", nullable: false),
+                    Pk = table.Column<long>(type: "bigint", nullable: false),
+                    Latitude = table.Column<double>(type: "double", nullable: false),
+                    Longitude = table.Column<double>(type: "double", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TNRefPunctuals", x => new { x.AxisId, x.Pk });
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "TNSchedules",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
+                    PlanId = table.Column<int>(type: "int", nullable: false),
+                    Name = table.Column<string>(type: "longtext", nullable: false),
+                    Comment = table.Column<string>(type: "longtext", nullable: false),
+                    WeekdayMask = table.Column<byte>(type: "tinyint unsigned", nullable: false),
+                    CoordinateX = table.Column<int>(type: "int", nullable: false),
+                    CoordinateY = table.Column<int>(type: "int", nullable: false),
+                    Color1 = table.Column<string>(type: "longtext", nullable: false),
+                    Color2 = table.Column<string>(type: "longtext", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TNSchedules", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "TNScheduleUnits",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
+                    ScheduleId = table.Column<int>(type: "int", nullable: false),
+                    CirculationId = table.Column<int>(type: "int", nullable: false),
+                    Active = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    Begin = table.Column<TimeSpan>(type: "time(6)", nullable: false),
+                    End = table.Column<TimeSpan>(type: "time(6)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TNScheduleUnits", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "TNStations",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
+                    StationId = table.Column<string>(type: "longtext", nullable: false),
+                    AxisId = table.Column<int>(type: "int", nullable: false),
+                    Pk = table.Column<long>(type: "bigint", nullable: false),
+                    Name = table.Column<string>(type: "longtext", nullable: false),
+                    ShortName = table.Column<string>(type: "longtext", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TNStations", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "TNTopoStorages",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
+                    HeaderId = table.Column<Guid>(type: "char(36)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TNTopoStorages", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
                 name: "Trains",
                 columns: table => new
                 {
@@ -254,7 +544,9 @@ namespace Sapphire2026Data.Migrations
                     NameCloud = table.Column<string>(type: "longtext", nullable: false),
                     Comment = table.Column<string>(type: "longtext", nullable: false),
                     LastStatus = table.Column<byte>(type: "tinyint unsigned", nullable: false),
-                    lastChange = table.Column<Guid>(type: "char(36)", nullable: false)
+                    lastChange = table.Column<Guid>(type: "char(36)", nullable: false),
+                    PlatformId = table.Column<int>(type: "int", nullable: false),
+                    LastWash = table.Column<DateTime>(type: "datetime(6)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -358,11 +650,23 @@ namespace Sapphire2026Data.Migrations
                     table.PrimaryKey("PK_WorkShiftTemplateCollection", x => x.Id);
                 })
                 .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TNRefPunctuals_AxisId",
+                table: "TNRefPunctuals",
+                column: "AxisId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TNRefPunctuals_Pk",
+                table: "TNRefPunctuals",
+                column: "Pk");
+                */
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+        /*
             migrationBuilder.DropTable(
                 name: "ActiveSessions");
 
@@ -385,10 +689,19 @@ namespace Sapphire2026Data.Migrations
                 name: "Festives");
 
             migrationBuilder.DropTable(
+                name: "GMAOWorkOrders");
+
+            migrationBuilder.DropTable(
+                name: "GMAOWorksCatalog");
+
+            migrationBuilder.DropTable(
                 name: "Notes");
 
             migrationBuilder.DropTable(
                 name: "OwnerRegister");
+
+            migrationBuilder.DropTable(
+                name: "Platforms");
 
             migrationBuilder.DropTable(
                 name: "Register");
@@ -404,6 +717,45 @@ namespace Sapphire2026Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "TimeCache");
+
+            migrationBuilder.DropTable(
+                name: "TNAsimilations");
+
+            migrationBuilder.DropTable(
+                name: "TNAsimilationSteps");
+
+            migrationBuilder.DropTable(
+                name: "TNAxis");
+
+            migrationBuilder.DropTable(
+                name: "TNCirculationBlocks");
+
+            migrationBuilder.DropTable(
+                name: "TNCirculations");
+
+            migrationBuilder.DropTable(
+                name: "TNHeaders");
+
+            migrationBuilder.DropTable(
+                name: "TNPlans");
+
+            migrationBuilder.DropTable(
+                name: "TNRautatie");
+
+            migrationBuilder.DropTable(
+                name: "TNRefPunctuals");
+
+            migrationBuilder.DropTable(
+                name: "TNSchedules");
+
+            migrationBuilder.DropTable(
+                name: "TNScheduleUnits");
+
+            migrationBuilder.DropTable(
+                name: "TNStations");
+
+            migrationBuilder.DropTable(
+                name: "TNTopoStorages");
 
             migrationBuilder.DropTable(
                 name: "Trains");
@@ -422,6 +774,7 @@ namespace Sapphire2026Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "WorkShiftTemplateCollection");
+                */
         }
     }
 }
