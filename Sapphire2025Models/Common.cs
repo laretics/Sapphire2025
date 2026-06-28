@@ -8,9 +8,8 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public const string SapphireSoftwareVersion = "26.06.23";
-		public const string LastChangesText = "Lavado de trenes|Revisiones|Campañas|Chat unificado";
-		public const string VersionColor = "#B0A030"; //Color de la versión para diferenciar una de otra.
+		public const string SapphireSoftwareVersion = "26.06.29";
+		public const string LastChangesText = "Interrupciones de Taller|Lógica de Bloqueos|Multicast en Telegram";
 
 		public static readonly Guid TelegramToken = new Guid("3a7f9c2e-8b4d-4f1a-9e6c-7d2b5a8f3e1c"); //Token de sesión sólo para operaciones desde Telegram.
 

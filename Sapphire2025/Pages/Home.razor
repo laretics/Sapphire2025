@@ -118,14 +118,21 @@
                         <div class="col-md-5 text-center p-4">
                             <img src="img/ZafiroTheme.jpeg"
                                  class="img-fluid rounded-3 mb-3"
-                                 style="cursor:pointer;max-height:220px;object-fit:cover;"
+                                 style="cursor:pointer;max-height:260px;object-fit:cover;"
                                  alt="Logotipo Zafiro"
                                  @onclick='() => mvarNavigator.NavigateTo("auth/login")' />
                         </div>
                         <div class="col-md-7 p-4">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <h2 class="fw-bold mb-0" style="color: @Sapphire2025Models.Common.VersionColor">Zafiro</h2>
-                                <span class="badge bg-info">Versión @Sapphire2025Models.Common.SapphireSoftwareVersion</span>
+                            <div class="position-relative d-inline-block overflow-hidden rounded-4" style="max-width:300px;">
+                                <Image Src="img/title.png"
+                                       class="img-fluid d-block rounded-4"
+                                       style="max-width:300px; width:100%; height:auto;"
+                                       alt="Título" />
+
+                                <span class="badge rounded-pill bg-dark text-white position-absolute bottom-0 end-0 m-2 shadow"
+                                      style="z-index:10; white-space:nowrap; background:rgba(0,0,0,.72) !important; text-shadow:0 1px 2px rgba(0,0,0,.85); box-shadow:0 .5rem 1rem rgba(0,0,0,.55) !important;">
+                                    Versión @Sapphire2025Models.Common.SapphireSoftwareVersion
+                                </span>
                             </div>
 
                             @if (auxTexto != null)

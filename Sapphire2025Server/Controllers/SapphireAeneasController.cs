@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Crypto.Operators;
 using Sapphire2025Models;
 using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
@@ -13,14 +14,18 @@ using Sapphire2026Data.Models.GMAO;
 using System.Configuration;
 
 namespace Sapphire2025Server.Controllers
-{
+{	
 	[ApiController]
 	[Route("api/[controller]")]
-	public class SapphireAeneasController:SapphireBaseController
+	public partial class SapphireAeneasController:SapphireBaseController
 	{
+		private ILogger<SapphireAeneasController> mvarLogger;
+
+
 		public SapphireAeneasController
 			(IConfiguration configuration,
-			IHubContext<SignalRHub> hubContext) : base(configuration, hubContext) {}
+			IHubContext<SignalRHub> hubContext,
+			ILogger<SapphireAeneasController> logger) : base(configuration, hubContext) { mvarLogger = logger; }
 		/// <summary>
 		/// Lista de trenes actualizada.
 		/// Contiene los trenes y las últimas operaciones que éstos han realizado
@@ -239,6 +244,24 @@ namespace Sapphire2025Server.Controllers
 			}
 		}
 
+		[HttpPost("telegrambroadcast")]
+		public async Task<bool> TelegramBroadcast(TelegramBroadcastRequestModel request)
+		{
+			if(null!=request.Message && null!=request.Roles)
+			{
+				try
+				{
+					await mvarHubContext.Clients.All.SendAsync("ReceiveBroadcastRequest2", request.Message, request.Priority, request.Roles.ToArray());
+					return true;
+				}
+				catch(Exception e)
+				{
+					mvarLogger.LogError($"TelegramBroadcast: {e.ToString()}");
+				}				
+			}
+			return false;
+		}
+
 
 		private async Task<bool> SendTelegramBroadcast(string message, bool priority =false, string filters = "")
 		{
@@ -261,6 +284,7 @@ namespace Sapphire2025Server.Controllers
 			}
 			catch (Exception ex)
 			{
+				mvarLogger.LogError($"TelegramBroadcast: {ex.ToString()}");
 				return false;
 			}
 		}
@@ -337,6 +361,7 @@ namespace Sapphire2025Server.Controllers
 				if (null!=auxTren)
 				{
 					auxTren.PlatformId = train.PlatformId;
+					auxTren.LastPlatformAssign = DateTime.UtcNow; //Se tiene en cuenta la fecha de asignación.
 					await almacen.SaveChangesAsync();
 					return true;
 				}
@@ -353,8 +378,8 @@ namespace Sapphire2025Server.Controllers
 				if (null != auxTren)
 				{
 					auxTren.LastWash = DateTime.UtcNow; //Actualizo la última fecha de lavado.
-					await almacen.SaveChangesAsync();
-					return true;
+					int changes = await almacen.SaveChangesAsync();
+					return changes>0;
 				}
 			}
 			return false;
@@ -546,209 +571,7 @@ namespace Sapphire2025Server.Controllers
 
 		#region Ordenes GMao
 
-		[HttpGet("workcatalog")]
-		public async Task<List<WorkCatalogModel>> WorkCatalogRequest()
-		{
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{
-				return await almacen.WorksCatalog
-					.AsNoTracking()
-					.Select(x => new WorkCatalogModel
-					{
-						Id = x.Id,
-						Name = x.Name ?? string.Empty,
-						Atomic = x.Atomic,
-						Comment = x.Comment
-					})
-					.ToListAsync();
-			}
-		}
 
-		[HttpGet("workorders/{id:guid}")]
-		public async Task<WorkOrderModel?> WorkOrderById(Guid id)
-		{
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{
-				WorkOrder? aux = await almacen.WorkOrders
-					.AsNoTracking()
-					.FirstOrDefaultAsync(x => x.Id == id);
-
-				return aux is null ? null : ToWorkOrderModel(aux);
-			}
-		}
-
-		[HttpGet("workorders")]
-		public async Task<List<WorkOrderModel>> WorkOrdersRequest(
-			[FromQuery] Guid? trainId = null,
-			[FromQuery] Guid? workType = null,
-			[FromQuery] bool? open = null,
-			[FromQuery] bool? atomic = null,
-			[FromQuery] DateTime? from = null,
-			[FromQuery] DateTime? to = null)
-		{
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{
-				IQueryable<WorkOrder> query = ApplyWorkOrderFilters(
-					almacen.WorkOrders.AsNoTracking(),
-					trainId,
-					workType,
-					open,
-					atomic,
-					from,
-					to);
-
-				return await query
-					.OrderByDescending(x => x.OpenTime)
-					.Select(x => ToWorkOrderModel(x))
-					.ToListAsync();
-			}
-		}
-
-		[HttpPost("workorders")]
-		public async Task<WorkOrderModel?> CreateWorkOrder([FromBody] WorkOrderCreateRequestModel request)
-		{
-			if (request is null) return null;
-
-			User? user = await retrieveSessionUser(request.SessionToken);
-			if (user is null) return null;
-
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{
-				WorkCatalog? auxOperation = await almacen.WorksCatalog.Where(x => x.Id == request.WorkType).FirstOrDefaultAsync();
-
-				if(null!= auxOperation)
-				{
-					WorkOrder nuevo = new WorkOrder
-					{
-						Id = Guid.NewGuid(),
-						WorkType = request.WorkType,
-						Atomic = auxOperation.Atomic, //La atomicidad de una operación podría cambiar en el tiempo
-						DestinationObjectId = request.DestinationObjectId,
-						TrainId = request.TrainId,
-						OpenUserId = user.guid,
-						OpenTime = DateTime.UtcNow
-					};
-
-					almacen.WorkOrders.Add(nuevo);
-
-					if (await almacen.SaveChangesAsync() > 0)
-						return ToWorkOrderModel(nuevo);
-
-				}
-				return null;
-			}
-		}
-
-		[HttpPost("workorders/close")]
-		public async Task<WorkOrderModel?> CloseWorkOrder([FromBody] WorkOrderActionRequestModel request)
-		{
-			if (request is null) return null;
-
-			User? user = await retrieveSessionUser(request.SessionToken);
-			if (user is null) return null;
-
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{
-				WorkOrder? order = await almacen.WorkOrders
-					.FirstOrDefaultAsync(x => x.Id == request.WorkOrderId);
-
-				if (order is null) return null;
-				if (order.CloseTime is not null) return ToWorkOrderModel(order);
-
-				order.CloseUserId = user.guid;
-				order.CloseTime = DateTime.UtcNow;
-
-				await almacen.SaveChangesAsync();
-				return ToWorkOrderModel(order);
-			}
-		}
-		[HttpPost("workorders/verify")]
-		public async Task<WorkOrderModel?> VerifyWorkOrder([FromBody] WorkOrderActionRequestModel request)
-		{
-			if (request is null) return null;
-
-			User? user = await retrieveSessionUser(request.SessionToken);
-			if (user is null) return null;
-
-			using (DataStorage almacen = new DataStorage(mvarConfig))
-			{
-				WorkOrder? order = await almacen.WorkOrders
-					.FirstOrDefaultAsync(x => x.Id == request.WorkOrderId);
-
-				if (order is null) return null;
-				if (order.CloseTime is null) return null;
-
-				order.VerifyUserId = user.guid;
-				order.VerifyTime = DateTime.UtcNow;
-
-				await almacen.SaveChangesAsync();
-				return ToWorkOrderModel(order);
-			}
-		}
-
-		private static IQueryable<WorkOrder> ApplyWorkOrderFilters(
-			IQueryable<WorkOrder> query,
-			Guid? trainId,
-			Guid? workType,
-			bool? open,
-			bool? atomic,
-			DateTime? from,
-			DateTime? to)
-		{
-			if (trainId.HasValue && trainId.Value != Guid.Empty)
-				query = query.Where(x => x.TrainId == trainId.Value);
-
-			if (workType.HasValue && workType.Value != Guid.Empty)
-				query = query.Where(x => x.WorkType == workType.Value);
-
-			if (open.HasValue)
-			{
-				if (open.Value)
-					query = query.Where(x => null == x.CloseTime);
-				else
-					query = query.Where(x => null != x.CloseTime);
-			}
-
-			if (atomic.HasValue)
-				query = query.Where(x => x.Atomic == atomic.Value);
-
-			if (from.HasValue)
-				query = query.Where(x => x.OpenTime >= from.Value);
-
-			if (to.HasValue)
-				query = query.Where(x => x.OpenTime <= to.Value);
-
-			return query;
-		}
-
-		private static WorkCatalogModel ToWorkCatalogModel(WorkCatalog rhs)
-		{
-			return new WorkCatalogModel
-			{
-				Id = rhs.Id,
-				Atomic = rhs.Atomic,
-				Name = rhs.Name ?? string.Empty,
-				Comment = rhs.Comment
-			};
-		}
-
-		private static WorkOrderModel ToWorkOrderModel(WorkOrder rhs)
-		{
-			return new WorkOrderModel
-			{
-				Id = rhs.Id,
-				WorkType = rhs.WorkType,
-				Atomic = rhs.Atomic,
-				DestinationObjectId = rhs.DestinationObjectId,
-				TrainId = rhs.TrainId,
-				OpenUserId = rhs.OpenUserId,
-				CloseUserId = rhs.CloseUserId,
-				VerifyUserId = rhs.VerifyUserId,
-				OpenTime = rhs.OpenTime,
-				CloseTime = rhs.CloseTime,
-				VerifyTime = rhs.VerifyTime
-			};
-		}
 		#endregion Ordenes GMao
 	}
 }

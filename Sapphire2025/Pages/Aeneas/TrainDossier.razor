@@ -39,12 +39,21 @@ else
 					Platforms="mcolPlatforms" 
 					OnPlatformSelected="OnPlatformChanged"/>
 				</div>
-				@if (mvarPendantWash)
+				@if (HasPendantWash)
 				{
 					<div class="wash-overlay">
 						<span class="badge rounded-pill wash-badge shadow-sm">
 							<Sapphire2025.Icons.Actions.Wash Color="#0d6efd" />
-							<span class="ms-2">En proceso de lavado</span>
+							<span class="ms-2">Bloqueado para lavado</span>
+						</span>
+					</div>
+				}
+				else if(HasPendantWork)
+				{
+					<div class="wash-overlay">
+						<span class="badge rounded-pill wash-badge shadow-sm">
+							<Sapphire2025.Icons.Actions.TimeValue Color="#0d6efd" />
+							<span class="ms-2">Bloqueado por una operación</span>
 						</span>
 					</div>
 				}
@@ -90,7 +99,7 @@ else
 	private Dictionary<Guid, UserModelBase>? Users = new Dictionary<Guid, UserModelBase>();
 	private IEnumerable<StatusChangeModel>? mcolChanges = new List<StatusChangeModel>();
 	private TrainModel? mvarTrain = null;
-	private bool mvarPendantWash = false;
+	private IEnumerable<WorkOrderModel> mcolPendants = new List<WorkOrderModel>();
 
 	private IEnumerable<PlatformModel> mcolPlatforms = new List<PlatformModel>();
 
@@ -104,10 +113,16 @@ else
 			mcolPlatforms = await mvarAeneasClient.platformsList();
 			mvarTrain = await mvarAeneasClient.train(id.ToString());
 			if (null != mvarTrain)
-				mvarPendantWash = await mvarAeneasClient.HasPendantWashing(mvarTrain.id);
+				mcolPendants = await mvarAeneasClient.PendantWorks(mvarTrain.id, true);
 		}
 		StateHasChanged();
 	}
+
+	private bool HasPendantWash => mcolPendants.Where(x => x.WorkType == Sapphire2025Models.Common.WorkOrderTypeManualWash
+		|| x.WorkType == Sapphire2025Models.Common.WorkOrderTypePlatformWash
+		|| x.WorkType == Sapphire2025Models.Common.WorkOrderTypeTunnelWash).Any();
+	private bool HasPendantWork => mcolPendants.Any();
+
 	protected async Task OnPlatformChanged(PlatformModel? rhs)
 	{
 		if(null!=mvarTrain)

@@ -19,6 +19,9 @@ namespace Sapphire2026.Data.Models
 		public byte LastStatus { get; set; } //Caché del último estado registrado en este tren
 		public Guid lastChange { get; set; } //Última operación de cambio de estado del tren.
 		public int PlatformId { get; set; } //Asignación de andén actual para este tren.
+		public DateTime? LastPlatformAssign{ get; set; } //Última vez que se cambió la vía de este tren.
+		//Es importante para la tabla de material, porque si dos trenes están en la misma vía, irá detrás el
+		//último al que se le asignó.
 		public DateTime? LastWash{ get; set; } //Última vez que se lavó este tren.
 		public Train()
 		{
