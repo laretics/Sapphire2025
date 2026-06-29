@@ -12,87 +12,135 @@
 		<table class="table table-bordered table-sm align-middle mb-0 w-100">
 			<thead class="table-secondary text-light">
 				<tr>
-					<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
+					<th class="col-3" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
 						<Exec color="white" />
 					</th>
-					<th class="col-1" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
-						<EventDateTime color="white" />
+					<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(2))">
+						<EventDateTime color="white" /> <span>Solicitud</span>
 					</th>
-					<th class="col-2" style="min-width: 100px; cursor:pointer;">
-						<User color="white" />		   <span>Inicio</span>
+					<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(3))">
+						<EventDateTime color="white" /> <span>Inicio</span>
 					</th>
-					<th class="col-1" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
-						<EventDateTime color="white" />
+					<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(4))">
+						<EventDateTime color="white" /> <span>Cierre</span>
 					</th>
-					<th class="col-2" style="min-width: 100px; cursor:pointer;">
-						<User color="white" />		   <span>Cierre</span>
-					</th>
-					<th class="col-1" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
-						<EventDateTime color="white" />
-					</th>
-					<th class="col-2" style="min-width: 100px; cursor:pointer;">
-						<User color="white" />		   <span>Verificación</span>
+					<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
+						<EventDateTime color="white" /> <span>Verificación</span>
 					</th>
 				</tr>
 			</thead>
 			<tbody>
 				@foreach (WorkOrderModel order in mcolOrder)
 				{
+					UserModelBase? requestUser = userFromRequestOrder(order);
 					UserModelBase? openUser = userFromOpenOrder(order);
 					UserModelBase? closeUser = userFromCloseOrder(order);
 					UserModelBase? verifyUser = userFromVerifyOrder(order);
 					<tr>
+
 						<td style="border-right:1px solid #dee2e6;">
-							@if(mcolOrderCatalog.ContainsKey(order.WorkType))
-							{
-								@mcolOrderCatalog[order.WorkType].Name									
-							}
+							@orderCatalogName(order)
 						</td>
 						<td style="border-right:1px solid #dee2e6;">
 							<CheckBox Checked="true"  Color="gray"/>
-							<span>@Sapphire2025Models.Utils.autoDate(order.OpenTime)</span>								
-						</td>
-						<td>
-							@if(null!=openUser)
+							<span>@Sapphire2025Models.Utils.autoDate(order.RequestTime)</span>
+							@if(null!=requestUser)
 							{
 								<span>
-									<RoleIcon Credentials="openUser.CredentialKey" Color="gray"></RoleIcon>
+									<RoleIcon Credentials="requestUser.CredentialKey" Color="gray"></RoleIcon>
 								</span>
-								@openUser.Name
-							}
-						</td>
-						<td style="border-right:1px solid #dee2e6;" @onclick="() => HandleCompleteClicked(order)">
-							<CheckBox Checked="@(null!=order.CloseTime)" Color="@(EnableCheckClose(order)?"black":"gray")" />
-							@if(null!=order.CloseTime)
-							{
-								<span>@Sapphire2025Models.Utils.autoDate((DateTime)order.CloseTime)</span>									
-							}								
-						</td>
-						<td>
-							@if (null != closeUser)
-							{
 								<span>
-									<RoleIcon Credentials="closeUser.CredentialKey" Color="gray"></RoleIcon>
-								</span>
-								@closeUser.Name
+									@requestUser.Name
+								</span>								
 							}
 						</td>
-						<td style="border-right:1px solid #dee2e6;" @onclick="() => HandleVerifyClicked(order)">
-							<CheckBox Checked="@(null!=order.VerifyTime)" Color="@(EnableCleckVerify(order)?"black":"gray")" />
-							@if (null != order.VerifyTime)
-							{									
-								<span>@Sapphire2025Models.Utils.autoDate((DateTime)order.VerifyTime)</span>
-							}
-						</td>
-						<td>
-							@if (null != verifyUser)
+						<td style="border-right:1px solid #dee2e6;">
+							@if(order.Rejected)
 							{
-								<span>
-									<RoleIcon Credentials="verifyUser.CredentialKey" Color="gray"></RoleIcon>
-								</span>
-								@verifyUser.Name
+								<Trash Color="gray"/>
+								@if(null!=verifyUser)
+								{
+									<span>
+										<RoleIcon Credentials="verifyUser.CredentialKey" Color="gray"></RoleIcon>
+									</span>
+									<span>
+										@verifyUser.Name
+									</span>
+								}
+							}
+							else
+							{
+								@if(null!=openUser)
+								{
+									<CheckBox Checked="true" Color="gray"/>
+									<span>@Sapphire2025Models.Utils.autoDate(order.OpenTime)</span>
+									<span>
+										<RoleIcon Credentials="openUser.CredentialKey" Color="gray"></RoleIcon>
+									</span>
+									<span>
+										@openUser.Name
+									</span>
+								}
+								else
+								{
+									<button type="button" class="btn btn-link p-0" @onclick="() => HandleOpenClicked(order)">
+										<CheckBox Checked="false" Color="black" />
+									</button>
+									<button type="button" class="btn btn-link p-0" @onclick="() => HandleRejectOpenClicked(order)" >
+										<Trash Color="black"/>
+									</button>																	
+								}
 							}
 						</td>
+						@if(!order.Rejected)
+						{
+							<td style="border-right:1px solid #dee2e6;">
+								@if(null==openUser)
+								{
+									<CheckBox Checked="false" Color="gray" />
+								}
+								else if(null!=closeUser)
+								{
+									<CheckBox Checked="true" Color="gray" />
+									<span>@Sapphire2025Models.Utils.autoDate(order.CloseTime)</span>
+									<span>
+										<RoleIcon Credentials="closeUser.CredentialKey" Color="gray"></RoleIcon>
+									</span>
+									<span>
+										@closeUser.Name
+									</span>
+								}
+								else
+								{
+									<button type="button" class="btn btn-link p-0" @onclick="() => HandleCompleteClicked(order)">
+										<CheckBox Checked="false" Color="black"/>
+									</button>									
+								}
+							</td>
+							<td style="border-right:1px solid #dee2e6;">
+								@if(null==openUser||null==closeUser)
+								{
+									<CheckBox Checked="false" Color="gray" />
+								}
+								else if(null!=verifyUser)
+								{
+									<CheckBox Checked="true" Color="gray" />
+									<span>@Sapphire2025Models.Utils.autoDate(order.VerifyTime)</span>
+									<span>
+										<RoleIcon Credentials="verifyUser.CredentialKey" Color="gray"></RoleIcon>
+									</span>
+									<span>
+										@verifyUser.Name
+									</span>
+								}
+								else
+								{
+									<button type="button" class="btn btn-link p-0" @onclick="() => HandleVerifyClicked(order)">
+										<CheckBox Checked="false" Color="black"  />
+									</button>									
+								}
+							</td>
+						}
 					</tr>
 				}
 			</tbody>
@@ -109,12 +157,40 @@
 	private IEnumerable<WorkOrderModel>? mcolOrder{ get; set; }
 
 	private SessionModel? mvarSession{ get; set; }
+	private bool UserCanOpenTask{ get; set; }
 	private bool UserCanCloseTask{ get; set; }
 	private bool UserCanVerifyTask{ get; set; }
 
 	private ModalDialog? mvarConfirmationDialogOrderTable;
 	private TaskCompletionSource<bool>? mvarConfirmTcs;
 
+	private int mvarLastOrderField { get; set; } = -1;
+	private bool mvarSortDescending { get; set; } = false;
+
+	protected override async Task OnParametersSetAsync()
+	{
+		await base.OnParametersSetAsync();
+		mcolOrderCatalog = await mvarAeneasClient.OrdersDictionary();
+		if (null != Train)
+			mcolOrder = await mvarAeneasClient.workOrdersByTrain(Train.id);
+
+		mvarSession = await mvarIntStorage.GetSessionInfo();
+		UserCanOpenTask = Sapphire2025Models.Utils.CanOpenTask(mvarSession);
+		UserCanCloseTask = Sapphire2025Models.Utils.CanCloseTask(mvarSession);
+		UserCanVerifyTask = Sapphire2025Models.Utils.CanVerifyTask(mvarSession);
+	}
+
+	private async Task RefreshOrdersAsync()
+	{
+		if (Train is null) return;
+		mcolOrder = await mvarAeneasClient.workOrdersByTrain(Train.id);
+		await InvokeAsync(StateHasChanged);
+	}
+
+	private bool EnableCheckOpen(WorkOrderModel order)
+	{
+		return null == order.OpenTime && UserCanOpenTask;
+	}
 	private bool EnableCheckClose(WorkOrderModel order)
 	{
 		return null == order.CloseTime && UserCanCloseTask;
@@ -122,6 +198,25 @@
 	private bool EnableCleckVerify(WorkOrderModel order)
 	{
 		return null == order.VerifyTime && UserCanVerifyTask && null != order.CloseTime;
+	}
+
+	private async Task HandleOpenClicked(WorkOrderModel order)
+	{
+		if (!EnableCheckOpen(order)) return; //No podemos hacer nada si no puede iniciar
+		if(await ConfirmOpenWorkAsync(order))
+		{
+			await mvarAeneasClient.openWorkOrder(order.Id);
+			await RefreshOrdersAsync();
+		}
+	}
+	private async Task HandleRejectOpenClicked(WorkOrderModel order)
+	{
+		//if (!EnableCheckOpen(order)) return; //Si el usuario no puede confirmar, tampoco puede rechazar.
+		if(await ConfirmRejectWorkAsync(order))
+		{
+			await mvarAeneasClient.rejectWorkOrder(order.Id);
+			await RefreshOrdersAsync();
+		}
 	}
 
 	private async Task HandleCompleteClicked(WorkOrderModel order)
@@ -139,7 +234,7 @@
 				await mvarAeneasClient.UpdateWash(modelo);
 			}			
 
-			StateHasChanged();
+			await RefreshOrdersAsync();
 		}
 	}
 	private async Task HandleVerifyClicked(WorkOrderModel order)
@@ -148,8 +243,32 @@
 		if (await ConfirmVerifyWorkAsync(order))
 		{
 			await mvarAeneasClient.verifyWorkOrder(order.Id);
-			StateHasChanged();
+			await RefreshOrdersAsync();
 		}		
+	}
+
+	private async Task<bool> ConfirmRejectWorkAsync(WorkOrderModel order)
+	{
+		mvarConfirmTcs = new TaskCompletionSource<bool>();
+		if (null != mvarConfirmationDialogOrderTable && mcolOrderCatalog.ContainsKey(order.WorkType))
+			await mvarConfirmationDialogOrderTable.show(
+				"Negación de tarea",
+				$"¿Quiere cancelar la tarea solicitada de {mcolOrderCatalog[order.WorkType].Name}?",
+				"Confirmar rechazo",
+				"Cancelar");
+		return await mvarConfirmTcs.Task;
+	}
+
+	private async Task<bool> ConfirmOpenWorkAsync(WorkOrderModel order)
+	{
+		mvarConfirmTcs = new TaskCompletionSource<bool>();
+		if (null != mvarConfirmationDialogOrderTable && mcolOrderCatalog.ContainsKey(order.WorkType))
+			await mvarConfirmationDialogOrderTable.show(
+				"Inicio de tarea",
+				$"¿Confirma que quiere iniciar la tarea de {mcolOrderCatalog[order.WorkType].Name}?",
+				"Confirmar inicio",
+				"Cancelar");
+		return await mvarConfirmTcs.Task;
 	}
 
 	private async Task<bool> ConfirmCloseWorkAsync(WorkOrderModel order)
@@ -183,24 +302,31 @@
 
 
 
-	protected override async Task OnParametersSetAsync()
-	{
-		await base.OnParametersSetAsync();
-		mcolOrderCatalog = await mvarAeneasClient.OrdersDictionary();
-		if (null != Train)
-			mcolOrder = await mvarAeneasClient.workOrdersByTrain(Train.id);
 
-		mvarSession = await mvarIntStorage.GetSessionInfo();
-		UserCanCloseTask = Sapphire2025Models.Utils.CanCloseTask(mvarSession);
-		UserCanVerifyTask = Sapphire2025Models.Utils.CanVerifyTask(mvarSession);
+
+	private string orderCatalogName(WorkOrderModel rhs)
+	{
+		if (mcolOrderCatalog.ContainsKey(rhs.WorkType))
+			return mcolOrderCatalog[rhs.WorkType].Name;
+		return string.Empty;
+	}
+
+	private UserModelBase? userFromRequestOrder(WorkOrderModel rhs)
+	{
+		if(null!=Users && Guid.Empty != rhs.RequestUserId)
+		{
+			if (Users.ContainsKey(rhs.RequestUserId))
+				return Users[rhs.RequestUserId];
+		}
+		return null;
 	}
 
 	private UserModelBase? userFromOpenOrder(WorkOrderModel rhs)
 	{
-		if (null != Users && Guid.Empty != rhs.OpenUserId)
+		if (null != Users && Guid.Empty != rhs.OpenUserId && null!=rhs.OpenUserId)
 		{
-			if (Users.ContainsKey(rhs.OpenUserId))
-				return Users[rhs.OpenUserId];
+			if (Users.ContainsKey(rhs.OpenUserId.Value))
+				return Users[rhs.OpenUserId.Value];
 		}
 		return null;
 	}
@@ -208,8 +334,8 @@
 	{
 		if (null!= rhs.CloseUserId && null != Users && Guid.Empty != rhs.CloseUserId)
 		{
-			if (Users.ContainsKey((Guid)rhs.CloseUserId))
-				return Users[(Guid)rhs.CloseUserId];
+			if (Users.ContainsKey(rhs.CloseUserId.Value))
+				return Users[rhs.CloseUserId.Value];
 		}
 		return null;
 	}
@@ -217,15 +343,53 @@
 	{
 		if (null != rhs.VerifyUserId && null != Users && Guid.Empty != rhs.VerifyUserId)
 		{
-			if (Users.ContainsKey((Guid)rhs.VerifyUserId))
-				return Users[(Guid)rhs.VerifyUserId];
+			if (Users.ContainsKey(rhs.VerifyUserId.Value))
+				return Users[rhs.VerifyUserId.Value];
 		}
 		return null;
 	}
 
-	private void sortFields(int rhs)
+	private void sortFields(int fieldId)
 	{
-		//TODO: Rellenar con código para ordenar.
+		if (mcolOrder is null) return;
+
+		if (mvarLastOrderField == fieldId)
+			mvarSortDescending = !mvarSortDescending;
+		else
+		{
+			mvarLastOrderField = fieldId;
+			mvarSortDescending = false;
+		}
+
+		IOrderedEnumerable<WorkOrderModel> ordered = fieldId switch
+		{
+			1 => mvarSortDescending
+				? mcolOrder.OrderByDescending(x => orderCatalogName(x))
+				: mcolOrder.OrderBy(x => orderCatalogName(x)),
+
+			2 => mvarSortDescending
+				? mcolOrder.OrderByDescending(x => x.RequestTime)
+				: mcolOrder.OrderBy(x => x.RequestTime),
+
+			3 => mvarSortDescending
+				? mcolOrder.OrderByDescending(x => x.OpenTime ?? DateTime.MinValue)
+				: mcolOrder.OrderBy(x => x.OpenTime ?? DateTime.MaxValue),
+
+			4 => mvarSortDescending
+				? mcolOrder.OrderByDescending(x => x.CloseTime ?? DateTime.MinValue)
+				: mcolOrder.OrderBy(x => x.CloseTime ?? DateTime.MaxValue),
+
+			5 => mvarSortDescending
+				? mcolOrder.OrderByDescending(x => x.VerifyTime ?? DateTime.MinValue)
+				: mcolOrder.OrderBy(x => x.VerifyTime ?? DateTime.MaxValue),
+
+			_ => mvarSortDescending
+				? mcolOrder.OrderByDescending(x => x.RequestTime)
+				: mcolOrder.OrderBy(x => x.RequestTime)
+		};
+
+		mcolOrder = ordered.ToList();
+		StateHasChanged();
 	}
 }
 

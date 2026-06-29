@@ -379,8 +379,7 @@ namespace Sapphire2025.Storage
 			JsonSerializerOptions opciones = new(JsonSerializerDefaults.Web);
 			return JsonSerializer.Deserialize<ExtendedUserModel>(contenido, opciones);
 		}
-
-
+      
 
 		/// <summary>
 		/// Solicita al servidor añadir un nuevo usuario a la base de datos.

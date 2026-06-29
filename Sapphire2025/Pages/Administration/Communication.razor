@@ -1,5 +1,6 @@
 ﻿@page "/communication"
 @inject AuthenticationClient AuthClient
+@inject AeneasClient AeneasClient
 <PageTitle>Comunicación</PageTitle>
 
 <div class="container py-4">
@@ -71,9 +72,24 @@
     {
         if (!string.IsNullOrWhiteSpace(MensajeTelegram))
         {
-            //await MessageService.EnviarTelegramAsync(MensajeTelegram);
-            EstadoTelegram = "Mensaje enviado por Telegram.";
+            Sapphire2025Models.Common.UserRole[] roles =
+            [
+                Sapphire2025Models.Common.UserRole.Anonymous,
+                Sapphire2025Models.Common.UserRole.Inspector,
+                Sapphire2025Models.Common.UserRole.Mechanic,
+                Sapphire2025Models.Common.UserRole.Engineer,
+                Sapphire2025Models.Common.UserRole.Expert,
+                Sapphire2025Models.Common.UserRole.Oficial,
+                Sapphire2025Models.Common.UserRole.Root
+            ];
+
+            if (await AeneasClient.TelegramBroadcast(MensajeTelegram, false, roles))
+                EstadoTelegram = "Error en el envío del mensaje";
+            else
+                EstadoTelegram = "Mensaje enviado por Telegram.";
+
             MensajeTelegram = string.Empty;
+
         }
     }
 }

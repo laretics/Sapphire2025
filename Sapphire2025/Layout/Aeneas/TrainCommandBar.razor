@@ -1,4 +1,5 @@
-﻿@inject AeneasClient mvarAeneasClient
+﻿@using Sapphire2025Models.GMao
+@inject AeneasClient mvarAeneasClient
 @inject NavigationManager mvarNavigationManager
 @inject IntStorageService mvarIntStorage
 <ModalDialog @ref="mvarConfirmationDialog" OnClose="OnConfirmClose" />
@@ -22,7 +23,7 @@
 	public TrainModel? Train{ get; set; } //A partir de este modelo obtenemos el último estado del tren
 	private ModalDialog? mvarConfirmationDialog;
 	private TaskCompletionSource<bool>? mvarConfirmTcs;
-	private bool mvarPendantWash{ get; set; }
+	private IEnumerable<WorkOrderModel> mcolPendants = new List<WorkOrderModel>();
 
 	private async Task<bool> ConfirmAsync(string title, string text, string okLabel="Aceptar", string cancelLabel ="Cancelar")
 	{
@@ -42,9 +43,11 @@
 	{
 		await base.OnParametersSetAsync();
 		mvarSession = await mvarIntStorage.GetSessionInfo();
-		if(null!=Train)
-			mvarPendantWash = await mvarAeneasClient.HasPendantWashing(Train.id);
+		if (null != Train)
+			mcolPendants = await mvarAeneasClient.PendantWorks(Train.id, true);
 	}
+
+	private bool HasPendantWork => mcolPendants.Any();
 
 	private List<TrainCommand> Commands => new()
 	{
@@ -63,7 +66,7 @@
 			Label="Material Disponible",
 			ShowIf = () => (isOfficial || isExpert) && 
 			(currentStatus == Sapphire2025Models.Common.TrainStatus.RequestToDiagnose) 
-			&& !mvarPendantWash,			
+			&& !HasPendantWork,			
 			Action = diagnoseToAvailable,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.Available>(0);
@@ -74,7 +77,7 @@
 		{
 			Label="Retirar",
 			ShowIf = () => (isOfficial || isExpert) && (currentStatus == Sapphire2025Models.Common.TrainStatus.RequestToDiagnose)
-			&& !mvarPendantWash,
+			&& !HasPendantWork,
 			Style="outline-warning",
 			Action = diagnoseToFault,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
@@ -86,7 +89,7 @@
 		{
 			Label="Retirar a Reparar",
 			ShowIf = () => isStation && (currentStatus== Sapphire2025Models.Common.TrainStatus.RequestToRepair)
-			&& !mvarPendantWash,
+			&& !HasPendantWork,
 			Style="outline-warning",
 			Action = sendToCorrective,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
@@ -98,7 +101,7 @@
 		{
 			Label="Reparación Terminada",
 			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.Repairing)
-			&& !mvarPendantWash,
+			&& !HasPendantWork,
 			Style="outline-success",
 			Action = sendToAvailable,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
@@ -110,7 +113,7 @@
 		{
 			Label="Solicitar Mantenimiento",
 			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.Available)
-			&& !mvarPendantWash,
+			&& !HasPendantWork,
 			Action = requestMaintenance,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.DepotRequested>(0);
@@ -123,7 +126,7 @@
 			ShowIf = () => isMechanic && 
 			(currentStatus==Sapphire2025Models.Common.TrainStatus.DepotAvailable ||
 				currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance)
-				&& !mvarPendantWash,
+				&& !HasPendantWork,
 				Action= requestManualWash,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Actions.Wash>(0);
@@ -136,7 +139,7 @@
 			ShowIf = () => isMechanic &&
 			(currentStatus==Sapphire2025Models.Common.TrainStatus.DepotAvailable ||
 				currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance)
-				&& !mvarPendantWash,
+				&& !HasPendantWork,
 				Action= requestPlatformWash,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Actions.Wash>(0);
@@ -149,7 +152,7 @@
 			ShowIf = () => isMechanic && // isStation &&  //Antes podían también los gestores.
 			(currentStatus==Sapphire2025Models.Common.TrainStatus.DepotAvailable ||
 				currentStatus== Sapphire2025Models.Common.TrainStatus.Available)
-				&& !mvarPendantWash,
+				&& !HasPendantWork,
 				Action= requestTunnelWash,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Actions.Wash>(0);
@@ -159,8 +162,8 @@
 		new TrainCommand
 		{
 			Label="Fin Lavado",
-			ShowIf =() => isMechanic &&
-			mvarPendantWash,
+			ShowIf =() => isMechanic
+			&& !HasPendantWork,
 			Action = requestWashingEnd,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Actions.Wash>(0);
@@ -171,7 +174,7 @@
 		{
 			Label="Anular Solicitud Mantenimiento",
 			ShowIf = () => isOfficial && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested)
-			&& !mvarPendantWash,
+			&& !HasPendantWork,
 			Action = undoSendToMaintenance,
 			Style="warning",
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
@@ -183,7 +186,7 @@
 		{
 			Label="Retirar a Mantenimiento",
 			ShowIf = () => isStation && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested)
-			&& !mvarPendantWash,
+			&& !HasPendantWork,
 			Action = acceptSendToMaintenance,			
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.DepotAvailable>(0);
@@ -194,7 +197,7 @@
 		{
 			Label="Ceder a Circulación",
 			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotAvailable)
-			&& !mvarPendantWash,
+			&& !HasPendantWork,
 			Action = rescueFromMaintenance,
 			Style="outline-warning",
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
@@ -206,7 +209,7 @@
 		{
 			Label="Empezar Intervención",
 			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotAvailable)
-			&& !mvarPendantWash,
+			&& !HasPendantWork,
 			Action = sendToMaintenance,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.Maintenance>(0);
@@ -217,7 +220,7 @@
 		{
 			Label="Terminar Intervención",
 			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance)
-			&& !mvarPendantWash,
+			&& !HasPendantWork,
 			Action = endMaintenance,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.Available>(0);
@@ -228,7 +231,7 @@
 		{
 			Label="Iniciar Tren (Correctivo)",
 			ShowIf = () => isOfficial && (currentStatus== Sapphire2025Models.Common.TrainStatus.Unknown)
-			&& !mvarPendantWash,
+			&& !HasPendantWork,
 			Action = sendToCorrective,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.Repairing>(0);
@@ -239,7 +242,7 @@
 		{
 			Label="Stand Still",
 			ShowIf = () => isEngineer && readyForStandStill
-			&& !mvarPendantWash,
+			&& !HasPendantWork,
 			Action = sendToStandStill,
 			Style="outline-danger",
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
@@ -251,7 +254,7 @@
 		{
 			Label="Reactivar",
 			ShowIf = () => isEngineer && (currentStatus == Sapphire2025Models.Common.TrainStatus.StandStill)
-			&& !mvarPendantWash,
+			&& !HasPendantWork,
 			Action = sendToCorrective,
 			Style="outline-primary",
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
@@ -263,7 +266,7 @@
 		{
 			Label="Baja Definitiva",
 			ShowIf = () => isEngineer && (currentStatus == Sapphire2025Models.Common.TrainStatus.StandStill)
-			&& !mvarPendantWash,
+			&& !HasPendantWork,
 			Action = sendToDisabled,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.Disabled>(0);
@@ -274,7 +277,7 @@
 		{
 			Label="Rehabilitar",
 			ShowIf = () => isEngineer && (currentStatus == Sapphire2025Models.Common.TrainStatus.Disabled)
-			&& !mvarPendantWash,
+			&& !HasPendantWork,
 			Action = sendToStandStill,
 			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
 			{b.OpenComponent<Sapphire2025.Icons.Status.StandStill>(0);
@@ -377,7 +380,7 @@
 		System.Diagnostics.Debug.Assert(null != Train);
 		bool confirmado = await ConfirmAsync(
 			$"Lavado de {Train.name}",
-			$"¿Confirma que quiere comenzar el lavado manual del tren {Train.name}?");
+			$"¿Quiere solicitar un lavado manual del tren {Train.name}?");
 		if (!confirmado) return;
 
 		await mvarAeneasClient.createWorkOrder(Sapphire2025Models.Common.WorkOrderTypeManualWash,
@@ -390,7 +393,7 @@
 		System.Diagnostics.Debug.Assert(null != Train);
 		bool confirmado = await ConfirmAsync(
 			$"Lavado de {Train.name}",
-			$"¿Confirma que quiere comenzar el lavado en el andén del tren {Train.name}?");
+			$"¿Quiere solicitar un lavado en el andén del tren {Train.name}?");
 		if (!confirmado) return;
 
 		await mvarAeneasClient.createWorkOrder(Sapphire2025Models.Common.WorkOrderTypePlatformWash,
@@ -403,7 +406,7 @@
 		System.Diagnostics.Debug.Assert(null != Train);
 		bool confirmado = await ConfirmAsync(
 			$"Lavado de {Train.name}",
-			$"¿Confirma que quiere pasar el tren {Train.name} por el túnel de lavado?");
+			$"¿Quiere solicitar el paso del tren {Train.name} por el túnel de lavado?");
 		if (!confirmado) return;
 
 		await mvarAeneasClient.createWorkOrder(Sapphire2025Models.Common.WorkOrderTypeTunnelWash,
