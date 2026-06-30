@@ -6,7 +6,7 @@ namespace Tourmaline26.Logic
 	/// </summary>
 	public class SystemConfiguration
 	{
-		public string Version  => "V1.1 (Beta)";
+		public string Version  => "V1.1 (Beta)"; //Versión de este programa.
 		public DateTime Release => new DateTime(2026,6,18);
 		public Guid TrainId { get; set; } //Guid de este material móvil según Zafiro.
         public string Name { get; set; } = "Tren";
@@ -17,5 +17,8 @@ namespace Tourmaline26.Logic
 		public string MVBUrl { get; set; } = "http://172.16.20.11:8000/data";
 		public string TExperienceUrl { get; set; } = "http://172.16.20.12:5005/server"; //Servidor API REST de Tourmaline Experiencwe
 		public string TExperienceStr { get; set; } = "http://192.168.0.9:5005/stream"; //Streamer de Tourmaline Experience
+		public string SfmInfoUrl { get; set; } = "https://info.trensfm.com:8084"; //Url del proveedor Armandito
+		public string SfmInfoToken { get; set; } = "SFM2026"; //Token para Armandito
+
 	}
 }
