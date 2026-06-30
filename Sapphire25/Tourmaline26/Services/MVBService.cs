@@ -11,6 +11,7 @@ namespace Tourmaline26.Services
         private readonly HttpClient mvarHttpClient;
         private ILogger<MVBService> mvarLogger;
         private readonly string mvarUrl;
+        private int mvarRetries = 5; //Intentos hasta deshabilitar MVB.
 
         public MVBService(
             HttpClient mvarHttpClient, 
@@ -30,6 +31,8 @@ namespace Tourmaline26.Services
         public bool IsOK { get => mvarUrl.Length > 0; }
         public async Task<MVB8100Data?> GetMVBDataAsync()
         {
+            if (mvarRetries < 1) 
+                return null;
             try
             {
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
@@ -42,13 +45,14 @@ namespace Tourmaline26.Services
             catch (TaskCanceledException ex)
             {
                 mvarLogger.LogError("MVB error: Timeout");
+                mvarRetries--;
                 throw new TimeoutException("Timeout while trying to get MVB data");
             }
             catch (Exception ex)
             {
                 mvarLogger.LogError("MVB error: {0}", ex.Message);
-                throw ex;
             }
+            return null;
         } 
     }
 }
