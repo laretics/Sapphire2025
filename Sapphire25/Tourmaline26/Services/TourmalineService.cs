@@ -25,6 +25,7 @@ namespace Tourmaline26.Services
         public DeviceCollection Devices { get; private set; } = new DeviceCollection();
         private ILogger<TourmalineService> mvarLogger;
         private IServiceProvider mvarServiceProvider;
+        private IConfiguration mvarConfiguration;
         private LEDDisplayService mvarLedDisplayService;
         //Almacén local TimeNet para poder "jugar" con la estructura en modo local sin sobrecargar las comunicaciones.
         public OnyxStorage TimeNetStorage { get; set; }
@@ -41,23 +42,23 @@ namespace Tourmaline26.Services
         )
         {
 			mvarSessionConfig = new SessionConfiguration();
-			SystemConfig = new SystemConfiguration();			
-            mvarLogger = logger;               
-            mvarServiceProvider = serviceProvider;
+			SystemConfig = new SystemConfiguration();
             TimeNetStorage = new OnyxStorage();
+            mvarConfiguration = config;
+            mvarLogger = logger;               
+            mvarServiceProvider = serviceProvider;            
             mvarLedDisplayService = ledDisplayService;
-            InitConfig(config);
         }
-		private void InitConfig(IConfiguration config)
-		{           
-			auxInitDevices(config);
+		private async Task InitConfig(IConfiguration config)
+		{           			
 			SystemConfiguration? auxConfig = config.GetSection("SystemConfiguration").Get<SystemConfiguration>();            
 			if (null != auxConfig)
 				SystemConfig = auxConfig;
             IConfigurationSection debugStartupSession = config.GetSection("debugStartSession");
             if (debugStartupSession.Exists())
                 debugStartupSession.Bind(mvarSessionConfig);
-		}
+            await auxInitDevices(config);
+        }
         private async Task auxInitDevices(IConfiguration config)
         {
             IConfigurationSection section = config.GetSection("Devices");
@@ -106,6 +107,7 @@ namespace Tourmaline26.Services
         /// <returns></returns>
         public async Task InitData()
         {
+            await InitConfig(mvarConfiguration);
             await InitializeLocalRegister(); //Inicia el registro en la base de datos.
             await InitializeTimeNet(); //Carga los datos de TimeNet en el almacenamiento local.
         }

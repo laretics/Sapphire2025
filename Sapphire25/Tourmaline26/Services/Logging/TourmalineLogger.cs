@@ -9,13 +9,80 @@ namespace Tourmaline26.Services.Logging
     {
         private readonly string mvarRootDirectory;
         internal readonly LogLevel mvarMinLevel;
+        private readonly long mvarMaxFileSizeBytes;
+        private readonly int mvarMaxBackups;
         private readonly ConcurrentDictionary<string, object> mcolFileLocks = new(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, DateOnly> mcolLastDateByFile = new(StringComparer.OrdinalIgnoreCase); 
+        private DateTime lastDate = DateTime.MinValue;
 
-        public TourmalineLogger(string rootDirectory, LogLevel minLevel=LogLevel.Trace)
+        public TourmalineLogger(
+            string rootDirectory, 
+            LogLevel minLevel=LogLevel.Trace,
+            long maxFileSizeInBytes = 5* 1024 * 1024,
+            int maxBackups = 5)
         {
+            if (maxFileSizeInBytes < 1)
+                throw new ArgumentOutOfRangeException(nameof(maxFileSizeInBytes));
+            if (maxBackups < 1)
+                throw new ArgumentOutOfRangeException(nameof(maxBackups));
+
             mvarRootDirectory = Path.GetFullPath(rootDirectory);
             mvarMinLevel = minLevel;
+            mvarMaxFileSizeBytes = maxFileSizeInBytes;
+            mvarMaxBackups = maxBackups;
+
             Directory.CreateDirectory(mvarRootDirectory);
+        }
+
+        private void EnsureDirectory(string filePath)
+        {
+            string? directory = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrWhiteSpace(directory))
+                Directory.CreateDirectory(directory);
+        }
+        
+        private static string GetBackupPath(string filePath, int backupIndex)
+        {
+            string directory = Path.GetDirectoryName(filePath) ?? string.Empty;
+            string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(filePath);
+            string extension = Path.GetExtension(filePath);
+
+            string backupFileName = $"{fileNameWithoutExtension}.{backupIndex}{extension}";
+            return string.IsNullOrWhiteSpace(directory)
+                ? backupFileName
+                : Path.Combine(directory, backupFileName);
+        }
+
+        private void RotateIfNeeded(string filePath, int nextEntryBytes)
+        {
+            long currentSize = File.Exists(filePath) ? new FileInfo(filePath).Length : 0;
+            if (currentSize + nextEntryBytes <= mvarMaxFileSizeBytes) return; //No hace falta rotar.
+
+            //Desplaza los backups.
+            for(int i = mvarMaxBackups-1;i>=1;i--)
+            {
+                string source = GetBackupPath(filePath, i);
+                string destination = GetBackupPath(filePath, i + 1);
+
+                if(File.Exists(source))
+                {
+                    if (File.Exists(destination))
+                        File.Delete(destination);
+
+                    File.Move(source, destination);
+                }                
+            }
+
+            //Cambia el archivo actual a .1
+            string firstBackup = GetBackupPath(filePath, 1);
+            if (File.Exists(firstBackup))
+                File.Delete(firstBackup);
+
+            if (File.Exists(filePath))
+                File.Move(filePath, firstBackup);
+
+            //Fuerza que aparezca la cabecera de fecha en el nuevo archivo
+            mcolLastDateByFile.TryRemove(filePath, out _);
         }
 
         public ILogger CreateLogger(string categoryName)
@@ -27,18 +94,45 @@ namespace Tourmaline26.Services.Logging
                 return;
 
             string filePath = GetFilePath(categoryName);
-            string? directory = Path.GetDirectoryName(filePath);
+            EnsureDirectory(filePath);
 
-            if (!string.IsNullOrWhiteSpace(directory))
-                Directory.CreateDirectory(directory);
+            object gate = mcolFileLocks.GetOrAdd(filePath, _ => new object());
+
+            lock(gate)
+            {
+                string entry = BuildEntry(filePath, logLevel, eventId, message, exception);
+                RotateIfNeeded(filePath, Encoding.UTF8.GetByteCount(entry));
+                EnsureDirectory(filePath);
+                File.AppendAllText(filePath, entry, Encoding.UTF8);
+            }
+        }
+
+        private string BuildEntry(
+            string filePath, 
+            LogLevel logLevel, 
+            EventId eventId,
+            string message,
+            Exception? exception)
+        {
+            DateOnly today = DateOnly.FromDateTime(DateTime.Now);
+            DateOnly lastDate = mcolLastDateByFile.GetOrAdd(filePath, _ => DateOnly.MinValue);
 
             StringBuilder sb = new();
-            sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+            if (lastDate != today)
+            {
+                sb.AppendLine(); //Primera línea en blanco con el cambio de fecha
+                sb.AppendLine($"New Date {DateTime.Now.ToString("yyyy-MM-dd")}");
+                sb.AppendLine("===================");
+                sb.AppendLine(); //Espacio antes del comienzo del nuevo texto.
+                mcolLastDateByFile[filePath] = today;
+            }
+            sb.Append(DateTime.Now.ToString("HH:mm:ss.fff"));
             sb.Append(" [");
             sb.Append(logLevel);
-            sb.Append("] ");
-            sb.Append(categoryName);
-            sb.Append(" (");
+            sb.Append("] (");
+            //sb.Append("] ");
+            //sb.Append(categoryName);
+            //sb.Append(" (");
             sb.Append(eventId.Id);
             sb.Append(")");
             if (!string.IsNullOrWhiteSpace(message))
@@ -51,13 +145,7 @@ namespace Tourmaline26.Services.Logging
             if (null != exception)
                 sb.AppendLine(exception.ToString());
 
-            sb.AppendLine();
-
-            object gate = mcolFileLocks.GetOrAdd(filePath, _ => new object());
-            lock(gate)
-            {
-                File.AppendAllText(filePath, sb.ToString(), Encoding.UTF8);
-            }                                
+            return sb.ToString();
         }
 
         private string GetFilePath(string categoryName)
@@ -100,6 +188,7 @@ namespace Tourmaline26.Services.Logging
         public void Dispose()
         {
             mcolFileLocks.Clear();
+            mcolLastDateByFile.Clear();
         }
 
 

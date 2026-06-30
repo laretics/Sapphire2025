@@ -36,6 +36,36 @@ namespace Sapphire2026Telegram
 		/// Si quiero trabajar con el bot en pruebas pongo este valor a "false" en el servicio y lo reinicio. Si quiero trabajar en algo que no sea el bot, pondré "false" en la configuración del equipo de pruebas.
 		/// </summary>
 		private bool IsTelegramEnabled { get => config["TelegramBot:Enabled"] == "true"; }
+		private int BroadcastMaxDegreeOfParallelism
+		{
+			get
+			{
+				if (int.TryParse(config["TelegramBot:BroadcastParallelism"], out int value) && value > 0)
+					return value;
+				return 4;
+			}
+		}
+		private int BroadcastMessagesPerMinute
+		{
+			get
+			{
+				if (int.TryParse(config["TelegramBot:BroadcastMessagesPerMinute"], out int value) && value > 0)
+					return value;
+				return 20;
+			}
+		}
+		private TimeSpan BroadcastSendTimeout
+		{
+			get
+			{
+				if (int.TryParse(config["TelegramBot:BroadcastSendTimeoutSeconds"], out int value) && value > 0)
+					return TimeSpan.FromSeconds(value);
+				return TimeSpan.FromSeconds(20);
+			}
+		}
+		private TimeSpan BroadcastMinimumGap { get => TimeSpan.FromMinutes(1d / BroadcastMessagesPerMinute); }
+		private readonly object mvarBroadcastRateLock = new object();
+		private DateTimeOffset mvarBroadcastNextAllowedSendUtc = DateTimeOffset.MinValue;
 
 		public BotSoul (ILogger<BotSoul> logger, IConfiguration configuration,IServiceProvider servicesProvider, Worker worker)
 		{
@@ -69,7 +99,7 @@ namespace Sapphire2026Telegram
 			DummyMode = true;
 		}
 
-		private async Task HandleUpdateAsync(ITelegramBotClient botClient,
+        private async Task HandleUpdateAsync(ITelegramBotClient botClient,
 			Update update,
 			CancellationToken cancellationToken)
 		{
@@ -189,87 +219,217 @@ namespace Sapphire2026Telegram
 		{
 			if(await GetTelegramEnabled())
 			{
-				List<UserModel> auxUsers = new List<UserModel>();
-				IEnumerable<UserModel> auxOrigin = await auxAvailableUsers(priority);
-				string[] auxFilters = filters.ToUpper().Split(',');
-				foreach (UserModel candidato in auxOrigin)
-				{
-					if (candidato.TelegramEnabled || priority)
-					{
-						if (filters.Length > 0)
-						{
-							if(null!=candidato.TelegramRules)
-							{
-								if(auxHasFilterActive(candidato.TelegramRules,auxFilters))
-									auxUsers.Add(candidato);
-							}
-						}
-						else
-							auxUsers.Add(candidato); //Si no hay filtros meto a todos los usuarios.
-					}
-				}
-				await Broadcast(message, auxUsers);
+				List<UserModel> auxUsers = await BuildBroadcastRecipientsByFilter(priority, filters);
+				await Broadcast(message, auxUsers, priority);
 			}
 		}
 		public async Task BroadcastByRole(string message, bool priority, Common.UserRole[] roles)
 		{
 			if(await GetTelegramEnabled())
 			{
-				List<UserModel> auxUsers = new List<UserModel>();
-				IEnumerable<UserModel> auxOrigin = await auxAvailableUsers(priority);
-				foreach (UserModel candidato in auxOrigin)
-				{
-					if (priority || candidato.TelegramEnabled)
-					{
-						//Localizo el chat de este usuario... si no está, lo genero.
-						if(!mcolTasks.ContainsKey(candidato.TelegramId))
-							await OpenTask(candidato.TelegramId);
-						Debug.Assert(mcolTasks.ContainsKey(candidato.TelegramId));
-
-						BotTask auxTask = mcolTasks[candidato.TelegramId];
-						if (auxTask.userContext.MatchRole(roles))
-							auxUsers.Add(candidato);
-					}
-				}
+				List<UserModel> auxUsers = await BuildBroadcastRecipientsByRole(priority, roles);
 				await Broadcast(message, auxUsers, priority);
 			}
 		}
 		private async Task Broadcast(string message, List<UserModel> users, bool includeOffline = false)
 		{
-			//Llamamos a esta función desde algún sitio donde comprobemos que el bot de Telegram está activo.
-			if(await GetTelegramEnabled())
-			{
-				foreach (UserModel usuario in users)
-				{
+			if (null == mvarBot || 0 == users.Count)
+				return;
 
-					if (0 != usuario.TelegramId && (includeOffline || usuario.TelegramEnabled))
-					{
-						try
-						{
-							await mvarBot.SendMessage(usuario.TelegramId, message);
-						}
-						catch (Telegram.Bot.Exceptions.ApiRequestException ex) when (ex.ErrorCode == 403)
-						{
-							// Usuario ha bloqueado el bot → lo ignoramos silenciosamente o lo registramos
-							mvarLogger.LogWarning("Usuario {ChatId} ha bloqueado el bot", usuario.Name);
-							// Opcional: marcar al usuario como bloqueado en tu base de datos
-						}
-						catch (Exception ex)
-						{
-							mvarLogger.LogError(ex, "Error enviando mensaje a {ChatId}", usuario.Name);
-						}
-					}
-						
+			ParallelOptions auxOptions = new ParallelOptions
+			{
+				MaxDegreeOfParallelism = BroadcastMaxDegreeOfParallelism
+			};
+
+			await Parallel.ForEachAsync(users, auxOptions, async (usuario, cancellationToken) =>
+			{
+				await SendBroadcastMessageToUser(usuario, message, includeOffline, cancellationToken);
+			});
+		}
+		private async Task SendBroadcastMessageToUser(UserModel usuario, string message, bool includeOffline, CancellationToken cancellationToken)
+		{
+			if (0 == usuario.TelegramId || (!includeOffline && !usuario.TelegramEnabled) || null == mvarBot)
+				return;
+
+			try
+			{
+				await WaitForBroadcastSlotAsync(cancellationToken);
+				await SendBroadcastMessageWithTimeout(usuario.TelegramId, message, cancellationToken);
+			}
+			catch (Telegram.Bot.Exceptions.ApiRequestException ex) when (ex.ErrorCode == 403)
+			{
+				mvarLogger.LogWarning("Usuario {ChatId} ha bloqueado el bot", usuario.Name);
+			}
+			catch (Telegram.Bot.Exceptions.ApiRequestException ex) when (ex.ErrorCode == 429)
+			{
+				TimeSpan retryDelay = GetTelegramRetryDelay(ex) ?? TimeSpan.FromSeconds(30);
+				mvarLogger.LogWarning("Telegram devolvió 429 para {ChatId}. Reintentando en {Delay}.", usuario.TelegramId, retryDelay);
+				ApplyBroadcastCooldown(retryDelay);
+				await Task.Delay(retryDelay, cancellationToken);
+				try
+				{
+					await WaitForBroadcastSlotAsync(cancellationToken);
+					await SendBroadcastMessageWithTimeout(usuario.TelegramId, message, cancellationToken);
+				}
+				catch (Telegram.Bot.Exceptions.ApiRequestException retryEx) when (retryEx.ErrorCode == 429)
+				{
+					mvarLogger.LogWarning("Telegram volvió a devolver 429 para {ChatId} tras el reintento.", usuario.TelegramId);
 				}
 			}
+			catch (TimeoutException)
+			{
+				mvarLogger.LogWarning("Timeout enviando mensaje a {ChatId}", usuario.TelegramId);
+			}
+			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+			{
+				throw;
+			}
+			catch (Exception ex)
+			{
+				mvarLogger.LogError(ex, "Error enviando mensaje a {ChatId}", usuario.Name);
+			}
 		}
-		private bool auxHasFilterActive(string config, string[] filters)
+		private async Task SendBroadcastMessageWithTimeout(long telegramId, string message, CancellationToken cancellationToken)
+		{
+			await mvarBot!.SendMessage(telegramId, message).WaitAsync(BroadcastSendTimeout, cancellationToken);
+		}
+		private async Task WaitForBroadcastSlotAsync(CancellationToken cancellationToken)
+		{
+			TimeSpan delay = TimeSpan.Zero;
+			lock (mvarBroadcastRateLock)
+			{
+				DateTimeOffset auxNow = DateTimeOffset.UtcNow;
+				if (auxNow < mvarBroadcastNextAllowedSendUtc)
+				{
+					delay = mvarBroadcastNextAllowedSendUtc - auxNow;
+					mvarBroadcastNextAllowedSendUtc = mvarBroadcastNextAllowedSendUtc.Add(BroadcastMinimumGap);
+				}
+				else
+				{
+					mvarBroadcastNextAllowedSendUtc = auxNow.Add(BroadcastMinimumGap);
+				}
+			}
+
+			if (delay > TimeSpan.Zero)
+				await Task.Delay(delay, cancellationToken);
+		}
+		private void ApplyBroadcastCooldown(TimeSpan delay)
+		{
+			if (delay <= TimeSpan.Zero)
+				return;
+
+			lock (mvarBroadcastRateLock)
+			{
+				DateTimeOffset auxTarget = DateTimeOffset.UtcNow.Add(delay);
+				if (auxTarget > mvarBroadcastNextAllowedSendUtc)
+					mvarBroadcastNextAllowedSendUtc = auxTarget;
+			}
+		}
+		private TimeSpan? GetTelegramRetryDelay(Telegram.Bot.Exceptions.ApiRequestException exception)
+		{
+			object? retryAfter = exception.GetType().GetProperty("RetryAfter")?.GetValue(exception);
+			if (TryConvertRetryAfter(retryAfter, out TimeSpan auxDelay))
+				return auxDelay;
+
+			object? parameters = exception.GetType().GetProperty("Parameters")?.GetValue(exception);
+			if (null != parameters)
+			{
+				object? nestedRetryAfter = parameters.GetType().GetProperty("RetryAfter")?.GetValue(parameters);
+				if (TryConvertRetryAfter(nestedRetryAfter, out auxDelay))
+					return auxDelay;
+			}
+
+			return null;
+		}
+		private bool TryConvertRetryAfter(object? value, out TimeSpan delay)
+		{
+			delay = TimeSpan.Zero;
+			if (null == value)
+				return false;
+
+			if (value is TimeSpan auxSpan && auxSpan > TimeSpan.Zero)
+			{
+				delay = auxSpan;
+				return true;
+			}
+
+			if (value is int auxSeconds && auxSeconds > 0)
+			{
+				delay = TimeSpan.FromSeconds(auxSeconds);
+				return true;
+			}
+
+			if (int.TryParse(value.ToString(), out int parsedSeconds) && parsedSeconds > 0)
+			{
+				delay = TimeSpan.FromSeconds(parsedSeconds);
+				return true;
+			}
+
+			return false;
+		}
+		private async Task<List<UserModel>> BuildBroadcastRecipientsByFilter(bool priority, string filters)
+		{
+			List<UserModel> auxUsers = new List<UserModel>();
+			IEnumerable<UserModel> auxOrigin = await auxAvailableUsers(priority);
+			HashSet<string>? auxFilters = BuildFilterSet(filters);
+			foreach (UserModel candidato in auxOrigin)
+			{
+				if (!(candidato.TelegramEnabled || priority))
+					continue;
+
+				if (null == auxFilters)
+				{
+					auxUsers.Add(candidato);
+					continue;
+				}
+
+				if (null != candidato.TelegramRules && auxHasFilterActive(candidato.TelegramRules, auxFilters))
+					auxUsers.Add(candidato);
+			}
+			return auxUsers;
+		}
+		private async Task<List<UserModel>> BuildBroadcastRecipientsByRole(bool priority, Common.UserRole[] roles)
+		{
+			if (0 == roles.Length)
+				return new List<UserModel>();
+
+			HashSet<Common.UserRole> auxRoles = new HashSet<Common.UserRole>(roles);
+			List<UserModel> auxUsers = new List<UserModel>();
+			IEnumerable<UserModel> auxOrigin = await auxAvailableUsers(priority);
+			foreach (UserModel candidato in auxOrigin)
+			{
+				if (!(priority || candidato.TelegramEnabled))
+					continue;
+
+				if (!mcolTasks.TryGetValue(candidato.TelegramId, out BotTask? auxTask))
+					auxTask = await OpenTask(candidato.TelegramId);
+
+				Debug.Assert(null != auxTask);
+				if (auxTask.userContext.MatchRole(auxRoles))
+					auxUsers.Add(candidato);
+			}
+			return auxUsers;
+		}
+		private HashSet<string>? BuildFilterSet(string filters)
+		{
+			if (string.IsNullOrWhiteSpace(filters))
+				return null;
+
+			HashSet<string> auxFilters = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+			foreach (string auxFilter in filters.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+			{
+				if (!string.IsNullOrWhiteSpace(auxFilter))
+					auxFilters.Add(auxFilter);
+			}
+			return auxFilters.Count == 0 ? null : auxFilters;
+		}
+		private bool auxHasFilterActive(string config, HashSet<string> filters)
 		{
 			foreach (string linea in config.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries))
 			{
-				if(linea.ToUpper().StartsWith("FILTER:"))
+				if(linea.StartsWith("FILTER:", StringComparison.OrdinalIgnoreCase))
 				{
-					string[] auxBusca = auxReadValueFromKey(linea).Split(',');
+					string[] auxBusca = auxReadValueFromKey(linea).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 					foreach(string palabra in auxBusca)
 					{
 						if (filters.Contains(palabra)) return true;

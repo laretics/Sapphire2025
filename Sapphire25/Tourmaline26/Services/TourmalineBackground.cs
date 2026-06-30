@@ -31,7 +31,7 @@ namespace Tourmaline26.Services
         private DateTime mvarLastDate = DateTime.MinValue; //Uso este valor para cambiar de fecha automáticamente.
 
         private Task<bool>? mvarGpsTask;
-        private Task<MVB8100Data?>? mvarMvbTask;
+        private Task<bool>? mvarMvbTask;
         private Task<bool>? mvarArmanditoTask;
         private Task<bool>? mvarInternetTask;
         private Task<bool>? mvarLocationTask;
@@ -74,6 +74,7 @@ namespace Tourmaline26.Services
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             int cycleCount = 0;
+            mvarLogger.LogInformation("Starting system");
             HMIUpdateRequested?.Invoke(this, EventArgs.Empty); //Actualizamos HMI
             var initTask = Task.Run(async () =>
             {
@@ -83,7 +84,7 @@ namespace Tourmaline26.Services
             DateTime auxLastMeteoCheck = DateTime.Today; //Momento de la última comprobación de la meteorología
             DateTime auxLastPanelsUpdate = DateTime.Today; //Momento de la última actualización de paneles led.            
             DateTime auxLastArmanditoUpdate = DateTime.Today; //Última recepción de mensajes de tierra
-            mvarLogger.LogInformation("TourmalineBackground iniciado.");
+            mvarLogger.LogInformation("System started.");
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
@@ -93,9 +94,11 @@ namespace Tourmaline26.Services
                         mvarScreen++;
                         if (mvarScreen > 1) mvarScreen = 0;
                         mvarNextScreenChange = DateTime.Now.AddSeconds(40);
+                        mvarLogger.LogDebug($"Screen change to {mvarScreen}");
                     }
 
-                    if(null!=mvarGpsTask && mvarGpsTask.IsCompleted)
+                    //Destrucción de tasks en ejecución
+                    if (null != mvarGpsTask && mvarGpsTask.IsCompleted)
                     {
                         if (mvarGpsTask.IsCompletedSuccessfully)
                             mvarTourmaline.SessionConfig.GPSOK = mvarGpsTask.Result;
@@ -103,97 +106,107 @@ namespace Tourmaline26.Services
                             mvarTourmaline.SessionConfig.GPSOK = false;
                         mvarGpsTask = null;
                     }
-                    if(null==mvarGpsTask)
-                        mvarGpsTask = PoolGPS();
-
-                    if (null!=mvarMvbTask && mvarMvbTask.IsCompleted)
+                    if (null != mvarLocationTask && mvarLocationTask.IsCompleted)
+                        mvarLocationTask = null;
+                    if (null != mvarMvbTask && mvarMvbTask.IsCompleted)
                     {
-                        if(!mvarTourmaline.SessionConfig.ServiceMode.MVBDummy)
-                        {
-							if (mvarMvbTask.IsCompletedSuccessfully && null!=mvarMvbTask.Result)
-								mvarTourmaline.SessionConfig.CurrentMVBData = new MVBData(mvarMvbTask.Result);
-							else
-								mvarTourmaline.SessionConfig.CurrentMVBData = null;
-						}                        
                         mvarMvbTask = null;
                     }
-                    if(null == mvarMvbTask)
-                        mvarMvbTask = PoolMVB();
-
                     if (null != mvarInternetTask && mvarInternetTask.IsCompleted)
                     {
-                        if(mvarInternetTask.IsCompletedSuccessfully)
+                        if (mvarInternetTask.IsCompletedSuccessfully)
                             mvarTourmaline.SessionConfig.InternetOK = mvarInternetTask.Result;
                         else
                             mvarTourmaline.SessionConfig.InternetOK = false;
 
                         mvarInternetTask = null;
                     }
-                    if (null == mvarInternetTask) 
-                        mvarInternetTask = PoolInternet();
-
-                    if (null != mvarLocationTask && mvarLocationTask.IsCompleted)
-                        mvarLocationTask = null;
-
-                    if(null==mvarLocationTask)
-                        mvarLocationTask = PoolLinearLocation();
-
-                    if (null != mvarLedPanelsTask && mvarLedPanelsTask.IsCompleted)
-                        mvarLedPanelsTask = null;
-
-                    if (null == mvarLedPanelsTask && auxLastPanelsUpdate <DateTime.Now)
-                    {
-                        mvarLedPanelsTask = PoolLedPanels();
-                        auxLastPanelsUpdate = DateTime.Now.AddSeconds(4);
-                    }                        
-                    
                     if (null != mvarMeteoTask && mvarMeteoTask.IsCompleted)
                         mvarMeteoTask = null;
-                    if (null == mvarMeteoTask && auxLastMeteoCheck < DateTime.Now)
+                    if (null != mvarLedPanelsTask && mvarLedPanelsTask.IsCompleted)
+                        mvarLedPanelsTask = null;
+                    if (null != mvarArmanditoTask && mvarArmanditoTask.IsCompleted)
+                        mvarArmanditoTask = null;
+
+                    //Arranque de tasks
+                    if (null==mvarGpsTask)
                     {
+                        mvarLogger.LogDebug("Pool GPS");
+                        mvarGpsTask = PoolGPS();
+                    }
+                    if (null == mvarLocationTask)
+                    {
+                        mvarLogger.LogDebug("Pool Onix");
+                        mvarLocationTask = PoolLinearLocation();
+                    }
+                    if (null == mvarMvbTask)
+                    {
+                        mvarLogger.LogDebug("Pool MVB");
+                        mvarMvbTask = PoolMVB();
+                    }
+                    if (null == mvarInternetTask)
+                    {
+                        mvarLogger.LogDebug("Pool Internet");
+                        mvarInternetTask = PoolInternet();
+                    }
+                    if (null == mvarMeteoTask 
+                        && mvarTourmaline.SessionConfig.InternetOK 
+                        && auxLastMeteoCheck < DateTime.Now)
+                    {
+                        mvarLogger.LogDebug("Pool Meteo");
                         mvarMeteoTask = PoolMeteo();
                         auxLastMeteoCheck = DateTime.Now.AddSeconds(30);
                     }
-
-                    if (null != mvarArmanditoTask && mvarArmanditoTask.IsCompleted)
-                        mvarArmanditoTask = null;
-                    if(null==mvarArmanditoTask && auxLastArmanditoUpdate < DateTime.Now)
+                    if (null == mvarArmanditoTask
+                        && mvarTourmaline.SessionConfig.InternetOK
+                        && auxLastArmanditoUpdate < DateTime.Now)
                     {
+                        mvarLogger.LogDebug("Pool Armandito");
                         mvarArmanditoTask = PoolArmandito();
                         auxLastArmanditoUpdate = DateTime.Now.AddSeconds(15);
                     }
-                    
+                    if (null == mvarLedPanelsTask && auxLastPanelsUpdate < DateTime.Now)
+                    {
+                        mvarLogger.LogDebug("Pool Led Teleindicators");
+                        mvarLedPanelsTask = PoolLedPanels();
+                        auxLastPanelsUpdate = DateTime.Now.AddSeconds(4);
+                    }
+
+                    if (null != mvarTourmaline.SessionConfig.TNEnvironment)
+                    {
+                        mvarLogger.LogDebug("Setting clock");
+                        mvarTourmaline.SessionConfig.TNEnvironment.Now = DateTime.Now; //Actualizamos la hora actual
+                        if (mvarLastDate.Day != DateTime.Today.Day)
+                        {
+                            mvarLogger.LogDebug("Today is changed");
+                            mvarTourmaline.SessionConfig.TNEnvironment.SetWeekDate(); //Actualiza el día de la semana actual
+                            mvarLastDate = DateTime.Today;
+                        }                        
+                    }
+                    CalculateTelemetry();
+                    mvarTourmaline.RaiseHMIUpdate();
+                    if (cycleCount > 4)
+                    {                        
+                        cycleCount = 0;
+                        PassengerUpdateRequested?.Invoke(this, EventArgs.Empty); //Actualizamos TFT
+                        mvarLogger.LogDebug("Passenger mode updated");
+                        mvarTourmaline.RaisePassengerUpdate();
+                    }
+                    cycleCount++;
                 }
                 catch (Exception ex)
                 {
-                    mvarLogger.LogError(ex, "Error en el ciclo de TourmalineBackground.");
+                    mvarLogger.LogError(ex, "Critical in main loop.");
                 }
                 try
                 {
 					await Task.Delay(500, stoppingToken);
 				}
                 catch(TaskCanceledException)
-                { }                
-                if(null!=mvarTourmaline.SessionConfig.TNEnvironment)
-                {
-					mvarTourmaline.SessionConfig.TNEnvironment.Now = DateTime.Now; //Actualizamos la hora actual
-                    if(mvarLastDate.Day!=DateTime.Today.Day)
-						mvarTourmaline.SessionConfig.TNEnvironment.SetWeekDate(); //Actualiza el día de la semana actual
-                    mvarLastDate = DateTime.Today;
-				}
-                CalculateTelemetry();
-                mvarTourmaline.RaiseHMIUpdate();
-                if (cycleCount > 4)
-                {
-                    cycleCount = 0;
-                    PassengerUpdateRequested?.Invoke(this, EventArgs.Empty); //Actualizamos TFT
-                    mvarTourmaline.RaisePassengerUpdate();
-                }
-                cycleCount++;
+                { }                               
             }
-            mvarLogger.LogInformation("TourmalineBackground detenido.");
+            mvarLogger.LogInformation("Stopped!");
         }
-
         private async Task<bool> PoolMeteo()
         {
             if (mvarTourmaline.SessionConfig.InternetEnabled)
@@ -204,7 +217,7 @@ namespace Tourmaline26.Services
                 }
                 catch (Exception ex)
                 {
-                    mvarLogger.LogError(ex, "Error al obtener datos de meteorología. {0}", ex.Message);
+                    mvarLogger.LogError(ex, "Critical in Meteo pooling");
                 }
             }
             return false;
@@ -230,12 +243,13 @@ namespace Tourmaline26.Services
                         nuevo.SpeedKmh = auxTelemetry.Speed;
                         nuevo.Time = DateTime.Now;
                         mvarTourmaline.SessionConfig.CurrentGPSData = nuevo;
+                        mvarLogger.LogDebug("Dummy location from Tourmaline Experience");
                         return true;
                     }
                 }
                 catch(Exception ex)
                 {
-                    mvarLogger.LogError(ex, "Error al obtener datos dummy de localización desde Tourmaline Experience. {0}", ex.Message);
+                    mvarLogger.LogError(ex, "Critical reading Dummy location from Tourmaline Experience");
                 }
             }
             else
@@ -253,15 +267,12 @@ namespace Tourmaline26.Services
                     }
                     catch (Exception ex)
                     {
-                        mvarLogger.LogError(ex, "Error al obtener datos de localización GPS. {0}", ex.Message);
+                        mvarTourmaline.SessionConfig.CurrentGPSData = null;
+                        mvarLogger.LogError(ex, "Critical in GPS pooling");                        
                     }
                 }
-                else
-                {
-                    //Si no tengo localización por satélite, devuelvo null.
-                    mvarTourmaline.SessionConfig.CurrentGPSData = null;
-                }
             }
+            mvarTourmaline.SessionConfig.CurrentGPSData = null;
             return false;
         }
         //Activamos la localización del tren (si es posible)
@@ -295,52 +306,54 @@ namespace Tourmaline26.Services
                 {
                     auxEnvironment.PK = mvarTourmaline.SessionConfig.LinearLocation.PKRef;
                     auxEnvironment.Axis = mvarTourmaline.SessionConfig.LinearLocation.Axis;
+                    return true;
                 }
             }
             return false;
         }
-        private async Task<MVB8100Data?> PoolMVB()
+        private async Task<bool> PoolMVB()
         {
-            if(!mvarMVBService.IsOK)
-            {
-                mvarTourmaline.SessionConfig.ServiceMode.MVBEnabled = false;
-                mvarTourmaline.SessionConfig.ServiceMode.MVBDummy = true;
-            }
+            mvarTourmaline.SessionConfig.CurrentMVBData = new MVBData();
 
-            if (mvarTourmaline.SessionConfig.ServiceMode.MVBEnabled)
+            if (mvarTourmaline.SessionConfig.ServiceMode.MVBDummy)
+            {            
+                mvarTourmaline.SessionConfig.MVBLastUpdate = DateTime.Now;
+                return true;
+            }
+            else
             {
-                try
-                {                    
-                    MVB8100Data? salida = await mvarMVBService.GetMVBDataAsync();
-                    if (null != salida)
+                if (mvarTourmaline.SessionConfig.ServiceMode.MVBEnabled)
+                {
+                    try
                     {
-                        mvarTourmaline.SessionConfig.MVBLastUpdate = DateTime.Now;
-                        mvarTourmaline.SessionConfig.MVBError = string.Empty;
-                        return salida;
+                        MVB8100Data? salida = await mvarMVBService.GetMVBDataAsync();
+                        if (null != salida)
+                        {
+                            mvarTourmaline.SessionConfig.MVBLastUpdate = DateTime.Now;
+                            mvarTourmaline.SessionConfig.MVBError = string.Empty;
+                            mvarTourmaline.SessionConfig.CurrentMVBData = new MVBData(salida);
+                            return true;
+                        }
+                        else
+                            mvarLogger.LogWarning("MVB data from GetMVBDataAsync() is null");
+                    }
+                    catch (TimeoutException ex)
+                    {
+                        mvarLogger.LogWarning(ex, "Timeout en MVB.");
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        mvarLogger.LogError(ex, "Critical in MVB");
+                        mvarTourmaline.SessionConfig.MVBError = ex.Message;
                     }
                 }
-                catch (TimeoutException ex)
-                {
-                    mvarLogger.LogWarning(ex, "Timeout en MVB.");
-                }
-                catch (Exception ex)
-                {
-                    mvarLogger.LogError(ex, "Error al obtener datos MVB. {0}", ex.Message);
-                    mvarTourmaline.SessionConfig.MVBError = ex.Message;
-                }
             }
-            else if (mvarTourmaline.SessionConfig.ServiceMode.MVBDummy)
-            {
-                if(null==mvarTourmaline.SessionConfig.CurrentMVBData)
-                {
-                    mvarTourmaline.SessionConfig.CurrentMVBData = new MVBData();
-                    mvarTourmaline.SessionConfig.MVBLastUpdate = DateTime.Now;
-                }
-            }
-            return null;
+            return false;
         }
         private async Task<bool> PoolInternet()
         {
+            //Comprobación si hay internet, contra una dirección conocida y fiable.
             if (mvarTourmaline.SessionConfig.InternetEnabled)
             {
                 try
@@ -348,13 +361,15 @@ namespace Tourmaline26.Services
                     using HttpClient auxClient = new HttpClient();
                     auxClient.Timeout = TimeSpan.FromSeconds(3);
                     using HttpResponseMessage response = await auxClient.GetAsync("https://www.google.com");
-                    return response.IsSuccessStatusCode;
+                    mvarTourmaline.SessionConfig.InternetOK = response.IsSuccessStatusCode;
+                    return mvarTourmaline.SessionConfig.InternetOK;
                 }
                 catch (Exception ex)
                 {
-                    mvarLogger.LogWarning(ex, "Error comprobando conexión a Internet");
+                    mvarLogger.LogWarning(ex, "No internet");
                 }
             }
+            mvarTourmaline.SessionConfig.InternetOK = false;
             return false;
         }
 

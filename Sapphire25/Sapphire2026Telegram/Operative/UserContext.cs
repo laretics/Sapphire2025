@@ -47,7 +47,7 @@ namespace Sapphire2026Telegram.Operative
 			mvarUser = await client.userByTelegramId(mvarTelegramId);			
 		}
 
-		internal bool MatchRole(Common.UserRole[] roles)
+		internal bool MatchRole(ISet<Common.UserRole> roles)
 		{
 			if(null!=mvarUser)
 			{
