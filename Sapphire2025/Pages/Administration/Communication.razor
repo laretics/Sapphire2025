@@ -84,9 +84,9 @@
             ];
 
             if (await AeneasClient.TelegramBroadcast(MensajeTelegram, false, roles))
-                EstadoTelegram = "Error en el envío del mensaje";
-            else
                 EstadoTelegram = "Mensaje enviado por Telegram.";
+            else
+                EstadoTelegram = "Error en el envío del mensaje";                
 
             MensajeTelegram = string.Empty;
 
