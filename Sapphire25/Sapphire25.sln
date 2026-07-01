@@ -32,6 +32,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapphire2026Clients", "Sapp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapphire26BotSoulTest", "Sapphire26BotSoulTest\Sapphire26BotSoulTest.csproj", "{EF482C41-B1BB-498F-8358-E436C29AB752}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppSettingsEditor", "AppSettingsEditor\AppSettingsEditor.csproj", "{B8492C52-0A36-453C-880C-22BE1C4F216E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -136,6 +138,14 @@ Global
 		{EF482C41-B1BB-498F-8358-E436C29AB752}.Release|Any CPU.Build.0 = Release|Any CPU
 		{EF482C41-B1BB-498F-8358-E436C29AB752}.Release|x64.ActiveCfg = Release|Any CPU
 		{EF482C41-B1BB-498F-8358-E436C29AB752}.Release|x64.Build.0 = Release|Any CPU
+		{B8492C52-0A36-453C-880C-22BE1C4F216E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8492C52-0A36-453C-880C-22BE1C4F216E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8492C52-0A36-453C-880C-22BE1C4F216E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B8492C52-0A36-453C-880C-22BE1C4F216E}.Debug|x64.Build.0 = Debug|Any CPU
+		{B8492C52-0A36-453C-880C-22BE1C4F216E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8492C52-0A36-453C-880C-22BE1C4F216E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8492C52-0A36-453C-880C-22BE1C4F216E}.Release|x64.ActiveCfg = Release|Any CPU
+		{B8492C52-0A36-453C-880C-22BE1C4F216E}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

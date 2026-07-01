@@ -11,7 +11,10 @@ namespace Tourmaline26.Services
         private readonly HttpClient mvarHttpClient;
         private ILogger<MVBService> mvarLogger;
         private readonly string mvarUrl;
-        private int mvarRetries = 5; //Intentos hasta deshabilitar MVB.
+        private int DEFAULT_MAX_RETRIES => 5;
+        private int mvarRetries; //Intentos hasta deshabilitar MVB.
+        private readonly int mvarMaxRetries; //Intentos máximos hasta deshabilitar MVB.
+        
 
         public MVBService(
             HttpClient mvarHttpClient, 
@@ -23,12 +26,12 @@ namespace Tourmaline26.Services
             this.mvarLogger = logger;
             mvarUrl = config.GetSection("SystemConfiguration")["MVBUrl"] ?? string.Empty;
             if (mvarUrl.Length < 1)
-            {
-				mvarLogger.LogError("MVB parameter missing in configuration");
-			}
-                
+                mvarLogger.LogError("MVB parameter missing in configuration");
+            string auxNum = config.GetSection("SystemConfiguration")["MVBRetries"] ?? DEFAULT_MAX_RETRIES.ToString();
+            if (!int.TryParse(auxNum, out mvarMaxRetries))
+                mvarMaxRetries = DEFAULT_MAX_RETRIES;
         }
-        public bool IsOK { get => mvarUrl.Length > 0; }
+        public bool IsOK { get => mvarUrl.Length > 0 && mvarRetries>0; }
         public async Task<MVB8100Data?> GetMVBDataAsync()
         {
             if (mvarRetries < 1) 
@@ -43,9 +46,11 @@ namespace Tourmaline26.Services
                 return JsonSerializer.Deserialize<MVB8100Data>(jsonString);
             }
             catch (TaskCanceledException ex)
-            {
-                mvarLogger.LogError("MVB error: Timeout");
+            {                
                 mvarRetries--;
+                mvarLogger.LogError($"MVB error: Timeout. {mvarRetries} retries.");
+                if (mvarRetries < 1)
+                    mvarLogger.LogError("MVB intents exceeded");
                 throw new TimeoutException("Timeout while trying to get MVB data");
             }
             catch (Exception ex)

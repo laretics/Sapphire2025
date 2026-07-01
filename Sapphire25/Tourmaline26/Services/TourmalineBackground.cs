@@ -139,8 +139,8 @@ namespace Tourmaline26.Services
                         mvarLogger.LogDebug("Pool Onix");
                         mvarLocationTask = PoolLinearLocation();
                     }
-                    if (null == mvarMvbTask)
-                    {
+                    if (null == mvarMvbTask && mvarMVBService.IsOK)
+                    {                        
                         mvarLogger.LogDebug("Pool MVB");
                         mvarMvbTask = PoolMVB();
                     }
