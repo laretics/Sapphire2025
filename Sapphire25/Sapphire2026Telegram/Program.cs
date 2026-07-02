@@ -37,5 +37,7 @@ builder.Services.AddScoped<ExpertClient>();
 builder.Services.AddScoped<TimeNetClient>();
 builder.Services.AddSystemd();
 
+builder.Logging.SetMinimumLevel(LogLevel.Debug);
+
 var host = builder.Build();
 await host.RunAsync();

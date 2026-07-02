@@ -42,7 +42,7 @@ namespace Sapphire2026Telegram
 			{
 				if (int.TryParse(config["TelegramBot:BroadcastParallelism"], out int value) && value > 0)
 					return value;
-				return 4;
+				return 8;
 			}
 		}
 		private int BroadcastMessagesPerMinute
@@ -51,7 +51,7 @@ namespace Sapphire2026Telegram
 			{
 				if (int.TryParse(config["TelegramBot:BroadcastMessagesPerMinute"], out int value) && value > 0)
 					return value;
-				return 20;
+				return 240;
 			}
 		}
 		private TimeSpan BroadcastSendTimeout
@@ -60,7 +60,7 @@ namespace Sapphire2026Telegram
 			{
 				if (int.TryParse(config["TelegramBot:BroadcastSendTimeoutSeconds"], out int value) && value > 0)
 					return TimeSpan.FromSeconds(value);
-				return TimeSpan.FromSeconds(20);
+				return TimeSpan.FromSeconds(10);
 			}
 		}
 		private TimeSpan BroadcastMinimumGap { get => TimeSpan.FromMinutes(1d / BroadcastMessagesPerMinute); }
@@ -254,7 +254,7 @@ namespace Sapphire2026Telegram
 			try
 			{
 				await WaitForBroadcastSlotAsync(cancellationToken);
-				await SendBroadcastMessageWithTimeout(usuario.TelegramId, message, cancellationToken);
+				await SendBroadcastMessageWithTimeout(usuario.TelegramId, message,usuario.Name??"Unknown", cancellationToken);
 			}
 			catch (Telegram.Bot.Exceptions.ApiRequestException ex) when (ex.ErrorCode == 403)
 			{
@@ -269,7 +269,7 @@ namespace Sapphire2026Telegram
 				try
 				{
 					await WaitForBroadcastSlotAsync(cancellationToken);
-					await SendBroadcastMessageWithTimeout(usuario.TelegramId, message, cancellationToken);
+					await SendBroadcastMessageWithTimeout(usuario.TelegramId,  message, usuario.Name??"Unknown", cancellationToken);
 				}
 				catch (Telegram.Bot.Exceptions.ApiRequestException retryEx) when (retryEx.ErrorCode == 429)
 				{
@@ -289,8 +289,9 @@ namespace Sapphire2026Telegram
 				mvarLogger.LogError(ex, "Error enviando mensaje a {ChatId}", usuario.Name);
 			}
 		}
-		private async Task SendBroadcastMessageWithTimeout(long telegramId, string message, CancellationToken cancellationToken)
+		private async Task SendBroadcastMessageWithTimeout(long telegramId, string message, string userId,CancellationToken cancellationToken)
 		{
+			mvarLogger.LogDebug($"Broadcast to {telegramId} ({userId})");
 			await mvarBot!.SendMessage(telegramId, message).WaitAsync(BroadcastSendTimeout, cancellationToken);
 		}
 		private async Task WaitForBroadcastSlotAsync(CancellationToken cancellationToken)
