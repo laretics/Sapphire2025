@@ -1,7 +1,4 @@
-﻿@using Sapphire2025.Icons.Actions
-@using Sapphire2025.Icons.Commands
-@using Sapphire2025.Icons.Headers
-@using Sapphire2025.Icons
+﻿@using Sapphire2025.Icons
 @using Sapphire2025Models.GMao
 @inject IntStorageService mvarIntStorage
 @inject AeneasClient mvarAeneasClient
@@ -11,19 +8,19 @@
 		<thead class="table-secondary text-light">
 			<tr>
 				<th class="col-3" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
-					<Exec color="white" />
+					<GenIcon Name="Exec" Color="white"/>
 				</th>
 				<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(2))">
-					<EventDateTime color="white" /> <span>Solicitud</span>
+					<GenIcon Name="EventDateTime" Color="white" /> <span>Solicitud</span>					
 				</th>
 				<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(3))">
-					<EventDateTime color="white" /> <span>Inicio</span>
+					<GenIcon Name="EventDateTime" Color="white" /> <span>Inicio</span>
 				</th>
 				<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(4))">
-					<EventDateTime color="white" /> <span>Cierre</span>
+					<GenIcon Name="EventDateTime" Color="white" /> <span>Cierre</span>
 				</th>
 				<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(5))">
-					<EventDateTime color="white" /> <span>Verificación</span>
+					<GenIcon Name="EventDateTime" Color="white" /> <span>Verificación</span>
 				</th>
 			</tr>
 		</thead>
@@ -40,7 +37,7 @@
 						@orderCatalogName(order)
 					</td>
 					<td style="border-right:1px solid #dee2e6;">
-						<CheckBox Checked="true"  Color="gray"/>
+						<GenIcon Name="CheckBoxChecked" Color="gray"/>
 						<span>@Sapphire2025Models.Utils.autoDate(order.RequestTime)</span>
 						@if(null!=requestUser)
 						{
@@ -53,9 +50,9 @@
 						}
 					</td>
 					<td style="border-right:1px solid #dee2e6;">
-						@if(order.Rejected)
+						@if(order.Rejected)						
 						{
-							<Trash Color="gray"/>
+							<GenIcon Name="Trash" Color="gray"/>
 							@if(null!=verifyUser)
 							{
 								<span>
@@ -70,7 +67,7 @@
 						{
 							@if(null!=openUser)
 							{
-								<CheckBox Checked="true" Color="gray"/>
+								<GenIcon Name="CheckBoxChecked" Color="gray" />
 								<span>@Sapphire2025Models.Utils.autoDate(order.OpenTime)</span>
 								<span>
 									<RoleIcon Credentials="openUser.CredentialKey" Color="gray"></RoleIcon>
@@ -82,10 +79,10 @@
 							else
 							{
 								<button type="button" class="btn btn-link p-0" @onclick="() => HandleOpenClicked(order)">
-									<CheckBox Checked="false" Color="black" />
+									<GenIcon Name="CheckBox" Color="black" />
 								</button>
 								<button type="button" class="btn btn-link p-0" @onclick="() => HandleRejectOpenClicked(order)" >
-									<Trash Color="black"/>
+									<GenIcon Name="Trash" Color="black" />
 								</button>																	
 							}
 						}
@@ -95,11 +92,11 @@
 						<td style="border-right:1px solid #dee2e6;">
 							@if(null==openUser)
 							{
-								<CheckBox Checked="false" Color="gray" />
+								<GenIcon Name="CheckBox" Color="gray" />
 							}
 							else if(null!=closeUser)
 							{
-								<CheckBox Checked="true" Color="gray" />
+								<GenIcon Name="CheckBoxChecked" Color="gray" />
 								<span>@Sapphire2025Models.Utils.autoDate(order.CloseTime)</span>
 								<span>
 									<RoleIcon Credentials="closeUser.CredentialKey" Color="gray"></RoleIcon>
@@ -111,18 +108,18 @@
 							else
 							{
 								<button type="button" class="btn btn-link p-0" @onclick="() => HandleCompleteClicked(order)">
-									<CheckBox Checked="false" Color="black"/>
+									<GenIcon Name="CheckBox" Color="black" />
 								</button>									
 							}
 						</td>
 						<td style="border-right:1px solid #dee2e6;">
 							@if(null==openUser||null==closeUser)
 							{
-								<CheckBox Checked="false" Color="gray" />
+								<GenIcon Name="CheckBox" Color="gray" />
 							}
 							else if(null!=verifyUser)
 							{
-								<CheckBox Checked="true" Color="gray" />
+								<GenIcon Name="CheckBoxChecked" Color="gray" />
 								<span>@Sapphire2025Models.Utils.autoDate(order.VerifyTime)</span>
 								<span>
 									<RoleIcon Credentials="verifyUser.CredentialKey" Color="gray"></RoleIcon>
@@ -134,7 +131,7 @@
 							else
 							{
 								<button type="button" class="btn btn-link p-0" @onclick="() => HandleVerifyClicked(order)">
-									<CheckBox Checked="false" Color="black"  />
+									<GenIcon Name="CheckBox" Color="black" />
 								</button>									
 							}
 						</td>

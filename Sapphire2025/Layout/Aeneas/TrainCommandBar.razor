@@ -1,19 +1,14 @@
 ﻿@using Sapphire2025Models.GMao
+@using Sapphire2025Models
 @inject AeneasClient mvarAeneasClient
 @inject NavigationManager mvarNavigationManager
 @inject IntStorageService mvarIntStorage
 <ModalDialog @ref="mvarConfirmationDialog" OnClose="OnConfirmClose" />
 <div class="btn-toolbar mb-3" role="toolbar" aria-label="Opciones del tren">
 	<div class="btn-group me-2" role="group" aria-label="Operaciones primarias">
-		@foreach (TrainCommand cmd in Commands.Where(c => c.ShowIf()))
+		@foreach(TrainCommand cmd in Commands)
 		{
-			<Button Class="@cmd.CssClass" @onclick="@cmd.Action">
-				@if (null != cmd.Icon)
-				{
-					@cmd.Icon
-				}
-				@cmd.Label
-			</Button>
+			<TrainCommandButton Command="@cmd"/>
 		}
 	</div>
 </div>
@@ -52,252 +47,256 @@
 
 	private bool HasPendantWork => mcolPendants.Any();
 
-	private List<TrainCommand> Commands => new()
+	private bool HasPendantWash => mcolPendants.Where(x => x.WorkType == Common.WorkOrderTypeManualWash ||
+									x.WorkType == Common.WorkOrderTypePlatformWash ||
+									x.WorkType == Common.WorkOrderTypeTunnelWash).Any();
+
+	private List<TrainCommand> Commands
 	{
-		new TrainCommand
+		get
 		{
-			Label="Parte de Incidencia",
-			ShowIf = () => trainInCirculation || isAnonymous,
-			Action = openFailureReport,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Actions.AddReport>(0);
-				b.AddAttribute(1,"color","gray");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Material Disponible",
-			ShowIf = () => (isOfficial || isExpert) && 
-			(currentStatus == Sapphire2025Models.Common.TrainStatus.RequestToDiagnose) 
-			&& !HasPendantWork,			
-			Action = diagnoseToAvailable,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Status.Available>(0);
-				b.AddAttribute(1,"color","gray");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Retirar",
-			ShowIf = () => (isOfficial || isExpert) && (currentStatus == Sapphire2025Models.Common.TrainStatus.RequestToDiagnose)
-			&& !HasPendantWork,
-			Style="outline-warning",
-			Action = diagnoseToFault,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Status.RequestToRepair>(0);
-				b.AddAttribute(1,"color","yellow");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Retirar a Reparar",
-			ShowIf = () => isStation && (currentStatus== Sapphire2025Models.Common.TrainStatus.RequestToRepair)
-			&& !HasPendantWork,
-			Style="outline-warning",
-			Action = sendToCorrective,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Status.Repairing>(0);
-				b.AddAttribute(1,"color","yellow");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Reparación Terminada",
-			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.Repairing)
-			&& !HasPendantWork,
-			Style="outline-success",
-			Action = sendToAvailable,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Status.Available>(0);
-				b.AddAttribute(1,"color","green");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Solicitar Mantenimiento",
-			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.Available)
-			&& !HasPendantWork,
-			Action = requestMaintenance,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Status.DepotRequested>(0);
-				b.AddAttribute(1,"color","gray");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Lavado Manual",
-			ShowIf = () => isMechanic && 
-			(currentStatus==Sapphire2025Models.Common.TrainStatus.DepotAvailable ||
-				currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance)
-				&& !HasPendantWork,
-				Action= requestManualWash,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Actions.Wash>(0);
-				b.AddAttribute(1,"color","#a02020");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Lavado en Andén",
-			ShowIf = () => isMechanic &&
-			(currentStatus==Sapphire2025Models.Common.TrainStatus.DepotAvailable ||
-				currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance)
-				&& !HasPendantWork,
-				Action= requestPlatformWash,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Actions.Wash>(0);
-				b.AddAttribute(1,"color","#a0a020");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Lavado en Túnel",
-			ShowIf = () => isMechanic && // isStation &&  //Antes podían también los gestores.
-			(currentStatus==Sapphire2025Models.Common.TrainStatus.DepotAvailable ||
-				currentStatus== Sapphire2025Models.Common.TrainStatus.Available)
-				&& !HasPendantWork,
-				Action= requestTunnelWash,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Actions.Wash>(0);
-				b.AddAttribute(1,"color","@2020a0");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Fin Lavado",
-			ShowIf =() => isMechanic
-			&& !HasPendantWork,
-			Action = requestWashingEnd,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Actions.Wash>(0);
-				b.AddAttribute(1,"color","@2020a0");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Anular Solicitud Mantenimiento",
-			ShowIf = () => isOfficial && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested)
-			&& !HasPendantWork,
-			Action = undoSendToMaintenance,
-			Style="warning",
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Status.Available>(0);
-				b.AddAttribute(1,"color","yellow");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Retirar a Mantenimiento",
-			ShowIf = () => isStation && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotRequested)
-			&& !HasPendantWork,
-			Action = acceptSendToMaintenance,			
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Status.DepotAvailable>(0);
-				b.AddAttribute(1,"color","gray");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Ceder a Circulación",
-			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotAvailable)
-			&& !HasPendantWork,
-			Action = rescueFromMaintenance,
-			Style="outline-warning",
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Status.DepotRequested>(0);
-				b.AddAttribute(1,"color","gray");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Empezar Intervención",
-			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.DepotAvailable)
-			&& !HasPendantWork,
-			Action = sendToMaintenance,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Status.Maintenance>(0);
-				b.AddAttribute(1,"color","gray");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Terminar Intervención",
-			ShowIf = () => isMechanic && (currentStatus== Sapphire2025Models.Common.TrainStatus.Maintenance)
-			&& !HasPendantWork,
-			Action = endMaintenance,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Status.Available>(0);
-				b.AddAttribute(1,"color","green");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Iniciar Tren (Correctivo)",
-			ShowIf = () => isOfficial && (currentStatus== Sapphire2025Models.Common.TrainStatus.Unknown)
-			&& !HasPendantWork,
-			Action = sendToCorrective,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Status.Repairing>(0);
-				b.AddAttribute(1,"color","gray");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Stand Still",
-			ShowIf = () => isEngineer && readyForStandStill
-			&& !HasPendantWork,
-			Action = sendToStandStill,
-			Style="outline-danger",
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Status.StandStill>(0);
-				b.AddAttribute(1,"color","red");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Reactivar",
-			ShowIf = () => isEngineer && (currentStatus == Sapphire2025Models.Common.TrainStatus.StandStill)
-			&& !HasPendantWork,
-			Action = sendToCorrective,
-			Style="outline-primary",
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Status.Repairing>(0);
-				b.AddAttribute(1,"color","blue");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Baja Definitiva",
-			ShowIf = () => isEngineer && (currentStatus == Sapphire2025Models.Common.TrainStatus.StandStill)
-			&& !HasPendantWork,
-			Action = sendToDisabled,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Status.Disabled>(0);
-				b.AddAttribute(1,"color","gray");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Rehabilitar",
-			ShowIf = () => isEngineer && (currentStatus == Sapphire2025Models.Common.TrainStatus.Disabled)
-			&& !HasPendantWork,
-			Action = sendToStandStill,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Status.StandStill>(0);
-				b.AddAttribute(1,"color","gray");
-				b.CloseComponent();}))
-		},
-		new TrainCommand
-		{
-			Label="Nota",
-			ShowIf = () => isAnonymous,
-			Action = onAddNote,
-			Icon = builder => builder.AddContent(0,(RenderFragment) (b =>
-			{b.OpenComponent<Sapphire2025.Icons.Actions.WriteNote>(0);
-				b.AddAttribute(1,"color","gray");
-				b.CloseComponent();}))
+			List<TrainCommand> salida = new List<TrainCommand>();
+			if (isOfficial && currentStatus == Common.TrainStatus.Unknown)
+			{
+				salida.Add(new TrainCommand
+				{
+					Label = "Iniciar Nuevo Tren",
+					Action = sendToCorrective,
+					IconId = "StatusRepairing",
+					IconColor = "gray",
+					Enabled = true
+				});
+			}
+			else
+			{
+				if (trainInCirculation || isAnonymous)
+				{
+					salida.Add(new TrainCommand
+					{
+						Label = "Parte de Incidencia",
+						Action = openFailureReport,
+						IconId = "AddReport",
+						IconColor = "gray"
+					});
+				}
+				if (isOfficial || isExpert)
+				{
+					if (currentStatus == Common.TrainStatus.RequestToDiagnose)
+					{
+						salida.Add(new TrainCommand
+						{
+							Label = "Material Disponible",
+							Action = diagnoseToAvailable,
+							IconId = "StatusAvailable",
+							IconColor = "gray",
+							Enabled = !HasPendantWork
+						});
+						salida.Add(new TrainCommand
+						{
+							Label = "Retirar",
+							Action = diagnoseToFault,
+							Style = "outline-warning",
+							IconId = "StatusAvailable",
+							IconColor = "yellow",
+							Enabled = !HasPendantWork
+						});
+					}
+				}
+				if (isStation)
+				{
+					if (currentStatus == Common.TrainStatus.RequestToRepair)
+					{
+						salida.Add(new TrainCommand
+						{
+							Label = "Retirar a Reparar",
+							Action = sendToCorrective,
+							Style = "outline-warning",
+							IconId = "StatusRepairing",
+							IconColor = "yellow",
+							Enabled = !HasPendantWork
+						});
+					}
+				}
+				if (isMechanic)
+				{
+					if (currentStatus == Common.TrainStatus.Repairing)
+					{
+						salida.Add(new TrainCommand
+						{
+							Label = "Reparación Terminada",
+							Action = sendToAvailable,
+							Style = "outline-success",
+							IconId = "StatusAvailable",
+							IconColor = "green",
+							Enabled = !HasPendantWork
+						});
+					}
+					if (currentStatus == Common.TrainStatus.Available)
+					{
+						salida.Add(new TrainCommand
+						{
+							Label = "Solicitar Preventivo",
+							Action = requestMaintenance,
+							IconId = "StatusDepotRequested",
+							IconColor = "gray",
+							Enabled = !HasPendantWork
+						});
+					}
+					if (!HasPendantWork)
+					{
+						salida.Add(new TrainCommand
+						{
+							Label = "Sol. Lavado Manual",
+							Action = requestManualWash,
+							IconId = "Wash",
+							IconColor = "#a02020",
+							Enabled = true
+						});
+						salida.Add(new TrainCommand
+						{
+							Label = "Sol. Lavado Andén",
+							Action = requestPlatformWash,
+							IconId = "Wash",
+							IconColor = "#a0a020",
+							Enabled = true
+						});
+					}
+				}
+				if ((isMechanic || isStation) && !HasPendantWork)
+				{
+					salida.Add(new TrainCommand
+					{
+						Label = "Sol. Lavado Túnel",
+						Action = requestTunnelWash,
+						IconId = "Wash",
+						IconColor = "#2020a0",
+						Enabled = true
+					});
+				}
+				if ((isMechanic || isStation) && HasPendantWash)
+				{
+					salida.Add(new TrainCommand
+					{
+						Label = "Fin de Lavado",
+						Action = requestWashingEnd,
+						IconId = "Wash",
+						Style = "outline-success",
+						IconColor = "green",
+						Enabled = true
+					});
+				}
+				if (isOfficial && currentStatus == Common.TrainStatus.DepotRequested)
+				{
+					salida.Add(new TrainCommand
+					{
+						Label = "Anular Solicitud Preventivo",
+						Action = undoSendToMaintenance,
+						IconId = "StatusAvailable",
+						Style = "warning",
+						IconColor = "yellow",
+						Enabled = !HasPendantWork
+					});
+				}
+				if (isStation)
+				{
+					salida.Add(new TrainCommand
+					{
+						Label = "Retirar (Mantenimiento)",
+						Action = acceptSendToMaintenance,
+						IconId = "StatusDepotAvailable",
+						IconColor = "gray",
+						Enabled = !HasPendantWork && currentStatus == Common.TrainStatus.DepotRequested
+					});
+				}
+				if (isMechanic)
+				{
+					salida.Add(new TrainCommand
+					{
+						Label = "Ceder a Circulación",
+						Action = rescueFromMaintenance,
+						IconId = "StatusAvailable",
+						Style = "outline-warning",
+						IconColor = "gray",
+						Enabled = !HasPendantWork && currentStatus == Common.TrainStatus.DepotAvailable
+					});
+					salida.Add(new TrainCommand
+					{
+						Label = "Preventivo",
+						Action = sendToMaintenance,
+						IconId = "StatusMaintenance",
+						IconColor = "gray",
+						Enabled = !HasPendantWork && currentStatus == Common.TrainStatus.DepotAvailable
+					});
+					salida.Add(new TrainCommand
+					{
+						Label = "Finalizar Preventivo",
+						Action = endMaintenance,
+						IconId = "StatusAvailable",
+						IconColor = "green",
+						Enabled = !HasPendantWork && currentStatus == Common.TrainStatus.Maintenance
+					});
+				}
+				if(isEngineer)
+				{
+					if(readyForStandStill)
+					{
+						salida.Add(new TrainCommand
+						{
+							Label = "Stand-Still",
+							Action = sendToStandStill,
+							IconId = "StatusStandStill",
+							Style = "outline-danger",
+							IconColor = "red",
+							Enabled = !HasPendantWork
+						});
+					}
+					if(currentStatus== Common.TrainStatus.StandStill)
+					{
+						salida.Add(new TrainCommand
+						{
+							Label = "Reactivar",
+							Action = sendToCorrective,
+							IconId = "StatusRepairing",
+							Style = "outline-primary",
+							IconColor = "blue",
+							Enabled = !HasPendantWork
+						});
+						salida.Add(new TrainCommand
+						{
+							Label = "Baja Definitiva",
+							Action = sendToDisabled,
+							IconId = "StatusDisabled",
+							IconColor = "gray",
+							Enabled = true
+						});
+					}
+					if(currentStatus==Common.TrainStatus.Disabled)
+					{
+						salida.Add(new TrainCommand
+						{
+							Label = "Rehabilitar",
+							Action = sendToStandStill,
+							IconId = "StatusStandStill",
+							IconColor = "gray",
+							Enabled = true
+						});
+					}
+
+				}
+				if (trainInCirculation || isAnonymous)
+				{
+					salida.Add(new TrainCommand
+					{
+						Label = "Nota",
+						Action = onAddNote,
+						IconId = "WriteNote",
+						IconColor = "gray"
+					});
+				}
+			}
+			return salida;
 		}
-	};
+	}	
 
 	private bool isAnonymous { get => Sapphire2025Models.Utils.isAnonymous(mvarSession); }
 	private bool isStation { get => Sapphire2025Models.Utils.isStation(mvarSession); }
@@ -426,6 +425,28 @@ Train.id);
 		if (!confirmado) return;
 
 		await mvarAeneasClient.TerminateWashing(Train.id);
+		endCommand();
+	}
+	private async Task AcceptWashRequest()
+	{
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			$"Lavado de {Train.name}",
+			$"¿Autoriza el inicio del lavado?");
+		if (!confirmado) return;
+
+		//TODO: Inicio del proceso de lavado en AeneasClient.
+		endCommand();
+	}
+	private async Task DenyWashRequest()
+	{
+		System.Diagnostics.Debug.Assert(null != Train);
+		bool confirmado = await ConfirmAsync(
+			$"Lavado de {Train.name}",
+			$"¿Quiere denegar la petición de lavado?");
+		if (!confirmado) return;
+
+		//TODO: Transacción de denegación de lavado.
 		endCommand();
 	}
 	private async Task acceptSendToMaintenance()

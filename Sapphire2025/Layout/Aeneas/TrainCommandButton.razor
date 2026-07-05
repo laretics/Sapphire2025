@@ -1,0 +1,19 @@
+﻿@using Sapphire2025.Icons
+<Button Class="@Command.CssClass" 
+    @onclick="@Command.Action"
+    Disabled="@(!Command.Enabled)">
+    @if(null==Command.IconColor)
+    {
+        <GenIcon Name="@Command.IconId" />
+    }
+    else
+    {
+        <GenIcon Name="@Command.IconId" Color="@Command.IconColor" />
+    }
+    @Command.Label
+</Button>
+
+@code {
+    [Parameter] 
+    required public TrainCommand Command{ get; set; }
+}
