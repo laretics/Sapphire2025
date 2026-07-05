@@ -30,7 +30,7 @@
 			@foreach (TrainModel train in mcolTrains)
 			{
 				<tr @onclick="@(e => OnTrainClick(train))">
-					<td class="truncate" style="background-color: @trainColor(train)">
+					<td class="truncate" style="background-color: @trainColor(train); color: @(train.Locked ? "red" : "default")">
 						@train.name
 					</td>
 					<td class="truncate">

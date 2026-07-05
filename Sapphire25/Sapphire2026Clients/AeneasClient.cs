@@ -125,15 +125,7 @@ namespace Sapphire2025.Storage
 			return false;	
 		}
 
-		//Actualiza el lavado del tren
-		public async Task<bool> UpdateWash(TrainModel train)
-		{
-			string jsonData = System.Text.Json.JsonSerializer.Serialize(train);
-			HttpResponseMessage respuesta = await sendPostRequest("updatewash", jsonData);
-			if (respuesta.IsSuccessStatusCode)
-				return await respuesta.Content.ReadFromJsonAsync<bool>();
-			return false;
-		}
+
 
 		//Obtiene las últimas notas de un determinado tren.
 		//Si el parámetro max es cero, devuelve todas las notas.

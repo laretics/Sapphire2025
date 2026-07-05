@@ -55,7 +55,7 @@ namespace Sapphire2025Server.Controllers
 							.Any(order => order.TrainId == train.Guid &&
 								!order.Rejected &&
 								order.Atomic &&
-								(order.OpenTime != null || order.CloseTime != null))
+								(order.OpenTime == null || order.CloseTime == null))
 					}
 					)
 					.ToListAsync();
@@ -502,11 +502,12 @@ namespace Sapphire2025Server.Controllers
 		{
 			using (DataStorage almacen = new DataStorage(config))
 			{
+				// Misma regla de bloqueo usada para calcular Locked en la lista de trenes.
 				return await almacen.WorkOrders.AsNoTracking().AnyAsync(order =>
 					order.TrainId == trainId &&
 					!order.Rejected &&
 					order.Atomic &&
-					(order.OpenTime != null || order.CloseTime != null));
+					(order.OpenTime == null || order.CloseTime == null));
 			}
 		}
 		private async Task<User?> retrieveUser(Guid userId)

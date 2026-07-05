@@ -129,22 +129,6 @@ namespace Sapphire2025.Storage
 			return await workOrders(trainId: trainId, closed: false, rejected: false, atomic: atomic);		
 		}
 
-		public async Task<bool> TerminateWashing(Guid trainId)
-		{
-			IEnumerable<WorkOrderModel> pendants = await workOrders(trainId: trainId, open: true, rejected: false, atomic: true);
-			bool salida = false;
-			foreach (WorkOrderModel order in pendants)
-			{
-				if (Sapphire2025Models.Utils.OrderTypeIsWash(order.WorkType))
-				{
-					if (await closeWorkOrder(order.Id))
-						await TerminateWashing(trainId);
-					salida = true;
-				}
-			}
-			return salida;
-		}
-
 		public Task<IEnumerable<WorkOrderModel>> closedWorkOrders(
 			Guid? trainId = null,
 			Guid? workType = null,
@@ -152,6 +136,16 @@ namespace Sapphire2025.Storage
 			DateTime? to = null)
 		{
 			return workOrders(trainId: trainId, workType: workType, closed: true, rejected: false, from: from, to: to);
+		}
+
+		//Actualiza el lavado del tren
+		public async Task<bool> UpdateWash(TrainModel train)
+		{
+			string jsonData = System.Text.Json.JsonSerializer.Serialize(train);
+			HttpResponseMessage respuesta = await sendPostRequest("updatewash", jsonData);
+			if (respuesta.IsSuccessStatusCode)
+				return await respuesta.Content.ReadFromJsonAsync<bool>();
+			return false;
 		}
 
 		public async Task<WorkOrderModel?> createWorkOrder(

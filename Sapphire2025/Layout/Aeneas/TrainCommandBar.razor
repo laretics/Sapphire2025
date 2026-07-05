@@ -57,8 +57,22 @@
 
 	private bool HasOpenWash => mcolPendants.Where(x => (x.WorkType == Common.WorkOrderTypeManualWash ||
 									x.WorkType == Common.WorkOrderTypePlatformWash ||
-									x.WorkType == Common.WorkOrderTypeTunnelWash) && null== x.CloseTime).Any();
+									x.WorkType == Common.WorkOrderTypeTunnelWash) && null!=x.OpenTime && null== x.CloseTime).Any();
 
+
+	private WorkOrderModel? FirstRequestedWashPendantOrder =>
+									mcolPendants.Where(x => (x.WorkType == Common.WorkOrderTypeManualWash ||
+									x.WorkType == Common.WorkOrderTypePlatformWash ||
+									x.WorkType == Common.WorkOrderTypeTunnelWash) && null == x.OpenTime)
+									.OrderByDescending(x => x.RequestTime)
+									.FirstOrDefault();
+
+	private WorkOrderModel? FirstOpenWashPendantOrder =>
+									mcolPendants.Where(x => (x.WorkType == Common.WorkOrderTypeManualWash ||
+									x.WorkType == Common.WorkOrderTypePlatformWash ||
+									x.WorkType == Common.WorkOrderTypeTunnelWash) && null != x.OpenTime && null==x.CloseTime)
+									.OrderByDescending(x => x.OpenTime)
+									.FirstOrDefault();
 
 	private List<TrainCommand> Commands
 	{
@@ -182,7 +196,7 @@
 						Enabled = true
 					});
 				}
-				if(isStation && HasPendantWash)
+				if(isStation && HasRequestedWash)
 				{
 					salida.Add(new TrainCommand
 					{
@@ -203,7 +217,7 @@
 						Enabled = true
 					});
 				}
-				if ((isMechanic || isStation) && HasPendantWash)
+				if ((isMechanic || isStation) && HasOpenWash)
 				{
 					salida.Add(new TrainCommand
 					{
@@ -449,36 +463,45 @@ Train.id);
 	private async Task requestWashingEnd()
 	{
 		System.Diagnostics.Debug.Assert(null != Train);
+		//Primero calculamos cuál es la orden de lavado que falta por cerrar.
+		WorkOrderModel? firstOrder = FirstOpenWashPendantOrder;
+		System.Diagnostics.Debug.Assert(null != firstOrder);
 		bool confirmado = await ConfirmAsync(
 			$"Lavado de {Train.name}",
 			$"¿Confirma que quiere finalizar el lavado de este tren?");
 		if (!confirmado) return;
 
-		await mvarAeneasClient.TerminateWashing(Train.id);
+		await mvarAeneasClient.closeWorkOrder(firstOrder.Id);
+		await mvarAeneasClient.UpdateWash(Train); //Para escribir en la base de datos
 		endCommand();
 	}
 	private async Task AcceptWashRequest()
 	{
 		System.Diagnostics.Debug.Assert(null != Train);
+		//Primero calculamos cuál es la orden de lavado pendiente.
+		WorkOrderModel? firstOrder = FirstRequestedWashPendantOrder;
+		System.Diagnostics.Debug.Assert(null != firstOrder);
 		bool confirmado = await ConfirmAsync(
 			$"Lavado de {Train.name}",
 			$"¿Autoriza el inicio del lavado?");
 		if (!confirmado) return;
-
-		//TODO: Inicio del proceso de lavado en AeneasClient.
+		await mvarAeneasClient.openWorkOrder(firstOrder.Id);
 		endCommand();
 	}
 	private async Task DenyWashRequest()
 	{
 		System.Diagnostics.Debug.Assert(null != Train);
+		//Primero calculamos cuál es la orden de lavado pendiente.
+		WorkOrderModel? firstOrder = FirstRequestedWashPendantOrder;
+		System.Diagnostics.Debug.Assert(null != firstOrder);
 		bool confirmado = await ConfirmAsync(
 			$"Lavado de {Train.name}",
 			$"¿Quiere denegar la petición de lavado?");
 		if (!confirmado) return;
-
-		//TODO: Transacción de denegación de lavado.
+		await mvarAeneasClient.rejectWorkOrder(firstOrder.Id);		
 		endCommand();
-	}
+	}	
+
 	private async Task acceptSendToMaintenance()
 	{
 		System.Diagnostics.Debug.Assert(null != Train);
