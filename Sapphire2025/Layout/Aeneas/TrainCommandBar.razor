@@ -3,23 +3,26 @@
 @inject NavigationManager mvarNavigationManager
 @inject IntStorageService mvarIntStorage
 <ModalDialog @ref="mvarConfirmationDialog" OnClose="OnConfirmClose" />
-@foreach (TrainCommand cmd in Commands.Where(c => c.ShowIf()))
-{
-	<Button Class="@cmd.CssClass" @onclick="@cmd.Action">
-		@if(null!=cmd.Icon)
+<div class="btn-toolbar mb-3" role="toolbar" aria-label="Opciones del tren">
+	<div class="btn-group me-2" role="group" aria-label="Operaciones primarias">
+		@foreach (TrainCommand cmd in Commands.Where(c => c.ShowIf()))
 		{
-			@cmd.Icon
+			<Button Class="@cmd.CssClass" @onclick="@cmd.Action">
+				@if (null != cmd.Icon)
+				{
+					@cmd.Icon
+				}
+				@cmd.Label
+			</Button>
 		}
-		@cmd.Label
-		</Button>
-}
-
+	</div>
+</div>
 @code {
 	//Esto es una barra de comandos para cambiar a los trenes de estado.
 	//Dependiendo de los permisos del usuario actual y del estado del tren,
 	//aparecerán unos botones u otros.
 	private SessionModel? mvarSession{ get; set; }	
-	[Parameter]
+	[CascadingParameter]
 	public TrainModel? Train{ get; set; } //A partir de este modelo obtenemos el último estado del tren
 	private ModalDialog? mvarConfirmationDialog;
 	private TaskCompletionSource<bool>? mvarConfirmTcs;

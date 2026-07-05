@@ -1,0 +1,24 @@
+﻿.wash-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 2;
+    pointer-events: none;
+    isolation: isolate;
+}
+
+.wash-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .7rem 1.1rem;
+    font-size: 1.05rem;
+    letter-spacing: .02em;
+    background: rgba(255, 255, 255, 0.92);
+    color: #1f2937;
+}

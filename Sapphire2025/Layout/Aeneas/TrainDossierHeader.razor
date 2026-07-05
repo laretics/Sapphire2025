@@ -1,0 +1,104 @@
+﻿@using Sapphire2025Models.GMao
+@inject AeneasClient mvarAeneasClient
+@inject NavigationManager mvarNavigationManager
+@if(null!=mvarTrain)
+{
+	<div class="d-flex align-items-stretch mb-3">
+		<button class="btn btn-secondary d-flex align-items-center justify-content-center px-3 me-2"
+				@onclick='() => mvarNavigationManager.NavigateTo("/trainFlow")'
+				title="Volver al flujo de trenes"
+				style="min-width: 60px;">
+			<Sapphire2025.Icons.Arrows.Left color="white" />
+		</button>
+
+		<div class="alert alert-@alertColor flex-grow-1 mb-0" role="alert">
+			<div class="d-flex justify-content-between align-items-center">
+				<h2 class="mb-0">@mvarTrain.name</h2>
+				<p class="mb-0">@statusDesciption</p>
+				<Sapphire2025.Layout.Aeneas.PlatformSelectCTL Train="mvarTrain"
+															  Platforms="mcolPlatforms"
+															  OnPlatformSelected="OnPlatformChanged" />
+			</div>
+			@if (HasPendantWash)
+			{
+				<div class="wash-overlay">
+					<span class="badge rounded-pill wash-badge shadow-sm">
+						<Sapphire2025.Icons.Actions.Wash Color="#0d6efd" />
+						<span class="ms-2">Bloqueado para lavado</span>
+					</span>
+				</div>
+			}
+			else if (HasPendantWork)
+			{
+				<div class="wash-overlay">
+					<span class="badge rounded-pill wash-badge shadow-sm">
+						<Sapphire2025.Icons.Actions.TimeValue Color="#0d6efd" />
+						<span class="ms-2">Bloqueado por una operación</span>
+					</span>
+				</div>
+			}
+		</div>
+	</div>
+}
+@code {
+    ///Esto es el encabezado que muestra el estado del tren y tal.
+    [CascadingParameter]
+    public TrainModel? mvarTrain{ get; set; }
+
+    private IEnumerable<WorkOrderModel> mcolPendants = new List<WorkOrderModel>();
+	private IEnumerable<PlatformModel> mcolPlatforms = new List<PlatformModel>();
+
+    protected async override Task OnInitializedAsync()
+    {
+		mcolPlatforms = await mvarAeneasClient.platformsList();
+		if (null != mvarTrain)
+			mcolPendants = await mvarAeneasClient.PendantWorks(mvarTrain.id, true);
+    }
+
+	private bool HasPendantWash => mcolPendants.Where(x => x.WorkType == Sapphire2025Models.Common.WorkOrderTypeManualWash
+	|| x.WorkType == Sapphire2025Models.Common.WorkOrderTypePlatformWash
+	|| x.WorkType == Sapphire2025Models.Common.WorkOrderTypeTunnelWash).Any();
+	private bool HasPendantWork => mcolPendants.Any();
+
+	protected async Task OnPlatformChanged(PlatformModel? rhs)
+	{
+		if (null != mvarTrain)
+		{
+			if (null == rhs)
+				mvarTrain.PlatformId = -1;
+			else
+				mvarTrain.PlatformId = rhs.Id;
+			await mvarAeneasClient.changePlatform(mvarTrain);
+		}
+	}
+
+	private string statusDesciption => null == mvarTrain ? "Cargando..." : Sapphire2025Models.Common.TrainStatusToString(mvarTrain.lastStatus);
+
+	private string alertColor
+	{
+		get
+		{
+			if (null == mvarTrain) return "secondary";
+
+			switch (mvarTrain.lastStatus)
+			{
+				case Sapphire2025Models.Common.TrainStatus.Available:
+				case Sapphire2025Models.Common.TrainStatus.DepotRequested:
+					return "success";
+				case Sapphire2025Models.Common.TrainStatus.RequestToDiagnose:
+					return "warning";
+				case Sapphire2025Models.Common.TrainStatus.RequestToRepair:
+					return "danger";
+				case Sapphire2025Models.Common.TrainStatus.DepotAvailable:
+				case Sapphire2025Models.Common.TrainStatus.Repairing:
+				case Sapphire2025Models.Common.TrainStatus.Maintenance:
+					return "info";
+				case Sapphire2025Models.Common.TrainStatus.StandStill:
+				case Sapphire2025Models.Common.TrainStatus.Disabled:
+					return "dark";
+
+			}
+			return "primary";
+		}
+	}
+}

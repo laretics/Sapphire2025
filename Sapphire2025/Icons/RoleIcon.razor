@@ -1,82 +1,64 @@
 ﻿@using Sapphire2025Models
-@userIcon()
+<GenIcon Color="@color" Name="@IndexNameAtomic"/>
 @code {
 	[Parameter]
-	public byte Credentials { get; set; }
+	public string color { get; set; } = "black";
 	[Parameter]
-	public string Color { get; set; } = "defaultColor";
+	public Common.UserRole Role { get; set; }
 	[Parameter]
-	public Common.UserRole Role { get; set; } = Common.UserRole.Anonymous;
+	public byte Credentials { get; set; } = 0;
 
-	private RenderFragment userIcon()
+	private string IndexName
 	{
-		if (Role == Common.UserRole.Anonymous)
+		get
 		{
-			if (Utils.hasRole(Credentials, Common.UserRole.Root))
-				return roleIconSimple(Common.UserRole.Root);
-			if (Utils.hasRole(Credentials, Common.UserRole.Engineer))
-				return roleIconSimple(Common.UserRole.Engineer);
-			if (Utils.hasRole(Credentials, Common.UserRole.Inspector))
-				return roleIconSimple(Common.UserRole.Inspector);
-			if (Utils.hasRole(Credentials, Common.UserRole.Expert))
-				return roleIconSimple(Common.UserRole.Expert);
-			if (Utils.hasRole(Credentials, Common.UserRole.Oficial))
-				return roleIconSimple(Common.UserRole.Oficial);
-			if (Utils.hasRole(Credentials, Common.UserRole.Mechanic))
-				return roleIconSimple(Common.UserRole.Mechanic);
-			return roleIconSimple(Common.UserRole.Anonymous);
-		}
-		else
-			return roleIconSimple(Role);		
+			if (0 != Credentials)
+				Role = roleFromCredentials();
+
+			return IndexNameAtomic;
+		}		
 	}
 
-    private RenderFragment roleIconSimple(Common.UserRole role)
-    {
-		return builder =>
+	private Common.UserRole roleFromCredentials()
+	{
+		if (Utils.hasRole(Credentials, Common.UserRole.Root))
+			return Common.UserRole.Root;
+		if (Utils.hasRole(Credentials, Common.UserRole.Engineer))
+			return Common.UserRole.Engineer;
+		if (Utils.hasRole(Credentials, Common.UserRole.Inspector))
+			return Common.UserRole.Inspector;
+		if (Utils.hasRole(Credentials, Common.UserRole.Expert))
+			return Common.UserRole.Expert;
+		if (Utils.hasRole(Credentials, Common.UserRole.Oficial))
+			return Common.UserRole.Oficial;
+		if (Utils.hasRole(Credentials, Common.UserRole.Mechanic))
+			return Common.UserRole.Mechanic;
+		return Common.UserRole.Anonymous;
+	}
+
+	private string IndexNameAtomic
+	{
+		get
 		{
-			switch (role)
+			switch(Role)
 			{
 				case Common.UserRole.Root:
-					builder.OpenComponent<Icons.Roles.Admin>(0);
-					builder.AddAttribute(1, "Color", Color);
-					builder.CloseComponent();
-					break;
+					return "RoleAdmin";
 				case Common.UserRole.Engineer:
-					builder.OpenComponent<Icons.Roles.Detective>(0);
-					builder.AddAttribute(1, "Color", Color);
-					builder.CloseComponent();
-					break;
-				case Common.UserRole.Station:
-					builder.OpenComponent<Icons.Roles.Station>(0);
-					builder.AddAttribute(1, "Color", Color);
-					builder.CloseComponent();
-					break;
+					return "RoleDetective";
 				case Common.UserRole.Inspector:
-					builder.OpenComponent<Icons.Roles.Inspector>(0);
-					builder.AddAttribute(1, "Color", Color);
-					builder.CloseComponent();
-					break;
+					return "RoleInspector";
 				case Common.UserRole.Expert:
-					builder.OpenComponent<Icons.Roles.Diagnoser>(0);
-					builder.AddAttribute(1, "Color", Color);
-					builder.CloseComponent();
-					break;
+					return "RoleDiagnoser";
 				case Common.UserRole.Oficial:
-					builder.OpenComponent<Icons.Roles.AdvancedUser>(0);
-					builder.AddAttribute(1, "Color", Color);
-					builder.CloseComponent();
-					break;
+					return "RoleAdvancedUser";
 				case Common.UserRole.Mechanic:
-					builder.OpenComponent<Icons.Roles.Mechanic>(0);
-					builder.AddAttribute(1, "Color", Color);
-					builder.CloseComponent();
-					break;
-				case Common.UserRole.Anonymous:
-					builder.OpenComponent<Icons.Roles.User>(0);
-					builder.AddAttribute(1, "Color", Color);
-					builder.CloseComponent();
-					break;
+					return "RoleMechanic";
+				case Common.UserRole.Station:
+					return "RoleStation";
+				default:
+					return "RoleUser";
 			}
-		};
-    }
+		}
+	}
 }

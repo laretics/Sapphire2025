@@ -4,7 +4,7 @@
 @using Sapphire2025Models.GMao
 @inject AeneasClient mvarAeneasClient
 @inject AuthenticationClient mvarAuthClient
-@inject NavigationManager mvarNavigationManager
+
 @if(null==mvarTrain)
 {
 	<div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
@@ -21,87 +21,50 @@
 else
 {
 	<CascadingValue Value="@Users">
-		<!-- Contenedor flex para botón y alert -->
-		<div class="d-flex align-items-stretch mb-3">
-			<button class="btn btn-secondary d-flex align-items-center justify-content-center px-3 me-2"
-					@onclick="NavigateToTrainFlow"
-					title="Volver al flujo de trenes"
-					style="min-width: 60px;">
-				<Sapphire2025.Icons.Arrows.Left color="white"/>
-			</button>
+		<CascadingValue Value="@mvarTrain">
+			<CascadingValue Value="@mcolWorkOrders">
+				<TrainDossierHeader />
+				<TrainCommandBar />
 
-			<div class="alert alert-@alertColor flex-grow-1 mb-0" role="alert">
-				<div class="d-flex justify-content-between align-items-center">
-					<h2 class="mb-0">@mvarTrain.name</h2>
-					<p class="mb-0">@statusDesciption</p>
-					<Sapphire2025.Layout.Aeneas.PlatformSelectCTL 
-					Train="mvarTrain"
-					Platforms="mcolPlatforms" 
-					OnPlatformSelected="OnPlatformChanged"/>
-				</div>
-				@if (HasPendantWash)
-				{
-					<div class="wash-overlay">
-						<span class="badge rounded-pill wash-badge shadow-sm">
-							<Sapphire2025.Icons.Actions.Wash Color="#0d6efd" />
-							<span class="ms-2">Bloqueado para lavado</span>
-						</span>
-					</div>
-				}
-				else if(HasPendantWork)
-				{
-					<div class="wash-overlay">
-						<span class="badge rounded-pill wash-badge shadow-sm">
-							<Sapphire2025.Icons.Actions.TimeValue Color="#0d6efd" />
-							<span class="ms-2">Bloqueado por una operación</span>
-						</span>
-					</div>
-				}
-			</div>
-		</div>
-
-		<div class="btn-toolbar mb-3" role="toolbar" aria-label="Opciones del tren">
-			<div class="btn-group me-2" role="group" aria-label="Operaciones primarias">
-				<TrainCommandBar Train="mvarTrain" />
-			</div>
-		</div>
-		<TabControl>
-			<TabPage Text="General">
-				<NoteChatEx Parent="@mvarTrain.id" NoteType="2" MaxLines="20" />
-			</TabPage>
-			<TabPage Text="Chat">
-				<NoteChat 
-				Parent="@mvarTrain.id" NoteType="2" MaxLines="20"/>
-			</TabPage>
-			<TabPage Text="Historial">
-				<div class="table-responsive" style="width:100%; max-height:70vh;">
-					<StatusChangesTable StatusChanges="mcolChanges" />
-				</div>
-			</TabPage>			
- 			<TabPage Text="Actuaciones">			
-				<div class="table-responsive" style="width:100%; max-height:70vh;">
-					<WorkOrdersTable Train="mvarTrain" />
-				</div>				
-			</TabPage>
-			<TabPage Text="Limpieza">
-			</TabPage>
-			@* <Sapphire2025.Icons.AeneasScheme /> *@
-		</TabControl>
+				<TabControl>
+					<TabPage Text="General">
+						<NoteChatEx Parent="@mvarTrain.id" NoteType="2" MaxLines="@MaxLinesPerChat" />
+					</TabPage>
+					<TabPage Text="Chat">
+						<NoteChat Parent="@mvarTrain.id" NoteType="2" MaxLines="@MaxLinesPerChat" />
+					</TabPage>
+					<TabPage Text="Historial">
+						<div class="table-responsive" style="width:100%; max-height:70vh;">
+							<StatusChangesTable StatusChanges="mcolChanges" />
+						</div>
+					</TabPage>
+					<TabPage Text="Actuaciones">
+						<div class="table-responsive" style="width:100%; max-height:70vh;">
+							<WorkOrdersTable />
+						</div>
+					</TabPage>
+					<TabPage Text="Limpieza">
+					</TabPage>
+					@* <Sapphire2025.Icons.AeneasScheme /> *@
+				</TabControl>
+			</CascadingValue>
+		</CascadingValue>
 	</CascadingValue>
 }
 @code {
 	[Parameter]
 	public string? idtxt{ get; set; }
 
+	[Parameter]
+	public int MaxLinesPerChat { get; set; } = 30;
+
 
 	public Guid id;
 
 	private Dictionary<Guid, UserModelBase>? Users = new Dictionary<Guid, UserModelBase>();
 	private IEnumerable<StatusChangeModel>? mcolChanges = new List<StatusChangeModel>();
+	private IEnumerable<WorkOrderModel>? mcolWorkOrders = null;
 	private TrainModel? mvarTrain = null;
-	private IEnumerable<WorkOrderModel> mcolPendants = new List<WorkOrderModel>();
-
-	private IEnumerable<PlatformModel> mcolPlatforms = new List<PlatformModel>();
 
 	protected async override Task OnInitializedAsync()
 	{
@@ -110,64 +73,11 @@ else
 			Guid.TryParse(idtxt, out id);
 			mcolChanges = await mvarAeneasClient.trainChangesList(id, DateTime.MinValue);
 			Users = await mvarAuthClient.cachedUserList();
-			mcolPlatforms = await mvarAeneasClient.platformsList();
+
 			mvarTrain = await mvarAeneasClient.train(id.ToString());
-			if (null != mvarTrain)
-				mcolPendants = await mvarAeneasClient.PendantWorks(mvarTrain.id, true);
+			if(null!=mvarTrain)
+				mcolWorkOrders = await mvarAeneasClient.workOrdersByTrain(mvarTrain.id);
 		}
 		StateHasChanged();
 	}
-
-	private bool HasPendantWash => mcolPendants.Where(x => x.WorkType == Sapphire2025Models.Common.WorkOrderTypeManualWash
-		|| x.WorkType == Sapphire2025Models.Common.WorkOrderTypePlatformWash
-		|| x.WorkType == Sapphire2025Models.Common.WorkOrderTypeTunnelWash).Any();
-	private bool HasPendantWork => mcolPendants.Any();
-
-	protected async Task OnPlatformChanged(PlatformModel? rhs)
-	{
-		if(null!=mvarTrain)
-		{
-			if (null == rhs)
-				mvarTrain.PlatformId = -1;
-			else
-				mvarTrain.PlatformId = rhs.Id;
-			await mvarAeneasClient.changePlatform(mvarTrain);
-		}		
-	}
-
-	private string alertColor
-	{
-		get
-		{
-			if(null == mvarTrain) return "secondary";
-
-			switch(mvarTrain.lastStatus)
-			{
-				case Sapphire2025Models.Common.TrainStatus.Available:
-				case Sapphire2025Models.Common.TrainStatus.DepotRequested:
-					return "success";
-				case Sapphire2025Models.Common.TrainStatus.RequestToDiagnose:
-					return "warning";
-				case Sapphire2025Models.Common.TrainStatus.RequestToRepair:
-					return "danger";
-				case Sapphire2025Models.Common.TrainStatus.DepotAvailable:
-				case Sapphire2025Models.Common.TrainStatus.Repairing:
-				case Sapphire2025Models.Common.TrainStatus.Maintenance:
-					return "info";
-				case Sapphire2025Models.Common.TrainStatus.StandStill:
-				case Sapphire2025Models.Common.TrainStatus.Disabled:
-					return "dark";
-
-			}
-			return "primary";
-		}
-	}
-    private string statusDesciption => null == mvarTrain ? "Cargando..." : Sapphire2025Models.Common.TrainStatusToString(mvarTrain.lastStatus);
-
-	private void NavigateToTrainFlow()
-	{
-		mvarNavigationManager.NavigateTo("/trainFlow");
-	}
-
-
 }

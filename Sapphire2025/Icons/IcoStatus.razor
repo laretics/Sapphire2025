@@ -1,0 +1,37 @@
+﻿@using Sapphire2025Models
+@auxIco
+@code 
+{
+	[Parameter]
+	public Common.TrainStatus status { get; set; } = Common.TrainStatus.Unknown;
+	[Parameter]
+	public string color { get; set; } = "white";
+	private RenderFragment auxIco
+	{
+		get
+		{
+			switch (status)
+			{
+				case Common.TrainStatus.Available:
+					return@<GenIcon Name="StatusAvailable" Color="@color" />;
+				case Common.TrainStatus.DepotRequested:
+					return@<GenIcon Name="StatusDepotRequested" Color="@color" />;
+				case Common.TrainStatus.DepotAvailable:
+					return@<GenIcon Name="StatusDepotAvailable" Color="@color" />;
+				case Common.TrainStatus.RequestToDiagnose:
+					return@<GenIcon Name="StatusRequestToDiagnose" Color="@color" />;
+				case Common.TrainStatus.RequestToRepair:
+					return@<GenIcon Name="StatusRequestToRepair" Color="@color" />;
+				case Common.TrainStatus.Repairing:
+					return@<GenIcon Name="StatusRepairing" Color="@color" />;
+				case Common.TrainStatus.Maintenance:
+					return@<GenIcon Name="StatusMaintenance" Color="@color" />;
+				case Common.TrainStatus.StandStill:
+					return@<GenIcon Name="StatusStandStill" Color="@color" />;
+				case Common.TrainStatus.Disabled:
+					return@<GenIcon Name="StatusDisabled" Color="@color" />;
+			}
+			return@<GenIcon Name="StatusUnknown" Color="@color" />;
+		}
+	}
+}
