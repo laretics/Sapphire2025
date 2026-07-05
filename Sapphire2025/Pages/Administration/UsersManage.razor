@@ -1,6 +1,8 @@
 ﻿@page "/admin/usersmanage"
+@using Sapphire2025.Icons
 @inject AuthenticationClient mvarClient
 @inject NavigationManager mvarNavigator
+@using Sapphire2025.Layout.Users
 <PageTitle>Usuarios</PageTitle>
 @if (null == mcolUsers)
 {
@@ -20,25 +22,25 @@ else
 {
 	<div class="row border-bottom border-top bg-secondary text-light">
 		<div class="col" @onclick="@onCFHeaderClick">
-			<Sapphire2025.Icons.Fields.CF />
+			<GenIcon Name="CF"/>
 		</div>
 		<div class="col" @onclick="@onNameHeaderClick">
-			<Sapphire2025.Icons.Headers.User />
+			<GenIcon Name="User"/>
 		</div>
 		<div class="col" @onclick="@onEmailHeaderClick">
-			<Sapphire2025.Icons.Fields.Mail />
+			<GenIcon Name="Mail" />			
 		</div>
 		<div class="col" @onclick="@onPhoneHeaderClick">
-			<Sapphire2025.Icons.Fields.Phone />
+			<GenIcon Name="Phone" />
 		</div>
 		<div class="col" @onclick="@onPhoneHeaderClick">
-			<Sapphire2025.Icons.Fields.Phone />
+			<GenIcon Name="Phone" />
 		</div>
 	</div>
 	<div class="overflow-auto" style="height: 80vh; overflow-y: auto; width: 100%">
 		@foreach (var tupla in mcolUsersFiltered.Select((user,idx)=>(user,idx)))
 		{
-			<Sapphire2025.Layout.Users.UsersListCTLRecord 
+			<UsersListCTLRecord 
 			User="@tupla.user" RowIndex="@tupla.idx"/>
 		}
 	</div>

@@ -1,38 +1,39 @@
 ﻿@inject NavigationManager mvarNavigator
-@using Sapphire2025.Icons.Status
-@using Sapphire2025.Icons.Fields
 @using Sapphire2025.Icons
 <div class="row border-bottom @rowBgClass" @onclick="@onRowClick"style="cursor:pointer;">
-	<div class="col border-end d-flex align-items-center">
-		<RoleIcon Credentials="User?.CredentialKey??0" Color="black"/>
-		<span class="ms-2"><p>@userCF</p></span>
-		@if(null!=User)
-		{
-			if(User.NullPassword)
+	@if(null!=User)
+	{
+		<div class="col border-end d-flex align-items-center">
+			<RoleIcon Credentials="@(User.CredentialKey)" Color="black" />
+			<span class="ms-2"><p>@userCF</p></span>
+			@if(User.NullPassword)
 			{
-				<Disabled color="red" />
-			}			
-		}
-	</div>
-	<div class="col border-end d-flex align-items-center">@userName</div>
-	<div class="col border-end d-flex align-items-center">@userEmail</div>
-	<div class="col border-end d-flex align-items-center">@userPhone</div>
-	<div class="col d-flex align-items-center">
-		@userShortPhone		
-		@if(User.HasTelegramId)
-		{
-			<span class="ms-2">
-				@if(User.TelegramEnabled)
-				{
-					<Telegram color="blue" />
-				}
-				else
-				{
-					<Telegram color="gray" />
-				}
+			<GenIcon Name="StatusDisabled" Color="red" />
+			}
+		</div>
+		<div class="col border-end d-flex align-items-center">@userName</div>
+		<div class="col border-end d-flex align-items-center">@userEmail</div>
+		<div class="col border-end d-flex align-items-center">@userPhone</div>
+		<div class="col d-flex align-items-center">
+			@if (User.HasTelegramId)
+			{
+				<span class="ms-2">
+					@if (User.TelegramEnabled)
+					{
+						<GenIcon Name="Telegram" Color="blue" />
+					}
+					else
+					{
+						<GenIcon Name="Telegram" Color="gray" />
+					}
+				</span>
+			}
+			<span>
+				@userShortPhone
 			</span>
-		}
-	</div>
+		</div>
+	}
+
 </div>
 @code {
 	[Parameter]

@@ -38,9 +38,30 @@ namespace Sapphire2025Server.Controllers
 			List<TrainModel> salida = new List<TrainModel>();
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				List<Train> trenes = await almacen.Trains.ToListAsync();
-				foreach (Train tren in trenes)
-					salida.Add(await trainFromTrain(tren,mvarConfig));
+				List<TrainSnapshot> trenes = await almacen.Trains.AsNoTracking()
+					.Select(train => new TrainSnapshot
+					{
+						Train = train,
+						LastChange = almacen.StatusChanges.AsNoTracking()
+							.Where(change => change.TrainId == train.Guid)
+							.OrderByDescending(change => change.TimeStamp)
+							.FirstOrDefault(),
+						LastNote = almacen.Notes.AsNoTracking()
+							.Where(note => note.Parent == train.Guid && note.Text != null)
+							.OrderByDescending(note => note.TimeStamp)
+							.Select(note => note.Text)
+							.FirstOrDefault() ?? string.Empty,
+						Locked = almacen.WorkOrders.AsNoTracking()
+							.Any(order => order.TrainId == train.Guid &&
+								!order.Rejected &&
+								order.Atomic &&
+								(order.OpenTime != null || order.CloseTime != null))
+					}
+					)
+					.ToListAsync();
+
+				foreach (TrainSnapshot tren in trenes)
+					salida.Add(trainFromTrain(tren.Train, tren.LastChange, tren.LastNote, tren.Locked));
 			}
 			return salida;
 		}
@@ -59,6 +80,38 @@ namespace Sapphire2025Server.Controllers
 					nuevo.PlatformName = platform.PlatformId;
 					salida.Add(nuevo);
 				}
+			}
+			return salida;
+		}
+
+		private sealed class TrainSnapshot
+		{
+			public Train Train { get; set; } = default!;
+			public StatusChange? LastChange { get; set; }
+			public string LastNote { get; set; } = string.Empty;
+			public bool Locked { get; set; }
+		}
+		private static TrainModel trainFromTrain(Train train, StatusChange? lastChange, string lastNote, bool locked)
+		{
+			TrainModel salida = new TrainModel();
+			salida.id = train.Guid;
+			salida.name = train.Name;
+			salida.nameCloud = train.NameCloud;
+			salida.PlatformId = train.PlatformId;
+			salida.LastWash = train.LastWash;
+			salida.Locked = locked;
+			salida.lastNote = lastNote;
+			if (null == lastChange)
+			{
+				salida.lastUpdateTime = DateTime.MinValue;
+				salida.lastStatus = Sapphire2025Models.Common.TrainStatus.Unknown;
+				salida.lastUserInfo = Guid.Empty;
+			}
+			else
+			{
+				salida.lastUpdateTime = lastChange.TimeStamp;
+				salida.lastStatus = lastChange.Status;
+				salida.lastUserInfo = lastChange.UserId;
 			}
 			return salida;
 		}
@@ -89,20 +142,36 @@ namespace Sapphire2025Server.Controllers
 			Dictionary<Guid, UserModel> salida = new Dictionary<Guid, UserModel>();
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				List<Train> trenes = await almacen.Trains.ToListAsync();
-				foreach (Train train in trenes)
+				List<Guid> trainIds = await almacen.Trains.AsNoTracking()
+					.Select(train => train.Guid)
+					.ToListAsync();
+				if (trainIds.Count == 0)
+					return salida;
+
+				Dictionary<Guid, StatusChange> lastChanges = new Dictionary<Guid, StatusChange>();
+				List<StatusChange> statusChanges = await almacen.StatusChanges.AsNoTracking()
+					.Where(change => trainIds.Contains(change.TrainId))
+					.OrderByDescending(change => change.TimeStamp)
+					.ToListAsync();
+				foreach (StatusChange change in statusChanges)
 				{
-					StatusChange? lastChange = await almacen.StatusChanges.Where(x => x.TrainId==train.Guid).FirstOrDefaultAsync();
-					if (null !=lastChange)
+					if (!lastChanges.ContainsKey(change.TrainId))
+						lastChanges.Add(change.TrainId, change);
+				}
+
+				HashSet<string> userIds = new HashSet<string>(lastChanges.Values.Select(change => change.UserId.ToString()));
+				if (userIds.Count == 0)
+					return salida;
+
+				List<User> users = await almacen.Users.AsNoTracking()
+					.Where(user => userIds.Contains(user.Id))
+					.ToListAsync();
+
+				foreach (User auxUser in users)
+				{
+					if (!salida.ContainsKey(auxUser.guid))
 					{
-						if(!salida.ContainsKey(lastChange.UserId))
-						{
-							User? auxUser = await almacen.Users.Where(x => x.Id.Equals(lastChange.UserId.ToString())).FirstOrDefaultAsync();
-							if (null != auxUser)
-							{
-								salida.Add(auxUser.guid, userFromUser(auxUser));
-							}								
-						}
+							salida.Add(auxUser.guid, userFromUser(auxUser));
 					}
 				}
 			}
@@ -153,27 +222,46 @@ namespace Sapphire2025Server.Controllers
 		/// </summary>
 		/// <returns></returns>
 
+		public async Task<Dictionary<Guid, UserModel>> ChangesUsers()
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				Guid? auxTrainId = await almacen.Trains.AsNoTracking()
+					.Select(train => (Guid?)train.Guid)
+					.FirstOrDefaultAsync();
+				if (!auxTrainId.HasValue)
+					return new Dictionary<Guid, UserModel>();
+
+				return await ChangesUsers(auxTrainId.Value.ToString());
+			}
+		}
+
 		[HttpGet("usersstchngs")]
 		public async Task<Dictionary<Guid,UserModel>> ChangesUsers(string trainid)
 		{
 			Dictionary<Guid, UserModel> salida = new Dictionary<Guid, UserModel>();
 			Guid auxId = Guid.Empty;
 			Guid.TryParse(trainid, out auxId);
+			if (Guid.Empty == auxId)
+				return salida;
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				List<StatusChange> auxChanges = await almacen.StatusChanges.Where(x => x.TrainId == auxId).ToListAsync();
-				foreach (StatusChange auxChange in auxChanges)
-				{
-					if(null!=auxChange)
-					{
-						if(!salida.ContainsKey(auxChange.UserId))
-						{
-							User? auxUser = await almacen.Users.Where(x => x.Id.Equals(auxChange.UserId.ToString())).FirstOrDefaultAsync();
-							if (null != auxUser)
-								salida.Add(auxUser.guid, userFromUser(auxUser));
-						}
-					}					
-				}
+				List<string> userIds = await almacen.StatusChanges.AsNoTracking()
+					.Where(x => x.TrainId == auxId)
+					.Select(x => x.UserId.ToString())
+					.Distinct()
+					.ToListAsync();
+
+				if (userIds.Count == 0)
+					return salida;
+
+				List<User> users = await almacen.Users.AsNoTracking()
+					.Where(user => userIds.Contains(user.Id))
+					.ToListAsync();
+
+				foreach (User auxUser in users)
+					if (!salida.ContainsKey(auxUser.guid))
+						salida.Add(auxUser.guid, userFromUser(auxUser));
 			}
 			return salida;
 		}
@@ -389,6 +477,7 @@ namespace Sapphire2025Server.Controllers
 			salida.nameCloud = train.NameCloud;
 			salida.PlatformId = train.PlatformId;
 			salida.LastWash = train.LastWash;
+			salida.Locked = await isTrainLocked(train.Guid, config);
 			salida.lastNote = await lastNoteStatic(train.Guid, config);			
 			using (DataStorage almacen = new DataStorage(config))
 			{
@@ -408,6 +497,17 @@ namespace Sapphire2025Server.Controllers
 				}
 			}
 			return salida;
+		}
+		private static async Task<bool> isTrainLocked(Guid trainId, IConfiguration config)
+		{
+			using (DataStorage almacen = new DataStorage(config))
+			{
+				return await almacen.WorkOrders.AsNoTracking().AnyAsync(order =>
+					order.TrainId == trainId &&
+					!order.Rejected &&
+					order.Atomic &&
+					(order.OpenTime != null || order.CloseTime != null));
+			}
 		}
 		private async Task<User?> retrieveUser(Guid userId)
 		{

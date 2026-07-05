@@ -274,10 +274,12 @@ namespace Sapphire2025Server.Controllers
 				{
 					using (DataStorage almacen = new DataStorage(mvarConfig))
 					{
-						IEnumerable<User> entrada = await almacen.Users.ToListAsync();
+						Dictionary<string, byte> credentialKeysByUser = await retrieveCredentialKeysByUser(almacen);
+						IEnumerable<User> entrada = await almacen.Users.AsNoTracking().ToListAsync();
 						foreach (User user in entrada)
 						{
-							salida.Add(await modeloFromUser(user,mvarConfig));
+							credentialKeysByUser.TryGetValue(user.Id, out byte credentialKey);
+							salida.Add(modeloFromUser(user, credentialKey));
 						}
 					}
 				}
@@ -343,10 +345,12 @@ namespace Sapphire2025Server.Controllers
 			Dictionary<Guid, UserModelBase> salida = new Dictionary<Guid, UserModelBase>();
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				IEnumerable<User> entrada = await almacen.Users.ToListAsync();
+				Dictionary<string, byte> credentialKeysByUser = await retrieveCredentialKeysByUser(almacen);
+				IEnumerable<User> entrada = await almacen.Users.AsNoTracking().ToListAsync();
 				foreach (User user in entrada)
 				{
-					UserModelBase auxModelo = await modeloFromBaseUser(user);
+					credentialKeysByUser.TryGetValue(user.Id, out byte credentialKey);
+					UserModelBase auxModelo = modeloFromBaseUser(user, credentialKey);
 					salida.Add(auxModelo.guid, auxModelo);
 				}
 			}
@@ -485,14 +489,18 @@ namespace Sapphire2025Server.Controllers
 				{
 					using (DataStorage almacen = new DataStorage(mvarConfig))
 					{
+						Dictionary<string, byte> credentialKeysByUser = await retrieveCredentialKeysByUser(almacen);
 						IEnumerable<User> entrada;
 						if (request.Priority)
-							entrada = await almacen.Users.Where(x => 0 != x.TelegramId).ToListAsync();
+							entrada = await almacen.Users.AsNoTracking().Where(x => 0 != x.TelegramId).ToListAsync();
 						else
-							entrada = await almacen.Users.Where(x => x.TelegramEnabled && 0 != x.TelegramId).ToListAsync();
+							entrada = await almacen.Users.AsNoTracking().Where(x => x.TelegramEnabled && 0 != x.TelegramId).ToListAsync();
 
 						foreach (User user in entrada)
-							salida.Add(await modeloFromUser(user, mvarConfig));
+						{
+							credentialKeysByUser.TryGetValue(user.Id, out byte credentialKey);
+							salida.Add(modeloFromUser(user, credentialKey));
+						}
 					}
 				}
 			}
@@ -797,7 +805,7 @@ namespace Sapphire2025Server.Controllers
 			}
 			return salida;
 		}							
-		internal static async Task<UserModel> modeloFromUser(User user, IConfiguration config)
+		internal static UserModel modeloFromUser(User user, byte credentialKey)
 		{
 			UserModel salida = new UserModel();
 			salida.guid = user.guid;
@@ -811,14 +819,14 @@ namespace Sapphire2025Server.Controllers
 			salida.ShortPhoneNumber = user.ShortPhoneNumber;
 			salida.AccessFailedCount = user.AccessFailedCount;
 			salida.NullPassword = (null==user.PasswordHash) || (user.PasswordHash.Length < 1);
-			salida.CredentialKey = await userIcon(user,config);
+			salida.CredentialKey = credentialKey;
 			salida.TelegramEnabled = user.TelegramEnabled;
 			salida.HasTelegramId = (0!=user.TelegramId);
 			salida.TelegramId = user.TelegramId;
 			salida.TelegramRules = user.TelegramRules??"";
 			return salida;
 		}
-		private async Task<UserModelBase> modeloFromBaseUser(User user)
+		private static UserModelBase modeloFromBaseUser(User user, byte credentialKey)
 		{
 			UserModelBase salida = new UserModelBase();
 			salida.guid = user.guid;
@@ -828,22 +836,23 @@ namespace Sapphire2025Server.Controllers
 			salida.ShortPhoneNumber = user.ShortPhoneNumber;
 			if (null!= user.UserName)
 				salida.Name = user.UserName;
-			salida.CredentialKey = await userIcon(user,mvarConfig);
+			salida.CredentialKey = credentialKey;
 			return salida;
 		}
 
-		private static async Task<byte> userIcon(User user, IConfiguration config)
+		private async Task<Dictionary<string, byte>> retrieveCredentialKeysByUser(DataStorage storage)
 		{
-			using (DataStorage almacen = new DataStorage(config))
+			Dictionary<string, byte> salida = new Dictionary<string, byte>();
+			List<UserAndRole> roles = await storage.UserAndRoles.AsNoTracking().Where(x => x.RoleId < 7).ToListAsync();
+			foreach (UserAndRole item in roles)
 			{
-				List<UserAndRole> roles = await almacen.UserAndRoles.Where(x => x.UserId == user.Id && x.RoleId<7).ToListAsync();
-				byte salida = 0;
-				foreach (UserAndRole item in roles)
+				if (!salida.TryGetValue(item.UserId, out byte credentialKey))
 				{
-					salida = Utils.setBit(salida, (byte)item.RoleId);					
+					credentialKey = 0;
 				}
-				return salida;		
+				salida[item.UserId] = Utils.setBit(credentialKey, (byte)item.RoleId);
 			}
+			return salida;
 		}
 				
 	}	

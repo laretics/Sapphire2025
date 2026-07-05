@@ -1,4 +1,4 @@
-﻿@using Sapphire2025.Icons.Commands
+﻿@using Sapphire2025.Icons
 @using TimeNet2026.ScriptCompiling
 @using TimeNet2026.Topo
 @using TimeNet2026.Models
@@ -40,7 +40,8 @@ else
                         <td>@topo.header.FirstDate.ToShortDateString()</td>
                         <td>@topo.header.LastDate.ToShortDateString()</td>                        
                         <td><Button @onclick="() => onConfirmDelete(topo)">
-                            <Trash></Trash></Button>
+                            <GenIcon Name="Trash"/>
+                            </Button>
                         </td>
                     </tr>
                 }

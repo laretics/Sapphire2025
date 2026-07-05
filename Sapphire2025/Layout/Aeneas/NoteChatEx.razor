@@ -1,5 +1,4 @@
-﻿@using Sapphire2025.Icons.Headers
-@using Sapphire2025.Icons
+﻿@using Sapphire2025.Icons
 @inject AeneasClient mvarAeneasClient
 
 <div style="height:100%; max-height:70vh; overflow-y:auto;" class="bg-light rounded p-3">
@@ -54,8 +53,8 @@
 									<small class="float-end">@Sapphire2025Models.Utils.autoDate(entry.StatusChange.timeStamp)</small>
 								</div>
 								<div class="card-body">
-									<div class="d-flex align-items-center gap-2 mb-1">
-										<Sapphire2025.Icons.Status.IcoStatus status="@entry.StatusChange.status" color="white" />
+									<div class="d-flex align-items-center gap-2 mb-1">										
+										<IcoStatus status="@entry.StatusChange.status" color="white" />
 										<strong class="me-2">@entry.StatusChange.description</strong>
 									</div>
 								</div>

@@ -1,4 +1,5 @@
-﻿@if(null!=Model)
+﻿@using Sapphire2025.Icons
+@if(null!=Model)
 {
 	<tr class="@(Model.Even ? "table-light" : "table.white")">
 
@@ -18,12 +19,12 @@
 				<td class="text-center align-middle turno-cell" style="@GetCellStyle()">
 					@if (Model.Att)
 					{
-						<Sapphire2025.Icons.Inspector.Att color="#314D1C" size="16px" />
+						<GenIcon Name="Att" color="#314D1C" size="16" />
 					}
 					else
 					{
 
-						<Sapphire2025.Icons.Headers.UT color="#321D71" size="16px" />
+						<GenIcon Name="UT" Color="#321D71" Size="16" />
 					}
 					<span class="ms-2">@GetCellText()</span>
 				</td>
@@ -47,12 +48,11 @@
 				<td class="text-center align-middle turno-cell" style="@GetCellStyle()">
 					@if (Model.Att)
 					{
-						<Sapphire2025.Icons.Inspector.Att color="#314D1C" size="16px" />
+						<GenIcon Name="Att" color="#314D1C" size="16" />
 					}
 					else
-					{
-
-						<Sapphire2025.Icons.Headers.UT color="#321D71" size="16px" />
+					{						
+						<GenIcon Name="UT" Color="#321D71" Size="16" />
 					}
 					<span class="ms-2">@GetCellText()</span>
 				</td>

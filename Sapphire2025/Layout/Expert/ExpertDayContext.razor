@@ -1,4 +1,5 @@
-﻿@using Sapphire2025Models.Expert.WorkshiftTemplates
+﻿@using Sapphire2025.Icons
+@using Sapphire2025Models.Expert.WorkshiftTemplates
 @inject ExpertClient mvarExpertClient
 @inject AuthenticationClient mvarAuthClient
 @inject IntStorageService mvarIntStorage
@@ -63,26 +64,26 @@ else
                                                 class="btn @(WipeOff ? "btn-secondary active" : "btn-outline-secondary")"
                                                 @onclick="() => auxToggleOption(nameof(WipeOff))"
                                                 title="Desaparecer contenido">
-                                            <Sapphire2025.Icons.Actions.Eye color="currentColor" />
+                                            <GenIcon Name="Eye" Color="currentColor"/>                                            
                                         </button>
                                         <button type="button"
                                                 class="btn @(FollowingMode ? "btn-secondary active" : "btn-outline-secondary")"
                                                 @onclick="() => auxToggleOption(nameof(FollowingMode))"
                                                 title="Modo seguimiento">
-                                            <Sapphire2025.Icons.Actions.Exec color="currentColor" />
+                                            <GenIcon Name="Exec" Color="currentColor" />
                                         </button>
                                         <button type="button"
                                                 class="btn @(HasProgressBar ? "btn-secondary active" : "btn-outline-secondary")"
                                                 @onclick="() => auxToggleOption(nameof(HasProgressBar))"
                                                 title="Barras de progreso">
-                                            <Sapphire2025.Icons.Actions.TimeValue Color="currentColor" />
+                                            <GenIcon Name="TimeValue" Color="currentColor" />
                                         </button>
                                     }
                                     @if(PrintFeature)
                                     {
                                         <button class="btn btn-outline-secondary" title="Imprimir"
                                                 @onclick="OnReportPrint">
-                                            <Sapphire2025.Icons.Actions.Printer Color="currentColor" />
+                                            <GenIcon Name="Printer" Color="currentColor" />
                                         </button>
                                     }
                                     
@@ -92,7 +93,7 @@ else
                                                 class="btn @(ShowAdvancedButtons ? "btn-secondary active" : "btn-outline-secondary")"
                                                 @onclick="() => auxToggleOption(nameof(ShowAdvancedButtons))"
                                                 title="Opciones avanzadas de importación">
-                                            <Sapphire2025.Icons.Commands.ThreeDots Color="currentColor" />
+                                            <GenIcon Name="ThreeDots" Color="currentColor" />
                                         </button>
                                     }
                                 </div>

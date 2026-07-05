@@ -40,6 +40,9 @@ namespace Sapphire2025Models.Aeneas
 		//Último lavado del tren
 		public DateTime? LastWash{ get; set; }
 
+		//Tren bloqueado por una operación atómica
+		public bool Locked{ get; set; }
+
 		[JsonIgnore]
 		public List<StatusChangeModel>? StatusChanges { get; set; }
 

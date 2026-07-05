@@ -51,6 +51,15 @@
 									x.WorkType == Common.WorkOrderTypePlatformWash ||
 									x.WorkType == Common.WorkOrderTypeTunnelWash).Any();
 
+	private bool HasRequestedWash => mcolPendants.Where(x => (x.WorkType == Common.WorkOrderTypeManualWash ||
+									x.WorkType == Common.WorkOrderTypePlatformWash ||
+									x.WorkType == Common.WorkOrderTypeTunnelWash) && null== x.OpenTime).Any();
+
+	private bool HasOpenWash => mcolPendants.Where(x => (x.WorkType == Common.WorkOrderTypeManualWash ||
+									x.WorkType == Common.WorkOrderTypePlatformWash ||
+									x.WorkType == Common.WorkOrderTypeTunnelWash) && null== x.CloseTime).Any();
+
+
 	private List<TrainCommand> Commands
 	{
 		get
@@ -146,7 +155,7 @@
 					{
 						salida.Add(new TrainCommand
 						{
-							Label = "Sol. Lavado Manual",
+							Label = "Manual",
 							Action = requestManualWash,
 							IconId = "Wash",
 							IconColor = "#a02020",
@@ -154,7 +163,7 @@
 						});
 						salida.Add(new TrainCommand
 						{
-							Label = "Sol. Lavado Andén",
+							Label = "Andén",
 							Action = requestPlatformWash,
 							IconId = "Wash",
 							IconColor = "#a0a020",
@@ -166,10 +175,31 @@
 				{
 					salida.Add(new TrainCommand
 					{
-						Label = "Sol. Lavado Túnel",
+						Label = "Túnel",
 						Action = requestTunnelWash,
 						IconId = "Wash",
 						IconColor = "#2020a0",
+						Enabled = true
+					});
+				}
+				if(isStation && HasPendantWash)
+				{
+					salida.Add(new TrainCommand
+					{
+						Label = "Iniciar Lavado",
+						Action = AcceptWashRequest,
+						Style = "outline-success",
+						IconId = "Wash",
+						IconColor = "green",
+						Enabled = true
+					});
+					salida.Add(new TrainCommand
+					{
+						Label = "Rechazar Lavado",
+						Action = DenyWashRequest,
+						Style = "outline-danger",
+						IconId = "Wash",
+						IconColor = "red",
 						Enabled = true
 					});
 				}
@@ -177,7 +207,7 @@
 				{
 					salida.Add(new TrainCommand
 					{
-						Label = "Fin de Lavado",
+						Label = "Fin",
 						Action = requestWashingEnd,
 						IconId = "Wash",
 						Style = "outline-success",

@@ -1,5 +1,4 @@
-﻿@using Sapphire2025.Icons.Headers
-@using Sapphire2025.Icons
+﻿@using Sapphire2025.Icons
 @if(null!=StatusChanges)
 {
 	<div class="table-responsive" style="height:100%; max-height:70vh;">
@@ -7,16 +6,16 @@
 			<thead class="table-secondary text-light">
 				<tr>
 					<th class ="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(0))">
-						<TrainStatus color="white" />
+						<GenIcon Name="TrainStatus" Color="white"/>
 					</th>
 					<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(1))">
-						<EventDateTime color="white" />
+						<GenIcon Name="EventDateTime" Color="white" />
 					</th>
 					<th class="col-2" style="min-width: 100px; cursor:pointer;">
 		
 					</th>
 					<th class="col-2" style="min-width: 100px; cursor:pointer;" @onclick="@(() => sortFields(2))">
-						<User color="white" />
+						<GenIcon Name="User" Color="white" />
 					</th>
 				</tr>
 			</thead>
@@ -34,7 +33,7 @@
 						<tr>
 							<td style="border-right:1px solid #dee2e6;">
 								<span>
-									<Sapphire2025.Icons.Status.IcoStatus status="@change.status" color="black" />									
+									<IcoStatus status="@change.status" color="black" />									
 								</span>
 								@change.description
 							</td>

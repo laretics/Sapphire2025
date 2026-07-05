@@ -1,0 +1,279 @@
+// Validating benchmarks:
+// ***** BenchmarkRunner: Start   *****
+// ***** Found 2 benchmark(s) in total *****
+// ***** Building 1 exe(s) in Parallel: Start   *****
+// start dotnet  restore /p:UseSharedCompilation=false /p:BuildInParallel=false /m:1 /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="C:\Users\ErPe\source\repos\laretics\Sapphire2025\Sapphire25\BenchmarkSuite1\bin\Release\net9.0\BenchmarkSuite1-DefaultJob-1/" /p:OutDir="C:\Users\ErPe\source\repos\laretics\Sapphire2025\Sapphire25\BenchmarkSuite1\bin\Release\net9.0\BenchmarkSuite1-DefaultJob-1\bin\Release\net9.0/" /p:OutputPath="C:\Users\ErPe\source\repos\laretics\Sapphire2025\Sapphire25\BenchmarkSuite1\bin\Release\net9.0\BenchmarkSuite1-DefaultJob-1\bin\Release\net9.0/" /p:PublishDir="C:\Users\ErPe\source\repos\laretics\Sapphire2025\Sapphire25\BenchmarkSuite1\bin\Release\net9.0\BenchmarkSuite1-DefaultJob-1\publish/" in C:\Users\ErPe\source\repos\laretics\Sapphire2025\Sapphire25\BenchmarkSuite1\bin\Release\net9.0\BenchmarkSuite1-DefaultJob-1
+// command took 1.1 sec and exited with 0
+// start dotnet  build -c Release --no-restore /p:UseSharedCompilation=false /p:BuildInParallel=false /m:1 /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="C:\Users\ErPe\source\repos\laretics\Sapphire2025\Sapphire25\BenchmarkSuite1\bin\Release\net9.0\BenchmarkSuite1-DefaultJob-1/" /p:OutDir="C:\Users\ErPe\source\repos\laretics\Sapphire2025\Sapphire25\BenchmarkSuite1\bin\Release\net9.0\BenchmarkSuite1-DefaultJob-1\bin\Release\net9.0/" /p:OutputPath="C:\Users\ErPe\source\repos\laretics\Sapphire2025\Sapphire25\BenchmarkSuite1\bin\Release\net9.0\BenchmarkSuite1-DefaultJob-1\bin\Release\net9.0/" /p:PublishDir="C:\Users\ErPe\source\repos\laretics\Sapphire2025\Sapphire25\BenchmarkSuite1\bin\Release\net9.0\BenchmarkSuite1-DefaultJob-1\publish/" --output "C:\Users\ErPe\source\repos\laretics\Sapphire2025\Sapphire25\BenchmarkSuite1\bin\Release\net9.0\BenchmarkSuite1-DefaultJob-1\bin\Release\net9.0/" in C:\Users\ErPe\source\repos\laretics\Sapphire2025\Sapphire25\BenchmarkSuite1\bin\Release\net9.0\BenchmarkSuite1-DefaultJob-1
+// command took 16.29 sec and exited with 0
+// ***** Done, took 00:00:17 (17.46 sec)   *****
+// Found 1 benchmarks:
+//   AeneasTrainsBenchmark.ProjectTrainList: DefaultJob
+
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: Alto rendimiento)
+// **************************
+// Benchmark: AeneasTrainsBenchmark.ProjectTrainList: DefaultJob
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet BenchmarkSuite1-DefaultJob-1.dll --anonymousPipes 2644 2668 --benchmarkName Sapphire2025Server.Benchmarks.AeneasTrainsBenchmark.ProjectTrainList --job Default --benchmarkId 0 in C:\Users\ErPe\source\repos\laretics\Sapphire2025\Sapphire25\BenchmarkSuite1\bin\Release\net9.0\BenchmarkSuite1-DefaultJob-1\bin\Release\net9.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.2
+// Runtime=.NET 9.0.17 (9.0.1726.26416), X64 RyuJIT AVX2
+// GC=Non-concurrent Workstation
+// HardwareIntrinsics=AVX2,AES,BMI1,BMI2,FMA,LZCNT,PCLMUL,POPCNT VectorSize=256
+// Job: DefaultJob
+
+OverheadJitting  1: 1 op, 135800.00 ns, 135.8000 us/op
+WorkloadJitting  1: 1 op, 294712500.00 ns, 294.7125 ms/op
+
+WorkloadPilot    1: 2 op, 475678500.00 ns, 237.8393 ms/op
+WorkloadPilot    2: 3 op, 699011400.00 ns, 233.0038 ms/op
+
+OverheadWarmup   1: 3 op, 400.00 ns, 133.3333 ns/op
+OverheadWarmup   2: 3 op, 200.00 ns, 66.6667 ns/op
+OverheadWarmup   3: 3 op, 300.00 ns, 100.0000 ns/op
+OverheadWarmup   4: 3 op, 200.00 ns, 66.6667 ns/op
+OverheadWarmup   5: 3 op, 300.00 ns, 100.0000 ns/op
+OverheadWarmup   6: 3 op, 300.00 ns, 100.0000 ns/op
+
+// BeforeActualRun
+WorkloadActual   1: 3 op, 681323700.00 ns, 227.1079 ms/op
+WorkloadActual   2: 3 op, 663961600.00 ns, 221.3205 ms/op
+WorkloadActual   3: 3 op, 676861900.00 ns, 225.6206 ms/op
+WorkloadActual   4: 3 op, 650950600.00 ns, 216.9835 ms/op
+WorkloadActual   5: 3 op, 654906500.00 ns, 218.3022 ms/op
+WorkloadActual   6: 3 op, 649699300.00 ns, 216.5664 ms/op
+WorkloadActual   7: 3 op, 664012500.00 ns, 221.3375 ms/op
+WorkloadActual   8: 3 op, 672481400.00 ns, 224.1605 ms/op
+WorkloadActual   9: 3 op, 697308800.00 ns, 232.4363 ms/op
+WorkloadActual  10: 3 op, 642930900.00 ns, 214.3103 ms/op
+WorkloadActual  11: 3 op, 651323400.00 ns, 217.1078 ms/op
+WorkloadActual  12: 3 op, 675095400.00 ns, 225.0318 ms/op
+WorkloadActual  13: 3 op, 680802200.00 ns, 226.9341 ms/op
+WorkloadActual  14: 3 op, 704146900.00 ns, 234.7156 ms/op
+WorkloadActual  15: 3 op, 665427800.00 ns, 221.8093 ms/op
+WorkloadActual  16: 3 op, 675828000.00 ns, 225.2760 ms/op
+WorkloadActual  17: 3 op, 693035400.00 ns, 231.0118 ms/op
+WorkloadActual  18: 3 op, 666964600.00 ns, 222.3215 ms/op
+WorkloadActual  19: 3 op, 652186800.00 ns, 217.3956 ms/op
+WorkloadActual  20: 3 op, 666414200.00 ns, 222.1381 ms/op
+WorkloadActual  21: 3 op, 651690100.00 ns, 217.2300 ms/op
+WorkloadActual  22: 3 op, 653314100.00 ns, 217.7714 ms/op
+WorkloadActual  23: 3 op, 665040700.00 ns, 221.6802 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 3 op, 681323700.00 ns, 227.1079 ms/op
+WorkloadResult   2: 3 op, 663961600.00 ns, 221.3205 ms/op
+WorkloadResult   3: 3 op, 676861900.00 ns, 225.6206 ms/op
+WorkloadResult   4: 3 op, 650950600.00 ns, 216.9835 ms/op
+WorkloadResult   5: 3 op, 654906500.00 ns, 218.3022 ms/op
+WorkloadResult   6: 3 op, 649699300.00 ns, 216.5664 ms/op
+WorkloadResult   7: 3 op, 664012500.00 ns, 221.3375 ms/op
+WorkloadResult   8: 3 op, 672481400.00 ns, 224.1605 ms/op
+WorkloadResult   9: 3 op, 697308800.00 ns, 232.4363 ms/op
+WorkloadResult  10: 3 op, 642930900.00 ns, 214.3103 ms/op
+WorkloadResult  11: 3 op, 651323400.00 ns, 217.1078 ms/op
+WorkloadResult  12: 3 op, 675095400.00 ns, 225.0318 ms/op
+WorkloadResult  13: 3 op, 680802200.00 ns, 226.9341 ms/op
+WorkloadResult  14: 3 op, 704146900.00 ns, 234.7156 ms/op
+WorkloadResult  15: 3 op, 665427800.00 ns, 221.8093 ms/op
+WorkloadResult  16: 3 op, 675828000.00 ns, 225.2760 ms/op
+WorkloadResult  17: 3 op, 693035400.00 ns, 231.0118 ms/op
+WorkloadResult  18: 3 op, 666964600.00 ns, 222.3215 ms/op
+WorkloadResult  19: 3 op, 652186800.00 ns, 217.3956 ms/op
+WorkloadResult  20: 3 op, 666414200.00 ns, 222.1381 ms/op
+WorkloadResult  21: 3 op, 651690100.00 ns, 217.2300 ms/op
+WorkloadResult  22: 3 op, 653314100.00 ns, 217.7714 ms/op
+WorkloadResult  23: 3 op, 665040700.00 ns, 221.6802 ms/op
+// GC:  0 0 0 1559224 3
+// Threading:  11 0 3
+
+// AfterAll
+// Benchmark Process 47012 has exited with code 0.
+
+Mean = 222.546 ms, StdErr = 1.131 ms (0.51%), N = 23, StdDev = 5.425 ms
+Min = 214.310 ms, Q1 = 217.583 ms, Median = 221.809 ms, Q3 = 225.448 ms, Max = 234.716 ms
+IQR = 7.865 ms, LowerFence = 205.786 ms, UpperFence = 237.246 ms
+ConfidenceInterval = [218.257 ms; 226.836 ms] (CI 99.9%), Margin = 4.290 ms (1.93% of Mean)
+Skewness = 0.56, Kurtosis = 2.39, MValue = 2
+
+// ** Remained 1 (50,0 %) benchmark(s) to run. Estimated finish 2026-07-05 19:08 (0h 0m from now) **
+Successfully reverted power plan (GUID: 381b4222-f694-41f0-9685-ff5bb260df2e FriendlyName: Equilibrado)
+// ***** BenchmarkRunner: Finish  *****
+
+// * Export *
+  BenchmarkDotNet.Artifacts\results\Sapphire2025Server.Benchmarks.AeneasTrainsBenchmark-report.csv
+  BenchmarkDotNet.Artifacts\results\Sapphire2025Server.Benchmarks.AeneasTrainsBenchmark-report-github.md
+  BenchmarkDotNet.Artifacts\results\Sapphire2025Server.Benchmarks.AeneasTrainsBenchmark-report.html
+
+// * Detailed results *
+AeneasTrainsBenchmark.ProjectTrainList: DefaultJob
+Runtime = .NET 9.0.17 (9.0.1726.26416), X64 RyuJIT AVX2; GC = Non-concurrent Workstation
+Mean = 222.546 ms, StdErr = 1.131 ms (0.51%), N = 23, StdDev = 5.425 ms
+Min = 214.310 ms, Q1 = 217.583 ms, Median = 221.809 ms, Q3 = 225.448 ms, Max = 234.716 ms
+IQR = 7.865 ms, LowerFence = 205.786 ms, UpperFence = 237.246 ms
+ConfidenceInterval = [218.257 ms; 226.836 ms] (CI 99.9%), Margin = 4.290 ms (1.93% of Mean)
+Skewness = 0.56, Kurtosis = 2.39, MValue = 2
+-------------------- Histogram --------------------
+[213.802 ms ; 218.810 ms) | @@@@@@@@
+[218.810 ms ; 225.974 ms) | @@@@@@@@@@
+[225.974 ms ; 235.368 ms) | @@@@@
+---------------------------------------------------
+
+// * Summary *
+
+BenchmarkDotNet v0.15.2, Windows 11 (10.0.26200.8655)
+AMD Ryzen 9 5950X 3.40GHz, 1 CPU, 32 logical and 16 physical cores
+.NET SDK 9.0.311
+  [Host]     : .NET 9.0.17 (9.0.1726.26416), X64 RyuJIT AVX2
+  DefaultJob : .NET 9.0.17 (9.0.1726.26416), X64 RyuJIT AVX2
+
+
+| Method           | Mean     | Error   | StdDev  | Allocated |
+|----------------- |---------:|--------:|--------:|----------:|
+| ProjectTrainList | 222.5 ms | 4.29 ms | 5.43 ms | 507.56 KB |
+
+// * Legends *
+  Mean      : Arithmetic mean of all measurements
+  Error     : Half of 99.9% confidence interval
+  StdDev    : Standard deviation of all measurements
+  Allocated : Allocated memory per single operation (managed only, inclusive, 1KB = 1024B)
+  1 ms      : 1 Millisecond (0.001 sec)
+
+// * Diagnostic Output - MemoryDiagnoser *
+
+
+// ***** BenchmarkRunner: End *****
+Run time: 00:00:19 (19.82 sec), executed benchmarks: 1
+
+// Found 1 benchmarks:
+//   TrainsUsersBenchmark.ProjectTrainsUsers: DefaultJob
+
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: Alto rendimiento)
+// **************************
+// Benchmark: TrainsUsersBenchmark.ProjectTrainsUsers: DefaultJob
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet BenchmarkSuite1-DefaultJob-1.dll --anonymousPipes 648 640 --benchmarkName Sapphire2025Server.Benchmarks.TrainsUsersBenchmark.ProjectTrainsUsers --job Default --benchmarkId 1 in C:\Users\ErPe\source\repos\laretics\Sapphire2025\Sapphire25\BenchmarkSuite1\bin\Release\net9.0\BenchmarkSuite1-DefaultJob-1\bin\Release\net9.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.2
+// Runtime=.NET 9.0.17 (9.0.1726.26416), X64 RyuJIT AVX2
+// GC=Non-concurrent Workstation
+// HardwareIntrinsics=AVX2,AES,BMI1,BMI2,FMA,LZCNT,PCLMUL,POPCNT VectorSize=256
+// Job: DefaultJob
+
+OverheadJitting  1: 1 op, 137200.00 ns, 137.2000 us/op
+WorkloadJitting  1: 1 op, 756669100.00 ns, 756.6691 ms/op
+
+OverheadJitting  2: 1 op, 400.00 ns, 400.0000 ns/op
+WorkloadJitting  2: 1 op, 567411600.00 ns, 567.4116 ms/op
+
+OverheadWarmup   1: 1 op, 400.00 ns, 400.0000 ns/op
+OverheadWarmup   2: 1 op, 300.00 ns, 300.0000 ns/op
+OverheadWarmup   3: 1 op, 300.00 ns, 300.0000 ns/op
+OverheadWarmup   4: 1 op, 200.00 ns, 200.0000 ns/op
+OverheadWarmup   5: 1 op, 300.00 ns, 300.0000 ns/op
+OverheadWarmup   6: 1 op, 300.00 ns, 300.0000 ns/op
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 747071900.00 ns, 747.0719 ms/op
+WorkloadActual   2: 1 op, 569868100.00 ns, 569.8681 ms/op
+WorkloadActual   3: 1 op, 539396600.00 ns, 539.3966 ms/op
+WorkloadActual   4: 1 op, 518669200.00 ns, 518.6692 ms/op
+WorkloadActual   5: 1 op, 517498200.00 ns, 517.4982 ms/op
+WorkloadActual   6: 1 op, 525012400.00 ns, 525.0124 ms/op
+WorkloadActual   7: 1 op, 518477100.00 ns, 518.4771 ms/op
+WorkloadActual   8: 1 op, 516934700.00 ns, 516.9347 ms/op
+WorkloadActual   9: 1 op, 527065400.00 ns, 527.0654 ms/op
+WorkloadActual  10: 1 op, 518434800.00 ns, 518.4348 ms/op
+WorkloadActual  11: 1 op, 519863600.00 ns, 519.8636 ms/op
+WorkloadActual  12: 1 op, 517674600.00 ns, 517.6746 ms/op
+WorkloadActual  13: 1 op, 513330900.00 ns, 513.3309 ms/op
+WorkloadActual  14: 1 op, 521151900.00 ns, 521.1519 ms/op
+WorkloadActual  15: 1 op, 516515100.00 ns, 516.5151 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 518669200.00 ns, 518.6692 ms/op
+WorkloadResult   2: 1 op, 517498200.00 ns, 517.4982 ms/op
+WorkloadResult   3: 1 op, 525012400.00 ns, 525.0124 ms/op
+WorkloadResult   4: 1 op, 518477100.00 ns, 518.4771 ms/op
+WorkloadResult   5: 1 op, 516934700.00 ns, 516.9347 ms/op
+WorkloadResult   6: 1 op, 527065400.00 ns, 527.0654 ms/op
+WorkloadResult   7: 1 op, 518434800.00 ns, 518.4348 ms/op
+WorkloadResult   8: 1 op, 519863600.00 ns, 519.8636 ms/op
+WorkloadResult   9: 1 op, 517674600.00 ns, 517.6746 ms/op
+WorkloadResult  10: 1 op, 513330900.00 ns, 513.3309 ms/op
+WorkloadResult  11: 1 op, 521151900.00 ns, 521.1519 ms/op
+WorkloadResult  12: 1 op, 516515100.00 ns, 516.5151 ms/op
+// GC:  0 0 0 10734192 1
+// Threading:  9 0 1
+
+// AfterAll
+// Benchmark Process 27636 has exited with code 0.
+
+Mean = 519.219 ms, StdErr = 1.078 ms (0.21%), N = 12, StdDev = 3.733 ms
+Min = 513.331 ms, Q1 = 517.357 ms, Median = 518.456 ms, Q3 = 520.186 ms, Max = 527.065 ms
+IQR = 2.828 ms, LowerFence = 513.115 ms, UpperFence = 524.428 ms
+ConfidenceInterval = [514.438 ms; 524.000 ms] (CI 99.9%), Margin = 4.781 ms (0.92% of Mean)
+Skewness = 0.7, Kurtosis = 2.67, MValue = 2
+
+// ** Remained 0 (0,0 %) benchmark(s) to run. Estimated finish 2026-07-05 19:08 (0h 0m from now) **
+Successfully reverted power plan (GUID: 381b4222-f694-41f0-9685-ff5bb260df2e FriendlyName: Equilibrado)
+// ***** BenchmarkRunner: Finish  *****
+
+// * Export *
+  BenchmarkDotNet.Artifacts\results\Sapphire2025Server.Benchmarks.TrainsUsersBenchmark-report.csv
+  BenchmarkDotNet.Artifacts\results\Sapphire2025Server.Benchmarks.TrainsUsersBenchmark-report-github.md
+  BenchmarkDotNet.Artifacts\results\Sapphire2025Server.Benchmarks.TrainsUsersBenchmark-report.html
+
+// * Detailed results *
+TrainsUsersBenchmark.ProjectTrainsUsers: DefaultJob
+Runtime = .NET 9.0.17 (9.0.1726.26416), X64 RyuJIT AVX2; GC = Non-concurrent Workstation
+Mean = 519.219 ms, StdErr = 1.078 ms (0.21%), N = 12, StdDev = 3.733 ms
+Min = 513.331 ms, Q1 = 517.357 ms, Median = 518.456 ms, Q3 = 520.186 ms, Max = 527.065 ms
+IQR = 2.828 ms, LowerFence = 513.115 ms, UpperFence = 524.428 ms
+ConfidenceInterval = [514.438 ms; 524.000 ms] (CI 99.9%), Margin = 4.781 ms (0.92% of Mean)
+Skewness = 0.7, Kurtosis = 2.67, MValue = 2
+-------------------- Histogram --------------------
+[513.007 ms ; 529.206 ms) | @@@@@@@@@@@@
+---------------------------------------------------
+
+// * Summary *
+
+BenchmarkDotNet v0.15.2, Windows 11 (10.0.26200.8655)
+AMD Ryzen 9 5950X 3.40GHz, 1 CPU, 32 logical and 16 physical cores
+.NET SDK 9.0.311
+  [Host]     : .NET 9.0.17 (9.0.1726.26416), X64 RyuJIT AVX2
+  DefaultJob : .NET 9.0.17 (9.0.1726.26416), X64 RyuJIT AVX2
+
+
+| Method             | Mean     | Error   | StdDev  |
+|------------------- |---------:|--------:|--------:|
+| ProjectTrainsUsers | 519.2 ms | 4.78 ms | 3.73 ms |
+
+// * Hints *
+Outliers
+  TrainsUsersBenchmark.ProjectTrainsUsers: Default -> 3 outliers were removed (539.40 ms..747.07 ms)
+
+// * Legends *
+  Mean   : Arithmetic mean of all measurements
+  Error  : Half of 99.9% confidence interval
+  StdDev : Standard deviation of all measurements
+  1 ms   : 1 Millisecond (0.001 sec)
+
+// * Diagnostic Output - CPUUsageDiagnoser *
+Saving diagsession as a file. This may take a moment...
+Exported diagsession file: C:\Users\ErPe\source\repos\laretics\Sapphire2025\Sapphire25\BenchmarkDotNet.Artifacts\BenchmarkDotNet_TrainsUsersBenchmark_20260705_190810.diagsession.
+Opening diagsession in VisualStudio: 11876
+
+
+// ***** BenchmarkRunner: End *****
+Run time: 00:00:14 (14.2 sec), executed benchmarks: 1
+
+Global total time: 00:00:55 (55.76 sec), executed benchmarks: 2
+// * Artifacts cleanup *
+Artifacts cleanup is finished

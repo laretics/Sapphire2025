@@ -1,4 +1,5 @@
-﻿@if(mvarInitialized)
+﻿@using Sapphire2025.Icons
+@if(mvarInitialized)
 {
 	<div class="svg-container">
 		<svg width="@width%" height="@height%" xmlns="http://www.w3.org/2000/svg" enable-background="true">
@@ -12,80 +13,77 @@
 						Name="Inicio"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.Unknown">
-							<Sapphire2025.Icons.Status.Unknown color="white" />
+							<GenIcon Name="StatusUnknown" Color="white"/>
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="4"
 						Name="Stand Still"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.StandStill">
-							<Sapphire2025.Icons.Status.StandStill color="white" />
+							<GenIcon Name="StatusStandStill" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="4" Name="Baja"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.Disabled">
-							<Sapphire2025.Icons.Status.Disabled color="white" />
+							<GenIcon Name="StatusDisabled" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 
-						<Sapphire2025.Icons.Arrows.LeftRight x="31" y="8" height="8" Color="navy" />
-						<Sapphire2025.Icons.Arrows.LeftRight x="61" y="8" height="8" Color="navy" />
+						<GenIcon Name="LeftRight" Color="navy" x="31" y="8" Size="32" />
+						<GenIcon Name="LeftRight" Color="navy" x="61" y="8" Size="32" />
 
-						<Sapphire2025.Icons.Arrows.UpDown x="46" y="20" height="8" Color="navy" />
-
+						<GenIcon Name="UpDown" Color="navy" x="46" y="20" Size="32" />
 
 						<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="28" Name="¡Retirar!"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.RequestToRepair">
-							<Sapphire2025.Icons.Status.RequestToRepair color="white" />
+							<GenIcon Name="StatusRequestToRepair" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="28" Name="Correctivo"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.Repairing">
-							<Sapphire2025.Icons.Status.Repairing color="white" />
+							<GenIcon Name="StatusRepairing" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
-
-						<Sapphire2025.Icons.Arrows.Right x="31" y="32" height="8" Color="navy" />
-
-
-						<Sapphire2025.Icons.Arrows.Up x="16" y="44" height="8" Color="navy" />
-						<Sapphire2025.Icons.Arrows.Down x="46" y="44" height="8" Color="navy" />
+					
+						<GenIcon Name="Right" Color="navy" x="31" y="32" Size="32" />
+						
+						<GenIcon Name="Up" Color="navy" x="16" y="44" Size="32" />
+						<GenIcon Name="Down" Color="navy" x="46" y="44" Size="32" />
 
 						<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="52" Name="Pend.Dec.Parada"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.RequestToDiagnose">
-							<Sapphire2025.Icons.Status.RequestToDiagnose color="white" />
+							<GenIcon Name="StatusRequestToDiagnose" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="52" Name="Disponible"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.Available">
-							<Sapphire2025.Icons.Status.Available color="white" />
+							<GenIcon Name="StatusAvailable" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="52" Name="Solicitado Preventivo"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.DepotRequested">
-							<Sapphire2025.Icons.Status.DepotRequested color="white" />
+							<GenIcon Name="StatusDepotRequested" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 
+						<GenIcon Name="LeftRight" Color="navy" x="31" y="56" Size="32" />
 
-						<Sapphire2025.Icons.Arrows.LeftRight x="31" y="56" height="8" Color="navy" />
+						<GenIcon Name="Scheduler" Color="navy" x="61" y="53" Size="32" />
+						<GenIcon Name="Right" Color="navy" x="61" y="59" Size="32" />
 
-						<Sapphire2025.Icons.Actions.Scheduler x="61" y="53" height="8" Color="navy" />
-						<Sapphire2025.Icons.Arrows.Right x="61" y="59" height="8" Color="navy" />
-
-						<Sapphire2025.Icons.Arrows.Up x="46" y="68" height="8" Color="navy" />
-						<Sapphire2025.Icons.Arrows.UpDown x="76" y="68" height="8" Color="navy" />
+						<GenIcon Name="Up" Color="navy" x="46" y="68" Size="32" />
+						<GenIcon Name="UpDown" Color="navy" x="76" y="68" Size="32" />
 
 						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="76" Name="Preventivo"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.Maintenance">
-							<Sapphire2025.Icons.Status.Maintenance color="white" />
+							<GenIcon Name="StatusMaintenance" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="76" Name="Esperando Preventivo"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.DepotAvailable">
-							<Sapphire2025.Icons.Status.DepotAvailable color="white" />
+							<GenIcon Name="StatusDepotAvailable" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 
-						<Sapphire2025.Icons.Arrows.LeftRight x="61" y="80" height="8" Color="navy" />
+						<GenIcon Name="LeftRight" Color="navy" x="61" y="80" Size="32" />
 					}
 					else
 					{
@@ -95,56 +93,54 @@
 						<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="6" Name="¡Retirar!"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.RequestToRepair">
-							<Sapphire2025.Icons.Status.RequestToRepair color="white" />
+							<GenIcon Name="StatusRequestToRepair" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="6" Name="Correctivo"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.Repairing">
-							<Sapphire2025.Icons.Status.Repairing color="white" />
+							<GenIcon Name="StatusRepairing" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 
+						<GenIcon Name="Right" Color="navy" x="31" y="10" Size="32" />
 
-						<Sapphire2025.Icons.Arrows.Right x="31" y="10" height="8" Color="navy" />
-
-						<Sapphire2025.Icons.Arrows.Up x="16" y="27" height="8" Color="navy" />
-						<Sapphire2025.Icons.Arrows.Down x="46" y="27" height="8" Color="navy" />
+						<GenIcon Name="Up" Color="navy" x="16" y="27" Size="32" />
+						<GenIcon Name="Down" Color="navy" x="46" y="27" Size="32" />
 
 						<Sapphire2025.Layout.Aeneas.StatusBox x="10" y="39" Name="Pend.Dec.Parada"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.RequestToDiagnose">
-							<Sapphire2025.Icons.Status.RequestToDiagnose color="white" />
+							<GenIcon Name="StatusRequestToDiagnose" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="39" Name="Disponible"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.Available">
-							<Sapphire2025.Icons.Status.Available color="white" />
+							<GenIcon Name="StatusAvailable" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="39" Name="Solicitado Preventivo"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.DepotRequested">
-							<Sapphire2025.Icons.Status.DepotRequested color="white" />
+							<GenIcon Name="StatusDepotRequested" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 
-						<Sapphire2025.Icons.Arrows.LeftRight x="31" y="43" height="8" Color="navy" />
+						<GenIcon Name="LeftRight" Color="navy" x="31" y="43" Size="32" />
 
-						<Sapphire2025.Icons.Actions.Scheduler x="61" y="40" height="8" Color="navy" />
-						<Sapphire2025.Icons.Arrows.Right x="61" y="48" height="8" Color="navy" />
+						<GenIcon Name="Scheduler" Color="navy" x="61" y="40" Size="32" />
+						<GenIcon Name="Right" Color="navy" x="61" y="48" Size="32" />
 
-						<Sapphire2025.Icons.Arrows.Up x="46" y="59" height="8" Color="navy" />
-						<Sapphire2025.Icons.Arrows.UpDown x="76" y="59" height="8" Color="navy" />
+						<GenIcon Name="Up" Color="navy" x="46" y="59" Size="32" />
+						<GenIcon Name="UpDown" Color="navy" x="76" y="59" Size="32" />
 
 						<Sapphire2025.Layout.Aeneas.StatusBox x="40" y="72" Name="Preventivo"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.Maintenance">
-							<Sapphire2025.Icons.Status.Maintenance color="white" />
+							<GenIcon Name="StatusMaintenance" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
 						<Sapphire2025.Layout.Aeneas.StatusBox x="70" y="72" Name="Esperando Preventivo"
 						OnStatusSelected="HandleStatusSelected"
 						MyStatus="Sapphire2025Models.Common.TrainStatus.DepotAvailable">
-							<Sapphire2025.Icons.Status.DepotAvailable color="white" />
+							<GenIcon Name="StatusDepotAvailable" Color="white" />
 						</Sapphire2025.Layout.Aeneas.StatusBox>
-
-						<Sapphire2025.Icons.Arrows.LeftRight x="61" y="76" height="8" Color="navy" />
+						<GenIcon Name="LeftRight" Color="navy" x="61" y="76" Size="32" />
 					}
 				</CascadingValue>
 			</CascadingValue>
