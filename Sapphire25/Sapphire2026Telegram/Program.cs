@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.Extensions.Hosting;
 using Sapphire2025.Storage;
 using Sapphire2026Telegram;
 

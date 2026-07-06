@@ -265,7 +265,7 @@ namespace Sapphire2026Telegram
 				TimeSpan retryDelay = GetTelegramRetryDelay(ex) ?? TimeSpan.FromSeconds(30);
 				mvarLogger.LogWarning("Telegram devolvió 429 para {ChatId}. Reintentando en {Delay}.", usuario.TelegramId, retryDelay);
 				ApplyBroadcastCooldown(retryDelay);
-				await Task.Delay(retryDelay, cancellationToken);
+				//await Task.Delay(retryDelay, cancellationToken);
 				try
 				{
 					await WaitForBroadcastSlotAsync(cancellationToken);
@@ -368,6 +368,18 @@ namespace Sapphire2026Telegram
 
 			return false;
 		}
+		private static bool UserMatchesRole(ExtendedUserModel? user, ISet<Common.UserRole> roles)
+		{
+			if (null == user) return false;
+
+			foreach(ExtendedUserModel.RoleInfo auxInfo in user.roles.Values)
+			{
+				if (auxInfo.roleId < 256 && roles.Contains((Common.UserRole)auxInfo.roleId))
+					return true;
+			}
+			return false;
+		}
+
 		private async Task<List<UserModel>> BuildBroadcastRecipientsByFilter(bool priority, string filters)
 		{
 			List<UserModel> auxUsers = new List<UserModel>();
@@ -391,22 +403,30 @@ namespace Sapphire2026Telegram
 		}
 		private async Task<List<UserModel>> BuildBroadcastRecipientsByRole(bool priority, Common.UserRole[] roles)
 		{
-			if (0 == roles.Length)
+			if (roles.Length < 1)
 				return new List<UserModel>();
 
 			HashSet<Common.UserRole> auxRoles = new HashSet<Common.UserRole>(roles);
 			List<UserModel> auxUsers = new List<UserModel>();
 			IEnumerable<UserModel> auxOrigin = await auxAvailableUsers(priority);
+
+			using IServiceScope scope = services.CreateScope();
+			AuthenticationClient auxClient = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
+
 			foreach (UserModel candidato in auxOrigin)
 			{
 				if (!(priority || candidato.TelegramEnabled))
 					continue;
 
-				if (!mcolTasks.TryGetValue(candidato.TelegramId, out BotTask? auxTask))
-					auxTask = await OpenTask(candidato.TelegramId);
-
-				Debug.Assert(null != auxTask);
-				if (auxTask.userContext.MatchRole(auxRoles))
+				bool auxMatches;
+				if (mcolTasks.TryGetValue(candidato.TelegramId, out BotTask? auxTask))
+					auxMatches = auxTask.userContext.MatchRole(auxRoles);
+				else
+				{
+					ExtendedUserModel? auxUser = await auxClient.userByTelegramId(candidato.TelegramId);
+					auxMatches = UserMatchesRole(auxUser, auxRoles);
+				}
+				if (auxMatches)
 					auxUsers.Add(candidato);
 			}
 			return auxUsers;
