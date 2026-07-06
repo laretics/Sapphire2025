@@ -5,7 +5,6 @@
 $solutionRoot = "C:\Users\ErPe\source\repos\laretics\Sapphire2025\Sapphire25"
 $workerProject = "$solutionRoot\Sapphire2026Telegram\Sapphire2026Telegram.csproj"
 $publishPath = "$solutionRoot\publish-telegram"
-$configSource = "C:\Users\ErPe\DeployConfigs\appsettings.Production.Telegram.json"
 $remoteHost = "zafiro"
 $remotePath = "/home/Zafiro/TelegramBot"
 $serviceName = "sapphire-telegram"
@@ -31,22 +30,13 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# 2. Verificar archivo de configuracion
-if (-not (Test-Path $configSource)) {
-    Write-Host "ERROR: No se encontro el archivo: $configSource" -ForegroundColor Red
-    exit 1
-}
-
-Write-Host "Copiando configuracion de produccion..." -ForegroundColor Yellow
-Copy-Item $configSource -Destination "$publishPath\appsettings.Production.json" -Force
-
-# 3. Crear paquete con tar (sin backslashes)
+# 2. Crear paquete con tar (sin backslashes)
 Write-Host "Creando paquete de despliegue..." -ForegroundColor Yellow
 Push-Location $publishPath
 tar -czf ..\telegram-deploy.tar.gz *
 Pop-Location
 
-# 4. Subir al servidor
+# 3. Subir al servidor
 Write-Host "Subiendo al servidor..." -ForegroundColor Green
 scp .\telegram-deploy.tar.gz ${remoteHost}:/tmp/
 
@@ -56,7 +46,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# 5. Desplegar en el servidor
+# 4. Desplegar en el servidor
 Write-Host "Desplegando en el servidor..." -ForegroundColor Green
 
 ssh $remoteHost "systemctl stop $serviceName"
@@ -68,7 +58,7 @@ ssh $remoteHost "systemctl start $serviceName"
 ssh $remoteHost "systemctl status $serviceName --no-pager -l"
 ssh $remoteHost "rm -f /tmp/telegram-deploy.tar.gz"
 
-# 6. Limpiar archivos temporales locales
+# 5. Limpiar archivos temporales locales
 Write-Host "Limpiando archivos temporales..." -ForegroundColor Yellow
 Remove-Item .\telegram-deploy.tar.gz -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force $publishPath -ErrorAction SilentlyContinue

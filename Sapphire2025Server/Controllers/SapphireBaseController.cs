@@ -168,24 +168,32 @@ namespace Sapphire2025Server.Controllers
 			return await hasBasicPermission(request.SessionToken, role);
 		}
 
-		//Estoy teniendo un cacao gordo con la gestión de las credenciales. A la hora de recuperar
-		//las sesiones debería tener una colección de credenciales para poder comprobar si el
-		//usuario puede realizar ciertas funciones. Al principio lo intenté hacer con flags, pero
-		//es un engorroso. Lo mejor será tener una colección y serializarla.
-
-		//Lo dejo todo para mañana, que espero estar más despierto.
-
+		/// <summary>
+		/// Al recuperar la sesión, aprovechamos para recargar en el servidor el timeout, de forma que tenemos dos copias. Una en el
+		/// cliente, para saber que está fuera de tiempo y otra en el servidor para ir modificando el instante de caducidad.
+		/// </summary>
+		/// <param name="tokenId"></param>
+		/// <returns></returns>
 		protected async Task<ActiveSessionModel?> retrieveSession(Guid tokenId)
 		{
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				ActiveSessionModel? salida = await almacen.ActiveSessions.Where(x => x.Id == tokenId).FirstOrDefaultAsync();
-				if (null != salida)
+				ActiveSessionModel? salida = await almacen.ActiveSessions
+				 .Where(x => x.Id == tokenId)
+				 .FirstOrDefaultAsync();
+
+				if(null==salida) return null;
+
+				if(salida.Expiry<DateTime.UtcNow)
 				{
-					salida.Expiry = DateTime.UtcNow.Add(EXPIRY_INTERVAL);
-					//Prolongo la caducidad de esta sesión
+					almacen.ActiveSessions.Remove(salida);
 					await almacen.SaveChangesAsync();
+					await addLoginRecord(salida.UserId, Common.sessionEventType.sessionExpiry, salida.HostIp);
+					return null;
 				}
+
+				salida.Expiry = DateTime.UtcNow.Add(EXPIRY_INTERVAL);
+				await almacen.SaveChangesAsync();
 				return salida;
 			}
 		}

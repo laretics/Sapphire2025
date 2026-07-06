@@ -1,4 +1,5 @@
 ﻿using Sapphire2025Models.Authentication;
+using Sapphire2026Clients;
 using System.Net.Http.Headers;
 using System.Text;
 
@@ -12,11 +13,17 @@ namespace Sapphire2025.Storage
 		public string controllerId { get;private set; }
 		internal readonly HttpClient mvarClient;
 		internal readonly IntStorageService? mvarIntStorage;
+		internal readonly SessionService? mvarSessionService;
 
-		public HttpClientBase(HttpClient httpClient,IntStorageService intStorageService, string controllerId)
+		public HttpClientBase(
+		HttpClient httpClient,
+		IntStorageService intStorageService, 
+		SessionService? sessionService,
+		string controllerId)
 		{
 			mvarClient = httpClient;
 			mvarIntStorage = intStorageService;
+			mvarSessionService = sessionService;
 			this.controllerId = controllerId;
 		}
 
@@ -70,8 +77,11 @@ namespace Sapphire2025.Storage
 		/// </summary>
 		/// <param name="request">Cadena de petición (comando+argumentos)</param>
 		/// <returns>HttpResponse</returns>
-		internal async Task<HttpResponseMessage> sendGetRequest(string request)
+		internal async Task<HttpResponseMessage> sendGetRequest(string request, bool checkSession = true)
 		{
+			if (checkSession)
+				await EnsureActiveSession();
+
 			HttpResponseMessage salida = await mvarClient.GetAsync(request);
 			salida.EnsureSuccessStatusCode();
 			return salida;
@@ -84,8 +94,11 @@ namespace Sapphire2025.Storage
 		/// <param name="commandId">Comando del servidor</param>
 		/// <param name="jsonString">Objeto del modelo en formato json</param>
 		/// <returns>HttpResponse</returns>
-		internal async Task<HttpResponseMessage> sendPutRequest(string commandId, string jsonString)
+		internal async Task<HttpResponseMessage> sendPutRequest(string commandId, string jsonString, bool checkSession = true)
 		{
+			if (checkSession)
+				await EnsureActiveSession();
+
 			HttpContent paquete = new StringContent(jsonString, Encoding.UTF8, "application/json");
 			string auxCommand = composeUri(commandId);
 			HttpResponseMessage salida = await mvarClient.PutAsync(auxCommand, paquete);
@@ -99,21 +112,43 @@ namespace Sapphire2025.Storage
 		/// <param name="commandId">Comando del servidor</param>
 		/// <param name="jsonString">Objeto del modelo en formato json</param>
 		/// <returns></returns>
-		internal async Task<HttpResponseMessage> sendPostRequest(string commandId, string jsonString)
+		internal async Task<HttpResponseMessage> sendPostRequest(string commandId, string jsonString, bool checkSession = true)
 		{
+			if(checkSession)
+				await EnsureActiveSession();
+
 			HttpContent paquete = new StringContent(jsonString, Encoding.UTF8, "application/json");
 			string auxCommand = composeUri(commandId);
 			HttpResponseMessage salida = await mvarClient.PostAsync(auxCommand, paquete);
 			salida.EnsureSuccessStatusCode();
 			return salida;
 		}
-		internal async Task<HttpResponseMessage> sendPostRequest(string commandId, MultipartFormDataContent content)
+		internal async Task<HttpResponseMessage> sendPostRequest(string commandId, MultipartFormDataContent content, bool checkSession = true)
 		{
+			if(checkSession)
+				await EnsureActiveSession();	
+
 			string auxCommand = composeUri(commandId);
             HttpResponseMessage salida = await mvarClient.PostAsync(auxCommand, content);
             salida.EnsureSuccessStatusCode();
             return salida;	
         }
+
+		internal async Task EnsureActiveSession()
+		{
+			if (null == mvarIntStorage || null == mvarSessionService) return;
+
+			SessionModel? session = await mvarIntStorage.GetSessionInfo();
+
+			//Sin sesión tenemos un usuario anónimo o con la sesión sin iniciar. No es una caducidad.
+			if(null==session || Guid.Empty == session.Token) return;
+
+			if(await mvarIntStorage.IsSessionExpiredLocally())
+			{
+				mvarSessionService.NotifyExpired();
+				throw new SessionExpiredException();
+			}
+		}
 
 
 		public class requestParam

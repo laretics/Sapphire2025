@@ -24,6 +24,9 @@ namespace Sapphire2025Models.Authentication
 		}
 		public UserModelBase User { get; set; }
 		public List<Common.UserRole> Roles { get; set; }
+		public DateTime ExpiryUtc{ get; set; } //Para sincronizar la caducidad con el cliente.
+
+		public bool IsExpiredUtc() => ExpiryUtc <= DateTime.UtcNow;
 
 		public SessionModel() 
 		{ 

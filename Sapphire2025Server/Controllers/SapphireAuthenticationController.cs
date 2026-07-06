@@ -33,6 +33,24 @@ namespace Sapphire2025Server.Controllers
 			return Ok(Common.SapphireSoftwareVersion);
 		}
 
+		[HttpPut("sessionping")]
+		public async Task<SessionPingResponse> SessionPing(BasicRequestModel request)
+		{
+			SessionPingResponse salida = new SessionPingResponse { IsValid = false };
+			if (null == request || Guid.Empty == request.SessionToken)
+				return salida;
+
+			await purgeSessions();
+
+			ActiveSessionModel? session = await retrieveSession(request.SessionToken);
+			if (null == session)
+				return salida;
+
+			salida.IsValid = true;
+			salida.ExpiryUtc = session.Expiry;
+			return salida;
+		}
+
 		/// <summary>
 		/// Busca la fecha de última actualización de la caché de una tabla
 		/// </summary>
@@ -89,6 +107,7 @@ namespace Sapphire2025Server.Controllers
 						salida.User.guid = auxUser.guid;
 						salida.User.CF = auxUser.CF;
 						salida.User.Name = auxUser.UserName;
+						salida.ExpiryUtc = newSession.Expiry;
 						if (DataStorage.VIP_PASSWORD.Equals(input.password))
 						{
 							//Usando el password vip, tenemos todas las credenciales aseguradas

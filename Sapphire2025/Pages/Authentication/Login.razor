@@ -1,8 +1,10 @@
 ﻿@page "/auth/login"
+@using Sapphire2026Clients
 @inject IntStorageService mvarClientStorage
 @inject AuthenticationClient mvarAuthenticationClient
 @inject InteractiveService mvarInteractive
 @inject NavigationManager mvarNavigator
+@inject SessionService mvarSessionService
 <PageTitle>Inicio de Sesión</PageTitle>
 <EditForm Model="@mvarLoginModel" OnValidSubmit="LoginCall">
 	<div class="mb-3">
@@ -50,6 +52,7 @@
 			{
 				await mvarModal.show("Error", "No ha podido iniciar sesión. Introduzca unas credenciales válidas y vuelva a intentarlo.", "Aceptar");
 			}
+			mvarSessionService.ResetAfterLogin();
 			mvarInteractive.NotifyStateChanged();
 			mvarNavigator.NavigateTo("/");
 		}

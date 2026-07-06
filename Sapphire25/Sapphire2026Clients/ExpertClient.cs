@@ -1,12 +1,13 @@
 ﻿using Sapphire2025Models.Expert;
 using Sapphire2025Models.Expert.WorkshiftTemplates;
+using Sapphire2026Clients;
 using System.Net.Http.Json;
 
 namespace Sapphire2025.Storage
 {
     public class ExpertClient:HttpClientBase
     {
-        public ExpertClient(HttpClient httpClient, IntStorageService intStorage) : base(httpClient, intStorage, "sapphireexpert") { }
+        public ExpertClient(HttpClient httpClient, IntStorageService intStorage, SessionService sessionService) : base(httpClient, intStorage,sessionService, "sapphireexpert") { }
 
         public async Task<string?> UploadXML(Stream xmlSourceCode, string fileName)
         {

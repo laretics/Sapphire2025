@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Sapphire2025;
 using Sapphire2025.Storage;
+using Sapphire2026Clients;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -35,5 +36,6 @@ builder.Services.AddScoped<AuthenticationClient>();
 builder.Services.AddScoped<AeneasClient>();
 builder.Services.AddScoped<ExpertClient>();
 builder.Services.AddScoped<TimeNetClient>();
+builder.Services.AddScoped<SessionService>();
 
 await builder.Build().RunAsync();

@@ -4,12 +4,13 @@ using TimeNet2026.Storage;
 using TimeNet2026.ScriptCompiling;
 using TimeNet2026.Models;
 using MessagePack;
+using Sapphire2026Clients;
 
 namespace Sapphire2025.Storage
 {
 	public class TimeNetClient:HttpClientBase
 	{
-		public TimeNetClient(HttpClient http, IntStorageService intStorage) : base(http, intStorage, "SapphireTimeNet") 
+		public TimeNetClient(HttpClient http, IntStorageService intStorage, SessionService session) : base(http, intStorage,session, "SapphireTimeNet") 
 		{}
 		public async Task<CompileResult?> UploadXML(string xmlSourceCode, string fileName)
 		{

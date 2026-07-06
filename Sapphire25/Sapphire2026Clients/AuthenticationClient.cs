@@ -2,6 +2,7 @@
 //using Sapphire2025.Icons.Roles;
 using Sapphire2025Models;
 using Sapphire2025Models.Authentication;
+using Sapphire2026Clients;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Net.Http.Json;
@@ -14,7 +15,8 @@ namespace Sapphire2025.Storage
 {
 	public class AuthenticationClient:HttpClientBase
 	{       
-        public AuthenticationClient(HttpClient httpClient, IntStorageService intStorage): base(httpClient, intStorage, "sapphireauthentication") {}
+        public AuthenticationClient(HttpClient httpClient, IntStorageService intStorage, SessionService sessionService): 
+        base(httpClient, intStorage,sessionService, "sapphireauthentication") {}
 
         /// <summary>
         /// Obtiene la versión actual del servidor. Si no coincide con la actual mostrará un mensaje de advertencia a los usuarios.
@@ -23,7 +25,7 @@ namespace Sapphire2025.Storage
         public async Task<string> GetCurrentServerVersion()
         {
             string uri = composeUri("version");
-            HttpResponseMessage respuesta = await sendGetRequest(uri);
+            HttpResponseMessage respuesta = await sendGetRequest(uri, checkSession: false);
             if(respuesta.IsSuccessStatusCode)
             {
                 string salida = await respuesta.Content.ReadAsStringAsync();
@@ -198,7 +200,7 @@ namespace Sapphire2025.Storage
             try
             {
                 string uri = composeUri("ping");
-                HttpResponseMessage respuesta = await sendGetRequest(uri);
+                HttpResponseMessage respuesta = await sendGetRequest(uri, checkSession: false);
                 if(respuesta.IsSuccessStatusCode)
                 {
                     string contenido = await respuesta.Content.ReadAsStringAsync();
@@ -211,6 +213,33 @@ namespace Sapphire2025.Storage
             }
             return false;
         }
+
+        public async Task<bool> SessionPingAsync()
+        {
+            System.Diagnostics.Debug.Assert(null != mvarIntStorage);
+            Guid token = await mvarIntStorage.getToken();
+            if(Guid.Empty== token)  return false;
+
+            BasicRequestModel request = new BasicRequestModel(token);
+            string json = JsonSerializer.Serialize(request);
+
+            try
+            {
+                HttpResponseMessage response = await sendPutRequest("sessionping", json, checkSession: false);
+                if (!response.IsSuccessStatusCode) return false;
+
+                SessionPingResponse? ping = await response.Content.ReadFromJsonAsync<SessionPingResponse>();
+                if (null == ping || !ping.IsValid) return false;
+
+                await mvarIntStorage.UpdateSessionExpiry(ping.ExpiryUtc);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
 
 		/// <summary>
 		/// Preguntamos al servidor cuándo fue el último cambio de una tabla concreta
@@ -320,7 +349,7 @@ namespace Sapphire2025.Storage
 		public async Task<SessionModel?> Login(UserLoginModel data)
 		{
             string jsonString = JsonSerializer.Serialize(data);
-            HttpResponseMessage respuesta = await sendPutRequest("userlogin", jsonString);
+            HttpResponseMessage respuesta = await sendPutRequest("userlogin", jsonString, checkSession: false);
             string? contenido = await respuesta.Content.ReadAsStringAsync();
             if (respuesta.IsSuccessStatusCode &&!string.IsNullOrWhiteSpace(contenido))
             {
@@ -411,7 +440,7 @@ namespace Sapphire2025.Storage
         public async Task<bool> isEmptyPassword (UserLoginModel data)
         {
 			string jsonString = JsonSerializer.Serialize(data);
-            HttpResponseMessage respuesta = await sendPutRequest("isemptypwd", jsonString);
+            HttpResponseMessage respuesta = await sendPutRequest("isemptypwd", jsonString, checkSession: false);
             bool salida = await respuesta.Content.ReadFromJsonAsync<bool>();
             Console.WriteLine("Deserialized response");
             return salida;
@@ -420,7 +449,7 @@ namespace Sapphire2025.Storage
         public async Task<bool> sendSetPassword(SetPasswordDataMessage model)
         {
             string jsonString = JsonSerializer.Serialize(model);
-            HttpResponseMessage response = await sendPutRequest("setpwd", jsonString);
+            HttpResponseMessage response = await sendPutRequest("setpwd", jsonString, checkSession: false);
             if (response.IsSuccessStatusCode)
                 return await response.Content.ReadFromJsonAsync<bool>();
             return false;
@@ -461,4 +490,9 @@ namespace Sapphire2025.Storage
             return "M480-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM160-160v-112q0-34 17.5-62.5T224-378q62-31 126-46.5T480-440q66 0 130 15.5T736-378q29 15 46.5 43.5T800-272v112H160Zm80-80h480v-32q0-11-5.5-20T700-306q-54-27-109-40.5T480-360q-56 0-111 13.5T260-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T560-640q0-33-23.5-56.5T480-720q-33 0-56.5 23.5T400-640q0 33 23.5 56.5T480-560Zm0-80Zm0 400Z";
 		}		
 	}
+
+    public sealed class SessionExpiredException: Exception
+    {
+        public SessionExpiredException():base("La sesión ha caducado."){ }
+    }
 }

@@ -88,6 +88,23 @@ namespace Sapphire2025.Storage
 			return true;
         }
 
+        public async Task<bool> IsSessionExpiredLocally()
+        {
+            SessionModel? session = await GetSessionInfo();
+            if (null == session || session.Token == Guid.Empty) return true;
+
+            if (session.ExpiryUtc == default) return false; //Sesiones antiguas sin ExpiryUtc.
+
+            return session.ExpiryUtc <= DateTime.UtcNow;
+        }
+        public async Task UpdateSessionExpiry(DateTime expiryUtc)
+        {
+            SessionModel? session = await GetSessionInfo();
+            if (null == session) return;
+            session.ExpiryUtc = expiryUtc;
+            await SetSessionInfo(session);
+        }
+
 		#endregion "Autenticación"
 
 		#region "Caché de andenes"

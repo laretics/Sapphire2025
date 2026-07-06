@@ -2,6 +2,7 @@
 using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
 using Sapphire2025Models.GMao;
+using Sapphire2026Clients;
 using System.Net.Http.Json;
 using System.Reflection.Metadata.Ecma335;
 using System.Text.Json;
@@ -10,7 +11,7 @@ namespace Sapphire2025.Storage
 {
 	public partial class AeneasClient:HttpClientBase
 	{
-		public AeneasClient(HttpClient httpClient, IntStorageService intStorage) : base(httpClient, intStorage, "sapphireaeneas") { }
+		public AeneasClient(HttpClient httpClient, IntStorageService intStorage, SessionService session) : base(httpClient, intStorage,session, "sapphireaeneas") { }
 
 		//IMPORTANTE: La parte de WorkCatalog / WorkOrder está en WorkOrderClient.cs
 	

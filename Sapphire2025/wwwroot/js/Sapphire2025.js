@@ -31,3 +31,13 @@ window.clipboardInterop = {
     }
 };
 
+//Handle para prorrogar caducidad de sesión de un usuario que esté activo
+window.sapphireSession = {
+    registerActivity: function(dotNetRef) {
+    const notify = () => dotNetRef.invokeMethodAsync('OnUserActivity');
+    ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach(evt =>
+        document.addEventListener(evt, notify, { passive: true })
+    );
+    }
+};
+

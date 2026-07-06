@@ -1,0 +1,64 @@
+﻿@using Sapphire2026Clients
+@inject IntStorageService mvarStorage
+@inject AuthenticationClient mvarAuthClient
+@inject SessionService mvarSessionService
+@inject NavigationManager mvarNavigator
+@inject InteractiveService mvarInteractive
+@code {
+    private ModalDialog mvarModal = new();
+    private System.Timers.Timer? mvarTimer;
+    private bool mvarHandlingExpiry;
+
+    protected async override Task OnInitializedAsync()
+    {
+        mvarSessionService.OnSessionExpired += HandleExpired;
+        await TryKeepAlive();
+
+        mvarTimer = new System.Timers.Timer(120_000); // Cada 2 minutos.
+        mvarTimer.Elapsed += async (_, _) => await TryKeepAlive();
+        mvarTimer.AutoReset = true;
+        mvarTimer.Start();
+    }
+
+    private async Task TryKeepAlive()
+    {
+        SessionModel? auxSession = await mvarStorage.GetSessionInfo();
+        if (null == auxSession) return;
+
+        mvarSessionService.RegisterActivity(); //Se puede conectar también a eventos JS reales.
+
+        if(await mvarStorage.IsSessionExpiredLocally())
+        {
+            mvarSessionService.NotifyExpired();
+            return;
+        }
+
+        bool auxOk = await mvarAuthClient.SessionPingAsync();
+        if (!auxOk)
+            mvarSessionService.NotifyExpired();
+    }
+    private async void HandleExpired()
+    {
+        if (mvarHandlingExpiry) return;
+        mvarHandlingExpiry = true;
+
+        await mvarStorage.SetSessionInfo(null);
+        mvarInteractive.NotifyStateChanged();
+
+        await mvarModal.show(
+            "Sesión expirada",
+            "Su sesión ha caducado por inactividad. Para continuar tendrá que iniciar sesión de nuevo.",
+            "Ir a Login"
+        );
+
+        mvarNavigator.NavigateTo("/auth/login");
+    }
+
+    public void Dispose()
+    {
+        mvarSessionService.OnSessionExpired -= HandleExpired;
+        mvarTimer?.Stop();
+        mvarTimer?.Dispose();
+    }
+
+}
