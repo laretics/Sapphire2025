@@ -8,7 +8,7 @@ window.showModal = (modalId) => {
 
 //Función del foco por defecto.
 window.focusElement = (element) => {
-    if (element & typeof element.focus == "function") {
+    if (element && typeof element.focus == "function") {
         element.focus();
     }
 };

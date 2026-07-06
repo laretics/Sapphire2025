@@ -1,4 +1,5 @@
 ﻿@page "/addnote/{trainId}/{noteType}"
+@using Microsoft.AspNetCore.Components.Web
 @inject NavigationManager mvarNavigationManager
 @inject AuthenticationClient mvarAuthClient
 @inject AeneasClient mvarAeneasClient
@@ -29,7 +30,13 @@ else
                     <i class="bi bi-pencil-square me-1"></i>
                     @contentLabel
                 </label>
-                <textarea id="noteText" class="form-control" @bind="noteModel.Text" rows="4" placeholder="Aquí va el texto..." @ref="focusAreaRef"></textarea>
+                <textarea id="noteText" 
+                    class="form-control" 
+                    @bind="noteModel.Text" 
+                    rows="4" 
+                    placeholder="Aquí va el texto..." 
+                    @ref="focusAreaRef"
+                ></textarea>
                 <ValidationMessage For="@(() => noteModel.Text)" />
             </div>
 
@@ -38,7 +45,7 @@ else
                     <i class="bi bi-calendar-event me-1"></i>
                     Fecha y hora
                 </label>
-                <InputDate class="form-control" @bind-Value="noteModel.TimeStamp" />
+                <InputDate class="form-control" @bind-Value="noteModel.TimeStamp" readonly tabindex="-1" />
             </div>
 
             <div class="d-flex justify-content-end gap-2">
@@ -56,6 +63,8 @@ else
 @code {
     public NoteModel? noteModel { get; set; }
 
+    private bool mvarFocusTextArea;
+
     private UserModelBase? userModelBase { get; set; }
     public TrainModel? mvarTrain { get; set; } = null;
 
@@ -68,9 +77,10 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if(firstRender)
+        if(mvarFocusTextArea)
         {
-            await mvarJS.InvokeVoidAsync("focusElement", focusAreaRef);
+            mvarFocusTextArea = false;
+            await focusAreaRef.FocusAsync();
         }
     }
 
@@ -132,6 +142,8 @@ else
 					UserId = auxUser.guid,
                     Type = byte.Parse(noteType)
                 };
+
+                mvarFocusTextArea = true;
         }
     }
 
