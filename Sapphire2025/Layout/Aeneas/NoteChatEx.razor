@@ -100,8 +100,13 @@
 			DateTime auxOldest = DateTime.MinValue;
 			//Modificado por error con tablas vacías.
 			if (Notes is { Count: > 0 })
+			{
 				auxOldest = Notes.Min(x => x.TimeStamp);
-			StatusChanges = await mvarAeneasClient.trainChangesList(Parent,auxOldest);
+				StatusChanges = await mvarAeneasClient.trainChangesList(Parent, auxOldest);
+			}
+			else
+				StatusChanges = new List<StatusChangeModel>();
+
 			lastParent = Parent;
 			lastNoteType = NoteType;
 			lastMaxLines = MaxLines;

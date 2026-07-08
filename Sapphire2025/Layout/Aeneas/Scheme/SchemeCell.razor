@@ -1,7 +1,7 @@
 ﻿@using Sapphire2025.Layout.Users
 @using Sapphire2025Models
 <g @onclick="@(() => HandleStatusSelected())" style="cursor:pointer">
-    <rect x="@X" y="@Y" width="90" height="70" class="@AnyTrains" />
+    <rect x="@X" y="@Y" width="90" height="70" class="@AnyTrains @SelectedClass" />
     <text x="@(X+45)" y="@(Y+35)" class="@BoxTextClass">
         @Label
     </text>
@@ -25,9 +25,11 @@
 
 @code {
     [CascadingParameter]
-    public Dictionary<Sapphire2025Models.Common.TrainStatus, List<TrainModel>>? mcolTrains { get; set; }
+    public Common.TrainStatus CurrentStatus { get; set; }
     [CascadingParameter]
-    public EventCallback<Sapphire2025Models.Common.TrainStatus> OnStatusSelected { get; set; }
+    public Dictionary<Common.TrainStatus, List<TrainModel>>? mcolTrains { get; set; }
+    [CascadingParameter]
+    public EventCallback<Common.TrainStatus> OnStatusSelected { get; set; }
     [CascadingParameter]
     public EventCallback<Guid> OnOpenTrain { get; set; }
     [Parameter]
@@ -53,6 +55,9 @@
             }
         }
     }
+
+    private string SelectedClass => CurrentStatus == Status ? "selected" : "";
+
 
     private void HandleStatusSelected()
     {

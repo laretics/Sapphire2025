@@ -70,7 +70,7 @@ else
 		<CascadingValue Value="mcolTrains">
 			<CascadingValue Value="mcolPlatforms">
 				<CascadingValue Value="Users">
-					<CascadingValue Value="Status">
+					<CascadingValue Value="CurrentStatus">
 						<div class="row align-items-start" style="height: 50vh; width: 100%">
 							<div class="col-5 pe-2" style="overflow: visible;">
 								<AeneasScheme OnStatusSelected="HandleStatusSelected"
@@ -99,7 +99,7 @@ else
 	private Sapphire2025Models.Aeneas.PlatformModel[] mcolPlatforms { get; set; } = new PlatformModel[0];
 
 	[Parameter]
-	public Sapphire2025Models.Common.TrainStatus Status { get; set; }	
+	public Sapphire2025Models.Common.TrainStatus CurrentStatus { get; set; }	
 	[Parameter]
 	public Dictionary<Guid,UserModelBase>? Users{ get; set; }
 
@@ -135,7 +135,7 @@ else
 	/// <param name="status"></param>
 	private void HandleStatusSelected(Sapphire2025Models.Common.TrainStatus status)
 	{
-		Status = status;
+		CurrentStatus = status;
 		StateHasChanged();
 	}
 	private void HandleOpenTrain(Guid id)

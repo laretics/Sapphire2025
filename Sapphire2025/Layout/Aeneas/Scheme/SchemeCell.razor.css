@@ -44,10 +44,10 @@
 }
 
 /* Efecto hover */
-.box0:hover:not(.selected), .box1:hover:not(.selected) {
+.box1:hover:not(.selected) {
 	filter: brightness(1.15);
 	stroke: #C4D0FF;
-	stroke-width: 9;
+	stroke-width: 5;
 }
 
 .box-text3 {

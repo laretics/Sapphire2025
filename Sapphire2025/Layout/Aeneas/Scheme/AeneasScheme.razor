@@ -9,61 +9,58 @@
             xmlns="http://www.w3.org/2000/svg" 
             enable-background="true">
             <Definitions/>
-
             <CascadingValue Value="mcolTrains">
-                <CascadingValue Value="Status">
-                    <CascadingValue Value="OnOpenTrain">
-                        <CascadingValue Value="OnStatusSelected">
+                <CascadingValue Value="OnOpenTrain">
+                    <CascadingValue Value="OnStatusSelected">
                     
-                            @if(Extended)
-                            {
-                                <!-- Fila 1 -->
-                                <SchemeCell X="30" Y="20" Status="Common.TrainStatus.Unknown" Label="Inicio" Icon="stunknown"/>
-                                <SchemeCell X="150" Y="20" Status="Common.TrainStatus.StandStill" Label="Stand Still" Icon="ststandstill"/>
-                                <SchemeCell X="270" Y="20" Status="Common.TrainStatus.Disabled" Label="Baja" Icon="stdisabled"/>
-                            }                    
+                        @if(Extended)
+                        {
+                            <!-- Fila 1 -->
+                            <SchemeCell X="30" Y="20" Status="Common.TrainStatus.Unknown" Label="Inicio" Icon="stunknown"/>
+                            <SchemeCell X="150" Y="20" Status="Common.TrainStatus.StandStill" Label="Stand Still" Icon="ststandstill"/>
+                            <SchemeCell X="270" Y="20" Status="Common.TrainStatus.Disabled" Label="Baja" Icon="stdisabled"/>
+                        }                    
 
-                            <path d="M 20,110 L 115,110 Q 126,110 130,125 L 130,205 L 355,205 Q 365,205 370,215 L 370,297 L 20,295 Z" style="fill:url(#gradGreen)" />
+                        <path d="M 20,110 L 115,110 Q 126,110 130,125 L 130,205 L 355,205 Q 365,205 370,215 L 370,297 L 20,295 Z" style="fill:url(#gradGreen)" />
 
-                            <!-- Fila 2 -->
-                            <SchemeCell X="30" Y="120" Status="Common.TrainStatus.RequestToRepair" Label="Retirar" Icon="strequesttorepair"/>
-                            <SchemeCell X="150" Y="120" Status="Common.TrainStatus.RequestToRepair" Label="Correctivo" Icon="strepairing" />
+                        <!-- Fila 2 -->
+                        <SchemeCell X="30" Y="120" Status="Common.TrainStatus.RequestToRepair" Label="Retirar" Icon="strequesttorepair"/>
+                        <SchemeCell X="150" Y="120" Status="Common.TrainStatus.Repairing" Label="Correctivo" Icon="strepairing" />
 
-                            <!-- Fila 3 -->
-                            <SchemeCell X="30" Y="215" Status="Common.TrainStatus.RequestToDiagnose" Label="Pend Diagnóstico" Icon="strequesttodiagnose" />
-                            <SchemeCell X="150" Y="215" Status="Common.TrainStatus.Available" Label="Disponible" Icon="stavailable" />
-                            <SchemeCell X="270" Y="215" Status="Common.TrainStatus.DepotRequested" Label="Solicitado" Icon="stdepotrequested" />
+                        <!-- Fila 3 -->
+                        <SchemeCell X="30" Y="215" Status="Common.TrainStatus.RequestToDiagnose" Label="Pend Diagnóstico" Icon="strequesttodiagnose" />
+                        <SchemeCell X="150" Y="215" Status="Common.TrainStatus.Available" Label="Disponible" Icon="stavailable" />
+                        <SchemeCell X="270" Y="215" Status="Common.TrainStatus.DepotRequested" Label="Solicitado" Icon="stdepotrequested" />
 
-                            <!-- Fila 4 -->
-                            <SchemeCell X="150" Y="310" Status="Common.TrainStatus.Maintenance" Label="Preventivo" Icon="stmaintenance" />
-                            <SchemeCell X="270" Y="310" Status="Common.TrainStatus.DepotAvailable" Label="Apartado" Icon="stdepotavailable" />
+                        <!-- Fila 4 -->
+                        <SchemeCell X="150" Y="310" Status="Common.TrainStatus.Maintenance" Label="Preventivo" Icon="stmaintenance" />
+                        <SchemeCell X="270" Y="310" Status="Common.TrainStatus.DepotAvailable" Label="Apartado" Icon="stdepotavailable" />
                                                
-                            <!--Flechas-->
-                            @if(Extended)
-                            {
-                                <use href="#leftrightarrow" x="120" y="40" />
-                                <use href="#leftrightarrow" x="240" y="40" />
+                        <!--Flechas-->
+                        @if(Extended)
+                        {
+                            <use href="#leftrightarrow" x="120" y="40" />
+                            <use href="#leftrightarrow" x="240" y="40" />
 
-                                <use href="#updownarrow" x="180" y="90" />
-                            }
-                            <use href="#rightarrow" x="120" y="140" />
+                            <use href="#updownarrow" x="180" y="90" />
+                        }
+                        <use href="#rightarrow" x="120" y="140" />
 
-                            <use href="#uparrow" x="60" y="187" />
-                            <use href="#downarrow" x="180" y="187" />
+                        <use href="#uparrow" x="60" y="187" />
+                        <use href="#downarrow" x="180" y="187" />
 
-                            <use href="#leftrightarrow" x="120" y="235" />
+                        <use href="#leftrightarrow" x="120" y="235" />
 
-                            <use href="#timericon" x="240" y="223" />
-                            <use href="#rightarrow" x="240" y="248" />
+                        <use href="#timericon" x="240" y="223" />
+                        <use href="#rightarrow" x="240" y="248" />
 
-                            <use href="#uparrow" x="180" y="282" />
-                            <use href="#updownarrow" x="300" y="282" />
+                        <use href="#uparrow" x="180" y="282" />
+                        <use href="#updownarrow" x="300" y="282" />
 
-                            <use href="#leftrightarrow" x="240" y="330" />
-                        </CascadingValue>
+                        <use href="#leftrightarrow" x="240" y="330" />
                     </CascadingValue>
                 </CascadingValue>
-            </CascadingValue>            
+            </CascadingValue>
         </svg>
     </div>    
 }
@@ -78,7 +75,7 @@
     [CascadingParameter]
     public IEnumerable<TrainModel>? Trains { get; set; }
     [CascadingParameter]
-    public Sapphire2025Models.Common.TrainStatus Status { get; set; }
+    public Sapphire2025Models.Common.TrainStatus CurrentStatus { get; set; }
     [Parameter]
     public EventCallback<Sapphire2025Models.Common.TrainStatus> OnStatusSelected { get; set; }
     [Parameter]
