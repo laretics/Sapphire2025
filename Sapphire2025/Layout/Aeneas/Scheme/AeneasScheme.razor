@@ -101,9 +101,22 @@
         }
     }
 
-    protected async override Task OnInitializedAsync()
+    [CascadingParameter(Name = "TrainDataVersion")]
+    public int TrainDataVersion { get; set; }
+
+    protected override void OnParametersSet()
     {
-        //Distribuye los trenes en el diagrama
+        RebuildTrainMap();
+    }
+
+    protected override void OnInitialized()
+    {
+        mvarInitialized = true;
+    }
+
+    private void RebuildTrainMap()
+    {
+        mcolTrains = new Dictionary<Sapphire2025Models.Common.TrainStatus, List<TrainModel>>();
         if (null != Trains)
         {
             foreach (TrainModel auxTrain in Trains)
@@ -114,8 +127,6 @@
                 mcolTrains[auxTrain.lastStatus].Add(auxTrain);
             }
         }
-        mvarInitialized = true;
-        StateHasChanged();
     }
 
 }

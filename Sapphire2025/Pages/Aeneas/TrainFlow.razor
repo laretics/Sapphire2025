@@ -48,6 +48,13 @@ else
 
 			<!-- Grupo derecho: Info y configuración -->
 			<div class="btn-toolbar" role="toolbar">
+				@if (mcolHighlightedTrains.Count > 0)
+				{
+					<div class="badge bg-warning text-dark me-2 d-flex align-items-center px-3 py-2 trainflow-live-badge">
+						<i class="bi bi-lightning-charge-fill me-2"></i>
+						<span>@mcolHighlightedTrains.Count cambio(s) reciente(s)</span>
+					</div>
+				}
 				<div class="badge bg-secondary me-2 d-flex align-items-center px-3 py-2">
 					<i class="bi bi-train-front me-2"></i>
 					<span>Disponibles: @AvailableTrains</span>
@@ -71,22 +78,26 @@ else
 			<CascadingValue Value="mcolPlatforms">
 				<CascadingValue Value="Users">
 					<CascadingValue Value="CurrentStatus">
-						<div class="row align-items-start" style="height: 50vh; width: 100%">
-							<div class="col-5 pe-2" style="overflow: visible;">
-								<AeneasScheme OnStatusSelected="HandleStatusSelected"
-											OnOpenTrain="HandleOpenTrain"
-											width="100" height="50"/>
-							</div>
-							<div class="col-7 ps-2" style="overflow: auto; height: 48vh;">
-								<StatusTrainsTable Width="100" Height="50" />
-							</div>
-						</div>
+						<CascadingValue Name="HighlightedTrainIds" Value="mcolHighlightedTrains">
+							<CascadingValue Name="TrainDataVersion" Value="mvarDataVersion">
+								<div class="row align-items-start" style="height: 50vh; width: 100%">
+									<div class="col-5 pe-2" style="overflow: visible;">
+										<AeneasScheme OnStatusSelected="HandleStatusSelected"
+													OnOpenTrain="HandleOpenTrain"
+													width="100" height="50"/>
+									</div>
+									<div class="col-7 ps-2" style="overflow: auto; height: 48vh;">
+										<StatusTrainsTable Width="100" Height="50" />
+									</div>
+								</div>
+								<div class="row align-items-start" style="overflow: auto; height: 48vh;">
+									<div class="col">
+										<AvailableTrainsTable Width="95" Height="50" />
+									</div>
+								</div>
+							</CascadingValue>
+						</CascadingValue>
 					</CascadingValue>
-					<div class="row align-items-start" style="overflow: auto; height: 48vh;">
-						<div class="col">
-							<AvailableTrainsTable Width="95" Height="50" />
-						</div>
-					</div>
 				</CascadingValue>
 			</CascadingValue>
 		</CascadingValue>
@@ -95,8 +106,13 @@ else
 
 @code 
 {
-	private IEnumerable<TrainModel> mcolTrains{ get; set; }
+	private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
+	private static readonly TimeSpan HighlightDuration = TimeSpan.FromSeconds(6);
+
+	private List<TrainModel> mcolTrains { get; set; }
 	private Sapphire2025Models.Aeneas.PlatformModel[] mcolPlatforms { get; set; } = new PlatformModel[0];
+	private HashSet<Guid> mcolHighlightedTrains { get; set; } = new();
+	private int mvarDataVersion;
 
 	[Parameter]
 	public Sapphire2025Models.Common.TrainStatus CurrentStatus { get; set; }	
@@ -104,20 +120,24 @@ else
 	public Dictionary<Guid,UserModelBase>? Users{ get; set; }
 
 	private bool Extended { get; set; } = false;
-	private Timer? mvarTimer;
+	private Timer? mvarPollTimer;
+	private Timer? mvarHighlightTimer;
+	private DateTime mvarLastSyncTime = DateTime.MinValue;
+	private bool mvarSyncInProgress;
 
 	protected async override Task OnInitializedAsync()
 	{
-		mvarTimer = new Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
 		await LoadPlatforms();
 		await TrainCache();
+		StartPolling();
 	}
-
 
 	public void Dispose()
 	{
-		mvarTimer?.Dispose();
+		mvarPollTimer?.Dispose();
+		mvarHighlightTimer?.Dispose();
 	}
+
 	private int AvailableTrains {get =>
 		mcolTrains.Where(xx => xx.lastStatus == Sapphire2025Models.Common.TrainStatus.Available ||
 		xx.lastStatus == Sapphire2025Models.Common.TrainStatus.DepotRequested ||
@@ -129,10 +149,6 @@ else
 		xx.lastStatus == Sapphire2025Models.Common.TrainStatus.Repairing).Count();
 	}
 
-	/// <summary>
-	/// Función para actualizar las tablas de trenes en función del elemento seleccionado.
-	/// </summary>
-	/// <param name="status"></param>
 	private void HandleStatusSelected(Sapphire2025Models.Common.TrainStatus status)
 	{
 		CurrentStatus = status;
@@ -150,6 +166,10 @@ else
 	private async Task RefreshData()
 	{
 		await mvarInternalStorage.ResetTrainList();
+		mcolTrains = (await mvarAeneasClient.trainsList()).ToList();
+		await mvarInternalStorage.SetTrainList(mcolTrains);
+		mvarLastSyncTime = GetLatestUpdateTime(mcolTrains);
+		mvarDataVersion++;
 		StateHasChanged();
 	}
 
@@ -165,60 +185,107 @@ else
 				foreach (PlatformModel elemento in auxLista)
 					mcolPlatforms[elemento.Id-1] = elemento;
 
-				await mvarInternalStorage.SetPlatformList(mcolPlatforms); //Lo guardo en la caché para poder usarlo
+				await mvarInternalStorage.SetPlatformList(mcolPlatforms);
 			}
 		}
 	}
 
-	/// <summary>
-	/// Para acelerar considerablemente la ejecución del programa vamos a cargar la lista en dos
-	/// fases... primero leemos del almacenamiento interno la lista completa, luego pedimos al servidor
-	/// las operaciones posteriores a la última fecha y luego guardamos todo en la caché.
-	/// </summary>
 	private async Task TrainCache()
 	{
-		mcolTrains = await mvarAeneasClient.trainsList();
-
-
-		//IEnumerable<TrainModel> auxLista = await mvarInternalStorage.GetTrainList();
+		IEnumerable<TrainModel> auxLista = await mvarInternalStorage.GetTrainList();
 		Users = await mvarAuthClient.cachedUserList();
-		// if(auxLista.Count()<1)
-		// {
-		// 	//Tenemos la lista vacía. La sesión no tiene la información.
-		// 	//Lo primero que hacemos es cargar lista de trenes y usuarios
-		// 	//después lo almacenamos en la caché.
-		// 	auxLista = await mvarAeneasClient.trainsList();
-		// 	await mvarInternalStorage.SetTrainList(mcolTrains);			
-		// }
 
-		// //Ahora se supone que tenemos ya la lista cargada.
-		// DateTime ultimaFecha = auxLista.Max(xx => xx.lastUpdateTime);
-		// //Cargamos ahora los datos más recientes.
-		// IEnumerable<StatusChangeModel> actualizaciones = await mvarAeneasClient.recentChangeList(ultimaFecha);
-		// if (actualizaciones.Count() > 0)
-		// {
-		// 	bool nuevoUsuario = false; //Flag para detectar usuarios que no estaban en el diccionario
-		// 	foreach (StatusChangeModel nuevoCambio in actualizaciones)
-		// 	{
-		// 		TrainModel? auxTrain = auxLista.FirstOrDefault(xx => xx.id == nuevoCambio.trainId);
-		// 		System.Diagnostics.Debug.Assert(null != auxTrain, "El tren no existe en la lista de trenes");
-		// 		auxTrain.lastUpdateTime = nuevoCambio.timeStamp;
-		// 		auxTrain.lastStatus = nuevoCambio.status;
-		// 		auxTrain.lastUserInfo = nuevoCambio.userId;				
-		// 		if (Guid.Empty != nuevoCambio.userId && null != Users && !(Users.ContainsKey(nuevoCambio.userId)))
-		// 			nuevoUsuario = true; //Tengo al menos un usuario que no está en el diccionario
+		if (!auxLista.Any())
+		{
+			auxLista = await mvarAeneasClient.trainsList();
+			await mvarInternalStorage.SetTrainList(auxLista);
+		}
 
-		// 	}
-		// 	//Cargamos la última anotación que tenga cada tren
-		// 	// foreach (TrainModel auxTrain in auxLista)
-		// 	// {
-		// 	// 	List<NoteModel> notas = await mvarAeneasClient.retrieveNotes(auxTrain.id, "", 1);
-		// 	// 	auxTrain.lastNote = notas.FirstOrDefault()?.Text ?? string.Empty;
-		// 	// }
-		// 	//Guardaré la nueva lista en la caché.
-		// 	await mvarInternalStorage.SetTrainList(auxLista);
-		// }
-		// mcolTrains = auxLista;		
+		mcolTrains = auxLista.ToList();
+		mvarLastSyncTime = GetLatestUpdateTime(mcolTrains);
+		await SyncRecentChangesAsync();
 	}
 
+	private void StartPolling()
+	{
+		mvarPollTimer = new Timer(_ => _ = InvokeAsync(SyncRecentChangesAsync), null, PollInterval, PollInterval);
+	}
+
+	private async Task SyncRecentChangesAsync()
+	{
+		if (mvarSyncInProgress || null == mcolTrains)
+			return;
+
+		mvarSyncInProgress = true;
+		try
+		{
+			IEnumerable<StatusChangeModel> actualizaciones = await mvarAeneasClient.recentChangeList(mvarLastSyncTime);
+			if (!actualizaciones.Any())
+				return;
+
+			List<TrainModel> auxLista = mcolTrains.ToList();
+			bool nuevoUsuario = false;
+			bool huboCambios = false;
+
+			foreach (StatusChangeModel nuevoCambio in actualizaciones.OrderBy(xx => xx.timeStamp))
+			{
+				TrainModel? auxTrain = auxLista.FirstOrDefault(xx => xx.id == nuevoCambio.trainId);
+				if (null == auxTrain)
+					continue;
+
+				auxTrain.lastUpdateTime = nuevoCambio.timeStamp;
+				auxTrain.lastStatus = nuevoCambio.status;
+				auxTrain.lastUserInfo = nuevoCambio.userId;
+				mcolHighlightedTrains.Add(nuevoCambio.trainId);
+				huboCambios = true;
+
+				if (Guid.Empty != nuevoCambio.userId && null != Users && !Users.ContainsKey(nuevoCambio.userId))
+					nuevoUsuario = true;
+
+				if (nuevoCambio.timeStamp > mvarLastSyncTime)
+					mvarLastSyncTime = nuevoCambio.timeStamp;
+			}
+
+			if (!huboCambios)
+				return;
+
+			if (nuevoUsuario)
+				Users = await mvarAuthClient.cachedUserList();
+
+			mcolTrains = auxLista;
+			await mvarInternalStorage.SetTrainList(mcolTrains);
+			mvarDataVersion++;
+			ScheduleHighlightClear();
+			StateHasChanged();
+		}
+		finally
+		{
+			mvarSyncInProgress = false;
+		}
+	}
+
+	private void ScheduleHighlightClear()
+	{
+		mvarHighlightTimer?.Dispose();
+		mvarHighlightTimer = new Timer(_ => _ = InvokeAsync(ClearHighlightsAsync), null, HighlightDuration, Timeout.InfiniteTimeSpan);
+	}
+
+	private Task ClearHighlightsAsync()
+	{
+		if (mcolHighlightedTrains.Count == 0)
+			return Task.CompletedTask;
+
+		mcolHighlightedTrains.Clear();
+		mvarDataVersion++;
+		StateHasChanged();
+		return Task.CompletedTask;
+	}
+
+	private static DateTime GetLatestUpdateTime(IEnumerable<TrainModel> trains)
+	{
+		if (!trains.Any())
+			return DateTime.UtcNow;
+
+		return trains.Max(xx => xx.lastUpdateTime);
+	}
 }

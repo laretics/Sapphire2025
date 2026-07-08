@@ -34,7 +34,7 @@
 		<tbody>
 			@foreach (TrainModel train in mcolTrains)
 			{
-				<tr @onclick="@(e => OnTrainClick(train))">
+				<tr class="@rowClass(train)" @onclick="@(e => OnTrainClick(train))">
 					<td class="truncate">
 						<IcoStatus status="@train.lastStatus" color='@(train.Locked ? "red" : "black")' />
 						<span class="truncate">@Sapphire2025Models.Common.TrainStatusToString(train.lastStatus)</span>

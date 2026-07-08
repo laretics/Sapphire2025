@@ -1,5 +1,6 @@
 ﻿@using Sapphire2025Models.Expert.WorkshiftTemplates;
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 @inject IntStorageService mvarLocalStorage;
 <AgentsListHeaderCtl></AgentsListHeaderCtl>
 @if(null==Users)
@@ -101,7 +102,7 @@ else
         await mvarLocalStorage.SetInspectorReportAssignations(ColAssignations);
         await mvarLocalStorage.SetInspectorReportSortedTemplates(SortedTemplates);
 
-        await JS.InvokeVoidAsync("window.open", "/agentsprintview", "_blank");
+        await JS.InvokeVoidAsync("open", Navigation.ToAbsoluteUri("agentsprintview").AbsoluteUri, "_blank");
 
 	}
 }

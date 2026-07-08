@@ -383,11 +383,16 @@ else
     private async Task OnReportPrint()
     {
         await CopyAgentsReportToLocale();
-        await mvarJSRuntime.InvokeVoidAsync("window.open", "/agentsprintview", "_blank");
+        string printUrl = mvarNavigationManager.ToAbsoluteUri("agentsprintview").AbsoluteUri;
+        await mvarJSRuntime.InvokeVoidAsync("open", printUrl, "_blank");
     }
 
     private async Task CopyAgentsReportToLocale()
     {
+        await mvarIntStorage.SetInspectorReportAssignations(Assignations);
+        await mvarIntStorage.SetInspectorReportSortedTemplates(SortedTemplates);
+        await mvarIntStorage.SetUsersCache(Users);
+        await mvarIntStorage.SetInspectorReportDate(selectedDate);
     }
 
     private async Task<int> GetTimezoneOffsetMinutes()

@@ -13,6 +13,10 @@
 	public int Height{ get; set; }
 	[CascadingParameter]
 	public PlatformModel[] Platforms { get; set; } = new PlatformModel[0];
+	[CascadingParameter(Name = "HighlightedTrainIds")]
+	public IReadOnlySet<Guid>? HighlightedTrainIds { get; set; }
+	[CascadingParameter(Name = "TrainDataVersion")]
+	public int TrainDataVersion { get; set; }
 
 	private int mvarLastOrderField { get; set; } = -1;
 
@@ -117,4 +121,11 @@
 		return "-";
 	}
 	protected string trainColor(TrainModel train) { return train == null ? "transparent" : Sapphire2025Models.Utils.TrainStyleFill(train.name); }
+	protected string rowClass(TrainModel train)
+	{
+		if (null == train || null == HighlightedTrainIds)
+			return string.Empty;
+
+		return HighlightedTrainIds.Contains(train.id) ? "train-row-highlight" : string.Empty;
+	}
 }

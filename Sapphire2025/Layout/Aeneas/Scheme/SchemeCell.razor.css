@@ -89,6 +89,39 @@
 	stroke-width: 2;
 }
 
+.scheme-cell-highlight {
+	stroke: #f59e0b;
+	stroke-width: 6;
+	filter: url(#glow);
+	animation: scheme-cell-flash 1.2s ease-in-out 3;
+}
+
+.badge-rect-highlight {
+	stroke: #f59e0b;
+	stroke-width: 3;
+	animation: scheme-badge-flash 1.2s ease-in-out 3;
+}
+
+@keyframes scheme-cell-flash {
+	0%, 100% {
+		stroke: #f59e0b;
+	}
+
+	50% {
+		stroke: #fbbf24;
+	}
+}
+
+@keyframes scheme-badge-flash {
+	0%, 100% {
+		stroke: #f59e0b;
+	}
+
+	50% {
+		stroke: #fcd34d;
+	}
+}
+
 .badge-text {
 	font-family: Arial, Helvetica, sans-serif;
 	font-weight: 700;

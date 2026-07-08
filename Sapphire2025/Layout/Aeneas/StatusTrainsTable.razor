@@ -29,7 +29,7 @@
 		<tbody>
 			@foreach (TrainModel train in mcolTrains)
 			{
-				<tr @onclick="@(e => OnTrainClick(train))">
+				<tr class="@rowClass(train)" @onclick="@(e => OnTrainClick(train))">
 					<td class="truncate" style="background-color: @trainColor(train); color: @(train.Locked ? "red" : "default")">
 						@train.name
 					</td>
@@ -64,7 +64,7 @@
 
 @code {
 	[CascadingParameter]
-	public Sapphire2025Models.Common.TrainStatus Status { get; set; }
+	public Sapphire2025Models.Common.TrainStatus CurrentStatus { get; set; }
 
 	protected override void OnParametersSet()
 	{
@@ -75,7 +75,7 @@
 		{
 			foreach (TrainModel auxTren in Trains)
 			{
-				if (auxTren.lastStatus.Equals(Status))
+				if (auxTren.lastStatus.Equals(CurrentStatus))
 					mcolTrains.Add(auxTren);
 			}
 			sortFields(1);
