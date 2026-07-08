@@ -1,0 +1,124 @@
+﻿@using Sapphire2025Models
+@if(mvarInitialized)
+{
+    <div class="svg-container">
+        <svg
+            viewBox="@(Extended?"0 0 400 400":"0 150 400 250")"
+            width="@width%"     
+            height="@height%" 
+            xmlns="http://www.w3.org/2000/svg" 
+            enable-background="true">
+            <Definitions/>
+
+            <CascadingValue Value="mcolTrains">
+                <CascadingValue Value="Status">
+                    <CascadingValue Value="OnOpenTrain">
+                        <CascadingValue Value="OnStatusSelected">
+                    
+                            @if(Extended)
+                            {
+                                <!-- Fila 1 -->
+                                <SchemeCell X="30" Y="20" Status="Common.TrainStatus.Unknown" Label="Inicio" Icon="stunknown"/>
+                                <SchemeCell X="150" Y="20" Status="Common.TrainStatus.StandStill" Label="Stand Still" Icon="ststandstill"/>
+                                <SchemeCell X="270" Y="20" Status="Common.TrainStatus.Disabled" Label="Baja" Icon="stdisabled"/>
+                            }                    
+
+                            <path d="M 20,110 L 115,110 Q 126,110 130,125 L 130,205 L 355,205 Q 365,205 370,215 L 370,297 L 20,295 Z" style="fill:url(#gradGreen)" />
+
+                            <!-- Fila 2 -->
+                            <SchemeCell X="30" Y="120" Status="Common.TrainStatus.RequestToRepair" Label="Retirar" Icon="strequesttorepair"/>
+                            <SchemeCell X="150" Y="120" Status="Common.TrainStatus.RequestToRepair" Label="Correctivo" Icon="strepairing" />
+
+                            <!-- Fila 3 -->
+                            <SchemeCell X="30" Y="215" Status="Common.TrainStatus.RequestToDiagnose" Label="Pend Diagnóstico" Icon="strequesttodiagnose" />
+                            <SchemeCell X="150" Y="215" Status="Common.TrainStatus.Available" Label="Disponible" Icon="stavailable" />
+                            <SchemeCell X="270" Y="215" Status="Common.TrainStatus.DepotRequested" Label="Solicitado" Icon="stdepotrequested" />
+
+                            <!-- Fila 4 -->
+                            <SchemeCell X="150" Y="310" Status="Common.TrainStatus.Maintenance" Label="Preventivo" Icon="stmaintenance" />
+                            <SchemeCell X="270" Y="310" Status="Common.TrainStatus.DepotAvailable" Label="Apartado" Icon="stdepotavailable" />
+                                               
+                            <!--Flechas-->
+                            @if(Extended)
+                            {
+                                <use href="#leftrightarrow" x="120" y="40" />
+                                <use href="#leftrightarrow" x="240" y="40" />
+
+                                <use href="#updownarrow" x="180" y="90" />
+                            }
+                            <use href="#rightarrow" x="120" y="140" />
+
+                            <use href="#uparrow" x="60" y="187" />
+                            <use href="#downarrow" x="180" y="187" />
+
+                            <use href="#leftrightarrow" x="120" y="235" />
+
+                            <use href="#timericon" x="240" y="223" />
+                            <use href="#rightarrow" x="240" y="248" />
+
+                            <use href="#uparrow" x="180" y="282" />
+                            <use href="#updownarrow" x="300" y="282" />
+
+                            <use href="#leftrightarrow" x="240" y="330" />
+                        </CascadingValue>
+                    </CascadingValue>
+                </CascadingValue>
+            </CascadingValue>            
+        </svg>
+    </div>    
+}
+
+@code {
+    [CascadingParameter]
+    public bool Extended { get; set; }
+    [Parameter]
+    public int width { get; set; }
+    [Parameter]
+    public int height { get; set; }
+    [CascadingParameter]
+    public IEnumerable<TrainModel>? Trains { get; set; }
+    [CascadingParameter]
+    public Sapphire2025Models.Common.TrainStatus Status { get; set; }
+    [Parameter]
+    public EventCallback<Sapphire2025Models.Common.TrainStatus> OnStatusSelected { get; set; }
+    [Parameter]
+    public EventCallback<Guid> OnOpenTrain { get; set; }
+
+    private bool mvarInitialized = false;
+
+    private Dictionary<Sapphire2025Models.Common.TrainStatus, List<TrainModel>> mcolTrains = new Dictionary<Sapphire2025Models.Common.TrainStatus, List<TrainModel>>();
+
+    private void HandleStatusSelected(Sapphire2025Models.Common.TrainStatus status)
+    {
+        //Primero tengo que ver si hay algún tren en este estado...
+        int numTrenes = 0;
+        if (mcolTrains.ContainsKey(status))
+            numTrenes = mcolTrains[status].Count();
+
+        if (numTrenes > 0)
+        {
+            if (1 == numTrenes)
+                OnOpenTrain.InvokeAsync(mcolTrains[status].First().id);
+            else //Hay más de un tren... cargo la tabla
+                OnStatusSelected.InvokeAsync(status);
+        }
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        //Distribuye los trenes en el diagrama
+        if (null != Trains)
+        {
+            foreach (TrainModel auxTrain in Trains)
+            {
+                if (!mcolTrains.ContainsKey(auxTrain.lastStatus))
+                    mcolTrains.Add(auxTrain.lastStatus, new List<TrainModel>());
+
+                mcolTrains[auxTrain.lastStatus].Add(auxTrain);
+            }
+        }
+        mvarInitialized = true;
+        StateHasChanged();
+    }
+
+}

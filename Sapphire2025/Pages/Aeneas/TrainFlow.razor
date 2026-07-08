@@ -1,4 +1,6 @@
 ﻿@page "/trainFlow"
+@using Sapphire2025.Layout.Aeneas.Scheme
+@using Sapphire2025.Layout.Aeneas
 @inject AeneasClient mvarAeneasClient
 @inject AuthenticationClient mvarAuthClient
 @inject NavigationManager mvarNavigator
@@ -71,18 +73,18 @@ else
 					<CascadingValue Value="Status">
 						<div class="row align-items-start" style="height: 50vh; width: 100%">
 							<div class="col-5 pe-2" style="overflow: visible;">
-								<Sapphire2025.Layout.Aeneas.TrainFlowCTL OnStatusSelected="HandleStatusSelected"
-																		 OnOpenTrain="HandleOpenTrain"
-																		 width="100" height="50" />
+								<AeneasScheme OnStatusSelected="HandleStatusSelected"
+											OnOpenTrain="HandleOpenTrain"
+											width="100" height="50"/>
 							</div>
 							<div class="col-7 ps-2" style="overflow: auto; height: 48vh;">
-								<Sapphire2025.Layout.Aeneas.StatusTrainsTable Width="100" Height="50" />
+								<StatusTrainsTable Width="100" Height="50" />
 							</div>
 						</div>
 					</CascadingValue>
 					<div class="row align-items-start" style="overflow: auto; height: 48vh;">
 						<div class="col">
-							<Sapphire2025.Layout.Aeneas.AvailableTrainsTable Width="95" Height="50" />
+							<AvailableTrainsTable Width="95" Height="50" />
 						</div>
 					</div>
 				</CascadingValue>

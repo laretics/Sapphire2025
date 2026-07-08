@@ -1,0 +1,89 @@
+﻿<defs>
+    <linearGradient id="gradPurple" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#7C3AED" />
+        <stop offset="100%" stop-color="#4C1D95" />
+    </linearGradient>
+    <linearGradient id="gradGray" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#6B7280" />
+        <stop offset="100%" stop-color="#374151" />
+    </linearGradient>
+    <linearGradient id="gradGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#10B981" stop-opacity="0.55" />
+        <stop offset="100%" stop-color="#284138" stop-opacity="0.38" />
+    </linearGradient>
+    <!-- Gradiente para el badge -->
+    <linearGradient id="badgeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#4b12a5" />
+        <stop offset="100%" stop-color="#f0e5ed" />
+    </linearGradient>
+    <!-- Glow para elemento seleccionado -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+        <feMerge>
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="SourceGraphic" />
+        </feMerge>
+    </filter>
+    <!-- Sombra para elementos activos -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="4" />
+        <feOffset dx="3" dy="5" result="offsetblur" />
+        <feComponentTransfer>
+            <feFuncA type="linear" slope="0.6" />
+        </feComponentTransfer>
+        <feMerge>
+            <feMergeNode />
+            <feMergeNode in="SourceGraphic" />
+        </feMerge>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+        <path d="M0,0 L0,6 L9,3 z" fill="#1F2937" />
+    </marker>
+    <symbol id="rightarrow" viewBox="0 -960 960 960" width="32" height="32">
+        <path d="m560-240-56-58 142-142H160v-80h486L504-662l56-58 240 240-240 240Z" fill="#10125f" />
+    </symbol>
+    <symbol id="leftrightarrow" viewBox="0 -960 960 960" width="32" height="32" fill="#10125f">
+        <path d="M280-280 80-480l200-200 56 56-103 104h494L624-624l56-56 200 200-200 200-56-56 103-104H233l103 104-56 56Z" />
+    </symbol>
+
+    <symbol id="stavailable" height="16" viewBox="0 -960 960 960" width="16" fill="#bbbbbb">
+        <path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+    </symbol>
+    <symbol id="stdepotavailable" height="16" viewBox="0 -960 960 960" width="16" fill="#bbbbbb">
+        <path d="M713-600 600-713l56-57 57 57 141-142 57 57-198 198ZM200-120v-640q0-33 23.5-56.5T280-840h240v80H280v518l200-86 200 86v-278h80v400L480-240 200-120Zm80-640h240-240Z" />
+    </symbol>
+    <symbol id="stdepotrequested" height="16" viewBox="0 -960 960 960" width="16" fill="#bbbbbb">
+        <path d="M200-120v-640q0-33 23.5-56.5T280-840h240v80H280v518l200-86 200 86v-278h80v400L480-240 200-120Zm80-640h240-240Zm400 160v-80h-80v-80h80v-80h80v80h80v80h-80v80h-80Z" />
+    </symbol>
+    <symbol id="stdisabled" height="16" viewBox="0 -960 960 960" width="16" fill="#bbbbbb">
+        <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
+    </symbol>
+    <symbol id="stmaintenance" height="16" viewBox="0 -960 960 960" width="16" fill="#bbbbbb">
+        <path d="M200-120v-640q0-33 23.5-56.5T280-840h400q33 0 56.5 23.5T760-760v640L480-240 200-120Zm80-122 200-86 200 86v-518H280v518Zm0-518h400-400Z" />
+    </symbol>
+    <symbol id="strepairing" height="16" viewBox="0 -960 960 960" width="16" fill="#bbbbbb">
+        <path d="m234-480-12-60q-12-5-22.5-10.5T178-564l-58 18-40-68 46-40q-2-13-2-26t2-26l-46-40 40-68 58 18q11-8 21.5-13.5T222-820l12-60h80l12 60q12 5 22.5 10.5T370-796l58-18 40 68-46 40q2 13 2 26t-2 26l46 40-40 68-58-18q-11 8-21.5 13.5T326-540l-12 60h-80Zm40-120q33 0 56.5-23.5T354-680q0-33-23.5-56.5T274-760q-33 0-56.5 23.5T194-680q0 33 23.5 56.5T274-600ZM592-40l-18-84q-17-6-31.5-14.5T514-158l-80 26-56-96 64-56q-2-18-2-36t2-36l-64-56 56-96 80 26q14-11 28.5-19.5T574-516l18-84h112l18 84q17 6 31.5 14.5T782-482l80-26 56 96-64 56q2 18 2 36t-2 36l64 56-56 96-80-26q-14 11-28.5 19.5T722-124l-18 84H592Zm56-160q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Z" />
+    </symbol>
+    <symbol id="strequesttodiagnose" height="16" viewBox="0 -960 960 960" width="16" fill="#bbbbbb">
+        <path d="M540-80q-108 0-184-76t-76-184v-23q-86-14-143-80.5T80-600v-240h120v-40h80v160h-80v-40h-40v160q0 66 47 113t113 47q66 0 113-47t47-113v-160h-40v40h-80v-160h80v40h120v240q0 90-57 156.5T360-363v23q0 75 52.5 127.5T540-160q75 0 127.5-52.5T720-340v-67q-35-12-57.5-43T640-520q0-50 35-85t85-35q50 0 85 35t35 85q0 39-22.5 70T800-407v67q0 108-76 184T540-80Zm220-400q17 0 28.5-11.5T800-520q0-17-11.5-28.5T760-560q-17 0-28.5 11.5T720-520q0 17 11.5 28.5T760-480Zm0-40Z" />
+    </symbol>
+    <symbol id="strequesttorepair" height="16" viewBox="0 -960 960 960" width="16" fill="#bbbbbb">
+        <path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q54 0 104-17.5t92-50.5L228-676q-33 42-50.5 92T160-480q0 134 93 227t227 93Zm252-124q33-42 50.5-92T800-480q0-134-93-227t-227-93q-54 0-104 17.5T284-732l448 448Z" />
+    </symbol>
+    <symbol id="ststandstill" height="16" viewBox="0 -960 960 960" width="16" fill="#bbbbbb">
+        <path d="M819-28 652-195h114v35q0 17-11.5 28.5T726-120h-46q-17 0-28.5-11.5T640-160v-40H320v40q0 17-11.5 28.5T280-120h-40q-17 0-28.5-11.5T200-160v-82q-18-20-29-44.5T160-340v-347L27-820l57-57L876-85l-57 57ZM320-280h247L367-480H240v120q0 33 23.5 56.5T320-280Zm469-6-69-69v-125H595l-80-80h205v-120H395l-80-80h391q-15-17-64.5-28.5T482-800q-71 0-115.5 6T296-779l-61-61q39-20 99.5-30T480-880q172 0 246 37t74 123v380q0 14-3 27.5t-8 26.5Zm-449-34q25 0 42.5-17.5T400-380q0-25-17.5-42.5T340-440q-25 0-42.5 17.5T280-380q0 25 17.5 42.5T340-320ZM240-560h47l-47-47v47Zm75-200h391-391Zm52 280Zm228 0Z" />
+    </symbol>
+    <symbol id="stunknown" height="16" viewBox="0 -960 960 960" width="16" fill="#bbbbbb">
+        <path d="M424-320q0-81 14.5-116.5T500-514q41-36 62.5-62.5T584-637q0-41-27.5-68T480-732q-51 0-77.5 31T365-638l-103-44q21-64 77-111t141-47q105 0 161.5 58.5T698-641q0 50-21.5 85.5T609-475q-49 47-59.5 71.5T539-320H424Zm56 240q-33 0-56.5-23.5T400-160q0-33 23.5-56.5T480-240q33 0 56.5 23.5T560-160q0 33-23.5 56.5T480-80Z" />
+    </symbol>
+
+    <symbol id="uparrow" height="32" viewBox="0 -960 960 960" width="32" fill="#10125f"><path d="M440-160v-487L216-423l-56-57 320-320 320 320-56 57-224-224v487h-80Z" /></symbol>
+    <symbol id="downarrow" height="32" viewBox="0 -960 960 960" width="32" fill="#10125f"><path d="M440-800v487L216-537l-56 57 320 320 320-320-56-57-224 224v-487h-80Z" /></symbol>
+    <symbol id="updownarrow" height="32" viewBox="0 -960 960 960" width="32" fill="#10125f"><path d="M480-120 320-280l56-56 64 63v-414l-64 63-56-56 160-160 160 160-56 57-64-64v414l64-63 56 56-160 160Z" /></symbol>
+    <symbol id="timericon" height="32" viewBox="0 -960 960 960" width="32" fill="#10125f"><path d="m612-292 56-56-148-148v-184h-80v216l172 172ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-400Zm0 320q133 0 226.5-93.5T800-480q0-133-93.5-226.5T480-800q-133 0-226.5 93.5T160-480q0 133 93.5 226.5T480-160Z" /></symbol>
+</defs>
+
+@code {
+
+}

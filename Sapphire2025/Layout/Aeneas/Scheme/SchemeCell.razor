@@ -1,0 +1,113 @@
+﻿@using Sapphire2025.Layout.Users
+@using Sapphire2025Models
+<g @onclick="@(() => HandleStatusSelected())" style="cursor:pointer">
+    <rect x="@X" y="@Y" width="90" height="70" class="@AnyTrains" />
+    <text x="@(X+45)" y="@(Y+35)" class="@BoxTextClass">
+        @Label
+    </text>
+</g>
+<use href="#@Icon" x="@(X+35)" y="@(Y+4)" />
+@switch (TrainCount)
+{
+    case 1:
+        <g class="badge-show" id="bdlgunknown">
+            <rect x="@(X + 6)" y="@(Y + 45)" width="78" height="18" rx="9" class="badge-rect" />
+            <text x="@(X + 45)" y="@(Y + 55)" class="badge-text">@TrainFirst</text>
+        </g>
+        break;
+    case > 1:
+        <g class="badge-show" id="bdsmunknown">
+            <rect x="@(X + 48)" y="@(Y + 45)" width="32" height="20" rx="9" class="badge-rect" />
+            <text x="@(X + 65)" y="@(Y + 57)" class="badge-num">@TrainCount</text>
+        </g>
+        break;
+}
+
+@code {
+    [CascadingParameter]
+    public Dictionary<Sapphire2025Models.Common.TrainStatus, List<TrainModel>>? mcolTrains { get; set; }
+    [CascadingParameter]
+    public EventCallback<Sapphire2025Models.Common.TrainStatus> OnStatusSelected { get; set; }
+    [CascadingParameter]
+    public EventCallback<Guid> OnOpenTrain { get; set; }
+    [Parameter]
+    public int X { get; set; }
+    [Parameter]
+    public int Y { get; set; }
+    [Parameter]
+    public string Label { get; set; } = string.Empty;
+    [Parameter]
+    public Common.TrainStatus Status { get; set; }
+    [Parameter]
+    public string Icon { get; set; } = string.Empty;
+
+    private string BoxTextClass
+    {
+        get
+        {
+            switch (Label.Length)
+            {
+                case >15: return "box-text3";
+                case >10: return "box-text2";
+                default: return "box-text1";
+            }
+        }
+    }
+
+    private void HandleStatusSelected()
+    {
+        //Primero tengo que ver si hay algún tren en este estado...
+        int numTrenes = 0;
+        if (null == mcolTrains) return;
+
+        if (mcolTrains.ContainsKey(Status))
+            numTrenes = mcolTrains[Status].Count();
+
+        if (numTrenes > 0)
+        {
+            if (1 == numTrenes)
+                OnOpenTrain.InvokeAsync(mcolTrains[Status].First().id);
+            else //Hay más de un tren... cargo la tabla
+                OnStatusSelected.InvokeAsync(Status);
+        }
+    }
+    private string AnyTrains
+    {
+        get
+        {
+            bool auxValor = false;
+            if (null == mcolTrains) return "box0";
+            if (mcolTrains.ContainsKey(Status))
+            {
+                if (mcolTrains[Status].Any())
+                    auxValor = true;
+            }
+            return auxValor ? "box1" : "box0";
+        }
+    }
+    private int TrainCount
+    {
+        get
+        {
+            if (null == mcolTrains) return 0;
+            if (mcolTrains.ContainsKey(Status))
+                return mcolTrains[Status].Count();
+
+            return 0;
+        }
+
+    }
+    private string TrainFirst
+    {
+        get
+        {
+            TrainModel? auxTren = null;
+            if (null == mcolTrains) return string.Empty;
+            if (mcolTrains.ContainsKey(Status))
+                auxTren = mcolTrains[Status].FirstOrDefault();
+            if (null == auxTren) return string.Empty;
+
+            return auxTren.name;
+        }
+    }
+}

@@ -98,10 +98,9 @@
 		{
 			Notes = await mvarAeneasClient.retrieveNotes(Parent, NoteType, MaxLines);
 			DateTime auxOldest = DateTime.MinValue;
-			if(null!=Notes)
-			{
-				auxOldest = Notes.OrderBy(x => x.TimeStamp).First().TimeStamp;				
-			}
+			//Modificado por error con tablas vacías.
+			if (Notes is { Count: > 0 })
+				auxOldest = Notes.Min(x => x.TimeStamp);
 			StatusChanges = await mvarAeneasClient.trainChangesList(Parent,auxOldest);
 			lastParent = Parent;
 			lastNoteType = NoteType;

@@ -1,0 +1,138 @@
+﻿.box1 {
+	fill: url(#gradPurple);
+	filter: url(#shadow);
+	stroke-width: 4;
+}
+
+.box0 {
+	fill: url(#gradGray);
+}
+
+.box0, .box1 {
+	rx: 16;
+	stroke: #1F2937;
+	transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+	cursor: pointer;
+}
+
+/* ESTADO SELECCIONADO */
+.selected {
+	filter: url(#glow);
+	stroke: #A5B4FC;
+	stroke-width: 5;
+	transform: scale(1.08);
+	transform-origin: center;
+	animation: hapticPop 0.4s ease-out;
+}
+
+@keyframes hapticPop {
+	0% {
+		transform: scale(1.0);
+	}
+
+	40% {
+		transform: scale(1.12);
+	}
+
+	70% {
+		transform: scale(1.06);
+	}
+
+	100% {
+		transform: scale(1.08);
+	}
+}
+
+/* Efecto hover */
+.box0:hover:not(.selected), .box1:hover:not(.selected) {
+	filter: brightness(1.15);
+	stroke: #C4D0FF;
+	stroke-width: 9;
+}
+
+.box-text3 {
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: bold;
+	fill: #ffffff;
+	text-anchor: middle; /* centrado horizontal */
+	dominant-baseline: middle; /* centrado vertical */
+	font-size: 10px;
+	textLength: 10; /* ancho máximo aproximado */
+	lengthAdjust: spacingAndGlyphs;
+}
+
+.box-text2 {
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: bold;
+	fill: #ffffff;
+	text-anchor: middle; /* centrado horizontal */
+	dominant-baseline: middle; /* centrado vertical */
+	font-size: 15px;
+	textLength: 60; /* ancho máximo aproximado */
+	lengthAdjust: spacingAndGlyphs;
+}
+
+.box-text1 {
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: bold;
+	fill: #ffffff;
+	text-anchor: middle; /* centrado horizontal */
+	dominant-baseline: middle; /* centrado vertical */
+	font-size: 17px;
+	textLength: 60; /* ancho máximo aproximado */
+	lengthAdjust: spacingAndGlyphs;
+}
+
+.badge-rect {
+	fill: url(#badgeGradient);
+	stroke: #68a2aa;
+	stroke-width: 2;
+}
+
+.badge-text {
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: 700;
+	font-size: 11px;
+	fill: #0e0a30;
+	text-anchor: middle;
+	dominant-baseline: middle;
+	letter-spacing: 0.5px;
+}
+
+.badge-num {
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: 700;
+	font-size: 21px;
+	fill: #012011;
+	text-anchor: middle;
+	dominant-baseline: middle;
+	letter-spacing: 0.5px;
+}
+
+.badge {
+	transition: all 0.3s ease;
+}
+
+.badge-hidden {
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none; /* para que no interfiera con clicks */
+}
+
+/* Opcional: animación de aparición */
+.badge-show {
+	animation: badgePop 0.4s ease forwards;
+	pointer-events: none; /* para que no interfiera con clicks */
+}
+
+@keyframes badgePop {
+	from {
+		opacity: 0;
+		transform: scale(0.7);
+	}
+
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
