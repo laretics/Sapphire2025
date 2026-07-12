@@ -278,13 +278,6 @@ else
         mvarDownloading = 1;
         StateHasChanged();
         TimeNetDataExportDto? paquete = await TimeNetService.DownloadJsonPackageAsync(Guid.NewGuid());
-        // if (paquete != null)
-        // {
-        //     ///Serialización de prueba para comprobar que el paquete se descarga correctamente. Se puede eliminar.
-        //     var json = JsonSerializer.Serialize(paquete, new JsonSerializerOptions { WriteIndented = true });
-        //     var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "paquete.json");
-        //     File.WriteAllText(path, json);
-        // }
         mvarDownloading = 2;
         StateHasChanged();
         if (null != paquete)
