@@ -43,7 +43,43 @@ window.sapphireSession = {
 
 // Impresión de un elemento SVG en iframe oculto (una sola hoja A4 apaisada)
 window.sapphirePrint = {
-    printSvg: function (svgElementId, options) {
+    _logoDataUrl: null,
+    _logoLoading: null,
+
+    preloadLogo: function (logoPath) {
+        if (this._logoDataUrl) {
+            return Promise.resolve(this._logoDataUrl);
+        }
+        if (this._logoLoading) {
+            return this._logoLoading;
+        }
+
+        const logoUrl = new URL(logoPath || "img/sfmImg.png", document.baseURI).href;
+        this._logoLoading = fetch(logoUrl)
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error("Logo no encontrado");
+                }
+                return response.blob();
+            })
+            .then((blob) => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    this._logoDataUrl = reader.result;
+                    resolve(this._logoDataUrl);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            }))
+            .catch(() => logoUrl)
+            .finally(() => {
+                this._logoLoading = null;
+            });
+
+        return this._logoLoading;
+    },
+
+    printSvg: async function (svgElementId, options) {
         const svg = document.getElementById(svgElementId);
         if (!svg) {
             console.error("SVG no encontrado:", svgElementId);
@@ -53,7 +89,8 @@ window.sapphirePrint = {
         const title = options?.title || "Gráfico";
         const subtitle = options?.subtitle || "";
         const period = options?.period || "";
-        const logoUrl = new URL(options?.logoUrl || "img/sfmImg.png", document.baseURI).href;
+        const logoPath = options?.logoUrl || "img/sfmImg.png";
+        const logoUrl = await this.preloadLogo(logoPath);
 
         const escapeHtml = (text) => {
             const div = document.createElement("div");
@@ -91,7 +128,7 @@ window.sapphirePrint = {
             frame = document.createElement("iframe");
             frame.id = "sapphire-print-frame";
             frame.setAttribute("aria-hidden", "true");
-            frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;";
+            frame.style.cssText = "position:fixed;left:-10000px;top:0;width:297mm;height:210mm;border:0;visibility:hidden;";
             document.body.appendChild(frame);
         }
 
@@ -150,22 +187,26 @@ window.sapphirePrint = {
     }
   }
   .cover-box {
-    position: fixed;
-    bottom: 10mm;
-    left: 10mm;
+    position: absolute;
+    bottom: 0;
+    right: 0;
     z-index: 10;
     max-width: 58mm;
     padding: 3mm 4mm;
     border: 1px solid #bbb;
     border-radius: 3px;
-    background: rgba(255, 255, 255, 0.95);
+    background: #fff;
     line-height: 1.25;
   }
   .cover-box img {
     display: block;
-    max-width: 22mm;
+    width: 22mm;
+    max-width: 100%;
     height: auto;
-    margin-bottom: 2mm;
+    margin: 0 auto 2mm auto;
+    object-fit: contain;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   .cover-box h1 {
     font-size: 8pt;
@@ -197,6 +238,26 @@ window.sapphirePrint = {
         const printWindow = frame.contentWindow;
         printWindow.focus();
         printWindow.print();
+    }
+};
+
+window.sapphirePrint.preloadLogo();
+
+window.sapphireSound = {
+    _audioCache: {},
+
+    play: function (soundPath) {
+        const url = new URL(soundPath || "sound/Ding.mp3", document.baseURI).href;
+        let audio = this._audioCache[url];
+        if (!audio) {
+            audio = new Audio(url);
+            this._audioCache[url] = audio;
+        }
+        audio.currentTime = 0;
+        const playPromise = audio.play();
+        if (playPromise) {
+            playPromise.catch(() => { });
+        }
     }
 };
 

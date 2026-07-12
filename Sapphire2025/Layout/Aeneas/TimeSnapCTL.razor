@@ -3,7 +3,7 @@
 @using Sapphire2025Models
 @inject IJSRuntime JS
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 no-print">
     <button class="btn btn-outline-primary" @onclick="PrintSVG">
         <i class="bi bi-printer"></i> Imprimir gráfico
     </button>
@@ -77,6 +77,8 @@ else
     [Parameter] public IEnumerable<TrainModel> trains { get; set; } = Enumerable.Empty<TrainModel>();
     [Parameter] public DateTime startDate { get; set; }
     [Parameter] public TimeSpan interval { get; set; }
+    [Parameter] public string? title { get; set; }
+    [Parameter] public string? intervalLabel { get; set; }
 
     private DateTime endDate => startDate.Add(interval);
     private int rowHeight = 40;
@@ -184,7 +186,25 @@ else
 
     private async Task PrintSVG()
     {
-        await JS.InvokeVoidAsync("window.print");
+        if (!trains.Any())
+            return;
+
+        var printTitle = title ?? "Disponibilidad de flota";
+        var period = $"{startDate:dd/MM/yyyy} — {endDate:dd/MM/yyyy}";
+        if (!string.IsNullOrWhiteSpace(intervalLabel))
+            period += $" ({intervalLabel})";
+
+        var subtitle = trains.Count() == 1
+            ? $"Tren {trains.First().name}"
+            : $"{trains.Count()} trenes";
+
+        await JS.InvokeVoidAsync("sapphirePrint.printSvg", "timesnap-svg", new
+        {
+            title = printTitle,
+            subtitle,
+            period,
+            logoUrl = "img/sfmImg.png"
+        });
     }
 
     private async Task ExportExcel()

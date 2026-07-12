@@ -2,6 +2,7 @@
 @using Sapphire2025Models.Aeneas
 @using Sapphire2025.Layout.Aeneas
 @inject AeneasClient mvarAeneasClient
+@inject IJSRuntime JS
 
 <div class="container-fluid py-3">
     <div class="card shadow mb-4">
@@ -66,7 +67,9 @@
             {
                 <TimeSnapCTL trains="trains"
                              startDate="startDate"
-                             interval="intervalSpan" />
+                             interval="intervalSpan"
+                             title="@HeaderContent()"
+                             intervalLabel="@interval" />
             }
             else
             {
@@ -109,6 +112,7 @@
             selectedSeries[serie] = true;
 
         SetCurrentWeek();
+        await JS.InvokeVoidAsync("sapphirePrint.preloadLogo", "img/sfmImg.png");
 
         //await RefreshData();
     }
@@ -118,9 +122,9 @@
         System.Text.StringBuilder salida = new System.Text.StringBuilder();
         salida.Append("Disponibilidad de flota");
         if (trains.Count > 1)
-            salida.AppendFormat(" (Mostrando {0} trenes)", trains.Count);
+            salida.AppendFormat(" ({0} trenes)", trains.Count);
         else if (trains.Count > 0)
-            salida.AppendFormat(" (Mostrando el tren {0})", trains.First().name);
+            salida.AppendFormat("Tren {0})", trains.First().name);
 
         return salida.ToString();
     }
