@@ -133,7 +133,12 @@ namespace TimeNet2026.Production
             this.OnyxStorage = storage;
             this.TopoStorageGuid = TopoStorageId;
             this.RautaGuid = RautaId;
-            this.PlanName = planName;
+            //Cargo un plan por defecto (el primero de la colección)
+            //Esto permite que tenga un plan, aunque no lo haya especificado.
+            if (null != Rauta && Rauta.Plans.Any())
+                this.Plan = Rauta.Plans.Values.FirstOrDefault();
+            if (planName.Length>0)
+                this.PlanName = planName;
         }
 		public TimeNetEnvironment(OnyxStorage storage, string? topoStorageId = null, string? viewId = null, string? rautaId = null, string? planId = null):this(storage)
 		{

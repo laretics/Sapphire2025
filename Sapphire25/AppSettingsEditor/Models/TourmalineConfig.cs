@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
 namespace AppSettingsEditor.Models.Tourmaline
 {
+    using System.ComponentModel.DataAnnotations;
     using System.Text.Json.Serialization;
 
     public class AppConfig
@@ -35,42 +37,88 @@ namespace AppSettingsEditor.Models.Tourmaline
 
     public class SystemConfiguration
     {
+        [Display(Name = "Serie", 
+            Description = "Identificador de la serie para Tourmaline")]
         public string Series { get; set; } = "S8100";
-        public string Name { get; set; } = "8105-8106";
-        public DateTime LastRelease { get; set; } = new DateTime(2025, 3, 15);
 
+        [Display(Name = "Nombre", 
+            Description = "ID de esta unidad según Zafiro")]
+        public string Name { get; set; } = "8105-8106";
+
+        [Display(Name = "Última liberación", 
+            Description = "Fecha y hora de la versión de este configurador")]
+        public DateTime LastRelease { get; set; } = DateTime.UtcNow;
+
+        [Display(Name = "Orientación HMI", 
+            Description = "Lado al que está el HMI en la cabina")]
         public string ToniCruz { get; set; } = "left";
-        public string SapphireUrl { get; set; } = "";
-        public string MVBUrl { get; set; } = "";
+
+        [Display(Name = "URL Sapphire", 
+            Description = "URL de cliente http rest Zafiro (Horarios y Taller)")]
+        public string SapphireUrl { get; set; } = "https://material.trensfm.com:5031";
+
+        [Display(Name = "URL MVB", 
+            Description = "Endpoint del servicio MVB")]
+        public string MVBUrl { get; set; } = "http://172.16.20.11:8000/data";
+
+        [Display(Name = "Reintentos MVB", 
+            Description = "Número máximo de reintentos antes de abandonar")]
         public int MVBRetries { get; set; } = 6;
 
-        public string TExperienceUrl { get; set; } = "";
-        public string TExperienceStr { get; set; } = "";
-        public string SfmInfoUrl { get; set; } = "";
-        public string SfmInfoToken { get; set; } = "";
+        [Display(Name = "URL Tourmaline Experience", 
+            Description = "Endpoint del simulador Tourmaline Experience")]
+        public string TExperienceUrl { get; set; } = "http://172.16.20.12:5005";
 
+        [Display(Name = "Stream Tourmaline Experience", 
+            Description = "URL del stream para TFT y HMI")]
+        public string TExperienceStr { get; set; } = "http://172.16.20.12:5005/stream";
+
+        [Display(Name = "URL SfmInfo", 
+            Description = "Endpoint de la información de incidencias y horarios desde tierra")]
+        public string SfmInfoUrl { get; set; } = "https://info.trensfm.com:8084";
+
+        [Display(Name = "Token SfmInfo", 
+            Description = "Token de acceso para información de incidencias y horarios desde tierra")]
+        public string SfmInfoToken { get; set; } = "SFM2026";
+
+        [Display(Name = "GPS", Description = "Configuración del puerto GPS")]
         public GpsConfig Gps { get; set; } = new();
     }
 
     public class GpsConfig
     {
+        [Display(Name = "Puerto", Description = "Puerto serie físico al que se conecta el GPS")]
         public string Port { get; set; } = "COM6";
+        [Display(Name = "Velocidad", Description = "En baudios")]
         public int BaudRate { get; set; } = 9600;
+        [Display(Name = "Nº Bits", Description = "Bits de datos")]
         public int DataBits { get; set; } = 8;
+        [Display(Name = "Paridad", Description = "Paridad")]
         public string Parity { get; set; } = "None";
+        [Display(Name = "Bits de parada", Description = "Bits de Parada")]
         public int StopBits { get; set; } = 1;
+        [Display(Name = "Handshake", Description = "HandShake")]
         public string Handshake { get; set; } = "None";
     }
 
     public class Device
     {
-        public string Address { get; set; } = "";
+        [Display(Name = "Dirección", 
+            Description = "Dirección para identificar al dispositivo cuando pide actualización")]
+        public string Address { get; set; } = "172.16.0.0";
+        [Display(Name = "Tipo" , Description = "HMI: Pantalla del Maquinista, TFT: Monitor viajeros, LED: Teleindicador")]
         public string Type { get; set; } = "";
+        //[Display(Name = "", Description = "")]
         public string Coach { get; set; } = "";
+        //[Display(Name = "", Description = "")]
         public string Side { get; set; } = "";
+        //[Display(Name = "", Description = "")]
         public int HeaderSize { get; set; }
+        //[Display(Name = "", Description = "")]
         public int Lines { get; set; }
+        //[Display(Name = "", Description = "")]
         public string PublicId { get; set; } = "";
+        
     }
 
     public class Camera

@@ -17,12 +17,14 @@ namespace Tourmaline26.Services
 		private SerialPort? mvarSerialPort;
 		public GPSData CurrentData{ get; private set; }
 		public bool IsConfigured { get; private set; } = false;
+		public bool IsConnected { get; private set; } = false;
 		public string? Port { get => mvarPort; }
 		public int Bauds{ get => mvarBauds; }
 		public int DataBits { get => mvarDataBits; }
 		public Parity Parity { get => mvarParity; }
 		public StopBits StopBits { get => mvarStopBits; }
 		public Handshake Handshake { get => mvarHandshake; }
+		private DateTime mvarNextReconectAttempt = DateTime.MinValue;
 
 		public GPSService(
 			ILogger<GPSService> logger,
@@ -57,24 +59,7 @@ namespace Tourmaline26.Services
 				mvarLogger.LogWarning($"El puerto GPS '{mvarPort}' no está disponible en este sistema.");
 				return;
 			}
-
-			try
-			{
-				mvarSerialPort = new SerialPort(mvarPort, mvarBauds, mvarParity, mvarDataBits, mvarStopBits)
-				{
-					Handshake = mvarHandshake,
-					NewLine = "\r\n",
-					ReadTimeout = 2000,
-					WriteTimeout = 2000
-				};
-				mvarSerialPort.Open();
-				IsConfigured = true;
-				mvarLogger.LogInformation($"GPS configurado en {mvarPort} a {mvarBauds} baudios.");
-			}
-			catch (Exception ex)
-			{
-				mvarLogger.LogWarning($"No se pudo abrir el puerto serie del GPS: {ex.Message}");
-			}
+			IsConfigured = true;
 		}
 
 		private DateTime? ParseNmeaTime(string time, string? date)
@@ -244,12 +229,56 @@ namespace Tourmaline26.Services
 
             return;
         }
-        public bool ReadLoop()
+        
+		public void Dispose()
+		{
+			DisposeSerialPort();
+		}
+
+        private bool EnsureConnected()
+        {
+			if (!IsConfigured)
+				return false; //No vamos a reconectar si no está bien el puerto.
+
+            if (true == mvarSerialPort?.IsOpen)
+                return true; //Conexión mantenida.
+
+            if (DateTime.UtcNow < mvarNextReconectAttempt)
+                return false; //No hemos conseguido reconectar, pero lo intentaremos después
+
+            mvarNextReconectAttempt = DateTime.UtcNow.AddSeconds(5);
+            //Intentamos reconectar.
+            try
+            {
+				DisposeSerialPort();
+				mvarSerialPort = new SerialPort(mvarPort, mvarBauds, mvarParity, mvarDataBits, mvarStopBits)
+				{
+					Handshake = mvarHandshake,
+					NewLine = "\r\n",
+					ReadTimeout = 2000,
+					WriteTimeout = 2000
+				};
+				mvarSerialPort.Open();
+				return true; //Ha conseguido reconectar.
+            }
+			catch (Exception ex)
+			{
+				mvarLogger.LogWarning("GPS connection error: {Message}", ex.Message);
+				return false;
+			}
+        }
+        private void DisposeSerialPort()
+		{
+            if (null != mvarSerialPort && mvarSerialPort.IsOpen)
+                mvarSerialPort.Close();
+            mvarSerialPort = null;
+        }
+		public bool ReadLoop()
 		{
 			try
 			{
-				if (null == mvarSerialPort || !mvarSerialPort.IsOpen)
-					return false;
+				if (!EnsureConnected()) return false;
+				System.Diagnostics.Debug.Assert(null != mvarSerialPort);
 
 				const int maxBufferedBytes = 4096;
 

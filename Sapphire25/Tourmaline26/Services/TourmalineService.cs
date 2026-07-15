@@ -133,14 +133,12 @@ namespace Tourmaline26.Services
 				DBLocalSystem? localSystem = await db.LocalSystem.FirstOrDefaultAsync();
 				Guid auxTopoStorageId = Guid.Empty;
 				Guid auxRautaId = Guid.Empty;
-                string auxPlanName = string.Empty;
 				if (null != localSystem)
 				{
 					auxTopoStorageId = localSystem.CurrentTopoStorage;
 					auxRautaId = localSystem.CurrentRauta;
-                    auxPlanName = localSystem.CurrentPlan;
 				}
-                mvarSessionConfig.TNEnvironment = new TimeNetEnvironment(TimeNetStorage, auxTopoStorageId, auxRautaId, auxPlanName);
+                mvarSessionConfig.TNEnvironment = new TimeNetEnvironment(TimeNetStorage, auxTopoStorageId, auxRautaId);
 
 			}
         }
