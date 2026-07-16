@@ -1,0 +1,158 @@
+﻿@using Sapphire2025Models.Aeneas
+@using Sapphire2025Models
+@using Sapphire2025.Icons
+@inject IJSRuntime JS
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover table-bordered align-middle shadow-sm">
+        <thead class="table-dark">
+            <tr>
+                <th style="width: 18%;"><GenIcon Name="UT" Size="16"/></th>
+                <th style="width: 22%;"><GenIcon Name="TimeValue" Size="16"/></th>
+                <th style="width: 22%;"><GenIcon Name="Scheduler" Size="16"/></th>
+                <th style="width: 18%;"><GenIcon Name="LeftRight" Size="16"/></th>
+                <th style="width: 20%;"><GenIcon Name="Exec" Size="16" /></th>
+            </tr>
+        </thead>
+        <tbody>            
+            @foreach (TrainModel train in trains)
+            {
+                IEnumerable<Lapse> lapses = MaintenanceLapses(train);                
+                if(0<lapses.Count())
+                {
+                    bool firstRow = true;
+                    @foreach (Lapse lapse in lapses)
+                    {                        
+                        <tr>
+                            @if(firstRow)
+                            {
+                                <td class="fw-semibold" rowspan="@lapses.Count()">@train.name</td>
+                            }
+                            <td>@lapse.Begin.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@lapse.End.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@lapse.Duration.ToString(@"hh\:mm\:ss")</td>
+                            @if(firstRow)
+                            {
+                                <td class="fw-semibold text-end" rowspan="@lapses.Count()">@CumulString (@CumulRounded h)</td>                                
+                                firstRow = false;
+                            }
+                        </tr>       
+                    }
+                }
+            }
+        </tbody>
+        <tfoot class="table-dark">
+            <tr>
+                <td colspan="4" class="text-end fw-bold">Total general</td>
+                <td class="text-end fw-bold fs-5">@TotalCumulString (@TotalCumulRounded h)</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+
+
+@code {
+    [Parameter] public IEnumerable<TrainModel> trains { get; set; } = Enumerable.Empty<TrainModel>();
+    [Parameter] public DateTime startDate { get; set; }
+    [Parameter] public TimeSpan interval { get; set; }
+    [Parameter] public string? title { get; set; }
+    [Parameter] public string? intervalLabel { get; set; }
+
+    private DateTime endDate => startDate.Add(interval);
+
+    private TimeSpan mvarCumul = new TimeSpan(0);
+    private TimeSpan mvarTotalCumul = new TimeSpan(0);
+
+    protected override void OnParametersSet()
+    {
+        mvarTotalCumul = TimeSpan.Zero;
+
+        foreach (TrainModel train in trains)
+        {
+            mvarTotalCumul += CalculateMaintenanceTotal(train);
+        }
+    }
+    private TimeSpan CalculateMaintenanceTotal(TrainModel owner)
+    {
+        TrainSpan auxSpan = StatusPhases(owner, Common.TrainStatus.Maintenance);
+        TrainSpan auxFilteredSpan = auxSpan.FilterByJourney(new TimeSpan(6, 0, 0), new TimeSpan(22, 0, 0));
+
+        TimeSpan total = TimeSpan.Zero;
+        foreach (Lapse item in auxFilteredSpan.Lapses)
+            total += item.Duration;
+
+        return total;
+    }
+
+    private IEnumerable<Lapse> MaintenanceLapses(TrainModel owner)
+    {
+        TrainSpan auxSpan = StatusPhases(owner, Common.TrainStatus.Maintenance);
+        TrainSpan auxFilteredSpan = auxSpan.FilterByJourney(new TimeSpan(6,0,0) ,new TimeSpan(22,0,0));
+        IEnumerable<Lapse> salida = auxFilteredSpan.Lapses;
+        mvarCumul = new TimeSpan(0);
+        foreach (Lapse item in salida)
+            mvarCumul += item.Duration;
+
+        return salida;
+    }
+
+    private string CumulString => mvarCumul.ToString(@"d\.hh\:mm\:ss");
+    private string CumulRounded => $"{(int)Math.Round(mvarCumul.TotalHours, MidpointRounding.AwayFromZero)}";
+
+    private string TotalCumulString => mvarTotalCumul.ToString(@"d\.hh\:mm\:ss");
+    private string TotalCumulRounded => $"{(int)Math.Round(mvarTotalCumul.TotalHours, MidpointRounding.AwayFromZero)}";
+
+    /// <summary>
+    /// Obtiene la lista de estados del tren dentro del intervalo especificado
+    /// </summary>
+    /// <param name="train"></param>
+    /// <returns></returns>
+    private TrainSpan StatusPhases (TrainModel train, Common.TrainStatus status)
+    {
+        TrainSpan result = new TrainSpan();
+
+        if (null == train?.StatusChanges || 0 == train.StatusChanges.Count)
+            return result;
+
+        List<StatusChangeModel> trainChanges = train.StatusChanges?
+        .Where(x => x.timeStamp <= endDate)
+        .OrderBy(x => x.timeStamp)
+        .ToList() ?? new List<StatusChangeModel>();
+
+        for(int i = 0; i< trainChanges.Count; i++)
+        {
+            StatusChangeModel auxCambio = trainChanges[i];
+
+            if (auxCambio.status != status)
+                continue;
+
+            //Gestión de cambios de estado con el mismo estado
+            if (i > 0 && trainChanges[i - 1].status == status) continue;
+
+            DateTime auxComienzo = auxCambio.timeStamp<startDate
+            ? startDate
+            : auxCambio.timeStamp;
+
+            if (auxComienzo >= endDate) continue;
+
+            DateTime auxFinal = endDate;
+
+            for(int j = i +1; j<trainChanges.Count;j++)
+            {
+                if(trainChanges[j].status != status)
+                {
+                    auxFinal = trainChanges[j].timeStamp < endDate
+                    ? trainChanges[j].timeStamp
+                    : endDate;
+                    break;
+                }
+            }
+            result.Add(auxComienzo, auxFinal);
+        }
+        return result.Normalize();
+    }
+
+    
+    
+}

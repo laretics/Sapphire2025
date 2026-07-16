@@ -1,0 +1,23 @@
+﻿@if (null != Agents)
+{
+    for (int n = 0; n < Agents.Count; n++)
+    {
+        string encodedName = Uri.EscapeDataString(Agents[n]);
+        <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
+            <img src="img/grExcel.png" class="card-img-top" alt="Gráfico de Maquinistas" style="object-fit: cover; height: 180px;">
+            <div class="card-body">
+                <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Agents[n]</h5>
+                <p class="card-text text-muted custom-comment">
+                    Gráfico de Maquinistas.
+                </p>
+                <a href="@($"/monthGraph/{encodedName}")" class="btn btn-outline-primary w-100">Abrir</a>
+            </div>
+        </div>
+    }
+}
+@code {
+    [Parameter]
+    public List<string>? Agents{ get; set; }
+
+
+}

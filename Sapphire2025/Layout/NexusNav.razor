@@ -3,14 +3,14 @@
     <NexusNavOption Selected="@(0==SelectedNavItem)"
     onclick="@(()=>SelectNavItem(0))"
     Link="#" Caption="Inicio"
-    Image="bi bi-house-door-fill-nav-menu" 
+    Image="Home" 
     Tooltip="Pantalla de inicio"
     />
 
     <NexusNavOption Selected="@(1 == SelectedNavItem)"
                     onclick="@(()=>SelectNavItem(1))"
                     Link="admin/myuserdossier" Caption="Yo"
-                    Image="bi bi-my-user-nav-menu"
+                    Image="Myself"
                     Tooltip="Mi página de información."
                     Roles="new List<Sapphire2025Models.Common.UserRole>{ 
                     Sapphire2025Models.Common.UserRole.Engineer, 
@@ -25,56 +25,56 @@
     <NexusNavOption Selected="@(2 == SelectedNavItem)"
                     onclick="@(()=>SelectNavItem(2))"
                     Link="submenu/admin" Caption="Admin"
-                    Image="bi bi-person-settings-nav-menu"
+                    Image="RoleAdmin"
                     Tooltip="Administración del sistema."
                     Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Root}" />
 
     <NexusNavOption Selected ="@(3 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(3))" 
                     Link="submenu/caps" Caption="J.Maquinista"
-                    Image="bi bi-expert-day-nav-menu"
+                    Image="RoleDiagnoser"
                     Tooltip="Opciones para Jefes de Maquinistas"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Expert}" />
     
     <NexusNavOption Selected="@(4 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(4))"
                     Link="submenu/station" Caption="Estación"
-                    Image="bi bi-station-nav-menu"
+                    Image="RoleStation"
                     Tooltip="Personal de estaciones"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Station}" />
 
     <NexusNavOption Selected="@(5 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(5))"
                     Link="submenu/inspector" Caption="Inspector"
-                    Image="bi bi-expert-day-nav-menu"
+                    Image="RoleInspector"
                     Tooltip="Opciones para Inspectores"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Inspector}" />    
 
     <NexusNavOption Selected="@(6 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(6))"
                     Link="submenu/mechanic" Caption="Mecánico"
-                    Image="bi bi-mechanic-nav-menu"
+                    Image="RoleMechanic"
                     Tooltip="Opciones para Personal de los Talleres"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Mechanic}" />
 
     <NexusNavOption Selected="@(7 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(7))"
                     Link="submenu/oficial" Caption="Oficial"
-                    Image="bi bi-mechanic-nav-menu"
+                    Image="RoleAdvancedUser"
                     Tooltip="Opciones para Oficiales de taller de SFM"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Oficial}" />
 
     <NexusNavOption Selected="@(8 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(8))"
                     Link="submenu/engineer" Caption="Ingeniero"
-                    Image="bi bi-engineer-nav-menu"
+                    Image="RoleDetective"
                     Tooltip="Opciones para Análisis de Información"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Engineer}" />
 
     <NexusNavOption Selected="@(9 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(9))"
                     Link="submenu/anonymous" Caption="Movimiento"
-                    Image="bi bi-expert-day-nav-menu"
+                    Image="RoleTrainDriver"
                     Tooltip="Maquinistas y personal de trenes"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Anonymous}" />
 
