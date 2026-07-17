@@ -78,8 +78,20 @@ namespace Tourmaline26.Services
             HMIUpdateRequested?.Invoke(this, EventArgs.Empty); //Actualizamos HMI
             var initTask = Task.Run(async () =>
             {
-                mvarTourmaline.SessionConfig.Initialized = await mvarTourmaline.EnsureInitialized();
-                HMIUpdateRequested?.Invoke(this, EventArgs.Empty); // Actualizamos HMI cuando termina
+                try
+                {
+                    await mvarTourmaline.EnsureInitialized();
+                }
+                catch (Exception ex)
+                {
+                    // EnsureInitialized ya marca Initialized=true en finally; esto es red de seguridad.
+                    mvarLogger.LogError(ex, "Fallo inesperado durante EnsureInitialized");
+                    mvarTourmaline.SessionConfig.Initialized = true;
+                }
+                finally
+                {
+                    HMIUpdateRequested?.Invoke(this, EventArgs.Empty); // Actualizamos HMI cuando termina
+                }
             });
             DateTime auxLastMeteoCheck = DateTime.Today; //Momento de la última comprobación de la meteorología
             DateTime auxLastPanelsUpdate = DateTime.Today; //Momento de la última actualización de paneles led.            
