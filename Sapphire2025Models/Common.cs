@@ -226,6 +226,27 @@ namespace Sapphire2025Models
 			banned = 5          //Usuario expulsado por un administrador
 		}
 
+		public enum TrainSystem: byte
+		{
+			undefined=0,		//Sistema indeterminado
+			CCTV=1,				//Vigilancia CCTV y grabación
+			ExtSignaling=2,		//Señalización exterior (luces y avisos)
+			Doors=3,			//Puertas exteriores
+			CabDoors=4,			//Puertas de la cabina
+			HVAC=5,				//Sistema de climatización
+			Traction=6,			//Sistema eléctrico de tracción (Inversores, motores y bobinas de filtro)
+			Braking=7,			//Sistema de freno (Neumático)
+			Converters=8,		//Convertidores auxiliares
+			CockPit=9,			//Equipamiento de cabina de conducción
+			SIV=10,				//Megafonía e información al viajero
+			Vandalism=11,		//Grafitis y desperfectos por vandalismo
+			Underhood=12,		//Rodamiento, suspensión y chasis inferior
+			HighVoltage=13,		//Elementos de alta tensión
+			FAP=14,				//FAP, ASFA, ERTMS y similares
+			Pneumatics=15,		//Sistema neumático TDP, compresores y relacionados
+			Exterior=16,		//Carrocería y remates
+		}
+
 		static public string timeStringTelegram(DateTime? rhs)
 		{
 			if (null == rhs) return "-";
