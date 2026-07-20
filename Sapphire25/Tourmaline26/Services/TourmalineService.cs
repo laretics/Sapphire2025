@@ -108,6 +108,7 @@ namespace Tourmaline26.Services
         public async Task InitData()
         {
             await InitConfig(mvarConfiguration);
+            await EnsureLocalDatabaseSchema(); //Recrea la BD si el esquema está desfasado respecto al modelo EF.
             await InitializeLocalRegister(); //Inicia el registro en la base de datos.
             await InitializeTimeNet(); //Carga los datos de TimeNet en el almacenamiento local.
         }
@@ -117,12 +118,73 @@ namespace Tourmaline26.Services
             if(!mvarSessionConfig.Initialized)
             {
                 mvarLogger.LogInformation("Iniciando sistema de información al viajero Tourmaline...");
-                await InitData();
-                mvarSessionConfig.Initialized = true;
-                mvarLogger.LogInformation("Sistema de información al viajero Tourmaline iniciado correctamente.");
+                try
+                {
+                    await InitData();
+                    mvarSessionConfig.InitError = string.Empty;
+                    mvarLogger.LogInformation("Sistema de información al viajero Tourmaline iniciado correctamente.");
+                }
+                catch (Exception ex)
+                {
+                    // Nunca dejamos el HMI bloqueado en "Iniciando sistema": la BD local se puede
+                    // volver a descargar desde el menú de configuración (Ónice / Sapphire).
+                    mvarSessionConfig.InitError = ex.Message;
+                    mvarLogger.LogError(ex, "Error durante la inicialización. Se abre el HMI en modo degradado para permitir reconfiguración.");
+                    if (null == mvarSessionConfig.TNEnvironment)
+                        mvarSessionConfig.TNEnvironment = new TimeNetEnvironment(TimeNetStorage, Guid.Empty, Guid.Empty);
+                }
+                finally
+                {
+                    mvarSessionConfig.Initialized = true;
+                }
             }
             return mvarSessionConfig.Initialized;
         }
+
+        /// <summary>
+        /// Garantiza que tourmaline.db existe y es compatible con el modelo EF actual.
+        /// EnsureCreated no migra esquemas: si el modelo ha ganado columnas (p. ej. LastPlatformAssign)
+        /// y la BD es antigua, se regenera vacía (los datos se vuelven a bajar de Zafiro/TimeNet).
+        /// </summary>
+        private async Task EnsureLocalDatabaseSchema()
+        {
+            using (IServiceScope scope = mvarServiceProvider.CreateScope())
+            {
+                TourmalineContext db = scope.ServiceProvider.GetRequiredService<TourmalineContext>();
+                await db.Database.EnsureCreatedAsync();
+                try
+                {
+                    // Sonda de compatibilidad: consulta mínima sobre la entidad más propensa a crecer.
+                    _ = await db.Trains.AsNoTracking().FirstOrDefaultAsync();
+                    _ = await db.LocalSystem.AsNoTracking().FirstOrDefaultAsync();
+                }
+                catch (Exception ex) when (IsSqliteSchemaMismatch(ex))
+                {
+                    mvarLogger.LogWarning(ex,
+                        "Esquema de tourmaline.db incompatible con el modelo actual. Regenerando base de datos local vacía (habrá que re-descargar datos).");
+                    await db.Database.EnsureDeletedAsync();
+                    await db.Database.EnsureCreatedAsync();
+                }
+            }
+        }
+
+        private static bool IsSqliteSchemaMismatch(Exception ex)
+        {
+            for (Exception? current = ex; null != current; current = current.InnerException)
+            {
+                if (current is Microsoft.Data.Sqlite.SqliteException sqlite)
+                {
+                    // Error 1 = SQLITE_ERROR (no such column / no such table, etc.)
+                    string message = sqlite.Message;
+                    if (message.Contains("no such column", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("no such table", StringComparison.OrdinalIgnoreCase)
+                        || sqlite.SqliteErrorCode == 1)
+                        return true;
+                }
+            }
+            return false;
+        }
+
         public async Task InitializeTimeNet()
         {
             using (IServiceScope scope = mvarServiceProvider.CreateScope())
@@ -133,14 +195,12 @@ namespace Tourmaline26.Services
 				DBLocalSystem? localSystem = await db.LocalSystem.FirstOrDefaultAsync();
 				Guid auxTopoStorageId = Guid.Empty;
 				Guid auxRautaId = Guid.Empty;
-                string auxPlanName = string.Empty;
 				if (null != localSystem)
 				{
 					auxTopoStorageId = localSystem.CurrentTopoStorage;
 					auxRautaId = localSystem.CurrentRauta;
-                    auxPlanName = localSystem.CurrentPlan;
 				}
-                mvarSessionConfig.TNEnvironment = new TimeNetEnvironment(TimeNetStorage, auxTopoStorageId, auxRautaId, auxPlanName);
+                mvarSessionConfig.TNEnvironment = new TimeNetEnvironment(TimeNetStorage, auxTopoStorageId, auxRautaId);
 
 			}
         }

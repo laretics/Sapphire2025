@@ -1,5 +1,6 @@
 ﻿@page "/"
 @using System.Threading.Tasks
+@using Sapphire2025.Icons
 @inject NavigationManager mvarNavigator
 @inject AuthenticationClient AuthClient
 <PageTitle>Zafiro</PageTitle>
@@ -10,7 +11,7 @@
         <div class="row justify-content-center mt-4">
             <div class="col-12 col-md-8 col-lg-6">
                 <div class="alert alert-warning border-2 rounded-4 shadow-sm text-center fs-6" role="alert" style="background:rgba(255,255,224,0.97);">
-                    <Sapphire2025.Icons.Actions.Scheduler height="6"/>
+                    <GenIcon Name="Scheduler"/>
                     Importante:
                     <p>La versión que está utilizando usted es la @mvarCurrentVersion.</p>
                     <p>El programa deberá ser actualizado a la versión @mvarNewVersion.</p>
@@ -24,8 +25,8 @@
     {
         <div class="row justify-content-center mt-4">
             <div class="col-12 col-md-8 col-lg-6">
-                <div class="alert alert-primary border-2 rounded-4 shadow-sm text-center fs-5" role="alert" style="background:rgba(255,255,255,0.95);">                    
-                    <Sapphire2025.Icons.Actions.Exec/>
+                <div class="alert alert-primary border-2 rounded-4 shadow-sm text-center fs-5" role="alert" style="background:rgba(255,255,255,0.95);">
+                    <GenIcon Name="Exec"/>                    
                     @mvarNotify
                 </div>
             </div>
@@ -171,7 +172,7 @@
         string auxVersion = await AuthClient.GetCurrentServerVersion();
         //auxVersion += "p"; //Prueba de cambio de versión forzado.
         mvarNotify = null;
-        if (auxVersion != Sapphire2025Models.Common.SapphireSoftwareVersion)
+        if (auxVersion != Sapphire2025Models.Common.SapphireSoftwareVersion && Sapphire2025Models.Common.MajorVersion)
             mvarNewVersion = auxVersion;
 
         if (null == mvarSession)

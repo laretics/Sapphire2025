@@ -7,8 +7,6 @@
 @using TimeNet2026Data
 @using TimeNetComponents.TreeView
 @using TimeNetComponents.Controls.TimeNetControl
-@inject OnyxStorage mvarStorage
-@inject TimeNetContext context
 
 <div class="container-fluid vh-100 p-0 overflow-hidden">
     <div class="row g-0 h-100">
@@ -21,7 +19,7 @@
         <div class="col-9 h-100 d-flex flex-column">
             <!-- Sección superior: Malla (50% del alto) -->
             <div class="flex-fill border-bottom bg-white p-3">
-                @if(null == mvarEnvironment)
+                @if(null == ControlEnvironment)
                 {
                     <div class="alert alert-info d-flex align-items-center" role="alert">
                         <i class="bi bi-info-circle-fill me-2"></i>
@@ -33,12 +31,12 @@
                     <div class="d-flex flex-column h-100 gap-2">
                         <div class="d-flex flex-row gap-2 flex-fill">
                             <div class="border rounded shadow-sm">
-                                <TimeNetSliderY Environment="@mvarEnvironment"
+                                <TimeNetSliderY Environment="@ControlEnvironment"
                                                 StateChanged="@auxStateChanged" />
                             </div>
                             
                             <div class="flex-fill border rounded shadow-sm p-2 bg-light">
-                                <TimeNetControl Environment="@mvarEnvironment"
+                                <TimeNetControl Environment="@ControlEnvironment"
                                                 Style="@mvarStyle"
                                                 Selections="@mvarSelection"
                                                 Splines="false" />
@@ -46,7 +44,7 @@
                         </div>
 
                         <div class="border rounded shadow-sm">
-                            <TimeNetSliderX Environment="@mvarEnvironment"
+                            <TimeNetSliderX Environment="@ControlEnvironment"
                                             StateChanged="@auxStateChanged" />
                         </div>
                     </div>
@@ -109,20 +107,16 @@
 </div>
 
 @code {
-    [Parameter]
-    public string? TopoStorageId { get; set; }
+    [CascadingParameter]
+    public TimeNetControlEnvironment? ControlEnvironment { get; set; }
     private void auxStateChanged() { StateHasChanged(); }
-    private TimeNetEnvironment? entornoTN;
     private TreeViewEnvironment? entornoArbol;
 
-    private TimeNetControlEnvironment? mvarEnvironment { get; set; }
     private TimeNetControlStyle mvarStyle { get; set; } = new TimeNetControlStyle();
     private TimeNetSelection mvarSelection { get; set; } = new TimeNetSelection();
     protected override async Task OnInitializedAsync()
     {
-        await mvarStorage.DeserializeMemory(context);
-        entornoTN = new TimeNetEnvironment(mvarStorage);
-        entornoArbol = new TreeViewEnvironment(entornoTN);  
+        if (null != ControlEnvironment && null!=ControlEnvironment.Environment)
+            entornoArbol = new TreeViewEnvironment(ControlEnvironment.Environment);
     }
-
 }

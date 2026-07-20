@@ -16,15 +16,17 @@
                 @if(mvarTourmaline.SystemConfig.ToniCruz=="right")
                 {
                     <div class="tesla-left @panelClass">
-                        <TeslaLeftSection />
+                        <TeslaOnyxSection />
                     </div>
                 }
                 <div class="tesla-right @panelClass">
                     @if (View3DEnabled)
                     {
-                        <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
+                        <div class="driver-stream-layer">
+                            <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
+                        </div>
                     }
-                    <TeslaRightSection />
+                    <TeslaNavigationSection />
                     @if (RightPanelVisible)
                     {
                         <SideMenu @ref="mvarSideMenu" />
@@ -41,7 +43,7 @@
                 @if (mvarTourmaline.SystemConfig.ToniCruz != "right")
                 {
                     <div class="tesla-left @panelClass">
-                        <TeslaLeftSection />
+                        <TeslaOnyxSection />
                     </div>
                 }
                 @if (CameraViewMode)
@@ -88,7 +90,7 @@
         UserSession = 9
     }
     private bool ZeroSpeed { get => mvarTourmaline.SessionConfig.CurrentSpeed < 10; }
-    private Dictionary<string, TeslaButton?> buttonData = new Dictionary<string, TeslaButton>();
+    private Dictionary<string, TeslaButton?> buttonData = new Dictionary<string, TeslaButton?>();
     protected async override Task OnInitializedAsync()
     {
         buttonData.Add("Main Menu", new TeslaButton("Train", null, true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged())));

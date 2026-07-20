@@ -17,8 +17,8 @@ mvarControlEnvironment.Environment.IsViewComplete)
     }    
 </div>
 @code {
-    private TimeNetControlEnvironment mvarControlEnvironment;
-    private TimeNetControlStyle mvarTimenetStyle;
+    private TimeNetControlEnvironment mvarControlEnvironment = new TimeNetControlEnvironment(100, 100);
+    private TimeNetControlStyle mvarTimenetStyle = new TimeNetControlStyle();
 
     private SessionConfiguration mvarConfig = new();   
     protected override void OnInitialized()
@@ -26,8 +26,7 @@ mvarControlEnvironment.Environment.IsViewComplete)
         base.OnInitialized();
         mvarConfig = Tourmaline.SessionConfig;
         Tourmaline.HMIUpdateRequested += auxHMIRefresh;
-        mvarTimenetStyle = new TimeNetControlStyle();
-        mvarControlEnvironment = new TimeNetControlEnvironment(100, 100);        
+        mvarControlEnvironment.Environment = Tourmaline.SessionConfig.TNEnvironment;       
     }
     public void Dispose()
     {
@@ -35,7 +34,6 @@ mvarControlEnvironment.Environment.IsViewComplete)
     }
     private void auxHMIRefresh(object? sender, EventArgs e)
     {
-        mvarControlEnvironment.Environment = Tourmaline.SessionConfig.TNEnvironment;
         InvokeAsync(StateHasChanged);
     }
 

@@ -1,21 +1,35 @@
-﻿.simulator-stream-container {
+.simulator-stream-container {
 	width: 100%;
-	aspect-ratio: 4 / 3; /* 640x480 */
-	max-height: 100%;
+	height: 100%;
 	position: relative;
 	overflow: hidden;
 	display: flex;
-	align-items: center;
-	justify-content: center;
+	align-items: stretch;
+	justify-content: stretch;
+	background-color: #000;
 }
 
-.simulator-stream-canvas,
-.simulator-stream-img {
+.simulator-stream-canvas {
 	width: 100%;
 	height: 100%;
 	display: block;
+	/* El JS ya dibuja con stretch (drawImage al tamaño del canvas). */
 }
 
+/* Superpuesto al canvas hasta que haya frames reales */
 .simulator-stream-img {
-	object-fit: cover;
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: fill; /* stretch a todo el contenedor */
+	display: block;
+	z-index: 1;
+	pointer-events: none;
+}
+
+.simulator-stream-container.simulator-stream-blur .simulator-stream-canvas,
+.simulator-stream-container.simulator-stream-blur .simulator-stream-img {
+	filter: blur(8px);
+	transform: scale(1.05); /* evita bordes transparentes del blur */
 }

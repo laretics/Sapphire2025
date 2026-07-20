@@ -93,11 +93,13 @@
     [CascadingParameter]
     public bool NightMode { get; set; }
     [CascadingParameter]
-    public string? mvarSearchString{ get; set; }
+    public string? SearchString{ get; set; }
     [CascadingParameter]
     public SessionConfiguration? Environment{ get; set; }
     [Parameter]
     public EventCallback<Circulation> OnCirculationSelected{ get; set; }
+
+    private string mvarSearchString = string.Empty;
 
     private Task HandleCirculationSelected(Circulation cir)
         => OnCirculationSelected.InvokeAsync(cir);
@@ -129,9 +131,10 @@
         byName.Clear();
         byTime.Clear();
         byDestination.Clear();
-        if(null!=mvarSearchString)
+        mvarSearchString = string.Empty;
+        if(null!=SearchString)
         {
-            mvarSearchString = mvarSearchString.Replace(' ',',');
+            mvarSearchString = SearchString.Replace(' ',',');
             mvarSearchString = mvarSearchString.Replace('-', ',');
             mvarSearchString = mvarSearchString.Replace('.', ',');
             string[] tokens = mvarSearchString.Trim().ToUpper().Split(',');

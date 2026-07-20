@@ -1,11 +1,12 @@
-using Tourmaline26.Components;
-using Sapphire2025.Storage;
 using Microsoft.EntityFrameworkCore;
+using Sapphire2025.Storage;
+using Sapphire2026Clients;
+using Tourmaline26.Components;
 using Tourmaline26.Logic;
 using Tourmaline26.Services;
-using Tourmaline26.Services.TourmalineExperience;
 using Tourmaline26.Services.Armandito;
 using Tourmaline26.Services.Logging;
+using Tourmaline26.Services.TourmalineExperience;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +34,7 @@ options.UseSqlite("Data Source=tourmaline.db"));
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBaseUri });
 
 builder.Services.AddScoped<IntStorageService>();
+builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<AuthenticationClient>();
 builder.Services.AddScoped<AeneasClient>();
 builder.Services.AddScoped<ExpertClient>();

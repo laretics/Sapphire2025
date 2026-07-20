@@ -5,6 +5,14 @@
 @using Microsoft.EntityFrameworkCore
 @inject TourmalineService TourmalineService
 @inject TourmalineContext database
+@if (!string.IsNullOrEmpty(TourmalineService.SessionConfig.InitError))
+{
+    <div class="alert alert-warning" role="alert">
+        <strong>Arranque en modo degradado.</strong>
+        <p class="mb-1">@TourmalineService.SessionConfig.InitError</p>
+        <p class="mb-0">Si la base local se regeneró vacía, descarga de nuevo los datos de Zafiro y TimeNet (Ónice).</p>
+    </div>
+}
 <Switch Label="Dummy Keyboard" Value="@TourmalineService.SessionConfig.ServiceMode.ServiceKeyboard"
         ValueChanged="@((bool v) => SetDebugKeyboard(v))" />
 @if(null==mvarLocalSystem)

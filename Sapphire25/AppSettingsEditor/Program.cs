@@ -1,5 +1,7 @@
 ﻿using AppSettingsEditor.Models.Tourmaline;
 using Spectre.Console;
+using System.ComponentModel.DataAnnotations;
+using System.Reflection;
 using System.Text.Json;
 
 class Program
@@ -99,19 +101,45 @@ class Program
     {
         SystemConfiguration sys = config!.SystemConfiguration;
 
-        sys.Series = AnsiConsole.Ask<string>("Series:", sys.Series);
-        sys.Name = AnsiConsole.Ask<string>("Name:", sys.Name);
-        sys.ToniCruz = AnsiConsole.Ask<string>("ToniCruz:", sys.ToniCruz);
-        sys.MVBRetries = AnsiConsole.Ask<int>("MVB Retries:", sys.MVBRetries);
+        sys.Series = AskString(sys, nameof(SystemConfiguration.Series), sys.Series);
+        sys.Name = AskString(sys, nameof(SystemConfiguration.Name), sys.Name);
+        sys.ToniCruz = AskString(sys, nameof(SystemConfiguration.ToniCruz), sys.ToniCruz);
+        sys.MVBRetries = AskInt(sys, nameof(SystemConfiguration.MVBRetries), sys.MVBRetries);
 
-        sys.SapphireUrl = AnsiConsole.Ask<string>("SapphireUrl:", sys.SapphireUrl);
-        sys.MVBUrl = AnsiConsole.Ask<string>("MVBUrl:", sys.MVBUrl);
-        sys.TExperienceUrl = AnsiConsole.Ask<string>("TExperienceUrl:", sys.TExperienceUrl);
-        sys.SfmInfoUrl = AnsiConsole.Ask<string>("SfmInfoUrl:", sys.SfmInfoUrl);
-        sys.SfmInfoToken = AnsiConsole.Ask<string>("SfmInfoToken:", sys.SfmInfoToken);
+        sys.SapphireUrl = AskString(sys, nameof(SystemConfiguration.SapphireUrl), sys.SapphireUrl);
+        sys.MVBUrl = AskString(sys, nameof(SystemConfiguration.MVBUrl), sys.MVBUrl);
+        sys.TExperienceUrl = AskString(sys, nameof(SystemConfiguration.TExperienceUrl), sys.TExperienceUrl);
+        sys.SfmInfoUrl = AskString(sys, nameof(SystemConfiguration.SfmInfoUrl), sys.SfmInfoUrl);
+        sys.SfmInfoToken = AskString(sys, nameof(SystemConfiguration.SfmInfoToken), sys.SfmInfoToken);
 
         AnsiConsole.MarkupLine("[green]SystemConfiguration actualizado[/]");
     }
+
+    static string GetPromptForProperty(Type type, string propertyName)
+    {
+        System.Reflection.PropertyInfo property = type.GetProperty(propertyName)!;
+        DisplayAttribute? display = property.GetCustomAttribute<DisplayAttribute>();
+
+        string name = display?.GetName() ?? property.Name;
+        string description = display?.GetDescription();
+
+        return string.IsNullOrWhiteSpace(description)
+            ? name
+            : $"{name}\n[grey]{description}[/]";
+    }
+    static string AskString(SystemConfiguration sys, string propertyName, string currentValue )
+    {
+        return AnsiConsole.Ask<string>(
+            GetPromptForProperty(typeof(SystemConfiguration), propertyName),
+            currentValue);
+    }
+    static int AskInt(SystemConfiguration sys, string propertyName, int currentValue)
+    {
+        return AnsiConsole.Ask<int>(
+            GetPromptForProperty(typeof(SystemConfiguration), propertyName),
+            currentValue);
+    }
+
 
     static async Task ManageDevices() 
     {
