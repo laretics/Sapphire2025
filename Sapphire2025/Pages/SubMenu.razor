@@ -1,209 +1,58 @@
 ﻿@page "/submenu/{Page}"
+@using Sapphire2025.Layout.SubMenus
 @inject ExpertClient mvarExpertClient
 @if(null!=Page)
 {
     @if (Page.Equals("inspector"))
     {
         <div class="container py-4">
-            <h2 class="display-5 fw-semibold text-primary mb-2 text-center">Inspector</h2>
             <p class="lead text-secondary text-center mb-4">
                 Todo lo necesario para las tareas que un inspector de operaciones requiere de la gestión del personal de movimiento y tracción.
             </p>
             <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    <img src="img/diaInspector.png" class="card-img-top" alt="Agentes Diario" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Agentes de Tracción</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Informe con la lista de los Agentes de Tracción para uso diario del CTC
-                        </p>
-                        <a href="/agentsctc" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-                @if(null!=mcolAgentsViews)
-                {
-                    for(int n=0; n<mcolAgentsViews.Count;n++)
-                    {
-                        string encodedName = Uri.EscapeDataString(mcolAgentsViews[n]);
-                        <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                            <img src="img/grExcel.png" class="card-img-top" alt="Gráfico de Maquinistas" style="object-fit: cover; height: 180px;">
-                            <div class="card-body">
-                                <h5 class="card-title fw-bold text-dark mb-2 custom-title">@mcolAgentsViews[n]</h5>
-                                <p class="card-text text-muted custom-comment">
-                                    Gráfico de Maquinistas.
-                                </p>
-                                <a href="@($"/monthGraph/{encodedName}")" class="btn btn-outline-primary w-100">Abrir</a>
-                            </div>
-                        </div>
-                    }
-                }
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
-                    <img src="img/ut81.png" class="card-img-top" alt="Aeneas" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Taller</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Estado del material móvil y talleres.
-                        </p>
-                        <a href="/trainFlow" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    <img src="img/Composiciones.png" class="card-img-top" alt="AeneasPlus" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Material Móvil</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Información sobre el Material Móvil
-                        </p>
-                        <a href="/trainQuery" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 170px;">                    
-                    <img src="img/diaMaquinistas.png" class="card-img-top" alt="Maquinistas Diario" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Hoja de Maquinistas</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Seguimiento de turnos.
-                        </p>
-                        <a href="/dailyGraph" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-
-                @* Añade más cards aquí si lo necesitas *@
+                <SMDrivers/>
+                <SMDriversWorkSheet Agents="@mcolAgentsViews" />
+                <SMTaller/>
+                <SMTrainQuery/>
+                <SMWorkDaySheet />
             </div>
         </div>
     }
     else if(Page.Equals("station"))
     {
         <div class="container py-4">
-            <h2 class="display-5 fw-semibold text-primary mb-2 text-center">Gestor de Estación</h2>
             <p class="lead text-secondary text-center mb-4">
                 Gestión de personal y material móvil
             </p>
             <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    <img src="img/ut81.png" class="card-img-top" alt="Aeneas" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Taller</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Estado del material móvil y talleres.
-                        </p>
-                        <a href="/trainFlow" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 130px; max-width: 340px;">
-                    <img src="img/diaMaquinistas.png" class="card-img-top" alt="Maquinistas Diario" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Hoja de Maquinistas</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Seguimiento de turnos.
-                        </p>
-                        <a href="/dailyGraph" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    <img src="img/diaInspector.png" class="card-img-top" alt="Agentes Diario" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Agentes de Tracción</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Informe con la lista de los Agentes de Tracción para uso diario del CTC
-                        </p>
-                        <a href="/agentsctc" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    <img src="img/Composiciones.png" class="card-img-top" alt="AeneasPlus" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Material Móvil</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Información sobre el Material Móvil
-                        </p>
-                        <a href="/trainQuery" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
+                <SMTaller/>
+                <SMWorkDaySheet/>
+                <SMDrivers />
+                <SMTrainQuery />
             </div>
         </div>
     }
     else if (Page.Equals("caps"))
     {
         <div class="container py-4">
-            <h2 class="display-5 fw-semibold text-primary mb-2 text-center">Jefe de Maquinistas</h2>
             <p class="lead text-secondary text-center mb-4">
                 Conjunto de herramientas para responsables del colectivo de tracción y supervisión técnica del material móvil.
             </p>
             <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
-                    <img src="img/diaMaquinistas.png" class="card-img-top" alt="Maquinistas Diario" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Hoja de Maquinistas</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Seguimiento de jornada. (Hoja diaria)
-                        </p>
-                        <a href="/dailyGraph" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-                @if (null != mcolAgentsViews)
-                {
-                    for (int n = 0; n < mcolAgentsViews.Count; n++)
-                    {
-                        string encodedName = Uri.EscapeDataString(mcolAgentsViews[n]);
-                        <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                            <img src="img/grExcel.png" class="card-img-top" alt="Gráfico de Maquinistas" style="object-fit: cover; height: 180px;">
-                            <div class="card-body">
-                                <h5 class="card-title fw-bold text-dark mb-2 custom-title">@mcolAgentsViews[n]</h5>
-                                <p class="card-text text-muted custom-comment">
-                                    Gráfico de Maquinistas.
-                                </p>
-                                <a href="@($"/monthGraph/{encodedName}")" class="btn btn-outline-primary w-100">Abrir</a>
-                            </div>
-                        </div>
-                    }
-                }
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
-                    <img src="img/ut81.png" class="card-img-top" alt="Aeneas" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Taller</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Estado del material móvil y talleres.
-                        </p>
-                        <a href="/trainFlow" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    <img src="img/Composiciones.png" class="card-img-top" alt="AeneasPlus" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Material Móvil</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Información sobre el Material Móvil
-                        </p>
-                        <a href="/trainQuery" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
+                <SMWorkDaySheet />
+                <SMDriversWorkSheet Agents="@mcolAgentsViews" />
+                <SMTaller/>
+                <SMTrainQuery />
             </div>
         </div>
     }
     else if (Page.Equals("mechanic"))
     {
         <div class="container py-4">
-            <h2 class="display-5 fw-semibold text-primary mb-2 text-center">Talleres</h2>
             <p class="lead text-secondary text-center mb-4">
                 Herramientas para el personal de taller de SFM y de las empresas colaboradoras
             </p>
-            <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
-                    <img src="img/ut81.png" class="card-img-top" alt="Aeneas" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Taller</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Material móvil.
-                        </p>
-                        <a href="/trainFlow" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-            </div>
+            <SMTaller/>
             <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
                 <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
                     @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
@@ -217,12 +66,12 @@
                     </div>
                 </div>
             </div>
+            <SMTrainQuery/>
         </div>
     }
     else if (Page.Equals("oficial"))
     {
         <div class="container py-4">
-            <h2 class="display-5 fw-semibold text-primary mb-2 text-center">Oficial de Taller</h2>
             <p class="lead text-secondary text-center mb-4">
                 Herramientas para el personal de taller de SFM
             </p>
@@ -238,27 +87,8 @@
                         <a href="/timeSnap" class="btn btn-outline-primary w-100">Abrir</a>
                     </div>
                 </div>
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    <img src="img/Composiciones.png" class="card-img-top" alt="AeneasPlus" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Material Móvil</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Información sobre el Material Móvil
-                        </p>
-                        <a href="/trainQuery" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
-                    <img src="img/ut81.png" class="card-img-top" alt="Aeneas" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Taller</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Material móvil.
-                        </p>
-                        <a href="/trainFlow" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
+                <SMTrainQuery />
+                <SMTaller/>
                 <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
                     <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
                         @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
@@ -278,7 +108,6 @@
     else if (Page.Equals("engineer"))
     {
         <div class="container py-4">
-            <h2 class="display-5 fw-semibold text-primary mb-2 text-center">Consultoría</h2>
             <p class="lead text-secondary text-center mb-4">
                 Acceso a herramientas de minería de datos y evaluación del servicio
             </p>
@@ -291,40 +120,12 @@
                         <p class="card-text text-muted custom-comment">
                             Línea temporal de disponibilidad
                         </p>
-                        <a href="/timeSnap" class="btn btn-outline-primary w-100">Abrir</a>
+                        <a href="/timeSnap/lines" class="btn btn-outline-primary w-100">Abrir</a>
                     </div>
                 </div>
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">                    
-                    <img src="img/Composiciones.png" class="card-img-top" alt="AeneasPlus" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Material Móvil</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Información sobre el Material Móvil
-                        </p>
-                        <a href="/trainQuery" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">                    
-                    <img src="img/ut81.png" class="card-img-top" alt="Aeneas" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Taller</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Estado del material móvil y talleres.
-                        </p>
-                        <a href="/trainFlow" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>                
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
-                    <img src="img/diaMaquinistas.png" class="card-img-top" alt="Maquinistas Diario" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Hoja de Maquinistas</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Seguimiento de jornada. (Hoja diaria)
-                        </p>
-                        <a href="/dailyGraph" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
+                <SMTrainQuery />
+                <SMTaller/>                
+                <SMWorkDaySheet />
                 <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
                     @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
                     <img src="img/TimeNet.png" class="card-img-top" alt="Time Net BrainTrain" style="object-fit: cover; height: 180px;">
@@ -336,61 +137,36 @@
                         <a href="/admin/timenet" class="btn btn-outline-primary w-100">Abrir</a>
                     </div>
                 </div>
-                @if (null != mcolAgentsViews)
-                {
-                    for (int n = 0; n < mcolAgentsViews.Count; n++)
-                    {
-                        string encodedName = Uri.EscapeDataString(mcolAgentsViews[n]);
-                        <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                            <img src="img/grExcel.png" class="card-img-top" alt="Gráfico de Maquinistas" style="object-fit: cover; height: 180px;">
-                            <div class="card-body">
-                                <h5 class="card-title fw-bold text-dark mb-2 custom-title">@mcolAgentsViews[n]</h5>
-                                <p class="card-text text-muted custom-comment">
-                                    Gráfico de Maquinistas.
-                                </p>
-                                <a href="@($"/monthGraph/{encodedName}")" class="btn btn-outline-primary w-100">Abrir</a>
-                            </div>
-                        </div>
-                    }
-                }
+                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
+                    <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span>
+                    <img src="img/certificacion.jpg" class="card-img-top" alt="Disponibilidad" style="object-fit: cover; height: 180px;">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Contrato SFM Erion</h5>
+                        <p class="card-text text-muted custom-comment">
+                            Seguimiento según pliego
+                        </p>
+                        <a href="/timeSnap/avail" class="btn btn-outline-primary w-100">Abrir</a>
+                    </div>
+                </div>
+                <SMDriversWorkSheet Agents="@mcolAgentsViews"/>
             </div>
         </div>
     }
     else if (Page.Equals("anonymous"))
     {
         <div class="container py-4">
-            <h2 class="display-5 fw-semibold text-primary mb-2 text-center">Agente de Movimiento</h2>
             <p class="lead text-secondary text-center mb-4">
                 Material Móvil
             </p>
             <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    <img src="img/ut81.png" class="card-img-top" alt="Aeneas" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Taller</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Estado del material móvil y talleres.
-                        </p>
-                        <a href="/trainFlow" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    <img src="img/Composiciones.png" class="card-img-top" alt="AeneasPlus" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Material Móvil</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Información sobre el Material Móvil
-                        </p>
-                        <a href="/trainQuery" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
+                <SMTaller/>
+                <SMTrainQuery />
             </div>
         </div>
     }
     else if (Page.Equals("admin"))
     {
-                    <div class="container py-4">
-            <h2 class="display-5 fw-semibold text-primary mb-2 text-center">Administración</h2>
+        <div class="container py-4">            
             <p class="lead text-secondary text-center mb-4">
                 Configuración del sistema Zafiro para administradores
             </p>

@@ -1,8 +1,9 @@
-﻿@page "/timeSnap"
+﻿@page "/timeSnap/{page}"
 @using Sapphire2025Models.Aeneas
 @using Sapphire2025.Layout.Aeneas
 @inject AeneasClient mvarAeneasClient
 @inject IJSRuntime JS
+
 
 <div class="container-fluid py-3">
     <div class="card shadow mb-4">
@@ -10,81 +11,57 @@
             <h5 class="mb-0">@HeaderContent()</h5>
         </div>
         <div class="card-body">
-            <!-- Barra de filtros -->
-            <form class="row g-3 align-items-end mb-4">
-                <!-- Intervalo de tiempo -->
-                <div class="col-md-3">
-                    <label class="form-label">Intervalo</label>
-                    <div class="btn-group w-100" role="group">
-                        @foreach (var option in intervalOptions)
-                        {
-                            <button type="button"
-                                    class="btn @(interval == option ? "btn-primary" : "btn-outline-primary")"
-                                    @onclick="() => SetInterval(option)">
-                                @option
-                            </button>
-                        }
+            <TimeSnapSelector 
+                FilterChanged="@RefreshData"
+                StartDateChanged="@OnStartDateChanged"
+                IntervalChanged="@OnIntervalChanged"
+                Interval="@interval" 
+                StartDate="@mvarStartDate"
+                SelectedSeries="@selectedSeries"
+                SeriesOptions="@seriesOptions">
+                <!-- Gráfico de disponibilidad -->
+                @if (loading)
+                {
+                    <div class="text-center my-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <div>Cargando datos...</div>
                     </div>
-                </div>
-                <!-- Fecha de comienzo -->
-                <div class="col-md-4">
-                    <label class="form-label">Fecha de comienzo</label>
-                    <div class="input-group">
-                        <input type="date" class="form-control" @bind="startDate"/>
-                        <button type="button" class="btn btn-outline-secondary" @onclick="SetCurrentWeek">
-                            Semana en curso
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" @onclick="SetLastWeek">
-                            Semana pasada
-                        </button>
-                    </div>
-                </div>
-                <!-- Series del material móvil -->
-                <div class="col-md-5">
-                    <label class="form-label">Series</label>
-                    <div class="btn-group flex-wrap w-100" role="group" aria-label="Series">
-                        @foreach (var serie in seriesOptions)
-                        {
-                            <button type="button"
-                                    class="btn @(selectedSeries[serie] ? "btn-primary active" : "btn-outline-primary") mb-1"
-                                    @onclick="() => ToggleSerie(serie)">
-                                @serie
-                            </button>
-                        }
-                    </div>
-                </div>
-            </form>
-
-            <!-- Gráfico de disponibilidad -->
-            @if (loading)
-            {
-                <div class="text-center my-5">
-                    <div class="spinner-border text-primary" role="status"></div>
-                    <div>Cargando datos...</div>
-                </div>
-            }
-            else if (trains.Any())
-            {
-                <TimeSnapCTL trains="trains"
-                             startDate="startDate"
-                             interval="intervalSpan"
-                             title="@HeaderContent()"
-                             intervalLabel="@interval" />
-            }
-            else
-            {
-                <div class="alert alert-info mt-4">No hay datos para el filtro seleccionado.</div>
-            }
+                }
+                else if (trains.Any())
+                {
+                    @if("lines"==page)
+                    {
+                        <TimeSnapCTL trains="trains"
+                                     startDate="startDate"
+                                     interval="intervalSpan"
+                                     title="@HeaderContent()"
+                                     intervalLabel="@interval" />
+                    }
+                    else if("avail"==page)
+                    {
+                        <TimeAvailCTL trains="trains"
+                                     startDate="startDate"
+                                     interval="intervalSpan"
+                                     title="@HeaderContent()"
+                                     intervalLabel="@interval" />
+                    }
+                }
+                else
+                {
+                    <div class="alert alert-info mt-4">No hay datos para el filtro seleccionado.</div>
+                }
+            </TimeSnapSelector>
         </div>
     </div>
 </div>
 
 @code {
-    // Opciones de intervalo
-    private string[] intervalOptions = { "Semanal","Quincenal", "Mensual", "Anual" };
-    private string interval = "Semanal";
+    [Parameter]
+    public string? page{ get; set; }
 
-    // Fecha de comienzo
+    private string interval = "Semanal";
+    private List<TrainModel> trains = new();
+
     private DateTime mvarStartDate = DateTime.Today;
     private DateTime startDate
     {
@@ -97,30 +74,29 @@
                 _ = RefreshData();
             }
         }
-    } 
+    }
+
+    private bool loading = true;
+
     // Series disponibles
     private string[] seriesOptions = { "7100", "8100", "9100", "1100", "otros" };
     private Dictionary<string, bool> selectedSeries = new();
 
-    // Datos
-    private List<TrainModel> trains = new();
-    private bool loading = true;
-
-    protected override async Task OnInitializedAsync()
-    {
+    protected async override Task OnInitializedAsync()
+    {        
         foreach (var serie in seriesOptions)
-            selectedSeries[serie] = true;
-
-        SetCurrentWeek();
+            selectedSeries[serie] = true;        
         await JS.InvokeVoidAsync("sapphirePrint.preloadLogo", "img/sfmImg.png");
-
-        //await RefreshData();
     }
 
     private string HeaderContent()
     {
         System.Text.StringBuilder salida = new System.Text.StringBuilder();
-        salida.Append("Disponibilidad de flota");
+        if ("lines" == page)
+            salida.Append("Disponibilidad de flota");
+        else if ("avail" == page)
+            salida.Append("Inmovilización por Preventivos");
+
         if (trains.Count > 1)
             salida.AppendFormat(" ({0} trenes)", trains.Count);
         else if (trains.Count > 0)
@@ -142,10 +118,25 @@
                 await loadChanges(auxTren);
                 if (isRelevant(auxTren) && !trains.Any(t => t.id == auxTren.id))
                     trains.Add(auxTren);
-            }                
+            }
         }
         loading = false;
         StateHasChanged();
+    }
+    private async Task OnStartDateChanged(DateTime? rhs)
+    {
+        if(null!=rhs)
+            mvarStartDate = rhs.Value;
+    }
+    private async Task OnIntervalChanged(string? rhs)
+    {
+        if(null!=rhs)
+            interval = rhs;
+    }
+    private async Task OnSeriesChanged(Dictionary<string,bool>? rhs)
+    {
+        if(null!=rhs)
+            selectedSeries = rhs;
     }
 
     private bool isSeries(TrainModel tren)
@@ -165,7 +156,7 @@
         else if (tren.name.StartsWith("91"))
         {
             if (selectedSeries["9100"]) return true;
-        }                       
+        }
         else if (selectedSeries["otros"]) return true;
 
         return false;
@@ -193,6 +184,9 @@
 
         tren.StatusChanges = inInterval;
     }
+
+
+
     private bool isRelevant(TrainModel tren)
     {
         if (null == tren.StatusChanges||tren.StatusChanges.Count<1) return false;
@@ -208,33 +202,6 @@
         }
         return false;
     }
-
-    // Filtros
-    private void SetInterval(string value)
-    {
-        interval = value;
-        _ = RefreshData();
-    }
-
-    private void SetCurrentWeek()
-    {
-        var today = DateTime.Today;
-        var diff = (int)today.DayOfWeek == 0 ? 6 : (int)today.DayOfWeek - 1;
-        startDate = today.AddDays(-diff);
-    }
-
-    private void SetLastWeek()
-    {
-        var today = DateTime.Today;
-        var diff = (int)today.DayOfWeek == 0 ? 6 : (int)today.DayOfWeek - 1;
-        startDate = today.AddDays(-diff - 7);
-    }
-    private async Task ToggleSerie(string serie)
-    {
-        selectedSeries[serie] = !selectedSeries[serie];
-        await RefreshData();
-    }
-
     // Cálculo del intervalo en función del filtro
     private TimeSpan intervalSpan => interval switch
     {

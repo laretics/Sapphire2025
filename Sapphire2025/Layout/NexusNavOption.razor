@@ -1,10 +1,21 @@
-﻿@inject NavigationManager mvarNavegador
+﻿@using Sapphire2025.Icons
+@inject NavigationManager mvarNavegador
 @if(matchRoles)
 {
     <div class="sidebar-link @selText text-decoration-none p-3"
     title="@Tooltip"
     @onclick="OnClickHandler">
-        <i class="@Image me-3"></i>
+        <span class="me-2 d-inline-flex">
+            @if(Selected)
+            {
+                <GenIcon Name="@Image" Size="28" Color="#c8f0fa" Glow="true" GlowColor="white" />
+            }
+            else
+            {
+                <GenIcon Name="@Image" Size="28" Color="#c8f0fa" />
+            }
+            
+        </span>        
         @if (null == Badge)
         {
             <span class="hide-on-collapse">@Caption</span>

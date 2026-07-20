@@ -1,0 +1,127 @@
+﻿
+<!-- Barra de filtros -->
+<form class="row g-3 align-items-end mb-4">
+    <!-- Intervalo de tiempo -->
+    <div class="col-md-3">
+        <label class="form-label">Intervalo</label>
+        <div class="btn-group w-100" role="group">
+            @foreach (var option in intervalOptions)
+            {
+                <button type="button"
+                        class="btn @(Interval == option ? "btn-primary" : "btn-outline-primary")"
+                        @onclick="() => SetInterval(option)">
+                    @option
+                </button>
+            }
+        </div>
+    </div>
+    <!-- Fecha de comienzo -->
+    <div class="col-md-4">
+        <label class="form-label">Fecha de comienzo</label>
+        <div class="input-group">
+            <input type="date" class="form-control" @bind="StartDate"@bind:after="OnStartDateChanged" />
+            <button type="button" class="btn btn-outline-secondary" @onclick="SetCurrentWeek">
+                Semana en curso
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="SetLastWeek">
+                Semana pasada
+            </button>
+        </div>
+    </div>
+    <!-- Series del material móvil -->
+    <div class="col-md-5">
+        <label class="form-label">Series</label>
+        <div class="btn-group flex-wrap w-100" role="group" aria-label="Series">
+            @if(null!=SelectedSeries && null!=SeriesOptions)
+            {
+                @foreach (var serie in SeriesOptions)
+                {
+                    <button type="button"
+                            class="btn @(SelectedSeries[serie] ? "btn-primary active" : "btn-outline-primary") mb-1"
+                            @onclick="() => ToggleSerie(serie)">
+                        @serie
+                    </button>
+                }
+            }
+        </div>
+    </div>
+</form>
+
+@ChildContent
+
+@code {
+    [Parameter]
+    public EventCallback FilterChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<DateTime?> StartDateChanged{ get; set; }
+
+    [Parameter]
+    public EventCallback<string?> IntervalChanged{ get; set; }
+    [Parameter]
+    public EventCallback<Dictionary<string,bool>?> SeriesChanged{ get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string? Interval { get; set; }
+
+    [Parameter]
+    public DateTime? StartDate{ get; set; }
+
+    [Parameter]
+    public Dictionary<string,bool>? SelectedSeries{ get; set; }
+
+    [Parameter]
+    public string[]? SeriesOptions{ get; set; }
+
+    // Opciones de intervalo
+    private string[] intervalOptions = { "Semanal", "Quincenal", "Mensual", "Anual" };
+
+
+    protected async override Task OnInitializedAsync()
+    {
+        await SetCurrentWeek();
+    }
+
+    // Filtros
+    private async Task SetInterval(string value)
+    {
+        Interval = value;
+        await IntervalChanged.InvokeAsync(Interval);
+        await FilterChanged.InvokeAsync();
+    }
+
+    private async Task SetCurrentWeek()
+    {
+        var today = DateTime.Today;
+        var diff = (int)today.DayOfWeek == 0 ? 6 : (int)today.DayOfWeek - 1;
+        StartDate = today.AddDays(-diff);
+        await StartDateChanged.InvokeAsync(StartDate);
+        await FilterChanged.InvokeAsync();
+    }
+
+    private async Task SetLastWeek()
+    {
+        var today = DateTime.Today;
+        var diff = (int)today.DayOfWeek == 0 ? 6 : (int)today.DayOfWeek - 1;
+        StartDate = today.AddDays(-diff - 7);
+        await StartDateChanged.InvokeAsync(StartDate);
+        await FilterChanged.InvokeAsync();
+    }
+    private async Task ToggleSerie(string serie)
+    {
+        if(null!=SelectedSeries)
+        {
+            SelectedSeries[serie] = !SelectedSeries[serie];
+            await SeriesChanged.InvokeAsync(SelectedSeries);
+            await FilterChanged.InvokeAsync();
+        }
+    }
+    private async Task OnStartDateChanged()
+    {
+        await StartDateChanged.InvokeAsync(StartDate);
+        await FilterChanged.InvokeAsync();
+    }
+}

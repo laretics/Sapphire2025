@@ -12,8 +12,13 @@ namespace Tourmaline26.Logic
     /// </summary>
     public class SessionConfiguration
     {
-        public bool Initialized { get; set; } = false; //Indica si el sistema ha terminado de cargar los datos.                
-        
+        public bool Initialized { get; set; } = false; //Indica si el sistema ha terminado de cargar los datos.
+        /// <summary>
+        /// Mensaje del último error de arranque (p. ej. BD local corrupta/desfasada).
+        /// Vacío si la inicialización terminó sin incidencias.
+        /// </summary>
+        public string InitError { get; set; } = string.Empty;
+
         public MVBData? CurrentMVBData { get; set; }//Último paquete de datos recibido del bus MVB.
         public WeatherValue? CurrentWeather { get; set; } //Estado meteorológico actual
         public string MVBError { get; set; } = ""; //Mensaje de error relacionado con el bus MVB, si lo hubiera.
