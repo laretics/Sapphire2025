@@ -22,7 +22,9 @@
                 <div class="tesla-right @panelClass">
                     @if (View3DEnabled)
                     {
-                        <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
+                        <div class="driver-stream-layer">
+                            <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
+                        </div>
                     }
                     <TeslaNavigationSection />
                     @if (RightPanelVisible)

@@ -1,14 +1,13 @@
-﻿@inject IJSRuntime JS
+@inject IJSRuntime JS
 @implements IAsyncDisposable
 
-<div class="simulator-stream-container">
-    @if (StreamDisponible)
+<div class="simulator-stream-container @(Blur ? "simulator-stream-blur" : null)">
+    @* Canvas siempre en el DOM (y con tamaño real) para que JS pueda dibujar y reconectar. *@
+    <canvas id="videoCanvas" class="simulator-stream-canvas"></canvas>
+    @* Fallback visible hasta el primer frame válido; se superpone al canvas. *@
+    @if (!StreamDisponible)
     {
-        <canvas id="videoCanvas" class="simulator-stream-canvas" ></canvas>
-    }
-    else
-    {
-        <img src="img/TourmalineBack.png" class="simulator-stream-img"/>
+        <img src="img/TourmalineBack.png" class="simulator-stream-img" alt="" />
     }
 </div>
 
@@ -16,42 +15,153 @@
     [Parameter]
     public string? StreamHost { get; set; }
 
-    private bool StreamDisponible = true;
+    /// <summary>Aplica desenfoque CSS al stream y a la imagen de fallback.</summary>
+    [Parameter]
+    public bool Blur { get; set; }
+
+    /// <summary>
+    /// true solo cuando ya se ha recibido al menos un frame de la conexión actual.
+    /// Mientras sea false se muestra TourmalineBack.png.
+    /// </summary>
+    private bool StreamDisponible = false;
+
     private bool mvarJsInteropEnabled = false;
+    private bool mvarDisposed = false;
+    private bool mvarStarting = false;
+    private bool mvarWantsStream = false;
+    private bool mvarReconnecting = false;
     private int reintentos = 0;
-    private const int MaxReintentos = 5;
+    private DotNetObjectReference<SimulatorStream>? mvarDotNetRef;
+
+    /// <summary>
+    /// Backoff entre reintentos (ms). Tras el último valor se mantiene constante.
+    /// Reintentos ilimitados: el stream se recupera solo cuando el origen vuelva.
+    /// </summary>
+    private static readonly int[] BackoffMs = { 1000, 2000, 3000, 5000, 8000, 10000 };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if ((firstRender || !StreamDisponible) && 
-            !string.IsNullOrEmpty(StreamHost) &&
-            reintentos<MaxReintentos)
+        if (mvarDisposed || string.IsNullOrEmpty(StreamHost))
+            return;
+
+        if (firstRender || mvarWantsStream)
+        {
+            mvarWantsStream = false;
+            await StartStreamAsync();
+        }
+    }
+
+    private async Task StartStreamAsync()
+    {
+        if (mvarDisposed || string.IsNullOrEmpty(StreamHost) || mvarStarting)
+            return;
+
+        mvarStarting = true;
+        try
         {
             mvarJsInteropEnabled = true;
-            StreamDisponible = true;
-            await JS.InvokeVoidAsync("startWebSocketStreamWithFallback", StreamHost, DotNetObjectReference.Create(this));
+            // No marcar StreamDisponible aquí: el fallback debe seguir visible
+            // hasta OnStreamRecovered (primer frame).
+
+            mvarDotNetRef?.Dispose();
+            mvarDotNetRef = DotNetObjectReference.Create(this);
+
+            await JS.InvokeVoidAsync("startWebSocketStreamWithFallback", StreamHost, mvarDotNetRef);
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuito Blazor desconectado: no reintentar
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"SimulatorStream: error al iniciar stream: {ex.Message}");
+            await ScheduleReconnectAsync();
+        }
+        finally
+        {
+            mvarStarting = false;
         }
     }
 
     [JSInvokable]
     public async Task OnStreamError()
     {
-        StreamDisponible = false;
-        reintentos++;
-        StateHasChanged();
-        await Task.Delay(1000);
-        await InvokeAsync(StateHasChanged);
+        if (mvarDisposed)
+            return;
+
+        await ScheduleReconnectAsync();
+    }
+
+    /// <summary>
+    /// Primer frame válido: ocultar fallback y resetear backoff.
+    /// </summary>
+    [JSInvokable]
+    public void OnStreamRecovered()
+    {
+        if (mvarDisposed)
+            return;
+
+        reintentos = 0;
+        if (!StreamDisponible)
+        {
+            StreamDisponible = true;
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task ScheduleReconnectAsync()
+    {
+        // Evitar múltiples reintentos en paralelo (stall + onclose, etc.)
+        if (mvarDisposed || mvarReconnecting)
+            return;
+
+        mvarReconnecting = true;
+        try
+        {
+            // Sin vídeo: mostrar fallback de inmediato
+            if (StreamDisponible)
+            {
+                StreamDisponible = false;
+                await InvokeAsync(StateHasChanged);
+            }
+            else
+            {
+                // Asegurar que la UI refleja el estado aunque ya estuviera en false
+                await InvokeAsync(StateHasChanged);
+            }
+
+            reintentos++;
+            int delay = BackoffMs[Math.Min(reintentos - 1, BackoffMs.Length - 1)];
+            Console.WriteLine($"SimulatorStream: reconexión #{reintentos} en {delay} ms…");
+
+            await Task.Delay(delay);
+
+            if (mvarDisposed)
+                return;
+
+            mvarWantsStream = true;
+            await InvokeAsync(StateHasChanged);
+        }
+        finally
+        {
+            mvarReconnecting = false;
+        }
     }
 
     public async ValueTask DisposeAsync()
     {
+        mvarDisposed = true;
         if (mvarJsInteropEnabled)
         {
             try
             {
                 await JS.InvokeVoidAsync("stopWebSocketStream");
             }
-            catch(JSDisconnectedException){}        
+            catch (JSDisconnectedException) { }
+            catch (ObjectDisposedException) { }
         }
+
+        mvarDotNetRef?.Dispose();
+        mvarDotNetRef = null;
     }
 }
