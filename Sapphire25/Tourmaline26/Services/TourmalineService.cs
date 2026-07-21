@@ -4,13 +4,16 @@ using Org.BouncyCastle.Crypto.Operators;
 using Sapphire2025.Storage;
 using Sapphire2025Models.Authentication;
 using Sapphire2026.Data.Models;
+using System.Runtime.ConstrainedExecution;
 using System.Threading.Tasks;
 using TimeNet2026.Production;
 using TimeNet2026.Storage;
 using TimeNet2026.Timed;
 using TimeNet2026.Topo;
+using TimeNet2026Data.DBStorage;
 using Tourmaline26.Logic;
 using Tourmaline26.Services.LocalDataModel;
+using Tourmaline26.Services.TourmalineExperience;
 using static System.Net.Mime.MediaTypeNames;
 namespace Tourmaline26.Services
 {
@@ -27,6 +30,7 @@ namespace Tourmaline26.Services
         private IServiceProvider mvarServiceProvider;
         private IConfiguration mvarConfiguration;
         private LEDDisplayService mvarLedDisplayService;
+        private TourmalineExperienceService mvarTourmalineExperienceService;
         //Almacén local TimeNet para poder "jugar" con la estructura en modo local sin sobrecargar las comunicaciones.
         public OnyxStorage TimeNetStorage { get; set; }
 
@@ -38,7 +42,8 @@ namespace Tourmaline26.Services
         public TourmalineService(IConfiguration config,
         IServiceProvider serviceProvider,
         ILogger<TourmalineService> logger,
-        LEDDisplayService ledDisplayService
+        LEDDisplayService ledDisplayService, 
+        TourmalineExperienceService tourmalineExperience
         )
         {
 			mvarSessionConfig = new SessionConfiguration();
@@ -48,6 +53,7 @@ namespace Tourmaline26.Services
             mvarLogger = logger;               
             mvarServiceProvider = serviceProvider;            
             mvarLedDisplayService = ledDisplayService;
+            mvarTourmalineExperienceService = tourmalineExperience;
         }
 		private async Task InitConfig(IConfiguration config)
 		{           			
@@ -321,6 +327,65 @@ namespace Tourmaline26.Services
 				}
 			}
 		}
+
+        public async Task DoCirculationSelect(Circulation rhs)
+        {
+            if (null != SessionConfig && null != SessionConfig.TNEnvironment)
+            {
+                SessionConfig.TNEnvironment.Circulation = rhs;                
+
+                if (null != rhs.Parent && null != rhs.Parent.asimilation)
+                {
+                    Console.WriteLine(rhs.Parent.asimilation.Name);
+                    await RecallTourmalineExperience(rhs.Parent.asimilation);
+                }                    
+            }
+        }
+
+        /// <summary>
+        /// Al seleccionar la asimilación cargará el itinerario en TourmalineExperience
+        /// </summary>
+        /// <param name="asimilation">Referencia a la asimilación seleccionada</param>
+        /// <returns></returns>
+        private async Task RecallTourmalineExperience(Asimilation asimilation)
+        {
+            mvarLogger.LogInformation($"Starting TourmalineExperience for asimilation {asimilation.Name}");
+            //Detengo cualquier simulación en marcha.
+            await mvarTourmalineExperienceService.Stop();
+
+            LaunchRequest request = new LaunchRequest();
+            request.Climate = 0; //Ajustaremos el clima con los valores reales durante la ejecución
+            request.Consist = "Triple81"; //A cambiar cuando tengamos otro tipo de tren
+            request.Now = DateTime.Now.ToString("HH:mm");
+            request.RoutePath = asimilation.id;
+            request.Route = "SFM"; //A cambiar si algún día hay otro escenario
+            switch(DateTime.Now.Month)
+            {
+                case 3:
+                case 4:
+                case 5:
+                        request.Season = 0; break;
+                case 6:
+                case 7:
+                case 8:
+                        request.Season = 1; break;
+                default:
+                    request.Season = 2; break;
+            }
+            //Inicio TourmalineExperience con los datos actuales.
+            await mvarTourmalineExperienceService.Launch(request);
+        }
+
+        /// <summary>
+        /// Una vez finalizado el trayecto, pasa al modo de espera.
+        /// </summary>
+        /// <returns></returns>
+        public async Task RecallEndTourmalineExperience()
+        {
+            mvarLogger.LogInformation("Ending TourmalineExperience");
+            //Detengo cualquier simulación en marcha.
+            await mvarTourmalineExperienceService.Stop();
+        }
 
         /// <summary>
         /// Carga la colección de usuarios del tren desde la base de datos.

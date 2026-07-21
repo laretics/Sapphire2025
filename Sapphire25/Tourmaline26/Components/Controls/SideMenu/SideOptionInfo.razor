@@ -8,16 +8,19 @@
 @if(TourmalineService.SessionConfig.ServiceMode.Main)
 {
     <ul>
-        <li>Zafiro: @auxConfig.SapphireUrl</li>
-        <li>MVB: @auxConfig.MVBUrl</li>
-        <li>T.Experience: @auxConfig.TExperienceUrl</li>
-        <li>T.E. Stream: @auxConfig.TExperienceStr</li>
+        <li>Zafiro: @auxConfig?.SapphireUrl</li>
+        <li>MVB: @auxConfig?.MVBUrl</li>
+        <li>T.Experience: @auxConfig?.TExperienceUrl</li>
+        <li>T.E. Stream: @auxConfig?.TExperienceStr</li>
+        <li>CTC Info: @auxConfig?.SfmInfoUrl (Token: @auxConfig?.SfmInfoToken)</li>
     </ul>
+    <Switch Label="Demo" Value="@TourmalineService.SessionConfig.ServiceMode.DemoMode"
+            ValueChanged="@((bool v) => SetDemoMode(v))" />
 }
 <Switch Label="Modo de Servicio" Value="@TourmalineService.SessionConfig.ServiceMode.Main"
         ValueChanged="@((bool v) => SetServiceMode(v))" />
 @code {
-    private SystemConfiguration auxConfig { get; set; }
+    private SystemConfiguration? auxConfig { get; set; }
     protected override void OnInitialized()
     {
         base.OnInitialized();
@@ -28,8 +31,13 @@
         TourmalineService.SessionConfig.ServiceMode.Main = value;
         TourmalineService.RaiseHMIUpdate();
     }
+    private void SetDemoMode(bool value)
+    {
+        TourmalineService.SessionConfig.ServiceMode.DemoMode=value;
+        TourmalineService.RaiseHMIUpdate();
+    }
     private string ReleaseInfo
     {
-        get => $"{auxConfig.Version} - {auxConfig.Release:dd-MM-y}";
+        get => $"{auxConfig?.Version} - {auxConfig?.Release:dd-MM-y}";
     }
 }

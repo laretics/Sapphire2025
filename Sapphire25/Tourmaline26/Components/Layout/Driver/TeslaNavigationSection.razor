@@ -55,11 +55,12 @@
         mvarSearchingCirculation = true;
         InvokeAsync(StateHasChanged);
     }
-    private void TerminateCirculation()
+    private async Task TerminateCirculation()
     {
         mvarSearchString = null;
         if (null != Tourmaline.SessionConfig && null != Tourmaline.SessionConfig.TNEnvironment)
             Tourmaline.SessionConfig.TNEnvironment.Circulation = null;
+        await Tourmaline.RecallEndTourmalineExperience();
     }
     private void KeyPressed(char e)
     {
@@ -87,12 +88,6 @@
     private void CirculationSelected(Circulation cir)
     {
         mvarSearchingCirculation = false;
-        if(null!=Tourmaline.SessionConfig && null!=Tourmaline.SessionConfig.TNEnvironment)
-        {
-            Tourmaline.SessionConfig.TNEnvironment.Circulation = cir;
-            if(null!=cir.Parent && null!= cir.Parent.asimilation)
-                Console.WriteLine( cir.Parent.asimilation.Name);
-        }
-    
+        Tourmaline.DoCirculationSelect(cir);    
     }
 }

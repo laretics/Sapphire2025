@@ -20,6 +20,16 @@
     <ProjectReference Include="..\TimeNetComponents\TimeNetComponents.csproj" />
   </ItemGroup>
 
+  <!--
+    Docs are manuals/notes, not Blazor components. A .razor file here (e.g. full HTML docs)
+    is fed into the Razor source generator and can break design-time IntelliSense for the
+    whole project. Keep Docs out of the Razor compile graph.
+  -->
+  <ItemGroup>
+    <Content Remove="Docs\**\*" />
+    <None Include="Docs\**\*" />
+  </ItemGroup>
+
   <ItemGroup>
     <Content Update="wwwroot\bmp\left_arrow.bmp">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -68,7 +78,5 @@
     </Content>
   </ItemGroup>
 
-  <ProjectExtensions><VisualStudio><UserProperties appsettings_1development_1json__JsonSchema="https://www.schemastore.org/asmdef.json" /></VisualStudio></ProjectExtensions>
-
-
 </Project>
+
