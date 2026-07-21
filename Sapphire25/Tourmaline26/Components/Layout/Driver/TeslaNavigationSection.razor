@@ -60,6 +60,7 @@
         mvarSearchString = null;
         if (null != Tourmaline.SessionConfig && null != Tourmaline.SessionConfig.TNEnvironment)
             Tourmaline.SessionConfig.TNEnvironment.Circulation = null;
+        Tourmaline.UpdatePassengerInformationMode(); // Vuelve a Default sin circulación.
         await Tourmaline.RecallEndTourmalineExperience();
     }
     private void KeyPressed(char e)

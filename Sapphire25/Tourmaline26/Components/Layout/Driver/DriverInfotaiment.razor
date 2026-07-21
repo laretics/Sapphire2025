@@ -171,7 +171,9 @@
     [JSInvokable]
     public async Task HandleKey(string key)
     {
-        if (mvarTourmaline.SessionConfig.ServiceMode.ServiceKeyboard)
+        // DemoMode reutiliza el teclado de servicio para consignar límite y velocidad objetivo.
+        if (mvarTourmaline.SessionConfig.ServiceMode.ServiceKeyboard
+            || mvarTourmaline.SessionConfig.ServiceMode.DemoMode)
             HandleServiceKey(key);
         else
         {
@@ -197,7 +199,7 @@
                 auxConfig.CurrentLimitSpeed += 10; break;
             case "1": //Reducir límite.
                 auxConfig.CurrentLimitSpeed -= 10; break;
-            case "4": //Aumentar objetivo.
+            case "4": //Aumentar objetivo (en DemoMode: consigna de la rampa de velocidad).
                 auxConfig.CurrentNeutralSpeed += 10; break;
             case "3": //Reducir objetivo.
                 auxConfig.CurrentNeutralSpeed -= 10; break;

@@ -116,7 +116,7 @@ namespace Tourmaline26.Services.TourmalineExperience
 			}			
 		}
 
-		public async Task<TourmalineTelemetryResponse?> SetCamera(TourmalineCameraOrder order, bool side)
+		public async Task<TourmalineTelemetryResponse?> SetCamera(TourmalineCameraOrder order, bool side, bool orbit = false)
 		{
 			TourmalineCommand parentCommand = new TourmalineCommand();
 			TourmalineCameraCommand command = new TourmalineCameraCommand();
@@ -124,7 +124,8 @@ namespace Tourmaline26.Services.TourmalineExperience
 			parentCommand.Data = command;
 			command.Order = order;
 			command.Side = side;
-			return await(PostCommand(parentCommand));
+			command.Orbit = orbit;
+			return await PostCommand(parentCommand);
 		}
 		public enum SampleWeatherType:byte
 		{

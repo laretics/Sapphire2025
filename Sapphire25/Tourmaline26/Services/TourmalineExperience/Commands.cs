@@ -33,6 +33,8 @@
 		public TourmalineCameraOrder Order { get; set; }
 		public bool Side { get; set; }
 		public bool Speed { get; set; }
+		/// <summary>Si true, la vista elevada orbita alrededor del tren.</summary>
+		public bool Orbit { get; set; }
 	}
 
 	public class TourmalineWeatherCommand

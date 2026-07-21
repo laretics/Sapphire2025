@@ -19,10 +19,21 @@ namespace TimeNet2026.Production
     {
         private long mvarPreviousPkLocation = -1;
         private long mvarPk;
+        /// <summary>
+        /// Radio de vecindad de estación (metros de PK). Si la estación más cercana
+        /// está a más de esta distancia, <see cref="CurrentStation"/> queda a null.
+        /// </summary>
+        private long mvarStationArea = 250;
+        /// <summary>
+        /// Estaciones que ya se han "abandonado" con <see cref="LeaveCurrentStation"/>.
+        /// No vuelven a proponerse como <see cref="CurrentStation"/> mientras sigan descartadas.
+        /// </summary>
+        private readonly HashSet<Station> mcolLeftStations = new HashSet<Station>();
         public OnyxStorage OnyxStorage { get; private set; }
         public TopoStorage? TopoStorage { get; set; }
 		public Rauta? Rauta { get; set; } //Almacén donde están los planes
 		public Axis? Axis { get; set; } //El eje se necesita para los nodos de los árboles.
+        public Station? CurrentStation { get; set; } //Estación en cuya vecindad nos encontramos.
         public long PK //Punto kilométrico donde tengo ahora ubicado al tren.
         { 
             get => mvarPk; 
@@ -43,6 +54,54 @@ namespace TimeNet2026.Production
             //Carga la asimilación residual.
             if(null!=Asimilation && null!=Axis)
                 RouteAsimilation = Asimilation.SubAsimilation(Axis, mvarPk);
+
+            auxUpdateCurrentStation();
+        }
+
+        /// <summary>
+        /// Marca la estación actual como terminada/descartada y recalcula
+        /// <see cref="CurrentStation"/>. Aunque siga siendo la más cercana y esté
+        /// dentro de <see cref="mvarStationArea"/>, ya no se devolverá.
+        /// </summary>
+        public void LeaveCurrentStation()
+        {
+            if (null != CurrentStation)
+                mcolLeftStations.Add(CurrentStation);
+            auxUpdateCurrentStation();
+        }
+
+        /// <summary>
+        /// Asigna <see cref="CurrentStation"/> a la estación del eje más cercana al tren
+        /// (delante o detrás), solo si está a ≤ <see cref="mvarStationArea"/> metros
+        /// y no ha sido descartada con <see cref="LeaveCurrentStation"/>.
+        /// Si hay varias candidatas, gana la de menor distancia.
+        /// </summary>
+        private void auxUpdateCurrentStation()
+        {
+            CurrentStation = null;
+            if (null == Axis || null == Axis.Stations)
+                return;
+
+            Station? nearest = null;
+            long nearestDistance = long.MaxValue;
+
+            foreach (Station station in Axis.Stations)
+            {
+                if (mcolLeftStations.Contains(station))
+                    continue;
+
+                long distance = station.distanceFrom(mvarPk);
+                if (distance > mvarStationArea)
+                    continue;
+
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    nearest = station;
+                }
+            }
+
+            CurrentStation = nearest;
         }
         public bool PKIncreasing { get; set; } = true; //Orientación de la marcha del tren (Increasing avanza hacia un PK mayor)
         public Asimilation? ViewAsimilation { get; set; } //Asimilación que marca la vista de la malla.
@@ -76,6 +135,7 @@ namespace TimeNet2026.Production
                 mvarCirculation = value;
                 CirculationBlock = null;
                 Asimilation = null;
+                mcolLeftStations.Clear(); //Nueva circulación: ninguna estación está "terminada".
                 if(null!=mvarCirculation && null!=mvarCirculation.Parent)
                 {
                     CirculationBlock = mvarCirculation.Parent;
@@ -83,6 +143,7 @@ namespace TimeNet2026.Production
 						Asimilation = CirculationBlock.asimilation;
                 }
                 ViewAsimilation = Asimilation;
+                auxUpdateCurrentStation();
             }
         }
         public TimeSpan CurrentDelay { get; set; } = new TimeSpan(0);

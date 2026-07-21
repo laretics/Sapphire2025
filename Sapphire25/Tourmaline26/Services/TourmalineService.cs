@@ -332,7 +332,8 @@ namespace Tourmaline26.Services
         {
             if (null != SessionConfig && null != SessionConfig.TNEnvironment)
             {
-                SessionConfig.TNEnvironment.Circulation = rhs;                
+                SessionConfig.TNEnvironment.Circulation = rhs;
+                UpdatePassengerInformationMode();
 
                 if (null != rhs.Parent && null != rhs.Parent.asimilation)
                 {
@@ -340,6 +341,57 @@ namespace Tourmaline26.Services
                     await RecallTourmalineExperience(rhs.Parent.asimilation);
                 }                    
             }
+        }
+
+        /// <summary>
+        /// Actualiza <see cref="SessionConfiguration.InformationMode"/> según la fase del viaje:
+        /// sin circulación → Default; sin estación actual → Route (&lt;60 km/h) o Cruise (≥60);
+        /// en estación → EndOfTrip si es destino final, NextStopInfo (Arriv) en el resto.
+        /// En modo de servicio sin DemoMode no se sobreescribe (el radio del menú lateral manda);
+        /// con DemoMode la conmutación es automática. Siempre se vuelve a Default al anular la circulación.
+        /// </summary>
+        public void UpdatePassengerInformationMode()
+        {
+            SessionConfiguration session = mvarSessionConfig;
+            TimeNetEnvironment? enviro = session.TNEnvironment;
+            Circulation? circulation = enviro?.Circulation;
+
+            if (null == circulation)
+            {
+                if (session.InformationMode != Enums.PassengerInformationMode.Default)
+                    session.InformationMode = Enums.PassengerInformationMode.Default;
+                return;
+            }
+
+            // En modo de servicio el radio del menú manda, salvo DemoMode (conmutación automática).
+            if (session.ServiceMode.Main && !session.ServiceMode.DemoMode)
+                return;
+
+            Enums.PassengerInformationMode next;
+            Station? currentStation = enviro!.CurrentStation;
+
+            if (null == currentStation)
+            {
+                // Umbral 60 km/h: por debajo lista de paradas; a partir de 60, crucero.
+                next = session.CurrentSpeed < 60
+                    ? Enums.PassengerInformationMode.NextStopsList
+                    : Enums.PassengerInformationMode.Cruise;
+            }
+            else
+            {
+                Station? lastStation = enviro.Asimilation?.Destination
+                    ?? circulation.Parent?.asimilation?.Destination;
+
+                bool isEndOfTrip = null != lastStation
+                    && string.Equals(currentStation.Id, lastStation.Id, StringComparison.Ordinal);
+
+                next = isEndOfTrip
+                    ? Enums.PassengerInformationMode.EndOfTrip
+                    : Enums.PassengerInformationMode.NextStopInfo;
+            }
+
+            if (session.InformationMode != next)
+                session.InformationMode = next;
         }
 
         /// <summary>
