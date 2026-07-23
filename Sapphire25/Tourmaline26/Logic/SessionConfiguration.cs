@@ -35,10 +35,20 @@ namespace Tourmaline26.Logic
         public ServiceMode ServiceMode { get; } = new ServiceMode();
 
         #region Telemetria
+        /// <summary>
+        /// Velocidad actual simulada en DemoMode. TourmalineBackground la acerca
+        /// progresivamente a <see cref="CurrentNeutralSpeed"/> y la envía al simulador.
+        /// </summary>
+        public int SimulatedSpeed { get; set; } = 0;
+
         public int CurrentSpeed //Velocidad actual, leída de GPS o MVB
         { 
             get
             {
+                // En demo la aguja de velocidad es la simulada (rampa hacia el objetivo).
+                if (ServiceMode.DemoMode)
+                    return SimulatedSpeed;
+
                 //Prioridad MVB                
                 if ((ServiceMode.MVBEnabled|| ServiceMode.MVBDummy) && null != CurrentMVBData)
                     return (int)CurrentMVBData.Speed;
@@ -49,7 +59,7 @@ namespace Tourmaline26.Logic
             }
         }        
         public int CurrentLimitSpeed { get; set; } = 100; //Velocidad máxima del tren en este tramo
-        public int CurrentNeutralSpeed { get; set; } = 0; //Velocidad objetivo calculada por ónice
+        public int CurrentNeutralSpeed { get; set; } = 0; //Velocidad objetivo (Ónice / consigna de demo)
         public LinearLocation LinearLocation { get; set; } = new LinearLocation(); //Ubicación lineal de este tren (si la puedo sacar)
 
 		#endregion Telemetria

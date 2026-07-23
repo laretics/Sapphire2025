@@ -79,7 +79,8 @@ namespace Tourmaline26.Logic
             NextStopsList=2,    //Lista de las próximas estaciones.
             NextStopInfo=3,     //Correspondencias e información de la próxima estación.
             Cruise=4,           //Tren viajando a velocidad de crucero
-            EndOfTrip=255       //Trayecto finalizado. Tren en destino
+            EndOfTrip=5         //Trayecto finalizado. Tren en destino
+
         }
 
         /// <summary>

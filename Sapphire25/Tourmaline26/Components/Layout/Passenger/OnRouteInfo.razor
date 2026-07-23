@@ -61,7 +61,7 @@
 
             </div>
 
-            <div class="panel-body">
+            <div class="panel-body @(InformationMode == Enums.PassengerInformationMode.Cruise ? "panel-body-fill" : null)">
                 @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route && Circulation != null)
                 {
                     @if (InformationMode == Enums.PassengerInformationMode.BeginOfTrip)
@@ -70,15 +70,58 @@
                     }
                     else if (InformationMode == Enums.PassengerInformationMode.NextStopInfo)
                     {
-
+                        <div class="arrival-panel">
+                            <div class="arrival-label">Propera estació</div>
+                            <div class="arrival-station">@(NextStationName)</div>
+                            <div class="correspondences-box">
+                                <div class="correspondences-title">Correspondències</div>
+                                <table class="correspondences-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Línia</th>
+                                            <th>Destinació</th>
+                                            <th>Andana</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @* Contenido estático de prueba; se sustituirá por datos reales de transbordo. *@
+                                        <tr>
+                                            <td><span class="line-badge line-t1">T1</span></td>
+                                            <td>Palma</td>
+                                            <td>2</td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="line-badge line-t2">T2</span></td>
+                                            <td>Marratxí</td>
+                                            <td>1</td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="line-badge line-t3">T3</span></td>
+                                            <td>Manacor</td>
+                                            <td>3</td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="line-badge line-bus">L30</span></td>
+                                            <td>Aeroport</td>
+                                            <td>—</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     }
                     else if (InformationMode == Enums.PassengerInformationMode.Cruise)
                     {
-                        <SimulatorStream />
+                        <div class="cruise-stream">
+                            <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
+                        </div>
                     }
                     else if (InformationMode == Enums.PassengerInformationMode.EndOfTrip)
                     {
-
+                        <div class="farewell-panel">
+                            <div class="farewell-text">Gracias por viajar con nosotros</div>
+                            <div class="farewell-sub">@FinalStationName</div>
+                        </div>
                     }
                     else //Lista de paradas.
                     {
@@ -132,6 +175,18 @@
     private string CurrentTime => mvarTourmaline.SessionConfig.TNEnvironment?.Now.ToString("HH:mm") ?? "";
     private int Lines => (null==Device)?7:Device.Lines;
     private int HeaderSize => (null == Device) ? 100 : Device.HeaderSize;
+
+    /// <summary>Estación de llegada / parada actual (modo Arriv).</summary>
+    private string NextStationName =>
+        mvarTourmaline.SessionConfig.TNEnvironment?.CurrentStation?.Name
+        ?? Circulation?.Parent?.asimilation?.Destination?.Name
+        ?? "—";
+
+    /// <summary>Destino final del trayecto (modo End).</summary>
+    private string FinalStationName =>
+        mvarTourmaline.SessionConfig.TNEnvironment?.CurrentStation?.Name
+        ?? Circulation?.Parent?.asimilation?.Destination?.Name
+        ?? string.Empty;
     private void OnChangeRequest(object? sender, EventArgs e)
     {
         InvokeAsync(StateHasChanged);

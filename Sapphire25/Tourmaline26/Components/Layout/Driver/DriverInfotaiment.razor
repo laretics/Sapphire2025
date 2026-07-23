@@ -22,7 +22,9 @@
                 <div class="tesla-right @panelClass">
                     @if (View3DEnabled)
                     {
-                        <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
+                        <div class="driver-stream-layer">
+                            <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
+                        </div>
                     }
                     <TeslaNavigationSection />
                     @if (RightPanelVisible)
@@ -95,7 +97,11 @@
         buttonData.Add("Night Mode",new TeslaButton( "BlackSun", "WhiteSun", true, EventCallback.Factory.Create(this, () => NightModeChanged())));
         buttonData.Add("Cameras", new TeslaButton("CCTV", null, true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged())));
         buttonData.Add("Microphone", new TeslaButton("Microphone", null, true, null));
-        buttonData.Add("View3D", new TeslaButton("3DOn", "3DOff", true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged())));
+        // Icon[0]=no seleccionado (3D apagado), Icon[1]=seleccionado (3D encendido). Debe coincidir con View3DEnabled.
+        // Arranca activado: stream 3D visible e icono 3DOn.
+        var view3D = new TeslaButton("3DOff", "3DOn", true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged()));
+        view3D.Selected = true;
+        buttonData.Add("View3D", view3D);
         buttonData.Add("Spc0", null);
         buttonData.Add("Spc1", null);
         buttonData.Add("TimeNet", new TeslaButton("Bezier", null, true, null,false,true));
@@ -165,7 +171,9 @@
     [JSInvokable]
     public async Task HandleKey(string key)
     {
-        if (mvarTourmaline.SessionConfig.ServiceMode.ServiceKeyboard)
+        // DemoMode reutiliza el teclado de servicio para consignar límite y velocidad objetivo.
+        if (mvarTourmaline.SessionConfig.ServiceMode.ServiceKeyboard
+            || mvarTourmaline.SessionConfig.ServiceMode.DemoMode)
             HandleServiceKey(key);
         else
         {
@@ -191,7 +199,7 @@
                 auxConfig.CurrentLimitSpeed += 10; break;
             case "1": //Reducir límite.
                 auxConfig.CurrentLimitSpeed -= 10; break;
-            case "4": //Aumentar objetivo.
+            case "4": //Aumentar objetivo (en DemoMode: consigna de la rampa de velocidad).
                 auxConfig.CurrentNeutralSpeed += 10; break;
             case "3": //Reducir objetivo.
                 auxConfig.CurrentNeutralSpeed -= 10; break;

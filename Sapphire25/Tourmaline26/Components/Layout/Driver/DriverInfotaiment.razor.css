@@ -69,3 +69,28 @@
     align-items: center;
     justify-content: center;
 }
+
+/* Capa del stream 3D: llena todo tesla-right (stretch si hace falta). */
+.driver-stream-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.driver-stream-layer ::deep .simulator-stream-container {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+}
+
+.driver-stream-layer ::deep .simulator-stream-canvas,
+.driver-stream-layer ::deep .simulator-stream-img {
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+}
