@@ -118,6 +118,37 @@ code {
     --sidebar-width-collapsed: 80px;
 }
 
+/* Utilidades responsive globales */
+.table-scroll-x {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.btn-label-short {
+    display: none;
+}
+
+@media (max-width: 575.98px) {
+    .btn-label-full {
+        display: none;
+    }
+
+    .btn-label-short {
+        display: inline;
+    }
+
+    .hide-xs {
+        display: none !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .hide-sm-down {
+        display: none !important;
+    }
+}
+
 .collapsed .hide-on-collapse {
     opacity: 0;
     visibility: hidden;
@@ -136,7 +167,7 @@ code {
 }
 
 
-/* Para animación del modal */
+/* Para animaciï¿½n del modal */
 .modal.show {
     animation: fadeIn 0.3s ease-in-out;
 }

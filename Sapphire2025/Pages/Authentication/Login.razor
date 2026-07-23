@@ -6,21 +6,48 @@
 @inject NavigationManager mvarNavigator
 @inject SessionService mvarSessionService
 <PageTitle>Inicio de Sesión</PageTitle>
-<EditForm Model="@mvarLoginModel" OnValidSubmit="LoginCall">
-	<div class="mb-3">
-		<h2>Inicio de Sesión</h2>
+
+<div class="login-page">
+	<div class="login-card card shadow border-0">
+		<div class="login-card-header text-center">
+			<img src="img/ZafiroTheme.jpeg" alt="Zafiro" class="login-logo img-fluid rounded-3" />
+			<h1 class="login-title h3 mt-3 mb-1">Inicio de sesión</h1>
+			<p class="text-muted small mb-0">Acceda a Zafiro con sus credenciales</p>
+		</div>
+
+		<div class="card-body login-card-body">
+			<EditForm Model="@mvarLoginModel" OnValidSubmit="LoginCall">
+				<div class="mb-3">
+					<label for="name" class="form-label">Identificación</label>
+					<InputText id="name"
+							   @bind-Value="mvarLoginModel.userName"
+							   class="form-control form-control-lg"
+							   autocomplete="username"
+							   inputmode="text"
+							   aria-describedby="cfId"
+							   placeholder="Nombre, correo o CF" />
+					<div id="cfId" class="form-text">
+						Puede iniciar la sesión tecleando su nombre, su buzón de correo electrónico o su carnet ferroviario (CF).
+					</div>
+				</div>
+				<div class="mb-4">
+					<label for="pwd" class="form-label">Contraseña</label>
+					<PasswordInput id="pwd"
+								   @bind-Value="mvarLoginModel.password"
+								   class="form-control form-control-lg"
+								   autocomplete="current-password" />
+				</div>
+				<div class="d-grid gap-2">
+					<Button Class="btn btn-primary btn-lg" @onclick="LoginCall">Iniciar sesión</Button>
+					<button type="button" class="btn btn-outline-secondary" @onclick='() => mvarNavigator.NavigateTo("/")'>
+						Volver al inicio
+					</button>
+				</div>
+			</EditForm>
+		</div>
 	</div>
-	<div class="mb-3">
-		<label for="name" class="form-label">Identificación</label>
-		<InputText id="name" @bind-Value="mvarLoginModel.userName" class="form-control" aria-describedby="cfId"/>
-		<div id="cfId" class="form-text">Puede iniciar la sesión tecleando su nombre, su buzón de correo electrónico o su carnet ferroviario (CF).</div>
-	</div>
-	<div class="mb-3">
-		<label for="pwd" class="form-label">Contraseña</label>
-		<PasswordInput id="pwd" @bind-Value="mvarLoginModel.password" class="form-control"  />
-	</div>
-	<Button Class="btn btn-primary" @onclick="LoginCall">Iniciar Sesión</Button>
-</EditForm>
+</div>
+
 <ModalDialog @ref="mvarModal"/>
 
 @code {

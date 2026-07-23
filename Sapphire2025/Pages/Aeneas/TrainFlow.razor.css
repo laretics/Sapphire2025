@@ -1,10 +1,41 @@
-::deep .train-row-highlight {
+﻿::deep .train-row-highlight {
     animation: train-row-flash 1.4s ease-in-out 3;
     box-shadow: inset 0 0 0 9999px rgba(255, 193, 7, 0.35);
 }
 
 .trainflow-live-badge {
     animation: trainflow-badge-pulse 1.2s ease-in-out infinite;
+}
+
+.trainflow-loading {
+    height: 60vh;
+}
+
+.trainflow-spinner {
+    width: 4rem;
+    height: 4rem;
+}
+
+.trainflow-scheme-panel {
+    min-height: 280px;
+    height: 50vh;
+    max-height: 520px;
+    overflow: hidden;
+}
+
+.trainflow-table-panel {
+    max-height: 48vh;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.trainflow-available-row .trainflow-table-panel {
+    max-height: 48vh;
+}
+
+.trainflow-stats {
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 @keyframes train-row-flash {
@@ -24,5 +55,69 @@
 
     50% {
         opacity: 0.65;
+    }
+}
+
+/* Tablet: esquema encima, tablas debajo a ancho completo */
+@media (max-width: 991.98px) {
+    .trainflow-scheme-panel {
+        height: auto;
+        min-height: 260px;
+        max-height: 42vh;
+    }
+
+    .trainflow-status-col .trainflow-table-panel {
+        max-height: 40vh;
+        min-height: 180px;
+    }
+
+    .trainflow-available-row .trainflow-table-panel {
+        max-height: 45vh;
+    }
+
+    .trainflow-toolbar .badge {
+        font-size: 0.78rem;
+    }
+}
+
+/* Teléfono */
+@media (max-width: 575.98px) {
+    .trainflow-loading {
+        height: 50vh;
+    }
+
+    .trainflow-spinner {
+        width: 3rem;
+        height: 3rem;
+    }
+
+    .trainflow-scheme-panel {
+        min-height: 220px;
+        max-height: 38vh;
+    }
+
+    .trainflow-status-col .trainflow-table-panel,
+    .trainflow-available-row .trainflow-table-panel {
+        max-height: none;
+        min-height: 160px;
+    }
+
+    .trainflow-toolbar {
+        padding: 0.5rem !important;
+    }
+
+    .trainflow-toolbar .btn-sm {
+        padding: 0.35rem 0.5rem;
+    }
+
+    /* Tablas: permitir scroll horizontal y ancho mínimo legible */
+    .trainflow-table-panel ::deep table {
+        min-width: 640px;
+        font-size: 0.85rem;
+    }
+
+    .trainflow-table-panel ::deep th,
+    .trainflow-table-panel ::deep td {
+        padding: 0.35rem 0.4rem;
     }
 }

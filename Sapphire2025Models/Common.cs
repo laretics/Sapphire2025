@@ -8,9 +8,9 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public static string SapphireSoftwareVersion => "26.07.16";
-		public static bool MajorVersion => false; //Muestra el aviso de actualización sólo cuando este flag es true.
-		public static string LastChangesText => "Cálculos de disponibilidad";
+		public static string SapphireSoftwareVersion => "26.07.23";
+		public static bool MajorVersion => true; //Muestra el aviso de actualización sólo cuando este flag es true.
+		public static string LastChangesText => "Interface reducida";
 
 		public static readonly Guid TelegramToken = new Guid("3a7f9c2e-8b4d-4f1a-9e6c-7d2b5a8f3e1c"); //Token de sesión sólo para operaciones desde Telegram.
 

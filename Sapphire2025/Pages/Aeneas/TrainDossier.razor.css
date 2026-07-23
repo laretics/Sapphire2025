@@ -1,1 +1,91 @@
-﻿
+﻿.train-dossier-loading {
+    min-height: 70vh;
+    padding: 1rem;
+}
+
+.train-dossier-loading-card {
+    width: min(24rem, 100%);
+}
+
+.train-dossier-commands ::deep .btn-toolbar {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.train-dossier-commands ::deep .btn-group {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.25rem;
+}
+
+.train-dossier-commands ::deep .btn {
+    white-space: normal;
+    text-align: start;
+}
+
+.train-dossier-tabs ::deep .btn-group {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 0.25rem;
+}
+
+.train-dossier-tabs ::deep .btn-group > .btn {
+    flex: 1 1 auto;
+    min-width: 5.5rem;
+}
+
+.train-dossier-tab-pane {
+    max-height: 70vh;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.train-dossier-table-pane {
+    width: 100%;
+    max-height: 70vh;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.train-dossier-tab-pane ::deep > div {
+    max-height: none !important;
+    height: auto !important;
+    min-height: 12rem;
+}
+
+@media (max-width: 767.98px) {
+    .train-dossier-loading {
+        min-height: 60vh;
+    }
+
+    .train-dossier-commands ::deep .btn {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.55rem;
+    }
+
+    .train-dossier-tabs ::deep .btn {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.5rem;
+    }
+
+    .train-dossier-tab-pane,
+    .train-dossier-table-pane {
+        max-height: none;
+    }
+
+    .train-dossier-table-pane ::deep table {
+        min-width: 520px;
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .train-dossier-commands ::deep .btn-group {
+        width: 100%;
+    }
+
+    .train-dossier-commands ::deep .btn {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}

@@ -17,12 +17,12 @@ else
         <CascadingValue Value="Assignations">            
                 <CascadingValue Value="TimeSlice">
                     <CascadingValue Value="mvarCurrentDate">
-                        <div class="row">
-                            <div class="col-md-6">
+                        <div class="row g-2 expert-day-toolbar">
+                            <div class="col-12 col-lg-6">
                                 <Sapphire2025.Layout.Expert.DateTimePicker @bind-SelectedDate="selectedDate">
                                 </Sapphire2025.Layout.Expert.DateTimePicker>
-                                <div class="mb-3 mt-3 d-flex gap-2 align-items-center flex-wrap">
-                                <div class="btn-group" role="group" aria-label="Opciones">
+                                <div class="mb-2 mb-lg-3 mt-2 mt-lg-3 d-flex gap-2 align-items-center flex-wrap">
+                                <div class="btn-group flex-wrap expert-day-actions" role="group" aria-label="Opciones">
                                     @if(ExcelImportFeature)
                                     {
                                         <button class="btn btn-outline-secondary" title="Importar gráfico"
@@ -34,8 +34,7 @@ else
                                         @if(ShowAdvancedButtons)
                                         {
                                             <input type="number" 
-                                                   class="form-control form-control-sm" 
-                                                   style="width: 80px;" 
+                                                   class="form-control form-control-sm expert-day-num" 
                                                    @bind="StartCol" 
                                                    min="0" 
                                                    max="1024"
@@ -43,8 +42,7 @@ else
                                                    title="Columna Inicial de la hoja Excel" />
                                             
                                             <input type="number" 
-                                                   class="form-control form-control-sm" 
-                                                   style="width: 80px;" 
+                                                   class="form-control form-control-sm expert-day-num" 
                                                    @bind="DayCount" 
                                                    min="1" 
                                                    max="16"
@@ -101,13 +99,13 @@ else
                             </div>
                             @if(null!=Plan)
                             {
-                                <div class="col-md-6">
-                                    <div class="card mb-3 border-primary">
-                                        <div class="card-body py-2 px-3 d-flex align-items-center gap-4">
+                                <div class="col-12 col-lg-6">
+                                    <div class="card mb-2 mb-lg-3 border-primary expert-day-plan-card">
+                                        <div class="card-body py-2 px-3 d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-2 gap-sm-3">
                                             <div class="fw-bold text-primary">
                                                 @(Plan?.Name ?? "Sin título")
                                             </div>
-                                            <div class="text-muted">
+                                            <div class="text-muted small">
                                                 <i class="bi bi-calendar-event"></i>
                                                 desde @(Plan?.Begin.ToString("dd/MM/yyyy"))
                                             </div>

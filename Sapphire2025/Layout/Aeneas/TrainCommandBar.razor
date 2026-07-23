@@ -4,7 +4,7 @@
 @inject NavigationManager mvarNavigationManager
 @inject IntStorageService mvarIntStorage
 <ModalDialog @ref="mvarConfirmationDialog" OnClose="OnConfirmClose" />
-<div class="btn-toolbar mb-3" role="toolbar" aria-label="Opciones del tren">
+<div class="btn-toolbar mb-0 train-command-bar" role="toolbar" aria-label="Opciones del tren">
 	<div class="btn-group me-2" role="group" aria-label="Operaciones primarias">
 		@foreach(TrainCommand cmd in Commands)
 		{

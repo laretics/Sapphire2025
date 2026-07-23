@@ -1,1 +1,41 @@
-﻿
+﻿.expert-day-num {
+    width: 80px;
+    min-width: 72px;
+}
+
+.expert-day-actions {
+    row-gap: 0.35rem;
+}
+
+.expert-day-plan-card {
+    min-width: 0;
+}
+
+@media (max-width: 767.98px) {
+    .expert-day-toolbar ::deep .input-group {
+        flex-wrap: wrap;
+    }
+
+    .expert-day-toolbar ::deep .input-group > * {
+        flex: 1 1 auto;
+    }
+
+    .expert-day-toolbar ::deep .input-group .btn {
+        min-height: 2.5rem;
+    }
+
+    .expert-day-toolbar ::deep .form-control {
+        min-width: 8rem;
+    }
+
+    .expert-day-actions .btn {
+        min-width: 2.75rem;
+        min-height: 2.5rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .expert-day-num {
+        width: 70px;
+    }
+}

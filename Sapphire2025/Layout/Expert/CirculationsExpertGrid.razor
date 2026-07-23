@@ -18,16 +18,16 @@ else if (mcolCirculations.Length<1)
 else
 {
 	<div class="responsive-scroll-x">
-		<div class="row g-3">
+		<div class="row g-2 g-md-3">
 			@for (int col = 0; col < 4; col++)
 			{
-				<div class="col-md-3">
+				<div class="col-12 col-sm-6 col-xl-3">
 					@for (int row = 0; row < mcolCirculations.GetUpperBound(1); row++)
 					{
 						if (MustShowCell(mcolCirculations[col, row]))
 						{
-							<div class="row">
-								<div class="col-5 border border-secondary rounded" style="@CirculationCellStyle(mcolCirculations[col, row])">
+							<div class="row g-1 mb-1">
+								<div class="col-5 border border-secondary rounded circulation-cell" style="@CirculationCellStyle(mcolCirculations[col, row])">
 									@CirculationCellString(mcolCirculations[col, row])
 									<span class="small ms-2">@CirculationCellTimeString(mcolCirculations[col, row])</span>
 									@if (HasProgressBar && CirculationActiveTimeString(mcolCirculations[col, row]) != string.Empty)
@@ -42,8 +42,8 @@ else
 										</div>
 									}
 								</div>
-								<div class="col-6 border border-secondary rounded" style="@AssignationCellStyle(mcolCirculations[col, row])">
-									<div class="small ms-2">
+								<div class="col-7 border border-secondary rounded circulation-cell" style="@AssignationCellStyle(mcolCirculations[col, row])">
+									<div class="small ms-2 text-break">
 										@AssignationString(mcolCirculations[col, row])
 									</div>
 								</div>

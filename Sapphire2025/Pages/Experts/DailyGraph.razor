@@ -6,38 +6,45 @@
 <PageTitle>Gráfico diario de Tracción</PageTitle>
 <ModalDialog @ref="mvarModal" />
 
-<Sapphire2025.Layout.Expert.ExpertDayContext ExcelImportDayCount="4" ExcelImportFeature=true RealTimeFollowFeature=true>
-    <div>
-        <TabControl Classic=true>
-            <TabPage Text="Circulaciones">
-                <Icon>
-                    <Sapphire2025.Icons.Headers.UT color="#2020A0"/>
-                </Icon>
-                <ChildContent>
-                    <Sapphire2025.Layout.Expert.CirculationsExpertGrid MinutesAfterTrain="15" MinutesBeforeTrain="10" />
-                </ChildContent>
-            </TabPage>
-            <TabPage Text="Depósitos">
-                <Icon>
-                    <Sapphire2025.Icons.Inspector.Att color="#2020A0" />
-                </Icon>
-                <ChildContent>
-                    <Sapphire2025.Layout.Expert.DepotsExpertGrid MinutesShortAtt="25"
-                                                             MinutesLongAtt="60" />
-                </ChildContent>
-            </TabPage>
-            <TabPage Text="Asignaciones">
-                <Icon>
-
-                    <Sapphire2025.Icons.Headers.EventDateTime color="#2020A0" />
-                </Icon>
-                <ChildContent>
-                    <Sapphire2025.Layout.Expert.AssignationDayCalendar MinutesBeforeWorksheet="25" MinutesAfterWorksheet="10" />
-                </ChildContent>
-            </TabPage>
-        </TabControl>
-    </div>
-</Sapphire2025.Layout.Expert.ExpertDayContext>
+<div class="daily-graph-page">
+    <Sapphire2025.Layout.Expert.ExpertDayContext ExcelImportDayCount="4" ExcelImportFeature=true RealTimeFollowFeature=true>
+        <div class="daily-graph-tabs">
+            <TabControl Classic=true>
+                <TabPage Text="Circulaciones">
+                    <Icon>
+                        <Sapphire2025.Icons.Headers.UT color="#2020A0"/>
+                    </Icon>
+                    <ChildContent>
+                        <div class="daily-graph-pane">
+                            <Sapphire2025.Layout.Expert.CirculationsExpertGrid MinutesAfterTrain="15" MinutesBeforeTrain="10" />
+                        </div>
+                    </ChildContent>
+                </TabPage>
+                <TabPage Text="Depósitos">
+                    <Icon>
+                        <Sapphire2025.Icons.Inspector.Att color="#2020A0" />
+                    </Icon>
+                    <ChildContent>
+                        <div class="daily-graph-pane">
+                            <Sapphire2025.Layout.Expert.DepotsExpertGrid MinutesShortAtt="25"
+                                                                     MinutesLongAtt="60" />
+                        </div>
+                    </ChildContent>
+                </TabPage>
+                <TabPage Text="Asignaciones">
+                    <Icon>
+                        <Sapphire2025.Icons.Headers.EventDateTime color="#2020A0" />
+                    </Icon>
+                    <ChildContent>
+                        <div class="daily-graph-pane">
+                            <Sapphire2025.Layout.Expert.AssignationDayCalendar MinutesBeforeWorksheet="25" MinutesAfterWorksheet="10" />
+                        </div>
+                    </ChildContent>
+                </TabPage>
+            </TabControl>
+        </div>
+    </Sapphire2025.Layout.Expert.ExpertDayContext>
+</div>
 
 @code {
     private ModalDialog mvarModal { get; set; } = new ModalDialog();

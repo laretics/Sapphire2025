@@ -6,12 +6,14 @@
 <SessionWatchdog/>
 <CascadingValue Value="Session">
     <div class="page">
-        <nav class="sidebar d-flex flex-column flex-shrink-0 position-fixed">
-            <button class="toggle-btn" onclick="toggleSidebar()">
+        <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeMobileSidebar()"></div>
+
+        <nav class="sidebar d-flex flex-column flex-shrink-0 position-fixed" id="appSidebar">
+            <button class="toggle-btn" type="button" onclick="toggleSidebar()" title="Contraer menú" aria-label="Contraer menú">
                 <i class="bi-caret-left-fill"></i>
             </button>
 
-            <div class="p-4" style="display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap;">
+            <div class="p-4 sidebar-brand" style="display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap;">
                 <h3 class="logo-text fw-bold mb-0" style="font-size: 1.1rem;">Zafiro</h3>
                 <small class="logo-subtext fw-bold mb-0" style="font-size: 0.7rem;">
                     @Sapphire2025Models.Common.SapphireSoftwareVersion
@@ -28,15 +30,59 @@
         </nav>
 
         <main class="main-content">
-            <div class="container-fluid">
+            <div class="mobile-topbar">
+                <button type="button" class="mobile-menu-btn" onclick="openMobileSidebar()" aria-label="Abrir menú">
+                    ☰
+                </button>
+                <span class="mobile-topbar-title">Zafiro</span>
+            </div>
+            <div class="container-fluid px-0 px-sm-2">
                 @Body
             </div>
         </main>
         <script>
-            function toggleSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            sidebar.classList.toggle('collapsed');
+            function isMobileNav() {
+                return window.matchMedia('(max-width: 991.98px)').matches;
             }
+
+            function toggleSidebar() {
+                const sidebar = document.getElementById('appSidebar') || document.querySelector('.sidebar');
+                if (!sidebar) return;
+                if (isMobileNav()) {
+                    if (sidebar.classList.contains('mobile-open')) closeMobileSidebar();
+                    else openMobileSidebar();
+                    return;
+                }
+                sidebar.classList.toggle('collapsed');
+            }
+
+            function openMobileSidebar() {
+                const sidebar = document.getElementById('appSidebar') || document.querySelector('.sidebar');
+                const backdrop = document.getElementById('sidebarBackdrop');
+                if (!sidebar) return;
+                sidebar.classList.add('mobile-open');
+                if (backdrop) backdrop.classList.add('visible');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeMobileSidebar() {
+                const sidebar = document.getElementById('appSidebar') || document.querySelector('.sidebar');
+                const backdrop = document.getElementById('sidebarBackdrop');
+                if (sidebar) sidebar.classList.remove('mobile-open');
+                if (backdrop) backdrop.classList.remove('visible');
+                document.body.style.overflow = '';
+            }
+
+            // Cerrar menú móvil al navegar (clic en enlaces del sidebar)
+            document.addEventListener('click', function (e) {
+                if (!isMobileNav()) return;
+                const link = e.target.closest && e.target.closest('.sidebar a, .sidebar .sidebar-link');
+                if (link) closeMobileSidebar();
+            });
+
+            window.addEventListener('resize', function () {
+                if (!isMobileNav()) closeMobileSidebar();
+            });
         </script>
     </div>
 </CascadingValue>
