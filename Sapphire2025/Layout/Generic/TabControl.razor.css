@@ -1,0 +1,25 @@
+﻿.tab-control-classic {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.tab-control-buttons {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    width: 100%;
+}
+
+@media (max-width: 575.98px) {
+    .tab-control-buttons > .btn {
+        flex: 1 1 auto;
+        min-width: 5rem;
+        font-size: 0.85rem;
+    }
+
+    .tab-control-classic .nav-link {
+        font-size: 0.85rem;
+        padding: 0.45rem 0.7rem;
+        white-space: nowrap;
+    }
+}

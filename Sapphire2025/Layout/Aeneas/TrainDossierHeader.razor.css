@@ -10,6 +10,7 @@
     z-index: 2;
     pointer-events: none;
     isolation: isolate;
+    border-radius: inherit;
 }
 
 .wash-badge {
@@ -21,4 +22,83 @@
     letter-spacing: .02em;
     background: rgba(255, 255, 255, 0.92);
     color: #1f2937;
+}
+
+.train-dossier-back {
+    min-width: 60px;
+    flex-shrink: 0;
+}
+
+/* No usar overflow:hidden aquí: recortaba PlatformSelectCTL y su dropdown */
+.train-dossier-status {
+    overflow: visible;
+}
+
+.train-dossier-status-row {
+    width: 100%;
+    min-width: 0;
+}
+
+.train-dossier-name {
+    font-size: clamp(1.25rem, 4vw, 1.75rem);
+    line-height: 1.2;
+}
+
+.train-dossier-status-text {
+    font-size: 0.95rem;
+}
+
+/* El selector de andén debe conservar ancho usable y no colapsar en flex */
+.train-dossier-platform {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 12rem;
+    max-width: 100%;
+    position: relative;
+    z-index: 3; /* por encima del wash-overlay visual si aparece */
+}
+
+.train-dossier-platform ::deep .platform-select-ctl {
+    width: 100%;
+    max-width: 400px;
+    min-width: 12rem;
+}
+
+.train-dossier-platform ::deep .form-control {
+    min-width: 0;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .train-dossier-platform {
+        width: min(400px, 40%);
+        min-width: 14rem;
+        flex: 0 1 400px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .train-dossier-back {
+        min-height: 44px;
+        width: 100%;
+    }
+
+    .train-dossier-platform {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .wash-badge {
+        font-size: 0.9rem;
+        padding: 0.55rem 0.85rem;
+        max-width: 95%;
+        white-space: normal;
+        text-align: center;
+    }
+
+    .wash-badge ::deep svg,
+    .wash-badge ::deep img {
+        width: 24px !important;
+        height: 24px !important;
+    }
 }

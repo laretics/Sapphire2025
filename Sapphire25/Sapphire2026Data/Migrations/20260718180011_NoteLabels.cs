@@ -11,7 +11,7 @@ namespace Sapphire2026Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<bool>(
-                name: "IsSympthom",
+                name: "IsSymptom",
                 table: "Notes",
                 type: "tinyint(1)",
                 nullable: false,
@@ -36,7 +36,7 @@ namespace Sapphire2026Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "IsSympthom",
+                name: "IsSymptom",
                 table: "Notes");
 
             migrationBuilder.DropColumn(

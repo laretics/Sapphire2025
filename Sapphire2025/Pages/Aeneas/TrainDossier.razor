@@ -7,9 +7,9 @@
 
 @if(null==mvarTrain)
 {
-	<div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
-		<div class="card" style="width: 24rem;">
-			<img src="img/ZafiroTheme.jpeg" class="card-img-top" alt="...">
+	<div class="d-flex justify-content-center align-items-center train-dossier-loading">
+		<div class="card train-dossier-loading-card">
+			<img src="img/ZafiroTheme.jpg" class="card-img-top" alt="Zafiro">
 			<div class="card-body">
 				<h5 class="card-title">Cargando</h5>
 				<div class="spinner-grow"></div>
@@ -20,36 +20,46 @@
 }
 else
 {
-	<CascadingValue Value="@Users">
-		<CascadingValue Value="@mvarTrain">
-			<CascadingValue Value="@mcolWorkOrders">
-				<TrainDossierHeader />
-				<TrainCommandBar />
+	<div class="train-dossier-page">
+		<CascadingValue Value="@Users">
+			<CascadingValue Value="@mvarTrain">
+				<CascadingValue Value="@mcolWorkOrders">
+					<TrainDossierHeader />
+					<div class="train-dossier-commands mb-3">
+						<TrainCommandBar />
+					</div>
 
-				<TabControl>
-					<TabPage Text="General">
-						<NoteChatEx Parent="@mvarTrain.id" NoteType="2" MaxLines="@MaxLinesPerChat" />
-					</TabPage>
-					<TabPage Text="Chat">
-						<NoteChat Parent="@mvarTrain.id" NoteType="2" MaxLines="@MaxLinesPerChat" />
-					</TabPage>
-					<TabPage Text="Historial">
-						<div class="table-responsive" style="width:100%; max-height:70vh;">
-							<StatusChangesTable StatusChanges="mcolChanges" />
-						</div>
-					</TabPage>
-					<TabPage Text="Actuaciones">
-						<div class="table-responsive" style="width:100%; max-height:70vh;">
-							<WorkOrdersTable />
-						</div>
-					</TabPage>
-					<TabPage Text="Limpieza">
-						
-					</TabPage>					
-				</TabControl>
+					<div class="train-dossier-tabs">
+						<TabControl>
+							<TabPage Text="General">
+								<div class="train-dossier-tab-pane">
+									<NoteChatEx Parent="@mvarTrain.id" NoteType="2" MaxLines="@MaxLinesPerChat" />
+								</div>
+							</TabPage>
+							<TabPage Text="Chat">
+								<div class="train-dossier-tab-pane">
+									<NoteChat Parent="@mvarTrain.id" NoteType="2" MaxLines="@MaxLinesPerChat" />
+								</div>
+							</TabPage>
+							<TabPage Text="Historial">
+								<div class="table-responsive train-dossier-table-pane">
+									<StatusChangesTable StatusChanges="mcolChanges" />
+								</div>
+							</TabPage>
+							<TabPage Text="Actuaciones">
+								<div class="table-responsive train-dossier-table-pane">
+									<WorkOrdersTable />
+								</div>
+							</TabPage>
+							<TabPage Text="Limpieza">
+								
+							</TabPage>					
+						</TabControl>
+					</div>
+				</CascadingValue>
 			</CascadingValue>
 		</CascadingValue>
-	</CascadingValue>
+	</div>
 }
 @code {
 	[Parameter]

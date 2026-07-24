@@ -17,20 +17,20 @@ else if (mcolDepots.Length < 1)
 }
 else
 {
-	<div class="row g-3">
+	<div class="row g-2 g-md-3">
 		@for (int col = 0; col < 3; col++)
 		{
-			<div class="col-md-4">
+			<div class="col-12 col-sm-6 col-lg-4">
 				@for (int row=0;row < mcolDepots.GetUpperBound(1);row++)
 				{
 					if(MustShowCell(mcolDepots[col,row]))
 					{
-						<div class="row">
-							<div class="col-10 border border-secondary rounded">
+						<div class="row mb-1">
+							<div class="col-12 border border-secondary rounded">
 								<div class="card shadow-sm h-100" style="@DepotCellStyle(mcolDepots[col, row])">
 									<div class="card-body p-2">
-										<h6 class="card-title mb-1">@DepotCellString(mcolDepots[col, row])</h6>
-										<p class="card-text mb-0">@AssignationString(mcolDepots[col, row])</p>
+										<h6 class="card-title mb-1 text-break">@DepotCellString(mcolDepots[col, row])</h6>
+										<p class="card-text mb-0 small text-break">@AssignationString(mcolDepots[col, row])</p>
 									</div>
 								</div>
 							</div>

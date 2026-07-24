@@ -1,6 +1,6 @@
 ﻿@if(Classic)
 {
-	<ul class="nav nav-tabs mb-3" style="--bs-nav-tabs-link-active-bg: #f8f9fa;">
+	<ul class="nav nav-tabs mb-3 tab-control-classic" style="--bs-nav-tabs-link-active-bg: #f8f9fa;">
 	@foreach (TabPage tabPage in Pages)
 		{
 			<li class="nav-item" role="presentation">
@@ -20,7 +20,7 @@
 }
 else
 {
-	<div class="btn-group" role="group">
+	<div class="btn-group tab-control-buttons" role="group">
 
 		@foreach (TabPage tabPage in Pages)
 		{
