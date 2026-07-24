@@ -49,13 +49,24 @@ namespace Tourmaline26.Services
             }
         }
 
-        public async Task Print(string message, bool scroll = true, Alignment alignment = Alignment.Center)
+        public async Task Print(bool inside, string message, bool scroll = true, Alignment alignment = Alignment.Center)
         {
             if(mvarLastMessage!=message)
             {
                 //await Cls();
                 foreach (DeviceMapped auxDevice in mcolPanels)
-                    await mvarController.Print(auxDevice.Address, message, scroll, alignment);
+                {
+                    if(auxDevice.HeaderSize<1)
+                    {
+                        if(inside)
+                            await mvarController.Print(auxDevice.Address, message, scroll, alignment);
+                    }
+                    else
+                    {
+                        if (!inside)
+                            await mvarController.Print(auxDevice.Address, message, scroll, alignment);
+                    }                                        
+                }                    
                 mvarLastMessage = message;
             }
         }

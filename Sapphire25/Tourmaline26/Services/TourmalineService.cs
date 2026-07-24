@@ -96,7 +96,8 @@ namespace Tourmaline26.Services
             }
             mvarLogger.LogInformation("Total de dispositivos detectados: {DeviceCount}", deviceCount);
             mvarLedDisplayService.Init(Devices);
-            await mvarLedDisplayService.Print("Serveis Ferroviaris de Mallorca",true);
+            await mvarLedDisplayService.Print(true,$"Tourmaline {SystemConfig.Version}",true);
+            await mvarLedDisplayService.Print(false, "SFM", false);
 
             //await mvarLedDisplayService.ClearAsync();
             //await mvarLedDisplayService.PushAsync("Tourmaline 2026");

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Net.Http.Headers;
+using System.Security.AccessControl;
 using System.Threading;
 using System.Threading.Tasks;
 using TimeNet2026.Production;
@@ -452,24 +453,20 @@ namespace Tourmaline26.Services
         /// </summary>
         /// <returns></returns>
         private async Task<bool> PoolLedPanels()
-        {           
+        {
             if(mvarTourmaline.SessionConfig.MainSwitches.TeleindicatorsEnabled && mvarTourmaline.SessionConfig.MainSwitches.PASEnabled)
             {
-                switch (mvarScreen)
+                TimeNetEnvironment? auxTn = mvarTourmaline.SessionConfig.TNEnvironment;
+                if(null!=auxTn)
                 {
-                    case 1: await LedPanelsShowDestination(); break;
-                    default: await LedPanelsShowTime(); break;
+                    if (null != auxTn.Circulation && null!= auxTn.CurrentStation)
+                    {
+                        if (null != auxTn.Circulation.Parent && null != auxTn.Circulation.Parent.asimilation && null != auxTn.Circulation.Parent.asimilation.Destination)
+                            await LedPanelsStation(auxTn.CurrentStation.Name, auxTn.Circulation.Parent.asimilation.Destination.Name);
+                    }
+                    else
+                        await LedPanelsShowTime(auxTn.Circulation);
                 }
-
-
-                //Prioridad de los avisos:
-                //* 1 Mensaje emergente de Armandito
-                //* 2 Próxima parada
-
-                //* 3 Destino
-
-                //* 4 Hora y temperatura
-                await LedPanelsShowTime();
             }
             else
             {
@@ -478,8 +475,14 @@ namespace Tourmaline26.Services
             return false;
         }
         
-        private async Task LedPanelsShowTime()
+        private async Task LedPanelsStation(string currentStation, string currentDestination)
         {
+            await mvarLedService.Print(true,$"Tren a {currentStation}",true);
+            await mvarLedService.Print(false, currentDestination, false);
+        }
+        private async Task LedPanelsShowTime(Circulation? auxCirc)
+        {
+            //Dentro muestran la hora actual.
             string cadenaTemp = "";
             string cadenaSpeed = "";
             if (null != mvarTourmaline.SessionConfig.CurrentWeather)
@@ -490,7 +493,12 @@ namespace Tourmaline26.Services
                 cadenaSpeed = $"   {auxSpeed}Km/h";
             }
             string auxMensaje = $"{DateTime.Now:t}{cadenaTemp}{cadenaSpeed}";
-            await mvarLedService.Print(auxMensaje, false);
+            await mvarLedService.Print(true,auxMensaje, false);
+            //Fuera muestran el número de tren.
+            if (null == auxCirc)
+                await mvarLedService.Print(false, " ", false);
+            else
+                await mvarLedService.Print(false, auxCirc.name,false);
         }
         private async Task LedPanelsShowDestination()
         {
@@ -503,13 +511,13 @@ namespace Tourmaline26.Services
                 if (null != asimila && null!=asimila.Destination)
                 {
                     string auxMensaje = $"Aquest tren es dirigeix a {asimila.Destination.Name}";
-                    await mvarLedService.Print(auxMensaje,true);
+                    await mvarLedService.Print(true,auxMensaje,true);
                 }
                 else
-                    await LedPanelsShowTime();                
+                    await LedPanelsShowTime(null); 
             }
             else
-                await LedPanelsShowTime();
+                await LedPanelsShowTime(null);
         }
         
         /// <summary>
