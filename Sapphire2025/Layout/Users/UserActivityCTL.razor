@@ -43,21 +43,7 @@ else
     private string operationName(UserActivityModel.UserActivityAtom atom)
     {
         Sapphire2025Models.Common.sessionEventType evento = (Sapphire2025Models.Common.sessionEventType)atom.type;
-        switch (evento)
-        {
-            case Sapphire2025Models.Common.sessionEventType.login:
-                return "Inicio de sesión";
-            case Sapphire2025Models.Common.sessionEventType.logout:
-                return "Cierre de sesión";
-            case Sapphire2025Models.Common.sessionEventType.sessionExpiry:
-                return "Sesión expirada";
-            case Sapphire2025Models.Common.sessionEventType.banned:
-                return "Usuario expulsado";
-            case Sapphire2025Models.Common.sessionEventType.badPassword:
-                return "Error de password";
-            default:
-                return "¿?";
-        }
+        return Sapphire2025Models.Common.SessionEventTypeName(evento);
     }
 
 }

@@ -83,19 +83,79 @@ namespace Sapphire2025Server.Controllers
 				await almacen.SaveChangesAsync();
 			}
 		}
-		protected async Task addLoginRecord(string userId, Common.sessionEventType type, string hostPoint)
+		/// <summary>
+		/// IP del cliente HTTP actual (o cadena vacía si no está disponible).
+		/// </summary>
+		protected string clientHostPoint()
 		{
-			using (DataStorage almacen = new DataStorage(mvarConfig))
+			try
 			{
-				SessionEvent nuevo = new SessionEvent();
-				nuevo.Id = Guid.NewGuid().ToString();
-				nuevo.userId = userId.ToString();
-				nuevo.type = type;
-				nuevo.hostPoint = hostPoint;
-				nuevo.timeSpan = DateTime.UtcNow;
+				return HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? string.Empty;
+			}
+			catch
+			{
+				return string.Empty;
+			}
+		}
+
+		/// <summary>
+		/// Registra un evento de actividad de usuario en SessionEvents.
+		/// Conserva el nombre histórico addLoginRecord (login, logout y el resto de operaciones).
+		/// </summary>
+		protected async Task addLoginRecord(string userId, Common.sessionEventType type, string? hostPoint = null)
+		{
+			if (string.IsNullOrWhiteSpace(userId))
+				return;
+
+			await addSessionEventStatic(mvarConfig, userId, type, hostPoint ?? clientHostPoint());
+		}
+
+		/// <summary>
+		/// Registra un evento a partir de un Guid de usuario ya resuelto.
+		/// </summary>
+		protected Task addLoginRecord(Guid userId, Common.sessionEventType type, string? hostPoint = null)
+		{
+			if (Guid.Empty.Equals(userId))
+				return Task.CompletedTask;
+			return addLoginRecord(userId.ToString(), type, hostPoint);
+		}
+
+		/// <summary>
+		/// Versión estática para métodos static de controladores (Telegram, etc.).
+		/// </summary>
+		protected static async Task addSessionEventStatic(
+			IConfiguration config,
+			string userId,
+			Common.sessionEventType type,
+			string hostPoint = "")
+		{
+			if (string.IsNullOrWhiteSpace(userId) || null == config)
+				return;
+
+			using (DataStorage almacen = new DataStorage(config))
+			{
+				SessionEvent nuevo = new SessionEvent
+				{
+					Id = Guid.NewGuid().ToString(),
+					userId = userId,
+					type = type,
+					hostPoint = hostPoint ?? string.Empty,
+					timeSpan = DateTime.UtcNow
+				};
 				almacen.SessionEvents.Add(nuevo);
 				await almacen.SaveChangesAsync();
 			}
+		}
+
+		protected static Task addSessionEventStatic(
+			IConfiguration config,
+			Guid userId,
+			Common.sessionEventType type,
+			string hostPoint = "")
+		{
+			if (Guid.Empty.Equals(userId))
+				return Task.CompletedTask;
+			return addSessionEventStatic(config, userId.ToString(), type, hostPoint);
 		}
 		protected async Task<bool> hasBasicPermission(Guid tokenId, Common.UserRole role)
 		{

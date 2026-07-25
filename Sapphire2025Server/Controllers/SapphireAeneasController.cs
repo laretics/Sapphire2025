@@ -289,6 +289,13 @@ namespace Sapphire2025Server.Controllers
 						almacen.StatusChanges.Add(nuevoCambio);						
 						auxTrain.lastChange = nuevoCambio.Guid;
 						salida = (await almacen.SaveChangesAsync() > 0);
+						if (salida && null != auxUser)
+						{
+							Common.sessionEventType evento = commit.operation == Common.OperationType.CorrectiveRequest
+								? Common.sessionEventType.incidentOpened
+								: Common.sessionEventType.trainStatusChanged;
+							await addLoginRecord(auxUser.Id, evento);
+						}
 						await TelegramNotify(nuevoCambio, auxTrain, mvarConfig);
 					}
 				}
@@ -323,7 +330,15 @@ namespace Sapphire2025Server.Controllers
 					almacen.StatusChanges.Add(nuevoCambio);
 					auxTrain.lastChange = nuevoCambio.Guid;
 					//await TelegramNotify(nuevoCambio,auxTrain,config);
-					return (await almacen.SaveChangesAsync() > 0);
+					bool ok = await almacen.SaveChangesAsync() > 0;
+					if (ok)
+					{
+						Common.sessionEventType evento = operation == Common.OperationType.CorrectiveRequest
+							? Common.sessionEventType.incidentOpened
+							: Common.sessionEventType.trainStatusChanged;
+						await addSessionEventStatic(config, userId, evento, "telegram");
+					}
+					return ok;
 				}
 				else
 				{
@@ -340,6 +355,8 @@ namespace Sapphire2025Server.Controllers
 				try
 				{
 					await mvarHubContext.Clients.All.SendAsync("ReceiveBroadcastRequest2", request.Message, request.Priority, request.Roles.ToArray());
+					// Sin SessionToken en el modelo: registramos host si hay, sin userId concreto.
+					// Si en el futuro el broadcast trae token, se puede asociar al actor.
 					return true;
 				}
 				catch(Exception e)
@@ -436,6 +453,8 @@ namespace Sapphire2025Server.Controllers
 					auxTren.PlatformId = train.PlatformId;
 					auxTren.LastPlatformAssign = DateTime.UtcNow; //Se tiene en cuenta la fecha de asignación.
 					await almacen.SaveChangesAsync();
+					// TrainModel no trae SessionToken: el rastro queda en hostPoint si se amplía el modelo.
+					// Mientras, no hay actor identificable de forma fiable.
 					return true;
 				}
 			}
@@ -452,6 +471,8 @@ namespace Sapphire2025Server.Controllers
 				{
 					auxTren.LastWash = DateTime.UtcNow; //Actualizo la última fecha de lavado.
 					int changes = await almacen.SaveChangesAsync();
+					// Misma limitación que ChangePlatform: sin token de sesión en el payload.
+					// El lavado operativo queda auditado en workorders/open|close|verify.
 					return changes>0;
 				}
 			}

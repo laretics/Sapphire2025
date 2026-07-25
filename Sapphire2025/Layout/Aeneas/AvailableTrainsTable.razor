@@ -34,7 +34,7 @@
 		<tbody>
 			@foreach (TrainModel train in mcolTrains)
 			{
-				<tr class="@rowClass(train)" @onclick="@(e => OnTrainClick(train))">
+				<tr @key="rowKey(train)" class="@rowClass(train)" @onclick="@(e => OnTrainClick(train))">
 					<td class="truncate">
 						<IcoStatus status="@train.lastStatus" color='@(train.Locked ? "red" : "black")' />
 						<span class="truncate">@Sapphire2025Models.Common.TrainStatusToString(train.lastStatus)</span>
@@ -96,11 +96,12 @@
 						mcolTrains.Add(auxTren);
 					}
 				}
-				sortFields(1);
+				// Orden estable al refrescar/resaltar; no alternar con cada poll.
+				sortFieldsStable(mvarLastOrderField >= 0 ? mvarLastOrderField : 1);
 			}
 		}
 		else
-			mcolTrains = Trains.ToList();
+			mcolTrains = Trains?.ToList() ?? new List<TrainModel>();
 	}
 
 }

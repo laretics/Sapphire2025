@@ -470,6 +470,23 @@ namespace Sapphire2025.Storage
 			}
             return null;
 		}
+
+		/// <summary>
+		/// Búsqueda avanzada de eventos del log de actividad (administradores).
+		/// </summary>
+		public async Task<SessionEventSearchResponse?> searchSessionEvents(SessionEventSearchRequest request)
+		{
+			if (null == request)
+				return null;
+			if (Guid.Empty.Equals(request.SessionToken))
+				request.SessionToken = await mvarIntStorage.getToken();
+
+			string jsonString = JsonSerializer.Serialize(request);
+			HttpResponseMessage respuesta = await sendPutRequest("sessionevents/search", jsonString);
+			if (respuesta.IsSuccessStatusCode)
+				return await respuesta.Content.ReadFromJsonAsync<SessionEventSearchResponse>();
+			return null;
+		}
 		
         public static string userIconHtml(List<Common.UserRole> roles, string color)
         {

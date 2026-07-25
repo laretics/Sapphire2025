@@ -224,6 +224,9 @@ namespace Sapphire2025Server.Controllers
 					using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 					string result = await tcs.Task.WaitAsync(cts.Token);
 
+					if (!string.IsNullOrEmpty(result))
+						await addLoginRecord(request.UserId, Common.sessionEventType.telegramPairingRequested);
+
 					return result;
 				}
 				catch (OperationCanceledException)
@@ -345,6 +348,10 @@ namespace Sapphire2025Server.Controllers
 								almacen.TimeCache.Add(nuevoCache);
 							}
 							await almacen.SaveChangesAsync();
+							// Actividad del administrador que crea el usuario
+							User? actor = await retrieveSessionUser(request.SessionToken);
+							if (null != actor)
+								await addLoginRecord(actor.Id, Common.sessionEventType.userCreated);
 							return nuevoUsuario.guid; //Devolvemos el nuevo usuario creado
 						}
 					}
@@ -493,7 +500,10 @@ namespace Sapphire2025Server.Controllers
 				{
 					candidato.TelegramEnabled = true;
 					candidato.TelegramId = telegramId;
-					return await almacen.SaveChangesAsync() > 0;
+					bool ok = await almacen.SaveChangesAsync() > 0;
+					if (ok)
+						await addLoginRecord(candidato.Id, Common.sessionEventType.telegramPaired);
+					return ok;
 				}
 			}
 			return false;
@@ -552,7 +562,14 @@ namespace Sapphire2025Server.Controllers
 						{ //Sacamos al usuario del rol
 							if(await auxDerole(userid, roleid,almacen))
 							{
-								return await almacen.SaveChangesAsync() > 0;
+								bool ok = await almacen.SaveChangesAsync() > 0;
+								if (ok)
+								{
+									User? actor = await retrieveSessionUser(token);
+									if (null != actor)
+										await addLoginRecord(actor.Id, Common.sessionEventType.userRolesChanged);
+								}
+								return ok;
 							}
 						}
 					}
@@ -561,7 +578,14 @@ namespace Sapphire2025Server.Controllers
 						if (enrole)
 						{ //Metemos al usuario en el rol
 							auxEnrole(userid, roleid,almacen);
-							return await almacen.SaveChangesAsync() > 0;
+							bool ok = await almacen.SaveChangesAsync() > 0;
+							if (ok)
+							{
+								User? actor = await retrieveSessionUser(token);
+								if (null != actor)
+									await addLoginRecord(actor.Id, Common.sessionEventType.userRolesChanged);
+							}
+							return ok;
 						}
 					}
 				}					
@@ -609,7 +633,14 @@ namespace Sapphire2025Server.Controllers
 							}
 						}
 					}
-					return await almacen.SaveChangesAsync() > 0;
+					bool ok = await almacen.SaveChangesAsync() > 0;
+					if (ok)
+					{
+						User? actor = await retrieveSessionUser(message.SessionToken);
+						if (null != actor)
+							await addLoginRecord(actor.Id, Common.sessionEventType.userRolesChanged);
+					}
+					return ok;
 				}
 			}
 			return false;
@@ -637,7 +668,16 @@ namespace Sapphire2025Server.Controllers
 						await mvarHubContext.Clients.All.SendAsync("UnpairTelegramUser", usuario.TelegramId);
 						usuario.TelegramId = 0; //Anulamos la sesión
 						usuario.TelegramEnabled = false; //Damos de baja Telegram						
-						return await almacen.SaveChangesAsync() > 0;
+						bool ok = await almacen.SaveChangesAsync() > 0;
+						if (ok)
+						{
+							User? actor = await retrieveSessionUser(message.SessionToken);
+							if (null != actor)
+								await addLoginRecord(actor.Id, Common.sessionEventType.telegramUnpaired);
+							// También queda rastro en el usuario afectado
+							await addLoginRecord(usuario.Id, Common.sessionEventType.telegramUnpaired);
+						}
+						return ok;
 					}
 				}				
 			}
@@ -697,7 +737,14 @@ namespace Sapphire2025Server.Controllers
 							if (null != message.TelegramId)
 								usuario.TelegramId = (long)message.TelegramId;
 						}
-						return await almacen.SaveChangesAsync() > 0;
+						bool ok = await almacen.SaveChangesAsync() > 0;
+						if (ok)
+						{
+							User? actor = await retrieveSessionUser(message.SessionToken);
+							if (null != actor)
+								await addLoginRecord(actor.Id, Common.sessionEventType.userModified);
+						}
+						return ok;
 					}
 				}
 			}
@@ -715,7 +762,14 @@ namespace Sapphire2025Server.Controllers
 					if (null != usuario)
 					{
 						usuario.PasswordHash = string.Empty;
-						return await almacen.SaveChangesAsync() > 0;
+						bool ok = await almacen.SaveChangesAsync() > 0;
+						if (ok)
+						{
+							User? actor = await retrieveSessionUser(message.SessionToken);
+							if (null != actor)
+								await addLoginRecord(actor.Id, Common.sessionEventType.passwordReset);
+						}
+						return ok;
 					}
 				}
 			}
@@ -737,7 +791,10 @@ namespace Sapphire2025Server.Controllers
 						{
 							string salado = almacen.HashPassword(message.Password);
 							auxUser2.PasswordHash = salado;
-							return await almacen.SaveChangesAsync() >= 0;
+							bool ok = await almacen.SaveChangesAsync() >= 0;
+							if (ok)
+								await addLoginRecord(auxUser2.Id, Common.sessionEventType.passwordSet);
+							return ok;
 						}				
 					}
 				}
@@ -770,6 +827,81 @@ namespace Sapphire2025Server.Controllers
 					}
 				}
 			}
+			return salida;
+		}
+
+		/// <summary>
+		/// Búsqueda avanzada de eventos de actividad (SessionEvents) para administradores.
+		/// Filtros: fechas, usuarios, tipos de evento y host/origen.
+		/// </summary>
+		[HttpPut("sessionevents/search")]
+		public async Task<SessionEventSearchResponse> SearchSessionEvents(SessionEventSearchRequest? request)
+		{
+			SessionEventSearchResponse salida = new SessionEventSearchResponse();
+			if (null == request)
+				return salida;
+			if (!await hasBasicPermission(request, Common.UserRole.Root))
+				return salida;
+
+			int maxRecords = request.MaxRecords <= 0 ? 500 : request.MaxRecords;
+			if (maxRecords > 5000)
+				maxRecords = 5000;
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				IQueryable<SessionEvent> query = almacen.SessionEvents.AsNoTracking();
+
+				if (request.FromUtc.HasValue)
+					query = query.Where(x => x.timeSpan >= request.FromUtc.Value);
+
+				if (request.ToUtc.HasValue)
+					query = query.Where(x => x.timeSpan <= request.ToUtc.Value);
+
+				if (null != request.UserIds && request.UserIds.Count > 0)
+				{
+					List<string> userIds = request.UserIds
+						.Where(id => !string.IsNullOrWhiteSpace(id))
+						.Select(id => id.Trim())
+						.Distinct()
+						.ToList();
+					if (userIds.Count > 0)
+						query = query.Where(x => userIds.Contains(x.userId));
+				}
+
+				if (null != request.EventTypes && request.EventTypes.Count > 0)
+				{
+					List<byte> types = request.EventTypes.Distinct().ToList();
+					query = query.Where(x => types.Contains(x.eventType));
+				}
+
+				if (!string.IsNullOrWhiteSpace(request.HostContains))
+				{
+					string host = request.HostContains.Trim();
+					query = query.Where(x => null != x.hostPoint && x.hostPoint.Contains(host));
+				}
+
+				salida.TotalMatched = await query.CountAsync();
+
+				List<SessionEvent> rows = await query
+					.OrderByDescending(x => x.timeSpan)
+					.Take(maxRecords)
+					.ToListAsync();
+
+				foreach (SessionEvent evento in rows)
+				{
+					salida.Records.Add(new SessionEventRecordModel
+					{
+						Id = evento.Id,
+						UserId = evento.userId ?? string.Empty,
+						EventType = evento.eventType,
+						TimeStamp = evento.timeSpan,
+						HostPoint = evento.hostPoint ?? string.Empty
+					});
+				}
+
+				salida.Truncated = salida.TotalMatched > salida.Records.Count;
+			}
+
 			return salida;
 		}
 		private void auxEnrole(string userId, uint roleId, DataStorage storage)

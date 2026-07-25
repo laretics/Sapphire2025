@@ -29,7 +29,7 @@
 		<tbody>
 			@foreach (TrainModel train in mcolTrains)
 			{
-				<tr class="@rowClass(train)" @onclick="@(e => OnTrainClick(train))">
+				<tr @key="rowKey(train)" class="@rowClass(train)" @onclick="@(e => OnTrainClick(train))">
 					<td class="truncate" style="background-color: @trainColor(train); color: @(train.Locked ? "red" : "default")">
 						@train.name
 					</td>
@@ -78,11 +78,8 @@
 				if (auxTren.lastStatus.Equals(CurrentStatus))
 					mcolTrains.Add(auxTren);
 			}
-			sortFields(1);
+			// Orden estable al refrescar/resaltar; no alternar con cada poll.
+			sortFieldsStable(mvarLastOrderField >= 0 ? mvarLastOrderField : 1);
 		}
 	}
-	
-
-
-
 }

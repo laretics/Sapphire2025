@@ -1,4 +1,4 @@
-﻿.table-fixed {
+.table-fixed {
     table-layout: fixed;
     width: 100%;
 }
@@ -7,4 +7,56 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/*
+ * Resalte de fila alineado con AeneasScheme (.scheme-cell-highlight):
+ * borde ámbar #f59e0b / #fbbf24 y flash 1.2s x3.
+ * Se aplica a cada <td> para ganar a los fondos de Bootstrap y al color de UT.
+ */
+tr.train-row-highlight > td {
+    box-shadow:
+        inset 0 0 0 2px #f59e0b,
+        inset 0 0 0 9999px rgba(245, 158, 11, 0.28);
+    animation: train-row-scheme-flash 1.2s ease-in-out 3;
+    position: relative;
+    z-index: 1;
+}
+
+tr.train-row-highlight > td:first-child {
+    box-shadow:
+        inset 4px 0 0 0 #f59e0b,
+        inset 0 0 0 2px #f59e0b,
+        inset 0 0 0 9999px rgba(245, 158, 11, 0.28);
+    animation-name: train-row-scheme-flash-first;
+}
+
+@keyframes train-row-scheme-flash {
+    0%, 100% {
+        box-shadow:
+            inset 0 0 0 2px #f59e0b,
+            inset 0 0 0 9999px rgba(245, 158, 11, 0.18);
+    }
+
+    50% {
+        box-shadow:
+            inset 0 0 0 3px #fbbf24,
+            inset 0 0 0 9999px rgba(251, 191, 36, 0.42);
+    }
+}
+
+@keyframes train-row-scheme-flash-first {
+    0%, 100% {
+        box-shadow:
+            inset 4px 0 0 0 #f59e0b,
+            inset 0 0 0 2px #f59e0b,
+            inset 0 0 0 9999px rgba(245, 158, 11, 0.18);
+    }
+
+    50% {
+        box-shadow:
+            inset 4px 0 0 0 #fbbf24,
+            inset 0 0 0 3px #fbbf24,
+            inset 0 0 0 9999px rgba(251, 191, 36, 0.42);
+    }
 }

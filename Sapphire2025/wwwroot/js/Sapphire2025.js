@@ -18,6 +18,20 @@ window.triggerFileInputClick = function (element) {
     if (element) element.click();
 }
 
+// Descarga de texto (CSV, XML, etc.) como archivo en el navegador.
+window.downloadTextFile = function (content, filename, mimeType) {
+    const type = mimeType || "text/plain;charset=utf-8";
+    const blob = new Blob([content], { type: type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename || "export.txt";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
 //Rutina para pegar contenido del portapapeles en un elemento HTML.
 window.clipboardInterop = {
     registerPasteListener: function (elemento, refDotNet) {

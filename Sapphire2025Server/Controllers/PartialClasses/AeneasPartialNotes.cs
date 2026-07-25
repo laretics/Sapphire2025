@@ -23,7 +23,8 @@ namespace Sapphire2025Server.Controllers
 						new Common.UserRole[] { Common.UserRole.Inspector, Common.UserRole.Expert, Common.UserRole.Oficial, Common.UserRole.Mechanic }
 						);
 			}
-			return await addNoteStatic(note, mvarConfig);
+			// El registro de actividad se hace dentro de addNoteStatic (también cubre Telegram).
+			return await addNoteStatic(note, mvarConfig, clientHostPoint());
 		}
 
 		[HttpPost("getnotes")]
@@ -93,7 +94,7 @@ namespace Sapphire2025Server.Controllers
 			return string.Empty;
 		}
 
-		public static async Task<bool> addNoteStatic(NoteModel note, IConfiguration config)
+		public static async Task<bool> addNoteStatic(NoteModel note, IConfiguration config, string hostPoint = "static")
 		{
 			bool salida = false;
 			//Todos los usuarios tienen permiso para añadir notas.
@@ -112,6 +113,9 @@ namespace Sapphire2025Server.Controllers
 					nuevaNota.ClosureTime = note.ClosureTime;
 					almacen.Notes.Add(nuevaNota);
 					salida = (await almacen.SaveChangesAsync() > 0);
+					// También cubre invocaciones desde Telegram u otras vías estáticas.
+					if (salida && !Guid.Empty.Equals(note.UserId))
+						await addSessionEventStatic(config, note.UserId, Common.sessionEventType.noteAdded, hostPoint);
 				}
 			}
 			return salida;

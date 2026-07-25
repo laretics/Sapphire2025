@@ -222,8 +222,84 @@ namespace Sapphire2025Models
 			login = 1,          //El usuario inició sesión
 			logout = 2,         //El usuario cerró sesión
 			sessionExpiry = 3,  //La sesión abierta de un usuario expiró
-			badPassword = 4,        //Error de credenciales
-			banned = 5          //Usuario expulsado por un administrador
+			badPassword = 4,    //Error de credenciales
+			banned = 5,         //Usuario expulsado por un administrador
+
+			// Administración de usuarios
+			userCreated = 10,           //Se creó un nuevo usuario
+			userModified = 11,          //Se modificaron datos de un usuario
+			userRolesChanged = 12,      //Se cambiaron roles de un usuario
+			passwordReset = 13,         //Un admin reseteó la contraseña
+			passwordSet = 14,           //El usuario estableció su contraseña
+			telegramPaired = 15,        //Usuario emparejado con Telegram
+			telegramUnpaired = 16,      //Usuario desemparejado de Telegram
+			telegramPairingRequested = 17, //Se solicitó código de emparejado Telegram
+
+			// Operaciones sobre trenes (Aeneas)
+			trainStatusChanged = 20,    //Cambio de estado de un tren
+			trainPlatformChanged = 21,  //Cambio de vía/andén de un tren
+			trainWashUpdated = 22,      //Actualización de fecha de lavado
+
+			// Notas e incidencias
+			noteAdded = 30,             //Se abrió/añadió una nota
+			incidentOpened = 31,        //Se abrió un parte de incidencia (correctivo)
+
+			// Órdenes de trabajo / lavados (GMao)
+			workOrderRequested = 40,    //Se solicitó una orden de trabajo (p.ej. lavado)
+			workOrderOpened = 41,       //Se inició una orden de trabajo
+			workOrderClosed = 42,       //Se finalizó una orden de trabajo
+			workOrderVerified = 43,     //Se verificó una orden de trabajo
+			workOrderRejected = 44,     //Se rechazó una orden de trabajo
+
+			// Telegram y comunicaciones
+			telegramBroadcast = 50,     //Broadcast por Telegram
+
+			// Expert / TimeNet (operaciones de escritura relevantes)
+			expertDataImported = 60,    //Importación de datos Expert
+			expertPlanDeleted = 61,     //Borrado de plan de explotación
+			festiveChanged = 62,        //Cambio de festivo
+			timeNetUploaded = 63,       //Subida de topología/rautatie TimeNet
+			timeNetTopoDeleted = 64     //Borrado de TopoStorage
+		}
+
+		/// <summary>
+		/// Nombre legible de un evento de sesión/actividad de usuario.
+		/// </summary>
+		public static string SessionEventTypeName(sessionEventType evento)
+		{
+			return evento switch
+			{
+				sessionEventType.login => "Inicio de sesión",
+				sessionEventType.logout => "Cierre de sesión",
+				sessionEventType.sessionExpiry => "Sesión expirada",
+				sessionEventType.banned => "Usuario expulsado",
+				sessionEventType.badPassword => "Error de password",
+				sessionEventType.userCreated => "Creación de usuario",
+				sessionEventType.userModified => "Modificación de usuario",
+				sessionEventType.userRolesChanged => "Cambio de roles",
+				sessionEventType.passwordReset => "Reseteo de contraseña",
+				sessionEventType.passwordSet => "Establecimiento de contraseña",
+				sessionEventType.telegramPaired => "Emparejado Telegram",
+				sessionEventType.telegramUnpaired => "Desemparejado Telegram",
+				sessionEventType.telegramPairingRequested => "Solicitud emparejado Telegram",
+				sessionEventType.trainStatusChanged => "Cambio de estado de tren",
+				sessionEventType.trainPlatformChanged => "Cambio de vía de tren",
+				sessionEventType.trainWashUpdated => "Actualización de lavado",
+				sessionEventType.noteAdded => "Nota añadida",
+				sessionEventType.incidentOpened => "Apertura de incidencia",
+				sessionEventType.workOrderRequested => "Solicitud de orden de trabajo",
+				sessionEventType.workOrderOpened => "Inicio de orden de trabajo",
+				sessionEventType.workOrderClosed => "Finalización de orden de trabajo",
+				sessionEventType.workOrderVerified => "Verificación de orden de trabajo",
+				sessionEventType.workOrderRejected => "Rechazo de orden de trabajo",
+				sessionEventType.telegramBroadcast => "Broadcast Telegram",
+				sessionEventType.expertDataImported => "Importación Expert",
+				sessionEventType.expertPlanDeleted => "Borrado de plan Expert",
+				sessionEventType.festiveChanged => "Cambio de festivo",
+				sessionEventType.timeNetUploaded => "Subida TimeNet",
+				sessionEventType.timeNetTopoDeleted => "Borrado topología TimeNet",
+				_ => "¿?"
+			};
 		}
 
 		public enum TrainSystem: byte
