@@ -1,0 +1,213 @@
+@using Sapphire2025Models
+@using Sapphire2025Models.Aeneas
+@using Sapphire2025Models.Authentication
+@inject AeneasClient mvarAeneasClient
+@inject IntStorageService mvarIntStorage
+
+@* Modal al final y fuera del bloque de edición; showModal lo eleva a document.body *@
+<div class="odometry-input-ctl">
+	@if (!isEditing)
+	{
+		<div role="@(CanEdit ? "button" : "status")"
+			 class="form-control text-start odometry-display @(CanEdit ? "odometry-editable" : "odometry-readonly")"
+			 title="@(CanEdit ? "Registrar nuevo valor de odómetro" : "Odómetro actual")"
+			 tabindex="@(CanEdit ? 0 : -1)"
+			 @onclick="BeginEdit"
+			 @onkeydown="OnDisplayKeyDown">
+			<div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-1 w-100">
+				<span class="odometry-value">
+					<span class="odometry-label text-muted">Odómetro</span>
+					<strong>@FormattedOdometer</strong>
+				</span>
+				<span class="odometry-date text-muted small">@FormattedDate</span>
+			</div>
+		</div>
+	}
+	else
+	{
+		<div class="input-group flex-nowrap">
+			<input type="number"
+				   class="form-control @ValidationCssClass"
+				   min="@MinAllowed"
+				   step="1"
+				   inputmode="numeric"
+				   placeholder="Nuevo odómetro"
+				   @bind="editText"
+				   @bind:event="oninput"
+				   @onkeydown="OnKeyDown"
+				   autocomplete="off"
+				   disabled="@isSaving" />
+			<button type="button"
+					class="btn btn-outline-primary"
+					title="Confirmar"
+					disabled="@isSaving"
+					@onclick="TrySubmitAsync">
+				OK
+			</button>
+			<button type="button"
+					class="btn btn-outline-secondary"
+					title="Cancelar"
+					disabled="@isSaving"
+					@onclick="CancelEdit">
+				&times;
+			</button>
+		</div>
+		@if (!string.IsNullOrEmpty(validationError))
+		{
+			<div class="form-text text-danger">@validationError</div>
+		}
+		else
+		{
+			<div class="form-text text-muted">Mínimo permitido: @MinAllowed.ToString("N0")</div>
+		}
+	}
+</div>
+
+<ModalDialog @ref="mvarConfirmationDialog" OnClose="OnConfirmClose" />
+
+@code {
+	[Parameter]
+	public TrainModel? Train { get; set; }
+
+	[Parameter]
+	public EventCallback OnOdometerChanged { get; set; }
+
+	private SessionModel? mvarSession;
+	private ModalDialog? mvarConfirmationDialog;
+	private TaskCompletionSource<bool>? mvarConfirmTcs;
+
+	private bool isEditing;
+	private bool isSaving;
+	private string editText = string.Empty;
+	private string? validationError;
+	private long pendingValue;
+
+	private bool CanEdit =>
+		mvarSession is not null &&
+		(Utils.isRoot(mvarSession)
+			|| mvarSession.Roles.Contains(Common.UserRole.Oficial)
+			|| mvarSession.Roles.Contains(Common.UserRole.Mechanic));
+
+	private long CurrentOdometer => Train?.LastOdometer ?? 0;
+	private long MinAllowed => CurrentOdometer;
+
+	private string FormattedOdometer =>
+		CurrentOdometer > 0 || Train?.LastOdometerSet is not null
+			? $"{CurrentOdometer:N0}"
+			: "—";
+
+	private string FormattedDate =>
+		Train?.LastOdometerSet is null
+			? "Sin registro"
+			: Utils.autoDate(Train.LastOdometerSet);
+
+	private string ValidationCssClass =>
+		string.IsNullOrEmpty(validationError) ? string.Empty : "is-invalid";
+
+	protected override async Task OnInitializedAsync()
+	{
+		mvarSession = await mvarIntStorage.GetSessionInfo();
+	}
+
+	private void BeginEdit()
+	{
+		if (!CanEdit || Train is null || isSaving)
+			return;
+
+		isEditing = true;
+		editText = CurrentOdometer > 0 ? CurrentOdometer.ToString() : string.Empty;
+		validationError = null;
+	}
+
+	private async Task OnDisplayKeyDown(KeyboardEventArgs e)
+	{
+		if (!CanEdit)
+			return;
+		if (e.Key == "Enter" || e.Key == " ")
+			BeginEdit();
+		await Task.CompletedTask;
+	}
+
+	private void CancelEdit()
+	{
+		isEditing = false;
+		isSaving = false;
+		editText = string.Empty;
+		validationError = null;
+	}
+
+	private async Task OnKeyDown(KeyboardEventArgs e)
+	{
+		if (e.Key == "Enter")
+			await TrySubmitAsync();
+		else if (e.Key == "Escape")
+			CancelEdit();
+	}
+
+	private async Task TrySubmitAsync()
+	{
+		if (!CanEdit || Train is null || isSaving)
+			return;
+
+		validationError = null;
+
+		if (!long.TryParse(editText?.Trim(), out long newValue))
+		{
+			validationError = "Introduzca un valor numérico válido.";
+			return;
+		}
+
+		if (newValue < MinAllowed)
+		{
+			validationError = $"El odómetro no puede ser menor que {MinAllowed:N0}.";
+			return;
+		}
+
+		pendingValue = newValue;
+		bool confirmed = await ConfirmAsync(
+			"Confirmar odómetro",
+			$"¿Registrar el odómetro {newValue:N0} en la UT {Train.name}?{(CurrentOdometer > 0 ? $" (actual: {CurrentOdometer:N0})" : string.Empty)}",
+			"Registrar",
+			"Cancelar");
+
+		if (!confirmed)
+			return;
+
+		isSaving = true;
+		try
+		{
+			bool ok = await mvarAeneasClient.setOdometer(Train.id, pendingValue);
+			if (!ok)
+			{
+				validationError = "No se pudo guardar el odómetro. Compruebe permisos o el valor.";
+				return;
+			}
+
+			Train.LastOdometer = pendingValue;
+			Train.LastOdometerSet = DateTime.UtcNow;
+			isEditing = false;
+			editText = string.Empty;
+
+			if (OnOdometerChanged.HasDelegate)
+				await OnOdometerChanged.InvokeAsync();
+		}
+		finally
+		{
+			isSaving = false;
+		}
+	}
+
+	private async Task<bool> ConfirmAsync(string title, string text, string okLabel = "Aceptar", string cancelLabel = "Cancelar")
+	{
+		mvarConfirmTcs = new TaskCompletionSource<bool>();
+		if (mvarConfirmationDialog is not null)
+			await mvarConfirmationDialog.show(title, text, okLabel, cancelLabel);
+		return await mvarConfirmTcs.Task;
+	}
+
+	private Task OnConfirmClose(bool result)
+	{
+		mvarConfirmTcs?.TrySetResult(result);
+		return Task.CompletedTask;
+	}
+}

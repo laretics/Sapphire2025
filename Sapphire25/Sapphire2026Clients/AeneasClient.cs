@@ -119,11 +119,29 @@ namespace Sapphire2025.Storage
 		//Fuerza la modificación del andén actual del tren
 		public async Task<bool> changePlatform(TrainModel train)
 		{
-			string jsonData = System.Text.Json.JsonSerializer.Serialize(train);
+			if (null == train)
+				return false;
+			Guid auxToken = await getCurrentToken();
+			PlatformChangeRequestModel request = new PlatformChangeRequestModel(auxToken, train.id, train.PlatformId);
+			string jsonData = System.Text.Json.JsonSerializer.Serialize(request);
 			HttpResponseMessage respuesta = await sendPostRequest("changeplatform", jsonData);
 			if (respuesta.IsSuccessStatusCode)
 				return await respuesta.Content.ReadFromJsonAsync<bool>();
-			return false;	
+			return false;
+		}
+
+		/// <summary>
+		/// Registra un nuevo valor de odómetro para el tren (histórico + valor actual).
+		/// </summary>
+		public async Task<bool> setOdometer(Guid trainId, long odometer)
+		{
+			Guid auxToken = await getCurrentToken();
+			OdometrySetRequestModel request = new OdometrySetRequestModel(auxToken, trainId, odometer);
+			string jsonData = System.Text.Json.JsonSerializer.Serialize(request);
+			HttpResponseMessage respuesta = await sendPostRequest("setodometer", jsonData);
+			if (respuesta.IsSuccessStatusCode)
+				return await respuesta.Content.ReadFromJsonAsync<bool>();
+			return false;
 		}
 
 

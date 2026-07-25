@@ -63,8 +63,27 @@
 			4 => descending ? mcolTrains.OrderByDescending(xx => xx.lastNote).ToList() : mcolTrains.OrderBy(xx => xx.lastNote).ToList(),
 			5 => descending ? mcolTrains.OrderByDescending(xx => xx.PlatformId).ToList() : mcolTrains.OrderBy(xx => xx.PlatformId).ToList(),
 			6 => descending ? mcolTrains.OrderByDescending(xx => xx.LastWash).ToList() : mcolTrains.OrderBy(xx => xx.LastWash).ToList(),
+			7 => descending ? mcolTrains.OrderByDescending(xx => xx.LastOdometer).ToList() : mcolTrains.OrderBy(xx => xx.LastOdometer).ToList(),
 			_ => descending ? mcolTrains.OrderByDescending(xx => xx.lastUpdateTime).ToList() : mcolTrains.OrderBy(xx => xx.lastUpdateTime).ToList(),
 		};
+	}
+
+	/// <summary>
+	/// Texto de odómetro para tablas (— si aún no hay registro).
+	/// </summary>
+	protected string odometerString(TrainModel train)
+	{
+		if (train.LastOdometerSet is null && train.LastOdometer <= 0)
+			return "—";
+		return train.LastOdometer.ToString("N0");
+	}
+
+	protected string odometerTitle(TrainModel train)
+	{
+		if (train.LastOdometerSet is null && train.LastOdometer <= 0)
+			return "Sin registro de odómetro";
+		string fecha = Sapphire2025Models.Utils.autoDate(train.LastOdometerSet);
+		return $"Odómetro {train.LastOdometer:N0} · {fecha}";
 	}
 
 	internal UserModelBase? userFromTrain(TrainModel? train)

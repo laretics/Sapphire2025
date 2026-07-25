@@ -48,58 +48,91 @@
     font-size: 0.95rem;
 }
 
-/* El selector de andén: ancho usable, pero puede encoger en ventanas reducidas */
-.train-dossier-platform {
+/* Contenedor andén + odómetro.
+   No poner z-index aquí: crea un stacking context y el ModalDialog del odómetro
+   queda debajo del backdrop de Bootstrap (botones del diálogo inaccesibles). */
+.train-dossier-meta {
+    width: 100%;
+    min-width: 0;
+    position: relative;
+}
+
+.train-dossier-platform,
+.train-dossier-odometer {
     flex: 1 1 auto;
     width: 100%;
     min-width: 0;
     max-width: 100%;
     position: relative;
-    z-index: 3; /* por encima del wash-overlay visual si aparece */
 }
 
-.train-dossier-platform ::deep .platform-select-ctl {
+/* Solo el andén necesita elevarse sobre el wash-overlay (dropdown) */
+.train-dossier-platform {
+    z-index: 3;
+}
+
+.train-dossier-platform ::deep .platform-select-ctl,
+.train-dossier-odometer ::deep .odometry-input-ctl {
     width: 100%;
     max-width: 400px;
     min-width: 0;
 }
 
 /* input-group en una sola línea: el width:100% del input empujaba el botón × abajo */
-.train-dossier-platform ::deep .input-group {
+.train-dossier-platform ::deep .input-group,
+.train-dossier-odometer ::deep .input-group {
     width: 100%;
     flex-wrap: nowrap;
     align-items: stretch;
 }
 
-.train-dossier-platform ::deep .form-control {
+/* width:1% solo en inputs del grupo; no en el botón de display del odómetro */
+.train-dossier-platform ::deep .input-group > .form-control,
+.train-dossier-odometer ::deep .input-group > .form-control {
     min-width: 0;
     flex: 1 1 auto;
     width: 1%; /* truco Bootstrap input-group: cede sitio al botón */
 }
 
-.train-dossier-platform ::deep .input-group > .btn {
+.train-dossier-odometer ::deep .odometry-display {
+    width: 100%;
+    max-width: 100%;
+}
+
+.train-dossier-platform ::deep .input-group > .btn,
+.train-dossier-odometer ::deep .input-group > .btn {
     flex: 0 0 auto;
     align-self: stretch;
 }
 
 /* md+: al lado del nombre; puede encoger (flex-shrink) sin bajar del mínimo usable */
 @media (min-width: 768px) {
-    .train-dossier-platform {
-        width: min(400px, 40%);
-        min-width: min(14rem, 100%);
-        flex: 0 1 400px;
+    .train-dossier-meta {
+        width: auto;
+        max-width: min(720px, 55%);
+        flex: 0 1 auto;
+    }
+
+    .train-dossier-platform,
+    .train-dossier-odometer {
+        width: min(280px, 100%);
+        min-width: min(12rem, 100%);
+        flex: 1 1 200px;
     }
 }
 
 /* Entre sm y md el header es columna: el selector usa todo el ancho disponible */
 @media (max-width: 767.98px) {
-    .train-dossier-platform {
+    .train-dossier-meta,
+    .train-dossier-platform,
+    .train-dossier-odometer {
         width: 100%;
         min-width: 0;
         flex: 1 1 auto;
     }
 
-    .train-dossier-platform ::deep .platform-select-ctl {
+    .train-dossier-platform ::deep .platform-select-ctl,
+    .train-dossier-odometer ::deep .odometry-input-ctl {
         max-width: none; /* aprovechar el ancho del alert en ventanas estrechas */
     }
 }
@@ -110,7 +143,9 @@
         width: 100%;
     }
 
-    .train-dossier-platform {
+    .train-dossier-meta,
+    .train-dossier-platform,
+    .train-dossier-odometer {
         min-width: 0;
         width: 100%;
     }

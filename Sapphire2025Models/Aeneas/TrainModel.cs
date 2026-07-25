@@ -40,6 +40,10 @@ namespace Sapphire2025Models.Aeneas
 		//Último lavado del tren
 		public DateTime? LastWash{ get; set; }
 
+		//Último valor de odómetro y cuándo se registró
+		public long LastOdometer { get; set; }
+		public DateTime? LastOdometerSet { get; set; }
+
 		//Tren bloqueado por una operación atómica
 		public bool Locked{ get; set; }
 

@@ -109,7 +109,7 @@ namespace Sapphire2026Data.Migrations
                     b.Property<Guid?>("ClosureUser")
                         .HasColumnType("char(36)");
 
-                    b.Property<bool>("IsSympthom")
+                    b.Property<bool>("IsSymptom")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsValid")
@@ -269,6 +269,12 @@ namespace Sapphire2026Data.Migrations
 
                     b.Property<int>("GmaoId")
                         .HasColumnType("int");
+
+                    b.Property<long>("LastOdometer")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("LastOdometerSet")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<DateTime?>("LastPlatformAssign")
                         .HasColumnType("datetime(6)");
@@ -653,21 +659,24 @@ namespace Sapphire2026Data.Migrations
                     b.ToTable("GMAOWorkOrders");
                 });
 
-            modelBuilder.Entity("Sapphire2026Data.Models.OdometerValue", b =>
+            modelBuilder.Entity("Sapphire2026Data.Models.Odometry", b =>
                 {
-                    b.Property<long>("InternalId")
+                    b.Property<Guid>("Guid")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
+                        .HasColumnType("char(36)");
 
                     b.Property<long>("Odometer")
                         .HasColumnType("bigint");
 
-                    b.Property<DateTime>("TimeStamp")
+                    b.Property<DateTime>("TimeSpan")
                         .HasColumnType("datetime(6)");
 
-                    b.HasKey("InternalId");
+                    b.Property<Guid>("TrainId")
+                        .HasColumnType("char(36)");
 
-                    b.ToTable("Odometer");
+                    b.HasKey("Guid");
+
+                    b.ToTable("Odometry");
                 });
 
             modelBuilder.Entity("Sapphire2026Data.Models.Platform", b =>

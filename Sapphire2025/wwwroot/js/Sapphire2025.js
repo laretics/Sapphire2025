@@ -1,8 +1,16 @@
 ﻿
 
 //Función para mostrar un diálogo modal.
+// Se mueve a document.body para evitar stacking contexts de padres
+// (alert, z-index, backdrop-filter) que dejan el modal bajo el backdrop
+// y con los botones inaccesibles.
 window.showModal = (modalId) => {
-    var modal = new bootstrap.Modal(document.getElementById(modalId));
+    var el = document.getElementById(modalId);
+    if (!el) return;
+    if (el.parentElement !== document.body) {
+        document.body.appendChild(el);
+    }
+    var modal = bootstrap.Modal.getOrCreateInstance(el);
     modal.show();
 };
 

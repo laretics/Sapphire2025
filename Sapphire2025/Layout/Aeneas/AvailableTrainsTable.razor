@@ -17,6 +17,9 @@
 				<th class="bg-secondary text-white" style="width:90px;" @onclick="() => sortFields(5)">
 					<GenIcon Name="TrainTrack" Color="white" />
 				</th>
+				<th class="bg-secondary text-white" style="width:100px;" title="Odómetro" @onclick="() => sortFields(7)">
+					<GenIcon Name="Odometer" Color="white" />
+				</th>
 				<th class="bg-secondary text-white" style="width:90px;" @onclick="() => sortFields(0)">
 					<GenIcon Name="EventDateTime" Color="white" />
 				</th>
@@ -47,6 +50,9 @@
 					</td>
 					<td class="truncate">
 						@platformString(train)
+					</td>
+					<td class="truncate text-end" title="@odometerTitle(train)">
+						@odometerString(train)
 					</td>
 					<td class="truncate">
 						@Sapphire2025Models.Utils.autoDate(train.lastUpdateTime)

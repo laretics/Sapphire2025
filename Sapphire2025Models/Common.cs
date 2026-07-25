@@ -239,6 +239,7 @@ namespace Sapphire2025Models
 			trainStatusChanged = 20,    //Cambio de estado de un tren
 			trainPlatformChanged = 21,  //Cambio de vía/andén de un tren
 			trainWashUpdated = 22,      //Actualización de fecha de lavado
+			trainOdometerUpdated = 23,  //Actualización de odómetro de un tren
 
 			// Notas e incidencias
 			noteAdded = 30,             //Se abrió/añadió una nota
@@ -285,6 +286,7 @@ namespace Sapphire2025Models
 				sessionEventType.trainStatusChanged => "Cambio de estado de tren",
 				sessionEventType.trainPlatformChanged => "Cambio de vía de tren",
 				sessionEventType.trainWashUpdated => "Actualización de lavado",
+				sessionEventType.trainOdometerUpdated => "Actualización de odómetro",
 				sessionEventType.noteAdded => "Nota añadida",
 				sessionEventType.incidentOpened => "Apertura de incidencia",
 				sessionEventType.workOrderRequested => "Solicitud de orden de trabajo",
