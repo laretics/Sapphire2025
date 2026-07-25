@@ -30,6 +30,19 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+# 1b. Config de producción (si existe)
+$configSource = "C:\Users\ErPe\DeployConfigs\appsettings.Production.Telegram.json"
+if (Test-Path $configSource) {
+    Write-Host "Copiando configuracion de produccion..." -ForegroundColor Yellow
+    Copy-Item $configSource -Destination "$publishPath\appsettings.Production.json" -Force
+    # Asegura ApiBaseAddress aunque falte en el fichero de DeployConfigs
+    $prodJson = Get-Content "$publishPath\appsettings.Production.json" -Raw | ConvertFrom-Json
+    if (-not $prodJson.PSObject.Properties['ApiBaseAddress']) {
+        $prodJson | Add-Member -NotePropertyName ApiBaseAddress -NotePropertyValue "http://localhost:5000/api/"
+        $prodJson | ConvertTo-Json -Depth 10 | Set-Content "$publishPath\appsettings.Production.json" -Encoding UTF8
+    }
+}
+
 # 2. Crear paquete con tar (sin backslashes)
 Write-Host "Creando paquete de despliegue..." -ForegroundColor Yellow
 Push-Location $publishPath
