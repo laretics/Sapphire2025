@@ -1,0 +1,393 @@
+﻿@using System.Globalization
+@using System.Text
+@using Sapphire2025Models
+@inject AeneasClient mvarAeneasClient
+@inject IntStorageService mvarInternalStorage
+
+<div class="print-area">
+	<div class="print-title d-flex align-items-center" style="gap: 1.0rem; max-width: 100%; flex-wrap: nowrap;">
+		<div class="print-logo" style="margin-bottom:0; flex: 0 0 auto;">
+			<img src="img/sfmImg.png" alt="Logotipo SFM" style="max-width: 90px; height: auto;" />
+		</div>
+		<h2 class="mb-0 flex-grow-1" style="font-size: 1.3em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+			Vías de estacionamiento - @CurrentDate.ToString("dd/MM/yyyy HH:mm")
+		</h2>
+		<h1 class="mb-0 flex-grow-1" style="font-size: 2.0em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+			@GetDiaSemana(CurrentDate)
+		</h1>
+	</div>
+
+	@if (ShowToolbar)
+	{
+		<div class="d-flex justify-content-end gap-2 mb-3 no-print">
+			<button type="button" class="btn btn-outline-secondary" disabled="@Loading" @onclick="ReloadAsync">
+				<i class="bi bi-arrow-clockwise"></i> Actualizar
+			</button>
+			<button type="button" class="btn btn-outline-primary" disabled="@Loading" @onclick="PrintAsync">
+				<i class="bi bi-printer"></i> Imprimir
+			</button>
+		</div>
+	}
+
+	@if (Loading)
+	{
+		<div class="text-center my-5 no-print">
+			<div class="spinner-border text-primary" role="status"></div>
+			<div>Cargando ocupación de vías...</div>
+		</div>
+	}
+	else if (Groups.Count == 0)
+	{
+		<div class="alert alert-warning mt-3">
+			No hay datos de plataformas o trenes para generar el informe.
+		</div>
+	}
+	else
+	{
+		@foreach (StationGroup group in Groups)
+		{
+			<div class="card mb-3 shadow-sm station-group">
+				<div class="card-header bg-primary text-white py-2">
+					<strong>@group.StationName</strong>
+					@if (group.ShowAllPlatforms)
+					{
+						<span class="badge bg-light text-primary ms-2">Todas las vías</span>
+					}
+					else
+					{
+						<span class="badge bg-light text-primary ms-2">Solo vías ocupadas</span>
+					}
+				</div>
+				<div class="card-body p-0">
+					<div class="table-responsive">
+						<table class="table table-bordered table-sm align-middle mb-0">
+							<thead class="table-light">
+								<tr>
+									<th style="width: 4rem;">Vía</th>
+									<th style="width: 6rem;">Tren</th>
+									<th style="width: 10rem;">Estado</th>
+									<th style="width: 7rem;">Actualización</th>
+									<th>Nota</th>
+								</tr>
+							</thead>
+							<tbody>
+								@foreach (PlatformRow row in group.Rows)
+								{
+									@if (row.Trains.Count == 0)
+									{
+										<tr class="platform-empty">
+											<td class="fw-semibold">@row.PlatformName</td>
+											<td class="text-muted">—</td>
+											<td class="text-muted small">Libre</td>
+											<td class="text-muted">—</td>
+											<td class="text-muted">—</td>
+										</tr>
+									}
+									else
+									{
+										@for (int i = 0; i < row.Trains.Count; i++)
+										{
+											TrainModel train = row.Trains[i];
+											<tr>
+												@if (i == 0)
+												{
+													<td class="fw-semibold" rowspan="@row.Trains.Count">@row.PlatformName</td>
+												}
+												<td style="background-color: @TrainColor(train);">@train.name</td>
+												<td>@Common.TrainStatusToString(train.lastStatus)</td>
+												<td class="text-nowrap small">@Utils.autoDate(train.lastUpdateTime)</td>
+												<td class="small">@(string.IsNullOrWhiteSpace(train.lastNote) ? "—" : train.lastNote)</td>
+											</tr>
+										}
+									}
+								}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		}
+
+		@if (UnassignedCount > 0)
+		{
+			<div class="alert alert-secondary small mt-2 no-print">
+				@UnassignedCount tren(es) sin vía de estacionamiento asignada no se incluyen en este informe.
+			</div>
+		}
+	}
+</div>
+
+@code {
+	private static readonly string[] PrimaryStationOrder =
+	{
+		"Palma",
+		"Son Rullán",
+		"Inca",
+		"Manacor"
+	};
+
+	/// <summary>
+	/// Estaciones en las que el informe lista todas las vías aunque estén libres.
+	/// </summary>
+	private static readonly HashSet<string> StationsShowingAllPlatforms = new(StringComparer.OrdinalIgnoreCase)
+	{
+		"Palma",
+		"Son Rullán",
+		"Son Rullan"
+	};
+
+	[Parameter]
+	public bool ShowToolbar { get; set; } = true;
+
+	[Parameter]
+	public EventCallback OnPrint { get; set; }
+
+	[Parameter]
+	public EventCallback OnLoaded { get; set; }
+
+	public bool Loading { get; private set; } = true;
+	public DateTime CurrentDate { get; private set; } = DateTime.Now;
+	public int UnassignedCount { get; private set; }
+	public List<StationGroup> Groups { get; private set; } = new();
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadReportAsync();
+		if (OnLoaded.HasDelegate)
+			await OnLoaded.InvokeAsync();
+	}
+
+	public async Task ReloadAsync()
+	{
+		await LoadReportAsync();
+	}
+
+	private async Task PrintAsync()
+	{
+		if (OnPrint.HasDelegate)
+			await OnPrint.InvokeAsync();
+	}
+
+	private async Task LoadReportAsync()
+	{
+		Loading = true;
+		Groups = new List<StationGroup>();
+		UnassignedCount = 0;
+		CurrentDate = DateTime.Now;
+		StateHasChanged();
+
+		try
+		{
+			List<TrainModel> trains = (await mvarAeneasClient.trainsList()).ToList();
+			List<PlatformModel> platforms = (await LoadPlatformsAsync()).ToList();
+
+			Dictionary<int, List<TrainModel>> trainsByPlatform = trains
+				.Where(t => t.PlatformId > 0)
+				.GroupBy(t => t.PlatformId)
+				.ToDictionary(
+					g => g.Key,
+					g => g.OrderBy(t => t.name, StringComparer.OrdinalIgnoreCase).ToList());
+
+			UnassignedCount = trains.Count(t => t.PlatformId < 1);
+
+			Dictionary<string, List<PlatformModel>> platformsByStation = platforms
+				.Where(p => p is not null && !string.IsNullOrWhiteSpace(p.StationName))
+				.GroupBy(p => NormalizeStationKey(p.StationName))
+				.ToDictionary(
+					g => g.Key,
+					g => g.OrderBy(p => PlatformSortKey(p.PlatformName))
+						.ThenBy(p => p.PlatformName, StringComparer.OrdinalIgnoreCase)
+						.ToList());
+
+			HashSet<string> consumedStationKeys = new(StringComparer.Ordinal);
+			List<StationGroup> built = new();
+
+			// 1) Palma, Son Rullán, Inca, Manacor en ese orden.
+			foreach (string primary in PrimaryStationOrder)
+			{
+				string key = NormalizeStationKey(primary);
+				if (!platformsByStation.TryGetValue(key, out List<PlatformModel>? stationPlatforms))
+					continue;
+
+				bool showAll = StationsShowingAllPlatforms.Contains(primary)
+					|| StationsShowingAllPlatforms.Contains(stationPlatforms[0].StationName);
+
+				StationGroup? group = BuildStationGroup(
+					DisplayStationName(stationPlatforms, primary),
+					stationPlatforms,
+					trainsByPlatform,
+					showAllPlatforms: showAll);
+
+				if (group is not null)
+				{
+					built.Add(group);
+					consumedStationKeys.Add(key);
+				}
+			}
+
+			// 2) Resto de estaciones con al menos un tren, solo vías ocupadas.
+			foreach (KeyValuePair<string, List<PlatformModel>> entry in platformsByStation
+				.Where(kv => !consumedStationKeys.Contains(kv.Key))
+				.OrderBy(kv => DisplayStationName(kv.Value, kv.Key), StringComparer.OrdinalIgnoreCase))
+			{
+				StationGroup? group = BuildStationGroup(
+					DisplayStationName(entry.Value, entry.Key),
+					entry.Value,
+					trainsByPlatform,
+					showAllPlatforms: false);
+
+				if (group is not null)
+					built.Add(group);
+			}
+
+			Groups = built;
+		}
+		finally
+		{
+			Loading = false;
+		}
+	}
+
+	private async Task<IEnumerable<PlatformModel>> LoadPlatformsAsync()
+	{
+		PlatformModel[] cached = await mvarInternalStorage.GetPlatformList();
+		if (cached.Length > 0)
+			return cached.Where(p => p is not null);
+
+		IEnumerable<PlatformModel>? remote = await mvarAeneasClient.platformsList();
+		if (remote is null)
+			return Array.Empty<PlatformModel>();
+
+		List<PlatformModel> list = remote.Where(p => p is not null).ToList();
+		if (list.Count == 0)
+			return list;
+
+		int maxId = list.Max(p => p.Id);
+		if (maxId < 1)
+			return list;
+
+		PlatformModel[] indexed = new PlatformModel[maxId];
+		foreach (PlatformModel platform in list)
+		{
+			if (platform.Id >= 1 && platform.Id <= maxId)
+				indexed[platform.Id - 1] = platform;
+		}
+
+		await mvarInternalStorage.SetPlatformList(indexed);
+		return list;
+	}
+
+	/// <summary>
+	/// Construye el bloque de una estación. Devuelve null si no debe aparecer
+	/// (p. ej. Inca/otras sin trenes cuando showAllPlatforms es false).
+	/// </summary>
+	private static StationGroup? BuildStationGroup(
+		string stationName,
+		IReadOnlyList<PlatformModel> stationPlatforms,
+		IReadOnlyDictionary<int, List<TrainModel>> trainsByPlatform,
+		bool showAllPlatforms)
+	{
+		List<PlatformRow> rows = new();
+
+		foreach (PlatformModel platform in stationPlatforms)
+		{
+			trainsByPlatform.TryGetValue(platform.Id, out List<TrainModel>? trainsOnPlatform);
+			trainsOnPlatform ??= new List<TrainModel>();
+
+			if (!showAllPlatforms && trainsOnPlatform.Count == 0)
+				continue;
+
+			rows.Add(new PlatformRow
+			{
+				PlatformName = string.IsNullOrWhiteSpace(platform.PlatformName)
+					? platform.Id.ToString()
+					: platform.PlatformName,
+				Trains = trainsOnPlatform
+			});
+		}
+
+		if (rows.Count == 0)
+			return null;
+
+		return new StationGroup
+		{
+			StationName = stationName,
+			ShowAllPlatforms = showAllPlatforms,
+			Rows = rows
+		};
+	}
+
+	private static string DisplayStationName(IReadOnlyList<PlatformModel> platforms, string fallback)
+	{
+		string? fromData = platforms.FirstOrDefault(p => !string.IsNullOrWhiteSpace(p.StationName))?.StationName;
+		return string.IsNullOrWhiteSpace(fromData) ? fallback : fromData.Trim();
+	}
+
+	/// <summary>
+	/// Clave de comparación de estación: minúsculas y sin acentos.
+	/// </summary>
+	private static string NormalizeStationKey(string stationName)
+	{
+		if (string.IsNullOrWhiteSpace(stationName))
+			return string.Empty;
+
+		string formD = stationName.Trim().Normalize(NormalizationForm.FormD);
+		StringBuilder sb = new(formD.Length);
+		foreach (char c in formD)
+		{
+			if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+				sb.Append(char.ToLowerInvariant(c));
+		}
+
+		return sb.ToString().Normalize(NormalizationForm.FormC);
+	}
+
+	/// <summary>
+	/// Orden numérico de la vía (1,2,3… / 3,5,7…) extrayendo dígitos del nombre.
+	/// </summary>
+	private static int PlatformSortKey(string? platformName)
+	{
+		if (string.IsNullOrWhiteSpace(platformName))
+			return int.MaxValue;
+
+		StringBuilder digits = new();
+		foreach (char c in platformName)
+		{
+			if (char.IsDigit(c))
+				digits.Append(c);
+		}
+
+		if (digits.Length > 0 && int.TryParse(digits.ToString(), out int value))
+			return value;
+
+		return int.MaxValue;
+	}
+
+	private static string TrainColor(TrainModel train) =>
+		Utils.TrainStyleFill(train.name);
+
+	private static string GetDiaSemana(DateTime fecha) => fecha.DayOfWeek switch
+	{
+		DayOfWeek.Monday => "LUNES",
+		DayOfWeek.Tuesday => "MARTES",
+		DayOfWeek.Wednesday => "MIÉRCOLES",
+		DayOfWeek.Thursday => "JUEVES",
+		DayOfWeek.Friday => "VIERNES",
+		DayOfWeek.Saturday => "SÁBADO",
+		DayOfWeek.Sunday => "DOMINGO",
+		_ => ""
+	};
+
+	public sealed class StationGroup
+	{
+		public string StationName { get; set; } = string.Empty;
+		public bool ShowAllPlatforms { get; set; }
+		public List<PlatformRow> Rows { get; set; } = new();
+	}
+
+	public sealed class PlatformRow
+	{
+		public string PlatformName { get; set; } = string.Empty;
+		public List<TrainModel> Trains { get; set; } = new();
+	}
+}

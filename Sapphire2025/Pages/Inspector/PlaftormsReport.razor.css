@@ -1,0 +1,113 @@
+﻿/* Estilos de pantalla e impresión del informe de vías (compartidos con la vista print). */
+
+.station-group .card-header {
+	font-size: 1.05rem;
+}
+
+.platform-empty td {
+	color: #6c757d;
+}
+
+@media print {
+	body * {
+		visibility: hidden !important;
+	}
+
+	.print-area,
+	.print-area * {
+		font-size: 8.5pt !important;
+		visibility: visible !important;
+	}
+
+	.print-area th,
+	.print-area td {
+		padding-top: 1px !important;
+		padding-bottom: 1px !important;
+		padding-left: 2px !important;
+		padding-right: 2px !important;
+		line-height: 1.1 !important;
+		vertical-align: middle !important;
+	}
+
+	@page {
+		size: A4 portrait;
+		margin: 8mm;
+	}
+
+	.print-logo {
+		display: block !important;
+		text-align: center;
+		margin-bottom: 12px;
+	}
+
+	.print-logo img {
+		max-width: 80px !important;
+		height: auto !important;
+		margin-right: 1rem !important;
+		margin-left: 0 !important;
+		margin-top: 0 !important;
+		margin-bottom: 0 !important;
+		padding: 0 !important;
+	}
+
+	.print-area {
+		max-width: 200mm !important;
+		width: 100% !important;
+		margin-left: auto !important;
+		margin-right: auto !important;
+		padding: 0 !important;
+		box-sizing: border-box !important;
+	}
+
+	.print-title {
+		display: flex !important;
+		align-items: center !important;
+		gap: 1.0rem !important;
+		max-width: 200mm !important;
+		margin: 0 0 8px 0 !important;
+		flex-wrap: nowrap !important;
+	}
+
+	.print-title h2 {
+		font-size: 1.1em !important;
+		white-space: nowrap !important;
+		overflow: hidden !important;
+		text-overflow: ellipsis !important;
+		margin: 0 !important;
+		padding: 0 !important;
+	}
+
+	.print-title h1 {
+		font-size: 1.4em !important;
+		margin: 0 !important;
+	}
+
+	.no-print {
+		display: none !important;
+		visibility: hidden !important;
+	}
+
+	.station-group {
+		break-inside: avoid;
+		page-break-inside: avoid;
+		box-shadow: none !important;
+		margin-bottom: 8px !important;
+	}
+
+	.station-group .card-header {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		padding: 4px 8px !important;
+	}
+
+	.station-group .badge {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+	}
+
+	.table td,
+	.table th {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+	}
+}

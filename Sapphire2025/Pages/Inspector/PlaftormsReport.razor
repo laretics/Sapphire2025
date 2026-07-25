@@ -1,0 +1,27 @@
+﻿@page "/inspector/platformreport"
+@using Sapphire2025.Layout.Inspector
+@inject IJSRuntime mvarJSRuntime
+@inject NavigationManager mvarNavigator
+
+<PageTitle>Vías de estacionamiento</PageTitle>
+
+<div class="container-fluid py-3">
+	<div class="card shadow mb-3 no-print">
+		<div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+			<div>
+				<h4 class="mb-0">Estado de vías</h4>
+				<small class="opacity-75">Ocupación de material en estaciones de la red</small>
+			</div>
+		</div>
+	</div>
+
+	<PlatformsReportBody ShowToolbar="true" OnPrint="PrintPageAsync" />
+</div>
+
+@code {
+	private async Task PrintPageAsync()
+	{
+		string printUrl = mvarNavigator.ToAbsoluteUri("inspector/platformreport/print").AbsoluteUri;
+		await mvarJSRuntime.InvokeVoidAsync("open", printUrl, "_blank");
+	}
+}
