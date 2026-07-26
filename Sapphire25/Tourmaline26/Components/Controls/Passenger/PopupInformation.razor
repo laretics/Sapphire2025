@@ -1,0 +1,134 @@
+@using Tourmaline26.Components.Images
+@using Tourmaline26.Logic
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@* Ventana emergente centrada (Bootstrap modal) alimentada por un único PassengerInformation. *@
+@if (Info is not null && Info.IsVisible)
+{
+    @* @key: remonta el nodo al cambiar el mensaje → se repite la animación de atención. *@
+    <div @key="AnimationKey"
+         class="modal fade show d-block popup-information"
+         tabindex="-1"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="@_titleId"
+         style="@RootStyle">
+        <div class="modal-dialog modal-dialog-centered popup-information-dialog" style="@DialogStyle">
+            <div class="modal-content popup-information-content bg-dark bg-opacity-75 text-white border border-light border-opacity-25 shadow-lg">
+                <div class="modal-header border-0 border-bottom border-light border-opacity-25 py-2 px-3">
+                    <div class="d-flex align-items-center gap-2 w-100 min-w-0">
+                        @if (ShowIcon)
+                        {
+                            <span class="popup-information-icon flex-shrink-0 d-inline-flex">
+                                <ColorIcon Name="@IconName"
+                                           Size="@IconSize"
+                                           Color="currentColor"
+                                           Glow="false" />
+                            </span>
+                        }
+                        <h5 id="@_titleId"
+                            class="modal-title fw-semibold mb-0 text-truncate flex-grow-1">
+                            @Header
+                        </h5>
+                    </div>
+                </div>
+                <div class="modal-body popup-information-body d-flex align-items-center justify-content-center p-3 p-md-4">
+                    <div @ref="_textHost" class="popup-information-text-host w-100 h-100">
+                        <p @ref="_textElement"
+                           class="popup-information-text mb-0 text-center fw-medium">
+                            @BodyText
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>Mensaje a mostrar. Null o <see cref="PassengerInformation.IsVisible"/> = false → no se pinta.</summary>
+    [Parameter] public PassengerInformation? Info { get; set; }
+
+    private ElementReference _textHost;
+    private ElementReference _textElement;
+    private readonly string _titleId = $"popup-info-title-{Guid.NewGuid():N}";
+    private bool _jsReady;
+    private string _lastFitKey = string.Empty;
+
+    private byte Importance => Info?.Importance ?? 0;
+    private string Header => Info?.CurrentTitle ?? string.Empty;
+    private string BodyText => Info?.CurrentText ?? string.Empty;
+    private string IconName => Info?.IconKey ?? string.Empty;
+    private bool ShowIcon => !string.IsNullOrWhiteSpace(Info?.IconKey);
+
+    /// <summary>Clave de remount para reiniciar CSS animations al cambiar el anuncio.</summary>
+    private string AnimationKey =>
+        $"{Importance}|{Info?.LanguageIndex}|{Header}|{BodyText}|{IconName}|{Info?.Comment}";
+
+    private double Scale => Importance / 255.0;
+
+    private string DialogStyle =>
+        $"width: {Scale * 100:0.###}%; height: {Scale * 100:0.###}%; max-width: none; margin: 0 auto;";
+
+    private string RootStyle =>
+        // z-index alto dentro de panel-body (no fixed al viewport).
+        "z-index: 20; --bs-modal-bg: transparent; background-color: rgba(0, 0, 0, 0.35);";
+
+    private int IconSize =>
+        Math.Clamp((int)Math.Round(22 + Scale * 42), 22, 72);
+
+    private int MaxFontPx =>
+        Math.Clamp((int)Math.Round(48 + Scale * 180), 48, 240);
+
+    private int MinFontPx => 12;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Info is null || !Info.IsVisible)
+            return;
+
+        // Clave de contenido/tamaño: reajustar solo cuando cambia lo relevante.
+        var fitKey =
+            $"{Importance}|{Info.LanguageIndex}|{Header}|{BodyText}|{IconName}";
+        if (fitKey == _lastFitKey && _jsReady)
+            return;
+
+        _lastFitKey = fitKey;
+
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "tourmalinePopup.observe",
+                _textElement,
+                MinFontPx,
+                MaxFontPx);
+            _jsReady = true;
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuito desconectado: no reintentar.
+        }
+        catch (InvalidOperationException)
+        {
+            // Interop aún no disponible (prerender).
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!_jsReady)
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("tourmalinePopup.unobserve", _textElement);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+    }
+}

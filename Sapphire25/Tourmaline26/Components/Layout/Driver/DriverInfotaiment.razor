@@ -5,6 +5,7 @@
 @using Tourmaline26.Components.Controls.Generical
 @using Tourmaline26.Components.Controls.Aeneas
 @using Tourmaline26.Components.Controls.Generical.SideMenu
+@using Tourmaline26.Components.Controls.Passenger
 @using Tourmaline26.Components.Controls.TimeNet
 @inject ILogger<DriverInfotaiment> Logger
 @inject Sapphire2025.Storage.IntStorageService InternalStorage
@@ -49,6 +50,10 @@
                 @if (CameraViewMode)
                 {
                     <CamerasView></CamerasView>
+                }
+                else if (PassengerAnnouncementViewMode)
+                {
+                    <FloatPassengerInformation />
                 }
             </div>
             @if (LoginMode)
@@ -96,7 +101,7 @@
         buttonData.Add("Main Menu", new TeslaButton("Train", null, true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged())));
         buttonData.Add("Night Mode",new TeslaButton( "BlackSun", "WhiteSun", true, EventCallback.Factory.Create(this, () => NightModeChanged())));
         buttonData.Add("Cameras", new TeslaButton("CCTV", null, true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged())));
-        buttonData.Add("Microphone", new TeslaButton("Microphone", null, true, null));
+        buttonData.Add("Microphone", new TeslaButton("Microphone", null, true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged())));
         // Icon[0]=no seleccionado (3D apagado), Icon[1]=seleccionado (3D encendido). Debe coincidir con View3DEnabled.
         // Arranca activado: stream 3D visible e icono 3DOn.
         var view3D = new TeslaButton("3DOff", "3DOn", true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged()));
@@ -132,6 +137,15 @@
             auxButtonSelect("Main Menu",false);
             auxButtonSelect("DamageClipboard", false);
             auxButtonSelect("TimeNet", false);
+            auxButtonSelect("Microphone", false);
+        }
+        // Anuncios a viajeros: panel flotante exclusivo (como CCTV).
+        if (auxButtonSelected("Microphone"))
+        {
+            auxButtonSelect("Main Menu", false);
+            auxButtonSelect("DamageClipboard", false);
+            auxButtonSelect("TimeNet", false);
+            auxButtonSelect("Cameras", false);
         }
         //No se puede abrir la sección de partes de avería si está seleccionado el menú principal.
         if(auxButtonSelected("Main Menu"))
@@ -141,7 +155,30 @@
         }
         if (auxButtonSelected("DamageClipboard"))
             auxButtonSelect("TimeNet", false);
+
+        SyncMicrophoneAnnouncementIndicator();
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// Micrófono en amarillo mientras hay un anuncio visible en los monitores de viajero.
+    /// </summary>
+    private void SyncMicrophoneAnnouncementIndicator()
+    {
+        if (buttonData is null
+            || !buttonData.TryGetValue("Microphone", out var mic)
+            || mic is null)
+            return;
+
+        var session = mvarTourmaline.SessionConfig;
+        bool announcing =
+            session.PassengerAnnouncementEnabled
+            && session.PassengerAnnouncement is not null
+            && session.PassengerAnnouncement.IsVisible;
+
+        // Amarillo Bootstrap warning (#ffc107) — visible en día y noche.
+        mic.ForceColor = announcing ? "#ffc107" : null;
+        mic.Highlight = announcing;
     }
     private bool AeneasPanelVisible
     {        
@@ -158,6 +195,10 @@
     private bool CameraViewMode
     {
         get => auxButtonSelected("Cameras");
+    }
+    private bool PassengerAnnouncementViewMode
+    {
+        get => auxButtonSelected("Microphone");
     }
     private bool View3DEnabled
     {
@@ -214,6 +255,7 @@
             if (null != auxBoton && auxBoton.DisableOnMotion)
                 auxBoton.Enabled = zeroSpeed;
         }
+        SyncMicrophoneAnnouncementIndicator();
         InvokeAsync(StateHasChanged); 
     }
 

@@ -1,0 +1,36 @@
+.fpi-root {
+	min-height: 0;
+}
+
+.fpi-list {
+	min-height: 0;
+	border-radius: 0.5rem;
+}
+
+.fpi-item {
+	border-left: 0;
+	border-right: 0;
+}
+
+.fpi-item:first-child {
+	border-top-left-radius: 0.5rem;
+	border-top-right-radius: 0.5rem;
+}
+
+.fpi-item:last-child {
+	border-bottom-left-radius: 0.5rem;
+	border-bottom-right-radius: 0.5rem;
+}
+
+.fpi-icon {
+	width: 2rem;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0.9;
+}
+
+.fpi-preview {
+	flex: 0 0 auto;
+	background: rgba(0, 0, 0, 0.04);
+}
