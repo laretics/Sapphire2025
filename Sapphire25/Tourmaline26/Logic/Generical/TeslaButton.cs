@@ -52,6 +52,17 @@ namespace Tourmaline26.Logic.Generical
         public bool Pressed { get; set; } //Pulsación del botón
         public bool Selected { get; set; } //Toggle activado
 
+        /// <summary>
+        /// Color forzado del icono (p. ej. amarillo de aviso al maquinista).
+        /// Null = comportamiento normal según Selected/Enabled.
+        /// </summary>
+        public string? ForceColor { get; set; }
+
+        /// <summary>
+        /// Resalte visual adicional (halo) cuando el botón avisa de un estado activo.
+        /// </summary>
+        public bool Highlight { get; set; }
+
         public bool Glow
         {
             get => Enabled && Selected && (mcolIcon[0]==mcolIcon[1]);
@@ -60,12 +71,16 @@ namespace Tourmaline26.Logic.Generical
         {
             get
             {
-                if (Pressed|| (Selected && (mcolIcon[0] == mcolIcon[1])))
+                if (Pressed)
                     return "var(--toolbar-button-foreground-selected)";
-                if(!Enabled)
+                if (!Enabled)
 					return "var(--toolbar-button-foreground-disabled)";
-				
-                    return "var(--toolbar-button-foreground)";
+                // Aviso prioritario (p. ej. anuncio a viajeros en curso).
+                if (!string.IsNullOrEmpty(ForceColor))
+                    return ForceColor;
+                if (Selected && (mcolIcon[0] == mcolIcon[1]))
+                    return "var(--toolbar-button-foreground-selected)";
+                return "var(--toolbar-button-foreground)";
 			}
         }
         public string Class
@@ -73,15 +88,17 @@ namespace Tourmaline26.Logic.Generical
             get
             {
                 if (mcolIcon[0] == mcolIcon[1])
-                    return string.Format("{0}{1}{2}"
+                    return string.Format("{0}{1}{2}{3}"
                         , Pressed ? "pressed " : ""
                         , Enabled ? "" : "disabled "
                         , Selected ? "selected " : ""
+                        , Highlight ? "highlight " : ""
                         );
                 else
-                    return string.Format("{0}{1}"
+                    return string.Format("{0}{1}{2}"
                       , Pressed ? "pressed " : ""
                       , Enabled ? "" : "disabled "
+                      , Highlight ? "highlight " : ""
                       );
 			}
         }

@@ -66,6 +66,18 @@ namespace Tourmaline26.Logic
 
 		public Enums.InformationLevel InformationLevel { get; set; } = Enums.InformationLevel.Route; //Nivel de información actual.
         public Enums.PassengerInformationMode InformationMode { get; set; } = Enums.PassengerInformationMode.Default; //Contenido de la info.
+
+        /// <summary>
+        /// Si es true, el anuncio emergente (<see cref="PassengerAnnouncement"/>) se representa en los TFT.
+        /// </summary>
+        public bool PassengerAnnouncementEnabled { get; set; } = false;
+
+        /// <summary>
+        /// Mensaje de anuncio seleccionado para difundir a los viajeros (popup).
+        /// Null = ningún mensaje elegido aún.
+        /// </summary>
+        public PassengerInformation? PassengerAnnouncement { get; set; }
+
         public SessionModel? Session { get; set; } = null; //Información sobre el usuario actual
         public Dictionary<Guid, UserModelBase>? ColUsers{ get; set; } = null; //Colección de usuarios del tren, con su Guid de Zafiro como clave.
         public TimeNetEnvironment? TNEnvironment { get; set; }= null; //Todo lo que necesita el programa para mostrar una circulación

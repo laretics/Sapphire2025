@@ -39,3 +39,27 @@
     animation: button-press 0.18s cubic-bezier(.4,0,.2,1);
     color: var(--toolbar-button-foreground-selected);
 }
+
+/* Aviso al maquinista: icono ya va en ForceColor; el halo refuerza la atención. */
+.toolbar-btn.highlight {
+    filter: drop-shadow(0 0 8px rgba(255, 193, 7, 0.9));
+}
+
+@keyframes toolbar-highlight-pulse {
+    0%, 100% {
+        filter: drop-shadow(0 0 4px rgba(255, 193, 7, 0.55));
+    }
+    50% {
+        filter: drop-shadow(0 0 12px rgba(255, 193, 7, 1));
+    }
+}
+
+.toolbar-btn.highlight:not(.pressed) {
+    animation: toolbar-highlight-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toolbar-btn.highlight:not(.pressed) {
+        animation: none;
+    }
+}

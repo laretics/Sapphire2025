@@ -1,6 +1,7 @@
 ﻿@using Tourmaline26.Components.Images
 @using Tourmaline26.Components.Layout.Passenger.Modules
 @using Tourmaline26.Components.Controls
+@using Tourmaline26.Components.Controls.Passenger
 @using TimeNet2026.Topo
 @using TimeNet2026.Timed
 @using Tourmaline26.Services.OpenMeteo
@@ -12,6 +13,11 @@
         {
             <div class="panel-body centered-image-panel">
                 <img class="centered-image" src="/img/81pic1.png"/>
+                @* Anuncio solo sobre panel-body (no cubre cabecera; aquí no hay header). *@
+                @if (ActiveAnnouncement is not null)
+                {
+                    <PopupInformation Info="ActiveAnnouncement" />
+                }
             </div>
         }
         else
@@ -141,6 +147,12 @@
                         </div>
                     }
                 }
+
+                @* Anuncio solo sobre panel-body; la cabecera (hora, destino…) sigue visible. *@
+                @if (ActiveAnnouncement is not null)
+                {
+                    <PopupInformation Info="ActiveAnnouncement" />
+                }
             </div>
         }
     }
@@ -148,6 +160,20 @@
 
 @code {
     [CascadingParameter] public DeviceMapped? Device { get; set; }
+
+    /// <summary>
+    /// Anuncio activo desde sesión: toggle + mensaje seleccionado en FloatPassengerInformation.
+    /// </summary>
+    private PassengerInformation? ActiveAnnouncement
+    {
+        get
+        {
+            var session = mvarTourmaline.SessionConfig;
+            if (!session.PassengerAnnouncementEnabled)
+                return null;
+            return session.PassengerAnnouncement;
+        }
+    }
 
     private TimeSpan CurrentDelay
     {

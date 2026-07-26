@@ -1,0 +1,231 @@
+@using Tourmaline26.Components.Controls.Floatings
+@using Tourmaline26.Components.Controls.Generical
+@using Tourmaline26.Components.Images
+@using Tourmaline26.Logic
+@inject TourmalineService mvarTourmaline
+
+<FloatRightContainer>
+    <div class="fpi-root d-flex flex-column h-100 gap-3">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <ColorIcon Name="Microphone" Size="36" Color="currentColor" />
+                <h4 class="mb-0 fw-semibold">Anuncios a viajeros</h4>
+            </div>
+            <Switch Name="passenger-announcement-enabled"
+                    Label="@(AnnouncementEnabled ? "Anuncio activo" : "Anuncio inactivo")"
+                    Value="@AnnouncementEnabled"
+                    ValueChanged="OnToggleChanged" />
+        </div>
+
+        <p class="text-secondary small mb-0">
+            Elija un mensaje predefinido. Con el interruptor activo se mostrará en los monitores de viajero.
+        </p>
+
+        <div class="list-group fpi-list flex-grow-1 overflow-auto">
+            @for (int i = 0; i < mcolPresets.Count; i++)
+            {
+                var index = i;
+                var preset = mcolPresets[index];
+                var selected = mvarSelectedIndex == index;
+                <button type="button"
+                        class="list-group-item list-group-item-action fpi-item @(selected ? "active" : null)"
+                        @onclick="() => OnSelectPreset(index)">
+                    <div class="d-flex align-items-start gap-3">
+                        <span class="fpi-icon flex-shrink-0 mt-1">
+                            @if (!string.IsNullOrWhiteSpace(preset.IconKey))
+                            {
+                                <ColorIcon Name="@preset.IconKey"
+                                           Size="28"
+                                           Color="currentColor" />
+                            }
+                        </span>
+                        <div class="min-w-0 flex-grow-1">
+                            <div class="fw-semibold text-truncate">@preset.Comment</div>
+                            <div class="small opacity-75 text-truncate">@preset.GetTitle(0)</div>
+                            <div class="small opacity-50 text-truncate">@preset.GetText(0)</div>
+                        </div>
+                        @if (selected)
+                        {
+                            <span class="badge text-bg-light text-dark align-self-center">Seleccionado</span>
+                        }
+                    </div>
+                </button>
+            }
+        </div>
+
+        @if (mvarSelectedIndex >= 0 && mvarTourmaline.SessionConfig.PassengerAnnouncement is not null)
+        {
+            <div class="card border-secondary-subtle fpi-preview">
+                <div class="card-body py-2 px-3">
+                    <div class="small text-secondary mb-1">Vista previa (idioma activo)</div>
+                    <div class="fw-semibold">@mvarTourmaline.SessionConfig.PassengerAnnouncement.CurrentTitle</div>
+                    <div class="small">@mvarTourmaline.SessionConfig.PassengerAnnouncement.CurrentText</div>
+                </div>
+            </div>
+        }
+    </div>
+</FloatRightContainer>
+
+@code {
+    private readonly List<PassengerInformation> mcolPresets = BuildPresets();
+    private int mvarSelectedIndex = -1;
+
+    private bool AnnouncementEnabled =>
+        mvarTourmaline.SessionConfig.PassengerAnnouncementEnabled;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        SyncSelectionFromSession();
+    }
+
+    private void SyncSelectionFromSession()
+    {
+        var current = mvarTourmaline.SessionConfig.PassengerAnnouncement;
+        if (current is null)
+        {
+            mvarSelectedIndex = -1;
+            return;
+        }
+
+        mvarSelectedIndex = mcolPresets.FindIndex(p =>
+            p.Comment == current.Comment
+            && p.TitleText == current.TitleText
+            && p.MessageText == current.MessageText);
+    }
+
+    private async Task OnToggleChanged(bool value)
+    {
+        mvarTourmaline.SessionConfig.PassengerAnnouncementEnabled = value;
+
+        // Si se activa sin mensaje, toma el primero por defecto.
+        if (value && mvarTourmaline.SessionConfig.PassengerAnnouncement is null && mcolPresets.Count > 0)
+            OnSelectPreset(0);
+
+        mvarTourmaline.RaisePassengerUpdate();
+        mvarTourmaline.RaiseHMIUpdate();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSelectPreset(int index)
+    {
+        if (index < 0 || index >= mcolPresets.Count)
+            return;
+
+        mvarSelectedIndex = index;
+        mvarTourmaline.SessionConfig.PassengerAnnouncement = mcolPresets[index].Clone();
+        mvarTourmaline.RaisePassengerUpdate();
+        mvarTourmaline.RaiseHMIUpdate();
+    }
+
+    /// <summary>
+    /// Catálogo de anuncios genéricos de tren (título/cuerpo en ca|es|en).
+    /// </summary>
+    private static List<PassengerInformation> BuildPresets()
+    {
+        return new List<PassengerInformation>
+        {
+            Create(
+                comment: "Tren averiado",
+                icon: "Warning",
+                importance: 220,
+                titles: "Incidència|Incidencia|Incident",
+                texts: "El tren està aturat per una avaria. Disculpin les molèsties.|El tren está detenido por una avería. Disculpen las molestias.|The train is stopped due to a fault. We apologise for the inconvenience."),
+
+            Create(
+                comment: "Parada en todas las estaciones",
+                icon: "Info",
+                importance: 180,
+                titles: "Parada a totes les estacions|Parada en todas las estaciones|Stops at all stations",
+                texts: "Aquest tren farà parada a totes les estacions del trajecte.|Este tren efectuará parada en todas las estaciones del trayecto.|This train will call at all stations along the route."),
+
+            Create(
+                comment: "Tren directo / semi-directo",
+                icon: "Train",
+                importance: 170,
+                titles: "Tren directe|Tren directo|Limited-stop train",
+                texts: "Aquest tren no s'atura a totes les estacions. Consultin el recorregut.|Este tren no se detiene en todas las estaciones. Consulten el itinerario.|This train does not stop at all stations. Please check the route."),
+
+            Create(
+                comment: "Retraso del servicio",
+                icon: "Warning",
+                importance: 190,
+                titles: "Retard|Retraso|Delay",
+                texts: "Circulam amb retard. Disculpin les molèsties.|Circulamos con retraso. Disculpen las molestias.|We are running late. We apologise for the inconvenience."),
+
+            Create(
+                comment: "Cambio de andén",
+                icon: "Info",
+                importance: 200,
+                titles: "Canvi d'andana|Cambio de andén|Platform change",
+                texts: "Presten atenció: s'ha modificat l'andana d'arribada o sortida.|Presten atención: se ha modificado el andén de llegada o salida.|Please note: the arrival or departure platform has changed."),
+
+            Create(
+                comment: "Puertas lado izquierdo",
+                icon: "LeftDoor",
+                importance: 160,
+                titles: "Portes a l'esquerra|Puertas a la izquierda|Doors on the left",
+                texts: "Les portes s'obriran al costat esquerre en el sentit de la marxa.|Las puertas se abrirán al lado izquierdo en el sentido de la marcha.|Doors will open on the left in the direction of travel."),
+
+            Create(
+                comment: "Puertas lado derecho",
+                icon: "RightDoor",
+                importance: 160,
+                titles: "Portes a la dreta|Puertas a la derecha|Doors on the right",
+                texts: "Les portes s'obriran al costat dret en el sentit de la marxa.|Las puertas se abrirán al lado derecho en el sentido de la marcha.|Doors will open on the right in the direction of travel."),
+
+            Create(
+                comment: "Final de trayecto",
+                icon: "Exit",
+                importance: 175,
+                titles: "Fi de trajecte|Final de trayecto|End of the line",
+                texts: "Aquesta és l'última parada. Gràcies per viatjar amb nosaltres.|Esta es la última parada. Gracias por viajar con nosotros.|This is the last stop. Thank you for travelling with us."),
+
+            Create(
+                comment: "Tren sin servicio",
+                icon: "Warning",
+                importance: 210,
+                titles: "Sense servei|Sin servicio|Out of service",
+                texts: "Aquest tren no admet viatgers. No pugin a bord.|Este tren no admite viajeros. No suban a bordo.|This train is not in passenger service. Do not board."),
+
+            Create(
+                comment: "Correspondencias",
+                icon: "OutboundConnect",
+                importance: 150,
+                titles: "Correspondències|Correspondencias|Connections",
+                texts: "Consultin les correspondències a la propera estació.|Consulten las correspondencias en la próxima estación.|Please check connections at the next station."),
+
+            Create(
+                comment: "Megafonía en curso",
+                icon: "Speaker",
+                importance: 140,
+                titles: "Avís per megafonia|Aviso por megafonía|Public announcement",
+                texts: "Presten atenció a l'avís per megafonia.|Presten atención al aviso por megafonía.|Please listen to the public announcement."),
+
+            Create(
+                comment: "Evacuación controlada",
+                icon: "Warning",
+                importance: 255,
+                titles: "Evacuació|Evacuación|Evacuation",
+                texts: "Abandonin el tren de forma ordenada seguint les indicacions del personal.|Abandonen el tren de forma ordenada siguiendo las indicaciones del personal.|Leave the train in an orderly manner following staff instructions."),
+        };
+    }
+
+    private static PassengerInformation Create(
+        string comment,
+        string icon,
+        byte importance,
+        string titles,
+        string texts)
+    {
+        return new PassengerInformation
+        {
+            Comment = comment,
+            IconKey = icon,
+            Importance = importance,
+            LanguageIndex = 0,
+            TitleText = titles,
+            MessageText = texts
+        };
+    }
+}

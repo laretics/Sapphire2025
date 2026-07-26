@@ -195,7 +195,7 @@ else
                     </tbody>
                 </table>
             }
-            @if (null != mvarEnvironment.TopoStorage)
+            @if (null != mvarEnvironment.TopoStorage && null!=mvarTopo)
             {
                 <h3>Libros de Horarios</h3>
                 <table class="table table-striped table-bordered mt-4">
@@ -206,7 +206,7 @@ else
                             <th>Info</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody>                        
                         @foreach (Rauta rauta in mvarTopo.ColRauta.Values)
                         {
                             <tr>
