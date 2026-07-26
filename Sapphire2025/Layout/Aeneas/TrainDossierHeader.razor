@@ -18,10 +18,15 @@
 					<h2 class="mb-0 train-dossier-name text-break">@mvarTrain.name</h2>
 					<p class="mb-0 train-dossier-status-text">@statusDesciption</p>
 				</div>
-				<div class="train-dossier-platform flex-shrink-0">
-					<Sapphire2025.Layout.Aeneas.PlatformSelectCTL Train="mvarTrain"
-																  Platforms="mcolPlatforms"
-																  OnPlatformSelected="OnPlatformChanged" />
+				<div class="train-dossier-meta flex-shrink-0 d-flex flex-column flex-sm-row gap-2 align-items-stretch">
+					<div class="train-dossier-platform">
+						<Sapphire2025.Layout.Aeneas.PlatformSelectCTL Train="mvarTrain"
+																	  Platforms="mcolPlatforms"
+																	  OnPlatformSelected="OnPlatformChanged" />
+					</div>
+					<div class="train-dossier-odometer">
+						<Sapphire2025.Layout.Aeneas.OdometryInput Train="mvarTrain" />
+					</div>
 				</div>
 			</div>
 			@if (HasPendantWash)

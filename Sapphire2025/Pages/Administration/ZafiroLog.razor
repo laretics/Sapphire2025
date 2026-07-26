@@ -1,0 +1,624 @@
+@page "/admin/sapphirelog"
+@using System.Globalization
+@using System.Text
+@using Sapphire2025Models
+@inject AuthenticationClient mvarAuthClient
+@inject IntStorageService mvarLocalStorage
+@inject IJSRuntime mvarJS
+@inject NavigationManager mvarNavigator
+
+<PageTitle>Eventos · Zafiro Log</PageTitle>
+
+<div class="container-fluid py-3">
+	<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+		<div>
+			<h3 class="mb-0">
+				<i class="bi bi-journal-text me-2"></i>Registro de eventos
+			</h3>
+			<p class="text-muted small mb-0">Consulta avanzada de actividad del sistema (SessionEvents)</p>
+		</div>
+		<div class="btn-group" role="group">
+			<button type="button" class="btn btn-outline-success" disabled="@(!HasResults || mvarLoading)" @onclick="ExportCsvAsync" title="Exportar CSV (Excel)">
+				<i class="bi bi-file-earmark-spreadsheet"></i>
+				<span class="d-none d-md-inline"> CSV / Excel</span>
+			</button>
+			<button type="button" class="btn btn-outline-secondary" disabled="@(!HasResults || mvarLoading)" @onclick="PrintReportAsync" title="Imprimir informe">
+				<i class="bi bi-printer"></i>
+				<span class="d-none d-md-inline"> Imprimir</span>
+			</button>
+		</div>
+	</div>
+
+	@* Filtros *@
+	<div class="card shadow-sm mb-3">
+		<div class="card-header bg-light d-flex flex-wrap align-items-center justify-content-between gap-2">
+			<span class="fw-semibold">
+				<i class="bi bi-funnel me-1"></i>Filtros
+			</span>
+			<div class="btn-group btn-group-sm" role="group" aria-label="Rangos rápidos">
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(0)">Hoy</button>
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(7)">7 días</button>
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(30)">30 días</button>
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(90)">90 días</button>
+			</div>
+		</div>
+		<div class="card-body">
+			<div class="row g-3">
+				<div class="col-12 col-md-3">
+					<label class="form-label" for="fromDate">Desde</label>
+					<input id="fromDate" type="date" class="form-control" @bind="mvarFromDate" />
+				</div>
+				<div class="col-12 col-md-3">
+					<label class="form-label" for="toDate">Hasta</label>
+					<input id="toDate" type="date" class="form-control" @bind="mvarToDate" />
+				</div>
+				<div class="col-12 col-md-3">
+					<label class="form-label" for="maxRecords">Máx. registros</label>
+					<select id="maxRecords" class="form-select" @bind="mvarMaxRecords">
+						<option value="100">100</option>
+						<option value="500">500</option>
+						<option value="1000">1.000</option>
+						<option value="2500">2.500</option>
+						<option value="5000">5.000</option>
+					</select>
+				</div>
+				<div class="col-12 col-md-3">
+					<label class="form-label" for="hostFilter">Origen / IP contiene</label>
+					<input id="hostFilter" type="text" class="form-control" placeholder="p.ej. 192.168 o telegram" @bind="mvarHostContains" />
+				</div>
+
+				<div class="col-12 col-lg-6">
+					<label class="form-label">Usuario</label>
+					<div class="input-group mb-1">
+						<span class="input-group-text"><i class="bi bi-search"></i></span>
+						<input type="text" class="form-control" placeholder="Filtrar lista por CF o nombre..." @bind="mvarUserSearchText" @bind:event="oninput" />
+					</div>
+					<div class="border rounded p-2" style="max-height: 12rem; overflow-y: auto;">
+						@if (!FilteredUsers.Any())
+						{
+							<div class="text-muted small">No hay usuarios que coincidan.</div>
+						}
+						else
+						{
+							@foreach (UserModel user in FilteredUsers)
+							{
+								string uid = user.guid.ToString();
+								<div class="form-check">
+									<input class="form-check-input" type="checkbox" id="usr_@uid"
+										   checked="@mcolSelectedUserIds.Contains(uid)"
+										   @onchange="(e) => OnUserToggled(uid, e)" />
+									<label class="form-check-label" for="usr_@uid">
+										<span class="fw-semibold">@user.CF</span>
+										<span class="text-muted">— @user.Name</span>
+									</label>
+								</div>
+							}
+						}
+					</div>
+					<div class="form-text">
+						Sin selección = todos los usuarios.
+						@if (mcolSelectedUserIds.Count > 0)
+						{
+							<span class="badge text-bg-secondary ms-1">@mcolSelectedUserIds.Count seleccionados</span>
+							<button type="button" class="btn btn-link btn-sm p-0 ms-1" @onclick="ClearUserSelection">Limpiar</button>
+						}
+					</div>
+				</div>
+
+				<div class="col-12 col-lg-6">
+					<label class="form-label">Tipos de evento</label>
+					<div class="border rounded p-2" style="max-height: 12rem; overflow-y: auto;">
+						<div class="d-flex gap-2 mb-2">
+							<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="SelectAllEventTypes">Todos</button>
+							<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearEventTypes">Ninguno</button>
+						</div>
+						@foreach (EventTypeOption opt in mcolEventTypeOptions)
+						{
+							<div class="form-check">
+								<input class="form-check-input" type="checkbox" id="evt_@opt.Value"
+									   checked="@mcolSelectedEventTypes.Contains(opt.Value)"
+									   @onchange="(e) => OnEventTypeToggled(opt.Value, e)" />
+								<label class="form-check-label" for="evt_@opt.Value">
+									<span class="badge @EventTypeBadgeClass(opt.Value) me-1">@opt.Value</span>
+									@opt.Name
+								</label>
+							</div>
+						}
+					</div>
+					<div class="form-text">
+						@if (mcolSelectedEventTypes.Count == 0 || mcolSelectedEventTypes.Count == mcolEventTypeOptions.Count)
+						{
+							<span>Sin filtro de tipo (todos).</span>
+						}
+						else
+						{
+							<span class="badge text-bg-info">@mcolSelectedEventTypes.Count tipos</span>
+						}
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer d-flex flex-wrap gap-2 justify-content-end bg-white">
+			<button type="button" class="btn btn-outline-secondary" @onclick="ResetFilters" disabled="@mvarLoading">
+				<i class="bi bi-x-circle"></i> Limpiar
+			</button>
+			<button type="button" class="btn btn-primary" @onclick="SearchAsync" disabled="@mvarLoading">
+				@if (mvarLoading)
+				{
+					<span class="spinner-border spinner-border-sm me-1" role="status"></span>
+					<span>Buscando...</span>
+				}
+				else
+				{
+					<span><i class="bi bi-search"></i> Buscar</span>
+				}
+			</button>
+		</div>
+	</div>
+
+	@* Resultados *@
+	@if (mvarError is not null)
+	{
+		<div class="alert alert-danger" role="alert">
+			<i class="bi bi-exclamation-triangle me-1"></i>@mvarError
+		</div>
+	}
+
+	@if (mvarHasSearched)
+	{
+		<div class="card shadow-sm">
+			<div class="card-header bg-white d-flex flex-wrap align-items-center justify-content-between gap-2">
+				<div>
+					<span class="fw-semibold">Resultados</span>
+					@if (mvarResponse is not null)
+					{
+						<span class="text-muted small ms-2">
+							@mvarResponse.Records.Count mostrados
+							@if (mvarResponse.TotalMatched != mvarResponse.Records.Count)
+							{
+								<span> de @mvarResponse.TotalMatched coincidencias</span>
+							}
+						</span>
+						@if (mvarResponse.Truncated)
+						{
+							<span class="badge text-bg-warning ms-2">Truncado (aumenta el máximo)</span>
+						}
+					}
+				</div>
+				@if (HasResults)
+				{
+					<input type="text" class="form-control form-control-sm" style="max-width: 16rem;"
+						   placeholder="Filtrar en resultados..."
+						   @bind="mvarClientFilter" @bind:event="oninput" />
+				}
+			</div>
+			<div class="card-body p-0">
+				@if (mvarLoading)
+				{
+					<div class="text-center py-5">
+						<div class="spinner-border text-primary" role="status"></div>
+						<div class="mt-2 text-muted">Consultando el servidor...</div>
+					</div>
+				}
+				else if (!HasResults)
+				{
+					<div class="alert alert-warning m-3 mb-0">
+						No hay eventos para los filtros seleccionados.
+					</div>
+				}
+				else
+				{
+					<div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
+						<table class="table table-sm table-striped table-hover align-middle mb-0">
+							<thead class="table-light sticky-top">
+								<tr>
+									<th role="button" @onclick="() => SortBy(SortColumn.Time)">
+										Fecha / hora @SortIcon(SortColumn.Time)
+									</th>
+									<th role="button" @onclick="() => SortBy(SortColumn.User)">
+										Usuario @SortIcon(SortColumn.User)
+									</th>
+									<th role="button" @onclick="() => SortBy(SortColumn.Type)">
+										Evento @SortIcon(SortColumn.Type)
+									</th>
+									<th role="button" @onclick="() => SortBy(SortColumn.Host)">
+										Origen @SortIcon(SortColumn.Host)
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								@foreach (SessionEventRecordModel row in DisplayedRecords)
+								{
+									<tr>
+										<td class="text-nowrap">
+											@Utils.autoDate(row.TimeStamp)
+											<span class="text-muted small">@row.TimeStamp.ToLocalTime().ToString("HH:mm:ss")</span>
+										</td>
+										<td>
+											<div class="fw-semibold">@ResolveUserName(row.UserId)</div>
+											<div class="text-muted small">@ResolveUserCf(row.UserId)</div>
+										</td>
+										<td>
+											<span class="badge @EventTypeBadgeClass(row.EventType)">@row.TypeName</span>
+										</td>
+										<td class="font-monospace small">@(string.IsNullOrWhiteSpace(row.HostPoint) ? "—" : row.HostPoint)</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+			</div>
+			@if (HasResults)
+			{
+				<div class="card-footer bg-white small text-muted">
+					@BuildFilterSummary()
+				</div>
+			}
+		</div>
+	}
+	else if (!mvarLoading)
+	{
+		<div class="alert alert-info">
+			<i class="bi bi-info-circle me-1"></i>
+			Define los filtros y pulsa <strong>Buscar</strong>. Por defecto se consultan los últimos 7 días.
+		</div>
+	}
+</div>
+
+@code {
+	private sealed class EventTypeOption
+	{
+		public byte Value { get; init; }
+		public string Name { get; init; } = string.Empty;
+	}
+
+	private enum SortColumn { Time, User, Type, Host }
+
+	private List<UserModel> mcolUsers = new();
+	private Dictionary<string, UserModel> mdictUsersById = new(StringComparer.OrdinalIgnoreCase);
+	private List<EventTypeOption> mcolEventTypeOptions = new();
+	private HashSet<string> mcolSelectedUserIds = new(StringComparer.OrdinalIgnoreCase);
+	private HashSet<byte> mcolSelectedEventTypes = new();
+
+	private DateTime? mvarFromDate;
+	private DateTime? mvarToDate;
+	private string mvarHostContains = string.Empty;
+	private string mvarUserSearchText = string.Empty;
+	private string mvarClientFilter = string.Empty;
+	private int mvarMaxRecords = 500;
+
+	private bool mvarLoading;
+	private bool mvarHasSearched;
+	private string? mvarError;
+	private SessionEventSearchResponse? mvarResponse;
+
+	private SortColumn mvarSortColumn = SortColumn.Time;
+	private bool mvarSortAscending;
+
+	private bool HasResults => mvarResponse?.Records is { Count: > 0 };
+
+	private IEnumerable<UserModel> FilteredUsers
+	{
+		get
+		{
+			if (string.IsNullOrWhiteSpace(mvarUserSearchText))
+				return mcolUsers;
+			string q = mvarUserSearchText.Trim();
+			return mcolUsers.Where(u =>
+				(u.CF?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+				(u.Name?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false));
+		}
+	}
+
+	private IEnumerable<SessionEventRecordModel> DisplayedRecords
+	{
+		get
+		{
+			if (mvarResponse is null)
+				return Enumerable.Empty<SessionEventRecordModel>();
+
+			IEnumerable<SessionEventRecordModel> q = mvarResponse.Records;
+			if (!string.IsNullOrWhiteSpace(mvarClientFilter))
+			{
+				string f = mvarClientFilter.Trim();
+				q = q.Where(r =>
+					r.TypeName.Contains(f, StringComparison.OrdinalIgnoreCase) ||
+					(r.HostPoint?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
+					ResolveUserName(r.UserId).Contains(f, StringComparison.OrdinalIgnoreCase) ||
+					ResolveUserCf(r.UserId).Contains(f, StringComparison.OrdinalIgnoreCase) ||
+					r.UserId.Contains(f, StringComparison.OrdinalIgnoreCase));
+			}
+
+			q = mvarSortColumn switch
+			{
+				SortColumn.User => mvarSortAscending
+					? q.OrderBy(r => ResolveUserName(r.UserId))
+					: q.OrderByDescending(r => ResolveUserName(r.UserId)),
+				SortColumn.Type => mvarSortAscending
+					? q.OrderBy(r => r.TypeName)
+					: q.OrderByDescending(r => r.TypeName),
+				SortColumn.Host => mvarSortAscending
+					? q.OrderBy(r => r.HostPoint)
+					: q.OrderByDescending(r => r.HostPoint),
+				_ => mvarSortAscending
+					? q.OrderBy(r => r.TimeStamp)
+					: q.OrderByDescending(r => r.TimeStamp)
+			};
+			return q;
+		}
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		BuildEventTypeOptions();
+		ApplyQuickRange(7);
+
+		IEnumerable<UserModel>? users = await mvarAuthClient.completeUsersList();
+		if (null != users)
+		{
+			mcolUsers = users.OrderBy(u => u.CF).ThenBy(u => u.Name).ToList();
+			mdictUsersById = mcolUsers
+				.GroupBy(u => u.guid.ToString(), StringComparer.OrdinalIgnoreCase)
+				.ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+		}
+	}
+
+	private void BuildEventTypeOptions()
+	{
+		mcolEventTypeOptions = Enum.GetValues(typeof(Common.sessionEventType))
+			.Cast<Common.sessionEventType>()
+			.Where(t => t != Common.sessionEventType.undefined)
+			.OrderBy(t => (byte)t)
+			.Select(t => new EventTypeOption
+			{
+				Value = (byte)t,
+				Name = Common.SessionEventTypeName(t)
+			})
+			.ToList();
+	}
+
+	private void ApplyQuickRange(int daysBack)
+	{
+		DateTime today = DateTime.Today;
+		mvarToDate = today;
+		mvarFromDate = daysBack <= 0 ? today : today.AddDays(-daysBack);
+	}
+
+	private void ResetFilters()
+	{
+		mcolSelectedUserIds.Clear();
+		mcolSelectedEventTypes.Clear();
+		mvarHostContains = string.Empty;
+		mvarUserSearchText = string.Empty;
+		mvarClientFilter = string.Empty;
+		mvarMaxRecords = 500;
+		ApplyQuickRange(7);
+		mvarError = null;
+	}
+
+	private void ClearUserSelection()
+	{
+		mcolSelectedUserIds.Clear();
+	}
+
+	private void SelectAllEventTypes()
+	{
+		mcolSelectedEventTypes = mcolEventTypeOptions.Select(o => o.Value).ToHashSet();
+	}
+
+	private void ClearEventTypes()
+	{
+		mcolSelectedEventTypes.Clear();
+	}
+
+	private void OnEventTypeToggled(byte value, ChangeEventArgs e)
+	{
+		bool isChecked = e.Value is bool b && b
+			|| (e.Value is string s && bool.TryParse(s, out bool parsed) && parsed);
+		if (isChecked)
+			mcolSelectedEventTypes.Add(value);
+		else
+			mcolSelectedEventTypes.Remove(value);
+	}
+
+	private void OnUserToggled(string userId, ChangeEventArgs e)
+	{
+		bool isChecked = e.Value is bool b && b
+			|| (e.Value is string s && bool.TryParse(s, out bool parsed) && parsed);
+		if (isChecked)
+			mcolSelectedUserIds.Add(userId);
+		else
+			mcolSelectedUserIds.Remove(userId);
+	}
+
+	private async Task SearchAsync()
+	{
+		mvarLoading = true;
+		mvarError = null;
+		mvarHasSearched = true;
+		mvarClientFilter = string.Empty;
+		try
+		{
+			SessionEventSearchRequest request = BuildRequest();
+			SessionEventSearchResponse? response = await mvarAuthClient.searchSessionEvents(request);
+			if (null == response)
+			{
+				mvarResponse = null;
+				mvarError = "No se pudo obtener respuesta del servidor (¿permisos de administrador?).";
+			}
+			else
+			{
+				mvarResponse = response;
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarResponse = null;
+			mvarError = $"Error al consultar: {ex.Message}";
+		}
+		finally
+		{
+			mvarLoading = false;
+		}
+	}
+
+	private SessionEventSearchRequest BuildRequest()
+	{
+		SessionEventSearchRequest request = new SessionEventSearchRequest
+		{
+			MaxRecords = mvarMaxRecords
+		};
+
+		if (mvarFromDate.HasValue)
+		{
+			// Inicio del día local → UTC
+			DateTime localStart = DateTime.SpecifyKind(mvarFromDate.Value.Date, DateTimeKind.Local);
+			request.FromUtc = localStart.ToUniversalTime();
+		}
+		if (mvarToDate.HasValue)
+		{
+			// Final del día local → UTC
+			DateTime localEnd = DateTime.SpecifyKind(mvarToDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Local);
+			request.ToUtc = localEnd.ToUniversalTime();
+		}
+
+		if (mcolSelectedUserIds.Count > 0)
+			request.UserIds = mcolSelectedUserIds.ToList();
+
+		// Si están todos o ninguno → sin filtro de tipo
+		if (mcolSelectedEventTypes.Count > 0 && mcolSelectedEventTypes.Count < mcolEventTypeOptions.Count)
+			request.EventTypes = mcolSelectedEventTypes.ToList();
+
+		if (!string.IsNullOrWhiteSpace(mvarHostContains))
+			request.HostContains = mvarHostContains.Trim();
+
+		return request;
+	}
+
+	private string BuildFilterSummary()
+	{
+		List<string> parts = new();
+		if (mvarFromDate.HasValue)
+			parts.Add($"Desde {mvarFromDate:dd/MM/yyyy}");
+		if (mvarToDate.HasValue)
+			parts.Add($"Hasta {mvarToDate:dd/MM/yyyy}");
+		if (mcolSelectedUserIds.Count > 0)
+			parts.Add($"{mcolSelectedUserIds.Count} usuario(s)");
+		else
+			parts.Add("Todos los usuarios");
+		if (mcolSelectedEventTypes.Count > 0 && mcolSelectedEventTypes.Count < mcolEventTypeOptions.Count)
+			parts.Add($"{mcolSelectedEventTypes.Count} tipo(s) de evento");
+		else
+			parts.Add("Todos los tipos");
+		if (!string.IsNullOrWhiteSpace(mvarHostContains))
+			parts.Add($"Origen «{mvarHostContains.Trim()}»");
+		return string.Join(" · ", parts);
+	}
+
+	private async Task ExportCsvAsync()
+	{
+		if (!HasResults)
+			return;
+
+		StringBuilder sb = new StringBuilder();
+		// BOM UTF-8 para Excel
+		sb.Append('\uFEFF');
+		sb.AppendLine("FechaUTC;FechaLocal;Usuario;CF;UserId;Tipo;TipoNombre;Origen");
+
+		foreach (SessionEventRecordModel row in DisplayedRecords)
+		{
+			DateTime local = row.TimeStamp.Kind == DateTimeKind.Utc
+				? row.TimeStamp.ToLocalTime()
+				: row.TimeStamp;
+			sb.Append(Csv(row.TimeStamp.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture))).Append(';');
+			sb.Append(Csv(local.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture))).Append(';');
+			sb.Append(Csv(ResolveUserName(row.UserId))).Append(';');
+			sb.Append(Csv(ResolveUserCf(row.UserId))).Append(';');
+			sb.Append(Csv(row.UserId)).Append(';');
+			sb.Append(row.EventType.ToString(CultureInfo.InvariantCulture)).Append(';');
+			sb.Append(Csv(row.TypeName)).Append(';');
+			sb.Append(Csv(row.HostPoint));
+			sb.AppendLine();
+		}
+
+		string fileName = $"zafiro-log-{DateTime.Now:yyyyMMdd-HHmmss}.csv";
+		await mvarJS.InvokeVoidAsync("downloadTextFile", sb.ToString(), fileName, "text/csv;charset=utf-8");
+	}
+
+	private static string Csv(string? value)
+	{
+		if (string.IsNullOrEmpty(value))
+			return string.Empty;
+		string v = value.Replace("\"", "\"\"");
+		if (v.Contains(';') || v.Contains('"') || v.Contains('\n') || v.Contains('\r'))
+			return $"\"{v}\"";
+		return v;
+	}
+
+	private async Task PrintReportAsync()
+	{
+		if (!HasResults || mvarResponse is null)
+			return;
+
+		SessionEventPrintPackage package = new SessionEventPrintPackage
+		{
+			Records = DisplayedRecords.ToList(),
+			FilterSummary = BuildFilterSummary(),
+			GeneratedAt = DateTime.Now,
+			TotalMatched = mvarResponse.TotalMatched,
+			Truncated = mvarResponse.Truncated
+		};
+		await mvarLocalStorage.SetZafiroLogPrintPackage(package);
+
+		string printUrl = mvarNavigator.ToAbsoluteUri("admin/sapphirelog/print").AbsoluteUri;
+		await mvarJS.InvokeVoidAsync("open", printUrl, "_blank");
+	}
+
+	private void SortBy(SortColumn column)
+	{
+		if (mvarSortColumn == column)
+			mvarSortAscending = !mvarSortAscending;
+		else
+		{
+			mvarSortColumn = column;
+			mvarSortAscending = column != SortColumn.Time;
+		}
+	}
+
+	private string SortIcon(SortColumn column)
+	{
+		if (mvarSortColumn != column)
+			return string.Empty;
+		return mvarSortAscending ? "↑" : "↓";
+	}
+
+	private string ResolveUserName(string userId)
+	{
+		if (mdictUsersById.TryGetValue(userId, out UserModel? user) && !string.IsNullOrWhiteSpace(user.Name))
+			return user.Name!;
+		return string.IsNullOrWhiteSpace(userId) ? "—" : userId;
+	}
+
+	private string ResolveUserCf(string userId)
+	{
+		if (mdictUsersById.TryGetValue(userId, out UserModel? user) && !string.IsNullOrWhiteSpace(user.CF))
+			return user.CF!;
+		return string.Empty;
+	}
+
+	private static string EventTypeBadgeClass(byte type)
+	{
+		return type switch
+		{
+			1 or 2 or 3 => "text-bg-primary",       // sesión
+			4 or 5 => "text-bg-danger",             // seguridad
+			>= 10 and < 20 => "text-bg-info",       // usuarios
+			>= 20 and < 30 => "text-bg-success",    // trenes
+			>= 30 and < 40 => "text-bg-warning",    // notas
+			>= 40 and < 50 => "text-bg-secondary",  // work orders
+			>= 50 and < 60 => "text-bg-dark",       // telegram
+			_ => "text-bg-light text-dark"
+		};
+	}
+}

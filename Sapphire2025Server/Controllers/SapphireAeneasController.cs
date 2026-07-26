@@ -99,6 +99,8 @@ namespace Sapphire2025Server.Controllers
 			salida.nameCloud = train.NameCloud;
 			salida.PlatformId = train.PlatformId;
 			salida.LastWash = train.LastWash;
+			salida.LastOdometer = train.LastOdometer;
+			salida.LastOdometerSet = train.LastOdometerSet;
 			salida.Locked = locked;
 			salida.lastNote = lastNote;
 			if (null == lastChange)
@@ -289,6 +291,13 @@ namespace Sapphire2025Server.Controllers
 						almacen.StatusChanges.Add(nuevoCambio);						
 						auxTrain.lastChange = nuevoCambio.Guid;
 						salida = (await almacen.SaveChangesAsync() > 0);
+						if (salida && null != auxUser)
+						{
+							Common.sessionEventType evento = commit.operation == Common.OperationType.CorrectiveRequest
+								? Common.sessionEventType.incidentOpened
+								: Common.sessionEventType.trainStatusChanged;
+							await addLoginRecord(auxUser.Id, evento);
+						}
 						await TelegramNotify(nuevoCambio, auxTrain, mvarConfig);
 					}
 				}
@@ -323,7 +332,15 @@ namespace Sapphire2025Server.Controllers
 					almacen.StatusChanges.Add(nuevoCambio);
 					auxTrain.lastChange = nuevoCambio.Guid;
 					//await TelegramNotify(nuevoCambio,auxTrain,config);
-					return (await almacen.SaveChangesAsync() > 0);
+					bool ok = await almacen.SaveChangesAsync() > 0;
+					if (ok)
+					{
+						Common.sessionEventType evento = operation == Common.OperationType.CorrectiveRequest
+							? Common.sessionEventType.incidentOpened
+							: Common.sessionEventType.trainStatusChanged;
+						await addSessionEventStatic(config, userId, evento, "telegram");
+					}
+					return ok;
 				}
 				else
 				{
@@ -340,6 +357,8 @@ namespace Sapphire2025Server.Controllers
 				try
 				{
 					await mvarHubContext.Clients.All.SendAsync("ReceiveBroadcastRequest2", request.Message, request.Priority, request.Roles.ToArray());
+					// Sin SessionToken en el modelo: registramos host si hay, sin userId concreto.
+					// Si en el futuro el broadcast trae token, se puede asociar al actor.
 					return true;
 				}
 				catch(Exception e)
@@ -426,20 +445,79 @@ namespace Sapphire2025Server.Controllers
 
 
 		[HttpPost("changeplatform")]
-		public async Task<bool> ChangePlatform(TrainModel train)
+		public async Task<bool> ChangePlatform([FromBody] PlatformChangeRequestModel request)
 		{
-			using(DataStorage almacen = new DataStorage(mvarConfig))
+			if (request is null || request.TrainId == Guid.Empty)
+				return false;
+
+			User? actor = await retrieveSessionUser(request.SessionToken);
+			if (null == actor)
+				return false;
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
-				Train? auxTren = await almacen.Trains.Where(x => x.Guid == train.id).FirstOrDefaultAsync();
-				if (null!=auxTren)
-				{
-					auxTren.PlatformId = train.PlatformId;
-					auxTren.LastPlatformAssign = DateTime.UtcNow; //Se tiene en cuenta la fecha de asignación.
-					await almacen.SaveChangesAsync();
+				Train? auxTren = await almacen.Trains.Where(x => x.Guid == request.TrainId).FirstOrDefaultAsync();
+				if (null == auxTren)
+					return false;
+
+				// Sin cambio real no escribimos en log (evita ruido al re-seleccionar la misma vía).
+				if (auxTren.PlatformId == request.PlatformId)
 					return true;
-				}
+
+				auxTren.PlatformId = request.PlatformId;
+				auxTren.LastPlatformAssign = DateTime.UtcNow;
+				bool saved = await almacen.SaveChangesAsync() > 0;
+				if (saved)
+					await addLoginRecord(actor.Id, Common.sessionEventType.trainPlatformChanged);
+				return saved;
 			}
-			return false;
+		}
+
+		/// <summary>
+		/// Registra un nuevo valor de odómetro (histórico + caché en el tren).
+		/// Solo Root, Oficial o Mecánico. El valor debe ser >= al último registrado.
+		/// </summary>
+		[HttpPost("setodometer")]
+		public async Task<bool> SetOdometer([FromBody] OdometrySetRequestModel request)
+		{
+			if (request is null || request.TrainId == Guid.Empty)
+				return false;
+
+			bool allowed =
+				await hasBasicPermission(request, Common.UserRole.Root) ||
+				await hasBasicPermission(request, Common.UserRole.Oficial) ||
+				await hasBasicPermission(request, Common.UserRole.Mechanic);
+			if (!allowed)
+				return false;
+
+			User? actor = await retrieveSessionUser(request.SessionToken);
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				Train? auxTren = await almacen.Trains.Where(x => x.Guid == request.TrainId).FirstOrDefaultAsync();
+				if (null == auxTren)
+					return false;
+
+				if (request.Odometer < auxTren.LastOdometer)
+					return false;
+
+				DateTime now = DateTime.UtcNow;
+				auxTren.LastOdometer = request.Odometer;
+				auxTren.LastOdometerSet = now;
+
+				almacen.Odometer.Add(new Odometry
+				{
+					Guid = Guid.NewGuid(),
+					TrainId = auxTren.Guid,
+					TimeSpan = now,
+					Odometer = request.Odometer
+				});
+
+				bool saved = await almacen.SaveChangesAsync() > 0;
+				if (saved && null != actor)
+					await addLoginRecord(actor.Id, Common.sessionEventType.trainOdometerUpdated);
+				return saved;
+			}
 		}
 
 		[HttpPost("updatewash")]
@@ -452,6 +530,8 @@ namespace Sapphire2025Server.Controllers
 				{
 					auxTren.LastWash = DateTime.UtcNow; //Actualizo la última fecha de lavado.
 					int changes = await almacen.SaveChangesAsync();
+					// Misma limitación que ChangePlatform: sin token de sesión en el payload.
+					// El lavado operativo queda auditado en workorders/open|close|verify.
 					return changes>0;
 				}
 			}
@@ -477,6 +557,8 @@ namespace Sapphire2025Server.Controllers
 			salida.nameCloud = train.NameCloud;
 			salida.PlatformId = train.PlatformId;
 			salida.LastWash = train.LastWash;
+			salida.LastOdometer = train.LastOdometer;
+			salida.LastOdometerSet = train.LastOdometerSet;
 			salida.Locked = await isTrainLocked(train.Guid, config);
 			salida.lastNote = await lastNoteStatic(train.Guid, config);			
 			using (DataStorage almacen = new DataStorage(config))

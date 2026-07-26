@@ -17,6 +17,9 @@
 				<th class="bg-secondary text-white" style="width:90px;" @onclick="() => sortFields(5)">
 					<GenIcon Name="TrainTrack" Color="white" />
 				</th>
+				<th class="bg-secondary text-white" style="width:100px;" title="Odómetro" @onclick="() => sortFields(7)">
+					<GenIcon Name="Odometer" Color="white" />
+				</th>
 				<th class="bg-secondary text-white" style="width:90px;" @onclick="() => sortFields(0)">
 					<GenIcon Name="EventDateTime" Color="white" />
 				</th>
@@ -34,7 +37,7 @@
 		<tbody>
 			@foreach (TrainModel train in mcolTrains)
 			{
-				<tr class="@rowClass(train)" @onclick="@(e => OnTrainClick(train))">
+				<tr @key="rowKey(train)" class="@rowClass(train)" @onclick="@(e => OnTrainClick(train))">
 					<td class="truncate">
 						<IcoStatus status="@train.lastStatus" color='@(train.Locked ? "red" : "black")' />
 						<span class="truncate">@Sapphire2025Models.Common.TrainStatusToString(train.lastStatus)</span>
@@ -47,6 +50,9 @@
 					</td>
 					<td class="truncate">
 						@platformString(train)
+					</td>
+					<td class="truncate text-end" title="@odometerTitle(train)">
+						@odometerString(train)
 					</td>
 					<td class="truncate">
 						@Sapphire2025Models.Utils.autoDate(train.lastUpdateTime)
@@ -96,11 +102,12 @@
 						mcolTrains.Add(auxTren);
 					}
 				}
-				sortFields(1);
+				// Orden estable al refrescar/resaltar; no alternar con cada poll.
+				sortFieldsStable(mvarLastOrderField >= 0 ? mvarLastOrderField : 1);
 			}
 		}
 		else
-			mcolTrains = Trains.ToList();
+			mcolTrains = Trains?.ToList() ?? new List<TrainModel>();
 	}
 
 }

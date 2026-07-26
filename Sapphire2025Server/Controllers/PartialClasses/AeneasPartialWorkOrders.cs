@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
+using Sapphire2025Models;
 using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.GMao;
 using Sapphire2026.Data;
@@ -102,7 +103,10 @@ namespace Sapphire2025Server.Controllers
 					almacen.WorkOrders.Add(nuevo);
 
 					if (await almacen.SaveChangesAsync() > 0)
+					{
+						await addLoginRecord(user.Id, Common.sessionEventType.workOrderRequested);
 						return ToWorkOrderModel(nuevo);
+					}
 				}
 				return null;
 			}
@@ -128,6 +132,7 @@ namespace Sapphire2025Server.Controllers
 				order.OpenTime = DateTime.UtcNow;
 
 				await almacen.SaveChangesAsync();
+				await addLoginRecord(user.Id, Common.sessionEventType.workOrderOpened);
 				return ToWorkOrderModel(order);
 			}
 		}
@@ -153,6 +158,7 @@ namespace Sapphire2025Server.Controllers
 				order.VerifyTime = DateTime.UtcNow;
 
 				await almacen.SaveChangesAsync();
+				await addLoginRecord(user.Id, Common.sessionEventType.workOrderRejected);
 				return ToWorkOrderModel(order);
 			}
 		}
@@ -177,6 +183,7 @@ namespace Sapphire2025Server.Controllers
 				order.CloseTime = DateTime.UtcNow;
 
 				await almacen.SaveChangesAsync();
+				await addLoginRecord(user.Id, Common.sessionEventType.workOrderClosed);
 				return ToWorkOrderModel(order);
 			}
 		}
@@ -200,6 +207,7 @@ namespace Sapphire2025Server.Controllers
 				order.VerifyTime = DateTime.UtcNow;
 
 				await almacen.SaveChangesAsync();
+				await addLoginRecord(user.Id, Common.sessionEventType.workOrderVerified);
 				return ToWorkOrderModel(order);
 			}
 		}

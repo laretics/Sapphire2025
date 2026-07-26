@@ -18,72 +18,72 @@
 	[CascadingParameter(Name = "TrainDataVersion")]
 	public int TrainDataVersion { get; set; }
 
-	private int mvarLastOrderField { get; set; } = -1;
+	protected int mvarLastOrderField { get; set; } = -1;
+	protected bool mvarLastOrderDescending { get; set; }
 
+	/// <summary>
+	/// Ordenación al pulsar cabecera: alterna ascendente/descendente.
+	/// </summary>
 	internal void sortFields(int fieldId)
 	{
-		if(null!=Trains)
-		{
-			if(mvarLastOrderField.Equals(fieldId))
-			{
-				//Orden inverso
-				switch (fieldId)
-				{
-					case 1:
-						mcolTrains = mcolTrains.OrderByDescending(xx => xx.name).ToList();
-						break;
-					case 2:
-						mcolTrains = mcolTrains.OrderByDescending(xx => xx.lastStatus).ToList();
-						break;
-					case 3:
-						mcolTrains = mcolTrains.OrderByDescending(xx => xx.lastUserInfo).ToList();
-						break;
-					case 4:
-						mcolTrains = mcolTrains.OrderByDescending(xx => xx.lastNote).ToList();
-						break;
-					case 5:
-						mcolTrains = mcolTrains.OrderByDescending(xx => xx.PlatformId).ToList();
-						break;
-					case 6:
-						mcolTrains = mcolTrains.OrderByDescending(xx => xx.LastWash).ToList();
-						break;
+		if (null == Trains)
+			return;
 
-					default:
-						mcolTrains = mcolTrains.OrderByDescending(xx => xx.lastUpdateTime).ToList();
-						break;
-				}
-				mvarLastOrderField = -1; //Para poder volver a ordenar en directo
-			}
-			else
-			{
-				switch (fieldId)
-				{
-					case 1:
-						mcolTrains = mcolTrains.OrderBy(xx => xx.name).ToList();
-						break;
-					case 2:
-						mcolTrains = mcolTrains.OrderBy(xx => xx.lastStatus).ToList();
-						break;
-					case 3:
-						mcolTrains = mcolTrains.OrderBy(xx => xx.lastUserInfo).ToList();
-						break;
-					case 4:
-						mcolTrains = mcolTrains.OrderBy(xx => xx.lastNote).ToList();
-						break;
-					case 5:
-						mcolTrains = mcolTrains.OrderBy(xx => xx.PlatformId).ToList();
-						break;
-					case 6:
-						mcolTrains = mcolTrains.OrderBy(xx => xx.LastWash).ToList();
-						break;
-					default:
-						mcolTrains = mcolTrains.OrderBy(xx => xx.lastUpdateTime).ToList();
-						break;
-				}
-				mvarLastOrderField = fieldId;
-			}			
-			StateHasChanged();
-		}		
+		bool descending = mvarLastOrderField.Equals(fieldId) && !mvarLastOrderDescending;
+		ApplySort(fieldId, descending);
+		mvarLastOrderField = fieldId;
+		mvarLastOrderDescending = descending;
+		StateHasChanged();
+	}
+
+	/// <summary>
+	/// Ordenación estable al refrescar datos (no alterna dirección).
+	/// </summary>
+	protected void sortFieldsStable(int fieldId)
+	{
+		if (null == Trains)
+			return;
+
+		bool descending = mvarLastOrderField.Equals(fieldId) && mvarLastOrderDescending;
+		ApplySort(fieldId, descending);
+		if (mvarLastOrderField < 0)
+		{
+			mvarLastOrderField = fieldId;
+			mvarLastOrderDescending = false;
+		}
+	}
+
+	private void ApplySort(int fieldId, bool descending)
+	{
+		mcolTrains = fieldId switch
+		{
+			1 => descending ? mcolTrains.OrderByDescending(xx => xx.name).ToList() : mcolTrains.OrderBy(xx => xx.name).ToList(),
+			2 => descending ? mcolTrains.OrderByDescending(xx => xx.lastStatus).ToList() : mcolTrains.OrderBy(xx => xx.lastStatus).ToList(),
+			3 => descending ? mcolTrains.OrderByDescending(xx => xx.lastUserInfo).ToList() : mcolTrains.OrderBy(xx => xx.lastUserInfo).ToList(),
+			4 => descending ? mcolTrains.OrderByDescending(xx => xx.lastNote).ToList() : mcolTrains.OrderBy(xx => xx.lastNote).ToList(),
+			5 => descending ? mcolTrains.OrderByDescending(xx => xx.PlatformId).ToList() : mcolTrains.OrderBy(xx => xx.PlatformId).ToList(),
+			6 => descending ? mcolTrains.OrderByDescending(xx => xx.LastWash).ToList() : mcolTrains.OrderBy(xx => xx.LastWash).ToList(),
+			7 => descending ? mcolTrains.OrderByDescending(xx => xx.LastOdometer).ToList() : mcolTrains.OrderBy(xx => xx.LastOdometer).ToList(),
+			_ => descending ? mcolTrains.OrderByDescending(xx => xx.lastUpdateTime).ToList() : mcolTrains.OrderBy(xx => xx.lastUpdateTime).ToList(),
+		};
+	}
+
+	/// <summary>
+	/// Texto de odómetro para tablas (— si aún no hay registro).
+	/// </summary>
+	protected string odometerString(TrainModel train)
+	{
+		if (train.LastOdometerSet is null && train.LastOdometer <= 0)
+			return "—";
+		return train.LastOdometer.ToString("N0");
+	}
+
+	protected string odometerTitle(TrainModel train)
+	{
+		if (train.LastOdometerSet is null && train.LastOdometer <= 0)
+			return "Sin registro de odómetro";
+		string fecha = Sapphire2025Models.Utils.autoDate(train.LastOdometerSet);
+		return $"Odómetro {train.LastOdometer:N0} · {fecha}";
 	}
 
 	internal UserModelBase? userFromTrain(TrainModel? train)
@@ -121,11 +121,32 @@
 		return "-";
 	}
 	protected string trainColor(TrainModel train) { return train == null ? "transparent" : Sapphire2025Models.Utils.TrainStyleFill(train.name); }
+
+	protected bool IsHighlighted(TrainModel? train)
+	{
+		return null != train
+			&& null != HighlightedTrainIds
+			&& HighlightedTrainIds.Contains(train.id);
+	}
+
+	/// <summary>
+	/// Clase de fila resaltada (misma familia visual que scheme-cell-highlight de AeneasScheme).
+	/// </summary>
 	protected string rowClass(TrainModel train)
 	{
-		if (null == train || null == HighlightedTrainIds)
-			return string.Empty;
+		return IsHighlighted(train) ? "train-row-highlight" : string.Empty;
+	}
 
-		return HighlightedTrainIds.Contains(train.id) ? "train-row-highlight" : string.Empty;
+	/// <summary>
+	/// Clave de render: al cambiar el resalte se recrea el &lt;tr&gt; y la animación CSS se reinicia.
+	/// </summary>
+	protected string rowKey(TrainModel train)
+	{
+		if (null == train)
+			return Guid.Empty.ToString();
+
+		return IsHighlighted(train)
+			? $"{train.id:N}-hl-{TrainDataVersion}"
+			: train.id.ToString("N");
 	}
 }

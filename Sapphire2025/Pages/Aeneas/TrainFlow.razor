@@ -65,7 +65,7 @@ else
 				<div class="btn-toolbar trainflow-stats" role="toolbar">
 					@if (mcolHighlightedTrains.Count > 0)
 					{
-						<div class="badge bg-warning text-dark me-1 mb-1 d-flex align-items-center px-2 px-sm-3 py-2 trainflow-live-badge">
+						<div class="badge me-1 mb-1 d-flex align-items-center px-2 px-sm-3 py-2 trainflow-live-badge" title="Trenes con cambio reciente">
 							<i class="bi bi-lightning-charge-fill me-1 me-sm-2"></i>
 							<span>@mcolHighlightedTrains.Count <span class="btn-label-full">cambio(s) reciente(s)</span><span class="btn-label-short">cambios</span></span>
 						</div>
@@ -130,7 +130,7 @@ else
 @code 
 {
 	private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
-	private static readonly TimeSpan HighlightDuration = TimeSpan.FromSeconds(6);
+	private static readonly TimeSpan HighlightDuration = TimeSpan.FromSeconds(15);
 
 	private List<TrainModel> mcolTrains { get; set; }
 	private Sapphire2025Models.Aeneas.PlatformModel[] mcolPlatforms { get; set; } = new PlatformModel[0];
@@ -138,7 +138,7 @@ else
 	private int mvarDataVersion;
 
 	[Parameter]
-	public Sapphire2025Models.Common.TrainStatus CurrentStatus { get; set; }	
+	public Sapphire2025Models.Common.TrainStatus CurrentStatus { get; set; } = Sapphire2025Models.Common.TrainStatus.Available;
 	[Parameter]
 	public Dictionary<Guid,UserModelBase>? Users{ get; set; }
 
@@ -198,11 +198,7 @@ else
 	private async Task RefreshData()
 	{
 		await mvarInternalStorage.ResetTrainList();
-		mcolTrains = (await mvarAeneasClient.trainsList()).ToList();
-		await mvarInternalStorage.SetTrainList(mcolTrains);
-		mvarLastSyncTime = GetLatestUpdateTime(mcolTrains);
-		mvarDataVersion++;
-		StateHasChanged();
+		await ApplyTrainSnapshotAsync(await mvarAeneasClient.trainsList(), highlightChanges: false, playAudio: false);
 	}
 
 	private async Task LoadPlatforms()
@@ -222,20 +218,25 @@ else
 		}
 	}
 
+	/// <summary>
+	/// Carga inicial: muestra caché local si existe (arranque rápido) y siempre
+	/// refresca desde el servidor para tener lastNote, plataforma, bloqueos, etc. al día.
+	/// </summary>
 	private async Task TrainCache()
 	{
-		IEnumerable<TrainModel> auxLista = await mvarInternalStorage.GetTrainList();
 		Users = await mvarAuthClient.cachedUserList();
 
-		if (!auxLista.Any())
+		IEnumerable<TrainModel> cached = await mvarInternalStorage.GetTrainList();
+		if (cached.Any())
 		{
-			auxLista = await mvarAeneasClient.trainsList();
-			await mvarInternalStorage.SetTrainList(auxLista);
+			mcolTrains = cached.ToList();
+			mvarLastSyncTime = GetLatestUpdateTime(mcolTrains);
+			// Pintamos la caché y seguimos con el snapshot fresco del servidor.
+			StateHasChanged();
 		}
 
-		mcolTrains = auxLista.ToList();
-		mvarLastSyncTime = GetLatestUpdateTime(mcolTrains);
-		await SyncRecentChangesAsync();
+		// Siempre traemos el listado completo: la caché puede tener observaciones antiguas.
+		await ApplyTrainSnapshotAsync(await mvarAeneasClient.trainsList(), highlightChanges: false, playAudio: false);
 	}
 
 	private void StartPolling()
@@ -243,6 +244,11 @@ else
 		mvarPollTimer = new Timer(_ => _ = InvokeAsync(SyncRecentChangesAsync), null, PollInterval, PollInterval);
 	}
 
+	/// <summary>
+	/// Sincronización periódica con snapshot completo de trenes.
+	/// El endpoint rcchngs solo trae cambios de estado; las observaciones (lastNote),
+	/// andén, lavado y bloqueos viven en otros datos y solo se actualizan con trainsList.
+	/// </summary>
 	private async Task SyncRecentChangesAsync()
 	{
 		if (mvarSyncInProgress || null == mcolTrains)
@@ -251,46 +257,8 @@ else
 		mvarSyncInProgress = true;
 		try
 		{
-			IEnumerable<StatusChangeModel> actualizaciones = await mvarAeneasClient.recentChangeList(mvarLastSyncTime);
-			if (!actualizaciones.Any())
-				return;
-
-			List<TrainModel> auxLista = mcolTrains.ToList();
-			bool nuevoUsuario = false;
-			bool huboCambios = false;
-
-			foreach (StatusChangeModel nuevoCambio in actualizaciones.OrderBy(xx => xx.timeStamp))
-			{
-				TrainModel? auxTrain = auxLista.FirstOrDefault(xx => xx.id == nuevoCambio.trainId);
-				if (null == auxTrain)
-					continue;
-
-				auxTrain.lastUpdateTime = nuevoCambio.timeStamp;
-				auxTrain.lastStatus = nuevoCambio.status;
-				auxTrain.lastUserInfo = nuevoCambio.userId;
-				mcolHighlightedTrains.Add(nuevoCambio.trainId);
-				huboCambios = true;
-
-				if (Guid.Empty != nuevoCambio.userId && null != Users && !Users.ContainsKey(nuevoCambio.userId))
-					nuevoUsuario = true;
-
-				if (nuevoCambio.timeStamp > mvarLastSyncTime)
-					mvarLastSyncTime = nuevoCambio.timeStamp;
-			}
-
-			if (!huboCambios)
-				return;
-
-			if (nuevoUsuario)
-				Users = await mvarAuthClient.cachedUserList();
-
-			mcolTrains = auxLista;
-			await mvarInternalStorage.SetTrainList(mcolTrains);
-			mvarDataVersion++;
-			ScheduleHighlightClear();
-			if (AudioNotificationsEnabled)
-				await mvarJSRuntime.InvokeVoidAsync("sapphireSound.play", "sound/Ding.mp3");
-			StateHasChanged();
+			IEnumerable<TrainModel> snapshot = await mvarAeneasClient.trainsList();
+			await ApplyTrainSnapshotAsync(snapshot, highlightChanges: true, playAudio: true);
 		}
 		finally
 		{
@@ -298,6 +266,111 @@ else
 		}
 	}
 
+	private async Task ApplyTrainSnapshotAsync(IEnumerable<TrainModel> snapshot, bool highlightChanges, bool playAudio)
+	{
+		List<TrainModel> freshTrains = snapshot?.ToList() ?? new List<TrainModel>();
+
+		// Si el servidor devuelve vacío y ya teníamos datos, no los borramos (posible fallo de red).
+		if (!freshTrains.Any() && null != mcolTrains && mcolTrains.Any())
+			return;
+
+		bool listaNueva = null == mcolTrains;
+		HashSet<Guid> changedIds = listaNueva
+			? new HashSet<Guid>()
+			: FindChangedTrainIds(mcolTrains, freshTrains);
+
+		bool huboCambios = changedIds.Count > 0 || (!listaNueva && freshTrains.Count != mcolTrains.Count);
+
+		// Sin cambios respecto a lo mostrado: no re-render ni highlight.
+		if (!listaNueva && !huboCambios)
+			return;
+
+		if (highlightChanges && huboCambios)
+		{
+			// Nueva instancia: CascadingValue no notifica si se muta el mismo HashSet.
+			HashSet<Guid> nextHighlights = new(mcolHighlightedTrains);
+			bool nuevoUsuario = false;
+			HashSet<Guid> presentIds = freshTrains.Select(xx => xx.id).ToHashSet();
+
+			foreach (Guid trainId in changedIds)
+			{
+				// Solo resaltar filas que siguen visibles (nuevo o modificado).
+				if (!presentIds.Contains(trainId))
+					continue;
+
+				nextHighlights.Add(trainId);
+				TrainModel? fresh = freshTrains.FirstOrDefault(xx => xx.id == trainId);
+				if (null != fresh &&
+					Guid.Empty != fresh.lastUserInfo &&
+					null != Users &&
+					!Users.ContainsKey(fresh.lastUserInfo))
+				{
+					nuevoUsuario = true;
+				}
+			}
+
+			mcolHighlightedTrains = nextHighlights;
+
+			if (nuevoUsuario)
+				Users = await mvarAuthClient.cachedUserList();
+		}
+
+		mcolTrains = freshTrains;
+		mvarLastSyncTime = GetLatestUpdateTime(mcolTrains);
+		await mvarInternalStorage.SetTrainList(mcolTrains);
+		mvarDataVersion++;
+
+		if (highlightChanges && huboCambios && mcolHighlightedTrains.Count > 0)
+		{
+			ScheduleHighlightClear();
+			if (playAudio && AudioNotificationsEnabled)
+				await mvarJSRuntime.InvokeVoidAsync("sapphireSound.play", "sound/Ding.mp3");
+		}
+
+		StateHasChanged();
+	}
+
+	private static HashSet<Guid> FindChangedTrainIds(IReadOnlyList<TrainModel> current, IReadOnlyList<TrainModel> fresh)
+	{
+		HashSet<Guid> changed = new();
+		Dictionary<Guid, TrainModel> currentById = current.ToDictionary(xx => xx.id);
+
+		foreach (TrainModel train in fresh)
+		{
+			if (!currentById.TryGetValue(train.id, out TrainModel? previous) || TrainSnapshotChanged(previous, train))
+				changed.Add(train.id);
+		}
+
+		// Trenes que han desaparecido del snapshot también se consideran cambio.
+		foreach (TrainModel train in current)
+		{
+			if (fresh.All(xx => xx.id != train.id))
+				changed.Add(train.id);
+		}
+
+		return changed;
+	}
+
+	private static bool TrainSnapshotChanged(TrainModel previous, TrainModel current)
+	{
+		return previous.lastStatus != current.lastStatus
+			|| !SameUtcInstant(previous.lastUpdateTime, current.lastUpdateTime)
+			|| previous.lastUserInfo != current.lastUserInfo
+			|| !string.Equals(previous.lastNote ?? string.Empty, current.lastNote ?? string.Empty, StringComparison.Ordinal)
+			|| previous.PlatformId != current.PlatformId
+			|| previous.LastWash != current.LastWash
+			|| previous.Locked != current.Locked
+			|| !string.Equals(previous.name ?? string.Empty, current.name ?? string.Empty, StringComparison.Ordinal);
+	}
+
+	private static bool SameUtcInstant(DateTime a, DateTime b)
+	{
+		return DateTime.SpecifyKind(a, DateTimeKind.Utc).Ticks == DateTime.SpecifyKind(b, DateTimeKind.Utc).Ticks;
+	}
+
+	/// <summary>
+	/// Programa (o prorroga) el borrado del resalte: cada cambio nuevo reinicia los 15 s.
+	/// </summary>
 	private void ScheduleHighlightClear()
 	{
 		mvarHighlightTimer?.Dispose();
@@ -309,7 +382,8 @@ else
 		if (mcolHighlightedTrains.Count == 0)
 			return Task.CompletedTask;
 
-		mcolHighlightedTrains.Clear();
+		// Nueva instancia para que CascadingValue propague el cambio a tablas y esquema.
+		mcolHighlightedTrains = new HashSet<Guid>();
 		mvarDataVersion++;
 		StateHasChanged();
 		return Task.CompletedTask;

@@ -1,4 +1,4 @@
-﻿using Microsoft.JSInterop;
+using Microsoft.JSInterop;
 using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
 using Sapphire2025Models.Expert;
@@ -310,6 +310,22 @@ namespace Sapphire2025.Storage
 
 
 
+		#endregion
+
+		#region "Zafiro Log (impresión)"
+		public async Task SetZafiroLogPrintPackage(SessionEventPrintPackage package)
+		{
+			string cadena = JsonSerializer.Serialize(package);
+			await SetStringValue("zafiroLogPrintPackage", cadena, false);
+		}
+
+		public async Task<SessionEventPrintPackage?> GetZafiroLogPrintPackage()
+		{
+			string? cadena = await GetStringValue("zafiroLogPrintPackage", false);
+			if (null == cadena)
+				return null;
+			return JsonSerializer.Deserialize<SessionEventPrintPackage>(cadena);
+		}
 		#endregion
 
 		#region "Valores"

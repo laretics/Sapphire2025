@@ -1,0 +1,28 @@
+﻿@page "/inspector/platformreport/print"
+@layout EmptyLayout
+@using Sapphire2025.Layout.Inspector
+@inject IJSRuntime mvarJSRuntime
+
+<PageTitle>Vías de estacionamiento</PageTitle>
+
+<PlatformsReportBody ShowToolbar="false" OnLoaded="OnReportLoaded" />
+
+@code {
+	private bool mvarReadyToPrint;
+
+	private Task OnReportLoaded()
+	{
+		mvarReadyToPrint = true;
+		return Task.CompletedTask;
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!mvarReadyToPrint)
+			return;
+
+		mvarReadyToPrint = false;
+		await Task.Delay(500);
+		await mvarJSRuntime.InvokeVoidAsync("window.print");
+	}
+}

@@ -21,6 +21,7 @@ IHost? host = Host.CreateDefaultBuilder(args)
 	string auxApiBaseAddress = context.Configuration["ApiBaseAddress"] ?? "http://localhost:5031/api/";
 	services.AddSingleton(sp => new HttpClient { BaseAddress = new Uri(auxApiBaseAddress)});
 	services.AddSingleton<IntStorageService>();
+	services.AddSingleton<Sapphire2026Clients.SessionService>();
 	services.AddSingleton<AuthenticationClient>();
 	services.AddSingleton<AeneasClient>();
 	services.AddSingleton<ExpertClient>();

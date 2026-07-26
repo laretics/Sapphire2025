@@ -1,0 +1,64 @@
+.odometry-input-ctl {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    min-width: 0;
+}
+
+.odometry-input-ctl .input-group {
+    width: 100%;
+    flex-wrap: nowrap;
+    align-items: stretch;
+}
+
+/* Solo dentro del input-group: el truco width:1% no debe aplicarse al display */
+.odometry-input-ctl .input-group > .form-control {
+    min-width: 0;
+    flex: 1 1 auto;
+    width: 1%;
+}
+
+.odometry-display {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-height: calc(1.5em + 0.75rem + 2px);
+    white-space: normal;
+    cursor: default;
+    box-sizing: border-box;
+}
+
+.odometry-display.odometry-editable {
+    cursor: pointer;
+}
+
+.odometry-display.odometry-editable:hover {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+.odometry-display.odometry-readonly {
+    background-color: var(--bs-secondary-bg, #e9ecef);
+    opacity: 1;
+}
+
+.odometry-label {
+    font-size: 0.75rem;
+    margin-right: 0.4rem;
+}
+
+.odometry-value strong {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+}
+
+.odometry-date {
+    white-space: nowrap;
+}
+
+@media (max-width: 767.98px) {
+    .odometry-input-ctl .btn {
+        min-width: 2.75rem;
+    }
+}

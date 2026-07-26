@@ -46,6 +46,8 @@ namespace Sapphire2025Server.Controllers
 		[HttpPost("uploadxml")]
 		public async Task<CompileResult> UploadXML([FromForm] IFormFile file)
 		{
+			// TODO actividad: este endpoint no recibe SessionToken; cuando lo tenga,
+			// registrar sessionEventType.timeNetUploaded con addLoginRecord.
 			CompileResult salida = new CompileResult();
 			if(null==file || file.Length ==0)
 			{
@@ -106,6 +108,7 @@ namespace Sapphire2025Server.Controllers
 		[HttpPost("deletetopostorage")]
 		public async Task<CompileResult> DeleteTopoStorage([FromBody] Guid id)
 		{
+			// TODO actividad: sin SessionToken no se puede atribuir el borrado a un usuario.
 			OnyxStorage auxOnice = new OnyxStorage();
 			ITimeNetContextStorage contexto = new DataStorage(mvarConfig);
 			return await auxOnice.RemoveTopoStorage(id, contexto);

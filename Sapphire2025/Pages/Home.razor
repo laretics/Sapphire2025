@@ -120,12 +120,12 @@
                             <img src="img/ZafiroTheme.jpg"
                                  class="img-fluid rounded-3 home-hero-img"
                                  alt="Logotipo Zafiro"
-                                 @onclick='() => mvarNavigator.NavigateTo("auth/login")' />
+                                 @onclick="OnAuthAction" />
                             <div class="d-md-none mt-3">
                                 <button type="button"
-                                        class="btn btn-primary w-100"
-                                        @onclick='() => mvarNavigator.NavigateTo("auth/login")'>
-                                    Iniciar sesión
+                                        class="btn @(IsLoggedIn ? "btn-outline-secondary" : "btn-primary") w-100"
+                                        @onclick="OnAuthAction">
+                                    @(IsLoggedIn ? "Cerrar sesión" : "Iniciar sesión")
                                 </button>
                             </div>
                         </div>
@@ -157,9 +157,9 @@
 
                             <div class="d-none d-md-block mt-3">
                                 <button type="button"
-                                        class="btn btn-outline-primary"
-                                        @onclick='() => mvarNavigator.NavigateTo("auth/login")'>
-                                    Ir al inicio de sesión
+                                        class="btn @(IsLoggedIn ? "btn-outline-secondary" : "btn-outline-primary")"
+                                        @onclick="OnAuthAction">
+                                    @(IsLoggedIn ? "Cerrar sesión" : "Ir al inicio de sesión")
                                 </button>
                             </div>
                         </div>
@@ -178,6 +178,13 @@
     string? mvarNotify { get; set; }
     string mvarCurrentVersion => Sapphire2025Models.Common.SapphireSoftwareVersion;
     string mvarNewVersion { get; set; } = "";
+
+    private bool IsLoggedIn => mvarSession is not null;
+
+    private void OnAuthAction()
+    {
+        mvarNavigator.NavigateTo(IsLoggedIn ? "auth/logout" : "auth/login");
+    }
 
     protected override async Task OnInitializedAsync()
     {

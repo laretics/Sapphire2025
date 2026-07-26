@@ -253,7 +253,7 @@ namespace Sapphire2026.Data
 		public DbSet<Platform> Platforms { get; set; }
 		public DbSet<WorkCatalog> WorksCatalog { get; set; }
 		public DbSet<WorkOrder> WorkOrders { get; set; }
-		public DbSet<OdometerValue> Odometer{ get; set; }
+		public DbSet<Odometry> Odometer{ get; set; }
 		#endregion
 		#region Maquinistros
 		public DbSet<WorkShiftTemplateCollection> WorkShiftTemplateCollections { get; set; }

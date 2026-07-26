@@ -1,0 +1,151 @@
+@page "/admin/sapphirelog/print"
+@layout EmptyLayout
+@using Sapphire2025Models
+@inject IJSRuntime mvarJSRuntime
+@inject IntStorageService mvarLocalStorage
+@inject AuthenticationClient mvarAuthClient
+
+<PageTitle>Informe de eventos · Zafiro</PageTitle>
+
+<div class="print-area">
+	<div class="print-title d-flex align-items-center" style="gap: 1.0rem; max-width: 100%; flex-wrap: nowrap;">
+		<div class="print-logo" style="margin-bottom:0; flex: 0 0 auto;">
+			<img src="img/sfmImg.png" alt="Logotipo SFM" style="max-width: 90px; height: auto;" />
+		</div>
+		<h2 class="mb-0 flex-grow-1" style="font-size: 1.3em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+			Registro de eventos — @mvarGeneratedAt.ToString("dd/MM/yyyy HH:mm")
+		</h2>
+		<h1 class="mb-0 flex-grow-1" style="font-size: 1.6em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+			ZAFIRO LOG
+		</h1>
+	</div>
+
+	@if (!string.IsNullOrWhiteSpace(mvarFilterSummary))
+	{
+		<div class="card mb-3 shadow-sm print-only">
+			<div class="card-body py-2">
+				<label class="form-label fw-bold text-secondary mb-1">Criterios de la consulta</label>
+				<div class="comments-box">@mvarFilterSummary</div>
+				@if (mvarTruncated)
+				{
+					<div class="text-danger small mt-1">
+						Resultado truncado: se muestran @mcolRecords.Count de @mvarTotalMatched coincidencias.
+					</div>
+				}
+				else
+				{
+					<div class="text-muted small mt-1">@mcolRecords.Count registro(s).</div>
+				}
+			</div>
+		</div>
+	}
+
+	@if (mvarLoading)
+	{
+		<div class="text-center my-5">
+			<div class="spinner-border text-primary" role="status"></div>
+			<div>Preparando informe...</div>
+		</div>
+	}
+	else if (mcolRecords.Count == 0)
+	{
+		<div class="alert alert-warning">No hay datos para imprimir. Vuelve a la consulta y genera el informe de nuevo.</div>
+	}
+	else
+	{
+		<div class="table-responsive my-3">
+			<table class="table table-bordered table-sm align-middle">
+				<thead class="table-light">
+					<tr>
+						<th>Fecha / hora</th>
+						<th>CF</th>
+						<th>Usuario</th>
+						<th>Evento</th>
+						<th>Origen</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (SessionEventRecordModel row in mcolRecords)
+					{
+						DateTime local = row.TimeStamp.Kind == DateTimeKind.Utc
+							? row.TimeStamp.ToLocalTime()
+							: row.TimeStamp;
+						<tr>
+							<td class="text-nowrap">@local.ToString("dd/MM/yyyy HH:mm:ss")</td>
+							<td>@ResolveUserCf(row.UserId)</td>
+							<td>@ResolveUserName(row.UserId)</td>
+							<td>@row.TypeName</td>
+							<td class="smallest-text">@(string.IsNullOrWhiteSpace(row.HostPoint) ? "—" : row.HostPoint)</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+</div>
+
+@code {
+	private List<SessionEventRecordModel> mcolRecords = new();
+	private Dictionary<string, UserModelBase> mdictUsers = new(StringComparer.OrdinalIgnoreCase);
+	private string mvarFilterSummary = string.Empty;
+	private DateTime mvarGeneratedAt = DateTime.Now;
+	private int mvarTotalMatched;
+	private bool mvarTruncated;
+	private bool mvarLoading = true;
+	private bool mvarReadyToPrint;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (mvarReadyToPrint)
+		{
+			mvarReadyToPrint = false;
+			await Task.Delay(500);
+			await mvarJSRuntime.InvokeVoidAsync("window.print");
+		}
+	}
+
+	protected override async Task OnParametersSetAsync()
+	{
+		mvarLoading = true;
+		SessionEventPrintPackage? package = await mvarLocalStorage.GetZafiroLogPrintPackage();
+		Dictionary<Guid, UserModelBase>? users = await mvarAuthClient.cachedUserList();
+		if (null != users)
+		{
+			mdictUsers = users.ToDictionary(
+				kv => kv.Key.ToString(),
+				kv => kv.Value,
+				StringComparer.OrdinalIgnoreCase);
+		}
+
+		if (null != package)
+		{
+			mcolRecords = package.Records ?? new List<SessionEventRecordModel>();
+			mvarFilterSummary = package.FilterSummary ?? string.Empty;
+			mvarGeneratedAt = package.GeneratedAt;
+			mvarTotalMatched = package.TotalMatched;
+			mvarTruncated = package.Truncated;
+		}
+		else
+		{
+			mcolRecords = new List<SessionEventRecordModel>();
+		}
+
+		mvarLoading = false;
+		if (mcolRecords.Count > 0)
+			mvarReadyToPrint = true;
+	}
+
+	private string ResolveUserName(string userId)
+	{
+		if (mdictUsers.TryGetValue(userId, out UserModelBase? user) && !string.IsNullOrWhiteSpace(user.Name))
+			return user.Name!;
+		return string.IsNullOrWhiteSpace(userId) ? "—" : userId;
+	}
+
+	private string ResolveUserCf(string userId)
+	{
+		if (mdictUsers.TryGetValue(userId, out UserModelBase? user) && !string.IsNullOrWhiteSpace(user.CF))
+			return user.CF!;
+		return string.Empty;
+	}
+}

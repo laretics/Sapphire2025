@@ -1,0 +1,42 @@
+.platform-select-ctl {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    min-width: 0; /* puede encoger en flex/columnas estrechas */
+}
+
+.platform-select-ctl .input-group {
+    width: 100%;
+    flex-wrap: nowrap; /* input + × siempre en la misma línea */
+    align-items: stretch;
+}
+
+/* Dentro de input-group el input no puede ser width:100% o el botón salta de línea */
+.platform-select-ctl .form-control {
+    min-width: 0; /* permite encoger el texto sin empujar el × */
+    flex: 1 1 auto;
+    width: 1%;
+}
+
+.platform-select-ctl .platform-select-clear {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+    line-height: 1;
+    font-size: 1.25rem;
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+}
+
+.platform-select-ctl .dropdown-menu {
+    max-width: 100%;
+}
+
+/* Escritorios/ventanas estrechas y móvil: área de toque usable sin forzar desborde */
+@media (max-width: 767.98px) {
+    .platform-select-ctl .platform-select-clear {
+        min-width: 2.75rem; /* ~44px táctil */
+    }
+}

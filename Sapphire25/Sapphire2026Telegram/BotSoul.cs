@@ -66,6 +66,8 @@ namespace Sapphire2026Telegram
 		private TimeSpan BroadcastMinimumGap { get => TimeSpan.FromMinutes(1d / BroadcastMessagesPerMinute); }
 		private readonly object mvarBroadcastRateLock = new object();
 		private DateTimeOffset mvarBroadcastNextAllowedSendUtc = DateTimeOffset.MinValue;
+		// Debe vivir con la instancia del bot; un CTS local se puede cancelar al hacer GC/Dispose.
+		private CancellationTokenSource? mvarReceiveCts;
 
 		public BotSoul (ILogger<BotSoul> logger, IConfiguration configuration,IServiceProvider servicesProvider, Worker worker)
 		{
@@ -78,16 +80,21 @@ namespace Sapphire2026Telegram
 			string? auxToken = config["TelegramBot:Secret"];
 			Debug.Assert(null != auxToken, "Valor nulo en token de Telegram desde Config");
 			mvarBot = new TelegramBotClient(auxToken);
-			CancellationTokenSource cts = new CancellationTokenSource();
+			mvarReceiveCts = new CancellationTokenSource();
 			if (IsTelegramEnabled)
 			{
+				mvarLogger.LogInformation("TelegramBot:Enabled=true. Arrancando StartReceiving...");
 				mvarBot.StartReceiving
 					(
 					HandleUpdateAsync,
 					HandleErrorAsync,
 					new ReceiverOptions { AllowedUpdates = Array.Empty<UpdateType>() },
-					cancellationToken: cts.Token
+					cancellationToken: mvarReceiveCts.Token
 					);
+			}
+			else
+			{
+				mvarLogger.LogWarning("TelegramBot:Enabled no es 'true'. El bot NO recibirá mensajes de Telegram.");
 			}
 		}
 		public BotSoul(ILogger<BotSoul> logger, IConfiguration configuration,IServiceProvider servicesProvider)
@@ -499,8 +506,9 @@ namespace Sapphire2026Telegram
 		private Task HandleErrorAsync(ITelegramBotClient botClient,
 			Exception exception,
 			CancellationToken cancellationToken)
-		{		
-			Debug.Assert(false, "Error en el bot de Telegram: " + exception.Message);
+		{
+			// Debug.Assert no sirve en producción: hay que dejar rastro en journalctl.
+			mvarLogger.LogError(exception, "Error en el polling del bot de Telegram: {Message}", exception.Message);
 			return Task.CompletedTask;
 		}
 
@@ -517,15 +525,26 @@ namespace Sapphire2026Telegram
 
 		private async Task<bool> GetTelegramEnabled()
 		{
-			if(IsTelegramEnabled)
+			if (!IsTelegramEnabled)
+				return false;
+
+			try
 			{
 				using IServiceScope scope = services.CreateScope();
 				AuthenticationClient auxClient = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
 				string? auxCadena = await auxClient.GetRegisterValue("Telegram", "false", Common.TelegramToken);
-				if(null!=auxCadena)
-					return auxCadena.Equals("true");			
+				if (null != auxCadena)
+					return auxCadena.Equals("true", StringComparison.OrdinalIgnoreCase);
+
+				mvarLogger.LogWarning("GetRegisterValue('Telegram') devolvió null. Se asume deshabilitado.");
+				return false;
 			}
-			return false;
+			catch (Exception ex)
+			{
+				// Antes esto tiraba el handler entero (p.ej. SessionService no registrado) y el bot parecía "muerto".
+				mvarLogger.LogError(ex, "No se pudo consultar el flag remoto Telegram. Se asume deshabilitado.");
+				return false;
+			}
 		}
 
 		#endregion"Script de políticas de Telegram"
