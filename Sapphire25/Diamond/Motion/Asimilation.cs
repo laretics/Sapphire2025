@@ -199,6 +199,48 @@ namespace Diamond.Motion
 		}
 
 		/// <summary>
+		/// Instantes relativos a la salida en los que el tren se encuentra en <paramref name="pk"/>
+		/// (interpolación sobre el perfil). Fuera de ruta devuelve null.
+		/// </summary>
+		public TimeSpan? TimeByPK(long pk)
+		{
+			EnsureBuilt();
+			if (mcolSamplePk.Length == 0)
+			{
+				return null;
+			}
+
+			if (!IsPkOnPath(pk, mvarOrigin.PK, mvarDestination.PK))
+			{
+				return null;
+			}
+
+			int index = FindPathIndexAtOrBeforePk(pk);
+			if (index < 0)
+			{
+				return null;
+			}
+
+			if (index >= mcolSamplePk.Length - 1)
+			{
+				return TimeSpan.FromSeconds(mcolTimeSeconds[mcolTimeSeconds.Length - 1]);
+			}
+
+			long pk0 = mcolSamplePk[index];
+			long pk1 = mcolSamplePk[index + 1];
+			double t0 = mcolTimeSeconds[index];
+			double t1 = mcolTimeSeconds[index + 1];
+			if (pk1 == pk0)
+			{
+				return TimeSpan.FromSeconds(t0);
+			}
+
+			double u = (double)(pk - pk0) / (double)(pk1 - pk0);
+			double seconds = t0 + u * (t1 - t0);
+			return TimeSpan.FromSeconds(seconds);
+		}
+
+		/// <summary>
 		/// PK del eje en el instante <paramref name="time"/> desde la salida del origen (v=0).
 		/// Tiempos posteriores al final del recorrido devuelven el PK del destino.
 		/// </summary>

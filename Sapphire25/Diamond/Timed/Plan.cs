@@ -7,6 +7,7 @@ namespace Diamond.Timed
 {
 	/// <summary>
 	/// Proyecto de horarios de trenes (malla).
+	/// Fuente de verdad de la demanda: script mini-DSL (compilación determinista).
 	/// </summary>
 	public sealed class Plan
 	{
@@ -15,6 +16,8 @@ namespace Diamond.Timed
 		private string mvarComment;
 		private TopoLayout? mvarTopo;
 		private readonly List<TrainSpecs> mcolTrainSpecs;
+		private readonly List<DemandRequirement> mcolDemand;
+		private string mvarDemandScript;
 
 		public Plan()
 		{
@@ -23,6 +26,8 @@ namespace Diamond.Timed
 			mvarComment = string.Empty;
 			mvarTopo = null;
 			mcolTrainSpecs = new List<TrainSpecs>();
+			mcolDemand = new List<DemandRequirement>();
+			mvarDemandScript = string.Empty;
 		}
 
 		public Plan(TopoLayout topo)
@@ -72,6 +77,23 @@ namespace Diamond.Timed
 		public IReadOnlyList<TrainSpecs> Fleet
 		{
 			get { return mcolTrainSpecs; }
+		}
+
+		/// <summary>
+		/// Requisitos de demanda compilados (orden del script).
+		/// </summary>
+		public IReadOnlyList<DemandRequirement> Demand
+		{
+			get { return mcolDemand; }
+		}
+
+		/// <summary>
+		/// Script fuente de la demanda (mini-DSL). Compilar con <see cref="CompileDemand"/>.
+		/// </summary>
+		public string DemandScript
+		{
+			get { return mvarDemandScript; }
+			set { mvarDemandScript = value ?? string.Empty; }
 		}
 
 		public void AddTrainSpecs(TrainSpecs specs)
@@ -139,6 +161,62 @@ namespace Diamond.Timed
 			TrainSpecs created = Motion.TrainSpecs.DefaultModel;
 			mcolTrainSpecs.Add(created);
 			return created;
+		}
+
+		/// <summary>
+		/// Compila <see cref="DemandScript"/> de forma determinista y sustituye <see cref="Demand"/>.
+		/// Si hay <see cref="Topo"/>, resuelve estaciones. Devuelve el resultado (errores incluidos).
+		/// </summary>
+		public DemandCompileResult CompileDemand()
+		{
+			return CompileDemand(mvarDemandScript, resolveStations: mvarTopo is not null);
+		}
+
+		/// <summary>
+		/// Compila el script indicado, lo guarda en <see cref="DemandScript"/> y actualiza <see cref="Demand"/>.
+		/// </summary>
+		public DemandCompileResult CompileDemand(string script, bool resolveStations = true)
+		{
+			mvarDemandScript = script ?? string.Empty;
+			DemandCompileResult result = DemandScriptParser.Parse(mvarDemandScript);
+
+			if (result.PlanName.Length > 0 && mvarName.Length == 0)
+			{
+				mvarName = result.PlanName;
+			}
+
+			mcolDemand.Clear();
+			if (!result.Success)
+			{
+				return result;
+			}
+
+			int index = 0;
+			while (index < result.Requirements.Count)
+			{
+				mcolDemand.Add(result.Requirements[index]);
+				index++;
+			}
+
+			if (resolveStations && mvarTopo is not null)
+			{
+				List<string> resolveErrors = new List<string>();
+				DemandStationResolver.Resolve(result, mvarTopo, resolveErrors);
+				int e = 0;
+				while (e < resolveErrors.Count)
+				{
+					result.AddError(resolveErrors[e]);
+					e++;
+				}
+			}
+
+			return result;
+		}
+
+		public void ClearDemand()
+		{
+			mcolDemand.Clear();
+			mvarDemandScript = string.Empty;
 		}
 
 		public override string ToString()

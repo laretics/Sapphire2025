@@ -1,0 +1,102 @@
+@page "/mesh"
+@rendermode InteractiveServer
+@using Diamond.Timed
+@using Diamond.Topo
+@using Diamond.Web.Rendering
+@using Diamond.Web.Services
+
+<PageTitle>Malla T3 — Diamond</PageTitle>
+
+<h1>Malla horaria</h1>
+<p class="text-muted mb-2">
+	Eje <strong>T3 Palma–Manacor</strong> del sample SFM (<code>toposfm227.xml</code>).
+	Eje X = tiempo · Eje Y = estaciones (por PK real).
+</p>
+
+@if (_error is not null)
+{
+	<div class="alert alert-danger">@_error</div>
+}
+else if (_mesh is not null && _axis is not null)
+{
+	<div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+		<span class="badge bg-info text-dark">@_axis.Id · @_axis.Name</span>
+		<span class="badge bg-success">@(_mesh.Success ? "OK" : "Con errores")</span>
+		<span class="badge bg-secondary">@_mesh.Circulations.Count circulaciones</span>
+		<span class="badge bg-secondary">@_mesh.Asimilations.Count asimilaciones</span>
+		<span class="badge bg-warning text-dark">@_mesh.Warnings.Count warnings</span>
+		<span class="badge bg-danger">@_mesh.Errors.Count errors</span>
+		<button class="btn btn-sm btn-outline-secondary" @onclick="Rebuild">Regenerar</button>
+	</div>
+
+	@if (_mesh.Warnings.Count > 0)
+	{
+		<details class="mb-2">
+			<summary>Warnings (@_mesh.Warnings.Count)</summary>
+			<ul class="small">
+				@foreach (string w in _mesh.Warnings)
+				{
+					<li>@w</li>
+				}
+			</ul>
+		</details>
+	}
+
+	@if (_mesh.Errors.Count > 0)
+	{
+		<details class="mb-2">
+			<summary class="text-danger">Errors (@_mesh.Errors.Count)</summary>
+			<ul class="small">
+				@foreach (string e in _mesh.Errors)
+				{
+					<li>@e</li>
+				}
+			</ul>
+		</details>
+	}
+
+	<div class="mesh-svg-host border rounded p-2 bg-dark">
+		@((MarkupString)_svg)
+	</div>
+
+	<pre class="mt-3 small bg-light p-2 rounded">@_script</pre>
+}
+
+@code {
+	private Diamond.Timed.Mesh? _mesh;
+	private Axis? _axis;
+	private Plan? _plan;
+	private string _svg = string.Empty;
+	private string _script = string.Empty;
+	private string? _error;
+
+	protected override void OnInitialized()
+	{
+		Rebuild();
+	}
+
+	private void Rebuild()
+	{
+		try
+		{
+			_error = null;
+			(_plan, _mesh, _axis) = DemoMeshService.BuildDemo();
+			_script = _plan!.DemandScript;
+			// Ventana de visualización (el script cubre 06:00–22:00; mostramos franja diurna)
+			_svg = MeshSvgRenderer.Render(
+				_mesh!,
+				_axis!,
+				TimeSpan.FromHours(6),
+				TimeSpan.FromHours(14),
+				width: 1400,
+				height: 900);
+		}
+		catch (Exception ex)
+		{
+			_error = ex.Message;
+			_mesh = null;
+			_axis = null;
+			_svg = string.Empty;
+		}
+	}
+}

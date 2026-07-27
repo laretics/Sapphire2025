@@ -1,0 +1,11 @@
+/* Diamond mesh host */
+.mesh-svg-host {
+	overflow: auto;
+	max-width: 100%;
+}
+
+.mesh-svg-host svg {
+	display: block;
+	max-width: 100%;
+	height: auto;
+}
