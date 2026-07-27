@@ -115,6 +115,31 @@ namespace Diamond.Timed
 			return timeOverlap && spaceOverlap;
 		}
 
+		/// <summary>
+		/// Intersección tiempo×espacio si <see cref="Overlaps"/>; si no, false.
+		/// </summary>
+		public bool TryIntersect(CantonOccupationRect other, out CantonOccupationRect? intersection)
+		{
+			intersection = null;
+			if (!Overlaps(other))
+			{
+				return false;
+			}
+
+			long pk0 = mvarPkStart > other.mvarPkStart ? mvarPkStart : other.mvarPkStart;
+			long pk1 = mvarPkEnd < other.mvarPkEnd ? mvarPkEnd : other.mvarPkEnd;
+			TimeSpan t0 = mvarTimeEnter > other.mvarTimeEnter ? mvarTimeEnter : other.mvarTimeEnter;
+			TimeSpan t1 = mvarTimeExit < other.mvarTimeExit ? mvarTimeExit : other.mvarTimeExit;
+			if (pk1 <= pk0 || t1 <= t0)
+			{
+				return false;
+			}
+
+			string id = mvarCirculationId + "∩" + other.mvarCirculationId;
+			intersection = new CantonOccupationRect(id, mvarAxisId, pk0, pk1, t0, t1);
+			return true;
+		}
+
 		public override string ToString()
 		{
 			return mvarCirculationId

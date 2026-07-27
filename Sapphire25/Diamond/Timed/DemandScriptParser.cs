@@ -11,14 +11,20 @@ namespace Diamond.Timed
 	/// <remarks>
 	/// <code>
 	/// plan "nombre"
-	/// require [both [ways]] &lt;freq&gt; &lt;from&gt; -&gt; &lt;to&gt; [ventana] [using id] [as id]
-	///   stops 30s
-	///   skip RLL Enllaç "Sant Joan" PSJ
-	///   dwell INC 60s
-	///   cross at Enllaç
-	/// freq := N/h | N per hour | every N min
+	/// days lab
+	///   color #38bdf8
+	///     require|req [both [ways]] [&lt;freq&gt;] &lt;from&gt; -&gt; &lt;to&gt; [ventana] [using id] [as id]
+	///       stops 30s
+	///       skip RLL Enllaç "Sant Joan" PSJ
+	///       dwell INC 60s
+	///       cross at Enllaç
 	/// </code>
-	/// Las líneas indentadas (espacio/tab) continúan el último require.
+	/// Regiones de definición: una línea <c>days</c>/<c>color</c> (opcionalmente
+	/// prefijada con <c>with</c>/<c>con</c>/<c>region</c>) abre un ámbito; los
+	/// <c>require</c> más indentados heredan esos valores. Lo declarado en el
+	/// propio require (inline o continuación) tiene prioridad.
+	/// <c>delete HH:mm-HH:mm [all]</c> elimina circulaciones ya planificadas en esa franja
+	/// (en orden de script; ver <see cref="DemandDeleteOp"/>).
 	/// </remarks>
 	public static class DemandScriptParser
 	{
@@ -33,8 +39,11 @@ namespace Diamond.Timed
 
 			string[] lines = SplitLines(script);
 			int autoId = 0;
+			int scriptOrder = 0;
 			int lineNumber = 0;
 			DemandRequirement? current = null;
+			int currentIndent = -1;
+			List<DefinitionScope> scopes = new List<DefinitionScope>();
 
 			while (lineNumber < lines.Length)
 			{
@@ -42,7 +51,7 @@ namespace Diamond.Timed
 				string raw = lines[lineNumber];
 				lineNumber++;
 
-				bool indented = raw.Length > 0 && (raw[0] == ' ' || raw[0] == '\t');
+				int indent = MeasureIndent(raw);
 				string line = StripComment(raw).Trim();
 				if (line.Length == 0)
 				{
@@ -65,36 +74,262 @@ namespace Diamond.Timed
 					continue;
 				}
 
-				if (indented)
+				// Cerrar el require abierto si la indentación no es estrictamente mayor.
+				if (current is not null && indent <= currentIndent)
 				{
-					if (current is null)
-					{
-						result.AddError(sourceLine, "línea indentada sin require previo.");
-						continue;
-					}
+					current = null;
+					currentIndent = -1;
+				}
 
+				// Continuación del require actual (más indentada).
+				if (current is not null && indent > currentIndent)
+				{
 					ParseContinuation(tokens, sourceLine, current, result);
 					continue;
+				}
+
+				// Pop de regiones cuyo cuerpo ya terminó (indent <= scope.Indent).
+				while (scopes.Count > 0 && scopes[scopes.Count - 1].Indent >= indent)
+				{
+					scopes.RemoveAt(scopes.Count - 1);
 				}
 
 				string head = tokens[0].ToLowerInvariant();
 				if (head == "plan")
 				{
-					current = null;
+					if (indent > 0)
+					{
+						result.AddError(sourceLine, "'plan' solo se admite al nivel raíz (sin indentar).");
+						continue;
+					}
+
 					ParsePlanLine(tokens, sourceLine, result);
+					continue;
 				}
-				else if (head == "require")
+
+				if (head == "require" || head == "req")
 				{
-					current = ParseRequireLine(tokens, sourceLine, result, ref autoId);
+					ServiceDays defaultDays;
+					string defaultColor;
+					ResolveScopeDefaults(scopes, out defaultDays, out defaultColor);
+					current = ParseRequireLine(
+						tokens,
+						sourceLine,
+						result,
+						ref autoId,
+						ref scriptOrder,
+						defaultDays,
+						defaultColor);
+					currentIndent = current is null ? -1 : indent;
+					continue;
 				}
-				else
+
+				if (head == "delete" || head == "del")
 				{
+					ServiceDays defaultDays;
+					string defaultColor;
+					ResolveScopeDefaults(scopes, out defaultDays, out defaultColor);
+					ParseDeleteLine(tokens, sourceLine, result, ref scriptOrder, defaultDays);
 					current = null;
-					result.AddError(sourceLine, "palabra clave desconocida '" + tokens[0] + "' (se esperaba plan o require).");
+					currentIndent = -1;
+					continue;
 				}
+
+				if (LooksLikeScopeHeader(tokens))
+				{
+					DefinitionScope? scope;
+					if (!TryParseScopeHeader(tokens, indent, sourceLine, result, out scope) || scope is null)
+					{
+						continue;
+					}
+
+					scopes.Add(scope);
+					continue;
+				}
+
+				result.AddError(
+					sourceLine,
+					"palabra clave desconocida '" + tokens[0]
+					+ "' (se esperaba plan, require/req, delete, o región days|color|with|con|region).");
 			}
 
 			return result;
+		}
+
+		/// <summary>
+		/// Cuenta la indentación (espacios; tab = 4) al inicio de la línea cruda.
+		/// </summary>
+		private static int MeasureIndent(string raw)
+		{
+			if (string.IsNullOrEmpty(raw))
+			{
+				return 0;
+			}
+
+			int n = 0;
+			int i = 0;
+			while (i < raw.Length)
+			{
+				char c = raw[i];
+				if (c == ' ')
+				{
+					n++;
+				}
+				else if (c == '\t')
+				{
+					n += 4;
+				}
+				else
+				{
+					break;
+				}
+
+				i++;
+			}
+
+			return n;
+		}
+
+		private static void ResolveScopeDefaults(
+			List<DefinitionScope> scopes,
+			out ServiceDays days,
+			out string color)
+		{
+			days = ServiceDays.All;
+			color = string.Empty;
+			int i = 0;
+			while (i < scopes.Count)
+			{
+				DefinitionScope s = scopes[i];
+				if (s.Days is not null)
+				{
+					days = s.Days;
+				}
+
+				if (s.Color is not null)
+				{
+					color = s.Color;
+				}
+
+				i++;
+			}
+		}
+
+		private static bool LooksLikeScopeHeader(List<string> tokens)
+		{
+			if (tokens.Count == 0)
+			{
+				return false;
+			}
+
+			string head = tokens[0].ToLowerInvariant();
+			if (head == "with" || head == "con" || head == "region")
+			{
+				return true;
+			}
+
+			return head == "days" || head == "on" || head == "color" || head == "colour";
+		}
+
+		private static bool TryParseScopeHeader(
+			List<string> tokens,
+			int indent,
+			int sourceLine,
+			DemandCompileResult result,
+			out DefinitionScope? scope)
+		{
+			scope = null;
+			int index = 0;
+			string head = tokens[0].ToLowerInvariant();
+			if (head == "with" || head == "con" || head == "region")
+			{
+				index = 1;
+				if (index >= tokens.Count)
+				{
+					result.AddError(sourceLine, "uso: with days lab [color #rrggbb] …");
+					return false;
+				}
+			}
+
+			ServiceDays? days = null;
+			string? color = null;
+			bool any = false;
+
+			while (index < tokens.Count)
+			{
+				string lower = tokens[index].ToLowerInvariant();
+				if (lower == "days" || lower == "on")
+				{
+					ServiceDays parsedDays;
+					int consumed;
+					string? dayError;
+					if (!ServiceDays.TryParse(tokens, index + 1, out parsedDays, out consumed, out dayError))
+					{
+						result.AddError(sourceLine, dayError ?? "días no válidos.");
+						return false;
+					}
+
+					days = parsedDays;
+					any = true;
+					index += 1 + consumed;
+					continue;
+				}
+
+				if (lower == "color" || lower == "colour")
+				{
+					if (index + 1 >= tokens.Count)
+					{
+						result.AddError(sourceLine, "uso: color #rrggbb");
+						return false;
+					}
+
+					string? normalized;
+					string? colorError;
+					if (!TryNormalizeColor(tokens[index + 1], out normalized, out colorError) || normalized is null)
+					{
+						result.AddError(sourceLine, colorError ?? "color no válido.");
+						return false;
+					}
+
+					color = normalized;
+					any = true;
+					index += 2;
+					continue;
+				}
+
+				result.AddError(
+					sourceLine,
+					"en una región solo se admiten days|on|color|colour (token inesperado '"
+					+ tokens[index] + "').");
+				return false;
+			}
+
+			if (!any)
+			{
+				result.AddError(sourceLine, "región vacía: indique days y/o color.");
+				return false;
+			}
+
+			scope = new DefinitionScope(indent, days, color);
+			return true;
+		}
+
+		private sealed class DefinitionScope
+		{
+			public DefinitionScope(int indent, ServiceDays? days, string? color)
+			{
+				Indent = indent;
+				Days = days;
+				Color = color;
+			}
+
+			public int Indent { get; }
+
+			/// <summary>Null = no redefine días en este nivel.</summary>
+			public ServiceDays? Days { get; }
+
+			/// <summary>Null = no redefine color en este nivel.</summary>
+			public string? Color { get; }
 		}
 
 		private static void ParsePlanLine(List<string> tokens, int sourceLine, DemandCompileResult result)
@@ -121,11 +356,104 @@ namespace Diamond.Timed
 			result.PlanName = name.ToString();
 		}
 
+		private static void ParseDeleteLine(
+			List<string> tokens,
+			int sourceLine,
+			DemandCompileResult result,
+			ref int scriptOrder,
+			ServiceDays defaultDays)
+		{
+			// delete HH:mm-HH:mm [all]
+			// delete from HH:mm to HH:mm [all]
+			// del … (alias)
+			int index = 1;
+			if (index >= tokens.Count)
+			{
+				result.AddError(sourceLine, "uso: delete HH:mm-HH:mm [all]");
+				return;
+			}
+
+			TimeOnly start;
+			TimeOnly end;
+
+			string t0 = tokens[index];
+			if (string.Equals(t0, "from", StringComparison.OrdinalIgnoreCase)
+				&& index + 3 < tokens.Count
+				&& string.Equals(tokens[index + 2], "to", StringComparison.OrdinalIgnoreCase))
+			{
+				if (!TryParseTime(tokens[index + 1], out start))
+				{
+					result.AddError(sourceLine, "hora no válida '" + tokens[index + 1] + "'.");
+					return;
+				}
+
+				if (!TryParseTime(tokens[index + 3], out end))
+				{
+					result.AddError(sourceLine, "hora no válida '" + tokens[index + 3] + "'.");
+					return;
+				}
+
+				index += 4;
+			}
+			else
+			{
+				if (!TryParseTimeWindow(t0, out start, out end) || !t0.Contains('-'))
+				{
+					// Exigir rango explícito (no ventana de 1 h por una sola hora).
+					result.AddError(sourceLine, "uso: delete HH:mm-HH:mm [all] (se esperaba un rango horario).");
+					return;
+				}
+
+				index++;
+			}
+
+			if (end <= start)
+			{
+				result.AddError(sourceLine, "la franja de delete debe tener fin posterior al inicio.");
+				return;
+			}
+
+			bool all = false;
+			if (index < tokens.Count)
+			{
+				string flag = tokens[index].ToLowerInvariant();
+				if (flag == "all" || flag == "any" || flag == "overlap" || flag == "journey")
+				{
+					all = true;
+					index++;
+				}
+				else
+				{
+					result.AddError(sourceLine, "token inesperado '" + tokens[index] + "' tras delete (opcional: all).");
+					return;
+				}
+			}
+
+			if (index < tokens.Count)
+			{
+				result.AddError(sourceLine, "token inesperado '" + tokens[index] + "'.");
+				return;
+			}
+
+			DemandDeleteOp op = new DemandDeleteOp(
+				start,
+				end,
+				all,
+				sourceLine,
+				scriptOrder,
+				defaultDays);
+			scriptOrder++;
+			result.AddDelete(op);
+		}
+
 		private static DemandRequirement? ParseRequireLine(
 			List<string> tokens,
 			int sourceLine,
 			DemandCompileResult result,
-			ref int autoId)
+			ref int autoId,
+			ref int scriptOrder,
+			ServiceDays defaultDays,
+			string defaultColor)
 		{
 			int index = 1;
 			if (index >= tokens.Count)
@@ -145,12 +473,19 @@ namespace Diamond.Timed
 				}
 			}
 
-			FrequencySpec? frequency;
-			string? freqError;
-			if (!TryParseFrequency(tokens, ref index, out frequency, out freqError))
+			// Frecuencia opcional: si no hay token de cadencia, un solo tren (FrequencySpec.Once).
+			FrequencySpec frequency = FrequencySpec.Once();
+			if (LooksLikeFrequency(tokens, index))
 			{
-				result.AddError(sourceLine, freqError ?? "frecuencia no válida.");
-				return null;
+				FrequencySpec? parsedFreq;
+				string? freqError;
+				if (!TryParseFrequency(tokens, ref index, out parsedFreq, out freqError) || parsedFreq is null)
+				{
+					result.AddError(sourceLine, freqError ?? "frecuencia no válida.");
+					return null;
+				}
+
+				frequency = parsedFreq;
 			}
 
 			if (index >= tokens.Count)
@@ -182,7 +517,10 @@ namespace Diamond.Timed
 			TimeOnly? windowEnd = null;
 			string fleetId = string.Empty;
 			string id = string.Empty;
+			// Herencia de regiones; lo inline/continuación puede sobrescribir.
+			string color = defaultColor ?? string.Empty;
 			StopPattern stops = new StopPattern();
+			ServiceDays serviceDays = defaultDays ?? ServiceDays.All;
 
 			while (index < tokens.Count)
 			{
@@ -226,7 +564,24 @@ namespace Diamond.Timed
 					continue;
 				}
 
-				// Continuaciones inline: stops / skip / dwell / cross
+				// days lab | days mon-fri | days lun mar ...
+				if (lower == "days" || lower == "on")
+				{
+					ServiceDays parsedDays;
+					int consumed;
+					string? dayError;
+					if (!ServiceDays.TryParse(tokens, index + 1, out parsedDays, out consumed, out dayError))
+					{
+						result.AddError(sourceLine, dayError ?? "días no válidos.");
+						return null;
+					}
+
+					serviceDays = parsedDays;
+					index += 1 + consumed;
+					continue;
+				}
+
+				// Continuaciones inline: stops / skip / dwell / cross / color
 				if (lower == "stops" || lower == "skip" || lower == "dwell" || lower == "cross")
 				{
 					List<string> rest = tokens.GetRange(index, tokens.Count - index);
@@ -238,9 +593,31 @@ namespace Diamond.Timed
 					break;
 				}
 
+				if (lower == "color" || lower == "colour")
+				{
+					if (index + 1 >= tokens.Count)
+					{
+						result.AddError(sourceLine, "uso: color #rrggbb");
+						return null;
+					}
+
+					string? normalizedInline;
+					string? colorErrorInline;
+					if (!TryNormalizeColor(tokens[index + 1], out normalizedInline, out colorErrorInline)
+						|| normalizedInline is null)
+					{
+						result.AddError(sourceLine, colorErrorInline ?? "color no válido.");
+						return null;
+					}
+
+					color = normalizedInline;
+					index += 2;
+					continue;
+				}
+
 				TimeOnly compactStart;
 				TimeOnly compactEnd;
-				if (TryParseTimeRange(token, out compactStart, out compactEnd))
+				if (TryParseTimeWindow(token, out compactStart, out compactEnd))
 				{
 					windowStart = compactStart;
 					windowEnd = compactEnd;
@@ -274,7 +651,11 @@ namespace Diamond.Timed
 				windowEnd,
 				fleetId,
 				sourceLine,
-				stops);
+				stops,
+				serviceDays,
+				color,
+				scriptOrder);
+			scriptOrder++;
 
 			result.AddRequirement(requirement);
 			return requirement;
@@ -286,6 +667,47 @@ namespace Diamond.Timed
 			DemandRequirement current,
 			DemandCompileResult result)
 		{
+			if (tokens.Count == 0)
+			{
+				return;
+			}
+
+			string head = tokens[0].ToLowerInvariant();
+			if (head == "days" || head == "on")
+			{
+				ServiceDays parsedDays;
+				int consumed;
+				string? dayError;
+				if (!ServiceDays.TryParse(tokens, 1, out parsedDays, out consumed, out dayError))
+				{
+					result.AddError(sourceLine, dayError ?? "días no válidos.");
+					return;
+				}
+
+				current.ServiceDays = parsedDays;
+				return;
+			}
+
+			if (head == "color" || head == "colour")
+			{
+				if (tokens.Count < 2)
+				{
+					result.AddError(sourceLine, "uso: color #rrggbb");
+					return;
+				}
+
+				string? normalized;
+				string? colorError;
+				if (!TryNormalizeColor(tokens[1], out normalized, out colorError) || normalized is null)
+				{
+					result.AddError(sourceLine, colorError ?? "color no válido.");
+					return;
+				}
+
+				current.Color = normalized;
+				return;
+			}
+
 			TryParseStopCommand(tokens, sourceLine, current.Stops, result);
 		}
 
@@ -380,8 +802,121 @@ namespace Diamond.Timed
 				return true;
 			}
 
-			result.AddError(sourceLine, "continuación desconocida '" + tokens[0] + "' (stops|skip|dwell|cross).");
+			result.AddError(sourceLine, "continuación desconocida '" + tokens[0] + "' (stops|skip|dwell|cross|days|color).");
 			return false;
+		}
+
+		/// <summary>
+		/// Normaliza a <c>#rrggbb</c> (minúsculas). Acepta <c>#rgb</c>, <c>#rrggbb</c>,
+		/// hex sin almohadilla y nombres CSS básicos.
+		/// </summary>
+		internal static bool TryNormalizeColor(string text, out string? color, out string? error)
+		{
+			color = null;
+			error = null;
+			if (string.IsNullOrWhiteSpace(text))
+			{
+				error = "falta el valor de color.";
+				return false;
+			}
+
+			string t = text.Trim();
+			string lower = t.ToLowerInvariant();
+
+			// Nombres CSS básicos
+			string? named = NamedCssColor(lower);
+			if (named is not null)
+			{
+				color = named;
+				return true;
+			}
+
+			string hex = lower;
+			if (hex.StartsWith("#", StringComparison.Ordinal))
+			{
+				hex = hex.Substring(1);
+			}
+
+			if (hex.Length == 3
+				&& IsHexDigit(hex[0]) && IsHexDigit(hex[1]) && IsHexDigit(hex[2]))
+			{
+				// #rgb → #rrggbb
+				color = "#"
+					+ hex[0] + hex[0]
+					+ hex[1] + hex[1]
+					+ hex[2] + hex[2];
+				return true;
+			}
+
+			if (hex.Length == 6
+				&& IsAllHex(hex))
+			{
+				color = "#" + hex;
+				return true;
+			}
+
+			if (hex.Length == 8
+				&& IsAllHex(hex))
+			{
+				// #rrggbbaa → se ignora alpha para stroke SVG simple
+				color = "#" + hex.Substring(0, 6);
+				return true;
+			}
+
+			error = "color no válido '" + text + "' (ej. #38bdf8, #f00, red, aa00aa).";
+			return false;
+		}
+
+		private static string? NamedCssColor(string lower)
+		{
+			switch (lower)
+			{
+				case "red": return "#ff0000";
+				case "green": return "#008000";
+				case "blue": return "#0000ff";
+				case "yellow": return "#ffff00";
+				case "orange": return "#ffa500";
+				case "purple": return "#800080";
+				case "pink": return "#ffc0cb";
+				case "cyan": return "#00ffff";
+				case "magenta": return "#ff00ff";
+				case "white": return "#ffffff";
+				case "black": return "#000000";
+				case "gray":
+				case "grey": return "#808080";
+				case "lime": return "#00ff00";
+				case "teal": return "#008080";
+				case "navy": return "#000080";
+				case "maroon": return "#800000";
+				case "olive": return "#808000";
+				case "silver": return "#c0c0c0";
+				case "aqua": return "#00ffff";
+				case "fuchsia": return "#ff00ff";
+				default: return null;
+			}
+		}
+
+		private static bool IsAllHex(string s)
+		{
+			int i = 0;
+			while (i < s.Length)
+			{
+				if (!IsHexDigit(s[i]))
+				{
+					return false;
+				}
+
+				i++;
+			}
+
+			return s.Length > 0;
+		}
+
+		private static bool IsHexDigit(char c)
+		{
+			return (c >= '0' && c <= '9')
+				|| (c >= 'a' && c <= 'f')
+				|| (c >= 'A' && c <= 'F');
 		}
 
 		private static bool TryParseDuration(string text, out TimeSpan duration)
@@ -436,6 +971,43 @@ namespace Diamond.Timed
 
 			duration = TimeSpan.FromSeconds(value * factorSeconds);
 			return true;
+		}
+
+		/// <summary>
+		/// True si el token en <paramref name="index"/> inicia una frecuencia
+		/// (<c>N/h</c>, <c>every N min</c>, <c>N per hour</c>).
+		/// </summary>
+		private static bool LooksLikeFrequency(List<string> tokens, int index)
+		{
+			if (tokens is null || index >= tokens.Count)
+			{
+				return false;
+			}
+
+			string t0 = tokens[index];
+			if (t0.EndsWith("/h", StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+
+			if (string.Equals(t0, "every", StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+
+			if (index + 2 < tokens.Count
+				&& string.Equals(tokens[index + 1], "per", StringComparison.OrdinalIgnoreCase)
+				&& (string.Equals(tokens[index + 2], "hour", StringComparison.OrdinalIgnoreCase)
+					|| string.Equals(tokens[index + 2], "hours", StringComparison.OrdinalIgnoreCase)))
+			{
+				int n;
+				if (int.TryParse(t0, NumberStyles.Integer, CultureInfo.InvariantCulture, out n) && n > 0)
+				{
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		private static bool TryParseFrequency(List<string> tokens, ref int index, out FrequencySpec? frequency, out string? error)
@@ -495,7 +1067,8 @@ namespace Diamond.Timed
 
 			if (index + 2 < tokens.Count
 				&& string.Equals(tokens[index + 1], "per", StringComparison.OrdinalIgnoreCase)
-				&& string.Equals(tokens[index + 2], "hour", StringComparison.OrdinalIgnoreCase))
+				&& (string.Equals(tokens[index + 2], "hour", StringComparison.OrdinalIgnoreCase)
+					|| string.Equals(tokens[index + 2], "hours", StringComparison.OrdinalIgnoreCase)))
 			{
 				int n;
 				if (!int.TryParse(t0, NumberStyles.Integer, CultureInfo.InvariantCulture, out n) || n <= 0)
@@ -523,29 +1096,60 @@ namespace Diamond.Timed
 				out time);
 		}
 
-		private static bool TryParseTimeRange(string text, out TimeOnly start, out TimeOnly end)
+		/// <summary>
+		/// Ventana horaria compacta:
+		/// <c>06:00-22:00</c> → inicio y fin explícitos;
+		/// <c>5:35</c> → inicio y fin = inicio + 1 h (p. ej. 5:35-6:35).
+		/// </summary>
+		private static bool TryParseTimeWindow(string text, out TimeOnly start, out TimeOnly end)
 		{
 			start = default;
 			end = default;
+			if (string.IsNullOrWhiteSpace(text))
+			{
+				return false;
+			}
+
 			int dash = text.IndexOf('-');
-			if (dash <= 0 || dash >= text.Length - 1)
+			if (dash > 0 && dash < text.Length - 1)
+			{
+				string left = text.Substring(0, dash);
+				string right = text.Substring(dash + 1);
+				if (!TryParseTime(left, out start))
+				{
+					return false;
+				}
+
+				if (!TryParseTime(right, out end))
+				{
+					return false;
+				}
+
+				return true;
+			}
+
+			// Una sola hora: ventana de 1 hora [t, t+1h]
+			if (!TryParseTime(text, out start))
 			{
 				return false;
 			}
 
-			string left = text.Substring(0, dash);
-			string right = text.Substring(dash + 1);
-			if (!TryParseTime(left, out start))
-			{
-				return false;
-			}
-
-			if (!TryParseTime(right, out end))
-			{
-				return false;
-			}
-
+			end = AddOneHourClamped(start);
 			return true;
+		}
+
+		/// <summary>
+		/// Suma 1 hora; si rebasa medianoche, cierra a 23:59 (la ventana no puede cruzar el día en el DSL).
+		/// </summary>
+		private static TimeOnly AddOneHourClamped(TimeOnly start)
+		{
+			int totalMinutes = start.Hour * 60 + start.Minute + 60;
+			if (totalMinutes >= 24 * 60)
+			{
+				return new TimeOnly(23, 59);
+			}
+
+			return new TimeOnly(totalMinutes / 60, totalMinutes % 60, start.Second);
 		}
 
 		private static string StripComment(string line)
@@ -561,6 +1165,13 @@ namespace Diamond.Timed
 				}
 				else if (c == '#' && !inQuotes)
 				{
+					// #rrggbb / #rgb / #rrggbbaa son colores, no comentarios.
+					if (IsHexColorPrefix(line, index))
+					{
+						index++;
+						continue;
+					}
+
 					return line.Substring(0, index);
 				}
 
@@ -568,6 +1179,35 @@ namespace Diamond.Timed
 			}
 
 			return line;
+		}
+
+		/// <summary>
+		/// True si en <paramref name="index"/> hay un literal de color hex
+		/// (<c>#</c> + 3, 6 u 8 dígitos hex, no seguido de más hex).
+		/// </summary>
+		private static bool IsHexColorPrefix(string line, int index)
+		{
+			if (index >= line.Length || line[index] != '#')
+			{
+				return false;
+			}
+
+			int hexCount = 0;
+			int i = index + 1;
+			while (i < line.Length && IsHexDigit(line[i]))
+			{
+				hexCount++;
+				i++;
+			}
+
+			if (hexCount != 3 && hexCount != 6 && hexCount != 8)
+			{
+				return false;
+			}
+
+			// Si el siguiente carácter es alfanumérico no hex, no es un color limpio.
+			// Tras hex solo dígitos a-f, cualquier otro char (espacio, fin, etc.) es OK.
+			return true;
 		}
 
 		private static List<string> Tokenize(string line)

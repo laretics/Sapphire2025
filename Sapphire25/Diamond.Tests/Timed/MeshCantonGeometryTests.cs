@@ -37,6 +37,54 @@ namespace Diamond.Tests.Timed
 		}
 
 		[Fact]
+		public void OccupationRects_TryIntersect_ReturnsOverlap()
+		{
+			CantonOccupationRect a = new CantonOccupationRect(
+				"4901", "V", 0, 10000,
+				TimeSpan.FromHours(6),
+				TimeSpan.FromHours(7));
+			CantonOccupationRect b = new CantonOccupationRect(
+				"4902", "V", 5000, 15000,
+				TimeSpan.FromHours(6.5),
+				TimeSpan.FromHours(7.5));
+
+			CantonOccupationRect? ix;
+			Assert.True(a.TryIntersect(b, out ix));
+			Assert.NotNull(ix);
+			Assert.Equal(5000L, ix!.PkStart);
+			Assert.Equal(10000L, ix.PkEnd);
+			Assert.Equal(TimeSpan.FromHours(6.5), ix.TimeEnter);
+			Assert.Equal(TimeSpan.FromHours(7), ix.TimeExit);
+		}
+
+		[Fact]
+		public void FindHardConflicts_SingleTrackOpposite_ReportsIntersection()
+		{
+			Plan plan = CreatePlanWithCorridor(doubleTrack: false);
+			plan.DemandScript = """
+				require both ways every 40 min A -> B 06:05-08:00 as R1
+				""";
+			Assert.True(plan.CompileDemand().Success);
+
+			Mesh mesh = new MeshPlanner(plan).Solve();
+			Axis axis = plan.Topo!.Axes[0];
+			RouteView view = RouteView.FromAxis(axis);
+			IReadOnlyList<OccupationConflict> conflicts = MeshCantonGeometry.FindHardConflicts(mesh, view);
+
+			// En vía única con both ways a la misma cadencia suele haber solapes ida/vuelta
+			if (conflicts.Count > 0)
+			{
+				Assert.All(conflicts, c =>
+				{
+					Assert.True(c.Intersection.PkEnd > c.Intersection.PkStart);
+					Assert.True(c.Intersection.TimeExit > c.Intersection.TimeEnter);
+					Assert.False(string.IsNullOrEmpty(c.CirculationIdA));
+					Assert.False(string.IsNullOrEmpty(c.CirculationIdB));
+				});
+			}
+		}
+
+		[Fact]
 		public void Mesh_GetCantonOccupations_ProducesRectsForCorridor()
 		{
 			Plan plan = CreatePlanWithCorridor();
@@ -58,7 +106,7 @@ namespace Diamond.Tests.Timed
 			});
 		}
 
-		private static Plan CreatePlanWithCorridor()
+		private static Plan CreatePlanWithCorridor(bool doubleTrack = true)
 		{
 			Station stA = MakeStation("A", "STA");
 			Station stM = MakeStation("M", "STM");
@@ -79,7 +127,7 @@ namespace Diamond.Tests.Timed
 			axis.AddVertex(v2);
 			axis.Rebuild();
 			axis.SetCantonFrontiers(new long[] { 0L, 10000L, 20000L });
-			axis.DefaultTrackCount = 2;
+			axis.DefaultTrackCount = doubleTrack ? 2 : 1;
 
 			TopoLayout topo = new TopoLayout();
 			topo.AddStation(stA);

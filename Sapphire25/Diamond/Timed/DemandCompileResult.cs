@@ -8,12 +8,14 @@ namespace Diamond.Timed
 	public sealed class DemandCompileResult
 	{
 		private readonly List<DemandRequirement> mcolRequirements;
+		private readonly List<DemandDeleteOp> mcolDeletes;
 		private readonly List<string> mcolErrors;
 		private string mvarPlanName;
 
 		public DemandCompileResult()
 		{
 			mcolRequirements = new List<DemandRequirement>();
+			mcolDeletes = new List<DemandDeleteOp>();
 			mcolErrors = new List<string>();
 			mvarPlanName = string.Empty;
 		}
@@ -29,6 +31,14 @@ namespace Diamond.Timed
 			get { return mcolRequirements; }
 		}
 
+		/// <summary>
+		/// Directivas <c>delete</c> en orden de aparición (también tienen <see cref="DemandDeleteOp.ScriptOrder"/>).
+		/// </summary>
+		public IReadOnlyList<DemandDeleteOp> Deletes
+		{
+			get { return mcolDeletes; }
+		}
+
 		public IReadOnlyList<string> Errors
 		{
 			get { return mcolErrors; }
@@ -42,6 +52,11 @@ namespace Diamond.Timed
 		internal void AddRequirement(DemandRequirement requirement)
 		{
 			mcolRequirements.Add(requirement);
+		}
+
+		internal void AddDelete(DemandDeleteOp deleteOp)
+		{
+			mcolDeletes.Add(deleteOp);
 		}
 
 		internal void AddError(string message)

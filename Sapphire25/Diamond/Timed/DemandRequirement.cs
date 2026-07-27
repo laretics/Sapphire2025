@@ -21,6 +21,9 @@ namespace Diamond.Timed
 		private Station? mvarToStation;
 		private int mvarSourceLine;
 		private readonly StopPattern mvarStops;
+		private ServiceDays mvarServiceDays;
+		private string mvarColor;
+		private int mvarScriptOrder;
 
 		public DemandRequirement(
 			string id,
@@ -32,7 +35,10 @@ namespace Diamond.Timed
 			TimeOnly? windowEnd,
 			string? fleetId,
 			int sourceLine,
-			StopPattern? stops = null)
+			StopPattern? stops = null,
+			ServiceDays? serviceDays = null,
+			string? color = null,
+			int scriptOrder = 0)
 		{
 			if (from is null)
 			{
@@ -61,6 +67,9 @@ namespace Diamond.Timed
 			mvarToStation = null;
 			mvarSourceLine = sourceLine;
 			mvarStops = stops ?? new StopPattern();
+			mvarServiceDays = serviceDays ?? ServiceDays.All;
+			mvarColor = NormalizeOptionalColor(color);
+			mvarScriptOrder = scriptOrder;
 		}
 
 		public string Id
@@ -122,9 +131,43 @@ namespace Diamond.Timed
 			get { return mvarSourceLine; }
 		}
 
+		/// <summary>
+		/// Orden global en el script (mezclado con directivas <c>delete</c>).
+		/// </summary>
+		public int ScriptOrder
+		{
+			get { return mvarScriptOrder; }
+			internal set { mvarScriptOrder = value; }
+		}
+
 		public StopPattern Stops
 		{
 			get { return mvarStops; }
+		}
+
+		/// <summary>
+		/// Días de la semana en que se espera este servicio (lab, fes, lun-vie, …).
+		/// Por defecto: todos los días.
+		/// </summary>
+		public ServiceDays ServiceDays
+		{
+			get { return mvarServiceDays; }
+			set { mvarServiceDays = value ?? ServiceDays.All; }
+		}
+
+		/// <summary>
+		/// Color SVG opcional de las circulaciones de este requisito (<c>#rrggbb</c>).
+		/// Vacío = el render usa el color por asimilación.
+		/// </summary>
+		public string Color
+		{
+			get { return mvarColor; }
+			set { mvarColor = NormalizeOptionalColor(value); }
+		}
+
+		public bool HasColor
+		{
+			get { return mvarColor.Length > 0; }
 		}
 
 		public bool IsResolved
@@ -132,9 +175,25 @@ namespace Diamond.Timed
 			get { return mvarFromStation is not null && mvarToStation is not null; }
 		}
 
+		private static string NormalizeOptionalColor(string? color)
+		{
+			if (string.IsNullOrWhiteSpace(color))
+			{
+				return string.Empty;
+			}
+
+			return color.Trim();
+		}
+
+		public bool AppliesOn(DayOfWeek dayOfWeek)
+		{
+			return mvarServiceDays.AppliesOn(dayOfWeek);
+		}
+
 		public override string ToString()
 		{
-			return mvarId + ": " + mvarFrom.Text + " -> " + mvarTo.Text + " " + mvarFrequency;
+			return mvarId + ": " + mvarFrom.Text + " -> " + mvarTo.Text + " " + mvarFrequency
+				+ " [" + mvarServiceDays + "]";
 		}
 	}
 }

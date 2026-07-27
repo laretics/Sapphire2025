@@ -1,0 +1,1045 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<rautatie>
+  <info id="82ee6989-0ddf-44ab-9de4-549359ead14c" 
+		topoId="ebddf796-1441-42d0-aa2d-0993acb3d5b4" 
+		name="Invierno 2025 2026" 
+		description="Horarios de invierno (Hasta julio de 2026)." 
+		comment="Asimilaciones lentas. Nuevo formato de bloques." 
+		license="Este paquete de datos está protegido bajo los términos de la licencia Creative Commons: Reconocimiento - No Comercial - Sin Obra Derivada (by-nc-nd)" 
+		author="Pelayo Carrasco Montejo" 
+		firstdate="11/15/2025" 
+		lastdate="11/15/2025" 
+	    version="2.3.0" 
+		bitmap="SFMItin37.png" />
+  <plans>
+    <plan id="Inv2026" name="Invierno 2026" comment="Malla horaria de laborables y festivos">
+      <circulations>
+		  <block asm="44x3L" freq="lab" pattern="49##">
+			  <cir id="4901" dep="06:05:00" />
+			  <cir id="4903" dep="06:45:00" />
+			  <cir id="4905" dep="07:25:00" />
+			  <cir id="4907" dep="08:05:00" />
+			  <cir id="4909" dep="08:45:00" />
+			  <cir id="4911" dep="09:25:00" />
+			  <cir id="4913" dep="10:05:00" />
+			  <cir id="4915" dep="11:05:00" />
+			  <cir id="4917" dep="12:05:00" />
+			  <cir id="4919" dep="13:05:00" />
+			  <cir id="4921" dep="13:45:00" />
+			  <cir id="4923" dep="14:25:00" />
+			  <cir id="4925" dep="15:05:00" />
+			  <cir id="4927" dep="15:45:00" />
+			  <cir id="4929" dep="16:25:00" />
+			  <cir id="4931" dep="17:05:00" />
+			  <cir id="4933" dep="18:15:00" />
+			  <cir id="4935" dep="19:15:00" />
+			  <cir id="4937" dep="20:15:00" />
+			  <cir id="4939" dep="21:15:00" />
+			  <cir id="4941" dep="22:20:00" />			  
+		  </block>
+		  <block asm="44x2L" freq="lab" pattern="49##">
+			  <cir id="4902" dep="06:16:00" />
+			  <cir id="4904" dep="06:56:00" />
+			  <cir id="4906" dep="07:36:00" />
+			  <cir id="4908" dep="08:16:00" />
+			  <cir id="4910" dep="08:56:00" />
+			  <cir id="4912" dep="09:36:00" />
+			  <cir id="4914" dep="10:16:00" />
+			  <cir id="4916" dep="10:56:00" />
+			  <cir id="4918" dep="11:37:00" />
+			  <cir id="4920" dep="12:37:00" />
+			  <cir id="4922" dep="13:37:00" />
+			  <cir id="4924" dep="14:36:00" />
+			  <cir id="4926" dep="15:16:00" />
+			  <cir id="4928" dep="15:56:00" />
+			  <cir id="4930" dep="16:36:00" />
+			  <cir id="4932" dep="17:16:00" />
+			  <cir id="4934" dep="17:56:00" />
+			  <cir id="4936" dep="18:30:00" />
+			  <cir id="4938" dep="19:30:00" />
+			  <cir id="4940" dep="20:30:00" />
+			  <cir id="4942" dep="21:30:00" />
+			  <cir id="4944" dep="22:30:00" />
+		  </block>
+		  <block asm="48x3L" freq="lab" pattern="47##">
+			  <cir id="4701" dep="05:45:00" />
+			  <cir id="4703" dep="06:25:00" />
+			  <cir id="4705" dep="07:05:00" />
+			  <cir id="4707" dep="07:45:00" />
+			  <cir id="4709" dep="08:25:00" />
+			  <cir id="4711" dep="09:05:00" />
+			  <cir id="4713" dep="09:45:00" />
+			  <cir id="4715" dep="10:25:00" />
+			  <cir id="4717" dep="11:25:00" />
+			  <cir id="4719" dep="12:25:00" />
+			  <cir id="4721" dep="13:25:00" />
+			  <cir id="4723" dep="14:05:00" />
+			  <cir id="4725" dep="14:45:00" />
+			  <cir id="4727" dep="15:25:00" />
+			  <cir id="4729" dep="16:05:00" />
+			  <cir id="4731" dep="16:45:00" />
+			  <cir id="4733" dep="17:25:00" />
+			  <cir id="4735" dep="18:35:00" />
+			  <cir id="4737" dep="19:35:00" />
+			  <cir id="4739" dep="20:35:00" />
+			  <cir id="4741" dep="21:35:00" />
+		  </block>
+		  <block asm="48x4L" freq="lab" pattern="47##">
+			  <cir id="4702" dep="06:02:00" />
+			  <cir id="4704" dep="06:52:00" />
+			  <cir id="4706" dep="07:32:00" />
+			  <cir id="4708" dep="08:12:00" />
+			  <cir id="4710" dep="08:52:00" />
+			  <cir id="4712" dep="09:32:00" />
+			  <cir id="4714" dep="10:12:00" />
+			  <cir id="4716" dep="10:52:00" />
+			  <cir id="4718" dep="11:32:00" />
+			  <cir id="4720" dep="12:32:00" />
+			  <cir id="4722" dep="13:32:00" />
+			  <cir id="4724" dep="14:32:00" />
+			  <cir id="4726" dep="15:12:00" />
+			  <cir id="4728" dep="15:52:00" />
+			  <cir id="4730" dep="16:32:00" />
+			  <cir id="4732" dep="17:12:00" />
+			  <cir id="4734" dep="17:52:00" />
+			  <cir id="4736" dep="19:02:00" />
+			  <cir id="4738" dep="20:02:00" />
+			  <cir id="4740" dep="21:02:00" />
+			  <cir id="4742" dep="22:02:00" />			  
+		  </block>
+		  <block asm="45x1L" freq="lab" pattern="45##">
+			  <cir id="4501" dep="05:55:00" />
+			  <cir id="4503" dep="06:15:00" />
+			  <cir id="4505" dep="06:35:00" />
+			  <cir id="4507" dep="06:55:00" />
+			  <cir id="4509" dep="07:15:00" />
+			  <cir id="4511" dep="07:35:00" />
+			  <cir id="4513" dep="07:55:00" />
+			  <cir id="4515" dep="08:15:00" />
+			  <cir id="4517" dep="08:35:00" />
+			  <cir id="4519" dep="08:55:00" />
+			  <cir id="4521" dep="10:45:00" />
+			  <cir id="4523" dep="11:45:00" />
+			  <cir id="4525" dep="12:45:00" />
+			  <cir id="4527" dep="13:15:00" />
+			  <cir id="4529" dep="13:35:00" />
+			  <cir id="4531" dep="13:55:00" />
+			  <cir id="4533" dep="14:15:00" />
+			  <cir id="4535" dep="14:35:00" />
+			  <cir id="4537" dep="14:55:00" />
+			  <cir id="4539" dep="15:15:00" />
+			  <cir id="4541" dep="15:35:00" />
+			  <cir id="4543" dep="15:55:00" />
+			  <cir id="4545" dep="16:15:00" />
+			  <cir id="4547" dep="16:35:00" />
+			  <cir id="4549" dep="16:55:00" />
+			  <cir id="4551" dep="17:15:00" />
+			  <cir id="4553" dep="17:35:00" />
+			  <cir id="4555" dep="17:55:00" />
+			  <cir id="4557" dep="18:55:00" />
+			  <cir id="4559" dep="19:55:00" />
+			  <cir id="4561" dep="20:55:00" />
+			  <cir id="4563" dep="21:55:00" />
+		  </block>
+		  <block asm="45x2L" freq="lab" pattern="45##">
+			  <cir id="4502" dep="06:05:00" />
+			  <cir id="4504" dep="06:42:00" />
+			  <cir id="4506" dep="07:02:00" />
+			  <cir id="4508" dep="07:22:00" />
+			  <cir id="4510" dep="07:42:00" />
+			  <cir id="4512" dep="08:02:00" />
+			  <cir id="4514" dep="08:22:00" />
+			  <cir id="4516" dep="08:42:00" />
+			  <cir id="4518" dep="09:02:00" />
+			  <cir id="4520" dep="09:22:00" />
+			  <cir id="4522" dep="09:42:00" />
+			  <cir id="4524" dep="12:32:00" />
+			  <cir id="4526" dep="13:32:00" />
+			  <cir id="4528" dep="14:02:00" />
+			  <cir id="4530" dep="14:22:00" />
+			  <cir id="4532" dep="14:32:00" />
+			  <cir id="4534" dep="14:42:00" />
+			  <cir id="4536" dep="15:02:00" />
+			  <cir id="4538" dep="15:22:00" />
+			  <cir id="4540" dep="15:42:00" />
+			  <cir id="4542" dep="16:02:00" />
+			  <cir id="4544" dep="16:22:00" />
+			  <cir id="4546" dep="16:42:00" />
+			  <cir id="4548" dep="17:02:00" />
+			  <cir id="4550" dep="17:22:00" />
+			  <cir id="4552" dep="17:42:00" />
+			  <cir id="4554" dep="18:02:00" />
+			  <cir id="4556" dep="18:22:00" />
+			  <cir id="4558" dep="18:48:00" />
+			  <cir id="4560" dep="19:42:00" />
+			  <cir id="4562" dep="20:42:00" />
+			  <cir id="4564" dep="21:42:00" />
+		  </block>
+		  <block asm="M1x1" freq="lab" pattern="50##">
+			  <cir id="5001" dep="06:35:00" />
+			  <cir id="5003" dep="06:55:00" />
+			  <cir id="5005" dep="07:15:00" />
+			  <cir id="5007" dep="07:35:00" />
+			  <cir id="5009" dep="07:55:00" />
+			  <cir id="5011" dep="08:15:00" />
+			  <cir id="5013" dep="08:35:00" />
+			  <cir id="5015" dep="08:55:00" />
+			  <cir id="5017" dep="09:15:00" />
+			  <cir id="5019" dep="09:35:00" />
+			  <cir id="5021" dep="09:55:00" />
+			  <cir id="5023" dep="10:15:00" />
+			  <cir id="5025" dep="10:35:00" />
+			  <cir id="5027" dep="10:55:00" />
+			  <cir id="5029" dep="11:15:00" />
+			  <cir id="5031" dep="11:35:00" />
+			  <cir id="5033" dep="11:55:00" />
+			  <cir id="5035" dep="12:15:00" />
+			  <cir id="5037" dep="12:35:00" />
+			  <cir id="5039" dep="12:55:00" />
+			  <cir id="5041" dep="13:15:00" />
+			  <cir id="5043" dep="13:35:00" />
+			  <cir id="5045" dep="13:55:00" />
+			  <cir id="5047" dep="14:15:00" />
+			  <cir id="5049" dep="14:35:00" />
+			  <cir id="5051" dep="14:55:00" />
+			  <cir id="5053" dep="15:15:00" />
+			  <cir id="5055" dep="15:35:00" />
+			  <cir id="5057" dep="15:55:00" />
+			  <cir id="5059" dep="16:15:00" />
+			  <cir id="5061" dep="16:35:00" />
+			  <cir id="5063" dep="16:55:00" />
+			  <cir id="5065" dep="17:15:00" />
+			  <cir id="5067" dep="17:35:00" />
+			  <cir id="5069" dep="17:55:00" />
+			  <cir id="5071" dep="18:15:00" />
+			  <cir id="5073" dep="18:35:00" />
+			  <cir id="5075" dep="18:55:00" />
+			  <cir id="5077" dep="19:15:00" />
+			  <cir id="5079" dep="19:35:00" />
+			  <cir id="5081" dep="19:55:00" />
+			  <cir id="5083" dep="20:15:00" />
+			  <cir id="5085" dep="20:35:00" />
+			  <cir id="5087" dep="20:55:00" />
+			  <cir id="5089" dep="21:15:00" />
+			  <cir id="5091" dep="21:35:00" />			  
+		  </block>
+		  <block asm="M1x2" freq="lab" pattern="50##">
+			  <cir id="5002" dep="06:55:00" />
+			  <cir id="5004" dep="07:15:00" />
+			  <cir id="5006" dep="07:35:00" />
+			  <cir id="5008" dep="07:55:00" />
+			  <cir id="5010" dep="08:15:00" />
+			  <cir id="5012" dep="08:35:00" />
+			  <cir id="5014" dep="08:55:00" />
+			  <cir id="5016" dep="09:15:00" />
+			  <cir id="5018" dep="09:35:00" />
+			  <cir id="5020" dep="09:55:00" />
+			  <cir id="5022" dep="10:15:00" />
+			  <cir id="5024" dep="10:35:00" />
+			  <cir id="5026" dep="10:55:00" />
+			  <cir id="5028" dep="11:15:00" />
+			  <cir id="5030" dep="11:35:00" />
+			  <cir id="5032" dep="11:55:00" />
+			  <cir id="5034" dep="12:15:00" />
+			  <cir id="5036" dep="12:35:00" />
+			  <cir id="5038" dep="12:55:00" />
+			  <cir id="5040" dep="13:15:00" />
+			  <cir id="5042" dep="13:35:00" />
+			  <cir id="5044" dep="13:55:00" />
+			  <cir id="5046" dep="14:15:00" />
+			  <cir id="5048" dep="14:35:00" />
+			  <cir id="5050" dep="14:55:00" />
+			  <cir id="5052" dep="15:15:00" />
+			  <cir id="5054" dep="15:35:00" />
+			  <cir id="5056" dep="15:55:00" />
+			  <cir id="5058" dep="16:15:00" />
+			  <cir id="5060" dep="16:35:00" />
+			  <cir id="5062" dep="16:55:00" />
+			  <cir id="5064" dep="17:15:00" />
+			  <cir id="5066" dep="17:35:00" />
+			  <cir id="5068" dep="17:55:00" />
+			  <cir id="5070" dep="18:15:00" />
+			  <cir id="5072" dep="18:35:00" />
+			  <cir id="5074" dep="18:55:00" />
+			  <cir id="5076" dep="19:15:00" />
+			  <cir id="5078" dep="19:35:00" />
+			  <cir id="5080" dep="19:55:00" />
+			  <cir id="5082" dep="20:15:00" />
+			  <cir id="5084" dep="20:35:00" />
+			  <cir id="5086" dep="20:55:00" />
+			  <cir id="5088" dep="21:15:00" />
+			  <cir id="5090" dep="21:35:00" />
+			  <cir id="5092" dep="21:55:00" />			  
+		  </block>
+        <cir id="7001" asm="70x1" freq="lab" dep="05:35:00" />
+        <cir id="7002" asm="70x2" freq="lab" dep="22:30:00" />
+		  <block asm="44x1L" freq="fes" pattern="44##">
+			  <cir id="4401" dep="06:10:00" />
+			  <cir id="4403" dep="07:10:00" />
+			  <cir id="4405" dep="08:10:00" />
+			  <cir id="4407" dep="09:10:00" />
+			  <cir id="4409" dep="10:10:00" />
+			  <cir id="4411" dep="11:10:00" />
+			  <cir id="4413" dep="12:10:00" />
+			  <cir id="4415" dep="13:10:00" />
+			  <cir id="4417" dep="14:10:00" />
+			  <cir id="4419" dep="15:10:00" />
+			  <cir id="4421" dep="16:10:00" />
+			  <cir id="4423" dep="17:10:00" />
+			  <cir id="4425" dep="18:10:00" />
+			  <cir id="4427" dep="19:10:00" />
+			  <cir id="4429" dep="20:10:00" />
+			  <cir id="4431" dep="21:10:00" />
+			  <cir id="4433" dep="22:10:00" />			  
+		  </block>
+		  <block asm="44x2L" freq="fes" pattern="44##">
+			  <cir id="4402" dep="06:25:00" />
+			  <cir id="4404" dep="07:25:00" />
+			  <cir id="4406" dep="08:25:00" />
+			  <cir id="4408" dep="09:25:00" />
+			  <cir id="4410" dep="10:25:00" />
+			  <cir id="4412" dep="11:25:00" />
+			  <cir id="4414" dep="12:25:00" />
+			  <cir id="4416" dep="13:25:00" />
+			  <cir id="4418" dep="14:25:00" />
+			  <cir id="4420" dep="15:25:00" />
+			  <cir id="4422" dep="16:25:00" />
+			  <cir id="4424" dep="17:25:00" />
+			  <cir id="4426" dep="18:25:00" />
+			  <cir id="4428" dep="19:25:00" />
+			  <cir id="4430" dep="20:25:00" />
+			  <cir id="4432" dep="21:25:00" />
+			  <cir id="4434" dep="22:25:00" />
+		  </block>
+		  <block asm="48x1L" freq="fes" pattern="48##">
+			  <cir id="4801" dep="06:40:00" />
+			  <cir id="4803" dep="07:40:00" />
+			  <cir id="4805" dep="08:40:00" />
+			  <cir id="4807" dep="09:40:00" />
+			  <cir id="4809" dep="10:40:00" />
+			  <cir id="4811" dep="11:40:00" />
+			  <cir id="4813" dep="12:40:00" />
+			  <cir id="4815" dep="13:40:00" />
+			  <cir id="4817" dep="14:40:00" />
+			  <cir id="4819" dep="15:40:00" />
+			  <cir id="4821" dep="16:40:00" />
+			  <cir id="4823" dep="17:40:00" />
+			  <cir id="4825" dep="18:40:00" />
+			  <cir id="4827" dep="19:40:00" />
+			  <cir id="4829" dep="20:40:00" />
+			  <cir id="4831" dep="21:40:00" />
+		  </block>
+		  <block asm="48x2L" freq="fes" pattern="48##">
+			  <cir id="4802" dep="08:08:00" />
+			  <cir id="4804" dep="09:08:00" />
+			  <cir id="4806" dep="10:08:00" />
+			  <cir id="4808" dep="11:08:00" />
+			  <cir id="4810" dep="12:08:00" />
+			  <cir id="4812" dep="13:08:00" />
+			  <cir id="4814" dep="14:08:00" />
+			  <cir id="4816" dep="15:08:00" />
+			  <cir id="4818" dep="16:08:00" />
+			  <cir id="4820" dep="17:08:00" />
+			  <cir id="4822" dep="18:08:00" />
+			  <cir id="4824" dep="19:08:00" />
+			  <cir id="4826" dep="20:08:00" />
+			  <cir id="4828" dep="21:08:00" />
+			  <cir id="4830" dep="22:08:00" />
+		  </block>
+      </circulations>
+        <schedules>
+			<inactive>
+				<ws name="DD" comment="Descanso disponible" bgcol="#C6EFCE" col="#0e4d2a"></ws>
+				<ws name="DCX" comment="D. compensación de DD" col="#593617"></ws>
+				<ws name="AU" comment="Licencia Agente Único" col="#10213b"></ws>
+			</inactive>
+			<active>
+				<ws ord="0,0" name="1,1M" start="06:10" duration="8:58" week="lab" comment="Trenes de mañana -1-" stcol="#202080" bgcol="#d3d3e8">
+					<depot start="06:35" end="08:10"/>
+					<train id="4515" start="08:15" end="08:51"/>
+					<train id="4518" start="09:02" end="09:40"/>
+					<depot start="09:47" end="10:30"/>
+					<train id="5029" start="10:35" end="10:50"/>
+					<train id="5030" start="10:53" end="11:08"/>
+					<depot start="11:13" end="11:20"/>
+					<train id="4717" start="11:25" end="12:21"/>
+					<train id="4720" start="12:32" end="13:30"/>
+					<depot start="13:35" end="14:10"/>
+					<train id="5053" start="14:15" end="14:30"/>
+					<train id="5054" start="14:33" end="14:48"/>
+				</ws>
+				<ws ord="0,1" name="2,2M" start="06:15" duration="8:38" week="lab" comment="Trenes de mañana -2-" stcol="#202080"  bgcol="#d3d3e8">
+					<depot start="06:40" end="07:10"/>
+					<train id="4509" start="07:15" end="07:51"/>
+					<train id="4512" start="08:02" end="08:40"/>
+					<depot start="08:45" end="08:50"/>
+					<train id="4519" start="08:55" end="09:31"/>
+					<train id="4522" start="09:42" end="10:18"/>
+					<depot start="10:23" end="11:50"/>
+					<train id="5037" start="11:55" end="12:10"/>
+					<train id="5038" start="12:13" end="12:28"/>
+					<depot start="12:33" end="13:55"/>
+					<train id="5051" start="14:00" end="14:15"/>
+					<train id="5052" start="14:18" end="14:33"/>
+				</ws>
+				<ws ord="0,2" name="3,3M" start="05:40" duration="8:05" week="lab" comment="Trenes de mañana -3-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="4901" start="06:05" end="07:17"/>
+					<train id="4906" start="07:36" end="08:50"/>
+					<depot start="08:55" end="10:10"/>
+					<train id="5027" start="10:15" end="10:30"/>
+					<train id="5028" start="10:33" end="10:48"/>
+					<depot start="10:53" end="12:08"/>
+					<train id="4523" start="11:45" end="12:21"/>
+					<train id="4524" start="12:32" end="13:10"/>
+					<depot start="13:15" end="13:25"/>
+				</ws>
+				<ws ord="0,3" name="4,4M" start="06:10" duration="8:40" week="lab" comment="Trenes de mañana -4-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="4505" start="06:35" end="07:11"/>
+					<train id="4508" start="07:22" end="08:00"/>
+					<depot start="08:05" end="09:00"/>
+					<train id="4711" start="09:05" end="10:01"/>
+					<train id="4714" start="10:12" end="11:10"/>
+					<depot start="11:15" end="12:20"/>
+					<train id="4719" start="12:25" end="13:21"/>
+					<train id="4722" start="13:32" end="14:30"/>
+				</ws>
+				<ws ord="0,4" name="5,5M" start="04:45" duration="9:05" week="lab" comment="Trenes de mañana -5-" stcol="#202080"  bgcol="#d3d3e8">
+					<depot start="05:10" end="06:20"/>
+					<train id="4703" start="06:25" end="07:21"/>
+					<train id="4706" start="07:32" end="08:30"/>
+					<train id="4909" start="08:45" end="09:57"/>
+					<train id="4914" start="10:16" end="11:30"/>
+					<depot start="11:35" end="12:30"/>
+					<train id="5041" start="12:35" end="12:50"/>
+					<train id="5042" start="12:53" end="13:08"/>
+					<depot start="13:13" end="13:30"/>
+				</ws>
+				<ws ord="0,5" name="6,6M" start="07:10" duration="08:01" week="lab" comment="Trenes de mañana -6-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="4511" start="07:35" end="08:11"/>
+					<train id="4514" start="08:22" end="09:00"/>
+					<depot start="09:05" end="09:30"/>
+					<train id="5023" start="09:35" end="09:50"/>
+					<train id="5024" start="09:53" end="10:08"/>
+					<depot start="10:13" end="10:40"/>
+					<train id="4521" start="10:45" end="11:21"/>
+					<depot start="11:30" end="14:08" foreign="true"/>
+					<train id="4922" start="14:13" end="14:51"/>
+				</ws>
+				<ws ord="0,6" name="7,7M" start="06:30" duration="8:50" week="lab" comment="Trenes de mañana -7-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="4507" start="06:55" end="07:31"/>
+					<train id="4510" start="07:42" end="08:20"/>
+					<depot start="08:25" end="09:20"/>
+					<train id="4911" start="09:25" end="10:37"/>
+					<train id="4916" start="10:56" end="12:10"/>
+					<depot start="12:15" end="13:30"/>
+					<train id="4529" start="13:35" end="14:11"/>
+					<train id="4530" start="14:22" end="15:00"/>
+				</ws>
+				<ws ord="0,7" name="8,8M" start="04:45" duration="9:00" week="lab" comment="Trenes de mañana -8-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="34901" start="05:10" end="05:50" disc="true"/>
+					<train id="4502" start="06:05" end="06:43"/>
+					<train id="5007" start="07:30" end="07:45"/>
+					<train id="5008" start="07:48" end="08:03"/>
+					<train id="5013" start="08:15" end="08:30"/>
+					<train id="5014" start="08:33" end="08:48"/>
+					<train id="5019" start="08:55" end="09:10"/>
+					<train id="5020" start="09:13" end="09:28"/>
+					<depot start="09:30" end="10:00"/>
+					<train id="4913" start="10:05" end="11:17"/>
+					<train id="4918" start="11:37" end="12:51"/>
+					<depot start="12:56" end="13:25"/>
+				</ws>
+				<ws ord="0,8" name="10,10M" start="04:45" duration="8:30" week="lab" comment="Trenes de mañana -10-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="34901" start="05:10" end="06:10"/>
+					<train id="4902" start="06:18" end="07:30"/>
+					<depot start="07:35" end="07:55"/>
+					<train id="4513" start="07:55" end="08:31"/>
+					<train id="4516" start="08:42" end="09:20"/>
+					<depot start="09:20" end="12:55"/>
+				</ws>
+				<ws ord="0,9" name="31,31M" start="05:20" duration="9:10" week="lab" comment="Trenes de mañana -31-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="4701" start="05:45" end="06:41"/>
+					<train id="4704" start="06:52" end="07:50"/>
+					<depot start="07:55" end="08:20"/>
+					<train id="4709" start="08:25" end="09:21"/>
+					<train id="4712" start="09:32" end="10:30"/>
+					<depot start="10:35" end="10:50"/>
+					<train id="5031" start="10:55" end="11:10"/>
+					<train id="5032" start="11:13" end="11:28"/>
+					<depot start="11:33" end="13:00"/>
+					<train id="5045" start="13:15" end="13:30"/>
+					<train id="5046" start="13:33" end="13:48"/>
+					<depot start="13:50" end="14:10"/>
+				</ws>
+				<ws ord="0,10" name="32,32M" start="05:50" duration="9:10" week="lab" comment="Trenes de mañana -32-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="4503" start="06:15" end="06:51"/>
+					<train id="4506" start="07:02" end="07:40"/>
+					<depot start="07:45" end="08:00"/>
+					<train id="4907" start="08:05" end="09:17"/>
+					<train id="4912" start="09:36" end="10:50"/>
+					<depot start="10:55" end="12:40"/>
+					<train id="4525" start="12:45" end="13:21"/>
+					<train id="4526" start="13:32" end="14:10"/>
+					<depot start="14:10" end="14:40"/>
+				</ws>
+				<ws ord="0,11" name="33,33M" start="06:20" duration="8:23" week="lab" comment="Metros de mañana -33-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="4903" start="06:45" end="07:57"/>
+					<train id="4908" start="08:16" end="09:30"/>
+					<depot start="09:35" end="09:50"/>
+					<train id="5025" start="09:55" end="10:10"/>
+					<train id="5026" start="10:13" end="10:28"/>
+					<depot start="10:33" end="11:00"/>
+					<train id="5035" start="11:35" end="11:50"/>
+					<train id="5036" start="11:53" end="12:08"/>
+					<depot start="12:13" end="12:50"/>
+					<train id="5043" start="12:55" end="13:10"/>
+					<train id="5044" start="13:13" end="13:28"/>
+					<train id="5047" start="13:35" end="13:50"/>
+					<train id="5048" start="13:53" end="14:08"/>
+				</ws>
+				<ws ord="0,12" name="151,151M" start="05:05" duration="9:06" week="lab" comment="Metros de mañana -151-" stcol="#202080"  bgcol="#d3d3e8">
+					<depot start="05:30" end="06:30"/>
+					<train id="5001" start="06:35" end="06:50"/>
+					<train id="5002" start="06:53" end="07:08"/>
+					<train id="5005" start="07:15" end="07:30"/>
+					<train id="5006" start="07:33" end="07:48"/>
+					<train id="5011" start="07:55" end="08:10"/>
+					<train id="5012" start="08:13" end="08:28"/>
+					<train id="5017" start="08:40" end="08:55"/>
+					<train id="5018" start="08:58" end="09:13"/>
+					<depot start="09:18" end="10:20"/>
+					<train id="4915" start="10:25" end="11:21"/>
+					<train id="4920" start="11:32" end="12:30"/>
+					<depot start="12:35" end="14:06"/>
+				</ws>
+				<ws ord="0,13" name="152,152M" start="06:30" duration="8:30" week="lab" comment="Trenes de mañana -152-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="5003" start="06:55" end="07:10"/>
+					<train id="5004" start="07:13" end="07:28"/>
+					<train id="5009" start="07:40" end="07:55"/>
+					<train id="5010" start="08:03" end="08:13"/>
+					<train id="5015" start="08:30" end="08:45"/>
+					<train id="5016" start="08:48" end="09:03"/>
+					<train id="5021" start="09:15" end="09:30"/>
+					<train id="5022" start="09:33" end="09:48"/>
+					<depot start="09:53" end="13:10"/>
+					<train id="4527" start="13:15" end="13:51"/>
+					<train id="4528" start="14:02" end="14:40"/>
+				</ws>
+				<ws ord="0,14" name="153,153M" start="06:40" duration="9:00" week="lab" comment="Trenes de mañana -153-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="4705" start="07:05" end="08:01"/>
+					<train id="4708" start="08:12" end="09:10"/>
+					<train id="4713" start="09:45" end="10:41"/>
+					<train id="4716" start="10:52" end="11:50"/>
+					<depot start="11:55" end="13:10"/>
+					<train id="4531" start="13:55" end="14:31"/>
+					<train id="4534" start="14:42" end="15:20"/>
+				</ws>
+				<ws ord="0,15" name="154,154M" start="05:30" duration="9:20" week="lab" comment="Trenes de mañana -154-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="4501" start="05:55" end="06:31"/>
+					<train id="4504" start="06:42" end="07:20"/>
+					<depot start="07:25" end="08:15"/>
+					<train id="4707" start="07:45" end="08:41"/>
+					<train id="4710" start="08:52" end="09:50"/>
+					<depot start="09:55" end="11:00"/>
+					<train id="4715" start="11:05" end="12:17"/>
+					<train id="4718" start="12:37" end="13:51"/>
+					<depot start="13:56" end="14:30"/>
+				</ws>
+				<ws ord="0,16" name="101,101M" start="05:30" duration="9:07" week="lab" comment="Manacor de mañana -101-" stcol="#202080"  bgcol="#d3d3e8">
+					<depot start="05:55" end="06:52" foreign="true"/>
+					<train id="4904" start="06:56" end="08:10"/>
+					<depot start="08:07" end="08:30"/>
+					<train id="4517" start="08:35" end="09:11"/>
+					<train id="4520" start="09:22" end="10:00"/>
+					<depot start="10:05" end="11:10"/>
+					<train id="5033" start="11:15" end="11:30"/>
+					<train id="5034" start="11:33" end="11:48"/>
+					<depot start="11:53" end="12:10"/>
+					<train id="5039" start="12:15" end="12:30"/>
+					<train id="5040" start="12:33" end="12:48"/>
+					<depot start="12:53" end="13:00"/>
+					<train id="4919" start="13:05" end="14:17"/>
+				</ws>
+				<ws ord="0,17" name="201,201M,203,203M" start="05:10" duration="9:23" week="lab" comment="Inca de mañana -201-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="7001" start="05:35" end="05:51"/>
+					<train id="4702" start="06:02" end="07:00"/>
+					<depot start="07:05" end="07:20"/>
+					<train id="4905" start="07:25" end="08:37"/>
+					<train id="4910" start="08:56" end="10:10"/>
+					<depot start="10:15" end="12:00"/>
+					<train id="4917" start="12:05" end="13:17"/>
+					<train id="4922" start="13:37" end="14:13"/>
+				</ws>
+				<ws ord="1,0" name="9,9M" start="6:30" duration="9:00" week="lab" comment="Depósito mañana -9-" bgcol ="#C0C0F0" depot="true">
+					<depot start="6:55" end="15:10"/>
+				</ws>
+				<ws ord="1,1" name="21,21M" start="4:50" duration="9:00" week="lab" comment="Depósito mañana -21-" bgcol ="#C0C0F0" depot="true">
+					<depot start="5:15" end="13:30"/>
+				</ws>
+				<ws ord="2,0" name="11,11T" start="13:20" duration="9:00" week="lab" comment="Trenes de tarde -11-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="4921" start="13:45" end="14:57"/>
+					<train id="4926" start="15:16" end="16:30"/>
+					<depot start="16:35" end="17:00"/>
+					<train id="4931" start="17:05" end="18:17"/>
+					<train id="4936" start="18:30" end="19:42"/>
+					<depot start="19:47" end="22:00"/>
+				</ws>
+				<ws ord="2,1" name="12,12T" start="13:40" duration="9:05" week="lab" comment="Trenes de tarde -12-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="4723" start="14:05" end="15:01"/>
+					<train id="4726" start="15:12" end="16:10"/>
+					<depot start="16:15" end="16:30"/>
+					<train id="4547" start="16:35" end="17:11"/>
+					<train id="4550" start="17:22" end="18:00"/>
+					<depot start="18:05" end="18:50"/>
+					<train id="4557" start="18:55" end="19:31"/>
+					<train id="4560" start="19:42" end="20:20"/>
+					<depot start="20:25" end="20:50"/>
+					<train id="5093" start="20:55" end="21:10"/>
+					<train id="5094" start="21:13" end="21:28"/>
+					<depot start="21:33" end="22:30"/>
+				</ws>
+				<ws ord="2,2" name="13,13T" start="13:50" duration="9:30" week="lab" comment="Trenes de tarde -13-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="4533" start="14:15" end="14:51"/>
+					<train id="4536" start="15:02" end="15:40"/>
+					<depot start="15:45" end="16:00"/>
+					<train id="4729" start="16:05" end="17:01"/>
+					<train id="4732" start="17:12" end="18:10"/>
+					<depot start="18:15" end="19:10"/>
+					<train id="4935" start="19:15" end="20:25"/>
+					<train id="4940" start="20:30" end="21:42"/>
+					<depot start="21:47" end="23:00"/>
+				</ws>
+				<ws ord="2,3" name="14,14T" start="14:00" duration="8:08" week="lab" comment="Trenes de tarde -14-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="4923" start="14:25" end="15:37"/>
+					<train id="4928" start="15:56" end="17:10"/>
+					<depot start="15:15" end="17:50"/>
+					<train id="4555" start="17:55" end="18:31"/>
+					<train id="4558" start="18:48" end="19:26"/>
+					<depot start="19:31" end="21:10"/>
+					<train id="5095" start="21:15" end="21:30"/>
+					<train id="5096" start="21:33" end="21:48"/>
+				</ws>
+				<ws ord="2,4" name="15,15T" start="13:20" duration="9:00" week="lab" comment="Trenes de tarde -15-" stcol="#202080"  bgcol="#f7e4d7">
+					<depot start="13:45" end="14:30"/>
+					<train id="4535" start="14:35" end="15:11"/>
+					<train id="4538" start="15:22" end="16:00"/>
+					<depot start="15:37" end="16:40"/>
+					<train id="4731" start="16:45" end="17:41"/>
+					<train id="4734" start="17:52" end="18:50"/>
+					<depot start="18:55" end="19:30"/>
+					<train id="4737" start="19:35" end="20:31"/>
+					<train id="4740" start="21:02" end="22:00"/>
+				</ws>
+				<ws ord="2,5" name="16,16T" start="13:25" duration="9:15" week="lab" comment="Trenes de tarde -16-" stcol="#202080"  bgcol="#f7e4d7">
+					<depot start="13:50" end="14:40"/>
+					<train id="4725" start="14:45" end="15:41"/>
+					<train id="4728" start="15:52" end="16:50"/>
+					<depot start="15:37" end="17:20"/>
+					<train id="4733" start="17:25" end="18:21"/>
+					<train id="4736" start="19:02" end="20:00"/>
+					<depot start="20:05" end="20:50"/>
+					<train id="4561" start="20:55" end="21:31"/>
+					<train id="4564" start="21:42" end="22:20"/>
+				</ws>
+				<ws ord="2,6" name="17,17T" start="14:30" duration="9:00" week="lab" comment="Trenes de tarde -17-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="4537" start="14:55" end="15:31"/>
+					<train id="4540" start="15:42" end="16:20"/>
+					<depot start="16:17" end="17:05"/>
+					<train id="4549" start="16:55" end="17:31"/>
+					<train id="4552" start="17:42" end="18:20"/>
+					<depot start="18:25" end="20:10"/>
+					<train id="4937" start="20:15" end="21:25"/>
+					<train id="4942" start="21:30" end="22:42"/>
+					<depot start="22:47" end="23:10"/>
+				</ws>
+				<ws ord="2,7" name="18,18T" start="12:58" duration="9:30" week="lab" comment="Trenes de tarde -18-" stcol="#202080"  bgcol="#f7e4d7">
+					<depot start="13:23" end="15:00"/>
+					<train id="4925" start="15:05" end="16:17"/>
+					<train id="4930" start="16:36" end="17:50"/>
+					<depot start="17:55" end="18:30"/>
+					<train id="4735" start="18:35" end="19:31"/>
+					<train id="4738" start="20:02" end="21:00"/>
+					<depot start="21:05" end="21:30"/>
+					<train id="5097" start="21:35" end="21:50"/>
+					<train id="5098" start="21:53" end="22:08"/>
+				</ws>
+				<ws ord="2,8" name="19,19T" start="15:50" duration="9:12" week="lmxj" comment="Trenes de tarde -19-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="5065" start="16:15" end="16:30"/>
+					<train id="5066" start="16:33" end="16:48"/>
+					<train id="4551" start="17:15" end="17:51"/>
+					<train id="4554" start="18:02" end="18:40"/>
+					<depot start="18:45" end="19:10"/>
+					<train id="5083" start="19:15" end="19:30"/>
+					<train id="5084" start="19:33" end="19:48"/>
+					<depot start="19:53" end="21:50"/>
+					<train id="4563" start="21:55" end="22:31"/>
+					<train id="4944" start="23:04" end="23:42" disc="true"/>
+				</ws>
+				<ws ord="2,8" name="19,19T" start="15:50" duration="9:12" week="v" comment="Viernes de tarde -19-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="5065" start="16:15" end="16:30"/>
+					<train id="5066" start="16:33" end="16:48"/>
+					<train id="4551" start="17:15" end="17:51"/>
+					<train id="4554" start="18:02" end="18:40"/>
+					<depot start="18:45" end="19:10"/>
+					<train id="5083" start="19:15" end="19:30"/>
+					<train id="5084" start="19:33" end="19:48"/>
+					<depot start="19:53" end="21:50"/>
+					<train id="4563" start="21:55" end="22:31"/>
+					<train id="34566" start="22:35" end="23:05"/>
+				</ws>
+				<ws ord="2,9" name="34,34T" start="14:10" duration="8:35" week="lab" comment="Trenes de tarde -34-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="5055" start="14:35" end="14:50"/>
+					<train id="5056" start="14:53" end="15:08"/>
+					<train id="4539" start="15:15" end="15:51"/>
+					<train id="4542" start="16:02" end="16:40"/>
+					<depot start="16:45" end="17:30"/>
+					<train id="5069" start="16:55" end="17:10"/>
+					<train id="5070" start="17:13" end="17:28"/>
+					<train id="5073" start="17:35" end="17:50"/>
+					<train id="5074" start="17:53" end="18:08"/>
+					<depot start="18:13" end="19:50"/>
+					<train id="4559" start="19:55" end="20:31"/>
+					<train id="4562" start="20:42" end="21:20"/>
+					<depot start="21:25" end="22:25"/>
+				</ws>
+				<ws ord="2,10" name="35,35T" start="14:30" duration="08:50" week="lab" comment="Trenes de tarde -35-" stcol="#202080"  bgcol="#f7e4d7">
+					<depot start="14:55" end="15:20"/>
+					<train id="4727" start="15:25" end="16:21"/>
+					<train id="4730" start="16:32" end="17:30"/>
+					<depot start="17:35" end="18:10"/>
+					<train id="5077" start="18:15" end="18:30"/>
+					<train id="5078" start="18:33" end="18:48"/>
+					<depot start="18:53" end="20:30"/>
+					<train id="4739" start="20:35" end="21:31"/>
+					<train id="4742" start="22:02" end="23:00"/>
+				</ws>
+				<ws ord="2,11" name="36,36T" start="15:10" duration="8:52" week="lab" comment="Trenes de tarde -36-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="4541" start="15:35" end="16:11"/>
+					<train id="4544" start="16:22" end="17:00"/>
+					<depot start="17:05" end="17:30"/>
+					<train id="4553" start="17:35" end="18:11"/>
+					<train id="4556" start="18:48" end="19:26"/>
+					<depot start="19:31" end="21:10"/>
+					<train id="4939" start="21:15" end="22:25"/>
+					<train id="4944" start="22:30" end="23:42"/>
+				</ws>
+				<ws ord="2,12" name="155,155T" start="13:40" duration="8:40" week="lab" comment="Trenes de tarde -155-" stcol="#202080"  bgcol="#f7e4d7">
+					<depot start="14:05" end="15:10"/>
+					<train id="5059" start="15:15" end="15:30"/>
+					<train id="5060" start="15:33" end="15:48"/>
+					<train id="5063" start="15:55" end="16:10"/>
+					<train id="5064" start="16:13" end="16:28"/>
+					<train id="5067" start="16:35" end="16:50"/>
+					<train id="5068" start="16:53" end="17:08"/>
+					<train id="5071" start="17:15" end="17:30"/>
+					<train id="5072" start="17:33" end="17:48"/>
+					<depot start="17:53" end="18:10"/>
+					<train id="4933" start="18:15" end="19:25"/>
+					<train id="4938" start="19:30" end="20:42"/>
+					<depot start="20:47" end="22:00"/>
+				</ws>
+				<ws ord="2,13" name="156,156T" start="13:00" duration="8:35" week="lab" comment="Trenes de tarde -156-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="4721" start="13:25" end="14:21"/>
+					<train id="4724" start="14:32" end="15:30"/>
+					<depot start="15:35" end="15:50"/>
+					<train id="4543" start="15:55" end="16:31"/>
+					<train id="4546" start="16:42" end="17:20"/>
+					<depot start="17:25" end="17:50"/>
+					<train id="5075" start="17:55" end="18:10"/>
+					<train id="5076" start="18:13" end="18:28"/>
+					<depot start="18:33" end="19:30"/>
+					<train id="5085" start="19:35" end="19:50"/>
+					<train id="5086" start="19:53" end="20:08"/>
+				</ws>
+				<ws ord="2,14" name="157,157T" start="13:25" duration="8:30" week="lab" comment="Trenes de tarde -157-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="5049" start="13:50" end="14:05"/>
+					<train id="5050" start="14:08" end="14:23"/>
+					<train id="5057" start="14:55" end="15:10"/>
+					<train id="5058" start="15:13" end="15:28"/>
+					<train id="5061" start="15:35" end="15:50"/>
+					<train id="5062" start="15:53" end="16:08"/>
+					<depot start="16:13" end="16:20"/>
+					<train id="4929" start="16:25" end="17:37"/>
+					<train id="4934" start="17:56" end="19:10"/>
+					<depot start="19:15" end="20:10"/>
+					<train id="5089" start="20:15" end="20:30"/>
+					<train id="5090" start="20:33" end="20:48"/>
+					<depot start="20:53" end="21:30"/>
+				</ws>
+				<ws ord="2,15" name="102,102T" start="14:11" duration="9:39" week="lab" comment="Manacor de tarde -102-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="4924" start="14:36" end="15:50"/>
+					<depot start="15:55" end="16:10"/>
+					<train id="4545" start="16:15" end="16:51"/>
+					<train id="4548" start="17:02" end="17:40"/>
+					<depot start="17:45" end="18:30"/>
+					<train id="5079" start="18:35" end="18:50"/>
+					<train id="5080" start="18:53" end="19:08"/>
+					<depot start="19:13" end="20:30"/>
+					<train id="5091" start="20:35" end="20:50"/>
+					<train id="5092" start="20:53" end="21:08"/>
+					<depot start="21:13" end="22:15"/>
+					<train id="4941" start="22:20" end="23:30"/>
+				</ws>
+				<ws ord="2,16" name="202,202T" start="14:07" duration="9:50" week="lab" comment="Inca de tarde -202-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="4532" start="14:32" end="15:10"/>
+					<depot start="15:15" end="15:35"/>
+					<train id="4927" start="15:45" end="16:57"/>
+					<train id="4932" start="17:16" end="18:30"/>
+					<depot start="18:27" end="18:50"/>
+					<train id="5081" start="18:55" end="19:10"/>
+					<train id="5082" start="19:13" end="19:28"/>
+					<depot start="19:33" end="19:50"/>
+					<train id="5087" start="19:55" end="20:10"/>
+					<train id="5088" start="20:13" end="20:28"/>
+					<depot start="20:33" end="21:30"/>
+					<train id="4741" start="21:35" end="22:31"/>
+					<train id="7002" start="22:33" end="22:46"/>
+					<depot start="22:46" end="23:37" foreign="true"/>
+				</ws>
+				<ws ord="3,1" name="20,20T" start="13:35" duration="9:30" week="lab" comment="Depósito tarde -19-" bgcol ="#FAB587" depot="true">
+					<depot start="14:30" end="22:45"/>
+				</ws>
+				<ws ord="3,2" name="22,22T" start="13:35" duration="9:30" week="lab" comment="Depósito tarde -22-" bgcol ="#FAB587" depot="true">
+					<depot start="14:00" end="22:15"/>
+				</ws>
+				<ws ord="3,3" name="24,24T" start="14:50" duration="9:30" week="lab" comment="Depósito tarde -24-" bgcol ="#FAB587" depot="true">
+					<depot start="15:45" end="23:59"/>
+				</ws>
+				<ws ord="3,4" name="25,25T" start="14:05" duration="9:30" week="lab" comment="Depósito tarde -25-" bgcol ="#FAB587" depot="true">
+					<depot start="15:45" end="23:59"/>
+				</ws>
+				<ws ord="0,0" name="1F,1,1M,1MF" start="05:45" duration="9:04" week="fff" comment="Festivos de mañana -1F-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="4401" start="06:10" end="07:15"/>
+					<train id="4404" start="07:24" end="08:29"/>
+					<depot start="09:01" end="12:05"/>
+					<train id="4413" start="12:10" end="13:15"/>
+					<train id="4416" start="13:24" end="14:29"/>
+				</ws>
+				<ws ord="0,1" name="2F,2,2M,2MF" start="06:21" duration="08:57" week="fff" comment="Festivos de mañana -2F-" stcol="#202080"  bgcol="#d3d3e8">
+					<depot start="06:46" end="09:35"/>
+					<train id="4807" start="09:40" end="10:32"/>
+					<train id="4808" start="11:07" end="11:58"/>
+					<depot start="12:00" end="12:30"/>
+					<train id="4813" start="12:40" end="13:32"/>
+					<train id="4814" start="14:07" end="14:58"/>
+				</ws>
+				<ws ord="0,2" name="3F,3,3M,3MF" start="05:51" duration="08:58" week="fff" comment="Festivos de mañana -3F-" stcol="#202080"  bgcol="#d3d3e8">
+					<depot start="06:16" end="07:05"/>
+					<train id="4403" start="07:10" end="08:15"/>
+					<train id="4406" start="08:24" end="09:29"/>
+					<depot start="09:35" end="10:05"/>
+					<train id="4409" start="10:10" end="11:15"/>
+					<train id="4412" start="11:24" end="12:29"/>
+					<train id="4415" start="13:10" end="13:44"/>
+					<train id="4416" start="13:55" end="14:29" disc="true"/>
+				</ws>
+				<ws ord="0,3" name="4F,4,4M,4MF" start="06:15" duration="09:00" week="fff" comment="Festivos de mañana -4F-" stcol="#202080"  bgcol="#d3d3e8">
+					<depot start="06:40" end="07:35"/>
+					<train id="4803" start="07:40" end="08:32"/>
+					<train id="4804" start="09:07" end="09:58"/>
+					<depot start="09:50" end="10:30"/>
+					<train id="4809" start="10:40" end="11:32"/>
+					<train id="4810" start="12:07" end="12:58"/>
+					<depot start="13:03" end="14:55"/>
+				</ws>
+				<ws ord="0,4" name="5F,5,5M,5MF" start="06:15" duration="08:46" week="fff" comment="Festivos de mañana -5F-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="4801" start="06:40" end="07:36"/>
+					<train id="4802" start="08:07" end="09:01"/>
+					<train id="4407" start="09:10" end="10:15"/>
+					<train id="4410" start="10:24" end="11:29"/>
+					<train id="4811" start="11:40" end="12:14" disc="true"/>
+					<train id="4414" start="12:55" end="13:29"/>
+				</ws>
+				<ws ord="0,5" name="6F,6,6M,6MF" start="06:06" duration="09:00" week="fff" comment="Festivos de mañana -6F-" stcol="#202080"  bgcol="#d3d3e8">
+					<depot start="06:31" end="08:35"/>
+					<train id="4805" start="08:40" end="09:32"/>
+					<train id="4806" start="10:07" end="10:58"/>
+					<depot start="11:00" end="11:30"/>
+					<train id="4811" start="11:40" end="12:32"/>
+					<train id="4812" start="13:07" end="13:58"/>
+					<depot start="14:03" end="14:46"/>
+				</ws>
+				<ws ord="0,6" name="151F,151,151M,151MF" start="6:00" duration="9:00" week="s" comment="Sábados metros de mañana -151F-" stcol="#202080"  bgcol="#d3d3e8">
+					<depot start="6:25" end="7:00"/>
+					<train id="5501" start="07:00" end="07:15"/>
+					<train id="5502" start="07:18" end="07:33"/>
+					<depot start="7:35" end="7:55"/>
+					<train id="5505" start="08:00" end="08:15"/>
+					<train id="5506" start="08:18" end="08:33"/>
+					<depot start="8:35" end="8:55"/>
+					<train id="5509" start="09:00" end="09:15"/>
+					<train id="5510" start="09:18" end="09:33"/>
+					<depot start="9:35" end="9:55"/>
+					<train id="5513" start="10:00" end="10:15"/>
+					<train id="5514" start="10:18" end="10:33"/>
+					<depot start="10:35" end="10:55"/>
+					<train id="5517" start="11:00" end="11:15"/>
+					<train id="5518" start="11:18" end="11:33"/>
+					<depot start="11:35" end="11:55"/>
+					<train id="5521" start="12:00" end="12:15"/>
+					<train id="5522" start="12:18" end="12:33"/>
+					<depot start="12:35" end="12:55"/>
+					<train id="5525" start="13:00" end="13:15"/>
+					<train id="5526" start="13:18" end="13:33"/>
+					<depot start="13:35" end="13:55"/>
+					<train id="5529" start="14:00" end="14:15"/>
+					<train id="5530" start="14:18" end="14:33"/>
+				</ws>
+				<ws ord="0,7" name="152F,152,152M,152MF" start="06:30" duration="9:00" week="s" comment="Sábados metros de mañana -152F-" stcol="#202080"  bgcol="#d3d3e8">
+					<depot start="06:55" end="07:30"/>
+					<train id="5503" start="07:30" end="07:45"/>
+					<train id="5504" start="07:48" end="08:03"/>
+					<depot start="08:05" end="08:25"/>
+					<train id="5507" start="08:30" end="08:45"/>
+					<train id="5508" start="08:48" end="09:03"/>
+					<depot start="09:05" end="09:25"/>
+					<train id="5511" start="09:30" end="09:45"/>
+					<train id="5512" start="09:48" end="10:03"/>
+					<depot start="10:05" end="10:25"/>
+					<train id="5515" start="10:30" end="10:45"/>
+					<train id="5516" start="10:48" end="11:03"/>
+					<depot start="11:05" end="11:25"/>
+					<train id="5519" start="11:30" end="11:45"/>
+					<train id="5520" start="11:48" end="12:03"/>
+					<depot start="12:05" end="12:25"/>
+					<train id="5523" start="12:30" end="12:45"/>
+					<train id="5524" start="12:48" end="13:03"/>
+					<depot start="13:05" end="13:25"/>
+					<train id="5527" start="13:30" end="13:45"/>
+					<train id="5528" start="13:48" end="14:03"/>
+					<depot start="14:05" end="14:25"/>
+					<train id="5531" start="14:30" end="14:45"/>
+					<train id="5532" start="14:48" end="15:03"/>
+				</ws>
+				<ws ord="0,8" name="101F,101,101M,101MF" start="05:59" duration="08:36" week="fff" comment="Festivo Manacor de mañana -101F-" stcol="#202080"  bgcol="#d3d3e8">
+					<train id="4402" start="06:24" end="07:29"/>
+					<train id="4405" start="08:10" end="09:15"/>
+					<train id="4408" start="09:24" end="10:29"/>
+					<depot start="10:35" end="11:00"/>
+					<train id="4411" start="11:10" end="12:15"/>
+					<train id="4414" start="12:24" end="12:54"/>
+					<depot start="13:00" end="13:40"/>
+					<train id="4415" start="13:45" end="14:15"/>
+				</ws>
+				<ws ord="1,0" name="7F,7,7M,7MF" start="06:00" duration="09:00" week="fff" comment="Festivos AAT de mañana -7F-" bgcol="#C8C8F0" depot="true">
+					<depot start="06:25" end="14:40"/>
+				</ws>
+				<ws ord="1,1" name="8F,8,8M,8MF" start="05:55" duration="09:00" week="fff" comment="Festivos AAT de mañana -8F-" bgcol="#C8C8F0" depot="true">
+					<depot start="06:20" end="14:35"/>
+				</ws>
+				<ws ord="1,2" name="9F,9,9M,9MF" start="05:40" duration="09:00" week="fff" comment="Festivos AAT de mañana -9F-" bgcol="#C8C8F0" depot="true">
+					<depot start="06:05" end="14:20"/>
+				</ws>
+				<ws ord="1,3" name="10F,10,10M,10MF" start="06:00" duration="09:00" week="fff" comment="Festivos AAT de mañana -10F-" bgcol="#C8C8F0" depot="true">
+					<depot start="06:25" end="14:40"/>
+				</ws>
+				<ws ord="1,4" name="21F,21,21M,21MF" start="06:00" duration="09:00" week="fff" comment="Festivos AAT de mañana -21F-" bgcol="#C8C8F0" depot="true">
+					<depot start="06:25" end="14:40"/>
+				</ws>
+				<ws ord="1,5" name="151F,151,151M,151MF" start="06:00" duration="09:00" week="d" comment="Domingos AAT de mañana -21F-" bgcol="#C8C8F0" depot="true">
+					<depot start="06:25" end="14:40"/>
+				</ws>
+				<ws ord="1,5" name="152F,152,152M,152MF" start="07:05" duration="09:00" week="d" comment="Domingos AAT de mañana -21F-" bgcol="#C8C8F0" depot="true">
+					<depot start="07:30" end="15:45"/>
+				</ws>
+				<ws ord="2,0" name="11F,11,11T,11TF" start="14:21" duration="08:57" week="fff" comment="Festivos de tarde -11F-" stcol="#202080"  bgcol="#f7e4d7">
+					<depot start="14:46" end="15:10"/>
+					<train id="4419" start="15:10" end="16:15"/>
+					<train id="4422" start="16:24" end="17:29"/>
+					<depot start="17:34" end="20:35"/>
+					<train id="4829" start="20:40" end="21:32"/>
+					<train id="4830" start="22:07" end="22:58"/>
+				</ws>
+				<ws ord="2,1" name="12F,12,12F,12TF" start="13:15" duration="09:03" week="fff" comment="Festivos de tarde -12F-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="4815" start="13:40" end="14:32"/>
+					<train id="4816" start="15:07" end="15:58"/>
+					<depot start="16:00" end="16:30"/>
+					<train id="4821" start="16:40" end="17:32"/>
+					<train id="4822" start="18:07" end="18:58"/>
+					<depot start="19:00" end="19:30"/>
+					<train id="4827" start="19:40" end="20:32"/>
+					<train id="4828" start="21:07" end="21:58"/>
+				</ws>
+				<ws ord="2,2" name="13F,13,13T,13TF" start="14:15" duration="09:43" week="fff" comment="Festivos de tarde -13F-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="4817" start="14:40" end="15:32"/>
+					<train id="4818" start="16:07" end="16:58"/>
+					<depot start="17:00" end="16:30"/>
+					<train id="4823" start="17:40" end="18:32"/>
+					<train id="4824" start="19:07" end="19:58"/>
+					<depot start="20:00" end="21:30"/>
+					<train id="4831" start="21:40" end="22:32"/>
+					<train id="34832" start="22:43" end="23:38"/>
+				</ws>
+				<ws ord="2,3" name="14F,14,14T,14TF" start="15:18" duration="08:31" week="fff" comment="Festivos de tarde -14F-" stcol="#202080"  bgcol="#f7e4d7">
+					<depot start="15:43" end="18:35"/>
+					<train id="4825" start="18:40" end="19:32"/>
+					<train id="4826" start="20:07" end="20:58"/>
+					<train id="4431" start="21:10" end="22:15"/>
+					<train id="4434" start="22:24" end="23:29"/>
+				</ws>
+				<ws ord="2,4" name="15F,15,15T,15TF" start="13:45" duration="09:04" week="fff" comment="Festivos de tarde -15F-" stcol="#202080"  bgcol="#f7e4d7">
+					<depot start="14:10" end="17:10"/>
+					<train id="4423" start="17:10" end="18:15"/>
+					<train id="4426" start="18:24" end="19:29"/>
+					<depot start="19:35" end="20:00"/>
+					<train id="4429" start="20:10" end="21:15"/>
+					<train id="4432" start="21:24" end="22:29"/>
+				</ws>
+				<ws ord="2,5" name="16F,16,16T,16TF" start="13:45" duration="09:00" week="fff" comment="Festivos de tarde -16F-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="4417" start="14:10" end="15:15"/>
+					<train id="4420" start="15:24" end="16:29"/>
+					<depot start="16:34" end="19:05"/>
+					<train id="4427" start="19:10" end="20:15"/>
+					<train id="4430" start="20:24" end="21:29"/>
+					<depot start="21:34" end="22:25"/>
+				</ws>
+				<ws ord="2,6" name="17F,17,17T,17TF" start="14:20" duration="09:00" week="fff" comment="Festivos de tarde -17F-" stcol="#202080"  bgcol="#f7e4d7">
+					<depot start="14:45" end="15:40"/>
+					<train id="4819" start="15:40" end="16:32"/>
+					<train id="4820" start="17:07" end="17:58"/>
+					<train id="4425" start="18:10" end="19:15"/>
+					<train id="4428" start="19:24" end="20:29"/>
+					<depot start="20:34" end="23:00"/>
+				</ws>
+				<ws ord="2,7" name="102F,102,102T,102TF" start="14:24" duration="09:11" week="fff" comment="Festivo Manacor de tarde -102F-" stcol="#202080"  bgcol="#f7e4d7">
+					<train id="4418" start="14:24" end="15:29"/>
+					<train id="4421" start="16:10" end="17:15"/>
+					<train id="4424" start="17:24" end="18:29"/>
+					<depot start="18:34" end="22:05"/>
+					<train id="4433" start="22:10" end="23:15"/>
+				</ws>
+				<ws ord="3,0" name="18F,18,18T,18TF" start="15:15" duration="09:00" week="fff" comment="Festivos AAT de tarde -18F-" bgcol="#FFC487" depot="true">
+					<depot start="15:40" end="23:55"/>
+				</ws>
+				<ws ord="3,1" name="19F,19,19T,19TF" start="13:50" duration="09:00" week="fff" comment="Festivos AAT de tarde -19F-" bgcol="#FFC487" depot="true">
+					<depot start="14:15" end="22:30"/>
+				</ws>
+				<ws ord="3,2" name="20F,20,20T,20TF" start="13:50" duration="09:00" week="fff" comment="Festivos AAT de tarde -20F-" bgcol="#FFC487" depot="true">
+					<depot start="14:15" end="22:30"/>
+				</ws>
+				<ws ord="3,3" name="22F,22,22T,22TF" start="13:50" duration="09:00" week="fff" comment="Festivos AAT de tarde -22F-" bgcol="#FFC487" depot="true">
+					<depot start="14:15" end="22:30"/>
+				</ws>
+				<ws ord="3,4" name="24F,24,24T,24TF" start="15:15" duration="09:00" week="fff" comment="Festivos AAT de tarde -24F-" bgcol="#FFC487" depot="true">
+					<depot start="15:40" end="23:55"/>
+				</ws>
+				<ws ord="3,5" name="35F,35,35T,35TF" start="14:15" duration="09:00" week="fff" comment="Festivos AAT de tarde -35F-" bgcol="#FFC487" depot="true">
+					<depot start="14:40" end="22:55"/>
+				</ws>
+				<ws ord="3,6" name="36F,36,36T,36TF" start="15:05" duration="09:00" week="fff" comment="Festivos AAT de tarde -36F-" bgcol="#FFC487" depot="true">
+					<depot start="15:30" end="23:45"/>
+				</ws>
+				<ws ord="3,7" name="155F,155,155T,155TF" start="15:05" duration="09:00" week="fff" comment="Festivos AAT de tarde -155F-" bgcol="#FFC487" depot="true">
+					<depot start="15:30" end="23:45"/>
+				</ws>
+				<ws ord="3,8" name="156F,156,156T,156TF" start="15:15" duration="09:00" week="fff" comment="Festivos AAT de tarde -156F-" bgcol="#FFC487" depot="true">
+					<depot start="15:40" end="23:55"/>
+				</ws>
+				<ws ord="3,9" name="157F,157,157T,157TF" start="12:45" duration="09:00" week="fff" comment="Festivos AAT de tarde -157F-" bgcol="#FFC487" depot="true">
+					<depot start="13:10" end="21:25"/>
+				</ws>
+			</active>							
+        </schedules>
+    </plan>
+  </plans>
+</rautatie>

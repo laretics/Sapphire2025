@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Diamond.Motion;
 using Diamond.Topo;
@@ -13,6 +14,7 @@ namespace Diamond.Timed
 		private readonly List<Circulation> mcolCirculations;
 		private readonly List<string> mcolWarnings;
 		private readonly List<string> mcolErrors;
+		private DayOfWeek? mvarPlanningDay;
 
 		public Mesh()
 		{
@@ -20,6 +22,16 @@ namespace Diamond.Timed
 			mcolCirculations = new List<Circulation>();
 			mcolWarnings = new List<string>();
 			mcolErrors = new List<string>();
+			mvarPlanningDay = null;
+		}
+
+		/// <summary>
+		/// Día de la semana para el que se ha resuelto esta malla (si aplica).
+		/// </summary>
+		public DayOfWeek? PlanningDay
+		{
+			get { return mvarPlanningDay; }
+			internal set { mvarPlanningDay = value; }
 		}
 
 		/// <summary>
@@ -57,12 +69,28 @@ namespace Diamond.Timed
 		}
 
 		/// <summary>
-		/// Rectángulos de ocupación de cantón (tiempo × espacio) de las circulaciones en <paramref name="axis"/>.
+		/// Rectángulos de ocupación de cantón (tiempo × espacio) de las circulaciones en <paramref name="view"/>.
 		/// Dos trenes son compatibles en este modelo si sus rectángulos no se superponen.
+		/// </summary>
+		public IReadOnlyList<CantonOccupationRect> GetCantonOccupations(RouteView view)
+		{
+			return MeshCantonGeometry.BuildOccupations(this, view);
+		}
+
+		/// <summary>
+		/// Atajo mono-eje: envuelve el eje en <see cref="RouteView.FromAxis"/>.
 		/// </summary>
 		public IReadOnlyList<CantonOccupationRect> GetCantonOccupations(Axis axis)
 		{
 			return MeshCantonGeometry.BuildOccupations(this, axis);
+		}
+
+		/// <summary>
+		/// Conflictos duros (intersecciones de ocupaciones incompatibles) en la vista.
+		/// </summary>
+		public IReadOnlyList<OccupationConflict> GetHardConflicts(RouteView view)
+		{
+			return MeshCantonGeometry.FindHardConflicts(this, view);
 		}
 
 		internal void AddAsimilation(Asimilation asimilation)
@@ -75,6 +103,19 @@ namespace Diamond.Timed
 			mcolCirculations.Add(circulation);
 		}
 
+		/// <summary>
+		/// Quita una circulación ya añadida (p. ej. tras <c>delete</c> del script).
+		/// </summary>
+		internal bool RemoveCirculation(Circulation circulation)
+		{
+			if (circulation is null)
+			{
+				return false;
+			}
+
+			return mcolCirculations.Remove(circulation);
+		}
+
 		internal void AddWarning(string message)
 		{
 			mcolWarnings.Add(message);
@@ -83,6 +124,31 @@ namespace Diamond.Timed
 		internal void AddError(string message)
 		{
 			mcolErrors.Add(message);
+		}
+
+		/// <summary>
+		/// Reescribe errores y warnings (p. ej. para sustituir ids técnicos por números de tren).
+		/// </summary>
+		internal void RewriteMessages(System.Func<string, string> rewriter)
+		{
+			if (rewriter is null)
+			{
+				throw new ArgumentNullException(nameof(rewriter));
+			}
+
+			int i = 0;
+			while (i < mcolErrors.Count)
+			{
+				mcolErrors[i] = rewriter(mcolErrors[i]) ?? mcolErrors[i];
+				i++;
+			}
+
+			i = 0;
+			while (i < mcolWarnings.Count)
+			{
+				mcolWarnings[i] = rewriter(mcolWarnings[i]) ?? mcolWarnings[i];
+				i++;
+			}
 		}
 	}
 }

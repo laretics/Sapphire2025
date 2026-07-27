@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using Diamond.Motion;
 
 namespace Diamond.Timed
@@ -10,17 +11,21 @@ namespace Diamond.Timed
 	public sealed class Circulation
 	{
 		private string mvarId;
+		private readonly string mvarTechnicalId;
 		private string mvarDemandId;
 		private Asimilation mvarAsimilation;
 		private TrainSpecs mvarSpecs;
 		private TimeSpan mvarDeparture;
+		private int mvarServiceNumber;
+		private string mvarColor;
 
 		public Circulation(
 			string id,
 			string demandId,
 			Asimilation asimilation,
 			TrainSpecs specs,
-			TimeSpan departure)
+			TimeSpan departure,
+			string? color = null)
 		{
 			if (asimilation is null)
 			{
@@ -33,20 +38,48 @@ namespace Diamond.Timed
 			}
 
 			mvarId = id ?? string.Empty;
+			mvarTechnicalId = mvarId;
 			mvarDemandId = demandId ?? string.Empty;
 			mvarAsimilation = asimilation;
 			mvarSpecs = specs;
 			mvarDeparture = departure;
+			mvarServiceNumber = 0;
+			mvarColor = string.IsNullOrWhiteSpace(color) ? string.Empty : color.Trim();
 		}
 
+		/// <summary>
+		/// Identificador de circulación (tras numerar, coincide con <see cref="ServiceNumber"/>).
+		/// </summary>
 		public string Id
 		{
 			get { return mvarId; }
 		}
 
+		/// <summary>
+		/// Id técnico de planificación (p. ej. C12-R-T3), estable aunque se renumere el servicio.
+		/// </summary>
+		public string TechnicalId
+		{
+			get { return mvarTechnicalId; }
+		}
+
 		public string DemandId
 		{
 			get { return mvarDemandId; }
+		}
+
+		/// <summary>
+		/// Color SVG opcional de la traza (<c>#rrggbb</c>), heredado del requisito de demanda.
+		/// Vacío = el render usa el color por asimilación.
+		/// </summary>
+		public string Color
+		{
+			get { return mvarColor; }
+		}
+
+		public bool HasColor
+		{
+			get { return mvarColor.Length > 0; }
 		}
 
 		public Asimilation Asimilation
@@ -57,6 +90,15 @@ namespace Diamond.Timed
 		public TrainSpecs Specs
 		{
 			get { return mvarSpecs; }
+		}
+
+		/// <summary>
+		/// Número de tren SFM (p. ej. 4901). 0 si aún no se ha numerado.
+		/// Impares = sentido PK creciente; pares = PK decreciente, por corredor OD.
+		/// </summary>
+		public int ServiceNumber
+		{
+			get { return mvarServiceNumber; }
 		}
 
 		/// <summary>
@@ -86,8 +128,28 @@ namespace Diamond.Timed
 			return mvarDeparture + relative.Value;
 		}
 
+		/// <summary>
+		/// Asigna el número de servicio SFM y actualiza <see cref="Id"/> al dígito del número.
+		/// </summary>
+		internal void AssignServiceNumber(int serviceNumber)
+		{
+			if (serviceNumber <= 0)
+			{
+				throw new ArgumentOutOfRangeException(nameof(serviceNumber));
+			}
+
+			mvarServiceNumber = serviceNumber;
+			mvarId = serviceNumber.ToString(CultureInfo.InvariantCulture);
+		}
+
 		public override string ToString()
 		{
+			if (mvarServiceNumber > 0)
+			{
+				return mvarServiceNumber.ToString(CultureInfo.InvariantCulture)
+					+ " dep " + mvarDeparture.ToString();
+			}
+
 			return mvarId + " dep " + mvarDeparture.ToString();
 		}
 	}

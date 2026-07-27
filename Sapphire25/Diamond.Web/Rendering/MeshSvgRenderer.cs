@@ -14,7 +14,7 @@ namespace Diamond.Web.Rendering
 	{
 		public static string Render(
 			Mesh mesh,
-			Axis axis,
+			RouteView view,
 			TimeSpan timeStart,
 			TimeSpan timeEnd,
 			long pkMin,
@@ -26,18 +26,36 @@ namespace Diamond.Web.Rendering
 			StringBuilder sb = new StringBuilder();
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" viewBox=\"0 0 {width} {height}\">");
-			sb.Append(RenderContent(mesh, axis, timeStart, timeEnd, pkMin, pkMax, width, height, showCantonOccupations));
+			sb.Append(RenderContent(mesh, view, timeStart, timeEnd, pkMin, pkMax, width, height, showCantonOccupations));
 			sb.Append("</svg>");
 			return sb.ToString();
 		}
 
 		/// <summary>
+		/// Atajo mono-eje.
+		/// </summary>
+		public static string Render(
+			Mesh mesh,
+			Axis axis,
+			TimeSpan timeStart,
+			TimeSpan timeEnd,
+			long pkMin,
+			long pkMax,
+			int width = 1200,
+			int height = 720,
+			bool showCantonOccupations = true)
+		{
+			return Render(mesh, RouteView.FromAxis(axis), timeStart, timeEnd, pkMin, pkMax, width, height, showCantonOccupations);
+		}
+
+		/// <summary>
 		/// Contenido SVG completo (chrome + plot). Sin transform de pan/zoom:
 		/// la ventana se controla con timeStart/timeEnd/pkMin/pkMax.
+		/// El eje vertical es el PK de ruta de <paramref name="view"/>.
 		/// </summary>
 		public static string RenderContent(
 			Mesh mesh,
-			Axis axis,
+			RouteView view,
 			TimeSpan timeStart,
 			TimeSpan timeEnd,
 			long pkMin,
@@ -51,9 +69,9 @@ namespace Diamond.Web.Rendering
 				throw new ArgumentNullException(nameof(mesh));
 			}
 
-			if (axis is null)
+			if (view is null)
 			{
-				throw new ArgumentNullException(nameof(axis));
+				throw new ArgumentNullException(nameof(view));
 			}
 
 			NormalizePkRange(ref pkMin, ref pkMax);
@@ -77,8 +95,8 @@ namespace Diamond.Web.Rendering
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<rect x=\"0\" y=\"0\" width=\"{width}\" height=\"{height}\" fill=\"#0f1419\"/>");
 
-			// —— Franjas V y # (solo PK visible) ——
-			List<SpeedBand> speedBands = BuildSpeedBands(axis, pkMin, pkMax);
+			// —— Franjas V y # (solo PK de ruta visible) ——
+			List<SpeedBand> speedBands = BuildSpeedBands(view, pkMin, pkMax);
 			SortedSet<int> speedsUsed = new SortedSet<int>();
 			int bi = 0;
 			while (bi < speedBands.Count)
@@ -98,7 +116,7 @@ namespace Diamond.Web.Rendering
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<text x=\"{speedStripX + stripW / 2}\" y=\"{plotTop - 8}\" fill=\"#94a3b8\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\">V</text>");
 
-			List<TrackBand> trackBands = BuildTrackBands(axis, pkMin, pkMax);
+			List<TrackBand> trackBands = BuildTrackBands(view, pkMin, pkMax);
 			int ti = 0;
 			while (ti < trackBands.Count)
 			{
@@ -134,16 +152,19 @@ namespace Diamond.Web.Rendering
 			// Ocupaciones de cantón
 			if (showCantonOccupations)
 			{
-				DrawOccupations(sb, mesh, axis, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH);
+				DrawOccupations(sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH);
 			}
 
 			// Circulaciones
-			int drawn = DrawCirculations(sb, mesh, axis, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH);
+			int drawn = DrawCirculations(sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH);
+
+			// Conflictos: intersección roja + icono de aviso (encima de trazas)
+			DrawConflicts(sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH);
 
 			sb.Append("</g>");
 
 			// —— Regla de estaciones (fija a la izquierda; contenido según PK visible) ——
-			DrawStationRuler(sb, axis, pkMin, pkMax, plotLeft, plotTop, plotW, plotH, speedStripX);
+			DrawStationRuler(sb, view, pkMin, pkMax, plotLeft, plotTop, plotW, plotH, speedStripX);
 
 			// —— Regla de tiempo (fija abajo; contenido según tiempo visible) ——
 			DrawTimeRuler(sb, t0, t1, plotLeft, plotTop, plotW, plotH, height);
@@ -156,7 +177,7 @@ namespace Diamond.Web.Rendering
 			DrawSpeedLegend(sb, speedsUsed, plotLeft + plotW - 8, plotTop + 8);
 			DrawTrackLegend(sb, plotLeft + plotW - 8, plotTop + 8 + 12 + Math.Max(1, speedsUsed.Count) * 14 + 16);
 
-			string title = axis.Id + " " + axis.Name
+			string title = "View " + view.Id + " · " + view.Name
 				+ " — " + drawn + " circ. visibles"
 				+ " · t " + FormatClock(TimeSpan.FromSeconds(t0)) + "–" + FormatClock(TimeSpan.FromSeconds(t1))
 				+ " · PK " + FormatPk(pkMin) + "–" + FormatPk(pkMax);
@@ -169,6 +190,32 @@ namespace Diamond.Web.Rendering
 				$"<text x=\"12\" y=\"{plotTop + plotH / 2}\" fill=\"#cbd5e1\" font-size=\"12\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\" transform=\"rotate(-90 12,{plotTop + plotH / 2})\">Estaciones</text>");
 
 			return sb.ToString();
+		}
+
+		/// <summary>
+		/// Atajo mono-eje para contenido SVG.
+		/// </summary>
+		public static string RenderContent(
+			Mesh mesh,
+			Axis axis,
+			TimeSpan timeStart,
+			TimeSpan timeEnd,
+			long pkMin,
+			long pkMax,
+			int width = 1200,
+			int height = 720,
+			bool showCantonOccupations = true)
+		{
+			return RenderContent(
+				mesh,
+				RouteView.FromAxis(axis),
+				timeStart,
+				timeEnd,
+				pkMin,
+				pkMax,
+				width,
+				height,
+				showCantonOccupations);
 		}
 
 		private static void DrawTimeGrid(
@@ -235,7 +282,7 @@ namespace Diamond.Web.Rendering
 
 		private static void DrawStationRuler(
 			StringBuilder sb,
-			Axis axis,
+			RouteView view,
 			long pkMin,
 			long pkMax,
 			double plotLeft,
@@ -245,7 +292,7 @@ namespace Diamond.Web.Rendering
 			double speedStripX)
 		{
 			// Zona fija de etiquetas (no se recorta con el plot)
-			List<StationMark> stations = BuildStationMarks(axis);
+			List<StationMark> stations = BuildStationMarks(view);
 			int mi = 0;
 			while (mi < stations.Count)
 			{
@@ -271,7 +318,7 @@ namespace Diamond.Web.Rendering
 		private static void DrawOccupations(
 			StringBuilder sb,
 			Mesh mesh,
-			Axis axis,
+			RouteView view,
 			long pkMin,
 			long pkMax,
 			double t0,
@@ -281,51 +328,37 @@ namespace Diamond.Web.Rendering
 			double plotW,
 			double plotH)
 		{
-			IReadOnlyList<CantonOccupationRect> occupations = mesh.GetCantonOccupations(axis);
+			IReadOnlyList<CantonOccupationRect> occupations = mesh.GetCantonOccupations(view);
 			int oi = 0;
 			while (oi < occupations.Count)
 			{
 				CantonOccupationRect occ = occupations[oi];
-				double x0 = plotLeft + (occ.TimeEnter.TotalSeconds - t0) / (t1 - t0) * plotW;
-				double x1 = plotLeft + (occ.TimeExit.TotalSeconds - t0) / (t1 - t0) * plotW;
-				if (x1 >= plotLeft && x0 <= plotLeft + plotW
-					&& occ.PkEnd > pkMin && occ.PkStart < pkMax)
+				double x;
+				double y;
+				double w;
+				double h;
+				if (TryMapOccupationToPlot(
+					occ, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH,
+					out x, out y, out w, out h))
 				{
-					if (x0 < plotLeft)
-					{
-						x0 = plotLeft;
-					}
-
-					if (x1 > plotLeft + plotW)
-					{
-						x1 = plotLeft + plotW;
-					}
-
-					long visPk0 = Math.Max(occ.PkStart, pkMin);
-					long visPk1 = Math.Min(occ.PkEnd, pkMax);
-					double yTop = PkToY(visPk1, pkMin, pkMax, plotTop, plotH);
-					double yBot = PkToY(visPk0, pkMin, pkMax, plotTop, plotH);
-					double y = Math.Min(yTop, yBot);
-					double h = Math.Abs(yBot - yTop);
-					double w = x1 - x0;
-					if (w > 0.5 && h > 0.5)
-					{
-						sb.Append(CultureInfo.InvariantCulture,
-							$"<rect x=\"{x0}\" y=\"{y}\" width=\"{w}\" height=\"{h}\" fill=\"#38bdf8\" fill-opacity=\"0.12\" stroke=\"#38bdf8\" stroke-opacity=\"0.35\" stroke-width=\"0.8\">");
-						sb.Append(CultureInfo.InvariantCulture,
-							$"<title>{Escape(occ.CirculationId)} cantón [{FormatPk(occ.PkStart)}–{FormatPk(occ.PkEnd)})</title>");
-						sb.Append("</rect>");
-					}
+					sb.Append(CultureInfo.InvariantCulture,
+						$"<rect x=\"{x.ToString("0.##", CultureInfo.InvariantCulture)}\" y=\"{y.ToString("0.##", CultureInfo.InvariantCulture)}\" width=\"{w.ToString("0.##", CultureInfo.InvariantCulture)}\" height=\"{h.ToString("0.##", CultureInfo.InvariantCulture)}\" fill=\"#38bdf8\" fill-opacity=\"0.12\" stroke=\"#38bdf8\" stroke-opacity=\"0.35\" stroke-width=\"0.8\">");
+					sb.Append(CultureInfo.InvariantCulture,
+						$"<title>{Escape(occ.CirculationId)} cantón [{FormatPk(occ.PkStart)}–{FormatPk(occ.PkEnd)})</title>");
+					sb.Append("</rect>");
 				}
 
 				oi++;
 			}
 		}
 
-		private static int DrawCirculations(
+		/// <summary>
+		/// Intersecciones incompatibles en rojo + triángulo de aviso en el centro.
+		/// </summary>
+		private static void DrawConflicts(
 			StringBuilder sb,
 			Mesh mesh,
-			Axis axis,
+			RouteView view,
 			long pkMin,
 			long pkMax,
 			double t0,
@@ -335,34 +368,248 @@ namespace Diamond.Web.Rendering
 			double plotW,
 			double plotH)
 		{
-			string[] palette = new[] { "#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#f472b6", "#fb7185", "#2dd4bf", "#c084fc" };
+			IReadOnlyList<OccupationConflict> conflicts = mesh.GetHardConflicts(view);
+			int index = 0;
+			while (index < conflicts.Count)
+			{
+				OccupationConflict conflict = conflicts[index];
+				CantonOccupationRect overlap = conflict.Intersection;
+				double x;
+				double y;
+				double w;
+				double h;
+				if (TryMapOccupationToPlot(
+					overlap, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH,
+					out x, out y, out w, out h))
+				{
+					string tip = conflict.Kind + ": tren " + conflict.CirculationIdA
+						+ " ∩ tren " + conflict.CirculationIdB
+						+ " · PK " + FormatPk(overlap.PkStart) + "–" + FormatPk(overlap.PkEnd)
+						+ " · " + FormatClock(overlap.TimeEnter) + "–" + FormatClock(overlap.TimeExit);
+
+					// Relleno rojo de la intersección
+					sb.Append(CultureInfo.InvariantCulture,
+						$"<rect x=\"{x.ToString("0.##", CultureInfo.InvariantCulture)}\" y=\"{y.ToString("0.##", CultureInfo.InvariantCulture)}\" width=\"{w.ToString("0.##", CultureInfo.InvariantCulture)}\" height=\"{h.ToString("0.##", CultureInfo.InvariantCulture)}\" fill=\"#ef4444\" fill-opacity=\"0.45\" stroke=\"#fecaca\" stroke-width=\"1.2\">");
+					sb.Append(CultureInfo.InvariantCulture,
+						$"<title>{Escape(tip)}</title>");
+					sb.Append("</rect>");
+
+					// Icono de aviso (triángulo + !) en el centro del solape
+					double cx = x + w * 0.5;
+					double cy = y + h * 0.5;
+					AppendWarningIcon(sb, cx, cy, tip);
+				}
+
+				index++;
+			}
+		}
+
+		private static void AppendWarningIcon(StringBuilder sb, double cx, double cy, string tip)
+		{
+			// Escala legible aunque el rectángulo de conflicto sea pequeño
+			const double s = 9.0;
+			string cxs = cx.ToString("0.##", CultureInfo.InvariantCulture);
+			string cys = cy.ToString("0.##", CultureInfo.InvariantCulture);
+
+			// Triángulo equilátero apuntando arriba, centrado en (cx, cy)
+			double x1 = cx;
+			double y1 = cy - s;
+			double x2 = cx + s * 0.9;
+			double y2 = cy + s * 0.75;
+			double x3 = cx - s * 0.9;
+			double y3 = cy + s * 0.75;
+
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<g>");
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<polygon points=\"{x1.ToString("0.##", CultureInfo.InvariantCulture)},{y1.ToString("0.##", CultureInfo.InvariantCulture)} {x2.ToString("0.##", CultureInfo.InvariantCulture)},{y2.ToString("0.##", CultureInfo.InvariantCulture)} {x3.ToString("0.##", CultureInfo.InvariantCulture)},{y3.ToString("0.##", CultureInfo.InvariantCulture)}\" fill=\"#fbbf24\" stroke=\"#7f1d1d\" stroke-width=\"1.2\">");
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<title>{Escape(tip)}</title>");
+			sb.Append("</polygon>");
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<text x=\"{cxs}\" y=\"{(cy + 3.5).ToString("0.##", CultureInfo.InvariantCulture)}\" fill=\"#7f1d1d\" font-size=\"11\" font-weight=\"800\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\">!</text>");
+			sb.Append("</g>");
+		}
+
+		private static bool TryMapOccupationToPlot(
+			CantonOccupationRect occ,
+			long pkMin,
+			long pkMax,
+			double t0,
+			double t1,
+			double plotLeft,
+			double plotTop,
+			double plotW,
+			double plotH,
+			out double x,
+			out double y,
+			out double w,
+			out double h)
+		{
+			x = 0;
+			y = 0;
+			w = 0;
+			h = 0;
+
+			double x0 = plotLeft + (occ.TimeEnter.TotalSeconds - t0) / (t1 - t0) * plotW;
+			double x1 = plotLeft + (occ.TimeExit.TotalSeconds - t0) / (t1 - t0) * plotW;
+			if (x1 < plotLeft || x0 > plotLeft + plotW
+				|| occ.PkEnd <= pkMin || occ.PkStart >= pkMax)
+			{
+				return false;
+			}
+
+			if (x0 < plotLeft)
+			{
+				x0 = plotLeft;
+			}
+
+			if (x1 > plotLeft + plotW)
+			{
+				x1 = plotLeft + plotW;
+			}
+
+			long visPk0 = Math.Max(occ.PkStart, pkMin);
+			long visPk1 = Math.Min(occ.PkEnd, pkMax);
+			if (visPk1 <= visPk0)
+			{
+				return false;
+			}
+
+			double yTop = PkToY(visPk1, pkMin, pkMax, plotTop, plotH);
+			double yBot = PkToY(visPk0, pkMin, pkMax, plotTop, plotH);
+			y = Math.Min(yTop, yBot);
+			h = Math.Abs(yBot - yTop);
+			x = x0;
+			w = x1 - x0;
+			return w > 0.5 && h > 0.5;
+		}
+
+		private static int DrawCirculations(
+			StringBuilder sb,
+			Mesh mesh,
+			RouteView view,
+			long pkMin,
+			long pkMax,
+			double t0,
+			double t1,
+			double plotLeft,
+			double plotTop,
+			double plotW,
+			double plotH)
+		{
+			// Un color por asimilación (mismo perfil de marcha → mismo color).
+			Dictionary<Asimilation, string> colorByAsim = BuildAsimilationColorMap(mesh);
+
+			// Etiquetas de número en una pasada posterior (encima de las polilíneas).
+			List<NumberLabel> labels = new List<NumberLabel>();
+
 			int drawn = 0;
 			int ci = 0;
 			while (ci < mesh.Circulations.Count)
 			{
 				Circulation c = mesh.Circulations[ci];
-				if (!string.Equals(c.Asimilation.Axis.Id, axis.Id, StringComparison.Ordinal))
+				if (!MeshCantonGeometry.IsVisibleOnView(c.Asimilation, view))
 				{
 					ci++;
 					continue;
 				}
 
-				string color = palette[drawn % palette.Length];
-				string points = BuildPolylinePoints(c, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH);
+				// Color del script (requisito) tiene prioridad sobre la paleta por asimilación.
+				string color;
+				if (c.HasColor)
+				{
+					color = c.Color;
+				}
+				else if (!colorByAsim.TryGetValue(c.Asimilation, out color!))
+				{
+					color = "#94a3b8";
+				}
+
+				double labelX;
+				double labelY;
+				string points = BuildPolylinePoints(
+					c, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH,
+					out labelX, out labelY);
 				if (points.Length > 0)
 				{
+					string numberText = c.ServiceNumber > 0
+						? c.ServiceNumber.ToString(CultureInfo.InvariantCulture)
+						: c.Id;
+					string tip = numberText
+						+ " · salida " + FormatClock(c.Departure)
+						+ " · ll. " + FormatClock(c.Arrival);
+
 					sb.Append(CultureInfo.InvariantCulture,
 						$"<polyline fill=\"none\" stroke=\"{color}\" stroke-width=\"2\" points=\"{points}\">");
 					sb.Append(CultureInfo.InvariantCulture,
-						$"<title>{Escape(c.Id)} · salida {c.Departure}</title>");
+						$"<title>{Escape(tip)}</title>");
 					sb.Append("</polyline>");
+
+					if (c.ServiceNumber > 0 && !double.IsNaN(labelX))
+					{
+						labels.Add(new NumberLabel(labelX, labelY, numberText, color));
+					}
+
 					drawn++;
 				}
 
 				ci++;
 			}
 
+			// Números de tren sobre las trazas
+			int li = 0;
+			while (li < labels.Count)
+			{
+				NumberLabel lab = labels[li];
+				sb.Append(CultureInfo.InvariantCulture,
+					$"<text x=\"{lab.X.ToString("0.##", CultureInfo.InvariantCulture)}\" y=\"{lab.Y.ToString("0.##", CultureInfo.InvariantCulture)}\" fill=\"{lab.Color}\" stroke=\"#0f1419\" stroke-width=\"3\" paint-order=\"stroke fill\" font-size=\"11\" font-weight=\"700\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\" dominant-baseline=\"middle\">{Escape(lab.Text)}</text>");
+				li++;
+			}
+
 			return drawn;
+		}
+
+		/// <summary>
+		/// Asigna un color estable a cada instancia de <see cref="Asimilation"/> de la malla
+		/// (orden del catálogo de asimilaciones del mesh).
+		/// </summary>
+		private static Dictionary<Asimilation, string> BuildAsimilationColorMap(Mesh mesh)
+		{
+			string[] palette = new[]
+			{
+				"#38bdf8", "#a78bfa", "#34d399", "#fbbf24",
+				"#f472b6", "#fb7185", "#2dd4bf", "#c084fc",
+				"#60a5fa", "#f59e0b", "#4ade80", "#e879f9"
+			};
+
+			Dictionary<Asimilation, string> map = new Dictionary<Asimilation, string>();
+			int index = 0;
+			while (index < mesh.Asimilations.Count)
+			{
+				Asimilation asim = mesh.Asimilations[index];
+				if (!map.ContainsKey(asim))
+				{
+					map[asim] = palette[map.Count % palette.Length];
+				}
+
+				index++;
+			}
+
+			// Circulaciones cuya asimilación no esté en el catálogo (por si acaso).
+			int ci = 0;
+			while (ci < mesh.Circulations.Count)
+			{
+				Asimilation asim = mesh.Circulations[ci].Asimilation;
+				if (!map.ContainsKey(asim))
+				{
+					map[asim] = palette[map.Count % palette.Length];
+				}
+
+				ci++;
+			}
+
+			return map;
 		}
 
 		private static double ChooseTimeStepHours(double spanHours)
@@ -442,7 +689,7 @@ namespace Diamond.Web.Rendering
 			sb.Append("</rect>");
 		}
 
-		private static List<SpeedBand> BuildSpeedBands(Axis axis, long pkMin, long pkMax)
+		private static List<SpeedBand> BuildSpeedBands(RouteView view, long pkMin, long pkMax)
 		{
 			List<SpeedBand> bands = new List<SpeedBand>();
 			long step = ChooseSampleStep(pkMin, pkMax);
@@ -452,7 +699,7 @@ namespace Diamond.Web.Rendering
 
 			while (pk < pkMax)
 			{
-				int speed = axis.GetEffectiveSpeedLimit(pk) ?? 0;
+				int speed = view.GetEffectiveSpeedLimit(pk) ?? 0;
 				if (!currentSpeed.HasValue)
 				{
 					currentSpeed = speed;
@@ -480,13 +727,13 @@ namespace Diamond.Web.Rendering
 			}
 			else
 			{
-				bands.Add(new SpeedBand(pkMin, pkMax, axis.Vmax > 0 ? axis.Vmax : 0));
+				bands.Add(new SpeedBand(pkMin, pkMax, view.Vmax > 0 ? view.Vmax : 0));
 			}
 
 			return bands;
 		}
 
-		private static List<TrackBand> BuildTrackBands(Axis axis, long pkMin, long pkMax)
+		private static List<TrackBand> BuildTrackBands(RouteView view, long pkMin, long pkMax)
 		{
 			List<TrackBand> bands = new List<TrackBand>();
 			long step = ChooseSampleStep(pkMin, pkMax);
@@ -496,7 +743,7 @@ namespace Diamond.Web.Rendering
 
 			while (pk < pkMax)
 			{
-				int tracks = axis.GetTrackCountAt(pk);
+				int tracks = view.GetTrackCountAt(pk);
 				if (!currentTracks.HasValue)
 				{
 					currentTracks = tracks;
@@ -524,7 +771,7 @@ namespace Diamond.Web.Rendering
 			}
 			else
 			{
-				bands.Add(new TrackBand(pkMin, pkMax, axis.DefaultTrackCount));
+				bands.Add(new TrackBand(pkMin, pkMax, 1));
 			}
 
 			return bands;
@@ -646,14 +893,14 @@ namespace Diamond.Web.Rendering
 			return plotTop + (1.0 - (double)(pk - pkMin) / (pkMax - pkMin)) * plotH;
 		}
 
-		private static List<StationMark> BuildStationMarks(Axis axis)
+		private static List<StationMark> BuildStationMarks(RouteView view)
 		{
 			List<StationMark> marks = new List<StationMark>();
 			HashSet<long> seenPk = new HashSet<long>();
 			int index = 0;
-			while (index < axis.Stations.Count)
+			while (index < view.Stations.Count)
 			{
-				StationOnAxis placement = axis.Stations[index];
+				StationOnRoute placement = view.Stations[index];
 				if (seenPk.Add(placement.PK))
 				{
 					bool principal = StationClassification.IsPrincipalStation(placement.Station);
@@ -696,11 +943,19 @@ namespace Diamond.Web.Rendering
 			double plotLeft,
 			double plotTop,
 			double plotW,
-			double plotH)
+			double plotH,
+			out double labelX,
+			out double labelY)
 		{
+			labelX = double.NaN;
+			labelY = double.NaN;
+
 			Asimilation asim = c.Asimilation;
 			StringBuilder pts = new StringBuilder();
 			const int steps = 160;
+			int visibleCount = 0;
+			double sumX = 0.0;
+			double sumY = 0.0;
 			int s = 0;
 			while (s <= steps)
 			{
@@ -721,6 +976,11 @@ namespace Diamond.Web.Rendering
 					pts.Append(x.ToString("0.##", CultureInfo.InvariantCulture));
 					pts.Append(',');
 					pts.Append(y.ToString("0.##", CultureInfo.InvariantCulture));
+
+					// Centroide de muestras visibles ≈ punto de etiqueta.
+					sumX += x;
+					sumY += y;
+					visibleCount++;
 				}
 				else if (pts.Length > 0)
 				{
@@ -729,6 +989,12 @@ namespace Diamond.Web.Rendering
 				}
 
 				s++;
+			}
+
+			if (visibleCount > 0)
+			{
+				labelX = sumX / visibleCount;
+				labelY = sumY / visibleCount;
 			}
 
 			return pts.ToString().Trim();
@@ -767,6 +1033,22 @@ namespace Diamond.Web.Rendering
 		private static string Escape(string text)
 		{
 			return System.Security.SecurityElement.Escape(text) ?? string.Empty;
+		}
+
+		private readonly struct NumberLabel
+		{
+			public NumberLabel(double x, double y, string text, string color)
+			{
+				X = x;
+				Y = y;
+				Text = text;
+				Color = color;
+			}
+
+			public double X { get; }
+			public double Y { get; }
+			public string Text { get; }
+			public string Color { get; }
 		}
 
 		private readonly struct StationMark

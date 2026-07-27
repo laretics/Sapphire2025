@@ -5,9 +5,10 @@ using Diamond.Topo;
 namespace Diamond.Motion
 {
 	/// <summary>
-	/// Asimilación cinemática dinámica: perfil de velocidad a lo largo de un eje a partir de
-	/// <see cref="TrainSpecs"/>, limitaciones del eje, origen/destino (sentido) y paradas intermedias.
-	/// El tren parte del <see cref="Origin"/> a velocidad cero y termina en <see cref="Destination"/> a velocidad cero.
+	/// Asimilación cinemática dinámica: perfil de velocidad a lo largo de una <see cref="RouteView"/>
+	/// a partir de <see cref="TrainSpecs"/>, limitaciones de los ejes físicos, origen/destino (sentido)
+	/// y paradas intermedias. El tren parte del origen a v=0 y termina en destino a v=0.
+	/// Los PK de origen/destino/paradas/muestras son PK de ruta de la vista.
 	/// </summary>
 	public sealed class Asimilation
 	{
@@ -15,7 +16,7 @@ namespace Diamond.Motion
 		private const long SampleStepMeters = 5L;
 		private const double MinSpeedMetersPerSecond = 1e-6;
 
-		private readonly Axis mvarAxis;
+		private readonly RouteView mvarView;
 		private readonly TrainSpecs mvarSpecs;
 		private readonly StationOnAxis mvarOrigin;
 		private readonly StationOnAxis mvarDestination;
@@ -23,23 +24,41 @@ namespace Diamond.Motion
 		private readonly List<AsimilationStop> mcolStops;
 
 		/// <summary>
-		/// Muestras en orden de marcha (índice 0 = origen, último = destino). El PK puede subir o bajar.
+		/// Muestras en orden de marcha (índice 0 = origen, último = destino). El PK de ruta puede subir o bajar.
 		/// </summary>
 		private long[] mcolSamplePk = Array.Empty<long>();
 		private double[] mcolSpeedMs = Array.Empty<double>();
 		private double[] mcolTimeSeconds = Array.Empty<double>();
 		private bool mvarIsBuilt;
 
+		/// <summary>
+		/// Atajo de un solo eje: envuelve el eje en <see cref="RouteView.FromAxis"/> y usa sus PK como PK de ruta.
+		/// </summary>
 		public Asimilation(
 			Axis axis,
 			TrainSpecs specs,
 			StationOnAxis origin,
 			StationOnAxis destination,
 			IReadOnlyList<AsimilationStop>? intermediateStops = null)
+			: this(
+				RouteView.FromAxis(axis ?? throw new ArgumentNullException(nameof(axis))),
+				specs,
+				origin,
+				destination,
+				intermediateStops)
 		{
-			if (axis is null)
+		}
+
+		public Asimilation(
+			RouteView view,
+			TrainSpecs specs,
+			StationOnAxis origin,
+			StationOnAxis destination,
+			IReadOnlyList<AsimilationStop>? intermediateStops = null)
+		{
+			if (view is null)
 			{
-				throw new ArgumentNullException(nameof(axis));
+				throw new ArgumentNullException(nameof(view));
 			}
 
 			if (specs is null)
@@ -62,7 +81,7 @@ namespace Diamond.Motion
 				throw new ArgumentException("Origen y destino deben tener PK distintos.", nameof(destination));
 			}
 
-			mvarAxis = axis;
+			mvarView = view;
 			mvarSpecs = specs;
 			mvarOrigin = origin;
 			mvarDestination = destination;
@@ -104,9 +123,21 @@ namespace Diamond.Motion
 			Rebuild();
 		}
 
+		/// <summary>
+		/// Vista de ruta sobre la que está calculada la marcha.
+		/// </summary>
+		public RouteView View
+		{
+			get { return mvarView; }
+		}
+
+		/// <summary>
+		/// Primer eje físico de la vista (compatibilidad con código mono-eje).
+		/// Preferir <see cref="View"/> para multi-eje.
+		/// </summary>
 		public Axis Axis
 		{
-			get { return mvarAxis; }
+			get { return mvarView.Legs[0].Axis; }
 		}
 
 		public TrainSpecs Specs
@@ -114,11 +145,17 @@ namespace Diamond.Motion
 			get { return mvarSpecs; }
 		}
 
+		/// <summary>
+		/// Origen en PK de ruta de <see cref="View"/>.
+		/// </summary>
 		public StationOnAxis Origin
 		{
 			get { return mvarOrigin; }
 		}
 
+		/// <summary>
+		/// Destino en PK de ruta de <see cref="View"/>.
+		/// </summary>
 		public StationOnAxis Destination
 		{
 			get { return mvarDestination; }
@@ -158,7 +195,7 @@ namespace Diamond.Motion
 		}
 
 		/// <summary>
-		/// Velocidad de circulación en <paramref name="pk"/> (km/h) a lo largo de este servicio.
+		/// Velocidad de circulación en el PK de ruta <paramref name="pk"/> (km/h).
 		/// Fuera del tramo origen–destino devuelve 0.
 		/// </summary>
 		public double SpeedByPK(long pk)
@@ -199,7 +236,7 @@ namespace Diamond.Motion
 		}
 
 		/// <summary>
-		/// Instantes relativos a la salida en los que el tren se encuentra en <paramref name="pk"/>
+		/// Instantes relativos a la salida en el PK de ruta <paramref name="pk"/>
 		/// (interpolación sobre el perfil). Fuera de ruta devuelve null.
 		/// </summary>
 		public TimeSpan? TimeByPK(long pk)
@@ -241,7 +278,7 @@ namespace Diamond.Motion
 		}
 
 		/// <summary>
-		/// PK del eje en el instante <paramref name="time"/> desde la salida del origen (v=0).
+		/// PK de ruta en el instante <paramref name="time"/> desde la salida del origen (v=0).
 		/// Tiempos posteriores al final del recorrido devuelven el PK del destino.
 		/// </summary>
 		public long PKByTime(TimeSpan time)
@@ -290,7 +327,7 @@ namespace Diamond.Motion
 		}
 
 		/// <summary>
-		/// Recalcula el perfil (p. ej. tras cambiar limitaciones del eje).
+		/// Recalcula el perfil (p. ej. tras cambiar limitaciones de los ejes de la vista).
 		/// </summary>
 		public void Rebuild()
 		{
@@ -517,9 +554,9 @@ namespace Diamond.Motion
 			return dwellByPk;
 		}
 
-		private double ResolveLimitMs(long pk)
+		private double ResolveLimitMs(long routePk)
 		{
-			int? limitKmh = mvarAxis.GetEffectiveSpeedLimit(pk);
+			int? limitKmh = mvarView.GetEffectiveSpeedLimit(routePk);
 			double kmh;
 			if (limitKmh.HasValue)
 			{

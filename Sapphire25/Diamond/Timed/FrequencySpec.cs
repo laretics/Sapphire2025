@@ -3,17 +3,19 @@ using System;
 namespace Diamond.Timed
 {
 	/// <summary>
-	/// Cadencia de un requisito: trenes por hora o intervalo fijo en minutos.
+	/// Cadencia de un requisito: trenes por hora, intervalo fijo, o un solo tren (<see cref="Once"/>).
 	/// </summary>
 	public sealed class FrequencySpec
 	{
 		private readonly int? mvarTrainsPerHour;
 		private readonly int? mvarIntervalMinutes;
+		private readonly bool mvarOnce;
 
-		private FrequencySpec(int? trainsPerHour, int? intervalMinutes)
+		private FrequencySpec(int? trainsPerHour, int? intervalMinutes, bool once)
 		{
 			mvarTrainsPerHour = trainsPerHour;
 			mvarIntervalMinutes = intervalMinutes;
+			mvarOnce = once;
 		}
 
 		public static FrequencySpec PerHour(int trainsPerHour)
@@ -23,7 +25,7 @@ namespace Diamond.Timed
 				throw new ArgumentOutOfRangeException(nameof(trainsPerHour));
 			}
 
-			return new FrequencySpec(trainsPerHour, null);
+			return new FrequencySpec(trainsPerHour, null, once: false);
 		}
 
 		public static FrequencySpec EveryMinutes(int intervalMinutes)
@@ -33,7 +35,15 @@ namespace Diamond.Timed
 				throw new ArgumentOutOfRangeException(nameof(intervalMinutes));
 			}
 
-			return new FrequencySpec(null, intervalMinutes);
+			return new FrequencySpec(null, intervalMinutes, once: false);
+		}
+
+		/// <summary>
+		/// Un único tren por sentido en la ventana (sin cadencia repetida).
+		/// </summary>
+		public static FrequencySpec Once()
+		{
+			return new FrequencySpec(null, null, once: true);
 		}
 
 		public int? TrainsPerHour
@@ -47,12 +57,26 @@ namespace Diamond.Timed
 		}
 
 		/// <summary>
-		/// Equivalente en trenes/hora (p. ej. every 30 min → 2.0).
+		/// True si el requisito pide un solo tren (frecuencia omitida en el DSL).
+		/// </summary>
+		public bool IsOnce
+		{
+			get { return mvarOnce; }
+		}
+
+		/// <summary>
+		/// Equivalente en trenes/hora (p. ej. every 30 min → 2.0; once → 1/24 para headway de un día).
 		/// </summary>
 		public double TrainsPerHourValue
 		{
 			get
 			{
+				if (mvarOnce)
+				{
+					// Headway = 24 h → como máximo un tren en una ventana diurna típica.
+					return 1.0 / 24.0;
+				}
+
 				if (mvarTrainsPerHour.HasValue)
 				{
 					return mvarTrainsPerHour.Value;
@@ -64,6 +88,11 @@ namespace Diamond.Timed
 
 		public override string ToString()
 		{
+			if (mvarOnce)
+			{
+				return "once";
+			}
+
 			if (mvarTrainsPerHour.HasValue)
 			{
 				return mvarTrainsPerHour.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) + "/h";

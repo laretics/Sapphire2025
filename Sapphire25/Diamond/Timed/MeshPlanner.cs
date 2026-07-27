@@ -14,7 +14,6 @@ namespace Diamond.Timed
 	{
 		private static readonly TimeSpan DefaultWindowStart = new TimeSpan(6, 0, 0);
 		private static readonly TimeSpan DefaultWindowEnd = new TimeSpan(22, 0, 0);
-		private static readonly TimeSpan SearchStep = TimeSpan.FromSeconds(30);
 		private static readonly TimeSpan Epsilon = TimeSpan.FromMilliseconds(1);
 
 		private readonly Plan mvarPlan;
@@ -30,40 +29,165 @@ namespace Diamond.Timed
 		}
 
 		/// <summary>
-		/// Genera la malla a partir de la demanda y topología del plan.
+		/// Genera la malla para un <see cref="DayOfWeek.Monday"/> por defecto.
+		/// Preferir <see cref="Solve(DayOfWeek)"/>.
 		/// </summary>
 		public Mesh Solve()
 		{
+			return Solve(DayOfWeek.Monday);
+		}
+
+		/// <summary>
+		/// Genera la malla para un día concreto: solo se procesan requisitos cuyo
+		/// <see cref="DemandRequirement.ServiceDays"/> incluye ese día.
+		/// Errores y warnings se etiquetan con el día.
+		/// </summary>
+		public Mesh Solve(DayOfWeek dayOfWeek)
+		{
 			Mesh mesh = new Mesh();
+			mesh.PlanningDay = dayOfWeek;
+			string dayTag = ServiceDays.FormatDayOfWeek(dayOfWeek);
+
 			TopoLayout? topo = mvarPlan.Topo;
 			if (topo is null)
 			{
-				mesh.AddError("El plan no tiene topología (Topo).");
+				mesh.AddError("[" + dayTag + "] El plan no tiene topología (Topo).");
 				return mesh;
 			}
 
-			if (mvarPlan.Demand.Count == 0)
+			if (mvarPlan.Demand.Count == 0 && mvarPlan.Deletes.Count == 0)
 			{
-				mesh.AddWarning("No hay requisitos de demanda que planificar.");
+				mesh.AddWarning("[" + dayTag + "] No hay requisitos de demanda que planificar.");
 				return mesh;
 			}
 
 			Dictionary<AsimilationKey, Asimilation> asimCache = new Dictionary<AsimilationKey, Asimilation>();
 			List<ScheduledTrip> scheduled = new List<ScheduledTrip>();
 			int circulationSeq = 0;
+			int applicable = 0;
 
-			int demandIndex = 0;
-			while (demandIndex < mvarPlan.Demand.Count)
+			// Ejecutar require y delete en el orden del script (permite huecos + trenes especiales).
+			List<ScriptStep> steps = BuildOrderedSteps(mvarPlan);
+			int stepIndex = 0;
+			while (stepIndex < steps.Count)
 			{
-				DemandRequirement demand = mvarPlan.Demand[demandIndex];
-				PlanOneDemand(demand, topo, mesh, asimCache, scheduled, ref circulationSeq);
-				demandIndex++;
+				ScriptStep step = steps[stepIndex];
+				if (step.Requirement is not null)
+				{
+					DemandRequirement demand = step.Requirement;
+					if (demand.AppliesOn(dayOfWeek))
+					{
+						applicable++;
+						PlanOneDemand(demand, topo, mesh, asimCache, scheduled, ref circulationSeq, dayTag);
+					}
+				}
+				else if (step.Delete is not null)
+				{
+					DemandDeleteOp del = step.Delete;
+					if (del.AppliesOn(dayOfWeek))
+					{
+						ApplyDelete(del, mesh, scheduled, dayTag);
+					}
+				}
+
+				stepIndex++;
 			}
 
+			if (applicable == 0 && mesh.Circulations.Count == 0)
+			{
+				mesh.AddWarning(
+					"[" + dayTag + "] Ningún requisito de demanda aplica este día ("
+					+ dayTag + ").");
+			}
+
+			// Numeración SFM antes de la verificación final, para que los errores citen números de tren.
+			TrainNumbering.Assign(mesh);
+
 			// Verificación final dura (por si el retraso no bastó o hay interacciones cruzadas).
-			ValidateHardConstraints(scheduled, mesh);
+			ValidateHardConstraints(scheduled, mesh, dayTag);
+
+			// Sustituir ids técnicos (C12-R-…) en mensajes generados durante la planificación.
+			TrainNumbering.RewriteMessageIds(mesh);
 
 			return mesh;
+		}
+
+		/// <summary>
+		/// Mezcla require y delete por <c>ScriptOrder</c> (orden del script).
+		/// </summary>
+		private static List<ScriptStep> BuildOrderedSteps(Plan plan)
+		{
+			List<ScriptStep> steps = new List<ScriptStep>(plan.Demand.Count + plan.Deletes.Count);
+			int ri = 0;
+			while (ri < plan.Demand.Count)
+			{
+				steps.Add(ScriptStep.ForRequire(plan.Demand[ri]));
+				ri++;
+			}
+
+			int di = 0;
+			while (di < plan.Deletes.Count)
+			{
+				steps.Add(ScriptStep.ForDelete(plan.Deletes[di]));
+				di++;
+			}
+
+			steps.Sort(static (a, b) => a.Order.CompareTo(b.Order));
+			return steps;
+		}
+
+		/// <summary>
+		/// Elimina de la malla (y de la lista de conflictos) las circulaciones que cumplen la franja.
+		/// </summary>
+		private static void ApplyDelete(
+			DemandDeleteOp op,
+			Mesh mesh,
+			List<ScheduledTrip> scheduled,
+			string dayTag)
+		{
+			List<Circulation> doomed = new List<Circulation>();
+			int ci = 0;
+			while (ci < mesh.Circulations.Count)
+			{
+				Circulation c = mesh.Circulations[ci];
+				if (op.Matches(c))
+				{
+					doomed.Add(c);
+				}
+
+				ci++;
+			}
+
+			int removed = 0;
+			int d = 0;
+			while (d < doomed.Count)
+			{
+				Circulation c = doomed[d];
+				if (mesh.RemoveCirculation(c))
+				{
+					removed++;
+				}
+
+				d++;
+			}
+
+			int si = scheduled.Count - 1;
+			while (si >= 0)
+			{
+				if (op.Matches(scheduled[si].Circulation))
+				{
+					scheduled.RemoveAt(si);
+				}
+
+				si--;
+			}
+
+			mesh.AddWarning(
+				Tag(
+					dayTag,
+					op.ToString() + ": eliminadas "
+					+ removed.ToString(System.Globalization.CultureInfo.InvariantCulture)
+					+ " circulación(es)."));
 		}
 
 		private void PlanOneDemand(
@@ -72,15 +196,16 @@ namespace Diamond.Timed
 			Mesh mesh,
 			Dictionary<AsimilationKey, Asimilation> asimCache,
 			List<ScheduledTrip> scheduled,
-			ref int circulationSeq)
+			ref int circulationSeq,
+			string dayTag)
 		{
 			if (!demand.IsResolved || demand.FromStation is null || demand.ToStation is null)
 			{
-				mesh.AddError("Requisito " + demand.Id + ": estaciones no resueltas.");
+				mesh.AddError("[" + dayTag + "] Requisito " + demand.Id + ": estaciones no resueltas.");
 				return;
 			}
 
-			TrainSpecs specs = ResolveSpecs(demand, mesh);
+			TrainSpecs specs = ResolveSpecs(demand, mesh, dayTag);
 			List<DirectionJob> jobs = ExpandDirections(demand);
 
 			// Preconstruir asimilaciones por sentido (necesario para fase de cruce).
@@ -89,52 +214,103 @@ namespace Diamond.Timed
 			while (jobIndex < jobs.Count)
 			{
 				DirectionJob job = jobs[jobIndex];
-				Axis? axis;
-				StationOnAxis? origin;
-				StationOnAxis? destination;
-				if (!TryFindAxisPath(topo, job.From, job.To, out axis, out origin, out destination))
+				RouteView? view;
+				StationOnRoute? originOnRoute;
+				StationOnRoute? destinationOnRoute;
+				if (!RouteView.TryFindPath(topo, job.From, job.To, out view, out originOnRoute, out destinationOnRoute)
+					|| view is null
+					|| originOnRoute is null
+					|| destinationOnRoute is null)
 				{
-					mesh.AddError(
-						"Requisito " + demand.Id + ": no hay eje común entre '"
-						+ job.From.Name + "' y '" + job.To.Name + "'.");
+					mesh.AddError(Tag(
+						dayTag,
+						"Requisito " + demand.Id + ": no hay camino (eje/vista) entre '"
+						+ job.From.Name + "' y '" + job.To.Name + "'."));
 					jobIndex++;
 					continue;
 				}
 
-				List<AsimilationStop> intermediate = BuildIntermediateStops(axis!, origin!, destination!, demand.Stops);
-				AsimilationKey key = new AsimilationKey(specs.Id, axis!.Id, origin!.PK, destination!.PK, intermediate);
+				// PK de asimilación = PK de ruta.
+				StationOnAxis origin = new StationOnAxis(originOnRoute.Station, originOnRoute.PK);
+				StationOnAxis destination = new StationOnAxis(destinationOnRoute.Station, destinationOnRoute.PK);
+				List<AsimilationStop> intermediate = BuildIntermediateStops(view, origin, destination, demand.Stops);
+				AsimilationKey key = new AsimilationKey(
+					specs.Id,
+					view.PathSignature(),
+					origin.PK,
+					destination.PK,
+					intermediate);
 				Asimilation asim;
 				if (!asimCache.TryGetValue(key, out asim!))
 				{
-					asim = new Asimilation(axis, specs, origin, destination, intermediate);
+					asim = new Asimilation(view, specs, origin, destination, intermediate);
 					asimCache[key] = asim;
 					mesh.AddAsimilation(asim);
 				}
 
-				prepared.Add(new PreparedDirection(job, axis, asim));
+				prepared.Add(new PreparedDirection(job, view, asim));
 				jobIndex++;
 			}
 
 			TimeSpan desiredHeadway = TimeSpan.FromHours(1.0 / demand.Frequency.TrainsPerHourValue);
-			TimeSpan[] phaseOffsets = ComputePhaseOffsets(demand, prepared, desiredHeadway, mesh);
+			// Impares (↑PK) primero; después pares (↓PK). Cada sentido arranca al inicio de la ventana.
+			SortPreparedAscendingFirst(prepared);
+			TimeSpan[] phaseOffsets = ComputePhaseOffsets(demand, prepared, desiredHeadway, mesh, dayTag);
 
 			int p = 0;
 			while (p < prepared.Count)
 			{
 				PreparedDirection prep = prepared[p];
+				// Ambos sentidos empiezan al inicio del día salvo fase explícita (cross at).
 				TimeSpan phase = p < phaseOffsets.Length ? phaseOffsets[p] : TimeSpan.Zero;
 				ScheduleDemandOnPath(
 					demand,
 					prep.Job,
-					prep.Axis,
+					prep.View,
 					prep.Asimilation,
 					specs,
 					mesh,
 					scheduled,
 					ref circulationSeq,
-					phase);
+					phase,
+					dayTag);
 				p++;
 			}
+		}
+
+		/// <summary>
+		/// Ordena sentidos de forma que IncreasingPk (impares) quede en el índice 0.
+		/// </summary>
+		private static void SortPreparedAscendingFirst(List<PreparedDirection> prepared)
+		{
+			if (prepared.Count < 2)
+			{
+				return;
+			}
+
+			if (prepared[0].Asimilation.Sense == CirculationSense.IncreasingPk)
+			{
+				return;
+			}
+
+			int i = 1;
+			while (i < prepared.Count)
+			{
+				if (prepared[i].Asimilation.Sense == CirculationSense.IncreasingPk)
+				{
+					PreparedDirection tmp = prepared[0];
+					prepared[0] = prepared[i];
+					prepared[i] = tmp;
+					return;
+				}
+
+				i++;
+			}
+		}
+
+		private static string Tag(string dayTag, string message)
+		{
+			return "[" + dayTag + "] " + message;
 		}
 
 		/// <summary>
@@ -145,7 +321,8 @@ namespace Diamond.Timed
 			DemandRequirement demand,
 			List<PreparedDirection> prepared,
 			TimeSpan headway,
-			Mesh mesh)
+			Mesh mesh,
+			string dayTag)
 		{
 			TimeSpan[] offsets = new TimeSpan[prepared.Count];
 			int i = 0;
@@ -155,7 +332,9 @@ namespace Diamond.Timed
 				i++;
 			}
 
-			if (prepared.Count < 2 || demand.Stops.CrossAt is null || headway <= TimeSpan.Zero)
+			// Sin cross at: ambos sentidos arrancan al inicio de la ventana (fase 0).
+			// Primero se planifican todos los impares (↑PK) y después todos los pares (↓PK).
+			if (prepared.Count < 2 || headway <= TimeSpan.Zero || demand.Stops.CrossAt is null)
 			{
 				return offsets;
 			}
@@ -164,22 +343,24 @@ namespace Diamond.Timed
 			PreparedDirection forward = prepared[0];
 			PreparedDirection ret = prepared[1];
 
-			StationOnAxis? crossOnAxis = FindPlacementByRef(forward.Axis, crossRef);
-			if (crossOnAxis is null)
+			StationOnRoute? crossOnRoute = FindPlacementByRef(forward.View, crossRef);
+			if (crossOnRoute is null)
 			{
-				mesh.AddWarning(
+				mesh.AddWarning(Tag(
+					dayTag,
 					"Requisito " + demand.Id + ": no se encontró el punto de cruce '"
-					+ crossRef.Text + "' en el eje; se ignora 'cross at'.");
+					+ crossRef.Text + "' en la vista; se ignora 'cross at' (fase 0)."));
 				return offsets;
 			}
 
-			TimeSpan? tForward = forward.Asimilation.TimeByPK(crossOnAxis.PK);
-			TimeSpan? tReturn = ret.Asimilation.TimeByPK(crossOnAxis.PK);
+			TimeSpan? tForward = forward.Asimilation.TimeByPK(crossOnRoute.PK);
+			TimeSpan? tReturn = ret.Asimilation.TimeByPK(crossOnRoute.PK);
 			if (!tForward.HasValue || !tReturn.HasValue)
 			{
-				mesh.AddWarning(
+				mesh.AddWarning(Tag(
+					dayTag,
 					"Requisito " + demand.Id + ": no se pudo calcular el cruce en '"
-					+ crossRef.Text + "'.");
+					+ crossRef.Text + "'."));
 				return offsets;
 			}
 
@@ -196,12 +377,12 @@ namespace Diamond.Timed
 			return offsets;
 		}
 
-		private static StationOnAxis? FindPlacementByRef(Axis axis, StationRef reference)
+		private static StationOnRoute? FindPlacementByRef(RouteView view, StationRef reference)
 		{
 			int index = 0;
-			while (index < axis.Stations.Count)
+			while (index < view.Stations.Count)
 			{
-				StationOnAxis p = axis.Stations[index];
+				StationOnRoute p = view.Stations[index];
 				if (StopPattern.Matches(reference, p.Station.Id, p.Station.Avr, p.Station.Name))
 				{
 					return p;
@@ -216,13 +397,14 @@ namespace Diamond.Timed
 		private void ScheduleDemandOnPath(
 			DemandRequirement demand,
 			DirectionJob job,
-			Axis axis,
+			RouteView view,
 			Asimilation asim,
 			TrainSpecs specs,
 			Mesh mesh,
 			List<ScheduledTrip> scheduled,
 			ref int circulationSeq,
-			TimeSpan phaseOffset)
+			TimeSpan phaseOffset,
+			string dayTag)
 		{
 			TimeSpan windowStart = demand.WindowStart.HasValue
 				? demand.WindowStart.Value.ToTimeSpan()
@@ -233,33 +415,36 @@ namespace Diamond.Timed
 
 			if (windowEnd <= windowStart)
 			{
-				mesh.AddError("Requisito " + demand.Id + ": ventana horaria inválida.");
+				mesh.AddError(Tag(dayTag, "Requisito " + demand.Id + ": ventana horaria inválida."));
 				return;
 			}
 
 			double desiredTph = demand.Frequency.TrainsPerHourValue;
 			TimeSpan desiredHeadway = TimeSpan.FromHours(1.0 / desiredTph);
-			TimeSpan minStructuralHeadway = EstimateMinHeadway(axis, asim);
+			TimeSpan minStructuralHeadway = EstimateMinHeadway(view, asim);
 
 			// Cadencia real no puede ser más apretada que la estructural.
 			TimeSpan workingHeadway = desiredHeadway;
 			if (minStructuralHeadway > workingHeadway)
 			{
 				workingHeadway = minStructuralHeadway;
-				mesh.AddWarning(
+				mesh.AddWarning(Tag(
+					dayTag,
 					"Requisito " + demand.Id + " (" + job.Label + "): la cadencia deseada "
 					+ FormatHeadway(desiredHeadway) + " no es viable por cantones/vías; "
-					+ "se usa al menos " + FormatHeadway(workingHeadway) + ".");
+					+ "se usa al menos " + FormatHeadway(workingHeadway) + "."));
 			}
 
 			int desiredCount = CountDesiredTrips(windowStart, windowEnd, desiredHeadway);
 			List<TimeSpan> placedDeps = new List<TimeSpan>();
+			// Cadencia fija desde el inicio de ventana (+ fase si hay cross at). No se retrasan
+			// salidas para "buscar hueco": si hay conflicto duro se planifica igual y se error.
 			TimeSpan cursor = windowStart + phaseOffset;
-			// Si la fase saca la primera salida del inicio de ventana, ok; si se pasa del final, normalizar.
 			if (cursor > windowEnd)
 			{
 				cursor = windowStart + TimeSpan.FromSeconds(phaseOffset.TotalSeconds % workingHeadway.TotalSeconds);
 			}
+
 			int safety = 0;
 			const int maxAttempts = 10000;
 
@@ -267,107 +452,58 @@ namespace Diamond.Timed
 			{
 				safety++;
 				TimeSpan dep = cursor;
-				TimeSpan adjusted;
-				string? hardBlock;
-				if (!TryFindFeasibleDeparture(dep, windowEnd, asim, axis, scheduled, out adjusted, out hardBlock))
-				{
-					if (hardBlock is not null)
-					{
-						mesh.AddError("Requisito " + demand.Id + ": " + hardBlock);
-					}
 
-					break;
-				}
-
-				if (adjusted > windowEnd)
+				// Comprobar conflictos con lo ya planificado (otros sentidos/requisitos),
+				// pero NO desplazar la salida: se registra error y se programa igualmente.
+				string? conflictReason;
+				if (!IsFeasible(dep, asim, view, scheduled, out conflictReason) && conflictReason is not null)
 				{
-					break;
-				}
-
-				// Si el hueco respecto al anterior supera mucho el deseado, avisar (timing blando).
-				if (placedDeps.Count > 0)
-				{
-					TimeSpan gap = adjusted - placedDeps[placedDeps.Count - 1];
-					if (gap > desiredHeadway + TimeSpan.FromMinutes(1))
-					{
-						mesh.AddWarning(
-							"Requisito " + demand.Id + ": hueco " + FormatHeadway(gap)
-							+ " mayor que el deseado " + FormatHeadway(desiredHeadway)
-							+ " (salida " + FormatTime(adjusted) + ").");
-					}
-				}
-				else if (adjusted > windowStart + TimeSpan.FromMinutes(1))
-				{
-					mesh.AddWarning(
-						"Requisito " + demand.Id + ": primera salida retrasada a "
-						+ FormatTime(adjusted) + " (ventana desde " + FormatTime(windowStart) + ").");
+					mesh.AddError(Tag(
+						dayTag,
+						"Requisito " + demand.Id + " (" + job.Label + "): "
+						+ conflictReason + " — se planifica igualmente a " + FormatTime(dep) + "."));
 				}
 
 				circulationSeq++;
 				string id = "C" + circulationSeq.ToString(System.Globalization.CultureInfo.InvariantCulture)
 					+ "-" + demand.Id + (job.IsReturn ? "-R" : string.Empty);
 
-				Circulation circulation = new Circulation(id, demand.Id, asim, specs, adjusted);
+				Circulation circulation = new Circulation(
+					id,
+					demand.Id,
+					asim,
+					specs,
+					dep,
+					demand.HasColor ? demand.Color : null);
 				mesh.AddCirculation(circulation);
-				scheduled.Add(new ScheduledTrip(circulation, axis, asim));
-				placedDeps.Add(adjusted);
+				scheduled.Add(new ScheduledTrip(circulation, view, asim));
+				placedDeps.Add(dep);
 
-				cursor = adjusted + workingHeadway;
+				cursor = dep + workingHeadway;
 			}
 
 			if (placedDeps.Count < desiredCount)
 			{
-				mesh.AddWarning(
+				mesh.AddWarning(Tag(
+					dayTag,
 					"Requisito " + demand.Id + " (" + job.Label + "): programados "
 					+ placedDeps.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)
 					+ " trenes de " + desiredCount.ToString(System.Globalization.CultureInfo.InvariantCulture)
-					+ " deseados en la ventana.");
+					+ " deseados en la ventana."));
 			}
 
 			if (placedDeps.Count == 0)
 			{
-				mesh.AddError(
-					"Requisito " + demand.Id + " (" + job.Label + "): no se pudo programar ninguna circulación factible.");
+				mesh.AddError(Tag(
+					dayTag,
+					"Requisito " + demand.Id + " (" + job.Label + "): no se pudo programar ninguna circulación factible."));
 			}
-		}
-
-		private bool TryFindFeasibleDeparture(
-			TimeSpan preferred,
-			TimeSpan windowEnd,
-			Asimilation asim,
-			Axis axis,
-			List<ScheduledTrip> scheduled,
-			out TimeSpan feasible,
-			out string? hardBlockReason)
-		{
-			feasible = preferred;
-			hardBlockReason = null;
-			TimeSpan candidate = preferred;
-			int steps = 0;
-			const int maxSteps = 5000;
-
-			while (candidate <= windowEnd && steps < maxSteps)
-			{
-				steps++;
-				string? reason;
-				if (IsFeasible(candidate, asim, axis, scheduled, out reason))
-				{
-					feasible = candidate;
-					return true;
-				}
-
-				// Solo retrasamos por conflictos duros; si reason es null, no debería ocurrir.
-				candidate = candidate + SearchStep;
-			}
-
-			hardBlockReason = "no hay hueco factible en la ventana sin violar acantonamiento/cruces.";
-			return false;
 		}
 
 		private static bool IsFeasible(
 			TimeSpan departure,
 			Asimilation candidateAsim,
-			Axis axis,
+			RouteView view,
 			List<ScheduledTrip> scheduled,
 			out string? reason)
 		{
@@ -376,13 +512,14 @@ namespace Diamond.Timed
 			while (index < scheduled.Count)
 			{
 				ScheduledTrip other = scheduled[index];
-				if (!string.Equals(other.Axis.Id, axis.Id, StringComparison.Ordinal))
+				// Solo comparamos circulaciones que comparten la misma vista (mismo camino).
+				if (!other.View.IsSamePath(view))
 				{
 					index++;
 					continue;
 				}
 
-				if (HasHardConflict(departure, candidateAsim, axis, other, out reason))
+				if (HasHardConflict(departure, candidateAsim, view, other, out reason))
 				{
 					return false;
 				}
@@ -396,7 +533,7 @@ namespace Diamond.Timed
 		private static bool HasHardConflict(
 			TimeSpan depA,
 			Asimilation asimA,
-			Axis axis,
+			RouteView view,
 			ScheduledTrip b,
 			out string? reason)
 		{
@@ -405,7 +542,7 @@ namespace Diamond.Timed
 			TimeSpan depB = b.Circulation.Departure;
 			bool opposite = IsOppositeSense(asimA, asimB);
 
-			IReadOnlyList<long> frontiers = axis.CantonFrontiers;
+			IReadOnlyList<long> frontiers = view.CantonFrontiers;
 			if (frontiers.Count < 2)
 			{
 				// Sin fronteras: tratar todo el solape de rutas como un solo cantón.
@@ -418,7 +555,7 @@ namespace Diamond.Timed
 				if (pathMax > pathMin)
 				{
 					return CantonPairConflicts(
-						depA, asimA, depB, asimB, axis, pathMin, pathMax, opposite, b.Circulation.Id, out reason);
+						depA, asimA, depB, asimB, view, pathMin, pathMax, opposite, b.Circulation, out reason);
 				}
 
 				return false;
@@ -430,7 +567,7 @@ namespace Diamond.Timed
 				long pk0 = frontiers[f];
 				long pkf = frontiers[f + 1];
 				if (CantonPairConflicts(
-					depA, asimA, depB, asimB, axis, pk0, pkf, opposite, b.Circulation.Id, out reason))
+					depA, asimA, depB, asimB, view, pk0, pkf, opposite, b.Circulation, out reason))
 				{
 					return true;
 				}
@@ -442,7 +579,7 @@ namespace Diamond.Timed
 		}
 
 		/// <summary>
-		/// Conflicto duro en un cantón [pk0,pkf): solape temporal de ocupaciones no permitido.
+		/// Conflicto duro en un cantón [pk0,pkf) en PK de ruta: solape temporal no permitido.
 		/// Permitido solo si sentidos opuestos y ≥2 vías en el tramo.
 		/// </summary>
 		private static bool CantonPairConflicts(
@@ -450,11 +587,11 @@ namespace Diamond.Timed
 			Asimilation asimA,
 			TimeSpan depB,
 			Asimilation asimB,
-			Axis axis,
+			RouteView view,
 			long pk0,
 			long pkf,
 			bool opposite,
-			string otherId,
+			Circulation other,
 			out string? reason)
 		{
 			reason = null;
@@ -482,7 +619,7 @@ namespace Diamond.Timed
 				return false;
 			}
 
-			int tracks = axis.GetTrackCountAt(pk0);
+			int tracks = view.GetTrackCountAt(pk0);
 			if (opposite && tracks >= 2)
 			{
 				// Cruce en doble vía permitido.
@@ -490,12 +627,42 @@ namespace Diamond.Timed
 			}
 
 			string kind = opposite && tracks < 2 ? "cruce en vía única" : "acantonamiento";
+			// depB = salida del otro tren; depA = candidato que choca.
 			reason = "conflicto de " + kind + " en ["
 				+ pk0.ToString(System.Globalization.CultureInfo.InvariantCulture)
 				+ ","
 				+ pkf.ToString(System.Globalization.CultureInfo.InvariantCulture)
-				+ ") con " + otherId + " (salida " + FormatTime(depA) + ").";
+				+ ") entre el candidato (salida " + FormatTime(depA) + ") y "
+				+ FormatTrainRef(other) + " (salida " + FormatTime(depB) + ").";
 			return true;
+		}
+
+		/// <summary>
+		/// Referencia legible a un tren: "tren 4901" si ya está numerado, si no el id técnico.
+		/// </summary>
+		private static string FormatTrainRef(string circulationId)
+		{
+			if (string.IsNullOrEmpty(circulationId))
+			{
+				return "tren ?";
+			}
+
+			return "tren " + circulationId;
+		}
+
+		private static string FormatTrainRef(Circulation circulation)
+		{
+			if (circulation is null)
+			{
+				return "tren ?";
+			}
+
+			if (circulation.ServiceNumber > 0)
+			{
+				return "tren " + circulation.ServiceNumber.ToString(System.Globalization.CultureInfo.InvariantCulture);
+			}
+
+			return "tren " + circulation.Id;
 		}
 
 		private static bool IsOppositeSense(Asimilation a, Asimilation b)
@@ -563,10 +730,10 @@ namespace Diamond.Timed
 		/// <summary>
 		/// Cota inferior de intervalo entre trenes del mismo patrón: mayor ocupación de un cantón en la ruta.
 		/// </summary>
-		private static TimeSpan EstimateMinHeadway(Axis axis, Asimilation asim)
+		private static TimeSpan EstimateMinHeadway(RouteView view, Asimilation asim)
 		{
 			TimeSpan maxOcc = TimeSpan.FromMinutes(2);
-			IReadOnlyList<long> frontiers = axis.CantonFrontiers;
+			IReadOnlyList<long> frontiers = view.CantonFrontiers;
 			if (frontiers.Count < 2)
 			{
 				// Sin cantones definidos: usar una fracción del tiempo de viaje.
@@ -607,7 +774,7 @@ namespace Diamond.Timed
 			return maxOcc;
 		}
 
-		private void ValidateHardConstraints(List<ScheduledTrip> scheduled, Mesh mesh)
+		private void ValidateHardConstraints(List<ScheduledTrip> scheduled, Mesh mesh, string dayTag)
 		{
 			int i = 0;
 			while (i < scheduled.Count)
@@ -617,15 +784,17 @@ namespace Diamond.Timed
 				{
 					ScheduledTrip a = scheduled[i];
 					ScheduledTrip b = scheduled[j];
-					if (string.Equals(a.Axis.Id, b.Axis.Id, StringComparison.Ordinal))
+					if (a.View.IsSamePath(b.View))
 					{
 						string? reason;
-						if (HasHardConflict(a.Circulation.Departure, a.Asimilation, a.Axis, b, out reason)
-							|| HasHardConflict(b.Circulation.Departure, b.Asimilation, b.Axis, a, out reason))
+						if (HasHardConflict(a.Circulation.Departure, a.Asimilation, a.View, b, out reason)
+							|| HasHardConflict(b.Circulation.Departure, b.Asimilation, b.View, a, out reason))
 						{
-							mesh.AddError(
-								"Violación dura entre " + a.Circulation.Id + " y " + b.Circulation.Id
-								+ (reason is null ? "." : (": " + reason)));
+							mesh.AddError(Tag(
+								dayTag,
+								"Violación dura entre "
+								+ FormatTrainRef(a.Circulation) + " y " + FormatTrainRef(b.Circulation)
+								+ (reason is null ? "." : (": " + reason))));
 						}
 					}
 
@@ -636,7 +805,7 @@ namespace Diamond.Timed
 			}
 		}
 
-		private TrainSpecs ResolveSpecs(DemandRequirement demand, Mesh mesh)
+		private TrainSpecs ResolveSpecs(DemandRequirement demand, Mesh mesh, string dayTag)
 		{
 			if (demand.FleetId.Length > 0)
 			{
@@ -646,9 +815,10 @@ namespace Diamond.Timed
 					return found;
 				}
 
-				mesh.AddWarning(
+				mesh.AddWarning(Tag(
+					dayTag,
 					"Requisito " + demand.Id + ": fleet '" + demand.FleetId
-					+ "' no está en el catálogo; se usa el modelo por defecto.");
+					+ "' no está en el catálogo; se usa el modelo por defecto."));
 			}
 
 			return mvarPlan.EnsureDefaultTrainSpecs();
@@ -666,66 +836,13 @@ namespace Diamond.Timed
 			return jobs;
 		}
 
-		private static bool TryFindAxisPath(
-			TopoLayout topo,
-			Station from,
-			Station to,
-			out Axis? axis,
-			out StationOnAxis? origin,
-			out StationOnAxis? destination)
-		{
-			axis = null;
-			origin = null;
-			destination = null;
-
-			// Determinista: primer eje (orden del layout) que contenga ambas estaciones.
-			int axisIndex = 0;
-			while (axisIndex < topo.Axes.Count)
-			{
-				Axis candidate = topo.Axes[axisIndex];
-				StationOnAxis? o = FindPlacement(candidate, from);
-				StationOnAxis? d = FindPlacement(candidate, to);
-				if (o is not null && d is not null && o.PK != d.PK)
-				{
-					axis = candidate;
-					origin = o;
-					destination = d;
-					return true;
-				}
-
-				axisIndex++;
-			}
-
-			return false;
-		}
-
-		private static StationOnAxis? FindPlacement(Axis axis, Station station)
-		{
-			int index = 0;
-			while (index < axis.Stations.Count)
-			{
-				StationOnAxis placement = axis.Stations[index];
-				if (ReferenceEquals(placement.Station, station)
-					|| string.Equals(placement.Station.Id, station.Id, StringComparison.Ordinal)
-					|| (placement.Station.Avr.Length > 0
-						&& string.Equals(placement.Station.Avr, station.Avr, StringComparison.Ordinal)))
-				{
-					return placement;
-				}
-
-				index++;
-			}
-
-			return null;
-		}
-
 		/// <summary>
-		/// Paradas intermedias según <see cref="StopPattern"/> del requisito.
+		/// Paradas intermedias según <see cref="StopPattern"/> del requisito, sobre PK de ruta.
 		/// Con <c>stops Ns</c>: todas las estaciones/apeaderos del trayecto salvo skip, con dwell.
 		/// Sin patrón: legacy (solo principales, dwell 0).
 		/// </summary>
 		private static List<AsimilationStop> BuildIntermediateStops(
-			Axis axis,
+			RouteView view,
 			StationOnAxis origin,
 			StationOnAxis destination,
 			StopPattern pattern)
@@ -737,9 +854,9 @@ namespace Diamond.Timed
 
 			List<StationOnAxis> onPath = new List<StationOnAxis>();
 			int index = 0;
-			while (index < axis.Stations.Count)
+			while (index < view.Stations.Count)
 			{
-				StationOnAxis s = axis.Stations[index];
+				StationOnRoute s = view.Stations[index];
 				if (s.PK <= min || s.PK >= max)
 				{
 					index++;
@@ -748,12 +865,12 @@ namespace Diamond.Timed
 
 				if (pattern.DefaultDwell.HasValue || pattern.HasExplicitPattern)
 				{
-					// Modo explícito: considerar todas las paradas del eje en el tramo.
-					onPath.Add(s);
+					// Modo explícito: todas las paradas de la vista en el tramo (PK de ruta).
+					onPath.Add(new StationOnAxis(s.Station, s.PK));
 				}
 				else if (StationClassification.IsPrincipalStation(s.Station))
 				{
-					onPath.Add(s);
+					onPath.Add(new StationOnAxis(s.Station, s.PK));
 				}
 
 				index++;
@@ -823,6 +940,30 @@ namespace Diamond.Timed
 				+ minutes.ToString("00", System.Globalization.CultureInfo.InvariantCulture);
 		}
 
+		private readonly struct ScriptStep
+		{
+			private ScriptStep(int order, DemandRequirement? requirement, DemandDeleteOp? delete)
+			{
+				Order = order;
+				Requirement = requirement;
+				Delete = delete;
+			}
+
+			public static ScriptStep ForRequire(DemandRequirement requirement)
+			{
+				return new ScriptStep(requirement.ScriptOrder, requirement, null);
+			}
+
+			public static ScriptStep ForDelete(DemandDeleteOp delete)
+			{
+				return new ScriptStep(delete.ScriptOrder, null, delete);
+			}
+
+			public int Order { get; }
+			public DemandRequirement? Requirement { get; }
+			public DemandDeleteOp? Delete { get; }
+		}
+
 		private readonly struct DirectionJob
 		{
 			public DirectionJob(Station from, Station to, bool isReturn, string label)
@@ -841,29 +982,29 @@ namespace Diamond.Timed
 
 		private sealed class PreparedDirection
 		{
-			public PreparedDirection(DirectionJob job, Axis axis, Asimilation asimilation)
+			public PreparedDirection(DirectionJob job, RouteView view, Asimilation asimilation)
 			{
 				Job = job;
-				Axis = axis;
+				View = view;
 				Asimilation = asimilation;
 			}
 
 			public DirectionJob Job { get; }
-			public Axis Axis { get; }
+			public RouteView View { get; }
 			public Asimilation Asimilation { get; }
 		}
 
 		private sealed class ScheduledTrip
 		{
-			public ScheduledTrip(Circulation circulation, Axis axis, Asimilation asimilation)
+			public ScheduledTrip(Circulation circulation, RouteView view, Asimilation asimilation)
 			{
 				Circulation = circulation;
-				Axis = axis;
+				View = view;
 				Asimilation = asimilation;
 			}
 
 			public Circulation Circulation { get; }
-			public Axis Axis { get; }
+			public RouteView View { get; }
 			public Asimilation Asimilation { get; }
 		}
 	}

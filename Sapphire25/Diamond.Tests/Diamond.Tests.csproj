@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <Content Include="Samples\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- rauta ya está bajo Samples/Onice si se copió junto al topo -->
   </ItemGroup>
 
 </Project>

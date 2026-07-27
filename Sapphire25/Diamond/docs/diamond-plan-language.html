@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Diamond — Lenguaje de planificación de demanda</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --panel2: #243041;
+      --border: #3d4f66;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent2: #a78bfa;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --err: #f87171;
+      --code-bg: #0b1220;
+      --mono: "Cascadia Code", "Fira Code", Consolas, "Courier New", monospace;
+      --sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      font-size: 16px;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+    nav {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 1.25rem 1rem 2rem;
+    }
+    nav .brand {
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+    nav .sub {
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-bottom: 1.25rem;
+    }
+    nav a {
+      display: block;
+      color: var(--muted);
+      padding: 0.35rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.92rem;
+    }
+    nav a:hover { background: var(--panel2); color: var(--text); text-decoration: none; }
+    nav .sec { margin-top: 0.9rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; padding: 0 0.5rem; }
+    main { padding: 2rem 2.5rem 4rem; max-width: 920px; }
+    h1 { font-size: 1.85rem; margin: 0 0 0.4rem; letter-spacing: -0.02em; }
+    h2 { font-size: 1.35rem; margin: 2.2rem 0 0.75rem; padding-top: 0.4rem; border-top: 1px solid var(--border); color: #f1f5f9; }
+    h3 { font-size: 1.08rem; margin: 1.4rem 0 0.5rem; color: #cbd5e1; }
+    p, li { color: #cbd5e1; }
+    .lead { color: var(--muted); font-size: 1.05rem; margin-bottom: 1.5rem; }
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      background: #0ea5e933;
+      color: var(--accent);
+      border: 1px solid #38bdf855;
+      vertical-align: middle;
+    }
+    pre, code { font-family: var(--mono); }
+    code {
+      background: var(--code-bg);
+      border: 1px solid #1e293b;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-size: 0.9em;
+      color: #7dd3fc;
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      overflow: auto;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      color: #e2e8f0;
+    }
+    pre .c { color: #64748b; }
+    pre .k { color: #c4b5fd; }
+    pre .s { color: #86efac; }
+    pre .n { color: #fcd34d; }
+    pre .p { color: #94a3b8; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.75rem 0 1.25rem;
+      font-size: 0.94rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--panel); color: #f8fafc; font-weight: 600; }
+    td { background: #141c27; }
+    .note {
+      border-left: 3px solid var(--accent);
+      background: #0c4a6e22;
+      padding: 0.75rem 1rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1rem 0;
+      color: #bae6fd;
+    }
+    .warn {
+      border-left-color: var(--warn);
+      background: #713f1222;
+      color: #fde68a;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+    }
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: relative; height: auto; }
+      .grid2 { grid-template-columns: 1fr; }
+      main { padding: 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <nav>
+      <div class="brand">Diamond</div>
+      <div class="sub">Lenguaje de planificación</div>
+      <div class="sec">Inicio</div>
+      <a href="#intro">Introducción</a>
+      <a href="#pipeline">Flujo de trabajo</a>
+      <div class="sec">Sintaxis</div>
+      <a href="#grammar">Gramática</a>
+      <a href="#plan">plan</a>
+      <a href="#require">require / req</a>
+      <a href="#freq">Frecuencia</a>
+      <a href="#window">Ventana horaria</a>
+      <a href="#stations">Estaciones</a>
+      <a href="#fleet">Flota (using)</a>
+      <a href="#days">Días (days)</a>
+      <a href="#stops">Paradas (stops/skip/dwell)</a>
+      <a href="#cross">Cruce (cross at)</a>
+      <a href="#color">Color (color)</a>
+      <a href="#regions">Regiones (with/days/color)</a>
+      <a href="#delete">Borrado (delete)</a>
+      <div class="sec">Planificación</div>
+      <a href="#semantics">Semántica del motor</a>
+      <a href="#numbering">Numeración SFM</a>
+      <a href="#conflicts">Conflictos y malla</a>
+      <div class="sec">Ejemplos</div>
+      <a href="#examples">Ejemplos SFM</a>
+      <a href="#inverse">Importación rauta</a>
+      <a href="#tips">Consejos</a>
+    </nav>
+
+    <main>
+      <h1>Lenguaje de planificación de demanda <span class="badge">Diamond mini-DSL</span></h1>
+      <p class="lead">
+        Referencia del mini-lenguaje que describe <strong>qué servicio se desea</strong>
+        (origen, destino, cadencia, paradas y días). El planificador de Diamond lo convierte
+        en una <strong>malla horaria</strong> de circulaciones con asimilaciones cinemáticas,
+        numeración SFM y detección de conflictos de cantón.
+      </p>
+
+      <h2 id="intro">1. Introducción</h2>
+      <p>
+        El script de demanda es texto plano, codificado en UTF-8, con una instrucción por línea.
+        Los comentarios empiezan por <code>#</code>. Las líneas en blanco se ignoran.
+        Las líneas <strong>indentadas</strong> (espacio o tabulador al inicio) son
+        <em>continuaciones</em> del último <code>require</code>.
+      </p>
+      <div class="note">
+        El lenguaje es <strong>determinista</strong>: el mismo script y la misma topología
+        producen la misma malla (mismo orden de requisitos, mismas salidas y mismos números de tren).
+      </div>
+
+      <h2 id="pipeline">2. Flujo de trabajo</h2>
+      <ol>
+        <li><strong>Topología</strong> — ejes, estaciones, cantones y vías (XML Onice / canónico).</li>
+        <li><strong>Script de demanda</strong> — este mini-DSL (<code>plan</code> + <code>require</code>…).</li>
+        <li><strong>Compilación</strong> — <code>DemandScriptParser</code> + resolución de estaciones contra el topo.</li>
+        <li><strong>Planificación</strong> — <code>MeshPlanner.Solve(día)</code> genera circulaciones y asimilaciones.</li>
+        <li><strong>Numeración</strong> — series SFM por corredor OD (impares ↑PK, pares ↓PK).</li>
+        <li><strong>Visualización</strong> — malla tiempo × PK; conflictos en rojo.</li>
+      </ol>
+      <p>
+        En la UI de demo (<code>/mesh</code>) puedes editar el script, filtrar por día,
+        importar rauta → script y elegir la <em>View</em> (eje o camino multi-eje).
+      </p>
+
+      <h2 id="grammar">3. Gramática resumida</h2>
+<pre><span class="c"># Comentario hasta fin de línea</span>
+<span class="k">plan</span> <span class="s">"nombre del plan"</span>
+
+<span class="k">days</span> lab
+  <span class="k">color</span> <span class="n">#38bdf8</span>
+    <span class="k">require</span>|<span class="k">req</span> [<span class="k">both</span> [<span class="k">ways</span>]] [&lt;frecuencia&gt;] &lt;origen&gt; <span class="p">-&gt;</span> &lt;destino&gt;
+            [ventana] [<span class="k">using</span> flota] [<span class="k">as</span> id]
+      <span class="k">stops</span> 30s
+      <span class="k">skip</span> RLL Enllaç <span class="s">"Sant Joan"</span>
+      <span class="k">dwell</span> INC 1min
+      <span class="k">cross at</span> Petra</pre>
+
+      <table>
+        <thead>
+          <tr><th>Elemento</th><th>Descripción</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>plan</code></td><td>Nombre opcional del plan (metadato).</td></tr>
+          <tr><td><code>require</code> / <code>req</code></td><td>Un requisito de servicio (genera una o dos series de circulaciones). <code>req</code> es alias corto de <code>require</code>.</td></tr>
+          <tr><td>Regiones de definición</td><td><code>days</code>, <code>color</code> (o <code>with</code>/<code>con</code>/<code>region</code> …): valores heredados por los <code>require</code> más indentados.</td></tr>
+          <tr><td><code>delete</code> / <code>del</code></td><td>Tras planificar lo anterior: elimina circulaciones en una franja (opcional <code>all</code> = solape de trayecto).</td></tr>
+          <tr><td>Continuaciones de require</td><td><code>stops</code>, <code>skip</code>, <code>dwell</code>, <code>cross</code>, <code>days</code>, <code>color</code> (solo ese requisito; gana a la región).</td></tr>
+          <tr><td>Tokens entre comillas</td><td>Nombres con espacios: <code>"Sant Joan"</code>.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="plan">4. <code>plan</code></h2>
+<pre><span class="k">plan</span> <span class="s">"SFM T3 laborables"</span></pre>
+      <p>
+        Asigna el nombre del plan al resultado de compilación. No afecta a la malla.
+        Si se omite, el plan puede quedar sin nombre o con el que asigne la aplicación.
+      </p>
+
+      <h2 id="require">5. <code>require</code> / <code>req</code></h2>
+      <p>Forma general (<code>req</code> es sinónimo de <code>require</code>):</p>
+<pre><span class="k">require</span>|<span class="k">req</span> [<span class="k">both</span> [<span class="k">ways</span>]] &lt;freq&gt; &lt;from&gt; <span class="p">-&gt;</span> &lt;to&gt; [ventana] [<span class="k">using</span> id] [<span class="k">as</span> id]</pre>
+
+      <h3>Sentido</h3>
+      <table>
+        <thead><tr><th>Sintaxis</th><th>Significado</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>require … A -&gt; B</code></td>
+            <td>Solo un sentido: de A hacia B.</td>
+          </tr>
+          <tr>
+            <td><code>require both ways … A -&gt; B</code></td>
+            <td>Ida y vuelta. El motor planifica primero el sentido de <strong>PK creciente</strong> (números impares) y después el de PK decreciente (pares), ambos desde el inicio de la ventana.</td>
+          </tr>
+          <tr>
+            <td><code>require both …</code></td>
+            <td>Equivalente a <code>both ways</code> (<code>ways</code> es opcional).</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Identificador del requisito</h3>
+<pre><span class="k">require</span> <span class="n">2/h</span> PMI <span class="p">-&gt;</span> MAN <span class="k">as</span> R-T3</pre>
+      <p>
+        Con <code>as ID</code> fijas el id del requisito (aparece en errores y como
+        <code>DemandId</code> de las circulaciones). Sin <code>as</code>, se asigna
+        automáticamente <code>R1</code>, <code>R2</code>, …
+      </p>
+
+      <h2 id="freq">6. Frecuencia <span class="badge">opcional</span></h2>
+      <table>
+        <thead><tr><th>Forma</th><th>Ejemplo</th><th>Interpretación</th></tr></thead>
+        <tbody>
+          <tr><td><em>(omitida)</em></td><td><code>req PMI -&gt; MAN 06:05-07:00</code></td><td><strong>Un solo tren</strong> por sentido al inicio de la ventana.</td></tr>
+          <tr><td><code>N/h</code></td><td><code>2/h</code></td><td>N trenes por hora (intervalo 60/N min).</td></tr>
+          <tr><td><code>N per hour</code></td><td><code>4 per hour</code></td><td>Igual que N/h.</td></tr>
+          <tr><td><code>every N min</code></td><td><code>every 40 min</code></td><td>Un tren cada N minutos en cada sentido planificado.</td></tr>
+        </tbody>
+      </table>
+<pre><span class="c"># Un tren Palma→Manacor a las 06:05 (sin cadencia)</span>
+<span class="k">req</span> PMI <span class="p">-&gt;</span> MAN <span class="n">06:05-07:00</span> <span class="k">as</span> R-4901
+  <span class="k">days</span> lab
+
+<span class="c"># Ida y vuelta: un impar y un par</span>
+<span class="k">req both ways</span> PMI <span class="p">-&gt;</span> SPB <span class="n">05:35-06:30</span> <span class="k">as</span> R-pair</pre>
+      <div class="note warn">
+        Cuando hay frecuencia, la cadencia es un <strong>deseo</strong>. Si la infraestructura
+        (cantones / vía única) no la permite, el planificador puede avisar y usar un intervalo
+        mínimo estructural mayor, o planificar a la cadencia pedida y marcar conflictos.
+      </div>
+
+      <h2 id="window">7. Ventana horaria</h2>
+      <p>Define el intervalo de <strong>salidas</strong> admitidas (hora del día).</p>
+      <table>
+        <thead><tr><th>Forma</th><th>Ejemplo</th><th>Interpretación</th></tr></thead>
+        <tbody>
+          <tr><td>Compacta (rango)</td><td><code>06:00-22:00</code></td><td>Inicio y fin explícitos.</td></tr>
+          <tr><td>Compacta (una hora)</td><td><code>5:35</code></td><td>Equivalente a <code>5:35-6:35</code> (fin = inicio + 1 h).</td></tr>
+          <tr><td>Explícita</td><td><code>from 06:00 to 22:00</code></td><td>Misma idea, más verbosa.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Si se omite la ventana, el planificador usa por defecto aproximadamente
+        <strong>06:00–22:00</strong>. El fin debe ser posterior al inicio.
+        Con una sola hora cercana a medianoche, el fin se limita a <code>23:59</code>.
+      </p>
+<pre><span class="k">req</span> PMI <span class="p">-&gt;</span> SPB <span class="n">5:35</span> <span class="k">as</span> R-one
+<span class="c"># igual que: req PMI -> SPB 5:35-6:35 as R-one</span>
+
+<span class="k">require</span> <span class="n">every 40 min</span> PMI <span class="p">-&gt;</span> MAN <span class="n">06:05-22:20</span> <span class="k">as</span> R-lab
+<span class="k">require</span> <span class="n">1/h</span> PMI <span class="p">-&gt;</span> SPB <span class="k">from</span> <span class="n">06:00</span> <span class="k">to</span> <span class="n">21:00</span></pre>
+
+      <h2 id="stations">8. Estaciones (origen / destino / skip / dwell)</h2>
+      <p>
+        Las referencias de estación se resuelven contra el catálogo topográfico en este orden:
+      </p>
+      <ol>
+        <li>Id exacto (p. ej. <code>01</code>, <code>24</code>)</li>
+        <li>AVR exacto (p. ej. <code>PMI</code>, <code>MAN</code>, <code>SPB</code>)</li>
+        <li>Nombre exacto (p. ej. <code>Palma</code>, <code>Petra</code>)</li>
+        <li>Coincidencias sin distinguir mayúsculas (con desambiguación determinista si hay duplicados legacy)</li>
+      </ol>
+      <p>
+        Conviene usar <strong>AVR</strong> o id Onice para evitar ambigüedades
+        (p. ej. <code>Inca</code> vs <code>Pont d'Inca</code>).
+      </p>
+      <div class="card">
+        <strong>Códigos frecuentes SFM (demo):</strong>
+        <div class="grid2" style="margin-top:0.6rem">
+          <div><code>PMI</code> Palma · <code>MAN</code> Manacor · <code>SPB</code> Sa Pobla</div>
+          <div><code>INC</code> Inca · <code>UIB</code> UIB · <code>PET</code> Petra · <code>RLL</code> Son Rullán</div>
+        </div>
+      </div>
+
+      <h2 id="fleet">9. Flota — <code>using</code></h2>
+<pre><span class="k">require</span> <span class="n">every 15 min</span> PMI <span class="p">-&gt;</span> UIB <span class="k">using</span> default <span class="k">as</span> R-Metro</pre>
+      <p>
+        Selecciona el material / <code>TrainSpecs</code> del catálogo del plan
+        (aceleración, frenado, Vmax del tren). Si el id no existe, se avisa y se usa el modelo por defecto.
+      </p>
+
+      <h2 id="days">10. Días de servicio — <code>days</code> / <code>on</code></h2>
+      <p>
+        Indica en qué días de la semana aplica el requisito. El planificador
+        (<code>Solve(DayOfWeek)</code> solo materializa los requisitos del día elegido.
+      </p>
+      <table>
+        <thead><tr><th>Token</th><th>Significado</th></tr></thead>
+        <tbody>
+          <tr><td><code>lab</code>, <code>laborables</code>, <code>weekday(s)</code></td><td>Lunes–viernes</td></tr>
+          <tr><td><code>fes</code>, <code>festivos</code>, <code>weekend</code>, <code>we</code></td><td>Sábado–domingo (aprox. festivos)</td></tr>
+          <tr><td><code>all</code>, <code>todos</code>, <code>daily</code></td><td>Todos los días</td></tr>
+          <tr><td><code>lun</code>…<code>dom</code> / <code>mon</code>…<code>sun</code></td><td>Día suelto</td></tr>
+          <tr><td><code>lun-vie</code>, <code>mon-fri</code></td><td>Rango inclusivo</td></tr>
+        </tbody>
+      </table>
+<pre><span class="k">require</span> <span class="n">both ways every 40 min</span> PMI <span class="p">-&gt;</span> MAN <span class="n">06:00-22:00</span> <span class="k">as</span> R-T3
+  <span class="k">days</span> lab
+
+<span class="k">require</span> <span class="n">1/h</span> PMI <span class="p">-&gt;</span> MAN <span class="n">07:00-21:00</span> <span class="k">as</span> R-fes
+  <span class="k">days</span> fes
+
+<span class="k">require</span> <span class="n">2/h</span> PMI <span class="p">-&gt;</span> UIB
+  <span class="k">days</span> lun mie vie</pre>
+      <p>Por defecto, si no se indica <code>days</code>, el requisito aplica a <strong>todos</strong> los días.</p>
+
+      <h2 id="stops">11. Patrón de paradas</h2>
+      <p>
+        Controla detenciones intermedias del perfil de marcha (asimilación).
+        Origen y destino siempre arrancan/paran a v=0; las intermedias dependen del patrón.
+      </p>
+
+      <h3><code>stops &lt;duración&gt;</code></h3>
+      <p>
+        Activa el modo de patrón explícito: se consideran <strong>todas</strong> las estaciones
+        del trayecto (no solo principales), con dwell por defecto.
+      </p>
+<pre>  <span class="k">stops</span> <span class="n">30s</span>
+  <span class="k">stops</span> <span class="n">1min</span></pre>
+      <p>Duraciones: <code>30s</code>, <code>30 sec</code>, <code>1min</code>, etc.</p>
+
+      <h3><code>skip EST1 EST2 …</code></h3>
+      <p>Estaciones del trayecto en las que <strong>no</strong> se para (pasante).</p>
+<pre>  <span class="k">skip</span> RLL Enllaç <span class="s">"Sant Joan"</span> PSJ</pre>
+
+      <h3><code>dwell ESTACIÓN &lt;duración&gt;</code></h3>
+      <p>Sobrescribe el dwell en una estación concreta.</p>
+<pre>  <span class="k">dwell</span> INC <span class="n">1min</span>
+  <span class="k">dwell</span> PET <span class="n">2min</span></pre>
+
+      <div class="note">
+        Sin <code>stops</code> ni overrides, el planificador usa un modo legacy:
+        solo estaciones principales intermedias con dwell 0 (útil para prototipos).
+      </div>
+
+      <h2 id="cross">12. Cruce — <code>cross at</code></h2>
+<pre>  <span class="k">cross at</span> Petra
+  <span class="k">cross at</span> Enllaç</pre>
+      <p>
+        En requisitos <code>both ways</code>, intenta desfasar ida y vuelta para que se
+        encuentren en la estación indicada (si está en la vista de ruta).
+        Si no hay <code>cross at</code>, ambos sentidos arrancan al <strong>inicio de la ventana</strong>
+        (fase 0); primero se planifican todos los impares y luego todos los pares.
+      </p>
+
+      <h2 id="color">13. Color de circulación — <code>color</code> / <code>colour</code></h2>
+      <p>
+        Asigna un color de traza a <strong>todas</strong> las circulaciones generadas por el requisito.
+        Si se omite, el SVG usa la <strong>paleta por asimilación</strong> (mismo perfil de marcha → mismo color).
+      </p>
+      <table>
+        <thead><tr><th>Forma</th><th>Ejemplo</th><th>Resultado</th></tr></thead>
+        <tbody>
+          <tr><td><code>#rrggbb</code></td><td><code>color #e11d48</code></td><td>Hex de 6 dígitos.</td></tr>
+          <tr><td><code>#rgb</code></td><td><code>color #f00</code></td><td>Se expande a <code>#ff0000</code>.</td></tr>
+          <tr><td>Sin almohadilla</td><td><code>color aa00aa</code></td><td>Equivalente a <code>#aa00aa</code>.</td></tr>
+          <tr><td>Nombre CSS</td><td><code>color orange</code></td><td>Nombres básicos (<code>red</code>, <code>blue</code>, <code>teal</code>…).</td></tr>
+          <tr><td>Inline</td><td><code>req PMI -&gt; MAN 06:00-08:00 color #38bdf8</code></td><td>También en la misma línea del <code>require</code>.</td></tr>
+        </tbody>
+      </table>
+<pre><span class="k">req both ways every 40 min</span> PMI <span class="p">-&gt;</span> MAN <span class="n">06:00-22:00</span> <span class="k">as</span> R-T3
+  <span class="k">days</span> lab
+  <span class="k">color</span> <span class="n">#f472b6</span>
+
+<span class="c"># Sin color → color automático por asimilación</span>
+<span class="k">req</span> PMI <span class="p">-&gt;</span> SPB <span class="n">5:35</span> <span class="k">as</span> R-auto</pre>
+      <div class="note">
+        Los literales <code>#rrggbb</code> no se confunden con comentarios: un <code>#</code> seguido de 3/6/8 dígitos hex es color;
+        el resto de usos de <code>#</code> siguen siendo comentario de línea.
+      </div>
+
+      <h2 id="regions">14. Regiones de definición</h2>
+      <p>
+        Una <strong>región</strong> es un bloque indentado que fija valores por defecto
+        (<code>days</code>, <code>color</code>, …) para todos los <code>require</code> que contiene.
+        Las regiones se anidan: el hijo redefine o añade propiedades; al salir del indentado, el ámbito se cierra.
+      </p>
+      <table>
+        <thead><tr><th>Forma</th><th>Ejemplo</th></tr></thead>
+        <tbody>
+          <tr><td>Propiedad sola</td><td><code>days lab</code> / <code>color #f00</code></td></tr>
+          <tr><td>Varias en una línea</td><td><code>days lab color #e11d48</code></td></tr>
+          <tr><td>Con palabra clave</td><td><code>with days lab color #e11d48</code>, <code>con …</code>, <code>region …</code></td></tr>
+        </tbody>
+      </table>
+<pre><span class="k">days</span> lab
+  <span class="k">color</span> <span class="n">#f472b6</span>
+    <span class="k">req both ways every 40 min</span> PMI <span class="p">-&gt;</span> MAN <span class="n">06:00-22:00</span> <span class="k">as</span> R-T3
+      <span class="k">stops</span> <span class="n">30s</span>
+      <span class="k">cross at</span> Petra
+    <span class="k">req both ways every 60 min</span> PMI <span class="p">-&gt;</span> SPB <span class="n">06:00-21:00</span> <span class="k">as</span> R-SPB
+  <span class="c"># solo hereda days lab (fuera del color)</span>
+  <span class="k">req</span> PMI <span class="p">-&gt;</span> UIB <span class="n">07:00-20:00</span> <span class="k">as</span> R-metro
+
+<span class="k">with days</span> fes <span class="k">color</span> <span class="n">#38bdf8</span>
+  <span class="k">req</span> PMI <span class="p">-&gt;</span> MAN <span class="n">08:00-20:00</span> <span class="k">as</span> R-fes</pre>
+      <div class="note">
+        <strong>Prioridad:</strong> valor en el propio <code>require</code> (inline o continuación indentada)
+        &gt; región más interna &gt; regiones externas &gt; defecto del lenguaje
+        (<code>days</code> = todos los días, sin color de script).
+        Las continuaciones <code>stops</code>/<code>skip</code>/<code>dwell</code>/<code>cross</code> siguen siendo solo del require, no abren región.
+      </div>
+      <div class="note warn">
+        Distinción importante: si <code>color</code>/<code>days</code> van <em>más indentados que un require</em>,
+        aplican solo a ese require (continuación). Si van al mismo nivel que otros requires anidados
+        (o en una línea de región), abren ámbito para lo que cuelga debajo.
+      </div>
+
+      <h2 id="delete">15. Borrado de franja — <code>delete</code> / <code>del</code></h2>
+      <p>
+        Directiva de <strong>post-proceso ordenado</strong>: se aplica sobre las circulaciones
+        <em>ya planificadas</em> por los <code>require</code> anteriores en el script.
+        Los <code>require</code> posteriores se planifican después (ideal para trenes especiales
+        en un hueco, y base de futuros <code>include</code>).
+      </p>
+      <table>
+        <thead><tr><th>Sintaxis</th><th>Efecto</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>delete 12:00-14:00</code></td>
+            <td>Elimina circulaciones cuya <strong>salida</strong> cae en <code>[12:00, 14:00)</code>.</td>
+          </tr>
+          <tr>
+            <td><code>delete 12:00-14:00 all</code></td>
+            <td>Además elimina las cuyo <strong>trayecto</strong> solapa la franja (aunque salgan antes o lleguen después).</td>
+          </tr>
+          <tr>
+            <td><code>delete from 12:00 to 14:00 all</code></td>
+            <td>Forma explícita equivalente.</td>
+          </tr>
+          <tr>
+            <td><code>del …</code></td>
+            <td>Alias corto de <code>delete</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+<pre><span class="k">days</span> lab
+  <span class="c"># Malla base cada 40 min</span>
+  <span class="k">req both ways every 40 min</span> PMI <span class="p">-&gt;</span> MAN <span class="n">06:00-22:00</span> <span class="k">as</span> R-T3
+    <span class="k">stops</span> <span class="n">30s</span>
+  <span class="c"># Hueco al mediodía (también trenes en ruta)</span>
+  <span class="k">delete</span> <span class="n">12:00-14:00</span> <span class="k">all</span>
+  <span class="c"># Tren especial en el hueco</span>
+  <span class="k">req</span> PMI <span class="p">-&gt;</span> MAN <span class="n">12:30-13:30</span> <span class="k">as</span> R-special
+    <span class="k">color</span> <span class="n">#fbbf24</span></pre>
+      <div class="note">
+        Hereda <code>days</code> de la región contenedora: un <code>delete</code> bajo
+        <code>days lab</code> solo actúa al planificar laborables.
+        El motor registra un warning con el recuento de circulaciones eliminadas.
+      </div>
+
+      <h2 id="semantics">16. Semántica del motor de malla</h2>
+      <ol>
+        <li>
+          <strong>Camino</strong> — se busca un camino de estaciones (un eje o multi-eje,
+          p. ej. Palma–Enllaç–Sa Pobla = T3+T2).
+        </li>
+        <li>
+          <strong>Asimilación</strong> — perfil cinemático a lo largo del PK de ruta
+          (límites de velocidad del eje, paradas, aceleración/frenado del tren).
+        </li>
+        <li>
+          <strong>Salidas</strong> — para cada sentido, desde el inicio de ventana,
+          cada <em>headway</em> (deseado o estructural mínimo).
+        </li>
+        <li>
+          <strong>Both ways</strong> — (1) todos los trenes del sentido ↑PK;
+          (2) todos los del sentido ↓PK. No se intercalan por hora deseada.
+        </li>
+        <li>
+          <strong>Conflictos</strong> — no se retrasan salidas para “buscar hueco”:
+          se planifica a la cadencia y, si hay incompatibilidad, se registra <em>error</em>
+          y se mantiene la circulación.
+        </li>
+        <li>
+          <strong>Filtro por día</strong> — solo requisitos cuyo <code>days</code> incluye el día de <code>Solve</code>.
+        </li>
+      </ol>
+
+      <h2 id="numbering">17. Numeración de trenes (estilo SFM)</h2>
+      <table>
+        <thead><tr><th>Regla</th><th>Detalle</th></tr></thead>
+        <tbody>
+          <tr><td>Corredor</td><td>Mismo par origen–destino (sin importar la asimilación / paradas).</td></tr>
+          <tr><td>↑ PK (ida “natural”)</td><td>Números <strong>impares</strong>: xx01, xx03, xx05…</td></tr>
+          <tr><td>↓ PK</td><td>Números <strong>pares</strong>: xx02, xx04, xx06…</td></tr>
+          <tr><td>Orden</td><td>Por hora de salida (+2 en cada sentido).</td></tr>
+        </tbody>
+      </table>
+      <p>Series conocidas en la demo SFM:</p>
+      <table>
+        <thead><tr><th>Serie</th><th>Corredor</th></tr></thead>
+        <tbody>
+          <tr><td><code>49##</code></td><td>Palma ↔ Manacor (laborables típicos)</td></tr>
+          <tr><td><code>47##</code></td><td>Palma ↔ Sa Pobla</td></tr>
+          <tr><td><code>45##</code></td><td>Palma ↔ Inca</td></tr>
+          <tr><td><code>50##</code></td><td>Palma ↔ UIB</td></tr>
+          <tr><td><code>70##</code></td><td>Inca ↔ Sa Pobla</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="conflicts">18. Conflictos y visualización</h2>
+      <p>
+        Un conflicto duro es la <strong>superposición</strong> de dos rectángulos de ocupación
+        de cantón (tiempo × PK) cuando no está permitido (p. ej. cruce en vía única,
+        dos trenes en el mismo cantón).
+      </p>
+      <ul>
+        <li>En la malla SVG, la intersección se pinta en <strong>rojo</strong>.</li>
+        <li>Un <strong>triángulo de aviso</strong> marca el centro del solape.</li>
+        <li>Los mensajes de error citan los <strong>números de tren</strong> implicados.</li>
+      </ul>
+      <div class="note warn">
+        Sentidos opuestos en tramo de <strong>doble vía</strong> se consideran compatibles
+        (no generan conflicto de cruce).
+      </div>
+
+      <h2 id="examples">19. Ejemplos</h2>
+
+      <h3>T3 Palma–Manacor (laborables)</h3>
+<pre><span class="k">plan</span> <span class="s">"SFM T3 laborables"</span>
+<span class="c"># Cadencia ~40 min; ida y vuelta; cruce en Petra</span>
+<span class="k">require both ways every</span> <span class="n">40 min</span> PMI <span class="p">-&gt;</span> MAN <span class="n">06:00-22:00</span> <span class="k">as</span> R-T3
+  <span class="k">days</span> lab
+  <span class="k">stops</span> <span class="n">30s</span>
+  <span class="k">skip</span> RLL Enllaç <span class="s">"Sant Joan"</span> PSJ
+  <span class="k">dwell</span> INC <span class="n">1min</span>
+  <span class="k">cross at</span> Petra</pre>
+
+      <h3>Palma–Sa Pobla (multi-eje T3+T2)</h3>
+<pre><span class="k">plan</span> <span class="s">"SFM Palma-Sa Pobla"</span>
+<span class="k">require both ways every</span> <span class="n">40 min</span> PMI <span class="p">-&gt;</span> SPB <span class="n">05:45-22:00</span> <span class="k">as</span> R-SPB
+  <span class="k">days</span> lab
+  <span class="k">stops</span> <span class="n">30s</span>
+  <span class="k">dwell</span> INC <span class="n">2min</span></pre>
+
+      <h3>Varios productos el mismo día</h3>
+<pre><span class="k">plan</span> <span class="s">"SFM mixto"</span>
+<span class="k">require both ways every</span> <span class="n">40 min</span> PMI <span class="p">-&gt;</span> MAN <span class="n">06:05-22:20</span> <span class="k">as</span> R-MAN
+  <span class="k">days</span> lab
+  <span class="k">stops</span> <span class="n">30s</span>
+  <span class="k">skip</span> RLL
+
+<span class="k">require both ways every</span> <span class="n">60 min</span> PMI <span class="p">-&gt;</span> SPB <span class="n">06:00-21:00</span> <span class="k">as</span> R-SPB
+  <span class="k">days</span> lab
+  <span class="k">stops</span> <span class="n">30s</span>
+
+<span class="k">require</span> <span class="n">3/h</span> PMI <span class="p">-&gt;</span> UIB <span class="n">06:30-22:00</span> <span class="k">as</span> R-M1
+  <span class="k">days</span> lab
+  <span class="k">stops</span> <span class="n">30s</span></pre>
+
+      <h3>Solo un sentido, ventana estrecha (pocos trenes)</h3>
+<pre><span class="c"># Un servicio puntual: ventana corta + cadencia larga</span>
+<span class="k">require every</span> <span class="n">1440 min</span> INC <span class="p">-&gt;</span> SPB <span class="n">05:35-06:30</span> <span class="k">as</span> R-70-ida
+  <span class="k">days</span> lab
+<span class="k">require every</span> <span class="n">1440 min</span> SPB <span class="p">-&gt;</span> INC <span class="n">22:30-23:30</span> <span class="k">as</span> R-70-vuelta
+  <span class="k">days</span> lab</pre>
+
+      <h2 id="inverse">20. Importación desde rauta (compilador inverso)</h2>
+      <p>
+        Diamond puede inferir un <strong>borrador</strong> de script a partir de una malla rauta
+        Onice + catálogo de asimilaciones del topo:
+      </p>
+      <ul>
+        <li>Agrupa bloques por OD y empareja ida/vuelta cuando es posible.</li>
+        <li>Estima cadencia (mediana de huecos) y ventana (primera–última salida).</li>
+        <li>Infiere <code>stops</code> / <code>skip</code> / <code>dwell</code> desde los trips Onice.</li>
+        <li>Servicios dispersos (p. ej. un solo 7001/7002) no se convierten en cadencia cada 60 min todo el día.</li>
+        <li>Los caminos multi-eje se anotan en comentarios (<code>multi-eje T3:…+T2:…</code>).</li>
+      </ul>
+      <div class="note warn">
+        El script inverso es editable. Los tiempos cinemáticos de Diamond pueden diferir
+        de las asimilaciones Onice; la malla resultante es una replanificación, no un
+        clon 1:1 de las horas rauta.
+      </div>
+
+      <h2 id="tips">21. Consejos prácticos</h2>
+      <ul>
+        <li>Usa <strong>AVR</strong> estables (<code>PMI</code>, <code>MAN</code>) en lugar de nombres largos.</li>
+        <li>Pon <code>days lab</code> / <code>days fes</code> en productos distintos; filtra el día en la UI.</li>
+        <li>Para multi-eje, elige la <em>View</em> correcta en la malla (p. ej. <code>T3+T2</code> para Palma–SPB).</li>
+        <li>Si ves muchos rectángulos rojos, revisa cadencia y vía única; el motor no “empuja” trenes para evitar el choque.</li>
+        <li>Los ids <code>as R-…</code> ayudan a leer errores y numeración en depuración.</li>
+      </ul>
+
+      <h2 id="ref-quick">22. Chuleta rápida</h2>
+<pre><span class="k">plan</span> <span class="s">"…"</span>
+<span class="k">require</span>|<span class="k">req</span> [<span class="k">both ways</span>] [<span class="n">N/h</span> | <span class="n">every N min</span>]  ORIGEN <span class="p">-&gt;</span> DESTINO  [HH:MM-HH:MM]  [<span class="k">using</span> flota]  [<span class="k">as</span> id]
+  <span class="k">days</span> lab|fes|all|lun-vie|…
+  <span class="k">stops</span> 30s|1min
+  <span class="k">skip</span> EST…
+  <span class="k">dwell</span> EST duración
+  <span class="k">cross at</span> EST</pre>
+
+      <footer>
+        Documento generado para el proyecto <strong>Diamond</strong> (Sapphire25).
+        Implementación de referencia: <code>Diamond.Timed.DemandScriptParser</code>,
+        <code>MeshPlanner</code>, <code>TrainNumbering</code>.
+        · Archivo: <code>wwwroot/docs/diamond-plan-language.html</code>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

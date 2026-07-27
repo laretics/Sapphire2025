@@ -17,6 +17,7 @@ namespace Diamond.Timed
 		private TopoLayout? mvarTopo;
 		private readonly List<TrainSpecs> mcolTrainSpecs;
 		private readonly List<DemandRequirement> mcolDemand;
+		private readonly List<DemandDeleteOp> mcolDeletes;
 		private string mvarDemandScript;
 
 		public Plan()
@@ -27,6 +28,7 @@ namespace Diamond.Timed
 			mvarTopo = null;
 			mcolTrainSpecs = new List<TrainSpecs>();
 			mcolDemand = new List<DemandRequirement>();
+			mcolDeletes = new List<DemandDeleteOp>();
 			mvarDemandScript = string.Empty;
 		}
 
@@ -85,6 +87,14 @@ namespace Diamond.Timed
 		public IReadOnlyList<DemandRequirement> Demand
 		{
 			get { return mcolDemand; }
+		}
+
+		/// <summary>
+		/// Directivas <c>delete</c> compiladas (orden del script; ver <see cref="DemandDeleteOp.ScriptOrder"/>).
+		/// </summary>
+		public IReadOnlyList<DemandDeleteOp> Deletes
+		{
+			get { return mcolDeletes; }
 		}
 
 		/// <summary>
@@ -186,6 +196,7 @@ namespace Diamond.Timed
 			}
 
 			mcolDemand.Clear();
+			mcolDeletes.Clear();
 			if (!result.Success)
 			{
 				return result;
@@ -195,6 +206,13 @@ namespace Diamond.Timed
 			while (index < result.Requirements.Count)
 			{
 				mcolDemand.Add(result.Requirements[index]);
+				index++;
+			}
+
+			index = 0;
+			while (index < result.Deletes.Count)
+			{
+				mcolDeletes.Add(result.Deletes[index]);
 				index++;
 			}
 
@@ -216,6 +234,7 @@ namespace Diamond.Timed
 		public void ClearDemand()
 		{
 			mcolDemand.Clear();
+			mcolDeletes.Clear();
 			mvarDemandScript = string.Empty;
 		}
 
