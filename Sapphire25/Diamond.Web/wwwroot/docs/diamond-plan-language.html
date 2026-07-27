@@ -487,8 +487,10 @@
         a un corredor origen–destino. El número de tren es siempre un <strong>string</strong>:
         clásico SFM (<code>4901</code>) o especiales (<code>P1MTX</code>, <code>P3MTX</code>…).
         Suele ir indentado bajo <code>days</code> para que dependa del día de la semana.
-        El corredor es <strong>no dirigido</strong>: <code>PMI -&gt; MAN</code> aplica a ida y vuelta
-        (secuencia impar / par según sentido de marcha).
+        El OD es <strong>dirigido</strong>: hay que declarar por separado
+        <code>asim PMI -&gt; MAN</code> y <code>asim MAN -&gt; PMI</code> si la numeración o el color difieren.
+        Sin <code>asim</code> en el script, el planificador sigue usando series SFM clásicas
+        (impar ida / par vuelta en el mismo corredor).
       </p>
       <table>
         <thead><tr><th>Forma</th><th>Ejemplo</th></tr></thead>
@@ -502,13 +504,14 @@
       </table>
 <pre><span class="k">days</span> lab
   <span class="k">asim</span> PMI <span class="p">-&gt;</span> MAN <span class="k">numbers</span> <span class="n">49##</span> <span class="k">color</span> <span class="n">#e11d48</span>
-  <span class="k">asim</span> PMI <span class="p">-&gt;</span> SPB
-    <span class="k">numbers</span> <span class="n">47##</span>
-    <span class="k">color</span> <span class="n">#38bdf8</span>
+  <span class="k">asim</span> MAN <span class="p">-&gt;</span> PMI <span class="k">numbers</span> <span class="n">49##</span> <span class="k">color</span> <span class="n">#e11d48</span>
+  <span class="k">asim</span> PMI <span class="p">-&gt;</span> MTX <span class="k">numbers</span> <span class="n">P##MTX</span>
+  <span class="k">asim</span> MTX <span class="p">-&gt;</span> PMI <span class="k">numbers</span> <span class="n">P##MTX</span>
   <span class="k">req both ways every 40 min</span> PMI <span class="p">-&gt;</span> MAN <span class="n">06:00-22:00</span> <span class="k">as</span> R-T3
 
 <span class="k">days</span> fes
   <span class="k">asim</span> PMI <span class="p">-&gt;</span> MAN <span class="k">numbers</span> <span class="n">44##</span> <span class="k">color</span> <span class="n">#fbbf24</span>
+  <span class="k">asim</span> MAN <span class="p">-&gt;</span> PMI <span class="k">numbers</span> <span class="n">44##</span>
   <span class="k">req both ways every 60 min</span> PMI <span class="p">-&gt;</span> MAN <span class="n">08:00-20:00</span> <span class="k">as</span> R-fes</pre>
       <div class="note">
         <strong>Prioridad de color:</strong> <code>color</code> en el <code>require</code>

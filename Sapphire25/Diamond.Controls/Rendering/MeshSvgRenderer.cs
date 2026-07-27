@@ -4,7 +4,7 @@ using Diamond.Motion;
 using Diamond.Timed;
 using Diamond.Topo;
 
-namespace Diamond.Web.Rendering
+namespace Diamond.Controls.Rendering
 {
 	/// <summary>
 	/// SVG de malla: chrome fijo (estaciones, reloj, franjas V/#) + plot recortado
@@ -116,13 +116,15 @@ namespace Diamond.Web.Rendering
 
 			NormalizePkRange(ref pkMin, ref pkMax);
 
-			double plotLeft = MeshSvgLayout.PlotLeft;
+			bool externalStations = options.ExternalStationColumn;
+			double plotLeft = MeshSvgLayout.GetPlotLeft(externalStations);
 			double plotTop = MeshSvgLayout.PlotTop;
-			double plotW = MeshSvgLayout.PlotWidth(width);
+			double plotW = MeshSvgLayout.GetPlotWidth(width, externalStations);
 			double plotH = MeshSvgLayout.PlotHeight(height);
-			double speedStripX = MeshSvgLayout.SpeedStripX;
-			double trackStripX = MeshSvgLayout.TrackStripX;
+			double speedStripX = MeshSvgLayout.GetSpeedStripX(externalStations);
+			double trackStripX = MeshSvgLayout.GetTrackStripX(externalStations);
 			double stripW = MeshSvgLayout.StripWidth;
+			MeshYScale yScale = MeshYScale.Create(options.YScaleMode, view, pkMin, pkMax);
 
 			double t0 = timeStart.TotalSeconds;
 			double t1 = timeEnd.TotalSeconds;
@@ -160,7 +162,7 @@ namespace Diamond.Web.Rendering
 					speedsUsed.Add(band.SpeedKmh);
 					AppendPkBandRect(
 						sb, speedStripX, stripW,
-						band.PkStart, band.PkEnd, pkMin, pkMax, plotTop, plotH,
+						band.PkStart, band.PkEnd, pkMin, pkMax, plotTop, plotH, yScale,
 						SpeedToColor(band.SpeedKmh),
 						band.SpeedKmh + " km/h · " + FormatPk(band.PkStart) + "–" + FormatPk(band.PkEnd));
 					bi++;
@@ -184,7 +186,7 @@ namespace Diamond.Web.Rendering
 						: "Vía única · " + FormatPk(band.PkStart) + "–" + FormatPk(band.PkEnd);
 					AppendPkBandRect(
 						sb, trackStripX, stripW,
-						band.PkStart, band.PkEnd, pkMin, pkMax, plotTop, plotH,
+						band.PkStart, band.PkEnd, pkMin, pkMax, plotTop, plotH, yScale,
 						TrackCountToColor(band.TrackCount),
 						trackTitle);
 					ti++;
@@ -208,7 +210,7 @@ namespace Diamond.Web.Rendering
 			// Ocupaciones de cantón (costosas: se omiten en pan/zoom interactivo)
 			if (options.ShowCantonOccupations)
 			{
-				DrawOccupations(sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH);
+				DrawOccupations(sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH, yScale);
 			}
 
 			// Circulaciones + números (si el detalle lo pide)
@@ -216,13 +218,13 @@ namespace Diamond.Web.Rendering
 			if (options.ShowTrainPaths || options.ShowTrainNumbers)
 			{
 				drawn = DrawCirculations(
-					sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH, options);
+					sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH, yScale, options);
 			}
 
 			// Conflictos: intersección roja + icono de aviso (encima de trazas)
 			if (options.ShowConflicts)
 			{
-				DrawConflicts(sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH);
+				DrawConflicts(sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH, yScale);
 			}
 
 			// Línea de hora actual (dentro del clip del plot)
@@ -234,7 +236,9 @@ namespace Diamond.Web.Rendering
 			sb.Append("</g>");
 
 			// —— Regla de estaciones (fija a la izquierda; contenido según PK visible) ——
-			DrawStationRuler(sb, view, pkMin, pkMax, plotLeft, plotTop, plotW, plotH, speedStripX);
+			DrawStationRuler(
+				sb, view, pkMin, pkMax, plotLeft, plotTop, plotW, plotH, speedStripX, yScale,
+				drawLabels: options.ShowStationLabels && !options.ExternalStationColumn);
 
 			// —— Regla de tiempo (fija abajo; contenido según tiempo visible) ——
 			DrawTimeRuler(sb, t0, t1, plotLeft, plotTop, plotW, plotH, height);
@@ -473,26 +477,30 @@ namespace Diamond.Web.Rendering
 			double plotTop,
 			double plotW,
 			double plotH,
-			double speedStripX)
+			double speedStripX,
+			MeshYScale yScale,
+			bool drawLabels)
 		{
-			// Zona fija de etiquetas (no se recorta con el plot)
-			List<StationMark> stations = BuildStationMarks(view);
+			IReadOnlyList<StationMark> stations = BuildStationMarks(view);
 			int mi = 0;
 			while (mi < stations.Count)
 			{
 				StationMark mark = stations[mi];
 				if (mark.Pk >= pkMin && mark.Pk <= pkMax)
 				{
-					double y = PkToY(mark.Pk, pkMin, pkMax, plotTop, plotH);
+					double y = PkToY(yScale, mark.Pk, plotTop, plotH);
 					string lineColor = mark.IsPrincipal ? "#475569" : "#2a3544";
 					string dash = mark.IsPrincipal ? "none" : "3 3";
 					sb.Append(CultureInfo.InvariantCulture,
 						$"<line x1=\"{plotLeft}\" y1=\"{y}\" x2=\"{plotLeft + plotW}\" y2=\"{y}\" stroke=\"{lineColor}\" stroke-width=\"1\" stroke-dasharray=\"{dash}\"/>");
 
-					string fill = mark.IsPrincipal ? "#e2e8f0" : "#94a3b8";
-					string fontWeight = mark.IsPrincipal ? "600" : "400";
-					sb.Append(CultureInfo.InvariantCulture,
-						$"<text x=\"{speedStripX - 6}\" y=\"{y + 3.5}\" fill=\"{fill}\" font-size=\"10\" font-weight=\"{fontWeight}\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"end\">{Escape(mark.Label)}</text>");
+					if (drawLabels)
+					{
+						string fill = mark.IsPrincipal ? "#e2e8f0" : "#94a3b8";
+						string fontWeight = mark.IsPrincipal ? "600" : "400";
+						sb.Append(CultureInfo.InvariantCulture,
+							$"<text x=\"{speedStripX - 6}\" y=\"{y + 3.5}\" fill=\"{fill}\" font-size=\"10\" font-weight=\"{fontWeight}\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"end\">{Escape(mark.Label)}</text>");
+					}
 				}
 
 				mi++;
@@ -510,7 +518,8 @@ namespace Diamond.Web.Rendering
 			double plotLeft,
 			double plotTop,
 			double plotW,
-			double plotH)
+			double plotH,
+			MeshYScale yScale)
 		{
 			IReadOnlyList<CantonOccupationRect> occupations = mesh.GetCantonOccupations(view);
 			int oi = 0;
@@ -522,7 +531,7 @@ namespace Diamond.Web.Rendering
 				double w;
 				double h;
 				if (TryMapOccupationToPlot(
-					occ, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH,
+					occ, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH, yScale,
 					out x, out y, out w, out h))
 				{
 					sb.Append(CultureInfo.InvariantCulture,
@@ -550,7 +559,8 @@ namespace Diamond.Web.Rendering
 			double plotLeft,
 			double plotTop,
 			double plotW,
-			double plotH)
+			double plotH,
+			MeshYScale yScale)
 		{
 			IReadOnlyList<OccupationConflict> conflicts = mesh.GetHardConflicts(view);
 			int index = 0;
@@ -563,11 +573,11 @@ namespace Diamond.Web.Rendering
 				double w;
 				double h;
 				if (TryMapOccupationToPlot(
-					overlap, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH,
+					overlap, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH, yScale,
 					out x, out y, out w, out h))
 				{
 					string tip = conflict.Kind + ": tren " + conflict.CirculationIdA
-						+ " ∩ tren " + conflict.CirculationIdB
+						+ " âˆ© tren " + conflict.CirculationIdB
 						+ " · PK " + FormatPk(overlap.PkStart) + "–" + FormatPk(overlap.PkEnd)
 						+ " · " + FormatClock(overlap.TimeEnter) + "–" + FormatClock(overlap.TimeExit);
 
@@ -625,6 +635,7 @@ namespace Diamond.Web.Rendering
 			double plotTop,
 			double plotW,
 			double plotH,
+			MeshYScale yScale,
 			out double x,
 			out double y,
 			out double w,
@@ -660,8 +671,8 @@ namespace Diamond.Web.Rendering
 				return false;
 			}
 
-			double yTop = PkToY(visPk1, pkMin, pkMax, plotTop, plotH);
-			double yBot = PkToY(visPk0, pkMin, pkMax, plotTop, plotH);
+			double yTop = PkToY(yScale, visPk1, plotTop, plotH);
+			double yBot = PkToY(yScale, visPk0, plotTop, plotH);
 			y = Math.Min(yTop, yBot);
 			h = Math.Abs(yBot - yTop);
 			x = x0;
@@ -681,6 +692,7 @@ namespace Diamond.Web.Rendering
 			double plotTop,
 			double plotW,
 			double plotH,
+			MeshYScale yScale,
 			MeshSvgDrawOptions options)
 		{
 			// Un color por asimilación (mismo perfil de marcha → mismo color).
@@ -688,6 +700,11 @@ namespace Diamond.Web.Rendering
 
 			// Etiquetas de número en una pasada posterior (encima de las polilíneas).
 			List<NumberLabel> labels = new List<NumberLabel>();
+
+			// Circulación seleccionada: se dibuja al final (encima del resto).
+			string? selectedPoints = null;
+			string? selectedColor = null;
+			string? selectedTip = null;
 
 			int drawn = 0;
 			int ci = 0;
@@ -725,7 +742,7 @@ namespace Diamond.Web.Rendering
 				double labelY;
 				bool wantLabel = options.ShowTrainNumbers;
 				string points = BuildPolylinePoints(
-					c, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH,
+					c, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH, yScale,
 					options.MaxPolylineSamples,
 					wantLabel,
 					out labelX, out labelY);
@@ -738,13 +755,26 @@ namespace Diamond.Web.Rendering
 						+ " · salida " + FormatClock(c.Departure)
 						+ " · ll. " + FormatClock(c.Arrival);
 
+					bool selected = options.SelectedTechnicalId is not null
+						&& string.Equals(c.TechnicalId, options.SelectedTechnicalId, StringComparison.Ordinal);
+
 					if (options.ShowTrainPaths && points.Length > 0)
 					{
-						sb.Append(CultureInfo.InvariantCulture,
-							$"<polyline fill=\"none\" stroke=\"{color}\" stroke-width=\"2\" points=\"{points}\">");
-						sb.Append(CultureInfo.InvariantCulture,
-							$"<title>{Escape(tip)}</title>");
-						sb.Append("</polyline>");
+						if (selected)
+						{
+							selectedPoints = points;
+							selectedColor = color;
+							selectedTip = tip + " · seleccionado";
+						}
+						else
+						{
+							sb.Append(CultureInfo.InvariantCulture,
+								$"<polyline fill=\"none\" stroke=\"{color}\" stroke-width=\"2\" points=\"{points}\">");
+							sb.Append(CultureInfo.InvariantCulture,
+								$"<title>{Escape(tip)}</title>");
+							sb.Append("</polyline>");
+						}
+
 						drawn++;
 					}
 					else if (!options.ShowTrainPaths && wantLabel && !double.IsNaN(labelX))
@@ -757,11 +787,25 @@ namespace Diamond.Web.Rendering
 						&& c.HasServiceNumber
 						&& !double.IsNaN(labelX))
 					{
-						labels.Add(new NumberLabel(labelX, labelY, numberText, color));
+						string labelColor = selected ? "#fef08a" : color;
+						labels.Add(new NumberLabel(labelX, labelY, numberText, labelColor));
 					}
 				}
 
 				ci++;
+			}
+
+			if (options.ShowTrainPaths
+				&& selectedPoints is not null
+				&& selectedColor is not null)
+			{
+				sb.Append(CultureInfo.InvariantCulture,
+					$"<polyline fill=\"none\" stroke=\"#fef08a\" stroke-width=\"7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" opacity=\"0.9\" points=\"{selectedPoints}\" pointer-events=\"none\"/>");
+				sb.Append(CultureInfo.InvariantCulture,
+					$"<polyline fill=\"none\" stroke=\"{selectedColor}\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" points=\"{selectedPoints}\">");
+				sb.Append(CultureInfo.InvariantCulture,
+					$"<title>{Escape(selectedTip ?? string.Empty)}</title>");
+				sb.Append("</polyline>");
 			}
 
 			if (options.ShowTrainNumbers)
@@ -897,6 +941,7 @@ namespace Diamond.Web.Rendering
 			long pkMax,
 			double plotTop,
 			double plotH,
+			MeshYScale yScale,
 			string color,
 			string title)
 		{
@@ -908,8 +953,8 @@ namespace Diamond.Web.Rendering
 				return;
 			}
 
-			double yTop = PkToY(b, pkMin, pkMax, plotTop, plotH);
-			double yBot = PkToY(a, pkMin, pkMax, plotTop, plotH);
+			double yTop = PkToY(yScale, b, plotTop, plotH);
+			double yBot = PkToY(yScale, a, plotTop, plotH);
 			double y = Math.Min(yTop, yBot);
 			double h = Math.Abs(yBot - yTop);
 			if (h < 0.5)
@@ -1123,12 +1168,13 @@ namespace Diamond.Web.Rendering
 			return "#7c3aed";
 		}
 
-		private static double PkToY(long pk, long pkMin, long pkMax, double plotTop, double plotH)
+		private static double PkToY(MeshYScale scale, long pk, double plotTop, double plotH)
 		{
-			return plotTop + (1.0 - (double)(pk - pkMin) / (pkMax - pkMin)) * plotH;
+			return scale.PkToY(pk, plotTop, plotH);
 		}
 
-		private static List<StationMark> BuildStationMarks(RouteView view)
+		/// <summary>Marcas de estación para el control <c>StationRuler</c> (y el SVG integrado).</summary>
+		public static IReadOnlyList<StationMark> BuildStationMarks(RouteView view)
 		{
 			List<StationMark> marks = new List<StationMark>();
 			HashSet<long> seenPk = new HashSet<long>();
@@ -1187,6 +1233,7 @@ namespace Diamond.Web.Rendering
 			double plotTop,
 			double plotW,
 			double plotH,
+			MeshYScale yScale,
 			int maxSamples,
 			bool wantLabel,
 			out double labelX,
@@ -1278,7 +1325,7 @@ namespace Diamond.Web.Rendering
 				double absSec = depSec + relSec;
 				double x = plotLeft + (absSec - t0) / timeSpanSec * plotW;
 				// Y puede quedar fuera del plot (pk fuera de [pkMin,pkMax]): el clip cierra el trazo al borde.
-				double y = PkToY(pk, pkMin, pkMax, plotTop, plotH);
+				double y = PkToY(yScale, pk, plotTop, plotH);
 
 				if (emitted > 0)
 				{
@@ -1388,7 +1435,8 @@ namespace Diamond.Web.Rendering
 			}
 		}
 
-		private readonly struct StationMark
+		/// <summary>Marca de estación en el eje PK de la vista.</summary>
+		public readonly struct StationMark
 		{
 			private readonly long mvarPk;
 			private readonly string mvarLabel;

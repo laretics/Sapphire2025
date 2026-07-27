@@ -1,0 +1,986 @@
+@namespace Diamond.Controls
+@implements IAsyncDisposable
+@inject IJSRuntime Js
+@using Diamond.Controls.Rendering
+@using Diamond.Timed
+@using MeshRouteView = Diamond.Topo.RouteView
+@using Microsoft.JSInterop
+
+@*
+  Diagrama de malla reutilizable: columna de estaciones (StationRuler) + plot SVG
+  con capas, pan/zoom y línea de hora actual.
+*@
+<div class="diamond-mesh-diagram">
+	@if (ShowLayerToolbar)
+	{
+		<div class="diamond-mesh-layer-toolbar">
+			<span class="diamond-mesh-layer-label">Capas</span>
+			<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowOccupations)" @onclick="ToggleOccupations">Cantones</button>
+			<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowTrainPaths)" @onclick="ToggleTrainPaths">Trazas</button>
+			<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowTrainNumbers)" @onclick="ToggleTrainNumbers">Números</button>
+			<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowConflicts)" @onclick="ToggleConflicts">Conflictos</button>
+			<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowSpeedStrip)" @onclick="ToggleSpeedStrip">V</button>
+			<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowTrackStrip)" @onclick="ToggleTrackStrip">#</button>
+			<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowNowLine)" @onclick="ToggleNowLine">
+				Ahora @(mvarShowNowLine ? "· " + FormatClockWithSeconds(mvarClockNow) : "")
+			</button>
+		</div>
+	}
+
+	@if (ShowZoomToolbar)
+	{
+		<div class="diamond-mesh-layer-toolbar">
+			<span class="diamond-mesh-layer-label">Vista</span>
+			<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ZoomIn">+</button>
+			<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ZoomOut">−</button>
+			<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ResetView">Reset</button>
+			<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => NudgeTime(-1)">←t</button>
+			<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => NudgeTime(1)">t→</button>
+			<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => NudgePk(1)">↑PK</button>
+			<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => NudgePk(-1)">↓PK</button>
+			<span class="diamond-mesh-layer-label ms-1">Zoom</span>
+			<div class="btn-group btn-group-sm" role="group" aria-label="Ejes de zoom">
+				<button type="button"
+						class="btn @ZoomModeButtonClass(ZoomAxisMode.Both)"
+						@onclick="() => SetZoomMode(ZoomAxisMode.Both)"
+						title="Zoom en tiempo y PK">Ambos</button>
+				<button type="button"
+						class="btn @ZoomModeButtonClass(ZoomAxisMode.Time)"
+						@onclick="() => SetZoomMode(ZoomAxisMode.Time)"
+						title="Solo eje horizontal (tiempo)">Tiempo</button>
+				<button type="button"
+						class="btn @ZoomModeButtonClass(ZoomAxisMode.Space)"
+						@onclick="() => SetZoomMode(ZoomAxisMode.Space)"
+						title="Solo eje vertical (PK / estaciones)">PK</button>
+			</div>
+			<button type="button"
+					class="btn btn-sm @LayerButtonClass(mvarYScaleMode == MeshYScaleMode.SteppedSingular)"
+					title="Alterna PK lineal vs singulares equidistantes (límites de V + estaciones)"
+					@onclick="ToggleYScaleMode">
+				@(mvarYScaleMode == MeshYScaleMode.SteppedSingular ? "Escala: escalonada" : "Escala: PK lineal")
+			</button>
+			@if (SelectedCirculation is not null)
+			{
+				<span class="badge bg-warning text-dark border" title="Circulación seleccionada (clic en vacío para deseleccionar)">
+					@(SelectedCirculation.HasServiceNumber ? SelectedCirculation.ServiceNumber : SelectedCirculation.Id)
+					· @FormatClock(SelectedCirculation.Departure)
+				</span>
+				<button type="button"
+						class="btn btn-sm btn-warning"
+						title="Abrir ficha de marcha del tren seleccionado"
+						@onclick="OpenCirculationSheet">
+					Ficha
+				</button>
+				<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearSelection" title="Quitar selección">×</button>
+			}
+			<span class="badge bg-dark text-light border">
+				@FormatClock(mvarViewT0)–@FormatClock(mvarViewT1)
+				· @FormatPkShort(mvarViewPkMin)–@FormatPkShort(mvarViewPkMax)
+				· @ZoomModeLabel
+			</span>
+		</div>
+	}
+
+	@if (Mesh is not null && View is not null)
+	{
+		@* Un solo marco con aspect-ratio: estaciones izq + plot + estaciones dcha *@
+		<div class="diamond-mesh-stage">
+			<div class="diamond-mesh-stage-frame"
+				 style="@StageFrameStyle">
+				<StationRuler View="View"
+							  PkMin="mvarViewPkMin"
+							  PkMax="mvarViewPkMax"
+							  Height="Height"
+							  Width="MeshSvgLayout.StationColumnWidth"
+							  PlotTop="MeshSvgLayout.PlotTop"
+							  PlotHeight="MeshSvgLayout.PlotHeight(Height)"
+							  Side="StationRulerSide.Left"
+							  YScaleMode="mvarYScaleMode" />
+				<div @ref="mvarPlotHost"
+					 class="diamond-mesh-plot-host @(mvarPanning ? "diamond-mesh-dragging" : null)"
+					 @onpointerdown="OnPointerDown"
+					 @onpointermove="OnPointerMove"
+					 @onpointerup="OnPointerUpAsync"
+					 @onpointerleave="OnPointerLeaveAsync"
+					 @onpointercancel="OnPointerLeaveAsync">
+					<svg xmlns="http://www.w3.org/2000/svg"
+						 width="@PlotSvgWidth"
+						 height="@Height"
+						 viewBox="0 0 @PlotSvgWidth @Height"
+						 class="diamond-mesh-plot-svg"
+						 preserveAspectRatio="none">
+						@((MarkupString)mvarSvgContent)
+					</svg>
+				</div>
+				@if (ShowRightStationRuler)
+				{
+					<StationRuler View="View"
+								  PkMin="mvarViewPkMin"
+								  PkMax="mvarViewPkMax"
+								  Height="Height"
+								  Width="MeshSvgLayout.StationColumnWidth"
+								  PlotTop="MeshSvgLayout.PlotTop"
+								  PlotHeight="MeshSvgLayout.PlotHeight(Height)"
+								  Side="StationRulerSide.Right"
+								  YScaleMode="mvarYScaleMode" />
+				}
+			</div>
+		</div>
+	}
+	else
+	{
+		<div class="diamond-mesh-placeholder">
+			Sin malla. Planifica un script para ver el diagrama.
+		</div>
+	}
+
+	@if (mvarShowSheet && SelectedCirculation is not null)
+	{
+		<CirculationSheetView Circulation="SelectedCirculation"
+							  Mesh="Mesh"
+							  MaxFrontiersPerPage="MaxFrontiersPerPage"
+							  OnClose="CloseCirculationSheet" />
+	}
+</div>
+
+@code {
+	private enum ZoomAxisMode
+	{
+		Both,
+		Time,
+		Space
+	}
+
+	private const double MinTimeSpanHours = 0.5;
+	private const double MaxTimeSpanHours = 24.0;
+	private const long MinPkSpan = 2000L;
+	private const double ZoomStep = 1.25;
+	/// <summary>Movimiento en px de pantalla a partir del cual el gesto es pan, no clic.</summary>
+	private const double PanDragThresholdPx = 5.0;
+	/// <summary>Radio de influencia de selección en píxeles de pantalla.</summary>
+	private const double SelectionInfluenceScreenPx = 12.0;
+
+	[Parameter]
+	public Mesh? Mesh { get; set; }
+
+	[Parameter]
+	public MeshRouteView? View { get; set; }
+
+	[Parameter]
+	public int Width { get; set; } = 1400;
+
+	[Parameter]
+	public int Height { get; set; } = 900;
+
+	[Parameter]
+	public bool ShowLayerToolbar { get; set; } = true;
+
+	[Parameter]
+	public bool ShowZoomToolbar { get; set; } = true;
+
+	/// <summary>Segunda columna de estaciones a la derecha del plot (espejo).</summary>
+	[Parameter]
+	public bool ShowRightStationRuler { get; set; } = true;
+
+	/// <summary>Circulación seleccionada (una sola; null = ninguna).</summary>
+	[Parameter]
+	public Circulation? SelectedCirculation { get; set; }
+
+	[Parameter]
+	public EventCallback<Circulation?> SelectedCirculationChanged { get; set; }
+
+	/// <summary>Máximo de fronteras (filas) por página de ficha de marcha.</summary>
+	[Parameter]
+	public int MaxFrontiersPerPage { get; set; } = CirculationSheetPager.DefaultMaxFrontiersPerPage;
+
+	/// <summary>Ancho lógico del SVG del plot (sin columnas de estaciones).</summary>
+	private int PlotSvgWidth
+	{
+		get
+		{
+			int stations = ShowRightStationRuler ? 2 : 1;
+			int w = Width - stations * (int)MeshSvgLayout.StationColumnWidth;
+			return w < 400 ? 400 : w;
+		}
+	}
+
+	private int LogicalTotalWidth
+	{
+		get
+		{
+			int stations = ShowRightStationRuler ? 2 : 1;
+			return PlotSvgWidth + stations * (int)MeshSvgLayout.StationColumnWidth;
+		}
+	}
+
+	private string StageFrameStyle
+	{
+		get
+		{
+			return "--mesh-logical-w: " + LogicalTotalWidth.ToString(CultureInfo.InvariantCulture)
+				+ "; --mesh-logical-h: " + Height.ToString(CultureInfo.InvariantCulture)
+				+ "; --mesh-station-w: " + MeshSvgLayout.StationColumnWidth.ToString(CultureInfo.InvariantCulture)
+				+ ";";
+		}
+	}
+
+	private string mvarSvgContent = string.Empty;
+	private TimeSpan mvarViewT0 = TimeSpan.FromHours(6);
+	private TimeSpan mvarViewT1 = TimeSpan.FromHours(14);
+	private long mvarViewPkMin;
+	private long mvarViewPkMax;
+	private long mvarAxisPkMin;
+	private long mvarAxisPkMax;
+	/// <summary>Puntero capturado; aún no se ha decidido si es pan o clic.</summary>
+	private bool mvarPointerActive;
+	/// <summary>True cuando el gesto superó el umbral y es desplazamiento.</summary>
+	private bool mvarPanning;
+	private double mvarPointerDownClientX;
+	private double mvarPointerDownClientY;
+	private double mvarLastPointerX;
+	private double mvarLastPointerY;
+	private long mvarLastInteractiveRenderTicks;
+	private bool mvarSvgIsInteractive;
+	private bool mvarDisposed;
+	private ElementReference mvarPlotHost;
+	private DotNetObjectReference<MeshDiagram>? mvarDotNetRef;
+	private bool mvarWheelAttached;
+	private System.Threading.Timer? mvarNowTimer;
+	private CancellationTokenSource? mvarFullRenderCts;
+	private string? mvarLastSelectedTechnicalId;
+	private bool mvarShowSheet;
+
+	private bool mvarShowOccupations = true;
+	private bool mvarShowTrainPaths = true;
+	private bool mvarShowTrainNumbers = true;
+	private bool mvarShowConflicts = true;
+	private bool mvarShowSpeedStrip = true;
+	private bool mvarShowTrackStrip = true;
+	private bool mvarShowNowLine = true;
+	private MeshYScaleMode mvarYScaleMode = MeshYScaleMode.LinearPk;
+	private ZoomAxisMode mvarZoomMode = ZoomAxisMode.Both;
+	private TimeSpan mvarClockNow = DateTime.Now.TimeOfDay;
+
+	private string ZoomModeLabel
+	{
+		get
+		{
+			if (mvarZoomMode == ZoomAxisMode.Time)
+			{
+				return "zoom T";
+			}
+
+			if (mvarZoomMode == ZoomAxisMode.Space)
+			{
+				return "zoom PK";
+			}
+
+			return "zoom ambos";
+		}
+	}
+
+	private string? mvarLastViewSignature;
+	private int mvarLastMeshHash;
+
+	protected override void OnInitialized()
+	{
+		mvarNowTimer = new System.Threading.Timer(
+			_ =>
+			{
+				_ = InvokeAsync(() =>
+				{
+					if (mvarDisposed)
+					{
+						return Task.CompletedTask;
+					}
+
+					mvarClockNow = DateTime.Now.TimeOfDay;
+					if (mvarShowNowLine && Mesh is not null && !mvarPanning)
+					{
+						RefreshSvg(interactive: mvarSvgIsInteractive);
+					}
+
+					StateHasChanged();
+					return Task.CompletedTask;
+				});
+			},
+			null,
+			1000,
+			1000);
+	}
+
+	protected override void OnParametersSet()
+	{
+		if (View is null)
+		{
+			mvarShowSheet = false;
+			if (SelectedCirculation is not null)
+			{
+				_ = SetSelectedCirculationAsync(null, refresh: false);
+			}
+
+			return;
+		}
+
+		if (SelectedCirculation is null)
+		{
+			mvarShowSheet = false;
+		}
+
+		string sig = View.PathSignature();
+		int meshHash = Mesh is null ? 0 : Mesh.Circulations.Count * 397 + Mesh.GetHashCode();
+		bool viewChanged = !string.Equals(sig, mvarLastViewSignature, StringComparison.Ordinal);
+		bool meshChanged = meshHash != mvarLastMeshHash;
+		if (viewChanged)
+		{
+			mvarLastViewSignature = sig;
+			InitAxisBounds();
+			ResetViewWindow();
+		}
+
+		// Si la malla cambió, la selección puede haber quedado huérfana.
+		if (meshChanged && SelectedCirculation is not null)
+		{
+			if (Mesh is null || !MeshContains(SelectedCirculation))
+			{
+				_ = SetSelectedCirculationAsync(null, refresh: false);
+			}
+		}
+
+		string? selectedId = SelectedCirculation?.TechnicalId;
+		bool selectionChanged = !string.Equals(selectedId, mvarLastSelectedTechnicalId, StringComparison.Ordinal);
+		mvarLastSelectedTechnicalId = selectedId;
+
+		if (viewChanged || meshChanged || selectionChanged)
+		{
+			mvarLastMeshHash = meshHash;
+			RefreshSvg();
+		}
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (mvarDisposed)
+		{
+			return;
+		}
+
+		if (Mesh is not null && View is not null && !mvarWheelAttached)
+		{
+			mvarDotNetRef ??= DotNetObjectReference.Create(this);
+			try
+			{
+				if (!string.IsNullOrEmpty(mvarPlotHost.Id))
+				{
+					await Js.InvokeVoidAsync("diamondMeshViewport.attach", mvarPlotHost, mvarDotNetRef);
+					mvarWheelAttached = true;
+				}
+			}
+			catch (Exception)
+			{
+			}
+		}
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		mvarDisposed = true;
+		mvarNowTimer?.Dispose();
+		mvarNowTimer = null;
+		mvarFullRenderCts?.Cancel();
+		mvarFullRenderCts?.Dispose();
+		mvarFullRenderCts = null;
+
+		if (mvarWheelAttached)
+		{
+			try
+			{
+				await Js.InvokeVoidAsync("diamondMeshViewport.detach", mvarPlotHost);
+			}
+			catch
+			{
+			}
+
+			mvarWheelAttached = false;
+		}
+
+		mvarDotNetRef?.Dispose();
+		mvarDotNetRef = null;
+	}
+
+	[JSInvokable]
+	public Task OnWheelFromJs(double deltaY, double svgX, double svgY)
+	{
+		if (mvarDisposed)
+		{
+			return Task.CompletedTask;
+		}
+
+		double factor = deltaY < 0 ? ZoomStep : 1.0 / ZoomStep;
+		ZoomAtScreen(svgX, svgY, factor, interactive: true);
+		ScheduleFullRenderAfterIdle();
+		return InvokeAsync(StateHasChanged);
+	}
+
+	public void ZoomIn()
+	{
+		ZoomAtPlotCenter(ZoomStep);
+	}
+
+	public void ZoomOut()
+	{
+		ZoomAtPlotCenter(1.0 / ZoomStep);
+	}
+
+	public void ResetView()
+	{
+		ResetViewWindow();
+		RefreshSvg();
+	}
+
+	public void NudgeTime(double direction)
+	{
+		double span = (mvarViewT1 - mvarViewT0).TotalSeconds;
+		double delta = direction * span * 0.15;
+		mvarViewT0 += TimeSpan.FromSeconds(delta);
+		mvarViewT1 += TimeSpan.FromSeconds(delta);
+		RefreshSvg();
+	}
+
+	public void NudgePk(double direction)
+	{
+		double span = mvarViewPkMax - mvarViewPkMin;
+		long delta = (long)(direction * span * 0.15);
+		mvarViewPkMin += delta;
+		mvarViewPkMax += delta;
+		RefreshSvg();
+	}
+
+	private void InitAxisBounds()
+	{
+		if (View is null)
+		{
+			return;
+		}
+
+		mvarAxisPkMin = View.PK;
+		mvarAxisPkMax = View.PK + View.Length;
+		if (mvarAxisPkMax <= mvarAxisPkMin)
+		{
+			mvarAxisPkMax = mvarAxisPkMin + MinPkSpan;
+		}
+	}
+
+	private void ResetViewWindow()
+	{
+		mvarViewT0 = TimeSpan.FromHours(6);
+		mvarViewT1 = TimeSpan.FromHours(14);
+		mvarViewPkMin = mvarAxisPkMin;
+		mvarViewPkMax = mvarAxisPkMax;
+	}
+
+	private void RefreshSvg(bool interactive = false)
+	{
+		if (Mesh is null || View is null)
+		{
+			mvarSvgContent = string.Empty;
+			return;
+		}
+
+		ClampView();
+		if (mvarShowNowLine)
+		{
+			mvarClockNow = DateTime.Now.TimeOfDay;
+		}
+
+		MeshSvgDrawOptions options = MeshSvgDrawOptions.Create(
+			showCantonOccupations: mvarShowOccupations,
+			showTrainPaths: mvarShowTrainPaths,
+			showTrainNumbers: mvarShowTrainNumbers,
+			showConflicts: mvarShowConflicts,
+			showSpeedStrip: mvarShowSpeedStrip,
+			showTrackStrip: mvarShowTrackStrip,
+			showNowLine: mvarShowNowLine,
+			nowTime: mvarShowNowLine ? mvarClockNow : null,
+			maxPolylineSamples: interactive ? 16 : 48,
+			showStationLabels: false,
+			externalStationColumn: true,
+			yScaleMode: mvarYScaleMode,
+			selectedTechnicalId: SelectedCirculation?.TechnicalId);
+
+		if (interactive)
+		{
+			options = options.ForInteractiveLod();
+		}
+
+		mvarSvgContent = MeshSvgRenderer.RenderContent(
+			Mesh,
+			View,
+			mvarViewT0,
+			mvarViewT1,
+			mvarViewPkMin,
+			mvarViewPkMax,
+			PlotSvgWidth,
+			Height,
+			options);
+		mvarSvgIsInteractive = interactive;
+	}
+
+	private void ClampView()
+	{
+		if (mvarViewT1 <= mvarViewT0)
+		{
+			mvarViewT1 = mvarViewT0 + TimeSpan.FromHours(1);
+		}
+
+		double span = (mvarViewT1 - mvarViewT0).TotalSeconds;
+		if (span < MinTimeSpanHours * 3600.0)
+		{
+			double mid = (mvarViewT0.TotalSeconds + mvarViewT1.TotalSeconds) * 0.5;
+			mvarViewT0 = TimeSpan.FromSeconds(mid - MinTimeSpanHours * 1800.0);
+			mvarViewT1 = TimeSpan.FromSeconds(mid + MinTimeSpanHours * 1800.0);
+		}
+
+		if (mvarViewPkMax <= mvarViewPkMin)
+		{
+			mvarViewPkMax = mvarViewPkMin + MinPkSpan;
+		}
+
+		if (mvarViewPkMax - mvarViewPkMin < MinPkSpan)
+		{
+			long mid = (mvarViewPkMin + mvarViewPkMax) / 2;
+			mvarViewPkMin = mid - MinPkSpan / 2;
+			mvarViewPkMax = mvarViewPkMin + MinPkSpan;
+		}
+	}
+
+	private void ZoomAtPlotCenter(double factor)
+	{
+		double cx = MeshSvgLayout.GetPlotLeft(true) + MeshSvgLayout.GetPlotWidth(PlotSvgWidth, true) * 0.5;
+		double cy = MeshSvgLayout.PlotTop + MeshSvgLayout.PlotHeight(Height) * 0.5;
+		ZoomAtScreen(cx, cy, factor, interactive: false);
+	}
+
+	private void ZoomAtScreen(double screenX, double screenY, double factor, bool interactive)
+	{
+		if (!MeshSvgLayout.IsInsidePlot(screenX, screenY, PlotSvgWidth, Height, externalStationColumn: true))
+		{
+			screenX = MeshSvgLayout.GetPlotLeft(true) + MeshSvgLayout.GetPlotWidth(PlotSvgWidth, true) * 0.5;
+			screenY = MeshSvgLayout.PlotTop + MeshSvgLayout.PlotHeight(Height) * 0.5;
+		}
+
+		double anchorTime = MeshSvgLayout.TimeAtX(screenX, mvarViewT0, mvarViewT1, PlotSvgWidth, true);
+		MeshYScale zoomScale = CreateCurrentYScale();
+		double plotTop = MeshSvgLayout.PlotTop;
+		double plotH = MeshSvgLayout.PlotHeight(Height);
+		long anchorPk = zoomScale.YToPk(screenY, plotTop, plotH);
+		double uTime = (screenX - MeshSvgLayout.GetPlotLeft(true)) / MeshSvgLayout.GetPlotWidth(PlotSvgWidth, true);
+		// Fracción en el eje de pantalla (no en PK): el ancla se mantiene bajo el cursor.
+		double uFromTop = (screenY - plotTop) / plotH;
+		if (uFromTop < 0.0) { uFromTop = 0.0; }
+		if (uFromTop > 1.0) { uFromTop = 1.0; }
+
+		bool zoomTime = mvarZoomMode == ZoomAxisMode.Both || mvarZoomMode == ZoomAxisMode.Time;
+		bool zoomSpace = mvarZoomMode == ZoomAxisMode.Both || mvarZoomMode == ZoomAxisMode.Space;
+
+		if (zoomTime)
+		{
+			double timeSpan = (mvarViewT1 - mvarViewT0).TotalSeconds / factor;
+			if (timeSpan < MinTimeSpanHours * 3600.0)
+			{
+				timeSpan = MinTimeSpanHours * 3600.0;
+			}
+
+			if (timeSpan > MaxTimeSpanHours * 3600.0)
+			{
+				timeSpan = MaxTimeSpanHours * 3600.0;
+			}
+
+			mvarViewT0 = TimeSpan.FromSeconds(anchorTime - uTime * timeSpan);
+			mvarViewT1 = TimeSpan.FromSeconds(anchorTime + (1.0 - uTime) * timeSpan);
+		}
+
+		if (zoomSpace)
+		{
+			double pkSpan = (mvarViewPkMax - mvarViewPkMin) / factor;
+			if (pkSpan < MinPkSpan)
+			{
+				pkSpan = MinPkSpan;
+			}
+
+			double maxPkSpan = Math.Max(MinPkSpan, mvarAxisPkMax - mvarAxisPkMin);
+			if (pkSpan > maxPkSpan)
+			{
+				pkSpan = maxPkSpan;
+			}
+
+			// uFromTop=0 → PK alto (arriba); uFromTop=1 → PK bajo (abajo).
+			double pkMax = anchorPk + uFromTop * pkSpan;
+			double pkMin = pkMax - pkSpan;
+			mvarViewPkMin = (long)Math.Round(pkMin);
+			mvarViewPkMax = (long)Math.Round(pkMax);
+		}
+
+		if (interactive)
+		{
+			long now = System.Environment.TickCount64;
+			if (now - mvarLastInteractiveRenderTicks < 33 && mvarSvgIsInteractive)
+			{
+				return;
+			}
+
+			mvarLastInteractiveRenderTicks = now;
+		}
+
+		RefreshSvg(interactive);
+	}
+
+	private void OnPointerDown(PointerEventArgs e)
+	{
+		if (e.Button != 0)
+		{
+			return;
+		}
+
+		mvarPointerActive = true;
+		mvarPanning = false;
+		mvarPointerDownClientX = e.ClientX;
+		mvarPointerDownClientY = e.ClientY;
+		mvarLastPointerX = e.ClientX;
+		mvarLastPointerY = e.ClientY;
+		mvarFullRenderCts?.Cancel();
+	}
+
+	private void OnPointerMove(PointerEventArgs e)
+	{
+		if (!mvarPointerActive)
+		{
+			return;
+		}
+
+		if (!mvarPanning)
+		{
+			double totalDx = e.ClientX - mvarPointerDownClientX;
+			double totalDy = e.ClientY - mvarPointerDownClientY;
+			if ((totalDx * totalDx + totalDy * totalDy) < PanDragThresholdPx * PanDragThresholdPx)
+			{
+				return;
+			}
+
+			mvarPanning = true;
+		}
+
+		double dx = e.ClientX - mvarLastPointerX;
+		double dy = e.ClientY - mvarLastPointerY;
+		mvarLastPointerX = e.ClientX;
+		mvarLastPointerY = e.ClientY;
+
+		double plotW = MeshSvgLayout.GetPlotWidth(PlotSvgWidth, true);
+		double plotH = MeshSvgLayout.PlotHeight(Height);
+		double timeSpan = (mvarViewT1 - mvarViewT0).TotalSeconds;
+		double pkSpan = mvarViewPkMax - mvarViewPkMin;
+
+		mvarViewT0 += TimeSpan.FromSeconds(-dx / plotW * timeSpan);
+		mvarViewT1 += TimeSpan.FromSeconds(-dx / plotW * timeSpan);
+		mvarViewPkMin += (long)Math.Round(dy / plotH * pkSpan);
+		mvarViewPkMax += (long)Math.Round(dy / plotH * pkSpan);
+
+		long now = System.Environment.TickCount64;
+		if (now - mvarLastInteractiveRenderTicks < 33)
+		{
+			return;
+		}
+
+		mvarLastInteractiveRenderTicks = now;
+		RefreshSvg(interactive: true);
+	}
+
+	private async Task OnPointerUpAsync(PointerEventArgs e)
+	{
+		if (!mvarPointerActive)
+		{
+			return;
+		}
+
+		bool wasPanning = mvarPanning;
+		mvarPointerActive = false;
+		mvarPanning = false;
+
+		if (wasPanning)
+		{
+			RefreshSvg(interactive: false);
+			return;
+		}
+
+		// Clic sin arrastre: seleccionar la traza más cercana dentro de la zona de influencia.
+		await TrySelectAtClientAsync(e.ClientX, e.ClientY);
+	}
+
+	private async Task OnPointerLeaveAsync(PointerEventArgs e)
+	{
+		if (!mvarPointerActive)
+		{
+			return;
+		}
+
+		bool wasPanning = mvarPanning;
+		mvarPointerActive = false;
+		mvarPanning = false;
+		if (wasPanning)
+		{
+			RefreshSvg(interactive: false);
+		}
+
+		await Task.CompletedTask;
+	}
+
+	private async Task TrySelectAtClientAsync(double clientX, double clientY)
+	{
+		if (Mesh is null || View is null)
+		{
+			return;
+		}
+
+		SvgMapResult? map = null;
+		try
+		{
+			map = await Js.InvokeAsync<SvgMapResult>(
+				"diamondMeshViewport.clientToSvg",
+				mvarPlotHost,
+				clientX,
+				clientY);
+		}
+		catch
+		{
+			// Sin JS: no se puede mapear bien con CSS stretch.
+		}
+
+		if (map is null)
+		{
+			return;
+		}
+
+		// Radio de influencia ~12 px de pantalla → unidades del viewBox.
+		double scale = Math.Max(map.ScaleX, map.ScaleY);
+		if (scale < 1e-6)
+		{
+			scale = 1.0;
+		}
+
+		double influence = SelectionInfluenceScreenPx * scale;
+		if (influence < MeshCirculationHitTest.DefaultInfluenceRadiusSvg * 0.5)
+		{
+			influence = MeshCirculationHitTest.DefaultInfluenceRadiusSvg * 0.5;
+		}
+
+		MeshSvgDrawOptions options = MeshSvgDrawOptions.Create(
+			externalStationColumn: true,
+			yScaleMode: mvarYScaleMode);
+
+		Circulation? hit = MeshCirculationHitTest.TryPickNearest(
+			Mesh,
+			View,
+			mvarViewT0,
+			mvarViewT1,
+			mvarViewPkMin,
+			mvarViewPkMax,
+			PlotSvgWidth,
+			Height,
+			options,
+			map.X,
+			map.Y,
+			influence);
+
+		// Clic en vacío (fuera de zona) deselecciona.
+		await SetSelectedCirculationAsync(hit, refresh: true);
+	}
+
+	private async Task SetSelectedCirculationAsync(Circulation? circulation, bool refresh)
+	{
+		string? nextId = circulation?.TechnicalId;
+		string? prevId = SelectedCirculation?.TechnicalId;
+		if (string.Equals(prevId, nextId, StringComparison.Ordinal)
+			&& (circulation is null) == (SelectedCirculation is null))
+		{
+			return;
+		}
+
+		// Sin @bind del padre, mantenemos el valor localmente.
+		SelectedCirculation = circulation;
+		mvarLastSelectedTechnicalId = nextId;
+		if (SelectedCirculationChanged.HasDelegate)
+		{
+			await SelectedCirculationChanged.InvokeAsync(circulation);
+		}
+
+		if (refresh)
+		{
+			RefreshSvg();
+		}
+	}
+
+	private async Task ClearSelection()
+	{
+		mvarShowSheet = false;
+		await SetSelectedCirculationAsync(null, refresh: true);
+	}
+
+	private void OpenCirculationSheet()
+	{
+		if (SelectedCirculation is null)
+		{
+			return;
+		}
+
+		mvarShowSheet = true;
+	}
+
+	private void CloseCirculationSheet()
+	{
+		mvarShowSheet = false;
+	}
+
+	private bool MeshContains(Circulation circulation)
+	{
+		if (Mesh is null)
+		{
+			return false;
+		}
+
+		int i = 0;
+		while (i < Mesh.Circulations.Count)
+		{
+			if (ReferenceEquals(Mesh.Circulations[i], circulation)
+				|| string.Equals(Mesh.Circulations[i].TechnicalId, circulation.TechnicalId, StringComparison.Ordinal))
+			{
+				return true;
+			}
+
+			i++;
+		}
+
+		return false;
+	}
+
+	/// <summary>DTO del mapeo client→SVG (mesh-viewport.js).</summary>
+	private sealed class SvgMapResult
+	{
+		public double X { get; set; }
+		public double Y { get; set; }
+		public double ScaleX { get; set; } = 1.0;
+		public double ScaleY { get; set; } = 1.0;
+	}
+
+	private void ScheduleFullRenderAfterIdle()
+	{
+		mvarFullRenderCts?.Cancel();
+		mvarFullRenderCts?.Dispose();
+		CancellationTokenSource cts = new CancellationTokenSource();
+		mvarFullRenderCts = cts;
+		_ = RestoreFullAfterDelayAsync(cts.Token);
+	}
+
+	private async Task RestoreFullAfterDelayAsync(CancellationToken token)
+	{
+		try
+		{
+			await Task.Delay(120, token);
+			if (token.IsCancellationRequested || mvarDisposed || !mvarSvgIsInteractive)
+			{
+				return;
+			}
+
+			await InvokeAsync(() =>
+			{
+				if (!token.IsCancellationRequested && !mvarDisposed && mvarSvgIsInteractive)
+				{
+					RefreshSvg(interactive: false);
+					StateHasChanged();
+				}
+			});
+		}
+		catch (TaskCanceledException)
+		{
+		}
+	}
+
+	private string LayerButtonClass(bool enabled)
+	{
+		return enabled ? "btn-info" : "btn-outline-secondary";
+	}
+
+	private void ToggleOccupations() { mvarShowOccupations = !mvarShowOccupations; RefreshSvg(); }
+	private void ToggleTrainPaths() { mvarShowTrainPaths = !mvarShowTrainPaths; RefreshSvg(); }
+	private void ToggleTrainNumbers() { mvarShowTrainNumbers = !mvarShowTrainNumbers; RefreshSvg(); }
+	private void ToggleConflicts() { mvarShowConflicts = !mvarShowConflicts; RefreshSvg(); }
+	private void ToggleSpeedStrip() { mvarShowSpeedStrip = !mvarShowSpeedStrip; RefreshSvg(); }
+	private void ToggleTrackStrip() { mvarShowTrackStrip = !mvarShowTrackStrip; RefreshSvg(); }
+	private void ToggleNowLine()
+	{
+		mvarShowNowLine = !mvarShowNowLine;
+		if (mvarShowNowLine)
+		{
+			mvarClockNow = DateTime.Now.TimeOfDay;
+		}
+
+		RefreshSvg();
+	}
+
+	private void ToggleYScaleMode()
+	{
+		mvarYScaleMode = mvarYScaleMode == MeshYScaleMode.LinearPk
+			? MeshYScaleMode.SteppedSingular
+			: MeshYScaleMode.LinearPk;
+		RefreshSvg();
+	}
+
+	private void SetZoomMode(ZoomAxisMode mode)
+	{
+		mvarZoomMode = mode;
+	}
+
+	private string ZoomModeButtonClass(ZoomAxisMode mode)
+	{
+		return mvarZoomMode == mode ? "btn-info" : "btn-outline-secondary";
+	}
+
+	private MeshYScale CreateCurrentYScale()
+	{
+		return MeshYScale.Create(mvarYScaleMode, View, mvarViewPkMin, mvarViewPkMax);
+	}
+
+	private static string FormatClock(TimeSpan ts)
+	{
+		int h = (int)ts.TotalHours;
+		if (h < 0) { h = 0; }
+		int m = ts.Minutes;
+		if (m < 0) { m = 0; }
+		return h.ToString("00", CultureInfo.InvariantCulture) + ":" + m.ToString("00", CultureInfo.InvariantCulture);
+	}
+
+	private static string FormatClockWithSeconds(TimeSpan ts)
+	{
+		int h = (int)ts.TotalHours;
+		if (h < 0) { h = 0; }
+		int m = ts.Minutes;
+		if (m < 0) { m = 0; }
+		int s = ts.Seconds;
+		if (s < 0) { s = 0; }
+		return h.ToString("00", CultureInfo.InvariantCulture)
+			+ ":" + m.ToString("00", CultureInfo.InvariantCulture)
+			+ ":" + s.ToString("00", CultureInfo.InvariantCulture);
+	}
+
+	private static string FormatPkShort(long pk)
+	{
+		long abs = Math.Abs(pk);
+		long km = abs / 1000L;
+		long m = abs % 1000L;
+		if (pk < 0)
+		{
+			return "-" + km.ToString(CultureInfo.InvariantCulture) + "+" + m.ToString("D3", CultureInfo.InvariantCulture);
+		}
+
+		return km.ToString(CultureInfo.InvariantCulture) + "+" + m.ToString("D3", CultureInfo.InvariantCulture);
+	}
+}

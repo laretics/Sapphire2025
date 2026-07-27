@@ -10,7 +10,6 @@
 @using Diamond.Timed
 @using Diamond.Topo
 @using Diamond.Web.Components.Layout
-@using Diamond.Web.Rendering
 @using Diamond.Web.Services
 @using Microsoft.JSInterop
 @using MeshRouteView = Diamond.Topo.RouteView
@@ -88,6 +87,12 @@
 				}
 				<span class="badge bg-secondary">@mvarMesh.Circulations.Count circ.</span>
 				<span class="badge bg-secondary">@mvarMesh.Asimilations.Count asim.</span>
+				@if (mvarSelectedCirculation is not null)
+				{
+					<span class="badge bg-warning text-dark" title="@mvarSelectedCirculation.TechnicalId">
+						Sel. @(mvarSelectedCirculation.HasServiceNumber ? mvarSelectedCirculation.ServiceNumber : mvarSelectedCirculation.Id)
+					</span>
+				}
 				@if (!mvarMeshStale && mvarMesh.Warnings.Count > 0)
 				{
 					<span class="badge bg-warning text-dark">@mvarMesh.Warnings.Count warn</span>
@@ -115,67 +120,17 @@
 				{
 					<span class="badge bg-dark text-light border small">@mvarView.PathSignature()</span>
 				}
-				<div class="mesh-zoom-toolbar d-flex flex-wrap gap-1 ms-auto">
-					<button type="button" class="btn btn-sm btn-outline-light" @onclick="ZoomIn" title="Acercar">+</button>
-					<button type="button" class="btn btn-sm btn-outline-light" @onclick="ZoomOut" title="Alejar">−</button>
-					<button type="button" class="btn btn-sm btn-outline-light" @onclick="ResetView" title="Vista inicial">Reset</button>
-					<button type="button" class="btn btn-sm btn-outline-light" @onclick="() => NudgeTime(-1)">←t</button>
-					<button type="button" class="btn btn-sm btn-outline-light" @onclick="() => NudgeTime(1)">t→</button>
-					<button type="button" class="btn btn-sm btn-outline-light" @onclick="() => NudgePk(1)">↑PK</button>
-					<button type="button" class="btn btn-sm btn-outline-light" @onclick="() => NudgePk(-1)">↓PK</button>
-					<div class="btn-group btn-group-sm">
-						<button type="button" class="btn @ZoomModeButtonClass(ZoomAxisMode.Both)" @onclick="() => SetZoomMode(ZoomAxisMode.Both)">Ambos</button>
-						<button type="button" class="btn @ZoomModeButtonClass(ZoomAxisMode.Time)" @onclick="() => SetZoomMode(ZoomAxisMode.Time)">T</button>
-						<button type="button" class="btn @ZoomModeButtonClass(ZoomAxisMode.Space)" @onclick="() => SetZoomMode(ZoomAxisMode.Space)">PK</button>
-					</div>
-					<span class="badge bg-dark text-light border">
-						@FormatClock(mvarViewT0)–@FormatClock(mvarViewT1)
-						· @FormatPkShort(mvarViewPkMin)–@FormatPkShort(mvarViewPkMax)
-					</span>
-				</div>
-			</div>
-			<div class="mesh-layer-toolbar d-flex flex-wrap gap-1 align-items-center">
-				<span class="mesh-layer-label">Capas</span>
-				<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowOccupations)" @onclick="ToggleOccupations" title="Rectángulos de ocupación de cantón">Cantones</button>
-				<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowTrainPaths)" @onclick="ToggleTrainPaths" title="Trazos de los trenes">Trazas</button>
-				<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowTrainNumbers)" @onclick="ToggleTrainNumbers" title="Números de tren">Números</button>
-				<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowConflicts)" @onclick="ToggleConflicts" title="Conflictos de acantonamiento">Conflictos</button>
-				<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowSpeedStrip)" @onclick="ToggleSpeedStrip" title="Franja de limitaciones de velocidad">V</button>
-				<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowTrackStrip)" @onclick="ToggleTrackStrip" title="Franja de vía simple / doble">#</button>
-				<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowNowLine)" @onclick="ToggleNowLine" title="Línea de hora actual (reloj del sistema)">
-					Ahora @(mvarShowNowLine ? "· " + FormatClockWithSeconds(mvarClockNow) : "")
-				</button>
 			</div>
 
 			<div class="mesh-panel-body">
-				@if (mvarMesh is not null && mvarView is not null)
-				{
-					<div @ref="mvarHost"
-						 class="mesh-svg-host @(mvarDragging ? "mesh-dragging" : "")"
-						 @onpointerdown="OnPointerDown"
-						 @onpointermove="OnPointerMove"
-						 @onpointerup="OnPointerUp"
-						 @onpointerleave="OnPointerUp"
-						 @onpointercancel="OnPointerUp">
-						<svg xmlns="http://www.w3.org/2000/svg"
-							 width="@mvarSvgWidth"
-							 height="@mvarSvgHeight"
-							 viewBox="0 0 @mvarSvgWidth @mvarSvgHeight"
-							 class="mesh-svg-canvas"
-							 preserveAspectRatio="xMidYMid meet">
-							@((MarkupString)mvarSvgContent)
-						</svg>
-					</div>
-				}
-				else
-				{
-					<div class="mesh-placeholder">
-						<div>
-							<div class="mb-2">Sin malla cargada</div>
-							<div class="small">Edita el script y pulsa <strong>Aplicar</strong>.</div>
-						</div>
-					</div>
-				}
+				@* Control reutilizable: StationRuler + plot (Diamond.Controls) *@
+				<MeshDiagram Mesh="mvarMesh"
+							 View="mvarView"
+							 Width="1400"
+							 Height="900"
+							 ShowLayerToolbar="true"
+							 ShowZoomToolbar="true"
+							 @bind-SelectedCirculation="mvarSelectedCirculation" />
 
 				@* Inspector inferior de la malla *@
 				<div class="mesh-side-tabs">
@@ -395,6 +350,7 @@
 	private bool mvarSplitAttached;
 
 	private Diamond.Timed.Mesh? mvarMesh;
+	private Diamond.Timed.Circulation? mvarSelectedCirculation;
 	private ProjectModel? mvarProject;
 	private MeshRouteView? mvarView;
 	private List<MeshRouteView> mcolViews = new List<MeshRouteView>();
@@ -613,38 +569,6 @@
 		mvarFileName = "sfm-t3-lab.ddm";
 		mvarDirty = false;
 		RebuildCore();
-		StartNowTimer();
-	}
-
-	private void StartNowTimer()
-	{
-		mvarNowTimer?.Dispose();
-		mvarClockNow = DateTime.Now.TimeOfDay;
-		// Tick cada segundo: mueve la línea de "ahora" si la capa está activa.
-		mvarNowTimer = new System.Threading.Timer(
-			_ =>
-			{
-				_ = InvokeAsync(() =>
-				{
-					if (mvarDisposed)
-					{
-						return Task.CompletedTask;
-					}
-
-					mvarClockNow = DateTime.Now.TimeOfDay;
-					if (mvarShowNowLine && mvarMesh is not null && !mvarDragging)
-					{
-						// Solo regenera SVG si la hora cae (o puede caer) en la ventana visible.
-						RefreshSvg(interactive: mvarSvgIsInteractive);
-					}
-
-					StateHasChanged();
-					return Task.CompletedTask;
-				});
-			},
-			null,
-			dueTime: 1000,
-			period: 1000);
 	}
 
 	/// <summary>
@@ -706,22 +630,7 @@
 			await FlushMarkersToEditorAsync();
 		}
 
-		// El host de la malla solo existe cuando hay mesh; reintentar cada render hasta enganchar.
-		if (mvarMesh is not null && mvarView is not null && !mvarWheelAttached && !mvarDisposed)
-		{
-			mvarDotNetRef ??= DotNetObjectReference.Create(this);
-			try
-			{
-				if (!string.IsNullOrEmpty(mvarHost.Id))
-				{
-					await Js.InvokeVoidAsync("diamondMeshViewport.attach", mvarHost, mvarDotNetRef);
-					mvarWheelAttached = true;
-				}
-			}
-			catch (Exception ex) when (IsBenignInteropException(ex))
-			{
-			}
-		}
+		// La rueda del plot la gestiona MeshDiagram (Diamond.Controls).
 	}
 
 	private async Task WaitForMonacoReadyAsync()
@@ -1277,6 +1186,7 @@
 			Diamond.Timed.Mesh mesh = new MeshPlanner(plan).Solve(mvarSelectedDay);
 			mvarPlan = plan;
 			mvarMesh = mesh;
+			mvarSelectedCirculation = null;
 			mvarMeshStale = false;
 			mvarView = DemoMeshService.FindViewById(mcolViews, mvarSelectedViewId) ?? (mcolViews.Count > 0 ? mcolViews[0] : null);
 			if (mvarView is not null)
@@ -1587,6 +1497,7 @@
 			mvarError = null;
 			mcolCompileErrors = new List<ScriptDiagnostic>();
 			mvarMesh = DemoMeshService.SolveForDay(mvarPlan, day);
+			mvarSelectedCirculation = null;
 			mvarMeshStale = false;
 			mvarProject = null;
 			RefreshSvg();
@@ -1657,26 +1568,13 @@
 		mvarViewPkMax = mvarAxisPkMax;
 	}
 
+	/// <summary>
+	/// El dibujo lo hace <see cref="MeshDiagram"/> (Diamond.Controls).
+	/// Se conserva el método para no romper llamadas de planificación (no-op de UI).
+	/// </summary>
 	private void RefreshSvg(bool interactive = false)
 	{
-		if (mvarMesh is null || mvarView is null)
-		{
-			return;
-		}
-
-		ClampView();
-		MeshSvgDrawOptions options = BuildDrawOptions(interactive);
-		mvarSvgContent = MeshSvgRenderer.RenderContent(
-			mvarMesh,
-			mvarView,
-			mvarViewT0,
-			mvarViewT1,
-			mvarViewPkMin,
-			mvarViewPkMax,
-			mvarSvgWidth,
-			mvarSvgHeight,
-			options);
-		mvarSvgIsInteractive = interactive;
+		// MeshDiagram se actualiza por parámetros Mesh/View en el render de Blazor.
 	}
 
 	private MeshSvgDrawOptions BuildDrawOptions(bool interactive)

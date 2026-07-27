@@ -23,7 +23,7 @@ namespace Diamond.Timed
 	/// prefijada con <c>with</c>/<c>con</c>/<c>region</c>) abre un ámbito; los
 	/// <c>require</c> y <c>asim</c> más indentados heredan esos valores.
 	/// <c>asim FROM -&gt; TO numbers 49## color #hex</c> define serie SFM y color de traza
-	/// por corredor OD (no dirigido) y días de la región.
+	/// por OD dirigido (PMI→MAN ≠ MAN→PMI) y días de la región.
 	/// <c>delete HH:mm-HH:mm [all]</c> elimina circulaciones ya planificadas en esa franja
 	/// (en orden de script; ver <see cref="DemandDeleteOp"/>).
 	/// </remarks>

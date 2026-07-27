@@ -72,6 +72,8 @@
 			"\\b(?:plan|require|req|delete|del|asim|asimilacion|asimilation|numbers|number|nums|num|serie|series|numeracion|all|any|overlap|journey|both|ways|using|as|from|to|days|on|stops|skip|dwell|cross|at|color|colour|with|con|region|every|min|mins|minutes|per|hour|hours)\\b"
 		);
 		var reHexColor = /#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/;
+		// Patrones de numeración con # en medio o al final: 49##, P##MTX, P##MAN (antes que comentario)
+		var reTrainNumberPattern = /[A-Za-z0-9][A-Za-z0-9_.-]*#+[A-Za-z0-9_.-]*/;
 		var reDay = new RegExp(
 			"\\b(?:lab|laborables|fes|festivos|all|todos|daily|weekday|weekdays|weekend|we|" +
 			"lun|mar|mie|jue|vie|sab|dom|mon|tue|wed|thu|fri|sat|sun|" +
@@ -98,6 +100,8 @@
 				root: [
 					// Hex color antes que comentario (#rrggbb no es # comentario)
 					[reHexColor, "number"],
+					// numbers 49## / P##MAN: el # no es comentario de línea
+					[reTrainNumberPattern, "number"],
 					[reComment, "comment"],
 					[reWhite, "white"],
 					[reStringBad, "string.invalid"],

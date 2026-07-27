@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["css/mesh-workspace.css"]" />
     <link rel="stylesheet" href="@Assets["Diamond.Web.styles.css"]" />
+    <link rel="stylesheet" href="_content/Diamond.Controls/css/diamond-mesh.css" />
     @* CSS de Monaco en el head: sin esto el textarea interno del editor se ve como un input HTML crudo. *@
     <link rel="stylesheet" data-name="vs/editor/editor.main"
           href="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.css" />
@@ -19,7 +20,8 @@
 
 <body>
     <Routes />
-    <script src="js/mesh-viewport.js"></script>
+    <script src="_content/Diamond.Controls/js/mesh-viewport.js"></script>
+    <script src="_content/Diamond.Controls/js/circ-sheet.js"></script>
     <script src="js/diamond-file.js"></script>
     <script src="js/diamond-split.js"></script>
     <!-- Monaco (mismo stack que ManageTimeNet / BlazorMonaco). Antes de blazor.web.js. -->

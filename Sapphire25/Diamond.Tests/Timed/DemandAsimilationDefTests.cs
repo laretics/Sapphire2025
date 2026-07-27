@@ -109,6 +109,7 @@ namespace Diamond.Tests.Timed
 				plan "num"
 				days lab
 				  asim PMI -> MAN numbers 49## color #112233
+				  asim MAN -> PMI numbers 49## color #112233
 				require both ways every 60 min PMI -> MAN 06:00-08:00 as R1
 				  days lab
 				  stops 30s
@@ -118,7 +119,7 @@ namespace Diamond.Tests.Timed
 			plan.EnsureDefaultTrainSpecs();
 			DemandCompileResult compiled = plan.CompileDemand(script);
 			Assert.True(compiled.Success, string.Join("; ", compiled.Errors));
-			Assert.Single(plan.AsimilationDefs);
+			Assert.Equal(2, plan.AsimilationDefs.Count);
 
 			Mesh mesh = new MeshPlanner(plan).Solve(DayOfWeek.Monday);
 			Assert.True(mesh.Circulations.Count >= 2);
@@ -133,6 +134,38 @@ namespace Diamond.Tests.Timed
 				Assert.Equal("#112233", c.Color);
 				i++;
 			}
+		}
+
+		[Fact]
+		public void Numbering_DirectedAsim_DifferentPatternsPerDirection()
+		{
+			TopoLayout topo = DemoInfrastructure();
+			string script = """
+				plan "dir"
+				days lab
+				  asim PMI -> MAN numbers 49##
+				  asim MAN -> PMI numbers 48##
+				require both ways every 60 min PMI -> MAN 06:00-08:00 as R1
+				  days lab
+				  stops 30s
+				""";
+
+			Plan plan = new Plan(topo);
+			plan.EnsureDefaultTrainSpecs();
+			Assert.True(plan.CompileDemand(script).Success);
+
+			Mesh mesh = new MeshPlanner(plan).Solve(DayOfWeek.Monday);
+			List<Circulation> toMan = mesh.Circulations
+				.Where(c => string.Equals(c.Asimilation.Destination.Station.Avr, "MAN", StringComparison.OrdinalIgnoreCase))
+				.ToList();
+			List<Circulation> toPmi = mesh.Circulations
+				.Where(c => string.Equals(c.Asimilation.Destination.Station.Avr, "PMI", StringComparison.OrdinalIgnoreCase))
+				.ToList();
+
+			Assert.NotEmpty(toMan);
+			Assert.NotEmpty(toPmi);
+			Assert.All(toMan, c => Assert.StartsWith("49", c.ServiceNumber));
+			Assert.All(toPmi, c => Assert.StartsWith("48", c.ServiceNumber));
 		}
 
 		private static TopoLayout DemoInfrastructure()

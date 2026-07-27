@@ -1,0 +1,86 @@
+@namespace Diamond.Controls
+@using Diamond.Controls.Rendering
+@using MeshRouteView = Diamond.Topo.RouteView
+
+@*
+  Columna de estaciones del diagrama de malla.
+  Debe vivir dentro de .diamond-mesh-stage-frame para compartir altura con el plot.
+  Side=Left: etiquetas ancladas a la derecha de la columna.
+  Side=Right: etiquetas ancladas a la izquierda (espejo).
+  Usa la misma MeshYScale que el plot (lineal o escalonada).
+*@
+<div class="diamond-station-ruler side-@(Side == StationRulerSide.Right ? "right" : "left")"
+	 style="width: @(Width.ToString(CultureInfo.InvariantCulture))px;">
+	@((MarkupString)BuildSvg())
+</div>
+
+@code {
+	[Parameter]
+	public MeshRouteView? View { get; set; }
+
+	[Parameter]
+	public long PkMin { get; set; }
+
+	[Parameter]
+	public long PkMax { get; set; }
+
+	/// <summary>Alto lógico del viewBox (mismo que el SVG del plot).</summary>
+	[Parameter]
+	public int Height { get; set; } = 900;
+
+	[Parameter]
+	public double Width { get; set; } = MeshSvgLayout.StationColumnWidth;
+
+	[Parameter]
+	public double PlotTop { get; set; } = MeshSvgLayout.PlotTop;
+
+	[Parameter]
+	public double PlotHeight { get; set; } = 800;
+
+	[Parameter]
+	public StationRulerSide Side { get; set; } = StationRulerSide.Left;
+
+	/// <summary>Misma escala Y que el plot (lineal PK o singulares equidistantes).</summary>
+	[Parameter]
+	public MeshYScaleMode YScaleMode { get; set; } = MeshYScaleMode.LinearPk;
+
+	private string BuildSvg()
+	{
+		StringBuilder sb = new StringBuilder(2048);
+		string w = Width.ToString(CultureInfo.InvariantCulture);
+		string h = Height.ToString(CultureInfo.InvariantCulture);
+		sb.Append(CultureInfo.InvariantCulture,
+			$"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" viewBox=\"0 0 {w} {h}\" class=\"diamond-station-ruler-svg\" preserveAspectRatio=\"none\">");
+		sb.Append(CultureInfo.InvariantCulture,
+			$"<rect x=\"0\" y=\"0\" width=\"{w}\" height=\"{h}\" fill=\"#0f1419\"/>");
+
+		if (View is not null && PkMax > PkMin)
+		{
+			bool right = Side == StationRulerSide.Right;
+			double textX = right ? 8.0 : Width - 8.0;
+			string anchor = right ? "start" : "end";
+			MeshYScale yScale = MeshYScale.Create(YScaleMode, View, PkMin, PkMax);
+
+			IReadOnlyList<MeshSvgRenderer.StationMark> all = MeshSvgRenderer.BuildStationMarks(View);
+			int i = 0;
+			while (i < all.Count)
+			{
+				MeshSvgRenderer.StationMark mark = all[i];
+				if (mark.Pk >= PkMin && mark.Pk <= PkMax)
+				{
+					double y = yScale.PkToY(mark.Pk, PlotTop, PlotHeight);
+					string fill = mark.IsPrincipal ? "#e2e8f0" : "#94a3b8";
+					string fontWeight = mark.IsPrincipal ? "600" : "400";
+					string safe = System.Security.SecurityElement.Escape(mark.Label) ?? string.Empty;
+					sb.Append(CultureInfo.InvariantCulture,
+						$"<text x=\"{textX.ToString(CultureInfo.InvariantCulture)}\" y=\"{(y + 3.5).ToString(CultureInfo.InvariantCulture)}\" fill=\"{fill}\" font-size=\"10\" font-weight=\"{fontWeight}\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"{anchor}\">{safe}</text>");
+				}
+
+				i++;
+			}
+		}
+
+		sb.Append("</svg>");
+		return sb.ToString();
+	}
+}

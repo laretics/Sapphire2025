@@ -1,0 +1,170 @@
+@namespace Diamond.Controls
+@using Diamond.Controls.Rendering
+@using Diamond.Timed
+@inject IJSRuntime Js
+
+@*
+  Visor de ficha de marcha (SVG multipágina).
+  Pensado para pantalla y para window.print (una página A4 por SVG).
+*@
+@if (mvarDocument is not null)
+{
+	<div class="diamond-circ-sheet-overlay" @onclick="OnOverlayClick">
+		<div class="diamond-circ-sheet-dialog" @onclick:stopPropagation="true">
+			<div class="diamond-circ-sheet-toolbar no-print">
+				<span class="diamond-circ-sheet-toolbar-title">
+					Ficha · @(mvarDocument.TrainNumber)
+					@if (!string.IsNullOrEmpty(mvarDocument.TrainTitle))
+					{
+						<span> · @mvarDocument.TrainTitle</span>
+					}
+					<span class="text-muted"> · @mvarDocument.Pages.Count pág.</span>
+				</span>
+				<span class="diamond-circ-sheet-toolbar-actions">
+					<label class="diamond-circ-sheet-max-label" title="Máximo de fronteras (filas) por página">
+						Máx/pág
+						<input type="number"
+							   min="8"
+							   max="80"
+							   class="form-control form-control-sm diamond-circ-sheet-max-input"
+							   value="@mvarMaxPerPage"
+							   @onchange="OnMaxPerPageChanged" />
+					</label>
+					<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="PrintAsync" title="Imprimir ficha">Imprimir</button>
+					<button type="button" class="btn btn-sm btn-outline-light" @onclick="Close" title="Cerrar">Cerrar</button>
+				</span>
+			</div>
+			<div class="diamond-circ-sheet-pages" @ref="mvarPrintRoot">
+				@for (int i = 0; i < mcolPageSvg.Count; i++)
+				{
+					<div class="diamond-circ-sheet-page">
+						@((MarkupString)mcolPageSvg[i])
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	private CirculationSheetDocument? mvarDocument;
+	private List<string> mcolPageSvg = new List<string>();
+	private int mvarMaxPerPage = CirculationSheetPager.DefaultMaxFrontiersPerPage;
+	private ElementReference mvarPrintRoot;
+
+	[Parameter]
+	public Circulation? Circulation { get; set; }
+
+	/// <summary>Malla para calcular cruces con otros trenes (columna Cruz).</summary>
+	[Parameter]
+	public Mesh? Mesh { get; set; }
+
+	[Parameter]
+	public int MaxFrontiersPerPage { get; set; } = CirculationSheetPager.DefaultMaxFrontiersPerPage;
+
+	[Parameter]
+	public EventCallback OnClose { get; set; }
+
+	[Parameter]
+	public bool CloseOnOverlayClick { get; set; } = true;
+
+	protected override void OnParametersSet()
+	{
+		if (MaxFrontiersPerPage >= 8 && MaxFrontiersPerPage != mvarMaxPerPage)
+		{
+			mvarMaxPerPage = MaxFrontiersPerPage;
+		}
+
+		Rebuild();
+	}
+
+	private void Rebuild()
+	{
+		mcolPageSvg.Clear();
+		mvarDocument = null;
+		if (Circulation is null)
+		{
+			return;
+		}
+
+		try
+		{
+			mvarDocument = CirculationSheetDocument.Build(Circulation, Mesh, mvarMaxPerPage);
+			IReadOnlyList<string> pages = CirculationSheetSvgRenderer.RenderAllPages(mvarDocument);
+			int i = 0;
+			while (i < pages.Count)
+			{
+				mcolPageSvg.Add(pages[i]);
+				i++;
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarDocument = null;
+			mcolPageSvg.Clear();
+			mcolPageSvg.Add(
+				"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"595\" height=\"200\" viewBox=\"0 0 595 200\">"
+				+ "<text x=\"20\" y=\"40\" fill=\"#b91c1c\" font-size=\"12\" font-family=\"sans-serif\">Error al generar ficha: "
+				+ System.Security.SecurityElement.Escape(ex.Message)
+				+ "</text></svg>");
+		}
+	}
+
+	private void OnMaxPerPageChanged(ChangeEventArgs e)
+	{
+		if (e.Value is null)
+		{
+			return;
+		}
+
+		if (int.TryParse(e.Value.ToString(), out int n))
+		{
+			if (n < 8)
+			{
+				n = 8;
+			}
+
+			if (n > 80)
+			{
+				n = 80;
+			}
+
+			mvarMaxPerPage = n;
+			Rebuild();
+		}
+	}
+
+	private async Task PrintAsync()
+	{
+		try
+		{
+			await Js.InvokeVoidAsync("diamondCircSheet.print");
+		}
+		catch
+		{
+			try
+			{
+				await Js.InvokeVoidAsync("window.print");
+			}
+			catch
+			{
+			}
+		}
+	}
+
+	private async Task Close()
+	{
+		if (OnClose.HasDelegate)
+		{
+			await OnClose.InvokeAsync();
+		}
+	}
+
+	private async Task OnOverlayClick()
+	{
+		if (CloseOnOverlayClick)
+		{
+			await Close();
+		}
+	}
+}

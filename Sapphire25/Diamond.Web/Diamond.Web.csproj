@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Diamond\Diamond.csproj" />
+    <ProjectReference Include="..\Diamond.Controls\Diamond.Controls.csproj" />
   </ItemGroup>
 
   <ItemGroup>

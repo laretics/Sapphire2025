@@ -1,0 +1,317 @@
+/* Controles de malla reutilizables (Diamond.Controls) */
+
+.diamond-mesh-diagram {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	flex: 1 1 auto;
+	background: #0b0f14;
+	color: #e2e8f0;
+}
+
+.diamond-mesh-layer-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.3rem;
+	padding: 0.2rem 0.5rem 0.35rem;
+	border-bottom: 1px solid #1e293b;
+	background: #0e141c;
+	flex-shrink: 0;
+}
+
+.diamond-mesh-layer-toolbar .diamond-mesh-layer-label {
+	color: #64748b;
+	font-size: 0.68rem;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	margin-right: 0.15rem;
+}
+
+.diamond-mesh-layer-toolbar .btn {
+	font-size: 0.72rem;
+	padding: 0.12rem 0.45rem;
+	border-radius: 0.3rem;
+}
+
+.diamond-mesh-layer-toolbar .btn-info {
+	background: #0e7490;
+	border-color: #22d3ee;
+	color: #ecfeff;
+}
+
+.diamond-mesh-layer-toolbar .btn-outline-secondary {
+	color: #94a3b8;
+	border-color: #334155;
+}
+
+/*
+  Escenario común: un único marco con aspect-ratio lógico
+  (columna + plot [+ columna dcha]) / Height.
+  Las tres piezas comparten la misma altura de ese marco.
+*/
+.diamond-mesh-stage {
+	flex: 1 1 auto;
+	min-height: 0;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	container-type: size;
+	background: #0a0e13;
+}
+
+.diamond-mesh-stage-frame {
+	display: flex;
+	flex-direction: row;
+	align-items: stretch;
+	/* Encaja en el stage manteniendo proporciones lógicas */
+	max-width: 100%;
+	max-height: 100%;
+	width: min(100%, calc(100cqh * var(--mesh-logical-w, 1640) / var(--mesh-logical-h, 900)));
+	height: min(100%, calc(100cqw * var(--mesh-logical-h, 900) / var(--mesh-logical-w, 1640)));
+	aspect-ratio: var(--mesh-logical-w, 1640) / var(--mesh-logical-h, 900);
+	box-sizing: border-box;
+}
+
+/* Fallback si no hay container queries (poco habitual en net9) */
+@supports not (width: 1cqw) {
+	.diamond-mesh-stage-frame {
+		width: 100%;
+		height: 100%;
+		aspect-ratio: auto;
+	}
+}
+
+.diamond-station-ruler {
+	flex: 0 0 auto;
+	width: calc(var(--mesh-station-w, 120) * 1px);
+	height: 100%;
+	min-height: 0;
+	overflow: hidden;
+	background: #0f1419;
+	box-sizing: border-box;
+}
+
+.diamond-station-ruler.side-left {
+	border-right: 1px solid #1e293b;
+}
+
+.diamond-station-ruler.side-right {
+	border-left: 1px solid #1e293b;
+}
+
+.diamond-station-ruler-svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.diamond-mesh-plot-host {
+	flex: 1 1 auto;
+	min-width: 0;
+	min-height: 0;
+	height: 100%;
+	overflow: hidden;
+	touch-action: none;
+	overscroll-behavior: none;
+	cursor: grab;
+	user-select: none;
+	background: #0a0e13;
+}
+
+.diamond-mesh-plot-host.diamond-mesh-dragging {
+	cursor: grabbing;
+}
+
+/* Mismo relleno que StationRuler: misma altura de frame → mismos Y de PK */
+.diamond-mesh-plot-svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.diamond-mesh-placeholder {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #64748b;
+	font-size: 0.9rem;
+	padding: 1rem;
+	text-align: center;
+}
+
+/* —— Ficha de marcha (SVG multipágina) —— */
+.diamond-circ-sheet-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 2000;
+	background: rgba(2, 6, 12, 0.72);
+	display: flex;
+	align-items: stretch;
+	justify-content: center;
+	padding: 0.75rem;
+	box-sizing: border-box;
+}
+
+.diamond-circ-sheet-dialog {
+	display: flex;
+	flex-direction: column;
+	width: min(920px, 100%);
+	max-height: 100%;
+	background: #1a1f27;
+	border: 1px solid #334155;
+	border-radius: 0.4rem;
+	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+	overflow: hidden;
+}
+
+.diamond-circ-sheet-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	padding: 0.45rem 0.7rem;
+	background: #0f1419;
+	border-bottom: 1px solid #1e293b;
+	flex-shrink: 0;
+}
+
+.diamond-circ-sheet-toolbar-title {
+	color: #e2e8f0;
+	font-size: 0.85rem;
+	font-weight: 600;
+}
+
+.diamond-circ-sheet-toolbar-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.diamond-circ-sheet-max-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	color: #94a3b8;
+	font-size: 0.72rem;
+	margin: 0;
+}
+
+.diamond-circ-sheet-max-input {
+	width: 4rem;
+	display: inline-block;
+	padding: 0.1rem 0.3rem;
+	font-size: 0.75rem;
+	background: #0b0f14;
+	color: #e2e8f0;
+	border-color: #334155;
+}
+
+.diamond-circ-sheet-pages {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+	padding: 0.75rem;
+	background: #2a3038;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.85rem;
+}
+
+.diamond-circ-sheet-page {
+	/* A4 portrait: el line-height:0 recortaba el SVG a media página en algunos motores */
+	background: #ffffff;
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+	line-height: normal;
+	width: min(100%, 720px);
+	/* 210:297 = A4 vertical */
+	aspect-ratio: 210 / 297;
+	overflow: hidden;
+	flex-shrink: 0;
+}
+
+.diamond-circ-sheet-page svg.diamond-circ-sheet-svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+	/* Forzar proporción vertical aunque el contenedor sea ancho */
+	aspect-ratio: 210 / 297;
+	max-width: 100%;
+}
+
+@media print {
+	/* Oculta la app; solo páginas de ficha */
+	body * {
+		visibility: hidden !important;
+	}
+
+	.diamond-circ-sheet-overlay,
+	.diamond-circ-sheet-overlay *,
+	.diamond-circ-sheet-page,
+	.diamond-circ-sheet-page * {
+		visibility: visible !important;
+	}
+
+	.diamond-circ-sheet-overlay {
+		position: static !important;
+		background: #fff !important;
+		padding: 0 !important;
+		display: block !important;
+	}
+
+	.diamond-circ-sheet-dialog {
+		width: 100% !important;
+		max-height: none !important;
+		border: none !important;
+		box-shadow: none !important;
+		background: #fff !important;
+		border-radius: 0 !important;
+	}
+
+	.diamond-circ-sheet-toolbar,
+	.no-print {
+		display: none !important;
+	}
+
+	.diamond-circ-sheet-pages {
+		overflow: visible !important;
+		padding: 0 !important;
+		background: #fff !important;
+		gap: 0 !important;
+	}
+
+	.diamond-circ-sheet-page {
+		box-shadow: none !important;
+		page-break-after: always;
+		break-after: page;
+	}
+
+	.diamond-circ-sheet-page:last-child {
+		page-break-after: auto;
+		break-after: auto;
+	}
+
+	.diamond-circ-sheet-page {
+		width: 210mm !important;
+		height: 297mm !important;
+		aspect-ratio: auto !important;
+		overflow: hidden !important;
+	}
+
+	.diamond-circ-sheet-page svg.diamond-circ-sheet-svg {
+		width: 210mm !important;
+		height: 297mm !important;
+		aspect-ratio: auto !important;
+	}
+
+	@page {
+		size: A4 portrait;
+		margin: 0;
+	}
+}

@@ -9,10 +9,9 @@ using Diamond.Topo;
 namespace Diamond.Timed
 {
 	/// <summary>
-	/// Numeración de circulaciones: mismo origen–destino (corredor) comparte patrón.
-	/// Sentido PK creciente → secuencia impar (1, 3, 5…); decreciente → par (2, 4, 6…).
-	/// El número es un <see cref="string"/>: <c>4901</c>, <c>P1MTX</c>, etc.
-	/// Prioridad de patrón: defs <c>asim</c> del script → tablas SFM → hash numérico.
+	/// Numeración de circulaciones (texto: <c>4901</c>, <c>P1MTX</c>…).
+	/// Las defs <c>asim ORIGEN -&gt; DESTINO</c> son <strong>dirigidas</strong>: PMI→MAN ≠ MAN→PMI.
+	/// Sin def de script: corredor no dirigido + impares (PK↑) / pares (PK↓) como SFM clásico.
 	/// </summary>
 	public static class TrainNumbering
 	{
@@ -41,27 +40,6 @@ namespace Diamond.Timed
 				return;
 			}
 
-			Dictionary<string, List<Circulation>> byCorridor =
-				new Dictionary<string, List<Circulation>>(StringComparer.Ordinal);
-			int ci = 0;
-			while (ci < mesh.Circulations.Count)
-			{
-				Circulation c = mesh.Circulations[ci];
-				string key = CorridorKey(c);
-				List<Circulation>? list;
-				if (!byCorridor.TryGetValue(key, out list))
-				{
-					list = new List<Circulation>();
-					byCorridor[key] = list;
-				}
-
-				list.Add(c);
-				ci++;
-			}
-
-			List<string> corridorKeys = new List<string>(byCorridor.Keys);
-			corridorKeys.Sort(StringComparer.Ordinal);
-
 			HashSet<int> usedSeriesBases = new HashSet<int>();
 			usedSeriesBases.Add(44);
 			usedSeriesBases.Add(45);
@@ -72,13 +50,98 @@ namespace Diamond.Timed
 			usedSeriesBases.Add(70);
 
 			HashSet<string> usedNumbers = new HashSet<string>(StringComparer.Ordinal);
+			HashSet<Circulation> numbered = new HashSet<Circulation>();
+
+			// —— Fase 1: defs dirigidas del script (cada sentido con su propio patrón) ——
+			if (asimilationDefs is not null && asimilationDefs.Count > 0)
+			{
+				Dictionary<string, List<Circulation>> byDirected =
+					new Dictionary<string, List<Circulation>>(StringComparer.Ordinal);
+				int ci = 0;
+				while (ci < mesh.Circulations.Count)
+				{
+					Circulation c = mesh.Circulations[ci];
+					DemandAsimilationDef? def = FindBestDefForDirection(c, asimilationDefs, dayOfWeek);
+					if (def is not null && def.HasNumberPattern)
+					{
+						string dkey = DirectedKey(c) + "\u001f" + def.NumberPattern;
+						List<Circulation>? list;
+						if (!byDirected.TryGetValue(dkey, out list))
+						{
+							list = new List<Circulation>();
+							byDirected[dkey] = list;
+						}
+
+						list.Add(c);
+					}
+
+					ci++;
+				}
+
+				List<string> directedKeys = new List<string>(byDirected.Keys);
+				directedKeys.Sort(StringComparer.Ordinal);
+				int dk = 0;
+				while (dk < directedKeys.Count)
+				{
+					List<Circulation> trains = byDirected[directedKeys[dk]];
+					// Todas comparten el mismo patrón (incluido en la clave); se toma de la def.
+					DemandAsimilationDef? def = FindBestDefForDirection(trains[0], asimilationDefs, dayOfWeek);
+					string pattern = def is not null && def.HasNumberPattern
+						? def.NumberPattern
+						: "10##";
+
+					int classicBase;
+					if (TryGetClassicSeriesBase(pattern, out classicBase))
+					{
+						usedSeriesBases.Add(classicBase);
+					}
+
+					SortByDepartureThenTechnicalId(trains);
+					// Un sentido, un patrón: secuencia 1,2,3… (no impares/pares compartidos).
+					AssignByPattern(trains, pattern, startSequence: 1, step: 1, usedNumbers);
+					int t = 0;
+					while (t < trains.Count)
+					{
+						numbered.Add(trains[t]);
+						t++;
+					}
+
+					dk++;
+				}
+			}
+
+			// —— Fase 2: resto sin def dirigida → corredor no dirigido SFM (impar/par) ——
+			Dictionary<string, List<Circulation>> byCorridor =
+				new Dictionary<string, List<Circulation>>(StringComparer.Ordinal);
+			int ri = 0;
+			while (ri < mesh.Circulations.Count)
+			{
+				Circulation c = mesh.Circulations[ri];
+				if (!numbered.Contains(c))
+				{
+					string key = CorridorKey(c);
+					List<Circulation>? list;
+					if (!byCorridor.TryGetValue(key, out list))
+					{
+						list = new List<Circulation>();
+						byCorridor[key] = list;
+					}
+
+					list.Add(c);
+				}
+
+				ri++;
+			}
+
+			List<string> corridorKeys = new List<string>(byCorridor.Keys);
+			corridorKeys.Sort(StringComparer.Ordinal);
 
 			int k = 0;
 			while (k < corridorKeys.Count)
 			{
 				string corridor = corridorKeys[k];
 				List<Circulation> trains = byCorridor[corridor];
-				string pattern = ResolvePattern(corridor, usedSeriesBases, asimilationDefs, dayOfWeek, trains);
+				string pattern = ResolveFallbackPattern(corridor, usedSeriesBases);
 
 				int classicBase;
 				if (TryGetClassicSeriesBase(pattern, out classicBase))
@@ -107,8 +170,8 @@ namespace Diamond.Timed
 				SortByDepartureThenTechnicalId(ascending);
 				SortByDepartureThenTechnicalId(descending);
 
-				AssignByPattern(ascending, pattern, odd: true, usedNumbers);
-				AssignByPattern(descending, pattern, odd: false, usedNumbers);
+				AssignByPattern(ascending, pattern, startSequence: 1, step: 2, usedNumbers);
+				AssignByPattern(descending, pattern, startSequence: 2, step: 2, usedNumbers);
 
 				k++;
 			}
@@ -130,7 +193,8 @@ namespace Diamond.Timed
 				Circulation c = mesh.Circulations[ci];
 				if (!c.HasColor)
 				{
-					DemandAsimilationDef? def = FindBestDefForCorridor(c, asimilationDefs, dayOfWeek);
+					// Color: def dirigida; si no hay, no se hereda la del sentido contrario.
+					DemandAsimilationDef? def = FindBestDefForDirection(c, asimilationDefs, dayOfWeek);
 					if (def is not null && def.HasColor)
 					{
 						c.TryAssignColorFromAsimilationDef(def.Color);
@@ -418,10 +482,16 @@ namespace Diamond.Timed
 		private static void AssignByPattern(
 			List<Circulation> ordered,
 			string pattern,
-			bool odd,
+			int startSequence,
+			int step,
 			HashSet<string> usedNumbers)
 		{
-			int sequence = odd ? 1 : 2;
+			if (step < 1)
+			{
+				step = 1;
+			}
+
+			int sequence = startSequence;
 			int index = 0;
 			while (index < ordered.Count)
 			{
@@ -430,37 +500,21 @@ namespace Diamond.Timed
 				int guard = 0;
 				while (usedNumbers.Contains(number) && guard < 10000)
 				{
-					sequence += 2;
+					sequence += step;
 					number = ExpandPattern(pattern, sequence);
 					guard++;
 				}
 
 				usedNumbers.Add(number);
 				ordered[index].AssignServiceNumber(number);
-				sequence += 2;
+				sequence += step;
 				index++;
 			}
 		}
 
-		private static string ResolvePattern(
-			string corridorKey,
-			HashSet<int> usedSeriesBases,
-			IReadOnlyList<DemandAsimilationDef>? asimilationDefs,
-			DayOfWeek? dayOfWeek,
-			List<Circulation> trainsOnCorridor)
+		/// <summary>Patrón cuando no hay <c>asim</c> dirigida en el script.</summary>
+		private static string ResolveFallbackPattern(string corridorKey, HashSet<int> usedSeriesBases)
 		{
-			if (asimilationDefs is not null && trainsOnCorridor.Count > 0)
-			{
-				DemandAsimilationDef? fromScript = FindBestDefForCorridor(
-					trainsOnCorridor[0],
-					asimilationDefs,
-					dayOfWeek);
-				if (fromScript is not null && fromScript.HasNumberPattern)
-				{
-					return fromScript.NumberPattern;
-				}
-			}
-
 			int known = TryKnownSeriesBase(corridorKey);
 			if (known > 0)
 			{
@@ -482,6 +536,19 @@ namespace Diamond.Timed
 			}
 
 			return candidate.ToString(CultureInfo.InvariantCulture) + "##";
+		}
+
+		/// <summary>Clave dirigida origen→destino (estaciones reales).</summary>
+		public static string DirectedKey(Circulation circulation)
+		{
+			if (circulation is null)
+			{
+				throw new ArgumentNullException(nameof(circulation));
+			}
+
+			return StationKey(circulation.Asimilation.Origin.Station)
+				+ "\u001e"
+				+ StationKey(circulation.Asimilation.Destination.Station);
 		}
 
 		private static bool TryGetClassicSeriesBase(string pattern, out int seriesBase)
@@ -508,7 +575,10 @@ namespace Diamond.Timed
 			return true;
 		}
 
-		private static DemandAsimilationDef? FindBestDefForCorridor(
+		/// <summary>
+		/// Última def del script cuyo OD coincide en el mismo sentido (origen=From, destino=To).
+		/// </summary>
+		private static DemandAsimilationDef? FindBestDefForDirection(
 			Circulation sample,
 			IReadOnlyList<DemandAsimilationDef> defs,
 			DayOfWeek? dayOfWeek)
@@ -518,7 +588,7 @@ namespace Diamond.Timed
 			while (i < defs.Count)
 			{
 				DemandAsimilationDef def = defs[i];
-				if (DefAppliesOnDay(def, dayOfWeek) && CorridorMatchesDef(sample, def))
+				if (DefAppliesOnDay(def, dayOfWeek) && DirectionMatchesDef(sample, def))
 				{
 					best = def;
 				}
@@ -539,15 +609,15 @@ namespace Diamond.Timed
 			return def.Days.AppliesOn(dayOfWeek.Value);
 		}
 
-		private static bool CorridorMatchesDef(Circulation circulation, DemandAsimilationDef def)
+		/// <summary>
+		/// True solo si origen de la circulación = From de la def y destino = To (dirigido).
+		/// </summary>
+		private static bool DirectionMatchesDef(Circulation circulation, DemandAsimilationDef def)
 		{
 			Station origin = circulation.Asimilation.Origin.Station;
 			Station destination = circulation.Asimilation.Destination.Station;
-			bool forward = StationMatchesToken(origin, def.From.Text)
+			return StationMatchesToken(origin, def.From.Text)
 				&& StationMatchesToken(destination, def.To.Text);
-			bool reverse = StationMatchesToken(origin, def.To.Text)
-				&& StationMatchesToken(destination, def.From.Text);
-			return forward || reverse;
 		}
 
 		private static bool StationMatchesToken(Station station, string token)

@@ -1,4 +1,4 @@
-namespace Diamond.Web.Rendering
+namespace Diamond.Controls.Rendering
 {
 	/// <summary>
 	/// Capas y nivel de detalle del SVG de malla.
@@ -13,8 +13,12 @@ namespace Diamond.Web.Rendering
 		private readonly bool mvarShowSpeedStrip;
 		private readonly bool mvarShowTrackStrip;
 		private readonly bool mvarShowNowLine;
+		private readonly bool mvarShowStationLabels;
+		private readonly bool mvarExternalStationColumn;
+		private readonly MeshYScaleMode mvarYScaleMode;
 		private readonly TimeSpan? mvarNowTime;
 		private readonly int mvarMaxPolylineSamples;
+		private readonly string? mvarSelectedTechnicalId;
 
 		public MeshSvgDrawOptions(
 			bool showCantonOccupations,
@@ -25,7 +29,11 @@ namespace Diamond.Web.Rendering
 			bool showTrackStrip,
 			bool showNowLine,
 			TimeSpan? nowTime,
-			int maxPolylineSamples)
+			int maxPolylineSamples,
+			bool showStationLabels = true,
+			bool externalStationColumn = false,
+			MeshYScaleMode yScaleMode = MeshYScaleMode.LinearPk,
+			string? selectedTechnicalId = null)
 		{
 			mvarShowCantonOccupations = showCantonOccupations;
 			mvarShowTrainPaths = showTrainPaths;
@@ -34,8 +42,12 @@ namespace Diamond.Web.Rendering
 			mvarShowSpeedStrip = showSpeedStrip;
 			mvarShowTrackStrip = showTrackStrip;
 			mvarShowNowLine = showNowLine;
+			mvarShowStationLabels = showStationLabels;
+			mvarExternalStationColumn = externalStationColumn;
+			mvarYScaleMode = yScaleMode;
 			mvarNowTime = nowTime;
 			mvarMaxPolylineSamples = maxPolylineSamples < 8 ? 8 : maxPolylineSamples;
+			mvarSelectedTechnicalId = string.IsNullOrEmpty(selectedTechnicalId) ? null : selectedTechnicalId;
 		}
 
 		/// <summary>Compatibilidad: capas completas por defecto.</summary>
@@ -53,7 +65,9 @@ namespace Diamond.Web.Rendering
 				showTrackStrip: true,
 				showNowLine: false,
 				nowTime: null,
-				maxPolylineSamples: maxPolylineSamples)
+				maxPolylineSamples: maxPolylineSamples,
+				showStationLabels: true,
+				externalStationColumn: false)
 		{
 		}
 
@@ -87,7 +101,11 @@ namespace Diamond.Web.Rendering
 			bool showTrackStrip = true,
 			bool showNowLine = false,
 			TimeSpan? nowTime = null,
-			int maxPolylineSamples = 48)
+			int maxPolylineSamples = 48,
+			bool showStationLabels = true,
+			bool externalStationColumn = false,
+			MeshYScaleMode yScaleMode = MeshYScaleMode.LinearPk,
+			string? selectedTechnicalId = null)
 		{
 			return new MeshSvgDrawOptions(
 				showCantonOccupations,
@@ -98,12 +116,15 @@ namespace Diamond.Web.Rendering
 				showTrackStrip,
 				showNowLine,
 				nowTime,
-				maxPolylineSamples);
+				maxPolylineSamples,
+				showStationLabels,
+				externalStationColumn,
+				yScaleMode,
+				selectedTechnicalId);
 		}
 
 		/// <summary>
-		/// Variante ligera para pan/zoom: respeta capas del usuario salvo ocupaciones/números
-		/// (caras) y reduce el muestreo de polilíneas.
+		/// Variante ligera para pan/zoom: omite ocupaciones/numeros y reduce muestreo.
 		/// </summary>
 		public MeshSvgDrawOptions ForInteractiveLod()
 		{
@@ -116,7 +137,11 @@ namespace Diamond.Web.Rendering
 				showTrackStrip: mvarShowTrackStrip,
 				showNowLine: mvarShowNowLine,
 				nowTime: mvarNowTime,
-				maxPolylineSamples: 16);
+				maxPolylineSamples: 16,
+				showStationLabels: mvarShowStationLabels,
+				externalStationColumn: mvarExternalStationColumn,
+				yScaleMode: mvarYScaleMode,
+				selectedTechnicalId: mvarSelectedTechnicalId);
 		}
 
 		public bool ShowCantonOccupations
@@ -159,7 +184,34 @@ namespace Diamond.Web.Rendering
 			get { return mvarNowTime; }
 		}
 
-		/// <summary>Tope de segmentos por polilínea (además del presupuesto por píxeles).</summary>
+		/// <summary>Etiquetas de estacion dentro del SVG (false si usa control StationRuler).</summary>
+		public bool ShowStationLabels
+		{
+			get { return mvarShowStationLabels; }
+		}
+
+		/// <summary>Geometria SVG sin hueco izquierdo de estaciones (columna externa).</summary>
+		public bool ExternalStationColumn
+		{
+			get { return mvarExternalStationColumn; }
+		}
+
+		/// <summary>Escala del eje espacial (PK lineal o escalonada por singulares).</summary>
+		public MeshYScaleMode YScaleMode
+		{
+			get { return mvarYScaleMode; }
+		}
+
+		/// <summary>
+		/// <see cref="Diamond.Timed.Circulation.TechnicalId"/> de la circulación seleccionada
+		/// (resaltado de traza). Null = ninguna.
+		/// </summary>
+		public string? SelectedTechnicalId
+		{
+			get { return mvarSelectedTechnicalId; }
+		}
+
+		/// <summary>Tope de segmentos por polilinea.</summary>
 		public int MaxPolylineSamples
 		{
 			get { return mvarMaxPolylineSamples; }

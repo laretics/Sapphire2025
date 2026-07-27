@@ -12,8 +12,8 @@ namespace Diamond.Timed
 	///   asim PMI -> MAN numbers 49## color #38bdf8
 	///   asim PMI -> MTX numbers P##MTX color orange
 	/// </code>
-	/// El corredor es no dirigido (PMI→MAN ≡ MAN→PMI). Impares/pares (o P1/P3…)
-	/// siguen el sentido de marcha.
+	/// El OD es <strong>dirigido</strong>: <c>PMI -&gt; MAN</c> y <c>MAN -&gt; PMI</c>
+	/// son asimilaciones distintas (pueden llevar <c>numbers</c>/<c>color</c> distintos).
 	/// </remarks>
 	public sealed class DemandAsimilationDef
 	{
