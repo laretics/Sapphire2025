@@ -135,22 +135,99 @@ namespace Diamond.Rauta
 
 	public sealed class TopoAsimilationTemplate
 	{
-		public string Id { get; set; } = string.Empty;
-		public string Name { get; set; } = string.Empty;
-		public string OriginName { get; set; } = string.Empty;
-		public string OriginCode { get; set; } = string.Empty;
-		public string DestinationName { get; set; } = string.Empty;
-		public string DestinationCode { get; set; } = string.Empty;
-		public string Comment { get; set; } = string.Empty;
-		public string Color { get; set; } = string.Empty;
-		public List<TopoAsimilationTrip> Trips { get; } = new List<TopoAsimilationTrip>();
+		private string mvarId = string.Empty;
+		private string mvarName = string.Empty;
+		private string mvarOriginName = string.Empty;
+		private string mvarOriginCode = string.Empty;
+		private string mvarDestinationName = string.Empty;
+		private string mvarDestinationCode = string.Empty;
+		private string mvarComment = string.Empty;
+		private string mvarColor = string.Empty;
+		private readonly List<TopoAsimilationTrip> mcolTrips = new List<TopoAsimilationTrip>();
+
+		public string Id
+		{
+			get { return mvarId; }
+			set { mvarId = value ?? string.Empty; }
+		}
+
+		public string Name
+		{
+			get { return mvarName; }
+			set { mvarName = value ?? string.Empty; }
+		}
+
+		public string OriginName
+		{
+			get { return mvarOriginName; }
+			set { mvarOriginName = value ?? string.Empty; }
+		}
+
+		public string OriginCode
+		{
+			get { return mvarOriginCode; }
+			set { mvarOriginCode = value ?? string.Empty; }
+		}
+
+		public string DestinationName
+		{
+			get { return mvarDestinationName; }
+			set { mvarDestinationName = value ?? string.Empty; }
+		}
+
+		public string DestinationCode
+		{
+			get { return mvarDestinationCode; }
+			set { mvarDestinationCode = value ?? string.Empty; }
+		}
+
+		public string Comment
+		{
+			get { return mvarComment; }
+			set { mvarComment = value ?? string.Empty; }
+		}
+
+		public string Color
+		{
+			get { return mvarColor; }
+			set { mvarColor = value ?? string.Empty; }
+		}
+
+		public List<TopoAsimilationTrip> Trips
+		{
+			get { return mcolTrips; }
+		}
 	}
 
 	public sealed class TopoAsimilationTrip
 	{
-		public string StationName { get; set; } = string.Empty;
-		public string DestCode { get; set; } = string.Empty;
-		public TimeSpan RunTime { get; set; }
-		public TimeSpan Dwell { get; set; }
+		private string mvarStationName = string.Empty;
+		private string mvarDestCode = string.Empty;
+		private TimeSpan mvarRunTime;
+		private TimeSpan mvarDwell;
+
+		public string StationName
+		{
+			get { return mvarStationName; }
+			set { mvarStationName = value ?? string.Empty; }
+		}
+
+		public string DestCode
+		{
+			get { return mvarDestCode; }
+			set { mvarDestCode = value ?? string.Empty; }
+		}
+
+		public TimeSpan RunTime
+		{
+			get { return mvarRunTime; }
+			set { mvarRunTime = value; }
+		}
+
+		public TimeSpan Dwell
+		{
+			get { return mvarDwell; }
+			set { mvarDwell = value; }
+		}
 	}
 }

@@ -69,7 +69,7 @@
 		var reStringOpen = /\"/;
 		var reArrow = /->/;
 		var reKeyword = new RegExp(
-			"\\b(?:plan|require|req|delete|del|all|any|overlap|journey|both|ways|using|as|from|to|days|on|stops|skip|dwell|cross|at|color|colour|with|con|region|every|min|mins|minutes|per|hour|hours)\\b"
+			"\\b(?:plan|require|req|delete|del|asim|asimilacion|asimilation|numbers|number|nums|num|serie|series|numeracion|all|any|overlap|journey|both|ways|using|as|from|to|days|on|stops|skip|dwell|cross|at|color|colour|with|con|region|every|min|mins|minutes|per|hour|hours)\\b"
 		);
 		var reHexColor = /#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/;
 		var reDay = new RegExp(
@@ -238,18 +238,47 @@
 	 * Marca errores/avisos en el modelo Monaco activo (como un IDE).
 	 * markers: [{ line, column?, endLine?, endColumn?, message, severity: 'error'|'warning'|'info' }]
 	 */
+	function resolveDemandModel() {
+		var models = monaco.editor.getModels();
+		if (!models || models.length === 0) {
+			return null;
+		}
+
+		var i;
+		for (i = 0; i < models.length; i++) {
+			var lang = "";
+			try {
+				lang = models[i].getLanguageId ? models[i].getLanguageId() : "";
+			} catch (e) {
+				lang = "";
+			}
+			if (lang === "diamond-demand") {
+				return models[i];
+			}
+		}
+
+		// Preferir el modelo del editor id diamond-demand-editor si existe
+		try {
+			var ed = monaco.editor.getEditors
+				? monaco.editor.getEditors()
+				: (monaco.editor.getEditors ? monaco.editor.getEditors() : null);
+		} catch (e2) {
+		}
+
+		return models[models.length - 1];
+	}
+
 	function setMarkers(markers) {
 		if (typeof monaco === "undefined" || !monaco.editor) {
 			return false;
 		}
 
 		var list = markers || [];
-		var models = monaco.editor.getModels();
-		if (!models || models.length === 0) {
+		var model = resolveDemandModel();
+		if (!model) {
 			return false;
 		}
 
-		var model = models[0];
 		var monacoMarkers = [];
 		var i;
 		for (i = 0; i < list.length; i++) {
@@ -304,15 +333,143 @@
 	}
 
 	function clearMarkers() {
-		return setMarkers([]);
+		if (typeof monaco === "undefined" || !monaco.editor) {
+			return false;
+		}
+
+		// Limpiar en todos los modelos (evita marcadores fantasma de un plan anterior).
+		var models = monaco.editor.getModels();
+		var i;
+		if (models) {
+			for (i = 0; i < models.length; i++) {
+				monaco.editor.setModelMarkers(models[i], "diamond-demand", []);
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Fuerza layout del editor BlazorMonaco (id del host, p. ej. diamond-demand-editor).
+	 * Importante: NO tocar host.style.height (provoca bucle con ResizeObserver y tumba el circuito).
+	 */
+	function layoutEditor(editorId) {
+		var laid = false;
+
+		// 1) Registro de BlazorMonaco (API real del paquete)
+		try {
+			if (window.blazorMonaco && window.blazorMonaco.editor && editorId) {
+				var held = window.blazorMonaco.editor.getEditor(editorId, true);
+				if (held) {
+					held.layout();
+					laid = true;
+				}
+			}
+		} catch (e0) {
+			// ignore
+		}
+
+		if (laid || typeof monaco === "undefined" || !monaco.editor) {
+			return laid;
+		}
+
+		// 2) Fallback genérico Monaco (si existe getEditors)
+		var host = editorId ? document.getElementById(editorId) : null;
+		var editors = [];
+		try {
+			if (typeof monaco.editor.getEditors === "function") {
+				editors = monaco.editor.getEditors() || [];
+			}
+		} catch (e) {
+			editors = [];
+		}
+
+		var i;
+		for (i = 0; i < editors.length; i++) {
+			try {
+				var ed = editors[i];
+				var dom = ed && ed.getDomNode ? ed.getDomNode() : null;
+				if (host && dom && !host.contains(dom) && dom !== host) {
+					continue;
+				}
+				ed.layout();
+				laid = true;
+			} catch (e2) {
+				// ignore
+			}
+		}
+
+		return laid;
+	}
+
+	/**
+	 * Observa el contenedor del editor y llama layout cuando cambia de tamaño
+	 * (split, aparición de panel de errores, etc.). Debounce + sin reentrada.
+	 */
+	function watchLayout(editorId) {
+		var host = editorId ? document.getElementById(editorId) : null;
+		if (!host || typeof ResizeObserver === "undefined") {
+			layoutEditor(editorId);
+			return false;
+		}
+
+		if (host._diamondMonacoRo) {
+			layoutEditor(editorId);
+			return true;
+		}
+
+		var pending = null;
+		var running = false;
+
+		function scheduleLayout() {
+			if (pending !== null) {
+				return;
+			}
+			pending = setTimeout(function () {
+				pending = null;
+				if (running) {
+					return;
+				}
+				running = true;
+				try {
+					layoutEditor(editorId);
+				} finally {
+					running = false;
+				}
+			}, 40);
+		}
+
+		var ro = new ResizeObserver(function () {
+			scheduleLayout();
+		});
+		// Observar el padre flex (cambia con el split); el host suele heredar tamaño.
+		var target = host.parentElement || host;
+		ro.observe(target);
+		host._diamondMonacoRo = ro;
+
+		// Intentos tras montaje (layout flex a veces llega en frames posteriores).
+		layoutEditor(editorId);
+		requestAnimationFrame(function () {
+			layoutEditor(editorId);
+			setTimeout(function () {
+				layoutEditor(editorId);
+			}, 80);
+			setTimeout(function () {
+				layoutEditor(editorId);
+			}, 250);
+		});
+		return true;
 	}
 
 	window.diamondMonaco = {
+		// Alias históricos / C# interop
+		ensure: ensureLanguageAsync,
 		ensureLanguage: function () {
 			return registerNow();
 		},
 		ensureLanguageAsync: ensureLanguageAsync,
 		applyToEditor: applyToEditorAsync,
+		layout: layoutEditor,
+		watchLayout: watchLayout,
 		setMarkers: setMarkers,
 		clearMarkers: clearMarkers
 	};

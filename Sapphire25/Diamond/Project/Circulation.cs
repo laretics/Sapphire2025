@@ -13,7 +13,7 @@ namespace Diamond.Project
 		private readonly string mvarId;
 		private readonly string mvarTechnicalId;
 		private readonly string mvarDemandId;
-		private readonly int mvarServiceNumber;
+		private readonly string mvarServiceNumber;
 		private readonly TimeSpan mvarDeparture;
 		private readonly string mvarColor;
 		private readonly Asimilation mvarAsimilation;
@@ -23,7 +23,7 @@ namespace Diamond.Project
 			string id,
 			string technicalId,
 			string demandId,
-			int serviceNumber,
+			string serviceNumber,
 			TimeSpan departure,
 			string color,
 			Asimilation asimilation)
@@ -36,7 +36,7 @@ namespace Diamond.Project
 			mvarId = id ?? string.Empty;
 			mvarTechnicalId = technicalId ?? string.Empty;
 			mvarDemandId = demandId ?? string.Empty;
-			mvarServiceNumber = serviceNumber;
+			mvarServiceNumber = serviceNumber ?? string.Empty;
 			mvarDeparture = departure;
 			mvarColor = color ?? string.Empty;
 			mvarAsimilation = asimilation;
@@ -72,9 +72,14 @@ namespace Diamond.Project
 			get { return mvarDemandId; }
 		}
 
-		public int ServiceNumber
+		public string ServiceNumber
 		{
 			get { return mvarServiceNumber; }
+		}
+
+		public bool HasServiceNumber
+		{
+			get { return mvarServiceNumber.Length > 0; }
 		}
 
 		public TimeSpan Departure
@@ -120,8 +125,8 @@ namespace Diamond.Project
 
 		public override string ToString()
 		{
-			string num = mvarServiceNumber > 0
-				? mvarServiceNumber.ToString(CultureInfo.InvariantCulture)
+			string num = mvarServiceNumber.Length > 0
+				? mvarServiceNumber
 				: mvarId;
 			return num + " " + Origin.DisplayCode + "→" + Destination.DisplayCode
 				+ " dep " + FormatClock(mvarDeparture);

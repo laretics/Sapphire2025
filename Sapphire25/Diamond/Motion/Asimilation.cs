@@ -238,8 +238,19 @@ namespace Diamond.Motion
 		/// <summary>
 		/// Instantes relativos a la salida en el PK de ruta <paramref name="pk"/>
 		/// (interpolación sobre el perfil). Fuera de ruta devuelve null.
+		/// En una parada comercial intermedia, el valor es el de <strong>salida</strong>
+		/// de la estación (tras el dwell).
 		/// </summary>
 		public TimeSpan? TimeByPK(long pk)
+		{
+			return TimeDepartByPK(pk);
+		}
+
+		/// <summary>
+		/// Instante relativo en el que el tren <strong>sale</strong> del PK
+		/// (tras dwell si hay parada comercial en ese punto).
+		/// </summary>
+		public TimeSpan? TimeDepartByPK(long pk)
 		{
 			EnsureBuilt();
 			if (mcolSamplePk.Length == 0)
@@ -272,9 +283,125 @@ namespace Diamond.Motion
 				return TimeSpan.FromSeconds(t0);
 			}
 
+			// Si el PK cae exactamente en una parada con dwell, devolver el tiempo post-dwell
+			// (samples[i] ya lo almacena en t0 cuando pk0==pk).
+			if (pk == pk0)
+			{
+				return TimeSpan.FromSeconds(t0);
+			}
+
+			// Entre muestras: el tramo de movimiento termina a la llegada a pk1 (antes del dwell).
+			// timeSec[i+1] incluye dwell; restamos dwell de pk1 para interpolar solo el movimiento.
+			double dwellNext = DwellSecondsAtPk(pk1);
+			double t1Arrive = t1 - dwellNext;
+			if (t1Arrive < t0)
+			{
+				t1Arrive = t0;
+			}
+
 			double u = (double)(pk - pk0) / (double)(pk1 - pk0);
-			double seconds = t0 + u * (t1 - t0);
+			double seconds = t0 + u * (t1Arrive - t0);
 			return TimeSpan.FromSeconds(seconds);
+		}
+
+		/// <summary>
+		/// Instante relativo en el que el tren <strong>llega</strong> al PK
+		/// (antes del dwell si hay parada comercial en ese punto).
+		/// </summary>
+		public TimeSpan? TimeArriveByPK(long pk)
+		{
+			TimeSpan? depart = TimeDepartByPK(pk);
+			if (!depart.HasValue)
+			{
+				return null;
+			}
+
+			double dwell = DwellSecondsAtPk(pk);
+			if (dwell <= 0.0)
+			{
+				return depart;
+			}
+
+			TimeSpan arrive = depart.Value - TimeSpan.FromSeconds(dwell);
+			if (arrive < TimeSpan.Zero)
+			{
+				return TimeSpan.Zero;
+			}
+
+			return arrive;
+		}
+
+		/// <summary>
+		/// Dwell comercial en el PK (solo paradas intermedias modeladas). Cero si no hay parada.
+		/// </summary>
+		public TimeSpan DwellAtPk(long pk)
+		{
+			return TimeSpan.FromSeconds(DwellSecondsAtPk(pk));
+		}
+
+		/// <summary>
+		/// True si en ese PK hay una parada comercial en estación principal
+		/// (AVR con letras en mayúsculas) con dwell &gt; 0: el tren no ocupa cantón de vía.
+		/// </summary>
+		public bool IsPrincipalStationDwellPk(long pk)
+		{
+			int index = 0;
+			while (index < mcolStops.Count)
+			{
+				AsimilationStop stop = mcolStops[index];
+				if (stop.PK == pk
+					&& stop.Dwell > TimeSpan.Zero
+					&& StationClassification.IsPrincipalStation(stop.Placement.Station))
+				{
+					return true;
+				}
+
+				index++;
+			}
+
+			return false;
+		}
+
+		/// <summary>
+		/// Paradas intermedias con dwell en estación principal, en orden de marcha.
+		/// </summary>
+		public IReadOnlyList<AsimilationStop> PrincipalStationStopsWithDwell
+		{
+			get
+			{
+				List<AsimilationStop> list = new List<AsimilationStop>();
+				int index = 0;
+				while (index < mcolStops.Count)
+				{
+					AsimilationStop stop = mcolStops[index];
+					if (stop.Dwell > TimeSpan.Zero
+						&& StationClassification.IsPrincipalStation(stop.Placement.Station))
+					{
+						list.Add(stop);
+					}
+
+					index++;
+				}
+
+				return list;
+			}
+		}
+
+		private double DwellSecondsAtPk(long pk)
+		{
+			int index = 0;
+			while (index < mcolStops.Count)
+			{
+				AsimilationStop stop = mcolStops[index];
+				if (stop.PK == pk)
+				{
+					return stop.Dwell.TotalSeconds;
+				}
+
+				index++;
+			}
+
+			return 0.0;
 		}
 
 		/// <summary>

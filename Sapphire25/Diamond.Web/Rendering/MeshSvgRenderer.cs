@@ -12,6 +12,9 @@ namespace Diamond.Web.Rendering
 	/// </summary>
 	public static class MeshSvgRenderer
 	{
+		/// <summary>Celda (px) para no superponer números de tren densos.</summary>
+		private const double TrainNumberCellPx = 40.0;
+
 		public static string Render(
 			Mesh mesh,
 			RouteView view,
@@ -23,10 +26,20 @@ namespace Diamond.Web.Rendering
 			int height = 720,
 			bool showCantonOccupations = true)
 		{
+			MeshSvgDrawOptions options = MeshSvgDrawOptions.Full;
+			if (!showCantonOccupations)
+			{
+				options = new MeshSvgDrawOptions(
+					showCantonOccupations: false,
+					showTrainNumbers: options.ShowTrainNumbers,
+					showConflicts: options.ShowConflicts,
+					maxPolylineSamples: options.MaxPolylineSamples);
+			}
+
 			StringBuilder sb = new StringBuilder();
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" viewBox=\"0 0 {width} {height}\">");
-			sb.Append(RenderContent(mesh, view, timeStart, timeEnd, pkMin, pkMax, width, height, showCantonOccupations));
+			sb.Append(RenderContent(mesh, view, timeStart, timeEnd, pkMin, pkMax, width, height, options));
 			sb.Append("</svg>");
 			return sb.ToString();
 		}
@@ -64,6 +77,33 @@ namespace Diamond.Web.Rendering
 			int height = 720,
 			bool showCantonOccupations = true)
 		{
+			MeshSvgDrawOptions options = MeshSvgDrawOptions.Full;
+			if (!showCantonOccupations)
+			{
+				options = new MeshSvgDrawOptions(
+					showCantonOccupations: false,
+					showTrainNumbers: options.ShowTrainNumbers,
+					showConflicts: options.ShowConflicts,
+					maxPolylineSamples: options.MaxPolylineSamples);
+			}
+
+			return RenderContent(mesh, view, timeStart, timeEnd, pkMin, pkMax, width, height, options);
+		}
+
+		/// <summary>
+		/// Contenido SVG con control fino de capas (p. ej. modo interactivo en pan/zoom).
+		/// </summary>
+		public static string RenderContent(
+			Mesh mesh,
+			RouteView view,
+			TimeSpan timeStart,
+			TimeSpan timeEnd,
+			long pkMin,
+			long pkMax,
+			int width,
+			int height,
+			MeshSvgDrawOptions options)
+		{
 			if (mesh is null)
 			{
 				throw new ArgumentNullException(nameof(mesh));
@@ -91,56 +131,72 @@ namespace Diamond.Web.Rendering
 				t1 = t0 + 3600;
 			}
 
-			StringBuilder sb = new StringBuilder();
+			StringBuilder sb = new StringBuilder(64 * 1024);
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<rect x=\"0\" y=\"0\" width=\"{width}\" height=\"{height}\" fill=\"#0f1419\"/>");
 
+			// Defs reutilizables (reloj actual, clip)
+			string clipId = "plotClip";
+			sb.Append("<defs>");
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<clipPath id=\"{clipId}\"><rect x=\"{plotLeft}\" y=\"{plotTop}\" width=\"{plotW}\" height=\"{plotH}\"/></clipPath>");
+			sb.Append(
+				"<linearGradient id=\"meshNowGrad\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">"
+				+ "<stop offset=\"0%\" stop-color=\"#67e8f9\" stop-opacity=\"0.15\"/>"
+				+ "<stop offset=\"50%\" stop-color=\"#22d3ee\" stop-opacity=\"0.95\"/>"
+				+ "<stop offset=\"100%\" stop-color=\"#67e8f9\" stop-opacity=\"0.15\"/>"
+				+ "</linearGradient>");
+			sb.Append("</defs>");
+
 			// —— Franjas V y # (solo PK de ruta visible) ——
-			List<SpeedBand> speedBands = BuildSpeedBands(view, pkMin, pkMax);
 			SortedSet<int> speedsUsed = new SortedSet<int>();
-			int bi = 0;
-			while (bi < speedBands.Count)
+			if (options.ShowSpeedStrip)
 			{
-				SpeedBand band = speedBands[bi];
-				speedsUsed.Add(band.SpeedKmh);
-				AppendPkBandRect(
-					sb, speedStripX, stripW,
-					band.PkStart, band.PkEnd, pkMin, pkMax, plotTop, plotH,
-					SpeedToColor(band.SpeedKmh),
-					band.SpeedKmh + " km/h · " + FormatPk(band.PkStart) + "–" + FormatPk(band.PkEnd));
-				bi++;
+				List<SpeedBand> speedBands = BuildSpeedBands(view, pkMin, pkMax);
+				int bi = 0;
+				while (bi < speedBands.Count)
+				{
+					SpeedBand band = speedBands[bi];
+					speedsUsed.Add(band.SpeedKmh);
+					AppendPkBandRect(
+						sb, speedStripX, stripW,
+						band.PkStart, band.PkEnd, pkMin, pkMax, plotTop, plotH,
+						SpeedToColor(band.SpeedKmh),
+						band.SpeedKmh + " km/h · " + FormatPk(band.PkStart) + "–" + FormatPk(band.PkEnd));
+					bi++;
+				}
+
+				sb.Append(CultureInfo.InvariantCulture,
+					$"<rect x=\"{speedStripX}\" y=\"{plotTop}\" width=\"{stripW}\" height=\"{plotH}\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"1\"/>");
+				sb.Append(CultureInfo.InvariantCulture,
+					$"<text x=\"{speedStripX + stripW / 2}\" y=\"{plotTop - 8}\" fill=\"#94a3b8\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\">V</text>");
 			}
 
-			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{speedStripX}\" y=\"{plotTop}\" width=\"{stripW}\" height=\"{plotH}\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"1\"/>");
-			sb.Append(CultureInfo.InvariantCulture,
-				$"<text x=\"{speedStripX + stripW / 2}\" y=\"{plotTop - 8}\" fill=\"#94a3b8\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\">V</text>");
-
-			List<TrackBand> trackBands = BuildTrackBands(view, pkMin, pkMax);
-			int ti = 0;
-			while (ti < trackBands.Count)
+			if (options.ShowTrackStrip)
 			{
-				TrackBand band = trackBands[ti];
-				string trackTitle = band.TrackCount >= 2
-					? "Doble vía (" + band.TrackCount + ") · " + FormatPk(band.PkStart) + "–" + FormatPk(band.PkEnd)
-					: "Vía única · " + FormatPk(band.PkStart) + "–" + FormatPk(band.PkEnd);
-				AppendPkBandRect(
-					sb, trackStripX, stripW,
-					band.PkStart, band.PkEnd, pkMin, pkMax, plotTop, plotH,
-					TrackCountToColor(band.TrackCount),
-					trackTitle);
-				ti++;
-			}
+				List<TrackBand> trackBands = BuildTrackBands(view, pkMin, pkMax);
+				int ti = 0;
+				while (ti < trackBands.Count)
+				{
+					TrackBand band = trackBands[ti];
+					string trackTitle = band.TrackCount >= 2
+						? "Doble vía (" + band.TrackCount + ") · " + FormatPk(band.PkStart) + "–" + FormatPk(band.PkEnd)
+						: "Vía única · " + FormatPk(band.PkStart) + "–" + FormatPk(band.PkEnd);
+					AppendPkBandRect(
+						sb, trackStripX, stripW,
+						band.PkStart, band.PkEnd, pkMin, pkMax, plotTop, plotH,
+						TrackCountToColor(band.TrackCount),
+						trackTitle);
+					ti++;
+				}
 
-			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{trackStripX}\" y=\"{plotTop}\" width=\"{stripW}\" height=\"{plotH}\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"1\"/>");
-			sb.Append(CultureInfo.InvariantCulture,
-				$"<text x=\"{trackStripX + stripW / 2}\" y=\"{plotTop - 8}\" fill=\"#94a3b8\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\">#</text>");
+				sb.Append(CultureInfo.InvariantCulture,
+					$"<rect x=\"{trackStripX}\" y=\"{plotTop}\" width=\"{stripW}\" height=\"{plotH}\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"1\"/>");
+				sb.Append(CultureInfo.InvariantCulture,
+					$"<text x=\"{trackStripX + stripW / 2}\" y=\"{plotTop - 8}\" fill=\"#94a3b8\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\">#</text>");
+			}
 
 			// —— Plot (fondo + clip) ——
-			string clipId = "plotClip";
-			sb.Append(CultureInfo.InvariantCulture,
-				$"<defs><clipPath id=\"{clipId}\"><rect x=\"{plotLeft}\" y=\"{plotTop}\" width=\"{plotW}\" height=\"{plotH}\"/></clipPath></defs>");
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<rect x=\"{plotLeft}\" y=\"{plotTop}\" width=\"{plotW}\" height=\"{plotH}\" fill=\"#1a2332\" stroke=\"#3d4f66\"/>");
 
@@ -149,17 +205,31 @@ namespace Diamond.Web.Rendering
 			// Grid horario (según ventana visible)
 			DrawTimeGrid(sb, t0, t1, plotLeft, plotTop, plotW, plotH);
 
-			// Ocupaciones de cantón
-			if (showCantonOccupations)
+			// Ocupaciones de cantón (costosas: se omiten en pan/zoom interactivo)
+			if (options.ShowCantonOccupations)
 			{
 				DrawOccupations(sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH);
 			}
 
-			// Circulaciones
-			int drawn = DrawCirculations(sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH);
+			// Circulaciones + números (si el detalle lo pide)
+			int drawn = 0;
+			if (options.ShowTrainPaths || options.ShowTrainNumbers)
+			{
+				drawn = DrawCirculations(
+					sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH, options);
+			}
 
 			// Conflictos: intersección roja + icono de aviso (encima de trazas)
-			DrawConflicts(sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH);
+			if (options.ShowConflicts)
+			{
+				DrawConflicts(sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH);
+			}
+
+			// Línea de hora actual (dentro del clip del plot)
+			if (options.ShowNowLine && options.NowTime.HasValue)
+			{
+				DrawNowLine(sb, options.NowTime.Value, t0, t1, plotLeft, plotTop, plotW, plotH, drawChrome: false);
+			}
 
 			sb.Append("</g>");
 
@@ -173,9 +243,28 @@ namespace Diamond.Web.Rendering
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<rect x=\"{plotLeft}\" y=\"{plotTop}\" width=\"{plotW}\" height=\"{plotH}\" fill=\"none\" stroke=\"#3d4f66\" stroke-width=\"1.2\"/>");
 
+			// Cabecera/badge del reloj actual (fuera del clip, encima del marco)
+			if (options.ShowNowLine && options.NowTime.HasValue)
+			{
+				DrawNowLine(sb, options.NowTime.Value, t0, t1, plotLeft, plotTop, plotW, plotH, drawChrome: true);
+			}
+
 			// Leyendas
-			DrawSpeedLegend(sb, speedsUsed, plotLeft + plotW - 8, plotTop + 8);
-			DrawTrackLegend(sb, plotLeft + plotW - 8, plotTop + 8 + 12 + Math.Max(1, speedsUsed.Count) * 14 + 16);
+			if (options.ShowSpeedStrip)
+			{
+				DrawSpeedLegend(sb, speedsUsed, plotLeft + plotW - 8, plotTop + 8);
+			}
+
+			if (options.ShowTrackStrip)
+			{
+				double legendTop = plotTop + 8;
+				if (options.ShowSpeedStrip)
+				{
+					legendTop = plotTop + 8 + 12 + Math.Max(1, speedsUsed.Count) * 14 + 16;
+				}
+
+				DrawTrackLegend(sb, plotLeft + plotW - 8, legendTop);
+			}
 
 			string title = "View " + view.Id + " · " + view.Name
 				+ " — " + drawn + " circ. visibles"
@@ -243,6 +332,101 @@ namespace Diamond.Web.Rendering
 					$"<line x1=\"{x}\" y1=\"{plotTop}\" x2=\"{x}\" y2=\"{plotTop + plotH}\" stroke=\"{stroke}\" stroke-width=\"1\"/>");
 				t += stepSec;
 			}
+		}
+
+		/// <summary>
+		/// Línea vertical de "ahora". <paramref name="drawChrome"/> false = solo el trazo en el plot;
+		/// true = cabecera/badge de hora (fuera del clip).
+		/// </summary>
+		private static void DrawNowLine(
+			StringBuilder sb,
+			TimeSpan now,
+			double t0,
+			double t1,
+			double plotLeft,
+			double plotTop,
+			double plotW,
+			double plotH,
+			bool drawChrome)
+		{
+			double nowSec = now.TotalSeconds;
+			if (nowSec < t0 || nowSec > t1 || t1 <= t0)
+			{
+				return;
+			}
+
+			double x = plotLeft + (nowSec - t0) / (t1 - t0) * plotW;
+			string xs = x.ToString("0.##", CultureInfo.InvariantCulture);
+			string y0s = plotTop.ToString("0.##", CultureInfo.InvariantCulture);
+			string y1s = (plotTop + plotH).ToString("0.##", CultureInfo.InvariantCulture);
+			string clock = FormatClockWithSeconds(now);
+
+			if (!drawChrome)
+			{
+				// Halo suave + núcleo (estilo "faro" cyan)
+				sb.Append(CultureInfo.InvariantCulture,
+					$"<line x1=\"{xs}\" y1=\"{y0s}\" x2=\"{xs}\" y2=\"{y1s}\" stroke=\"#22d3ee\" stroke-width=\"10\" stroke-opacity=\"0.08\"/>");
+				sb.Append(CultureInfo.InvariantCulture,
+					$"<line x1=\"{xs}\" y1=\"{y0s}\" x2=\"{xs}\" y2=\"{y1s}\" stroke=\"#22d3ee\" stroke-width=\"3.5\" stroke-opacity=\"0.28\"/>");
+				sb.Append(CultureInfo.InvariantCulture,
+					$"<line x1=\"{xs}\" y1=\"{y0s}\" x2=\"{xs}\" y2=\"{y1s}\" stroke=\"url(#meshNowGrad)\" stroke-width=\"1.6\" stroke-dasharray=\"7 5\" stroke-linecap=\"round\"/>");
+				// Marca inferior en forma de chevron
+				double cy = plotTop + plotH - 2;
+				sb.Append(CultureInfo.InvariantCulture,
+					$"<polygon points=\"{xs},{(cy - 7).ToString("0.##", CultureInfo.InvariantCulture)} {(x - 5).ToString("0.##", CultureInfo.InvariantCulture)},{cy.ToString("0.##", CultureInfo.InvariantCulture)} {(x + 5).ToString("0.##", CultureInfo.InvariantCulture)},{cy.ToString("0.##", CultureInfo.InvariantCulture)}\" fill=\"#22d3ee\" fill-opacity=\"0.9\"/>");
+				return;
+			}
+
+			// Badge superior con la hora
+			const double badgeW = 64;
+			const double badgeH = 18;
+			double badgeX = x - badgeW * 0.5;
+			double badgeY = plotTop - badgeH - 4;
+			if (badgeX < plotLeft)
+			{
+				badgeX = plotLeft;
+			}
+
+			if (badgeX + badgeW > plotLeft + plotW)
+			{
+				badgeX = plotLeft + plotW - badgeW;
+			}
+
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<g class=\"mesh-now-chrome\">");
+			// Pin superior
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<circle cx=\"{xs}\" cy=\"{(plotTop - 1).ToString("0.##", CultureInfo.InvariantCulture)}\" r=\"3.5\" fill=\"#67e8f9\" stroke=\"#0e7490\" stroke-width=\"1\"/>");
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<rect x=\"{badgeX.ToString("0.##", CultureInfo.InvariantCulture)}\" y=\"{badgeY.ToString("0.##", CultureInfo.InvariantCulture)}\" width=\"{badgeW.ToString("0.##", CultureInfo.InvariantCulture)}\" height=\"{badgeH.ToString("0.##", CultureInfo.InvariantCulture)}\" rx=\"5\" ry=\"5\" fill=\"#0c4a6e\" fill-opacity=\"0.92\" stroke=\"#22d3ee\" stroke-width=\"1\"/>");
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<text x=\"{(badgeX + badgeW * 0.5).ToString("0.##", CultureInfo.InvariantCulture)}\" y=\"{(badgeY + 12.5).ToString("0.##", CultureInfo.InvariantCulture)}\" fill=\"#ecfeff\" font-size=\"11\" font-weight=\"700\" font-family=\"Segoe UI,Consolas,monospace\" text-anchor=\"middle\">{Escape(clock)}</text>");
+			sb.Append("</g>");
+		}
+
+		private static string FormatClockWithSeconds(TimeSpan ts)
+		{
+			int h = (int)ts.TotalHours;
+			if (h < 0)
+			{
+				h = 0;
+			}
+
+			int m = ts.Minutes;
+			if (m < 0)
+			{
+				m = 0;
+			}
+
+			int s = ts.Seconds;
+			if (s < 0)
+			{
+				s = 0;
+			}
+
+			return h.ToString("00", CultureInfo.InvariantCulture)
+				+ ":" + m.ToString("00", CultureInfo.InvariantCulture)
+				+ ":" + s.ToString("00", CultureInfo.InvariantCulture);
 		}
 
 		private static void DrawTimeRuler(
@@ -496,7 +680,8 @@ namespace Diamond.Web.Rendering
 			double plotLeft,
 			double plotTop,
 			double plotW,
-			double plotH)
+			double plotH,
+			MeshSvgDrawOptions options)
 		{
 			// Un color por asimilación (mismo perfil de marcha → mismo color).
 			Dictionary<Asimilation, string> colorByAsim = BuildAsimilationColorMap(mesh);
@@ -509,6 +694,16 @@ namespace Diamond.Web.Rendering
 			while (ci < mesh.Circulations.Count)
 			{
 				Circulation c = mesh.Circulations[ci];
+
+				// Cull barato por tiempo antes de proyectar la traza.
+				double depSec = c.Departure.TotalSeconds;
+				double arrSec = c.Arrival.TotalSeconds;
+				if (arrSec < t0 || depSec > t1)
+				{
+					ci++;
+					continue;
+				}
+
 				if (!MeshCantonGeometry.IsVisibleOnView(c.Asimilation, view))
 				{
 					ci++;
@@ -528,46 +723,86 @@ namespace Diamond.Web.Rendering
 
 				double labelX;
 				double labelY;
+				bool wantLabel = options.ShowTrainNumbers;
 				string points = BuildPolylinePoints(
-					c, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH,
+					c, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH,
+					options.MaxPolylineSamples,
+					wantLabel,
 					out labelX, out labelY);
-				if (points.Length > 0)
+				if (points.Length > 0 || !double.IsNaN(labelX))
 				{
-					string numberText = c.ServiceNumber > 0
-						? c.ServiceNumber.ToString(CultureInfo.InvariantCulture)
+					string numberText = c.HasServiceNumber
+						? c.ServiceNumber
 						: c.Id;
 					string tip = numberText
 						+ " · salida " + FormatClock(c.Departure)
 						+ " · ll. " + FormatClock(c.Arrival);
 
-					sb.Append(CultureInfo.InvariantCulture,
-						$"<polyline fill=\"none\" stroke=\"{color}\" stroke-width=\"2\" points=\"{points}\">");
-					sb.Append(CultureInfo.InvariantCulture,
-						$"<title>{Escape(tip)}</title>");
-					sb.Append("</polyline>");
+					if (options.ShowTrainPaths && points.Length > 0)
+					{
+						sb.Append(CultureInfo.InvariantCulture,
+							$"<polyline fill=\"none\" stroke=\"{color}\" stroke-width=\"2\" points=\"{points}\">");
+						sb.Append(CultureInfo.InvariantCulture,
+							$"<title>{Escape(tip)}</title>");
+						sb.Append("</polyline>");
+						drawn++;
+					}
+					else if (!options.ShowTrainPaths && wantLabel && !double.IsNaN(labelX))
+					{
+						// Solo etiquetas: cuenta como visible para el título.
+						drawn++;
+					}
 
-					if (c.ServiceNumber > 0 && !double.IsNaN(labelX))
+					if (wantLabel
+						&& c.HasServiceNumber
+						&& !double.IsNaN(labelX))
 					{
 						labels.Add(new NumberLabel(labelX, labelY, numberText, color));
 					}
-
-					drawn++;
 				}
 
 				ci++;
 			}
 
-			// Números de tren sobre las trazas
+			if (options.ShowTrainNumbers)
+			{
+				AppendTrainNumberLabels(sb, labels);
+			}
+
+			return drawn;
+		}
+
+		/// <summary>
+		/// Dibuja números de tren con culling espacial barato (rejilla ~40 px) para no
+		/// saturar el SVG cuando hay muchas circulaciones en la ventana.
+		/// </summary>
+		private static void AppendTrainNumberLabels(StringBuilder sb, List<NumberLabel> labels)
+		{
+			if (labels.Count == 0)
+			{
+				return;
+			}
+
+			// Hash de celdas ocupadas: evita O(n²) y limita textos superpuestos.
+			HashSet<long> occupiedCells = new HashSet<long>();
 			int li = 0;
 			while (li < labels.Count)
 			{
 				NumberLabel lab = labels[li];
+				int cellX = (int)Math.Floor(lab.X / TrainNumberCellPx);
+				int cellY = (int)Math.Floor(lab.Y / TrainNumberCellPx);
+				long key = ((long)cellX << 32) ^ (uint)cellY;
+				if (!occupiedCells.Add(key))
+				{
+					li++;
+					continue;
+				}
+
+				// Halo ligero (stroke 2) en lugar de 3: suficiente legibilidad, menos coste de paint.
 				sb.Append(CultureInfo.InvariantCulture,
-					$"<text x=\"{lab.X.ToString("0.##", CultureInfo.InvariantCulture)}\" y=\"{lab.Y.ToString("0.##", CultureInfo.InvariantCulture)}\" fill=\"{lab.Color}\" stroke=\"#0f1419\" stroke-width=\"3\" paint-order=\"stroke fill\" font-size=\"11\" font-weight=\"700\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\" dominant-baseline=\"middle\">{Escape(lab.Text)}</text>");
+					$"<text x=\"{lab.X.ToString("0.#", CultureInfo.InvariantCulture)}\" y=\"{lab.Y.ToString("0.#", CultureInfo.InvariantCulture)}\" fill=\"{lab.Color}\" stroke=\"#0f1419\" stroke-width=\"2\" paint-order=\"stroke fill\" font-size=\"11\" font-weight=\"700\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\" dominant-baseline=\"middle\">{Escape(lab.Text)}</text>");
 				li++;
 			}
-
-			return drawn;
 		}
 
 		/// <summary>
@@ -934,8 +1169,16 @@ namespace Diamond.Web.Rendering
 			return station.Id;
 		}
 
+		/// <summary>
+		/// Construye la polilínea muestreando el tramo temporal de la ventana (con un margen)
+		/// y un presupuesto de muestras acotado por píxeles. Los puntos pueden caer fuera del
+		/// recuadro PK/tiempo: el <c>clipPath</c> del plot recorta; así los segmentos que
+		/// cruzan el borde superior/inferior/lateral llegan al límite en lugar de quedar cortados.
+		/// La etiqueta usa el punto medio solo de muestras interiores.
+		/// </summary>
 		private static string BuildPolylinePoints(
 			Circulation c,
+			RouteView displayView,
 			long pkMin,
 			long pkMax,
 			double t0,
@@ -944,6 +1187,8 @@ namespace Diamond.Web.Rendering
 			double plotTop,
 			double plotW,
 			double plotH,
+			int maxSamples,
+			bool wantLabel,
 			out double labelX,
 			out double labelY)
 		{
@@ -951,53 +1196,125 @@ namespace Diamond.Web.Rendering
 			labelY = double.NaN;
 
 			Asimilation asim = c.Asimilation;
-			StringBuilder pts = new StringBuilder();
-			const int steps = 160;
-			int visibleCount = 0;
-			double sumX = 0.0;
-			double sumY = 0.0;
+			double tripSec = asim.TotalTime.TotalSeconds;
+			if (tripSec <= 0.0)
+			{
+				return string.Empty;
+			}
+
+			double depSec = c.Departure.TotalSeconds;
+			double timeSpanSec = t1 - t0;
+			if (timeSpanSec < 1.0)
+			{
+				timeSpanSec = 1.0;
+			}
+
+			// Margen temporal (~2 % o 30 s) para que el clip lateral no deje el trazo a medias.
+			double timeMarginSec = timeSpanSec * 0.02;
+			if (timeMarginSec < 30.0)
+			{
+				timeMarginSec = 30.0;
+			}
+
+			if (timeMarginSec > timeSpanSec * 0.15)
+			{
+				timeMarginSec = timeSpanSec * 0.15;
+			}
+
+			double relStart = (t0 - timeMarginSec) - depSec;
+			double relEnd = (t1 + timeMarginSec) - depSec;
+			if (relStart < 0.0)
+			{
+				relStart = 0.0;
+			}
+
+			if (relEnd > tripSec)
+			{
+				relEnd = tripSec;
+			}
+
+			if (relEnd < relStart)
+			{
+				return string.Empty;
+			}
+
+			// Presupuesto: ~1 muestra cada ~10 px de anchura estimada de la traza en pantalla.
+			double sampleTimeSec = relEnd - relStart;
+			double approxWidthPx = (sampleTimeSec / timeSpanSec) * plotW;
+			int steps = (int)Math.Ceiling(approxWidthPx / 10.0);
+			if (steps < 12)
+			{
+				steps = 12;
+			}
+
+			if (steps > maxSamples)
+			{
+				steps = maxSamples;
+			}
+
+			StringBuilder pts = new StringBuilder(steps * 14);
+			int interiorCount = 0;
+			double firstInteriorX = 0.0;
+			double firstInteriorY = 0.0;
+			double lastInteriorX = 0.0;
+			double lastInteriorY = 0.0;
+			int emitted = 0;
+
 			int s = 0;
 			while (s <= steps)
 			{
 				double u = (double)s / steps;
-				TimeSpan rel = TimeSpan.FromSeconds(asim.TotalTime.TotalSeconds * u);
-				long pk = asim.PKByTime(rel);
-				double absSec = (c.Departure + rel).TotalSeconds;
-
-				if (absSec >= t0 && absSec <= t1 && pk >= pkMin && pk <= pkMax)
+				double relSec = relStart + (relEnd - relStart) * u;
+				long asimPk = asim.PKByTime(TimeSpan.FromSeconds(relSec));
+				// Proyectar al PK de la vista del diagrama (mismo corredor, inverso o tramo común).
+				long pk;
+				if (!displayView.TryMapRoutePkFrom(asim.View, asimPk, out pk))
 				{
-					double x = plotLeft + (absSec - t0) / (t1 - t0) * plotW;
-					double y = PkToY(pk, pkMin, pkMax, plotTop, plotH);
-					if (pts.Length > 0)
+					// Fuera del corredor de la vista (p. ej. T3 más allá de Enllaç en T3+T2).
+					s++;
+					continue;
+				}
+
+				double absSec = depSec + relSec;
+				double x = plotLeft + (absSec - t0) / timeSpanSec * plotW;
+				// Y puede quedar fuera del plot (pk fuera de [pkMin,pkMax]): el clip cierra el trazo al borde.
+				double y = PkToY(pk, pkMin, pkMax, plotTop, plotH);
+
+				if (emitted > 0)
+				{
+					pts.Append(' ');
+				}
+
+				pts.Append(x.ToString("0.#", CultureInfo.InvariantCulture));
+				pts.Append(',');
+				pts.Append(y.ToString("0.#", CultureInfo.InvariantCulture));
+				emitted++;
+
+				// Etiqueta solo con muestras en el interior del plot.
+				bool interior = absSec >= t0 && absSec <= t1 && pk >= pkMin && pk <= pkMax;
+				if (interior)
+				{
+					if (interiorCount == 0)
 					{
-						pts.Append(' ');
+						firstInteriorX = x;
+						firstInteriorY = y;
 					}
 
-					pts.Append(x.ToString("0.##", CultureInfo.InvariantCulture));
-					pts.Append(',');
-					pts.Append(y.ToString("0.##", CultureInfo.InvariantCulture));
-
-					// Centroide de muestras visibles ≈ punto de etiqueta.
-					sumX += x;
-					sumY += y;
-					visibleCount++;
-				}
-				else if (pts.Length > 0)
-				{
-					// Romper la polilínea al salir de la ventana
-					pts.Append(' ');
+					lastInteriorX = x;
+					lastInteriorY = y;
+					interiorCount++;
 				}
 
 				s++;
 			}
 
-			if (visibleCount > 0)
+			if (wantLabel && interiorCount > 0)
 			{
-				labelX = sumX / visibleCount;
-				labelY = sumY / visibleCount;
+				labelX = (firstInteriorX + lastInteriorX) * 0.5;
+				labelY = (firstInteriorY + lastInteriorY) * 0.5;
 			}
 
-			return pts.ToString().Trim();
+			return emitted > 0 ? pts.ToString() : string.Empty;
 		}
 
 		private static string FormatPk(long pk)
@@ -1037,60 +1354,125 @@ namespace Diamond.Web.Rendering
 
 		private readonly struct NumberLabel
 		{
+			private readonly double mvarX;
+			private readonly double mvarY;
+			private readonly string mvarText;
+			private readonly string mvarColor;
+
 			public NumberLabel(double x, double y, string text, string color)
 			{
-				X = x;
-				Y = y;
-				Text = text;
-				Color = color;
+				mvarX = x;
+				mvarY = y;
+				mvarText = text;
+				mvarColor = color;
 			}
 
-			public double X { get; }
-			public double Y { get; }
-			public string Text { get; }
-			public string Color { get; }
+			public double X
+			{
+				get { return mvarX; }
+			}
+
+			public double Y
+			{
+				get { return mvarY; }
+			}
+
+			public string Text
+			{
+				get { return mvarText; }
+			}
+
+			public string Color
+			{
+				get { return mvarColor; }
+			}
 		}
 
 		private readonly struct StationMark
 		{
+			private readonly long mvarPk;
+			private readonly string mvarLabel;
+			private readonly bool mvarIsPrincipal;
+
 			public StationMark(long pk, string label, bool isPrincipal)
 			{
-				Pk = pk;
-				Label = label;
-				IsPrincipal = isPrincipal;
+				mvarPk = pk;
+				mvarLabel = label;
+				mvarIsPrincipal = isPrincipal;
 			}
 
-			public long Pk { get; }
-			public string Label { get; }
-			public bool IsPrincipal { get; }
+			public long Pk
+			{
+				get { return mvarPk; }
+			}
+
+			public string Label
+			{
+				get { return mvarLabel; }
+			}
+
+			public bool IsPrincipal
+			{
+				get { return mvarIsPrincipal; }
+			}
 		}
 
 		private readonly struct SpeedBand
 		{
+			private readonly long mvarPkStart;
+			private readonly long mvarPkEnd;
+			private readonly int mvarSpeedKmh;
+
 			public SpeedBand(long pkStart, long pkEnd, int speedKmh)
 			{
-				PkStart = pkStart;
-				PkEnd = pkEnd;
-				SpeedKmh = speedKmh;
+				mvarPkStart = pkStart;
+				mvarPkEnd = pkEnd;
+				mvarSpeedKmh = speedKmh;
 			}
 
-			public long PkStart { get; }
-			public long PkEnd { get; }
-			public int SpeedKmh { get; }
+			public long PkStart
+			{
+				get { return mvarPkStart; }
+			}
+
+			public long PkEnd
+			{
+				get { return mvarPkEnd; }
+			}
+
+			public int SpeedKmh
+			{
+				get { return mvarSpeedKmh; }
+			}
 		}
 
 		private readonly struct TrackBand
 		{
+			private readonly long mvarPkStart;
+			private readonly long mvarPkEnd;
+			private readonly int mvarTrackCount;
+
 			public TrackBand(long pkStart, long pkEnd, int trackCount)
 			{
-				PkStart = pkStart;
-				PkEnd = pkEnd;
-				TrackCount = trackCount;
+				mvarPkStart = pkStart;
+				mvarPkEnd = pkEnd;
+				mvarTrackCount = trackCount;
 			}
 
-			public long PkStart { get; }
-			public long PkEnd { get; }
-			public int TrackCount { get; }
+			public long PkStart
+			{
+				get { return mvarPkStart; }
+			}
+
+			public long PkEnd
+			{
+				get { return mvarPkEnd; }
+			}
+
+			public int TrackCount
+			{
+				get { return mvarTrackCount; }
+			}
 		}
 	}
 }

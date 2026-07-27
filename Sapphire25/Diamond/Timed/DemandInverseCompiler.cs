@@ -16,10 +16,32 @@ namespace Diamond.Timed
 	{
 		public sealed class InverseCompileResult
 		{
-			public string Script { get; set; } = string.Empty;
-			public List<string> Notes { get; } = new List<string>();
-			public List<string> Warnings { get; } = new List<string>();
-			public int RequirementCount { get; set; }
+			private string mvarScript = string.Empty;
+			private readonly List<string> mcolNotes = new List<string>();
+			private readonly List<string> mcolWarnings = new List<string>();
+			private int mvarRequirementCount;
+
+			public string Script
+			{
+				get { return mvarScript; }
+				set { mvarScript = value ?? string.Empty; }
+			}
+
+			public List<string> Notes
+			{
+				get { return mcolNotes; }
+			}
+
+			public List<string> Warnings
+			{
+				get { return mcolWarnings; }
+			}
+
+			public int RequirementCount
+			{
+				get { return mvarRequirementCount; }
+				set { mvarRequirementCount = value; }
+			}
 		}
 
 		/// <summary>
@@ -1075,75 +1097,316 @@ namespace Diamond.Timed
 
 		private sealed class BlockAnalysis
 		{
-			public string AsimilationId = string.Empty;
-			public string FromToken = string.Empty;
-			public string ToToken = string.Empty;
-			public string FromName = string.Empty;
-			public string ToName = string.Empty;
-			public string DaysToken = "lab";
-			public string Freq = string.Empty;
-			public string Pattern = string.Empty;
-			public int MedianHeadwayMinutes;
-			public TimeSpan WindowStart;
-			public TimeSpan WindowEnd;
-			public TimeSpan FirstDep;
-			public int CirculationCount;
-			public StopPatternDraft Stops = new StopPatternDraft();
-			public string RouteKey = string.Empty;
-			public string ReverseRouteKey = string.Empty;
-			public string PathSignature = string.Empty;
-			public bool IsMultiAxis;
-			public long OriginRoutePk;
-			public long DestRoutePk;
-			public bool HasRoutePks;
+			private string mvarAsimilationId = string.Empty;
+			private string mvarFromToken = string.Empty;
+			private string mvarToToken = string.Empty;
+			private string mvarFromName = string.Empty;
+			private string mvarToName = string.Empty;
+			private string mvarDaysToken = "lab";
+			private string mvarFreq = string.Empty;
+			private string mvarPattern = string.Empty;
+			private int mvarMedianHeadwayMinutes;
+			private TimeSpan mvarWindowStart;
+			private TimeSpan mvarWindowEnd;
+			private TimeSpan mvarFirstDep;
+			private int mvarCirculationCount;
+			private StopPatternDraft mvarStops = new StopPatternDraft();
+			private string mvarRouteKey = string.Empty;
+			private string mvarReverseRouteKey = string.Empty;
+			private string mvarPathSignature = string.Empty;
+			private bool mvarIsMultiAxis;
+			private long mvarOriginRoutePk;
+			private long mvarDestRoutePk;
+			private bool mvarHasRoutePks;
+
+			public string AsimilationId
+			{
+				get { return mvarAsimilationId; }
+				set { mvarAsimilationId = value ?? string.Empty; }
+			}
+
+			public string FromToken
+			{
+				get { return mvarFromToken; }
+				set { mvarFromToken = value ?? string.Empty; }
+			}
+
+			public string ToToken
+			{
+				get { return mvarToToken; }
+				set { mvarToToken = value ?? string.Empty; }
+			}
+
+			public string FromName
+			{
+				get { return mvarFromName; }
+				set { mvarFromName = value ?? string.Empty; }
+			}
+
+			public string ToName
+			{
+				get { return mvarToName; }
+				set { mvarToName = value ?? string.Empty; }
+			}
+
+			public string DaysToken
+			{
+				get { return mvarDaysToken; }
+				set { mvarDaysToken = value ?? string.Empty; }
+			}
+
+			public string Freq
+			{
+				get { return mvarFreq; }
+				set { mvarFreq = value ?? string.Empty; }
+			}
+
+			public string Pattern
+			{
+				get { return mvarPattern; }
+				set { mvarPattern = value ?? string.Empty; }
+			}
+
+			public int MedianHeadwayMinutes
+			{
+				get { return mvarMedianHeadwayMinutes; }
+				set { mvarMedianHeadwayMinutes = value; }
+			}
+
+			public TimeSpan WindowStart
+			{
+				get { return mvarWindowStart; }
+				set { mvarWindowStart = value; }
+			}
+
+			public TimeSpan WindowEnd
+			{
+				get { return mvarWindowEnd; }
+				set { mvarWindowEnd = value; }
+			}
+
+			public TimeSpan FirstDep
+			{
+				get { return mvarFirstDep; }
+				set { mvarFirstDep = value; }
+			}
+
+			public int CirculationCount
+			{
+				get { return mvarCirculationCount; }
+				set { mvarCirculationCount = value; }
+			}
+
+			public StopPatternDraft Stops
+			{
+				get { return mvarStops; }
+				set { mvarStops = value ?? new StopPatternDraft(); }
+			}
+
+			public string RouteKey
+			{
+				get { return mvarRouteKey; }
+				set { mvarRouteKey = value ?? string.Empty; }
+			}
+
+			public string ReverseRouteKey
+			{
+				get { return mvarReverseRouteKey; }
+				set { mvarReverseRouteKey = value ?? string.Empty; }
+			}
+
+			public string PathSignature
+			{
+				get { return mvarPathSignature; }
+				set { mvarPathSignature = value ?? string.Empty; }
+			}
+
+			public bool IsMultiAxis
+			{
+				get { return mvarIsMultiAxis; }
+				set { mvarIsMultiAxis = value; }
+			}
+
+			public long OriginRoutePk
+			{
+				get { return mvarOriginRoutePk; }
+				set { mvarOriginRoutePk = value; }
+			}
+
+			public long DestRoutePk
+			{
+				get { return mvarDestRoutePk; }
+				set { mvarDestRoutePk = value; }
+			}
+
+			public bool HasRoutePks
+			{
+				get { return mvarHasRoutePks; }
+				set { mvarHasRoutePks = value; }
+			}
 		}
 
 		private sealed class InferredRequirement
 		{
-			public string RequirementId = string.Empty;
-			public bool BothWays;
-			public string FromToken = string.Empty;
-			public string ToToken = string.Empty;
-			public string DaysToken = "lab";
-			public int HeadwayMinutes = 60;
-			public TimeSpan WindowStart;
-			public TimeSpan WindowEnd;
-			public StopPatternDraft Stops = new StopPatternDraft();
-			public string Comment = string.Empty;
-			public string PhaseComment = string.Empty;
-			public string PathSignature = string.Empty;
-			public bool IsMultiAxis;
+			private string mvarRequirementId = string.Empty;
+			private bool mvarBothWays;
+			private string mvarFromToken = string.Empty;
+			private string mvarToToken = string.Empty;
+			private string mvarDaysToken = "lab";
+			private int mvarHeadwayMinutes = 60;
+			private TimeSpan mvarWindowStart;
+			private TimeSpan mvarWindowEnd;
+			private StopPatternDraft mvarStops = new StopPatternDraft();
+			private string mvarComment = string.Empty;
+			private string mvarPhaseComment = string.Empty;
+			private string mvarPathSignature = string.Empty;
+			private bool mvarIsMultiAxis;
+
+			public string RequirementId
+			{
+				get { return mvarRequirementId; }
+				set { mvarRequirementId = value ?? string.Empty; }
+			}
+
+			public bool BothWays
+			{
+				get { return mvarBothWays; }
+				set { mvarBothWays = value; }
+			}
+
+			public string FromToken
+			{
+				get { return mvarFromToken; }
+				set { mvarFromToken = value ?? string.Empty; }
+			}
+
+			public string ToToken
+			{
+				get { return mvarToToken; }
+				set { mvarToToken = value ?? string.Empty; }
+			}
+
+			public string DaysToken
+			{
+				get { return mvarDaysToken; }
+				set { mvarDaysToken = value ?? string.Empty; }
+			}
+
+			public int HeadwayMinutes
+			{
+				get { return mvarHeadwayMinutes; }
+				set { mvarHeadwayMinutes = value; }
+			}
+
+			public TimeSpan WindowStart
+			{
+				get { return mvarWindowStart; }
+				set { mvarWindowStart = value; }
+			}
+
+			public TimeSpan WindowEnd
+			{
+				get { return mvarWindowEnd; }
+				set { mvarWindowEnd = value; }
+			}
+
+			public StopPatternDraft Stops
+			{
+				get { return mvarStops; }
+				set { mvarStops = value ?? new StopPatternDraft(); }
+			}
+
+			public string Comment
+			{
+				get { return mvarComment; }
+				set { mvarComment = value ?? string.Empty; }
+			}
+
+			public string PhaseComment
+			{
+				get { return mvarPhaseComment; }
+				set { mvarPhaseComment = value ?? string.Empty; }
+			}
+
+			public string PathSignature
+			{
+				get { return mvarPathSignature; }
+				set { mvarPathSignature = value ?? string.Empty; }
+			}
+
+			public bool IsMultiAxis
+			{
+				get { return mvarIsMultiAxis; }
+				set { mvarIsMultiAxis = value; }
+			}
 		}
 
 		private sealed class StopPatternDraft
 		{
-			public int DefaultDwellSeconds;
-			public List<string> Skips { get; } = new List<string>();
-			public List<StopDwellDraft> Overrides { get; } = new List<StopDwellDraft>();
+			private int mvarDefaultDwellSeconds;
+			private readonly List<string> mcolSkips = new List<string>();
+			private readonly List<StopDwellDraft> mcolOverrides = new List<StopDwellDraft>();
+
+			public int DefaultDwellSeconds
+			{
+				get { return mvarDefaultDwellSeconds; }
+				set { mvarDefaultDwellSeconds = value; }
+			}
+
+			public List<string> Skips
+			{
+				get { return mcolSkips; }
+			}
+
+			public List<StopDwellDraft> Overrides
+			{
+				get { return mcolOverrides; }
+			}
 		}
 
 		private sealed class StopDwellDraft
 		{
+			private readonly string mvarStationToken;
+			private readonly int mvarDwellSeconds;
+
 			public StopDwellDraft(string stationToken, int dwellSeconds)
 			{
-				StationToken = stationToken;
-				DwellSeconds = dwellSeconds;
+				mvarStationToken = stationToken;
+				mvarDwellSeconds = dwellSeconds;
 			}
 
-			public string StationToken { get; }
-			public int DwellSeconds { get; }
+			public string StationToken
+			{
+				get { return mvarStationToken; }
+			}
+
+			public int DwellSeconds
+			{
+				get { return mvarDwellSeconds; }
+			}
 		}
 
 		private sealed class CommercialStopDraft
 		{
+			private readonly string mvarToken;
+			private int mvarDwellSeconds;
+
 			public CommercialStopDraft(string token, int dwellSeconds)
 			{
-				Token = token;
-				DwellSeconds = dwellSeconds;
+				mvarToken = token;
+				mvarDwellSeconds = dwellSeconds;
 			}
 
-			public string Token { get; }
-			public int DwellSeconds { get; set; }
+			public string Token
+			{
+				get { return mvarToken; }
+			}
+
+			public int DwellSeconds
+			{
+				get { return mvarDwellSeconds; }
+				set { mvarDwellSeconds = value; }
+			}
 		}
 	}
 }

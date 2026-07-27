@@ -100,8 +100,9 @@ namespace Diamond.Timed
 					+ dayTag + ").");
 			}
 
-			// Numeración SFM antes de la verificación final, para que los errores citen números de tren.
-			TrainNumbering.Assign(mesh);
+			// Numeración SFM (defs asim del script + tablas conocidas) y colores de asimilación.
+			TrainNumbering.Assign(mesh, mvarPlan.AsimilationDefs, dayOfWeek);
+			TrainNumbering.ApplyAsimilationColors(mesh, mvarPlan.AsimilationDefs, dayOfWeek);
 
 			// Verificación final dura (por si el retraso no bastó o hay interacciones cruzadas).
 			ValidateHardConstraints(scheduled, mesh, dayTag);
@@ -512,8 +513,8 @@ namespace Diamond.Timed
 			while (index < scheduled.Count)
 			{
 				ScheduledTrip other = scheduled[index];
-				// Solo comparamos circulaciones que comparten la misma vista (mismo camino).
-				if (!other.View.IsSamePath(view))
+				// Mismo corredor (ida/vuelta) o solape físico parcial (T3 vs T3+T2).
+				if (!other.View.IsSameOrReversePath(view) && !other.View.OverlapsPhysically(view))
 				{
 					index++;
 					continue;
@@ -540,18 +541,15 @@ namespace Diamond.Timed
 			reason = null;
 			Asimilation asimB = b.Asimilation;
 			TimeSpan depB = b.Circulation.Departure;
-			bool opposite = IsOppositeSense(asimA, asimB);
+			// Sentido físico en el terreno (multi-eje: la vuelta no usa Sense local de la vista).
+			bool opposite = MeshCantonGeometry.ArePhysicallyOpposite(asimA, asimB);
 
 			IReadOnlyList<long> frontiers = view.CantonFrontiers;
 			if (frontiers.Count < 2)
 			{
-				// Sin fronteras: tratar todo el solape de rutas como un solo cantón.
-				long pathMin = Math.Max(
-					Math.Min(asimA.Origin.PK, asimA.Destination.PK),
-					Math.Min(asimB.Origin.PK, asimB.Destination.PK));
-				long pathMax = Math.Min(
-					Math.Max(asimA.Origin.PK, asimA.Destination.PK),
-					Math.Max(asimB.Origin.PK, asimB.Destination.PK));
+				// Sin fronteras: un cantón = bounding box de la vista de referencia.
+				long pathMin = view.PK;
+				long pathMax = view.PKEnd;
 				if (pathMax > pathMin)
 				{
 					return CantonPairConflicts(
@@ -579,8 +577,8 @@ namespace Diamond.Timed
 		}
 
 		/// <summary>
-		/// Conflicto duro en un cantón [pk0,pkf) en PK de ruta: solape temporal no permitido.
-		/// Permitido solo si sentidos opuestos y ≥2 vías en el tramo.
+		/// Conflicto duro en un cantón [pk0,pkf) en PK de la vista de referencia.
+		/// Permitido si sentidos físicos opuestos y ≥2 vías en el tramo.
 		/// </summary>
 		private static bool CantonPairConflicts(
 			TimeSpan depA,
@@ -595,31 +593,56 @@ namespace Diamond.Timed
 			out string? reason)
 		{
 			reason = null;
-			if (!IntervalOverlapsPath(pk0, pkf, asimA) || !IntervalOverlapsPath(pk0, pkf, asimB))
+
+			// Fronteras en coords de `view` → coords de cada asimilación
+			// (mismo corredor, inverso o proyección parcial multi-eje).
+			long a0;
+			long a1;
+			long b0;
+			long b1;
+			if (!asimA.View.TryMapCantonIntervalFrom(view, pk0, pkf, out a0, out a1)
+				|| !asimB.View.TryMapCantonIntervalFrom(view, pk0, pkf, out b0, out b1))
 			{
 				return false;
 			}
 
-			TimeSpan? aEnter = AbsoluteEnter(depA, asimA, pk0, pkf);
-			TimeSpan? aExit = AbsoluteExit(depA, asimA, pk0, pkf);
-			TimeSpan? bEnter = AbsoluteEnter(depB, asimB, pk0, pkf);
-			TimeSpan? bExit = AbsoluteExit(depB, asimB, pk0, pkf);
-			if (!aEnter.HasValue || !aExit.HasValue || !bEnter.HasValue || !bExit.HasValue)
+			// Ocupaciones de vía (sin dwell de estación principal).
+			IReadOnlyList<MeshCantonGeometry.TrackOccupationInterval> occA =
+				MeshCantonGeometry.GetTrackOccupationsInCanton(depA, asimA, a0, a1);
+			IReadOnlyList<MeshCantonGeometry.TrackOccupationInterval> occB =
+				MeshCantonGeometry.GetTrackOccupationsInCanton(depB, asimB, b0, b1);
+			if (occA.Count == 0 || occB.Count == 0)
 			{
 				return false;
 			}
 
-			if (aExit.Value <= aEnter.Value || bExit.Value <= bEnter.Value)
+			bool anyOverlap = false;
+			int ia = 0;
+			while (ia < occA.Count && !anyOverlap)
+			{
+				MeshCantonGeometry.TrackOccupationInterval a = occA[ia];
+				int ib = 0;
+				while (ib < occB.Count)
+				{
+					MeshCantonGeometry.TrackOccupationInterval b = occB[ib];
+					if (OpenIntervalsOverlap(a.Enter, a.Exit, b.Enter, b.Exit))
+					{
+						anyOverlap = true;
+						break;
+					}
+
+					ib++;
+				}
+
+				ia++;
+			}
+
+			if (!anyOverlap)
 			{
 				return false;
 			}
 
-			if (!OpenIntervalsOverlap(aEnter.Value, aExit.Value, bEnter.Value, bExit.Value))
-			{
-				return false;
-			}
-
-			int tracks = view.GetTrackCountAt(pk0);
+			int tracks = MeshCantonGeometry.MaxTrackCountInCanton(view, pk0, pkf);
 			if (opposite && tracks >= 2)
 			{
 				// Cruce en doble vía permitido.
@@ -657,17 +680,12 @@ namespace Diamond.Timed
 				return "tren ?";
 			}
 
-			if (circulation.ServiceNumber > 0)
+			if (circulation.HasServiceNumber)
 			{
-				return "tren " + circulation.ServiceNumber.ToString(System.Globalization.CultureInfo.InvariantCulture);
+				return "tren " + circulation.ServiceNumber;
 			}
 
 			return "tren " + circulation.Id;
-		}
-
-		private static bool IsOppositeSense(Asimilation a, Asimilation b)
-		{
-			return a.Sense != b.Sense;
 		}
 
 		private static bool IntervalOverlapsPath(long pk0, long pkf, Asimilation asim)
@@ -675,50 +693,6 @@ namespace Diamond.Timed
 			long a0 = Math.Min(asim.Origin.PK, asim.Destination.PK);
 			long a1 = Math.Max(asim.Origin.PK, asim.Destination.PK);
 			return pk0 < a1 && pkf > a0;
-		}
-
-		private static TimeSpan? AbsoluteEnter(TimeSpan dep, Asimilation asim, long pk0, long pkf)
-		{
-			long pathMin = Math.Min(asim.Origin.PK, asim.Destination.PK);
-			long pathMax = Math.Max(asim.Origin.PK, asim.Destination.PK);
-			long c0 = Math.Max(pk0, pathMin);
-			long c1 = Math.Min(pkf, pathMax);
-			if (c1 <= c0)
-			{
-				return null;
-			}
-
-			// Increasing: entra por c0. Decreasing: entra por c1 (extremo alto del cantón).
-			long enterPk = asim.Sense == CirculationSense.IncreasingPk ? c0 : c1;
-			TimeSpan? rel = asim.TimeByPK(enterPk);
-			if (!rel.HasValue)
-			{
-				return null;
-			}
-
-			return dep + rel.Value;
-		}
-
-		private static TimeSpan? AbsoluteExit(TimeSpan dep, Asimilation asim, long pk0, long pkf)
-		{
-			long pathMin = Math.Min(asim.Origin.PK, asim.Destination.PK);
-			long pathMax = Math.Max(asim.Origin.PK, asim.Destination.PK);
-			long c0 = Math.Max(pk0, pathMin);
-			long c1 = Math.Min(pkf, pathMax);
-			if (c1 <= c0)
-			{
-				return null;
-			}
-
-			// Increasing: sale por c1. Decreasing: sale por c0.
-			long exitPk = asim.Sense == CirculationSense.IncreasingPk ? c1 : c0;
-			TimeSpan? rel = asim.TimeByPK(exitPk);
-			if (!rel.HasValue)
-			{
-				return null;
-			}
-
-			return dep + rel.Value;
 		}
 
 		private static bool OpenIntervalsOverlap(TimeSpan a0, TimeSpan a1, TimeSpan b0, TimeSpan b1)
@@ -757,15 +731,31 @@ namespace Diamond.Timed
 					continue;
 				}
 
-				TimeSpan? enter = AbsoluteEnter(TimeSpan.Zero, asim, pk0, pkf);
-				TimeSpan? exit = AbsoluteExit(TimeSpan.Zero, asim, pk0, pkf);
-				if (enter.HasValue && exit.HasValue && exit.Value > enter.Value)
+				long local0;
+				long local1;
+				if (!asim.View.TryMapCantonIntervalFrom(view, pk0, pkf, out local0, out local1))
 				{
-					TimeSpan occ = exit.Value - enter.Value;
-					if (occ > maxOcc)
+					f++;
+					continue;
+				}
+
+				// Solo tiempo en vía (sin dwell de estación principal).
+				IReadOnlyList<MeshCantonGeometry.TrackOccupationInterval> occs =
+					MeshCantonGeometry.GetTrackOccupationsInCanton(TimeSpan.Zero, asim, local0, local1);
+				int oi = 0;
+				while (oi < occs.Count)
+				{
+					MeshCantonGeometry.TrackOccupationInterval iv = occs[oi];
+					if (iv.Exit > iv.Enter)
 					{
-						maxOcc = occ;
+						TimeSpan occ = iv.Exit - iv.Enter;
+						if (occ > maxOcc)
+						{
+							maxOcc = occ;
+						}
 					}
+
+					oi++;
 				}
 
 				f++;
@@ -784,7 +774,7 @@ namespace Diamond.Timed
 				{
 					ScheduledTrip a = scheduled[i];
 					ScheduledTrip b = scheduled[j];
-					if (a.View.IsSamePath(b.View))
+					if (a.View.IsSameOrReversePath(b.View) || a.View.OverlapsPhysically(b.View))
 					{
 						string? reason;
 						if (HasHardConflict(a.Circulation.Departure, a.Asimilation, a.View, b, out reason)
@@ -942,11 +932,15 @@ namespace Diamond.Timed
 
 		private readonly struct ScriptStep
 		{
+			private readonly int mvarOrder;
+			private readonly DemandRequirement? mvarRequirement;
+			private readonly DemandDeleteOp? mvarDelete;
+
 			private ScriptStep(int order, DemandRequirement? requirement, DemandDeleteOp? delete)
 			{
-				Order = order;
-				Requirement = requirement;
-				Delete = delete;
+				mvarOrder = order;
+				mvarRequirement = requirement;
+				mvarDelete = delete;
 			}
 
 			public static ScriptStep ForRequire(DemandRequirement requirement)
@@ -959,53 +953,114 @@ namespace Diamond.Timed
 				return new ScriptStep(delete.ScriptOrder, null, delete);
 			}
 
-			public int Order { get; }
-			public DemandRequirement? Requirement { get; }
-			public DemandDeleteOp? Delete { get; }
+			public int Order
+			{
+				get { return mvarOrder; }
+			}
+
+			public DemandRequirement? Requirement
+			{
+				get { return mvarRequirement; }
+			}
+
+			public DemandDeleteOp? Delete
+			{
+				get { return mvarDelete; }
+			}
 		}
 
 		private readonly struct DirectionJob
 		{
+			private readonly Station mvarFrom;
+			private readonly Station mvarTo;
+			private readonly bool mvarIsReturn;
+			private readonly string mvarLabel;
+
 			public DirectionJob(Station from, Station to, bool isReturn, string label)
 			{
-				From = from;
-				To = to;
-				IsReturn = isReturn;
-				Label = label;
+				mvarFrom = from;
+				mvarTo = to;
+				mvarIsReturn = isReturn;
+				mvarLabel = label;
 			}
 
-			public Station From { get; }
-			public Station To { get; }
-			public bool IsReturn { get; }
-			public string Label { get; }
+			public Station From
+			{
+				get { return mvarFrom; }
+			}
+
+			public Station To
+			{
+				get { return mvarTo; }
+			}
+
+			public bool IsReturn
+			{
+				get { return mvarIsReturn; }
+			}
+
+			public string Label
+			{
+				get { return mvarLabel; }
+			}
 		}
 
 		private sealed class PreparedDirection
 		{
+			private readonly DirectionJob mvarJob;
+			private readonly RouteView mvarView;
+			private readonly Asimilation mvarAsimilation;
+
 			public PreparedDirection(DirectionJob job, RouteView view, Asimilation asimilation)
 			{
-				Job = job;
-				View = view;
-				Asimilation = asimilation;
+				mvarJob = job;
+				mvarView = view;
+				mvarAsimilation = asimilation;
 			}
 
-			public DirectionJob Job { get; }
-			public RouteView View { get; }
-			public Asimilation Asimilation { get; }
+			public DirectionJob Job
+			{
+				get { return mvarJob; }
+			}
+
+			public RouteView View
+			{
+				get { return mvarView; }
+			}
+
+			public Asimilation Asimilation
+			{
+				get { return mvarAsimilation; }
+			}
 		}
 
 		private sealed class ScheduledTrip
 		{
+			private readonly Circulation mvarCirculation;
+			private readonly RouteView mvarView;
+			private readonly Asimilation mvarAsimilation;
+
 			public ScheduledTrip(Circulation circulation, RouteView view, Asimilation asimilation)
 			{
-				Circulation = circulation;
-				View = view;
-				Asimilation = asimilation;
+				mvarCirculation = circulation;
+				mvarView = view;
+				mvarAsimilation = asimilation;
 			}
 
-			public Circulation Circulation { get; }
-			public RouteView View { get; }
-			public Asimilation Asimilation { get; }
+			public Circulation Circulation
+			{
+				get { return mvarCirculation; }
+			}
+
+			public RouteView View
+			{
+				get { return mvarView; }
+			}
+
+			public Asimilation Asimilation
+			{
+				get { return mvarAsimilation; }
+			}
 		}
 	}
 }

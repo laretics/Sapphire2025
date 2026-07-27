@@ -1,3 +1,4 @@
+using System.Globalization;
 using Diamond.Motion;
 using Diamond.Timed;
 using Diamond.Topo;
@@ -30,33 +31,42 @@ namespace Diamond.Tests.Timed
 			Assert.NotEmpty(ascending);
 			Assert.NotEmpty(descending);
 
-			// Misma serie (fallback o conocida); impares / pares
-			int series = ascending[0].ServiceNumber / 100;
+			// Misma serie (fallback o conocida); impares / pares (números clásicos NN##)
 			Assert.All(ascending, c =>
 			{
-				Assert.True(c.ServiceNumber > 0);
-				Assert.Equal(1, c.ServiceNumber % 2);
-				Assert.Equal(series, c.ServiceNumber / 100);
+				Assert.True(c.HasServiceNumber);
+				int n = int.Parse(c.ServiceNumber, CultureInfo.InvariantCulture);
+				Assert.Equal(1, n % 2);
 			});
 			Assert.All(descending, c =>
 			{
-				Assert.True(c.ServiceNumber > 0);
-				Assert.Equal(0, c.ServiceNumber % 2);
-				Assert.Equal(series, c.ServiceNumber / 100);
+				Assert.True(c.HasServiceNumber);
+				int n = int.Parse(c.ServiceNumber, CultureInfo.InvariantCulture);
+				Assert.Equal(0, n % 2);
 			});
+
+			int series = int.Parse(ascending[0].ServiceNumber, CultureInfo.InvariantCulture) / 100;
+			Assert.All(ascending, c =>
+				Assert.Equal(series, int.Parse(c.ServiceNumber, CultureInfo.InvariantCulture) / 100));
+			Assert.All(descending, c =>
+				Assert.Equal(series, int.Parse(c.ServiceNumber, CultureInfo.InvariantCulture) / 100));
 
 			// Secuencia +2 por orden de salida en cada sentido
 			int i = 1;
 			while (i < ascending.Count)
 			{
-				Assert.Equal(ascending[i - 1].ServiceNumber + 2, ascending[i].ServiceNumber);
+				int prev = int.Parse(ascending[i - 1].ServiceNumber, CultureInfo.InvariantCulture);
+				int cur = int.Parse(ascending[i].ServiceNumber, CultureInfo.InvariantCulture);
+				Assert.Equal(prev + 2, cur);
 				i++;
 			}
 
 			i = 1;
 			while (i < descending.Count)
 			{
-				Assert.Equal(descending[i - 1].ServiceNumber + 2, descending[i].ServiceNumber);
+				int prev = int.Parse(descending[i - 1].ServiceNumber, CultureInfo.InvariantCulture);
+				int cur = int.Parse(descending[i].ServiceNumber, CultureInfo.InvariantCulture);
+				Assert.Equal(prev + 2, cur);
 				i++;
 			}
 		}
@@ -86,18 +96,21 @@ namespace Diamond.Tests.Timed
 			int distinctAsims = outbound.Select(c => c.Asimilation).Distinct().Count();
 			Assert.True(distinctAsims >= 1);
 
-			int series = outbound[0].ServiceNumber / 100;
+			int series = int.Parse(outbound[0].ServiceNumber, CultureInfo.InvariantCulture) / 100;
 			Assert.All(outbound, c =>
 			{
-				Assert.Equal(1, c.ServiceNumber % 2);
-				Assert.Equal(series, c.ServiceNumber / 100);
+				int n = int.Parse(c.ServiceNumber, CultureInfo.InvariantCulture);
+				Assert.Equal(1, n % 2);
+				Assert.Equal(series, n / 100);
 			});
 
 			// Numeración global por salida:  …01, 03, 05… sin reiniciar por asimilación
 			int i = 1;
 			while (i < outbound.Count)
 			{
-				Assert.Equal(outbound[i - 1].ServiceNumber + 2, outbound[i].ServiceNumber);
+				int prev = int.Parse(outbound[i - 1].ServiceNumber, CultureInfo.InvariantCulture);
+				int cur = int.Parse(outbound[i].ServiceNumber, CultureInfo.InvariantCulture);
+				Assert.Equal(prev + 2, cur);
 				i++;
 			}
 		}
@@ -131,8 +144,8 @@ namespace Diamond.Tests.Timed
 			Mesh b = new MeshPlanner(plan).Solve();
 
 			Assert.Equal(a.Circulations.Count, b.Circulations.Count);
-			List<int> numsA = a.Circulations.Select(c => c.ServiceNumber).OrderBy(n => n).ToList();
-			List<int> numsB = b.Circulations.Select(c => c.ServiceNumber).OrderBy(n => n).ToList();
+			List<string> numsA = a.Circulations.Select(c => c.ServiceNumber).OrderBy(n => n, StringComparer.Ordinal).ToList();
+			List<string> numsB = b.Circulations.Select(c => c.ServiceNumber).OrderBy(n => n, StringComparer.Ordinal).ToList();
 			Assert.Equal(numsA, numsB);
 		}
 
@@ -149,11 +162,11 @@ namespace Diamond.Tests.Timed
 
 			Mesh mesh = new MeshPlanner(plan).Solve(DayOfWeek.Monday);
 			List<Circulation> odds = mesh.Circulations
-				.Where(c => c.ServiceNumber % 2 == 1)
+				.Where(c => int.Parse(c.ServiceNumber, CultureInfo.InvariantCulture) % 2 == 1)
 				.OrderBy(c => c.Departure)
 				.ToList();
 			List<Circulation> evens = mesh.Circulations
-				.Where(c => c.ServiceNumber % 2 == 0)
+				.Where(c => int.Parse(c.ServiceNumber, CultureInfo.InvariantCulture) % 2 == 0)
 				.OrderBy(c => c.Departure)
 				.ToList();
 
@@ -192,7 +205,7 @@ namespace Diamond.Tests.Timed
 			else
 			{
 				// Al menos las circulaciones están numeradas
-				Assert.All(mesh.Circulations, c => Assert.True(c.ServiceNumber > 0));
+				Assert.All(mesh.Circulations, c => Assert.True(c.HasServiceNumber));
 			}
 		}
 

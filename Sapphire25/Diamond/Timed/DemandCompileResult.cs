@@ -9,6 +9,7 @@ namespace Diamond.Timed
 	{
 		private readonly List<DemandRequirement> mcolRequirements;
 		private readonly List<DemandDeleteOp> mcolDeletes;
+		private readonly List<DemandAsimilationDef> mcolAsimilationDefs;
 		private readonly List<string> mcolErrors;
 		private string mvarPlanName;
 
@@ -16,6 +17,7 @@ namespace Diamond.Timed
 		{
 			mcolRequirements = new List<DemandRequirement>();
 			mcolDeletes = new List<DemandDeleteOp>();
+			mcolAsimilationDefs = new List<DemandAsimilationDef>();
 			mcolErrors = new List<string>();
 			mvarPlanName = string.Empty;
 		}
@@ -39,6 +41,14 @@ namespace Diamond.Timed
 			get { return mcolDeletes; }
 		}
 
+		/// <summary>
+		/// Definiciones <c>asim</c> (serie de numeración y color por OD / días), en orden de script.
+		/// </summary>
+		public IReadOnlyList<DemandAsimilationDef> AsimilationDefs
+		{
+			get { return mcolAsimilationDefs; }
+		}
+
 		public IReadOnlyList<string> Errors
 		{
 			get { return mcolErrors; }
@@ -57,6 +67,11 @@ namespace Diamond.Timed
 		internal void AddDelete(DemandDeleteOp deleteOp)
 		{
 			mcolDeletes.Add(deleteOp);
+		}
+
+		internal void AddAsimilationDef(DemandAsimilationDef definition)
+		{
+			mcolAsimilationDefs.Add(definition);
 		}
 
 		internal void AddError(string message)

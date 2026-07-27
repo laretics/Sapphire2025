@@ -602,15 +602,24 @@ namespace Diamond.Basis
 
 		private readonly struct AxisRange
 		{
+			private readonly T mvarStart;
+			private readonly T mvarEnd;
+
 			public AxisRange(T start, T end)
 			{
-				Start = start;
-				End = end;
+				mvarStart = start;
+				mvarEnd = end;
 			}
 
-			public T Start { get; }
+			public T Start
+			{
+				get { return mvarStart; }
+			}
 
-			public T End { get; }
+			public T End
+			{
+				get { return mvarEnd; }
+			}
 		}
 
 		/// <summary>

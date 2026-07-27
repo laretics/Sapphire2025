@@ -4,6 +4,16 @@
 (function () {
 	"use strict";
 
+	function notifyMonacoLayout() {
+		try {
+			if (window.diamondMonaco && typeof window.diamondMonaco.layout === "function") {
+				window.diamondMonaco.layout("diamond-demand-editor");
+			}
+		} catch (e) {
+			// ignore
+		}
+	}
+
 	window.diamondSplit = {
 		/**
 		 * @param {HTMLElement} root - .mesh-split
@@ -30,6 +40,7 @@
 				if (pct < 28) pct = 28;
 				if (pct > 72) pct = 72;
 				root.style.gridTemplateColumns = pct + "% 6px 1fr";
+				// No layout en cada mousemove: el ResizeObserver (debounced) del editor basta.
 				ev.preventDefault();
 			}
 
@@ -43,6 +54,8 @@
 				document.removeEventListener("mouseup", onUp);
 				document.removeEventListener("touchmove", onMove);
 				document.removeEventListener("touchend", onUp);
+				notifyMonacoLayout();
+				requestAnimationFrame(notifyMonacoLayout);
 			}
 
 			function onDown(ev) {
@@ -57,6 +70,11 @@
 
 			gutter.addEventListener("mousedown", onDown);
 			gutter.addEventListener("touchstart", onDown, { passive: false });
+			// Primer layout tras montar el split (panel aún midiendo).
+			requestAnimationFrame(function () {
+				notifyMonacoLayout();
+				setTimeout(notifyMonacoLayout, 100);
+			});
 			return true;
 		}
 	};

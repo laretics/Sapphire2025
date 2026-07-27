@@ -70,8 +70,8 @@ namespace Diamond.Project
 					project.AddAsimilation(projectAsim);
 				}
 
-				string id = src.ServiceNumber > 0
-					? src.ServiceNumber.ToString(CultureInfo.InvariantCulture)
+				string id = src.HasServiceNumber
+					? src.ServiceNumber
 					: src.Id;
 				Circulation circ = new Circulation(
 					id,
@@ -218,26 +218,16 @@ namespace Diamond.Project
 
 		private static int CompareCirculations(TimedCirculation a, TimedCirculation b)
 		{
-			int byNumber = a.ServiceNumber.CompareTo(b.ServiceNumber);
-			if (byNumber != 0)
+			// Sin número al final; si ambos tienen, orden lexicográfico (funciona para 4901 y P1MTX).
+			if (a.HasServiceNumber != b.HasServiceNumber)
 			{
-				// 0 (sin número) al final del bloque 0, pero antes por salida
-				if (a.ServiceNumber == 0 || b.ServiceNumber == 0)
-				{
-					if (a.ServiceNumber == 0 && b.ServiceNumber == 0)
-					{
-						// fall through
-					}
-					else if (a.ServiceNumber == 0)
-					{
-						return 1;
-					}
-					else
-					{
-						return -1;
-					}
-				}
-				else
+				return a.HasServiceNumber ? -1 : 1;
+			}
+
+			if (a.HasServiceNumber && b.HasServiceNumber)
+			{
+				int byNumber = string.CompareOrdinal(a.ServiceNumber, b.ServiceNumber);
+				if (byNumber != 0)
 				{
 					return byNumber;
 				}
@@ -275,9 +265,33 @@ namespace Diamond.Project
 	/// <summary>Opciones al compilar un <see cref="Project"/>.</summary>
 	public sealed class CompileOptions
 	{
-		public string? Name { get; set; }
-		public string? Id { get; set; }
-		public string? SourceScript { get; set; }
-		public DayOfWeek? PlanningDay { get; set; }
+		private string? mvarName;
+		private string? mvarId;
+		private string? mvarSourceScript;
+		private DayOfWeek? mvarPlanningDay;
+
+		public string? Name
+		{
+			get { return mvarName; }
+			set { mvarName = value; }
+		}
+
+		public string? Id
+		{
+			get { return mvarId; }
+			set { mvarId = value; }
+		}
+
+		public string? SourceScript
+		{
+			get { return mvarSourceScript; }
+			set { mvarSourceScript = value; }
+		}
+
+		public DayOfWeek? PlanningDay
+		{
+			get { return mvarPlanningDay; }
+			set { mvarPlanningDay = value; }
+		}
 	}
 }

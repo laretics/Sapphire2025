@@ -1,0 +1,10 @@
+Directrices de codificación a aplicar siempre:
+- Nomenclatura polaca para variables e identificadores:	
+	Variables miembro NO USAR _variable
+		Si es una colección mcolIdentificador
+		Si no, mvarIdentificador
+
+- Inferencia de tipos: NO usar var... quiero que infieras el tipo exacto, aunque sea más largo en código.
+
+- Resto de identificadores: Los habituales de C#
+

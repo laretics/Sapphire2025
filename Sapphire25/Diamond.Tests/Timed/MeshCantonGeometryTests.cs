@@ -106,8 +106,58 @@ namespace Diamond.Tests.Timed
 			});
 		}
 
+		[Fact]
+		public void TrackOccupation_ExcludesPrincipalStationDwell()
+		{
+			// A(STA) --10km-- M(STM principal) --10km-- B(STB)
+			// Parada 5 min en M: no debe alargar la ocupación de los cantones en vía.
+			Plan plan = CreatePlanWithCorridor();
+			plan.DemandScript = """
+				req A -> B 06:00-08:00 as R1
+				  stops 30s
+				  dwell M 5min
+				""";
+			Assert.True(plan.CompileDemand().Success, "compile");
+
+			Mesh mesh = new MeshPlanner(plan).Solve(DayOfWeek.Monday);
+			Assert.NotEmpty(mesh.Circulations);
+			Circulation c = mesh.Circulations[0];
+
+			// Sin dwell largo en M: solo 30s por defecto en principales; aquí override 5 min.
+			// Ocupación del cantón [0,10000) debe terminar a la llegada a M, no a la salida.
+			IReadOnlyList<MeshCantonGeometry.TrackOccupationInterval> left =
+				MeshCantonGeometry.GetTrackOccupationsInCanton(
+					c.Departure, c.Asimilation, 0L, 10000L);
+			IReadOnlyList<MeshCantonGeometry.TrackOccupationInterval> right =
+				MeshCantonGeometry.GetTrackOccupationsInCanton(
+					c.Departure, c.Asimilation, 10000L, 20000L);
+
+			Assert.NotEmpty(left);
+			Assert.NotEmpty(right);
+
+			TimeSpan? arriveM = c.Asimilation.TimeArriveByPK(10000L);
+			TimeSpan? departM = c.Asimilation.TimeDepartByPK(10000L);
+			Assert.NotNull(arriveM);
+			Assert.NotNull(departM);
+			Assert.True(departM!.Value - arriveM!.Value >= TimeSpan.FromMinutes(4.5),
+				"dwell ~5 min esperado en M");
+
+			// El primer cantón sale al llegar a M (antes del dwell).
+			TimeSpan leftExit = left[left.Count - 1].Exit;
+			Assert.Equal(c.Departure + arriveM.Value, leftExit);
+
+			// El segundo cantón entra al salir de M (tras el dwell).
+			TimeSpan rightEnter = right[0].Enter;
+			Assert.Equal(c.Departure + departM.Value, rightEnter);
+
+			// Hueco de dwell: no hay ocupación de vía entre llegada y salida de M.
+			Assert.True(rightEnter >= leftExit);
+			Assert.True((rightEnter - leftExit) >= TimeSpan.FromMinutes(4.5));
+		}
+
 		private static Plan CreatePlanWithCorridor(bool doubleTrack = true)
 		{
+			// AVR en mayúsculas → estación principal (StationClassification).
 			Station stA = MakeStation("A", "STA");
 			Station stM = MakeStation("M", "STM");
 			Station stB = MakeStation("B", "STB");

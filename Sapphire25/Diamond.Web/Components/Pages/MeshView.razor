@@ -1,6 +1,7 @@
 @page "/mesh"
 @layout MeshWorkspaceLayout
-@rendermode InteractiveServer
+@* Sin prerender: el passthrough estático + Monaco/JS provoca JSDisconnectedException y el banner de error. *@
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @implements IAsyncDisposable
 @inject IJSRuntime Js
 @using System.Globalization
@@ -24,10 +25,10 @@
 		<div class="btn-group btn-group-sm" role="group" aria-label="Archivo">
 			<button type="button" class="btn btn-outline-light" @onclick="FileNewAsync" title="Nuevo script (Ctrl+N)">Nuevo</button>
 			<button type="button" class="btn btn-outline-light" @onclick="FileOpenAsync" title="Abrir desde disco">Abrir…</button>
-			<button type="button" class="btn btn-outline-light" @onclick="FileSaveAsync" title="Guardar" disabled="@(!_dirty)">Guardar</button>
+			<button type="button" class="btn btn-outline-light" @onclick="FileSaveAsync" title="Guardar" disabled="@(!mvarDirty)">Guardar</button>
 			<button type="button" class="btn btn-outline-light" @onclick="FileSaveAsAsync" title="Guardar como…">Guardar como…</button>
 		</div>
-		<span class="mesh-file-label @(_dirty ? "dirty" : null)" title="@_fileName">@_fileDisplayName</span>
+		<span class="mesh-file-label @(mvarDirty ? "dirty" : null)" title="@mvarFileName">@FileDisplayName</span>
 		<span class="ms-auto"></span>
 		<a class="btn btn-sm btn-outline-secondary" href="docs/diamond-plan-language.html" target="_blank" rel="noopener">Manual DSL</a>
 		<a class="btn btn-sm btn-outline-secondary" href="/">Inicio</a>
@@ -36,10 +37,10 @@
 	@* —— Barra de planificación —— *@
 	<div class="mesh-toolbar">
 		<span class="lbl">View</span>
-		@if (_views.Count > 0)
+		@if (mcolViews.Count > 0)
 		{
 			<div class="btn-group btn-group-sm" role="group">
-				@foreach (MeshRouteView candidate in _views)
+				@foreach (MeshRouteView candidate in mcolViews)
 				{
 					<button type="button" class="btn @ViewButtonClass(candidate)" @onclick="() => SelectView(candidate)" title="@candidate.PathSignature()">
 						@candidate.Id
@@ -51,7 +52,7 @@
 		<span class="sep"></span>
 		<span class="lbl">Día</span>
 		<div class="btn-group btn-group-sm" role="group">
-			@foreach (DayOfWeek day in _weekDays)
+			@foreach (DayOfWeek day in mcolWeekDays)
 			{
 				<button type="button" class="btn @DayButtonClass(day)" @onclick="() => SelectDay(day)">@DayLabel(day)</button>
 			}
@@ -60,7 +61,7 @@
 		<span class="sep"></span>
 		<button type="button" class="btn btn-sm btn-primary" @onclick="ApplyScript" title="Compilar script y planificar malla">Aplicar</button>
 		<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="RebuildAsync" title="Regenerar malla">Regenerar</button>
-		<button type="button" class="btn btn-sm btn-success" @onclick="CompileProject" disabled="@(_mesh is null)" title="Generar Project">Compilar</button>
+		<button type="button" class="btn btn-sm btn-success" @onclick="CompileProject" disabled="@(mvarMesh is null)" title="Generar Project">Compilar</button>
 
 		<span class="sep"></span>
 		<div class="btn-group btn-group-sm">
@@ -72,25 +73,32 @@
 
 	@* —— Línea de estado —— *@
 	<div class="mesh-statusline">
-		@if (_mesh is not null && _view is not null)
+		@if (mvarMesh is not null && mvarView is not null)
 		{
 			<div class="mesh-badge-row">
-				<span class="badge bg-info text-dark">@_view.Id</span>
-				<span class="badge bg-primary">@DayLabel(_selectedDay)</span>
-				<span class="badge @(_mesh.Success ? "bg-success" : "bg-danger")">@(_mesh.Success ? "OK" : "Errores")</span>
-				<span class="badge bg-secondary">@_mesh.Circulations.Count circ.</span>
-				<span class="badge bg-secondary">@_mesh.Asimilations.Count asim.</span>
-				@if (_mesh.Warnings.Count > 0)
+				<span class="badge bg-info text-dark">@mvarView.Id</span>
+				<span class="badge bg-primary">@DayLabel(mvarSelectedDay)</span>
+				@if (mvarMeshStale)
 				{
-					<span class="badge bg-warning text-dark">@_mesh.Warnings.Count warn</span>
+					<span class="badge bg-secondary">Malla desactualizada</span>
 				}
-				@if (_mesh.Errors.Count > 0)
+				else
 				{
-					<span class="badge bg-danger">@_mesh.Errors.Count err</span>
+					<span class="badge @(mvarMesh.Success ? "bg-success" : "bg-danger")">@(mvarMesh.Success ? "OK" : "Errores")</span>
 				}
-				@if (_project is not null)
+				<span class="badge bg-secondary">@mvarMesh.Circulations.Count circ.</span>
+				<span class="badge bg-secondary">@mvarMesh.Asimilations.Count asim.</span>
+				@if (!mvarMeshStale && mvarMesh.Warnings.Count > 0)
 				{
-					<span class="badge bg-success">Project @_project.Circulations.Count trenes</span>
+					<span class="badge bg-warning text-dark">@mvarMesh.Warnings.Count warn</span>
+				}
+				@if (!mvarMeshStale && mvarMesh.Errors.Count > 0)
+				{
+					<span class="badge bg-danger">@mvarMesh.Errors.Count err</span>
+				}
+				@if (mvarProject is not null)
+				{
+					<span class="badge bg-success">Project @mvarProject.Circulations.Count trenes</span>
 				}
 			</div>
 		}
@@ -98,14 +106,14 @@
 	</div>
 
 	@* —— Split: malla | editor —— *@
-	<div class="mesh-split" @ref="_splitRoot">
+	<div class="mesh-split" @ref="mvarSplitRoot">
 		@* Panel malla *@
 		<div class="mesh-panel mesh-panel-mesh">
 			<div class="mesh-panel-head">
 				<span class="title">Malla</span>
-				@if (_view is not null)
+				@if (mvarView is not null)
 				{
-					<span class="badge bg-dark text-light border small">@_view.PathSignature()</span>
+					<span class="badge bg-dark text-light border small">@mvarView.PathSignature()</span>
 				}
 				<div class="mesh-zoom-toolbar d-flex flex-wrap gap-1 ms-auto">
 					<button type="button" class="btn btn-sm btn-outline-light" @onclick="ZoomIn" title="Acercar">+</button>
@@ -121,29 +129,41 @@
 						<button type="button" class="btn @ZoomModeButtonClass(ZoomAxisMode.Space)" @onclick="() => SetZoomMode(ZoomAxisMode.Space)">PK</button>
 					</div>
 					<span class="badge bg-dark text-light border">
-						@FormatClock(_viewT0)–@FormatClock(_viewT1)
-						· @FormatPkShort(_viewPkMin)–@FormatPkShort(_viewPkMax)
+						@FormatClock(mvarViewT0)–@FormatClock(mvarViewT1)
+						· @FormatPkShort(mvarViewPkMin)–@FormatPkShort(mvarViewPkMax)
 					</span>
 				</div>
 			</div>
+			<div class="mesh-layer-toolbar d-flex flex-wrap gap-1 align-items-center">
+				<span class="mesh-layer-label">Capas</span>
+				<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowOccupations)" @onclick="ToggleOccupations" title="Rectángulos de ocupación de cantón">Cantones</button>
+				<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowTrainPaths)" @onclick="ToggleTrainPaths" title="Trazos de los trenes">Trazas</button>
+				<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowTrainNumbers)" @onclick="ToggleTrainNumbers" title="Números de tren">Números</button>
+				<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowConflicts)" @onclick="ToggleConflicts" title="Conflictos de acantonamiento">Conflictos</button>
+				<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowSpeedStrip)" @onclick="ToggleSpeedStrip" title="Franja de limitaciones de velocidad">V</button>
+				<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowTrackStrip)" @onclick="ToggleTrackStrip" title="Franja de vía simple / doble">#</button>
+				<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowNowLine)" @onclick="ToggleNowLine" title="Línea de hora actual (reloj del sistema)">
+					Ahora @(mvarShowNowLine ? "· " + FormatClockWithSeconds(mvarClockNow) : "")
+				</button>
+			</div>
 
 			<div class="mesh-panel-body">
-				@if (_mesh is not null && _view is not null)
+				@if (mvarMesh is not null && mvarView is not null)
 				{
-					<div @ref="_host"
-						 class="mesh-svg-host @(_dragging ? "mesh-dragging" : "")"
+					<div @ref="mvarHost"
+						 class="mesh-svg-host @(mvarDragging ? "mesh-dragging" : "")"
 						 @onpointerdown="OnPointerDown"
 						 @onpointermove="OnPointerMove"
 						 @onpointerup="OnPointerUp"
 						 @onpointerleave="OnPointerUp"
 						 @onpointercancel="OnPointerUp">
 						<svg xmlns="http://www.w3.org/2000/svg"
-							 width="@_svgWidth"
-							 height="@_svgHeight"
-							 viewBox="0 0 @_svgWidth @_svgHeight"
+							 width="@mvarSvgWidth"
+							 height="@mvarSvgHeight"
+							 viewBox="0 0 @mvarSvgWidth @mvarSvgHeight"
 							 class="mesh-svg-canvas"
 							 preserveAspectRatio="xMidYMid meet">
-							@((MarkupString)_svgContent)
+							@((MarkupString)mvarSvgContent)
 						</svg>
 					</div>
 				}
@@ -159,70 +179,78 @@
 
 				@* Inspector inferior de la malla *@
 				<div class="mesh-side-tabs">
-					<button type="button" class="@InspectTabClass(InspectTab.Warnings)" @onclick="() => _inspectTab = InspectTab.Warnings">
-						Warnings @((_mesh?.Warnings.Count ?? 0) > 0 ? $"({_mesh!.Warnings.Count})" : "")
+					<button type="button" class="@InspectTabClass(InspectTab.Warnings)" @onclick="() => mvarInspectTab = InspectTab.Warnings">
+						Warnings @(CurrentMeshWarningCount > 0 ? $"({CurrentMeshWarningCount})" : "")
 					</button>
-					<button type="button" class="@InspectTabClass(InspectTab.Errors)" @onclick="() => _inspectTab = InspectTab.Errors">
-						Errores @((_mesh?.Errors.Count ?? 0) > 0 ? $"({_mesh!.Errors.Count})" : "")
+					<button type="button" class="@InspectTabClass(InspectTab.Errors)" @onclick="() => mvarInspectTab = InspectTab.Errors">
+						Errores @(CurrentMeshErrorCount > 0 ? $"({CurrentMeshErrorCount})" : "")
 					</button>
-					<button type="button" class="@InspectTabClass(InspectTab.Project)" @onclick="() => _inspectTab = InspectTab.Project">
-						Project @(_project is not null ? $"({_project.Circulations.Count})" : "")
+					<button type="button" class="@InspectTabClass(InspectTab.Project)" @onclick="() => mvarInspectTab = InspectTab.Project">
+						Project @(mvarProject is not null ? $"({mvarProject.Circulations.Count})" : "")
 					</button>
-					<button type="button" class="@InspectTabClass(InspectTab.Notes)" @onclick="() => _inspectTab = InspectTab.Notes">
-						Notas @(_inverseNotes.Count > 0 ? $"({_inverseNotes.Count})" : "")
+					<button type="button" class="@InspectTabClass(InspectTab.Notes)" @onclick="() => mvarInspectTab = InspectTab.Notes">
+						Notas @(mcolInverseNotes.Count > 0 ? $"({mcolInverseNotes.Count})" : "")
 					</button>
 				</div>
 				<div class="mesh-inspect">
-					@if (_inspectTab == InspectTab.Warnings)
+					@if (mvarInspectTab == InspectTab.Warnings)
 					{
-						@if (_mesh is null || _mesh.Warnings.Count == 0)
+						@if (mvarMeshStale)
+						{
+							<div class="empty">Malla desactualizada: aplica el script de nuevo para ver warnings actuales.</div>
+						}
+						else if (mvarMesh is null || mvarMesh.Warnings.Count == 0)
 						{
 							<div class="empty">Sin warnings.</div>
 						}
 						else
 						{
 							<ul>
-								@foreach (string w in _mesh.Warnings)
+								@foreach (string w in mvarMesh.Warnings)
 								{
 									<li>@w</li>
 								}
 							</ul>
 						}
 					}
-					else if (_inspectTab == InspectTab.Errors)
+					else if (mvarInspectTab == InspectTab.Errors)
 					{
-						@if (_mesh is null || _mesh.Errors.Count == 0)
+						@if (mvarMeshStale)
+						{
+							<div class="empty">Malla desactualizada: los errores de la planificación anterior ya no aplican. Corrige el script y pulsa Aplicar.</div>
+						}
+						else if (mvarMesh is null || mvarMesh.Errors.Count == 0)
 						{
 							<div class="empty">Sin errores de malla.</div>
 						}
 						else
 						{
 							<ul>
-								@foreach (string e in _mesh.Errors)
+								@foreach (string e in mvarMesh.Errors)
 								{
 									<li class="text-danger">@e</li>
 								}
 							</ul>
 						}
 					}
-					else if (_inspectTab == InspectTab.Project)
+					else if (mvarInspectTab == InspectTab.Project)
 					{
-						@if (_project is null)
+						@if (mvarProject is null)
 						{
 							<div class="empty">Pulsa <strong>Compilar</strong> para generar el Project.</div>
 						}
 						else
 						{
 							<div class="mb-1">
-								<strong>@_project.Name</strong>
-								<span class="text-muted"> · @_project.Id</span>
-								@if (_project.PlanningDay.HasValue)
+								<strong>@mvarProject.Name</strong>
+								<span class="text-muted"> · @mvarProject.Id</span>
+								@if (mvarProject.PlanningDay.HasValue)
 								{
-									<span> · @DayLabel(_project.PlanningDay.Value)</span>
+									<span> · @DayLabel(mvarProject.PlanningDay.Value)</span>
 								}
 							</div>
 							<ul>
-								@foreach (Diamond.Project.Asimilation a in _project.Asimilations)
+								@foreach (Diamond.Project.Asimilation a in mvarProject.Asimilations)
 								{
 									<li>
 										<code>@a.Id</code> @a.Origin.DisplayCode→@a.Destination.DisplayCode
@@ -231,12 +259,12 @@
 								}
 							</ul>
 							<details class="mt-1">
-								<summary>Circulaciones (40 de @_project.Circulations.Count)</summary>
+								<summary>Circulaciones (40 de @mvarProject.Circulations.Count)</summary>
 								<ul class="font-monospace">
-									@foreach (Diamond.Project.Circulation c in _project.Circulations.Take(40))
+									@foreach (Diamond.Project.Circulation c in mvarProject.Circulations.Take(40))
 									{
 										<li>
-											@(c.ServiceNumber > 0 ? c.ServiceNumber.ToString(CultureInfo.InvariantCulture) : c.Id)
+											@(c.HasServiceNumber ? c.ServiceNumber : c.Id)
 											@c.Origin.DisplayCode→@c.Destination.DisplayCode
 											@FormatClock(c.Departure)–@FormatClock(c.Arrival)
 										</li>
@@ -247,14 +275,14 @@
 					}
 					else
 					{
-						@if (_inverseNotes.Count == 0)
+						@if (mcolInverseNotes.Count == 0)
 						{
 							<div class="empty">Sin notas de importación.</div>
 						}
 						else
 						{
 							<ul>
-								@foreach (string n in _inverseNotes)
+								@foreach (string n in mcolInverseNotes)
 								{
 									<li>@n</li>
 								}
@@ -265,35 +293,42 @@
 			</div>
 		</div>
 
-		<div class="mesh-gutter" @ref="_splitGutter" title="Arrastrar para redimensionar"></div>
+		<div class="mesh-gutter" @ref="mvarSplitGutter" title="Arrastrar para redimensionar"></div>
 
 		@* Panel script *@
 		<div class="mesh-panel mesh-panel-script">
 			<div class="mesh-panel-head">
 				<span class="title">Script</span>
 				<span class="text-muted small">diamond-demand</span>
-				@if (_dirty)
+				@if (mvarDirty)
 				{
 					<span class="badge bg-warning text-dark">sin guardar</span>
 				}
 			</div>
 			<div class="mesh-panel-body">
-				<div class="diamond-script-editor @(_compileErrors.Count > 0 ? "has-markers" : "")">
-					<StandaloneCodeEditor @ref="_scriptEditor"
-										  Id="diamond-demand-editor"
-										  ConstructionOptions="EditorConstructionOptions"
-										  OnDidInit="OnScriptEditorInit"
-										  OnDidChangeModelContent="OnScriptEditorChanged" />
+				<div class="diamond-script-editor @(mcolCompileErrors.Count > 0 ? "has-markers" : "")">
+					@if (mvarMountEditor)
+					{
+						<StandaloneCodeEditor @ref="mvarScriptEditor"
+											  Id="diamond-demand-editor"
+											  ConstructionOptions="EditorConstructionOptions"
+											  OnDidInit="OnScriptEditorInit"
+											  OnDidChangeModelContent="OnScriptEditorChanged" />
+					}
+					else
+					{
+						<div class="diamond-editor-placeholder">Cargando editor…</div>
+					}
 				</div>
 
-				@if (_error is not null || _compileErrors.Count > 0)
+				@if (mvarError is not null || mcolCompileErrors.Count > 0)
 				{
 					<div class="mesh-diag-list">
-						@if (_error is not null)
+						@if (mvarError is not null)
 						{
-							<div class="text-danger mb-1">@_error</div>
+							<div class="text-danger mb-1">@mvarError</div>
 						}
-						@foreach (ScriptDiagnostic d in _compileErrors)
+						@foreach (ScriptDiagnostic d in mcolCompileErrors)
 						{
 							<div>
 								@if (d.Line > 0)
@@ -310,7 +345,7 @@
 				<div class="mesh-editor-actions">
 					<button type="button" class="btn btn-sm btn-primary" @onclick="ApplyScript">Aplicar script y planificar</button>
 					<button type="button" class="btn btn-sm btn-outline-light" @onclick="FileSaveAsync">Guardar</button>
-					@if (_error is not null || _compileErrors.Count > 0)
+					@if (mvarError is not null || mcolCompileErrors.Count > 0)
 					{
 						<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearErrorPanel">Limpiar errores</button>
 					}
@@ -336,7 +371,7 @@
 		Notes
 	}
 
-	private static readonly DayOfWeek[] _weekDays =
+	private static readonly DayOfWeek[] mcolWeekDays =
 	{
 		DayOfWeek.Monday,
 		DayOfWeek.Tuesday,
@@ -352,95 +387,175 @@
 	private const long MinPkSpan = 2000L;
 	private const double ZoomStep = 1.25;
 
-	private ElementReference _host;
-	private ElementReference _splitRoot;
-	private ElementReference _splitGutter;
-	private DotNetObjectReference<MeshView>? _dotNetRef;
-	private bool _wheelAttached;
-	private bool _splitAttached;
+	private ElementReference mvarHost;
+	private ElementReference mvarSplitRoot;
+	private ElementReference mvarSplitGutter;
+	private DotNetObjectReference<MeshView>? mvarDotNetRef;
+	private bool mvarWheelAttached;
+	private bool mvarSplitAttached;
 
-	private Diamond.Timed.Mesh? _mesh;
-	private ProjectModel? _project;
-	private MeshRouteView? _view;
-	private List<MeshRouteView> _views = new List<MeshRouteView>();
-	private Plan? _plan;
-	private string _svgContent = string.Empty;
-	private string _script = string.Empty;
-	private string? _error;
-	private string? _status;
-	private List<string> _inverseNotes = new List<string>();
-	private InspectTab _inspectTab = InspectTab.Warnings;
+	private Diamond.Timed.Mesh? mvarMesh;
+	private ProjectModel? mvarProject;
+	private MeshRouteView? mvarView;
+	private List<MeshRouteView> mcolViews = new List<MeshRouteView>();
+	private Plan? mvarPlan;
+	private string mvarSvgContent = string.Empty;
+	private string mvarScript = string.Empty;
+	private string? mvarError;
+	private string? mvarStatus;
+	private List<string> mcolInverseNotes = new List<string>();
+	private InspectTab mvarInspectTab = InspectTab.Warnings;
+	/// <summary>
+	/// True si la malla en pantalla no corresponde al último intento de planificación
+	/// (p. ej. el script falló y se conservó el dibujo anterior). No se muestran sus errores como actuales.
+	/// </summary>
+	private bool mvarMeshStale;
 
-	private StandaloneCodeEditor? _scriptEditor;
-	private bool _monacoLanguageReady;
-	private bool _jsReady;
-	private bool _markersDirty;
-	private List<ScriptDiagnostic> _compileErrors = new List<ScriptDiagnostic>();
+	private StandaloneCodeEditor? mvarScriptEditor;
+	private bool mvarMonacoLanguageReady;
+	private bool mvarJsReady;
+
+	/// <summary>Monta el editor solo cuando Monaco y el circuito están listos.</summary>
+	private bool mvarMountEditor;
+
+	/// <summary>True tras dispose: no más interop (evita tumbar el circuit).</summary>
+	private bool mvarDisposed;
+
+	private CancellationTokenSource? mvarLayoutCts;
+
+	// —— Capas visuales de la malla ——
+	private bool mvarShowOccupations = true;
+	private bool mvarShowTrainPaths = true;
+	private bool mvarShowTrainNumbers = true;
+	private bool mvarShowConflicts = true;
+	private bool mvarShowSpeedStrip = true;
+	private bool mvarShowTrackStrip = true;
+	private bool mvarShowNowLine = true;
+	private TimeSpan mvarClockNow = DateTime.Now.TimeOfDay;
+	private System.Threading.Timer? mvarNowTimer;
+	private bool mvarMarkersDirty;
+	private List<ScriptDiagnostic> mcolCompileErrors = new List<ScriptDiagnostic>();
 
 	// Archivo local
-	private string _fileName = "sin título.ddm";
-	private bool _fileHasHandle;
-	private bool _dirty;
-	private string _baselineScript = string.Empty;
+	private string mvarFileName = "sin título.ddm";
+	private bool mvarFileHasHandle;
+	private bool mvarDirty;
+	private string mvarBaselineScript = string.Empty;
 
 	private sealed class ScriptDiagnostic
 	{
-		public int Line { get; set; }
-		public string Message { get; set; } = string.Empty;
-		public string Severity { get; set; } = "error";
+		private int mvarLine;
+		private string mvarMessage = string.Empty;
+		private string mvarSeverity = "error";
+
+		public int Line
+		{
+			get { return mvarLine; }
+			set { mvarLine = value; }
+		}
+
+		public string Message
+		{
+			get { return mvarMessage; }
+			set { mvarMessage = value ?? string.Empty; }
+		}
+
+		public string Severity
+		{
+			get { return mvarSeverity; }
+			set { mvarSeverity = value ?? "error"; }
+		}
 	}
 
-	/// <summary>DTO de interop con diamond-file.js (nombres camelCase para JSON).</summary>
+	/// <summary>DTO de interop con diamond-file.js (propiedades camelCase para deserializar JSON).</summary>
 	private sealed class LocalFileResult
 	{
-		public string? name { get; set; }
-		public string? content { get; set; }
-		public bool hasHandle { get; set; }
-		public bool saved { get; set; }
-		public string? method { get; set; }
+		private string? mvarName;
+		private string? mvarContent;
+		private bool mvarHasHandle;
+		private bool mvarSaved;
+		private string? mvarMethod;
+
+		public string? name
+		{
+			get { return mvarName; }
+			set { mvarName = value; }
+		}
+
+		public string? content
+		{
+			get { return mvarContent; }
+			set { mvarContent = value; }
+		}
+
+		public bool hasHandle
+		{
+			get { return mvarHasHandle; }
+			set { mvarHasHandle = value; }
+		}
+
+		public bool saved
+		{
+			get { return mvarSaved; }
+			set { mvarSaved = value; }
+		}
+
+		public string? method
+		{
+			get { return mvarMethod; }
+			set { mvarMethod = value; }
+		}
 	}
 
-	private DayOfWeek _selectedDay = DayOfWeek.Monday;
-	private string _selectedViewId = DemoMeshService.DefaultViewId;
+	private DayOfWeek mvarSelectedDay = DayOfWeek.Monday;
+	private string mvarSelectedViewId = DemoMeshService.DefaultViewId;
 
-	private int _svgWidth = 1400;
-	private int _svgHeight = 900;
+	private int mvarSvgWidth = 1400;
+	private int mvarSvgHeight = 900;
 
-	private TimeSpan _viewT0;
-	private TimeSpan _viewT1;
-	private long _viewPkMin;
-	private long _viewPkMax;
-	private long _axisPkMin;
-	private long _axisPkMax;
+	private TimeSpan mvarViewT0;
+	private TimeSpan mvarViewT1;
+	private long mvarViewPkMin;
+	private long mvarViewPkMax;
+	private long mvarAxisPkMin;
+	private long mvarAxisPkMax;
 
-	private bool _dragging;
-	private double _lastPointerX;
-	private double _lastPointerY;
-	private ZoomAxisMode _zoomMode = ZoomAxisMode.Both;
+	private bool mvarDragging;
+	private double mvarLastPointerX;
+	private double mvarLastPointerY;
+	private ZoomAxisMode mvarZoomMode = ZoomAxisMode.Both;
+
+	/// <summary>Throttle de regeneración SVG durante pan (~30 fps).</summary>
+	private long mvarLastInteractiveRenderTicks;
+
+	/// <summary>True mientras el último render fue el modo ligero (sin números/ocupaciones).</summary>
+	private bool mvarSvgIsInteractive;
+
+	private CancellationTokenSource? mvarFullRenderCts;
 
 	private string PageTitleText =>
-		(_dirty ? "• " : string.Empty) + _fileName + " — Diamond";
+		(mvarDirty ? "• " : string.Empty) + mvarFileName + " — Diamond";
 
-	private string _fileDisplayName =>
-		_dirty ? _fileName + " *" : _fileName;
+	private string FileDisplayName =>
+		mvarDirty ? mvarFileName + " *" : mvarFileName;
 
 	private string StatusText
 	{
 		get
 		{
-			if (_error is not null)
+			if (mvarError is not null)
 			{
-				return _error;
+				return mvarError;
 			}
 
-			if (_status is not null)
+			if (mvarStatus is not null)
 			{
-				return _status;
+				return mvarStatus;
 			}
 
-			if (_compileErrors.Count > 0)
+			if (mcolCompileErrors.Count > 0)
 			{
-				return _compileErrors.Count.ToString(CultureInfo.InvariantCulture) + " error(es) de script.";
+				return mcolCompileErrors.Count.ToString(CultureInfo.InvariantCulture) + " error(es) de script.";
 			}
 
 			return "Listo.";
@@ -451,12 +566,12 @@
 	{
 		get
 		{
-			if (_error is not null || _compileErrors.Count > 0)
+			if (mvarError is not null || mcolCompileErrors.Count > 0)
 			{
 				return "err";
 			}
 
-			if (_status is not null && _status.Contains("compilado", StringComparison.OrdinalIgnoreCase))
+			if (mvarStatus is not null && mvarStatus.Contains("compilado", StringComparison.OrdinalIgnoreCase))
 			{
 				return "ok";
 			}
@@ -467,13 +582,13 @@
 
 	private string InspectTabClass(InspectTab tab)
 	{
-		bool active = _inspectTab == tab;
+		bool active = mvarInspectTab == tab;
 		string extra = string.Empty;
-		if (tab == InspectTab.Errors && _mesh is not null && _mesh.Errors.Count > 0)
+		if (!mvarMeshStale && tab == InspectTab.Errors && mvarMesh is not null && mvarMesh.Errors.Count > 0)
 		{
 			extra = " has-error";
 		}
-		else if (tab == InspectTab.Warnings && _mesh is not null && _mesh.Warnings.Count > 0)
+		else if (!mvarMeshStale && tab == InspectTab.Warnings && mvarMesh is not null && mvarMesh.Warnings.Count > 0)
 		{
 			extra = " has-alert";
 		}
@@ -481,54 +596,153 @@
 		return (active ? "active" : string.Empty) + extra;
 	}
 
+	private int CurrentMeshErrorCount =>
+		(!mvarMeshStale && mvarMesh is not null) ? mvarMesh.Errors.Count : 0;
+
+	private int CurrentMeshWarningCount =>
+		(!mvarMeshStale && mvarMesh is not null) ? mvarMesh.Warnings.Count : 0;
+
 	protected override void OnInitialized()
 	{
-		if (string.IsNullOrWhiteSpace(_script))
+		if (string.IsNullOrWhiteSpace(mvarScript))
 		{
-			_script = DemoMeshService.SfmT3DemandScript;
+			mvarScript = DemoMeshService.SfmT3DemandScript;
 		}
 
-		_baselineScript = _script;
-		_fileName = "sfm-t3-lab.ddm";
-		_dirty = false;
+		mvarBaselineScript = mvarScript;
+		mvarFileName = "sfm-t3-lab.ddm";
+		mvarDirty = false;
 		RebuildCore();
+		StartNowTimer();
+	}
+
+	private void StartNowTimer()
+	{
+		mvarNowTimer?.Dispose();
+		mvarClockNow = DateTime.Now.TimeOfDay;
+		// Tick cada segundo: mueve la línea de "ahora" si la capa está activa.
+		mvarNowTimer = new System.Threading.Timer(
+			_ =>
+			{
+				_ = InvokeAsync(() =>
+				{
+					if (mvarDisposed)
+					{
+						return Task.CompletedTask;
+					}
+
+					mvarClockNow = DateTime.Now.TimeOfDay;
+					if (mvarShowNowLine && mvarMesh is not null && !mvarDragging)
+					{
+						// Solo regenera SVG si la hora cae (o puede caer) en la ventana visible.
+						RefreshSvg(interactive: mvarSvgIsInteractive);
+					}
+
+					StateHasChanged();
+					return Task.CompletedTask;
+				});
+			},
+			null,
+			dueTime: 1000,
+			period: 1000);
+	}
+
+	/// <summary>
+	/// Excepciones de interop/circuito que no deben mostrar el banner rojo de Blazor.
+	/// Nota: JSDisconnectedException hereda de InvalidOperationException.
+	/// </summary>
+	private static bool IsBenignInteropException(Exception ex)
+	{
+		return ex is JSException
+			|| ex is InvalidOperationException
+			|| ex is ObjectDisposedException
+			|| ex is TaskCanceledException
+			|| ex is OperationCanceledException;
 	}
 
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
-		if (firstRender)
+		if (mvarDisposed)
 		{
-			_jsReady = true;
-			await EnsureMonacoLanguageAsync();
+			return;
 		}
 
-		if (_jsReady && !_splitAttached)
+		if (firstRender)
+		{
+			mvarJsReady = true;
+			await WaitForMonacoReadyAsync();
+			if (mvarDisposed)
+			{
+				return;
+			}
+
+			if (!mvarMountEditor)
+			{
+				mvarMountEditor = true;
+				// Segundo render: crea StandaloneCodeEditor con Monaco disponible.
+				await InvokeAsync(StateHasChanged);
+				return;
+			}
+		}
+
+		if (mvarJsReady && !mvarSplitAttached)
 		{
 			try
 			{
-				await Js.InvokeAsync<bool>("diamondSplit.attach", _splitRoot, _splitGutter);
-				_splitAttached = true;
+				await Js.InvokeAsync<bool>("diamondSplit.attach", mvarSplitRoot, mvarSplitGutter);
+				mvarSplitAttached = true;
+				if (mvarScriptEditor is not null)
+				{
+					await RelayoutMonacoAsync();
+				}
 			}
-			catch (JSException)
+			catch (Exception ex) when (IsBenignInteropException(ex))
 			{
 			}
 		}
 
-		if (_jsReady && _markersDirty)
+		if (mvarJsReady && mvarMarkersDirty && mvarScriptEditor is not null)
 		{
 			await FlushMarkersToEditorAsync();
 		}
 
-		if (_mesh is not null && !_wheelAttached)
+		// El host de la malla solo existe cuando hay mesh; reintentar cada render hasta enganchar.
+		if (mvarMesh is not null && mvarView is not null && !mvarWheelAttached && !mvarDisposed)
 		{
-			_dotNetRef ??= DotNetObjectReference.Create(this);
+			mvarDotNetRef ??= DotNetObjectReference.Create(this);
 			try
 			{
-				await Js.InvokeVoidAsync("diamondMeshViewport.attach", _host, _dotNetRef);
-				_wheelAttached = true;
+				if (!string.IsNullOrEmpty(mvarHost.Id))
+				{
+					await Js.InvokeVoidAsync("diamondMeshViewport.attach", mvarHost, mvarDotNetRef);
+					mvarWheelAttached = true;
+				}
 			}
-			catch (JSException)
+			catch (Exception ex) when (IsBenignInteropException(ex))
 			{
+			}
+		}
+	}
+
+	private async Task WaitForMonacoReadyAsync()
+	{
+		int attempt = 0;
+		while (!mvarDisposed && attempt < 60)
+		{
+			await EnsureMonacoLanguageAsync();
+			if (mvarMonacoLanguageReady)
+			{
+				return;
+			}
+
+			attempt++;
+			try
+			{
+				await Task.Delay(50);
+			}
+			catch (TaskCanceledException)
+			{
+				return;
 			}
 		}
 	}
@@ -540,7 +754,7 @@
 			AutomaticLayout = true,
 			Language = "diamond-demand",
 			Theme = "diamond-dark",
-			Value = string.IsNullOrEmpty(_script) ? DemoMeshService.SfmT3DemandScript : _script,
+			Value = string.IsNullOrEmpty(mvarScript) ? DemoMeshService.SfmT3DemandScript : mvarScript,
 			Minimap = new EditorMinimapOptions { Enabled = false },
 			FontSize = 13,
 			LineNumbers = "on",
@@ -554,94 +768,222 @@
 
 	private async Task EnsureMonacoLanguageAsync()
 	{
-		if (_monacoLanguageReady || !_jsReady)
+		if (mvarMonacoLanguageReady || !mvarJsReady || mvarDisposed)
 		{
 			return;
 		}
 
 		try
 		{
-			await Js.InvokeAsync<bool>("diamondMonaco.ensure");
-			_monacoLanguageReady = true;
+			bool ok = await Js.InvokeAsync<bool>("diamondMonaco.ensureLanguageAsync");
+			if (ok)
+			{
+				mvarMonacoLanguageReady = true;
+				return;
+			}
 		}
-		catch (JSException)
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
+
+		if (mvarMonacoLanguageReady || mvarDisposed)
+		{
+			return;
+		}
+
+		try
+		{
+			bool ok = await Js.InvokeAsync<bool>("diamondMonaco.ensure");
+			if (ok)
+			{
+				mvarMonacoLanguageReady = true;
+			}
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
+	}
+
+	private async Task RelayoutMonacoAsync()
+	{
+		if (!mvarJsReady || mvarDisposed)
+		{
+			return;
+		}
+
+		try
+		{
+			if (mvarScriptEditor is not null)
+			{
+				await mvarScriptEditor.Layout();
+			}
+
+			await Js.InvokeAsync<bool>("diamondMonaco.layout", "diamond-demand-editor");
+			await Js.InvokeAsync<bool>("diamondMonaco.watchLayout", "diamond-demand-editor");
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
 		{
 		}
 	}
 
 	private async Task OnScriptEditorInit()
 	{
+		if (mvarDisposed)
+		{
+			return;
+		}
+
 		await EnsureMonacoLanguageAsync();
+		if (mvarDisposed)
+		{
+			return;
+		}
 
 		try
 		{
 			await Js.InvokeAsync<bool>("diamondMonaco.applyToEditor", "diamond-demand-editor");
 			await Global.SetTheme(Js, "diamond-dark");
 		}
-		catch (JSException)
+		catch (Exception ex) when (IsBenignInteropException(ex))
 		{
 		}
 
-		if (_scriptEditor is not null)
+		if (mvarScriptEditor is null || mvarDisposed)
 		{
-			await _scriptEditor.UpdateOptions(new EditorUpdateOptions
+			return;
+		}
+
+		try
+		{
+			await mvarScriptEditor.UpdateOptions(new EditorUpdateOptions
 			{
-				Theme = "diamond-dark"
+				AutomaticLayout = true
 			});
 
-			if (!string.IsNullOrEmpty(_script))
+			if (!string.IsNullOrEmpty(mvarScript))
 			{
-				await _scriptEditor.SetValue(_script);
+				await mvarScriptEditor.SetValue(mvarScript);
 			}
 
-			if (_compileErrors.Count > 0 || _markersDirty)
+			await mvarScriptEditor.Layout();
+			await RelayoutMonacoAsync();
+			ScheduleDeferredLayouts();
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
+
+		if (mcolCompileErrors.Count > 0 || mvarMarkersDirty)
+		{
+			await FlushMarkersToEditorAsync();
+		}
+	}
+
+	private void ScheduleDeferredLayouts()
+	{
+		mvarLayoutCts?.Cancel();
+		mvarLayoutCts?.Dispose();
+		CancellationTokenSource cts = new CancellationTokenSource();
+		mvarLayoutCts = cts;
+		_ = RunDeferredLayoutsAsync(cts.Token);
+	}
+
+	private async Task RunDeferredLayoutsAsync(CancellationToken token)
+	{
+		try
+		{
+			int[] delaysMs = new[] { 50, 150, 400 };
+			int i = 0;
+			while (i < delaysMs.Length)
 			{
-				await FlushMarkersToEditorAsync();
+				try
+				{
+					await Task.Delay(delaysMs[i], token);
+				}
+				catch (TaskCanceledException)
+				{
+					return;
+				}
+
+				if (token.IsCancellationRequested || mvarDisposed)
+				{
+					return;
+				}
+
+				await InvokeAsync(async () =>
+				{
+					if (!token.IsCancellationRequested && !mvarDisposed)
+					{
+						await RelayoutMonacoAsync();
+					}
+				});
+				i++;
 			}
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
 		}
 	}
 
 	private async Task OnScriptEditorChanged(ModelContentChangedEvent e)
 	{
-		if (_scriptEditor is null)
+		if (mvarScriptEditor is null || mvarDisposed)
 		{
 			return;
 		}
 
-		_script = await _scriptEditor.GetValue() ?? string.Empty;
-		_dirty = !string.Equals(_script, _baselineScript, StringComparison.Ordinal);
+		try
+		{
+			mvarScript = await mvarScriptEditor.GetValue() ?? string.Empty;
+			mvarDirty = !string.Equals(mvarScript, mvarBaselineScript, StringComparison.Ordinal);
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
 	}
 
 	private async Task SyncScriptFromEditorAsync()
 	{
-		if (_scriptEditor is null)
+		if (mvarScriptEditor is null || mvarDisposed)
 		{
 			return;
 		}
 
-		_script = await _scriptEditor.GetValue() ?? string.Empty;
-		_dirty = !string.Equals(_script, _baselineScript, StringComparison.Ordinal);
+		try
+		{
+			mvarScript = await mvarScriptEditor.GetValue() ?? string.Empty;
+			mvarDirty = !string.Equals(mvarScript, mvarBaselineScript, StringComparison.Ordinal);
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
 	}
 
 	private async Task PushScriptToEditorAsync()
 	{
-		if (_scriptEditor is null)
+		if (mvarScriptEditor is null || mvarDisposed)
 		{
 			return;
 		}
 
-		await _scriptEditor.SetValue(_script ?? string.Empty);
+		try
+		{
+			await mvarScriptEditor.SetValue(mvarScript ?? string.Empty);
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
 	}
 
 	private void MarkClean()
 	{
-		_baselineScript = _script ?? string.Empty;
-		_dirty = false;
+		mvarBaselineScript = mvarScript ?? string.Empty;
+		mvarDirty = false;
 	}
 
 	private async Task<bool> ConfirmDiscardIfDirtyAsync(string action)
 	{
-		if (!_dirty)
+		if (!mvarDirty)
 		{
 			return true;
 		}
@@ -650,7 +992,7 @@
 		{
 			return await Js.InvokeAsync<bool>(
 				"confirm",
-				"Hay cambios sin guardar en «" + _fileName + "».\n¿" + action + " de todos modos?");
+				"Hay cambios sin guardar en «" + mvarFileName + "».\n¿" + action + " de todos modos?");
 		}
 		catch
 		{
@@ -666,11 +1008,11 @@
 		}
 
 		await SyncScriptFromEditorAsync();
-		_script = "plan \"nuevo\"\n# Escribe requisitos aquí\n";
-		_fileName = "sin titulo.ddm";
-		_fileHasHandle = false;
-		_inverseNotes.Clear();
-		_project = null;
+		mvarScript = "plan \"nuevo\"\n# Escribe requisitos aquí\n";
+		mvarFileName = "sin titulo.ddm";
+		mvarFileHasHandle = false;
+		mcolInverseNotes.Clear();
+		mvarProject = null;
 		try
 		{
 			await Js.InvokeAsync<bool>("diamondFile.clear");
@@ -679,12 +1021,12 @@
 		{
 		}
 
-		_baselineScript = string.Empty;
-		_dirty = true;
+		mvarBaselineScript = string.Empty;
+		mvarDirty = true;
 		await PushScriptToEditorAsync();
-		_status = "Nuevo script.";
-		_error = null;
-		_compileErrors.Clear();
+		mvarStatus = "Nuevo script.";
+		mvarError = null;
+		mcolCompileErrors.Clear();
 	}
 
 	private async Task FileOpenAsync()
@@ -699,23 +1041,23 @@
 			LocalFileResult? result = await Js.InvokeAsync<LocalFileResult?>("diamondFile.open");
 			if (result is null || result.content is null)
 			{
-				_status = "Apertura cancelada.";
+				mvarStatus = "Apertura cancelada.";
 				return;
 			}
 
-			_fileName = string.IsNullOrEmpty(result.name) ? "script.ddm" : result.name;
-			_fileHasHandle = result.hasHandle;
-			_script = result.content;
-			_inverseNotes.Clear();
-			_project = null;
+			mvarFileName = string.IsNullOrEmpty(result.name) ? "script.ddm" : result.name;
+			mvarFileHasHandle = result.hasHandle;
+			mvarScript = result.content;
+			mcolInverseNotes.Clear();
+			mvarProject = null;
 			MarkClean();
 			await PushScriptToEditorAsync();
 			await RebuildAsync();
-			_status = "Abierto: " + _fileName + ".";
+			mvarStatus = "Abierto: " + mvarFileName + ".";
 		}
 		catch (JSException ex)
 		{
-			_error = "No se pudo abrir el archivo: " + ex.Message;
+			mvarError = "No se pudo abrir el archivo: " + ex.Message;
 		}
 	}
 
@@ -726,11 +1068,11 @@
 		{
 			LocalFileResult? result = await Js.InvokeAsync<LocalFileResult?>(
 				"diamondFile.save",
-				_script,
-				_fileName);
+				mvarScript,
+				mvarFileName);
 			if (result is null)
 			{
-				_status = "Guardado cancelado.";
+				mvarStatus = "Guardado cancelado.";
 				return;
 			}
 
@@ -738,7 +1080,7 @@
 		}
 		catch (JSException ex)
 		{
-			_error = "No se pudo guardar: " + ex.Message;
+			mvarError = "No se pudo guardar: " + ex.Message;
 		}
 	}
 
@@ -749,11 +1091,11 @@
 		{
 			LocalFileResult? result = await Js.InvokeAsync<LocalFileResult?>(
 				"diamondFile.saveAs",
-				_script,
-				_fileName);
+				mvarScript,
+				mvarFileName);
 			if (result is null)
 			{
-				_status = "Guardar como cancelado.";
+				mvarStatus = "Guardar como cancelado.";
 				return;
 			}
 
@@ -761,7 +1103,7 @@
 		}
 		catch (JSException ex)
 		{
-			_error = "No se pudo guardar: " + ex.Message;
+			mvarError = "No se pudo guardar: " + ex.Message;
 		}
 	}
 
@@ -769,132 +1111,177 @@
 	{
 		if (!string.IsNullOrEmpty(result.name))
 		{
-			_fileName = result.name!;
+			mvarFileName = result.name!;
 		}
 
-		_fileHasHandle = result.hasHandle;
+		mvarFileHasHandle = result.hasHandle;
 		MarkClean();
-		_status = string.Equals(result.method, "download", StringComparison.Ordinal)
-			? "Descargado: " + _fileName + "."
-			: "Guardado: " + _fileName + ".";
+		mvarStatus = string.Equals(result.method, "download", StringComparison.Ordinal)
+			? "Descargado: " + mvarFileName + "."
+			: "Guardado: " + mvarFileName + ".";
 	}
 
 	public async ValueTask DisposeAsync()
 	{
-		if (_wheelAttached)
+		mvarDisposed = true;
+
+		mvarNowTimer?.Dispose();
+		mvarNowTimer = null;
+
+		mvarLayoutCts?.Cancel();
+		mvarLayoutCts?.Dispose();
+		mvarLayoutCts = null;
+
+		mvarFullRenderCts?.Cancel();
+		mvarFullRenderCts?.Dispose();
+		mvarFullRenderCts = null;
+
+		if (mvarWheelAttached)
 		{
 			try
 			{
-				await Js.InvokeVoidAsync("diamondMeshViewport.detach", _host);
+				if (!string.IsNullOrEmpty(mvarHost.Id))
+				{
+					await Js.InvokeVoidAsync("diamondMeshViewport.detach", mvarHost);
+				}
+			}
+			catch (Exception ex) when (IsBenignInteropException(ex))
+			{
 			}
 			catch
 			{
 			}
 
-			_wheelAttached = false;
+			mvarWheelAttached = false;
 		}
 
-		_dotNetRef?.Dispose();
-		_dotNetRef = null;
+		try
+		{
+			mvarDotNetRef?.Dispose();
+		}
+		catch
+		{
+		}
+
+		mvarDotNetRef = null;
+		await Task.CompletedTask;
 	}
 
 	[JSInvokable]
 	public Task OnWheelFromJs(double deltaY, double svgX, double svgY)
 	{
-		double factor = deltaY < 0 ? ZoomStep : 1.0 / ZoomStep;
-		ZoomAtScreen(svgX, svgY, factor);
-		return InvokeAsync(StateHasChanged);
+		if (mvarDisposed)
+		{
+			return Task.CompletedTask;
+		}
+
+		try
+		{
+			double factor = deltaY < 0 ? ZoomStep : 1.0 / ZoomStep;
+			ZoomAtScreen(svgX, svgY, factor, interactive: true);
+			ScheduleFullRenderAfterIdle();
+			return InvokeAsync(StateHasChanged);
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+			return Task.CompletedTask;
+		}
 	}
 
 	private void CompileProject()
 	{
-		if (_mesh is null)
+		if (mvarMesh is null)
 		{
-			_status = "No hay malla planificada: aplica el script antes de compilar.";
+			mvarStatus = "No hay malla planificada: aplica el script antes de compilar.";
 			return;
 		}
 
 		try
 		{
-			if (_plan is not null)
+			if (mvarPlan is not null)
 			{
-				_project = ProjectCompiler.Compile(_plan, _mesh);
+				mvarProject = ProjectCompiler.Compile(mvarPlan, mvarMesh);
 			}
 			else
 			{
-				_project = ProjectCompiler.Compile(
-					_mesh,
+				mvarProject = ProjectCompiler.Compile(
+					mvarMesh,
 					new CompileOptions
 					{
-						Name = Path.GetFileNameWithoutExtension(_fileName),
-						SourceScript = _script,
-						PlanningDay = _selectedDay
+						Name = Path.GetFileNameWithoutExtension(mvarFileName),
+						SourceScript = mvarScript,
+						PlanningDay = mvarSelectedDay
 					});
 			}
 
-			_inspectTab = InspectTab.Project;
-			_status = "Proyecto compilado: "
-				+ _project.Circulations.Count.ToString(CultureInfo.InvariantCulture)
+			mvarInspectTab = InspectTab.Project;
+			mvarStatus = "Proyecto compilado: "
+				+ mvarProject.Circulations.Count.ToString(CultureInfo.InvariantCulture)
 				+ " circulaciones, "
-				+ _project.Asimilations.Count.ToString(CultureInfo.InvariantCulture)
+				+ mvarProject.Asimilations.Count.ToString(CultureInfo.InvariantCulture)
 				+ " asimilaciones ("
-				+ _project.Id
+				+ mvarProject.Id
 				+ ").";
 		}
 		catch (Exception ex)
 		{
-			_project = null;
-			_error = "Error al compilar el proyecto: " + ex.Message;
+			mvarProject = null;
+			mvarError = "Error al compilar el proyecto: " + ex.Message;
 		}
 	}
 
 	private void RebuildCore()
 	{
-		_error = null;
-		_status = null;
-		_project = null;
-		_compileErrors = new List<ScriptDiagnostic>();
-		_markersDirty = true;
+		// Limpiar siempre el estado de error del intento anterior (script + banner).
+		mvarError = null;
+		mvarStatus = null;
+		mvarProject = null;
+		mcolCompileErrors = new List<ScriptDiagnostic>();
+		mvarMarkersDirty = true;
 
-		if (string.IsNullOrWhiteSpace(_script))
+		if (string.IsNullOrWhiteSpace(mvarScript))
 		{
-			_script = DemoMeshService.SfmT3DemandScript;
+			mvarScript = DemoMeshService.SfmT3DemandScript;
 		}
 
 		try
 		{
 			TopoLayout topo = DemoMeshService.LoadTopoWithInfrastructure();
 			IReadOnlyList<MeshRouteView> views = DemoMeshService.BuildDemoViews(topo);
-			_views = new List<MeshRouteView>(views);
+			mcolViews = new List<MeshRouteView>(views);
 
 			Plan plan = new Plan(topo);
-			plan.Name = Path.GetFileNameWithoutExtension(_fileName);
-			if (string.IsNullOrWhiteSpace(plan.Name) || plan.Name == "sin título")
+			plan.Name = Path.GetFileNameWithoutExtension(mvarFileName);
+			if (string.IsNullOrWhiteSpace(plan.Name) || plan.Name == "sin título" || plan.Name == "sin titulo")
 			{
 				plan.Name = "SFM demo";
 			}
 
 			plan.EnsureDefaultTrainSpecs();
-			plan.DemandScript = _script;
+			plan.DemandScript = mvarScript;
 
 			DemandCompileResult compiled = plan.CompileDemand();
 			if (!compiled.Success)
 			{
-				_compileErrors = BuildDiagnosticsFromCompile(compiled);
-				_error = "El script no compila (" + _compileErrors.Count.ToString(CultureInfo.InvariantCulture)
-					+ " error(es)). Se mantiene la malla anterior si existía.";
+				mcolCompileErrors = BuildDiagnosticsFromCompile(compiled);
+				mvarError = "El script no compila (" + mcolCompileErrors.Count.ToString(CultureInfo.InvariantCulture)
+					+ " error(es)). El dibujo anterior se conserva pero ya no es la malla actual.";
+				// La malla en pantalla queda desactualizada: no mostrar sus errores/warnings como vigentes.
+				mvarMeshStale = mvarMesh is not null;
+				mvarProject = null;
 				return;
 			}
 
-			_compileErrors = new List<ScriptDiagnostic>();
+			mcolCompileErrors = new List<ScriptDiagnostic>();
 
-			Diamond.Timed.Mesh mesh = new MeshPlanner(plan).Solve(_selectedDay);
-			_plan = plan;
-			_mesh = mesh;
-			_view = DemoMeshService.FindViewById(_views, _selectedViewId) ?? (_views.Count > 0 ? _views[0] : null);
-			if (_view is not null)
+			Diamond.Timed.Mesh mesh = new MeshPlanner(plan).Solve(mvarSelectedDay);
+			mvarPlan = plan;
+			mvarMesh = mesh;
+			mvarMeshStale = false;
+			mvarView = DemoMeshService.FindViewById(mcolViews, mvarSelectedViewId) ?? (mcolViews.Count > 0 ? mcolViews[0] : null);
+			if (mvarView is not null)
 			{
-				_selectedViewId = _view.Id;
+				mvarSelectedViewId = mvarView.Id;
 			}
 
 			InitAxisBounds();
@@ -903,26 +1290,49 @@
 
 			if (!mesh.Success)
 			{
-				_error = "Malla generada con "
+				mvarError = "Malla generada con "
 					+ mesh.Errors.Count.ToString(CultureInfo.InvariantCulture)
 					+ " error(es) de planificación.";
-				_inspectTab = InspectTab.Errors;
+				mvarInspectTab = InspectTab.Errors;
+			}
+			else
+			{
+				// Planificación limpia: no dejar colgado el banner ni la pestaña de errores previos.
+				mvarError = null;
+				if (mvarInspectTab == InspectTab.Errors)
+				{
+					mvarInspectTab = InspectTab.Warnings;
+				}
 			}
 		}
 		catch (Exception ex)
 		{
-			_error = ex.Message;
-			_compileErrors = new List<ScriptDiagnostic>
+			mvarError = ex.Message;
+			mcolCompileErrors = new List<ScriptDiagnostic>
 			{
 				new ScriptDiagnostic { Line = 0, Message = ex.Message, Severity = "error" }
 			};
+			// Fallo de infraestructura: la malla anterior deja de considerarse actual.
+			mvarMeshStale = mvarMesh is not null;
 		}
 	}
 
 	private async Task RebuildAsync()
 	{
+		// Vaciar marcadores Monaco del intento anterior antes de aplicar los nuevos (o ninguno).
+		if (mvarJsReady)
+		{
+			try
+			{
+				await Js.InvokeAsync<bool>("diamondMonaco.clearMarkers");
+			}
+			catch (JSException)
+			{
+			}
+		}
+
 		RebuildCore();
-		if (_jsReady)
+		if (mvarJsReady)
 		{
 			await FlushMarkersToEditorAsync();
 		}
@@ -932,9 +1342,9 @@
 	{
 		await SyncScriptFromEditorAsync();
 		await RebuildAsync();
-		if (_error is null && _compileErrors.Count == 0)
+		if (mvarError is null && mcolCompileErrors.Count == 0)
 		{
-			_status = "Script aplicado · " + DayLabel(_selectedDay) + " · view " + _selectedViewId + ".";
+			mvarStatus = "Script aplicado · " + DayLabel(mvarSelectedDay) + " · view " + mvarSelectedViewId + ".";
 		}
 	}
 
@@ -945,19 +1355,19 @@
 			return;
 		}
 
-		_script = DemoMeshService.SfmT3DemandScript;
-		_fileName = "sfm-t3-lab.ddm";
-		_fileHasHandle = false;
-		_inverseNotes.Clear();
-		_selectedDay = DayOfWeek.Monday;
-		_selectedViewId = DemoMeshService.DefaultViewId;
+		mvarScript = DemoMeshService.SfmT3DemandScript;
+		mvarFileName = "sfm-t3-lab.ddm";
+		mvarFileHasHandle = false;
+		mcolInverseNotes.Clear();
+		mvarSelectedDay = DayOfWeek.Monday;
+		mvarSelectedViewId = DemoMeshService.DefaultViewId;
 		try { await Js.InvokeAsync<bool>("diamondFile.clear"); } catch (JSException) { }
 		MarkClean();
 		await PushScriptToEditorAsync();
 		await RebuildAsync();
-		if (_error is null)
+		if (mvarError is null)
 		{
-			_status = "Plantilla T3 cargada.";
+			mvarStatus = "Plantilla T3 cargada.";
 		}
 	}
 
@@ -968,19 +1378,19 @@
 			return;
 		}
 
-		_script = DemoMeshService.SfmPalmaSaPoblaDemandScript;
-		_fileName = "sfm-palma-spb.ddm";
-		_fileHasHandle = false;
-		_inverseNotes.Clear();
-		_selectedDay = DayOfWeek.Monday;
-		_selectedViewId = DemoMeshService.PalmaSaPoblaViewId;
+		mvarScript = DemoMeshService.SfmPalmaSaPoblaDemandScript;
+		mvarFileName = "sfm-palma-spb.ddm";
+		mvarFileHasHandle = false;
+		mcolInverseNotes.Clear();
+		mvarSelectedDay = DayOfWeek.Monday;
+		mvarSelectedViewId = DemoMeshService.PalmaSaPoblaViewId;
 		try { await Js.InvokeAsync<bool>("diamondFile.clear"); } catch (JSException) { }
 		MarkClean();
 		await PushScriptToEditorAsync();
 		await RebuildAsync();
-		if (_error is null)
+		if (mvarError is null)
 		{
-			_status = "Plantilla Palma–Sa Pobla cargada.";
+			mvarStatus = "Plantilla Palma–Sa Pobla cargada.";
 		}
 	}
 
@@ -993,69 +1403,77 @@
 
 		try
 		{
-			_error = null;
-			_compileErrors = new List<ScriptDiagnostic>();
+			mvarError = null;
+			mcolCompileErrors = new List<ScriptDiagnostic>();
 			DemandInverseCompiler.InverseCompileResult inv = DemoMeshService.ImportRautaToScript();
-			_script = inv.Script;
-			_fileName = "rauta-import.ddm";
-			_fileHasHandle = false;
-			_inverseNotes = new List<string>(inv.Notes);
+			mvarScript = inv.Script;
+			mvarFileName = "rauta-import.ddm";
+			mvarFileHasHandle = false;
+			mcolInverseNotes = new List<string>(inv.Notes);
 			if (inv.Warnings.Count > 0)
 			{
-				_inverseNotes.AddRange(inv.Warnings.Select(w => "⚠ " + w));
+				mcolInverseNotes.AddRange(inv.Warnings.Select(w => "⚠ " + w));
 			}
 
-			_selectedDay = DayOfWeek.Monday;
-			if (ScriptLooksLikePalmaSaPobla(_script))
+			mvarSelectedDay = DayOfWeek.Monday;
+			if (ScriptLooksLikePalmaSaPobla(mvarScript))
 			{
-				_selectedViewId = DemoMeshService.PalmaSaPoblaViewId;
+				mvarSelectedViewId = DemoMeshService.PalmaSaPoblaViewId;
 			}
 
 			try { await Js.InvokeAsync<bool>("diamondFile.clear"); } catch (JSException) { }
 			MarkClean();
-			_dirty = true;
-			_baselineScript = string.Empty;
+			mvarDirty = true;
+			mvarBaselineScript = string.Empty;
 			await PushScriptToEditorAsync();
 			await RebuildAsync();
-			_inspectTab = InspectTab.Notes;
-			if (_error is null && _compileErrors.Count == 0)
+			mvarInspectTab = InspectTab.Notes;
+			if (mvarError is null && mcolCompileErrors.Count == 0)
 			{
-				_status = "Rauta importada → " + inv.RequirementCount + " requisitos.";
+				mvarStatus = "Rauta importada → " + inv.RequirementCount + " requisitos.";
 			}
 		}
 		catch (Exception ex)
 		{
-			_error = "Importación rauta: " + ex.Message;
+			mvarError = "Importación rauta: " + ex.Message;
 		}
 	}
 
 	private async Task ClearErrorPanel()
 	{
-		_error = null;
-		_compileErrors = new List<ScriptDiagnostic>();
-		_markersDirty = true;
-		if (_jsReady)
+		mvarError = null;
+		mcolCompileErrors = new List<ScriptDiagnostic>();
+		mvarMarkersDirty = true;
+		if (mvarJsReady)
 		{
+			try
+			{
+				await Js.InvokeAsync<bool>("diamondMonaco.clearMarkers");
+			}
+			catch (JSException)
+			{
+			}
+
 			await FlushMarkersToEditorAsync();
 		}
 	}
 
 	private async Task GoToDiagnostic(ScriptDiagnostic diagnostic)
 	{
-		if (diagnostic.Line <= 0 || _scriptEditor is null)
+		if (diagnostic.Line <= 0 || mvarScriptEditor is null)
 		{
 			return;
 		}
 
 		try
 		{
-			await _scriptEditor.SetPosition(new Position
+			await mvarScriptEditor.SetPosition(new Position
 			{
 				LineNumber = diagnostic.Line,
 				Column = 1
 			}, "diamond-goto");
-			await _scriptEditor.RevealLineInCenter(diagnostic.Line);
-			await _scriptEditor.Focus();
+			await mvarScriptEditor.RevealLineInCenter(diagnostic.Line);
+			await mvarScriptEditor.Focus();
 		}
 		catch (JSException)
 		{
@@ -1101,19 +1519,26 @@
 
 	private async Task FlushMarkersToEditorAsync()
 	{
-		if (!_jsReady)
+		if (!mvarJsReady || mvarDisposed)
 		{
-			_markersDirty = true;
+			mvarMarkersDirty = true;
 			return;
 		}
 
 		try
 		{
+			if (mcolCompileErrors.Count == 0)
+			{
+				await Js.InvokeAsync<bool>("diamondMonaco.clearMarkers");
+				mvarMarkersDirty = false;
+				return;
+			}
+
 			List<object> markers = new List<object>();
 			int i = 0;
-			while (i < _compileErrors.Count)
+			while (i < mcolCompileErrors.Count)
 			{
-				ScriptDiagnostic d = _compileErrors[i];
+				ScriptDiagnostic d = mcolCompileErrors[i];
 				markers.Add(new
 				{
 					line = d.Line > 0 ? d.Line : 1,
@@ -1123,12 +1548,12 @@
 				i++;
 			}
 
-			await Js.InvokeAsync<bool>("diamondMonaco.setMarkers", markers);
-			_markersDirty = false;
+			bool ok = await Js.InvokeAsync<bool>("diamondMonaco.setMarkers", markers);
+			mvarMarkersDirty = !ok;
 		}
-		catch (JSException)
+		catch (Exception ex) when (IsBenignInteropException(ex))
 		{
-			_markersDirty = true;
+			mvarMarkersDirty = true;
 		}
 	}
 
@@ -1150,8 +1575,8 @@
 
 	private async Task SelectDay(DayOfWeek day)
 	{
-		_selectedDay = day;
-		if (_plan is null)
+		mvarSelectedDay = day;
+		if (mvarPlan is null)
 		{
 			await RebuildAsync();
 			return;
@@ -1159,20 +1584,33 @@
 
 		try
 		{
-			_error = null;
-			_mesh = DemoMeshService.SolveForDay(_plan, day);
-			_project = null;
+			mvarError = null;
+			mcolCompileErrors = new List<ScriptDiagnostic>();
+			mvarMesh = DemoMeshService.SolveForDay(mvarPlan, day);
+			mvarMeshStale = false;
+			mvarProject = null;
 			RefreshSvg();
-			_status = "Malla para " + DayLabel(day) + ".";
-			if (_mesh is not null && !_mesh.Success)
+			mvarStatus = "Malla para " + DayLabel(day) + ".";
+			if (mvarMesh is not null && !mvarMesh.Success)
 			{
-				_error = "Malla con " + _mesh.Errors.Count.ToString(CultureInfo.InvariantCulture) + " error(es).";
-				_inspectTab = InspectTab.Errors;
+				mvarError = "Malla con " + mvarMesh.Errors.Count.ToString(CultureInfo.InvariantCulture) + " error(es).";
+				mvarInspectTab = InspectTab.Errors;
+			}
+			else if (mvarInspectTab == InspectTab.Errors)
+			{
+				mvarInspectTab = InspectTab.Warnings;
+			}
+
+			if (mvarJsReady)
+			{
+				try { await Js.InvokeAsync<bool>("diamondMonaco.clearMarkers"); }
+				catch (JSException) { }
 			}
 		}
 		catch (Exception ex)
 		{
-			_error = ex.Message;
+			mvarError = ex.Message;
+			mvarMeshStale = mvarMesh is not null;
 		}
 
 		await Task.CompletedTask;
@@ -1185,78 +1623,221 @@
 			return;
 		}
 
-		_selectedViewId = candidate.Id;
-		_view = candidate;
+		mvarSelectedViewId = candidate.Id;
+		mvarView = candidate;
 		InitAxisBounds();
 		ResetViewWindow();
 		RefreshSvg();
-		_status = "Vista: " + candidate.Id + " · " + candidate.Name + ".";
+		mvarStatus = "Vista: " + candidate.Id + " · " + candidate.Name + ".";
 	}
 
 	private string ViewButtonClass(MeshRouteView candidate)
 	{
-		return string.Equals(_selectedViewId, candidate.Id, StringComparison.Ordinal)
+		return string.Equals(mvarSelectedViewId, candidate.Id, StringComparison.Ordinal)
 			? "btn-info"
 			: "btn-outline-light";
 	}
 
 	private void InitAxisBounds()
 	{
-		if (_view is null)
+		if (mvarView is null)
 		{
 			return;
 		}
 
-		_axisPkMin = Math.Min(_view.PK, _view.PKEnd);
-		_axisPkMax = Math.Max(_view.PK, _view.PKEnd);
+		mvarAxisPkMin = Math.Min(mvarView.PK, mvarView.PKEnd);
+		mvarAxisPkMax = Math.Max(mvarView.PK, mvarView.PKEnd);
 	}
 
 	private void ResetViewWindow()
 	{
-		_viewT0 = TimeSpan.FromHours(6);
-		_viewT1 = TimeSpan.FromHours(14);
-		_viewPkMin = _axisPkMin;
-		_viewPkMax = _axisPkMax;
+		mvarViewT0 = TimeSpan.FromHours(6);
+		mvarViewT1 = TimeSpan.FromHours(14);
+		mvarViewPkMin = mvarAxisPkMin;
+		mvarViewPkMax = mvarAxisPkMax;
 	}
 
-	private void RefreshSvg()
+	private void RefreshSvg(bool interactive = false)
 	{
-		if (_mesh is null || _view is null)
+		if (mvarMesh is null || mvarView is null)
 		{
 			return;
 		}
 
 		ClampView();
-		_svgContent = MeshSvgRenderer.RenderContent(
-			_mesh,
-			_view,
-			_viewT0,
-			_viewT1,
-			_viewPkMin,
-			_viewPkMax,
-			width: _svgWidth,
-			height: _svgHeight);
+		MeshSvgDrawOptions options = BuildDrawOptions(interactive);
+		mvarSvgContent = MeshSvgRenderer.RenderContent(
+			mvarMesh,
+			mvarView,
+			mvarViewT0,
+			mvarViewT1,
+			mvarViewPkMin,
+			mvarViewPkMax,
+			mvarSvgWidth,
+			mvarSvgHeight,
+			options);
+		mvarSvgIsInteractive = interactive;
+	}
+
+	private MeshSvgDrawOptions BuildDrawOptions(bool interactive)
+	{
+		if (mvarShowNowLine)
+		{
+			mvarClockNow = DateTime.Now.TimeOfDay;
+		}
+
+		MeshSvgDrawOptions options = MeshSvgDrawOptions.Create(
+			showCantonOccupations: mvarShowOccupations,
+			showTrainPaths: mvarShowTrainPaths,
+			showTrainNumbers: mvarShowTrainNumbers,
+			showConflicts: mvarShowConflicts,
+			showSpeedStrip: mvarShowSpeedStrip,
+			showTrackStrip: mvarShowTrackStrip,
+			showNowLine: mvarShowNowLine,
+			nowTime: mvarShowNowLine ? mvarClockNow : null,
+			maxPolylineSamples: interactive ? 16 : 48);
+
+		if (interactive)
+		{
+			return options.ForInteractiveLod();
+		}
+
+		return options;
+	}
+
+	private string LayerButtonClass(bool enabled)
+	{
+		return enabled ? "btn-info" : "btn-outline-secondary";
+	}
+
+	private void ToggleOccupations()
+	{
+		mvarShowOccupations = !mvarShowOccupations;
+		RefreshSvg();
+	}
+
+	private void ToggleTrainPaths()
+	{
+		mvarShowTrainPaths = !mvarShowTrainPaths;
+		RefreshSvg();
+	}
+
+	private void ToggleTrainNumbers()
+	{
+		mvarShowTrainNumbers = !mvarShowTrainNumbers;
+		RefreshSvg();
+	}
+
+	private void ToggleConflicts()
+	{
+		mvarShowConflicts = !mvarShowConflicts;
+		RefreshSvg();
+	}
+
+	private void ToggleSpeedStrip()
+	{
+		mvarShowSpeedStrip = !mvarShowSpeedStrip;
+		RefreshSvg();
+	}
+
+	private void ToggleTrackStrip()
+	{
+		mvarShowTrackStrip = !mvarShowTrackStrip;
+		RefreshSvg();
+	}
+
+	private void ToggleNowLine()
+	{
+		mvarShowNowLine = !mvarShowNowLine;
+		if (mvarShowNowLine)
+		{
+			mvarClockNow = DateTime.Now.TimeOfDay;
+		}
+
+		RefreshSvg();
+	}
+
+	private static string FormatClockWithSeconds(TimeSpan ts)
+	{
+		int h = (int)ts.TotalHours;
+		if (h < 0)
+		{
+			h = 0;
+		}
+
+		int m = ts.Minutes;
+		if (m < 0)
+		{
+			m = 0;
+		}
+
+		int s = ts.Seconds;
+		if (s < 0)
+		{
+			s = 0;
+		}
+
+		return h.ToString("00", CultureInfo.InvariantCulture)
+			+ ":" + m.ToString("00", CultureInfo.InvariantCulture)
+			+ ":" + s.ToString("00", CultureInfo.InvariantCulture);
+	}
+
+	/// <summary>
+	/// Tras pan/zoom con rueda: render completo cuando deja de haber eventos (~120 ms).
+	/// </summary>
+	private void ScheduleFullRenderAfterIdle()
+	{
+		mvarFullRenderCts?.Cancel();
+		mvarFullRenderCts?.Dispose();
+		CancellationTokenSource cts = new CancellationTokenSource();
+		mvarFullRenderCts = cts;
+		CancellationToken token = cts.Token;
+		_ = RestoreFullSvgAfterDelayAsync(token);
+	}
+
+	private async Task RestoreFullSvgAfterDelayAsync(CancellationToken token)
+	{
+		try
+		{
+			await Task.Delay(120, token);
+			if (token.IsCancellationRequested || mvarDisposed || !mvarSvgIsInteractive)
+			{
+				return;
+			}
+
+			await InvokeAsync(() =>
+			{
+				if (!token.IsCancellationRequested && !mvarDisposed && mvarSvgIsInteractive)
+				{
+					RefreshSvg(interactive: false);
+					StateHasChanged();
+				}
+			});
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
 	}
 
 	private void ResetView()
 	{
 		ResetViewWindow();
-		RefreshSvg();
+		RefreshSvg(interactive: false);
 	}
 
 	private void SetZoomMode(ZoomAxisMode mode)
 	{
-		_zoomMode = mode;
+		mvarZoomMode = mode;
 	}
 
 	private string ZoomModeButtonClass(ZoomAxisMode mode)
 	{
-		return _zoomMode == mode ? "btn-light" : "btn-outline-light";
+		return mvarZoomMode == mode ? "btn-light" : "btn-outline-light";
 	}
 
 	private string DayButtonClass(DayOfWeek day)
 	{
-		return _selectedDay == day ? "btn-info" : "btn-outline-light";
+		return mvarSelectedDay == day ? "btn-info" : "btn-outline-light";
 	}
 
 	private static string DayLabel(DayOfWeek day)
@@ -1276,27 +1857,27 @@
 
 	private void ZoomAtPlotCenter(double factor)
 	{
-		double cx = MeshSvgLayout.PlotLeft + MeshSvgLayout.PlotWidth(_svgWidth) * 0.5;
-		double cy = MeshSvgLayout.PlotTop + MeshSvgLayout.PlotHeight(_svgHeight) * 0.5;
-		ZoomAtScreen(cx, cy, factor);
+		double cx = MeshSvgLayout.PlotLeft + MeshSvgLayout.PlotWidth(mvarSvgWidth) * 0.5;
+		double cy = MeshSvgLayout.PlotTop + MeshSvgLayout.PlotHeight(mvarSvgHeight) * 0.5;
+		ZoomAtScreen(cx, cy, factor, interactive: false);
 	}
 
 	private void NudgeTime(double direction)
 	{
-		double span = (_viewT1 - _viewT0).TotalSeconds;
+		double span = (mvarViewT1 - mvarViewT0).TotalSeconds;
 		double delta = direction * span * 0.15;
-		_viewT0 += TimeSpan.FromSeconds(delta);
-		_viewT1 += TimeSpan.FromSeconds(delta);
-		RefreshSvg();
+		mvarViewT0 += TimeSpan.FromSeconds(delta);
+		mvarViewT1 += TimeSpan.FromSeconds(delta);
+		RefreshSvg(interactive: false);
 	}
 
 	private void NudgePk(double direction)
 	{
-		double span = _viewPkMax - _viewPkMin;
+		double span = mvarViewPkMax - mvarViewPkMin;
 		long delta = (long)(direction * span * 0.15);
-		_viewPkMin += delta;
-		_viewPkMax += delta;
-		RefreshSvg();
+		mvarViewPkMin += delta;
+		mvarViewPkMax += delta;
+		RefreshSvg(interactive: false);
 	}
 
 	private void OnPointerDown(PointerEventArgs e)
@@ -1306,59 +1887,76 @@
 			return;
 		}
 
-		_dragging = true;
-		_lastPointerX = e.ClientX;
-		_lastPointerY = e.ClientY;
+		mvarDragging = true;
+		mvarLastPointerX = e.ClientX;
+		mvarLastPointerY = e.ClientY;
+		mvarFullRenderCts?.Cancel();
 	}
 
 	private void OnPointerMove(PointerEventArgs e)
 	{
-		if (!_dragging)
+		if (!mvarDragging)
 		{
 			return;
 		}
 
-		double dx = e.ClientX - _lastPointerX;
-		double dy = e.ClientY - _lastPointerY;
-		_lastPointerX = e.ClientX;
-		_lastPointerY = e.ClientY;
+		double dx = e.ClientX - mvarLastPointerX;
+		double dy = e.ClientY - mvarLastPointerY;
+		mvarLastPointerX = e.ClientX;
+		mvarLastPointerY = e.ClientY;
 
-		double plotW = MeshSvgLayout.PlotWidth(_svgWidth);
-		double plotH = MeshSvgLayout.PlotHeight(_svgHeight);
-		double timeSpan = (_viewT1 - _viewT0).TotalSeconds;
-		double pkSpan = _viewPkMax - _viewPkMin;
+		double plotW = MeshSvgLayout.PlotWidth(mvarSvgWidth);
+		double plotH = MeshSvgLayout.PlotHeight(mvarSvgHeight);
+		double timeSpan = (mvarViewT1 - mvarViewT0).TotalSeconds;
+		double pkSpan = mvarViewPkMax - mvarViewPkMin;
 
-		_viewT0 += TimeSpan.FromSeconds(-dx / plotW * timeSpan);
-		_viewT1 += TimeSpan.FromSeconds(-dx / plotW * timeSpan);
-		_viewPkMin += (long)Math.Round(dy / plotH * pkSpan);
-		_viewPkMax += (long)Math.Round(dy / plotH * pkSpan);
-		RefreshSvg();
+		mvarViewT0 += TimeSpan.FromSeconds(-dx / plotW * timeSpan);
+		mvarViewT1 += TimeSpan.FromSeconds(-dx / plotW * timeSpan);
+		mvarViewPkMin += (long)Math.Round(dy / plotH * pkSpan);
+		mvarViewPkMax += (long)Math.Round(dy / plotH * pkSpan);
+
+		// Throttle: no regenerar el SVG en cada evento de puntero.
+		long now = System.Environment.TickCount64;
+		if (now - mvarLastInteractiveRenderTicks < 33)
+		{
+			return;
+		}
+
+		mvarLastInteractiveRenderTicks = now;
+		RefreshSvg(interactive: true);
 	}
 
 	private void OnPointerUp(PointerEventArgs e)
 	{
-		_dragging = false;
-	}
-
-	private void ZoomAtScreen(double screenX, double screenY, double factor)
-	{
-		if (!MeshSvgLayout.IsInsidePlot(screenX, screenY, _svgWidth, _svgHeight))
+		if (!mvarDragging)
 		{
-			screenX = MeshSvgLayout.PlotLeft + MeshSvgLayout.PlotWidth(_svgWidth) * 0.5;
-			screenY = MeshSvgLayout.PlotTop + MeshSvgLayout.PlotHeight(_svgHeight) * 0.5;
+			return;
 		}
 
-		double anchorTime = MeshSvgLayout.TimeAtX(screenX, _viewT0, _viewT1, _svgWidth);
-		double anchorPk = MeshSvgLayout.PkAtY(screenY, _viewPkMin, _viewPkMax, _svgHeight);
-		double uTime = (screenX - MeshSvgLayout.PlotLeft) / MeshSvgLayout.PlotWidth(_svgWidth);
-		double uPkFromTop = (screenY - MeshSvgLayout.PlotTop) / MeshSvgLayout.PlotHeight(_svgHeight);
+		mvarDragging = false;
+		// Calidad completa al soltar: números, ocupaciones y más muestras.
+		RefreshSvg(interactive: false);
+	}
 
-		bool zoomTime = _zoomMode == ZoomAxisMode.Both || _zoomMode == ZoomAxisMode.Time;
-		bool zoomSpace = _zoomMode == ZoomAxisMode.Both || _zoomMode == ZoomAxisMode.Space;
+	private void ZoomAtScreen(double screenX, double screenY, double factor, bool interactive)
+	{
+		if (!MeshSvgLayout.IsInsidePlot(screenX, screenY, mvarSvgWidth, mvarSvgHeight))
+		{
+			screenX = MeshSvgLayout.PlotLeft + MeshSvgLayout.PlotWidth(mvarSvgWidth) * 0.5;
+			screenY = MeshSvgLayout.PlotTop + MeshSvgLayout.PlotHeight(mvarSvgHeight) * 0.5;
+		}
+
+		double anchorTime = MeshSvgLayout.TimeAtX(screenX, mvarViewT0, mvarViewT1, mvarSvgWidth);
+		double anchorPk = MeshSvgLayout.PkAtY(screenY, mvarViewPkMin, mvarViewPkMax, mvarSvgHeight);
+		double uTime = (screenX - MeshSvgLayout.PlotLeft) / MeshSvgLayout.PlotWidth(mvarSvgWidth);
+		double uPkFromTop = (screenY - MeshSvgLayout.PlotTop) / MeshSvgLayout.PlotHeight(mvarSvgHeight);
+
+		bool zoomTime = mvarZoomMode == ZoomAxisMode.Both || mvarZoomMode == ZoomAxisMode.Time;
+		bool zoomSpace = mvarZoomMode == ZoomAxisMode.Both || mvarZoomMode == ZoomAxisMode.Space;
 
 		if (zoomTime)
 		{
-			double timeSpan = (_viewT1 - _viewT0).TotalSeconds / factor;
+			double timeSpan = (mvarViewT1 - mvarViewT0).TotalSeconds / factor;
 			if (timeSpan < MinTimeSpanHours * 3600.0)
 			{
 				timeSpan = MinTimeSpanHours * 3600.0;
@@ -1369,19 +1967,19 @@
 				timeSpan = MaxTimeSpanHours * 3600.0;
 			}
 
-			_viewT0 = TimeSpan.FromSeconds(anchorTime - uTime * timeSpan);
-			_viewT1 = TimeSpan.FromSeconds(anchorTime + (1.0 - uTime) * timeSpan);
+			mvarViewT0 = TimeSpan.FromSeconds(anchorTime - uTime * timeSpan);
+			mvarViewT1 = TimeSpan.FromSeconds(anchorTime + (1.0 - uTime) * timeSpan);
 		}
 
 		if (zoomSpace)
 		{
-			double pkSpan = (_viewPkMax - _viewPkMin) / factor;
+			double pkSpan = (mvarViewPkMax - mvarViewPkMin) / factor;
 			if (pkSpan < MinPkSpan)
 			{
 				pkSpan = MinPkSpan;
 			}
 
-			double maxPkSpan = Math.Max(MinPkSpan, _axisPkMax - _axisPkMin);
+			double maxPkSpan = Math.Max(MinPkSpan, mvarAxisPkMax - mvarAxisPkMin);
 			if (pkSpan > maxPkSpan)
 			{
 				pkSpan = maxPkSpan;
@@ -1389,38 +1987,49 @@
 
 			double pkMax = anchorPk + uPkFromTop * pkSpan;
 			double pkMin = pkMax - pkSpan;
-			_viewPkMin = (long)Math.Round(pkMin);
-			_viewPkMax = (long)Math.Round(pkMax);
+			mvarViewPkMin = (long)Math.Round(pkMin);
+			mvarViewPkMax = (long)Math.Round(pkMax);
 		}
 
-		RefreshSvg();
+		if (interactive)
+		{
+			long now = System.Environment.TickCount64;
+			if (now - mvarLastInteractiveRenderTicks < 33 && mvarSvgIsInteractive)
+			{
+				return;
+			}
+
+			mvarLastInteractiveRenderTicks = now;
+		}
+
+		RefreshSvg(interactive);
 	}
 
 	private void ClampView()
 	{
-		if (_viewT1 <= _viewT0)
+		if (mvarViewT1 <= mvarViewT0)
 		{
-			_viewT1 = _viewT0 + TimeSpan.FromHours(1);
+			mvarViewT1 = mvarViewT0 + TimeSpan.FromHours(1);
 		}
 
-		double span = (_viewT1 - _viewT0).TotalSeconds;
+		double span = (mvarViewT1 - mvarViewT0).TotalSeconds;
 		if (span < MinTimeSpanHours * 3600.0)
 		{
-			double mid = (_viewT0.TotalSeconds + _viewT1.TotalSeconds) * 0.5;
-			_viewT0 = TimeSpan.FromSeconds(mid - MinTimeSpanHours * 1800.0);
-			_viewT1 = TimeSpan.FromSeconds(mid + MinTimeSpanHours * 1800.0);
+			double mid = (mvarViewT0.TotalSeconds + mvarViewT1.TotalSeconds) * 0.5;
+			mvarViewT0 = TimeSpan.FromSeconds(mid - MinTimeSpanHours * 1800.0);
+			mvarViewT1 = TimeSpan.FromSeconds(mid + MinTimeSpanHours * 1800.0);
 		}
 
-		if (_viewPkMax <= _viewPkMin)
+		if (mvarViewPkMax <= mvarViewPkMin)
 		{
-			_viewPkMax = _viewPkMin + MinPkSpan;
+			mvarViewPkMax = mvarViewPkMin + MinPkSpan;
 		}
 
-		if (_viewPkMax - _viewPkMin < MinPkSpan)
+		if (mvarViewPkMax - mvarViewPkMin < MinPkSpan)
 		{
-			long mid = (_viewPkMin + _viewPkMax) / 2;
-			_viewPkMin = mid - MinPkSpan / 2;
-			_viewPkMax = _viewPkMin + MinPkSpan;
+			long mid = (mvarViewPkMin + mvarViewPkMax) / 2;
+			mvarViewPkMin = mid - MinPkSpan / 2;
+			mvarViewPkMax = mvarViewPkMin + MinPkSpan;
 		}
 	}
 

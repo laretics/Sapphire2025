@@ -16,7 +16,7 @@ namespace Diamond.Timed
 		private Asimilation mvarAsimilation;
 		private TrainSpecs mvarSpecs;
 		private TimeSpan mvarDeparture;
-		private int mvarServiceNumber;
+		private string mvarServiceNumber;
 		private string mvarColor;
 
 		public Circulation(
@@ -43,7 +43,7 @@ namespace Diamond.Timed
 			mvarAsimilation = asimilation;
 			mvarSpecs = specs;
 			mvarDeparture = departure;
-			mvarServiceNumber = 0;
+			mvarServiceNumber = string.Empty;
 			mvarColor = string.IsNullOrWhiteSpace(color) ? string.Empty : color.Trim();
 		}
 
@@ -93,12 +93,17 @@ namespace Diamond.Timed
 		}
 
 		/// <summary>
-		/// Número de tren SFM (p. ej. 4901). 0 si aún no se ha numerado.
-		/// Impares = sentido PK creciente; pares = PK decreciente, por corredor OD.
+		/// Número de tren como texto (p. ej. <c>4901</c>, <c>P1MTX</c>).
+		/// Vacío si aún no se ha numerado.
 		/// </summary>
-		public int ServiceNumber
+		public string ServiceNumber
 		{
 			get { return mvarServiceNumber; }
+		}
+
+		public bool HasServiceNumber
+		{
+			get { return mvarServiceNumber.Length > 0; }
 		}
 
 		/// <summary>
@@ -129,25 +134,43 @@ namespace Diamond.Timed
 		}
 
 		/// <summary>
-		/// Asigna el número de servicio SFM y actualiza <see cref="Id"/> al dígito del número.
+		/// Asigna el número de servicio y actualiza <see cref="Id"/> a ese texto.
 		/// </summary>
-		internal void AssignServiceNumber(int serviceNumber)
+		internal void AssignServiceNumber(string serviceNumber)
 		{
-			if (serviceNumber <= 0)
+			if (string.IsNullOrWhiteSpace(serviceNumber))
 			{
-				throw new ArgumentOutOfRangeException(nameof(serviceNumber));
+				throw new ArgumentException("El número de tren no puede estar vacío.", nameof(serviceNumber));
 			}
 
-			mvarServiceNumber = serviceNumber;
-			mvarId = serviceNumber.ToString(CultureInfo.InvariantCulture);
+			mvarServiceNumber = serviceNumber.Trim();
+			mvarId = mvarServiceNumber;
+		}
+
+		/// <summary>
+		/// Color desde definición de asimilación del script. No sobrescribe un color
+		/// ya fijado por el requisito de demanda.
+		/// </summary>
+		internal void TryAssignColorFromAsimilationDef(string color)
+		{
+			if (mvarColor.Length > 0)
+			{
+				return;
+			}
+
+			if (string.IsNullOrWhiteSpace(color))
+			{
+				return;
+			}
+
+			mvarColor = color.Trim();
 		}
 
 		public override string ToString()
 		{
-			if (mvarServiceNumber > 0)
+			if (mvarServiceNumber.Length > 0)
 			{
-				return mvarServiceNumber.ToString(CultureInfo.InvariantCulture)
-					+ " dep " + mvarDeparture.ToString();
+				return mvarServiceNumber + " dep " + mvarDeparture.ToString();
 			}
 
 			return mvarId + " dep " + mvarDeparture.ToString();

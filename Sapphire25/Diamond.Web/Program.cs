@@ -1,12 +1,19 @@
 using Diamond.Web.Components;
+using Microsoft.AspNetCore.Components.Server;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-var app = builder.Build();
+// En Development: errores de circuito detallados en consola del navegador (no solo el banner).
+builder.Services.Configure<CircuitOptions>(options =>
+{
+	options.DetailedErrors = builder.Environment.IsDevelopment();
+});
+
+WebApplication app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

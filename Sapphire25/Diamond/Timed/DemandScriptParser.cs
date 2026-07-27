@@ -21,8 +21,9 @@ namespace Diamond.Timed
 	/// </code>
 	/// Regiones de definición: una línea <c>days</c>/<c>color</c> (opcionalmente
 	/// prefijada con <c>with</c>/<c>con</c>/<c>region</c>) abre un ámbito; los
-	/// <c>require</c> más indentados heredan esos valores. Lo declarado en el
-	/// propio require (inline o continuación) tiene prioridad.
+	/// <c>require</c> y <c>asim</c> más indentados heredan esos valores.
+	/// <c>asim FROM -&gt; TO numbers 49## color #hex</c> define serie SFM y color de traza
+	/// por corredor OD (no dirigido) y días de la región.
 	/// <c>delete HH:mm-HH:mm [all]</c> elimina circulaciones ya planificadas en esa franja
 	/// (en orden de script; ver <see cref="DemandDeleteOp"/>).
 	/// </remarks>
@@ -43,6 +44,8 @@ namespace Diamond.Timed
 			int lineNumber = 0;
 			DemandRequirement? current = null;
 			int currentIndent = -1;
+			AsimDefBuilder? currentAsim = null;
+			int currentAsimIndent = -1;
 			List<DefinitionScope> scopes = new List<DefinitionScope>();
 
 			while (lineNumber < lines.Length)
@@ -81,10 +84,25 @@ namespace Diamond.Timed
 					currentIndent = -1;
 				}
 
+				// Cerrar y materializar la def asim abierta.
+				if (currentAsim is not null && indent <= currentAsimIndent)
+				{
+					CommitAsimDef(currentAsim, result);
+					currentAsim = null;
+					currentAsimIndent = -1;
+				}
+
 				// Continuación del require actual (más indentada).
 				if (current is not null && indent > currentIndent)
 				{
 					ParseContinuation(tokens, sourceLine, current, result);
+					continue;
+				}
+
+				// Continuación de asim (numbers / color / days).
+				if (currentAsim is not null && indent > currentAsimIndent)
+				{
+					ParseAsimContinuation(tokens, sourceLine, currentAsim, result);
 					continue;
 				}
 
@@ -109,6 +127,13 @@ namespace Diamond.Timed
 
 				if (head == "require" || head == "req")
 				{
+					if (currentAsim is not null)
+					{
+						CommitAsimDef(currentAsim, result);
+						currentAsim = null;
+						currentAsimIndent = -1;
+					}
+
 					ServiceDays defaultDays;
 					string defaultColor;
 					ResolveScopeDefaults(scopes, out defaultDays, out defaultColor);
@@ -124,8 +149,40 @@ namespace Diamond.Timed
 					continue;
 				}
 
+				if (head == "asim" || head == "asimilacion" || head == "asimilación" || head == "asimilation")
+				{
+					if (currentAsim is not null)
+					{
+						CommitAsimDef(currentAsim, result);
+						currentAsim = null;
+						currentAsimIndent = -1;
+					}
+
+					current = null;
+					currentIndent = -1;
+					ServiceDays defaultDays;
+					string defaultColor;
+					ResolveScopeDefaults(scopes, out defaultDays, out defaultColor);
+					currentAsim = ParseAsimLine(
+						tokens,
+						sourceLine,
+						result,
+						ref scriptOrder,
+						defaultDays,
+						defaultColor);
+					currentAsimIndent = currentAsim is null ? -1 : indent;
+					continue;
+				}
+
 				if (head == "delete" || head == "del")
 				{
+					if (currentAsim is not null)
+					{
+						CommitAsimDef(currentAsim, result);
+						currentAsim = null;
+						currentAsimIndent = -1;
+					}
+
 					ServiceDays defaultDays;
 					string defaultColor;
 					ResolveScopeDefaults(scopes, out defaultDays, out defaultColor);
@@ -137,6 +194,13 @@ namespace Diamond.Timed
 
 				if (LooksLikeScopeHeader(tokens))
 				{
+					if (currentAsim is not null)
+					{
+						CommitAsimDef(currentAsim, result);
+						currentAsim = null;
+						currentAsimIndent = -1;
+					}
+
 					DefinitionScope? scope;
 					if (!TryParseScopeHeader(tokens, indent, sourceLine, result, out scope) || scope is null)
 					{
@@ -150,7 +214,12 @@ namespace Diamond.Timed
 				result.AddError(
 					sourceLine,
 					"palabra clave desconocida '" + tokens[0]
-					+ "' (se esperaba plan, require/req, delete, o región days|color|with|con|region).");
+					+ "' (se esperaba plan, require/req, asim, delete, o región days|color|with|con|region).");
+			}
+
+			if (currentAsim is not null)
+			{
+				CommitAsimDef(currentAsim, result);
 			}
 
 			return result;
@@ -212,6 +281,291 @@ namespace Diamond.Timed
 				}
 
 				i++;
+			}
+		}
+
+		/// <summary>
+		/// <c>asim FROM -&gt; TO [numbers 49##] [color #hex] [days lab]</c>
+		/// </summary>
+		private static AsimDefBuilder? ParseAsimLine(
+			List<string> tokens,
+			int sourceLine,
+			DemandCompileResult result,
+			ref int scriptOrder,
+			ServiceDays defaultDays,
+			string defaultColor)
+		{
+			// tokens[0] = asim|…
+			if (tokens.Count < 4)
+			{
+				result.AddError(
+					sourceLine,
+					"uso: asim ORIGEN -> DESTINO [numbers 49##] [color #rrggbb]");
+				return null;
+			}
+
+			int arrowIndex = -1;
+			int i = 1;
+			while (i < tokens.Count)
+			{
+				if (tokens[i] == "->" || tokens[i] == "→")
+				{
+					arrowIndex = i;
+					break;
+				}
+
+				i++;
+			}
+
+			if (arrowIndex < 0 || arrowIndex == 1 || arrowIndex >= tokens.Count - 1)
+			{
+				result.AddError(sourceLine, "uso: asim ORIGEN -> DESTINO … (falta flecha '->').");
+				return null;
+			}
+
+			string fromText = JoinTokens(tokens, 1, arrowIndex - 1);
+			string toText = tokens[arrowIndex + 1];
+			// Destino de un solo token; si hay más tokens son atributos (numbers/color/days).
+			// Si el destino es multi-palabra entre comillas ya viene como un token.
+
+			AsimDefBuilder builder = new AsimDefBuilder(
+				new StationRef(fromText),
+				new StationRef(toText),
+				defaultDays,
+				defaultColor,
+				sourceLine,
+				scriptOrder);
+			scriptOrder++;
+
+			int index = arrowIndex + 2;
+			while (index < tokens.Count)
+			{
+				if (!TryApplyAsimAttribute(tokens, ref index, sourceLine, builder, result))
+				{
+					return builder;
+				}
+			}
+
+			return builder;
+		}
+
+		private static void ParseAsimContinuation(
+			List<string> tokens,
+			int sourceLine,
+			AsimDefBuilder builder,
+			DemandCompileResult result)
+		{
+			int index = 0;
+			while (index < tokens.Count)
+			{
+				if (!TryApplyAsimAttribute(tokens, ref index, sourceLine, builder, result))
+				{
+					return;
+				}
+			}
+		}
+
+		private static bool TryApplyAsimAttribute(
+			List<string> tokens,
+			ref int index,
+			int sourceLine,
+			AsimDefBuilder builder,
+			DemandCompileResult result)
+		{
+			if (index >= tokens.Count)
+			{
+				return false;
+			}
+
+			string lower = tokens[index].ToLowerInvariant();
+			if (lower == "numbers" || lower == "number" || lower == "nums" || lower == "num"
+				|| lower == "serie" || lower == "series" || lower == "numeracion" || lower == "numeración")
+			{
+				if (index + 1 >= tokens.Count)
+				{
+					result.AddError(sourceLine, "uso: numbers 49##");
+					return false;
+				}
+
+				string pattern;
+				string? err;
+				if (!TrainNumbering.TryParseNumberPattern(tokens[index + 1], out pattern, out err))
+				{
+					result.AddError(sourceLine, err ?? "patrón de numeración no válido.");
+					return false;
+				}
+
+				builder.NumberPattern = pattern;
+				index += 2;
+				return true;
+			}
+
+			if (lower == "color" || lower == "colour")
+			{
+				if (index + 1 >= tokens.Count)
+				{
+					result.AddError(sourceLine, "uso: color #rrggbb");
+					return false;
+				}
+
+				string? normalized;
+				string? colorError;
+				if (!TryNormalizeColor(tokens[index + 1], out normalized, out colorError) || normalized is null)
+				{
+					result.AddError(sourceLine, colorError ?? "color no válido.");
+					return false;
+				}
+
+				builder.Color = normalized;
+				index += 2;
+				return true;
+			}
+
+			if (lower == "days" || lower == "on")
+			{
+				ServiceDays parsedDays;
+				int consumed;
+				string? dayError;
+				if (!ServiceDays.TryParse(tokens, index + 1, out parsedDays, out consumed, out dayError))
+				{
+					result.AddError(sourceLine, dayError ?? "días no válidos.");
+					return false;
+				}
+
+				builder.Days = parsedDays;
+				index += 1 + consumed;
+				return true;
+			}
+
+			result.AddError(
+				sourceLine,
+				"en asim solo se admiten numbers|serie|color|days (token inesperado '"
+				+ tokens[index] + "').");
+			return false;
+		}
+
+		private static void CommitAsimDef(AsimDefBuilder builder, DemandCompileResult result)
+		{
+			if (!builder.HasNumberPattern && !builder.HasColor)
+			{
+				result.AddError(
+					builder.SourceLine,
+					"asim sin numbers ni color: indique al menos 'numbers 49##' / 'P##MTX' o 'color #rrggbb'.");
+				return;
+			}
+
+			DemandAsimilationDef def = new DemandAsimilationDef(
+				builder.From,
+				builder.To,
+				builder.Days,
+				builder.NumberPattern,
+				builder.Color,
+				builder.SourceLine,
+				builder.ScriptOrder);
+			result.AddAsimilationDef(def);
+		}
+
+		private static string JoinTokens(List<string> tokens, int fromInclusive, int toInclusive)
+		{
+			if (fromInclusive > toInclusive)
+			{
+				return string.Empty;
+			}
+
+			if (fromInclusive == toInclusive)
+			{
+				return tokens[fromInclusive];
+			}
+
+			StringBuilder sb = new StringBuilder();
+			int i = fromInclusive;
+			while (i <= toInclusive)
+			{
+				if (i > fromInclusive)
+				{
+					sb.Append(' ');
+				}
+
+				sb.Append(tokens[i]);
+				i++;
+			}
+
+			return sb.ToString();
+		}
+
+		private sealed class AsimDefBuilder
+		{
+			private readonly StationRef mvarFrom;
+			private readonly StationRef mvarTo;
+			private ServiceDays mvarDays;
+			private string mvarNumberPattern;
+			private string mvarColor;
+			private readonly int mvarSourceLine;
+			private readonly int mvarScriptOrder;
+
+			public AsimDefBuilder(
+				StationRef from,
+				StationRef to,
+				ServiceDays days,
+				string defaultColor,
+				int sourceLine,
+				int scriptOrder)
+			{
+				mvarFrom = from;
+				mvarTo = to;
+				mvarDays = days;
+				mvarNumberPattern = string.Empty;
+				mvarColor = defaultColor ?? string.Empty;
+				mvarSourceLine = sourceLine;
+				mvarScriptOrder = scriptOrder;
+			}
+
+			public StationRef From
+			{
+				get { return mvarFrom; }
+			}
+
+			public StationRef To
+			{
+				get { return mvarTo; }
+			}
+
+			public ServiceDays Days
+			{
+				get { return mvarDays; }
+				set { mvarDays = value; }
+			}
+
+			public string NumberPattern
+			{
+				get { return mvarNumberPattern; }
+				set { mvarNumberPattern = value ?? string.Empty; }
+			}
+
+			public string Color
+			{
+				get { return mvarColor; }
+				set { mvarColor = value ?? string.Empty; }
+			}
+
+			public bool HasNumberPattern
+			{
+				get { return mvarNumberPattern.Length > 0; }
+			}
+
+			public bool HasColor
+			{
+				get { return mvarColor.Length > 0; }
+			}
+
+			public int SourceLine
+			{
+				get { return mvarSourceLine; }
+			}
+
+			public int ScriptOrder
+			{
+				get { return mvarScriptOrder; }
 			}
 		}
 
@@ -316,20 +670,33 @@ namespace Diamond.Timed
 
 		private sealed class DefinitionScope
 		{
+			private readonly int mvarIndent;
+			private readonly ServiceDays? mvarDays;
+			private readonly string? mvarColor;
+
 			public DefinitionScope(int indent, ServiceDays? days, string? color)
 			{
-				Indent = indent;
-				Days = days;
-				Color = color;
+				mvarIndent = indent;
+				mvarDays = days;
+				mvarColor = color;
 			}
 
-			public int Indent { get; }
+			public int Indent
+			{
+				get { return mvarIndent; }
+			}
 
 			/// <summary>Null = no redefine días en este nivel.</summary>
-			public ServiceDays? Days { get; }
+			public ServiceDays? Days
+			{
+				get { return mvarDays; }
+			}
 
 			/// <summary>Null = no redefine color en este nivel.</summary>
-			public string? Color { get; }
+			public string? Color
+			{
+				get { return mvarColor; }
+			}
 		}
 
 		private static void ParsePlanLine(List<string> tokens, int sourceLine, DemandCompileResult result)
@@ -1172,6 +1539,13 @@ namespace Diamond.Timed
 						continue;
 					}
 
+					// Patrones de numeración SFM: 49## (comodín), no comentario.
+					if (IsNumberPatternHash(line, index))
+					{
+						index++;
+						continue;
+					}
+
 					return line.Substring(0, index);
 				}
 
@@ -1208,6 +1582,27 @@ namespace Diamond.Timed
 			// Si el siguiente carácter es alfanumérico no hex, no es un color limpio.
 			// Tras hex solo dígitos a-f, cualquier otro char (espacio, fin, etc.) es OK.
 			return true;
+		}
+
+		/// <summary>
+		/// True si el <c>#</c> en <paramref name="index"/> forma parte de un patrón
+		/// de numeración tipo <c>49##</c> o <c>P##MTX</c> (letra/dígito + uno o más <c>#</c>).
+		/// </summary>
+		private static bool IsNumberPatternHash(string line, int index)
+		{
+			if (index >= line.Length || line[index] != '#')
+			{
+				return false;
+			}
+
+			int i = index - 1;
+			while (i >= 0 && line[i] == '#')
+			{
+				i--;
+			}
+
+			// 49## (dígito) o P##MTX (letra) o _## (identificador)
+			return i >= 0 && (char.IsLetterOrDigit(line[i]) || line[i] == '_' || line[i] == '-');
 		}
 
 		private static List<string> Tokenize(string line)

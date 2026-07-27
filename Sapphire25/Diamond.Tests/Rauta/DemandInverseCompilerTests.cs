@@ -101,8 +101,10 @@ namespace Diamond.Tests.Rauta
 
 			Mesh mesh = new MeshPlanner(diamondPlan).Solve(DayOfWeek.Monday);
 			List<Circulation> series70 = mesh.Circulations
-				.Where(c => c.ServiceNumber >= 7000 && c.ServiceNumber < 7100)
-				.OrderBy(c => c.ServiceNumber)
+				.Where(c => c.HasServiceNumber
+					&& int.TryParse(c.ServiceNumber, out int n)
+					&& n >= 7000 && n < 7100)
+				.OrderBy(c => c.ServiceNumber, StringComparer.Ordinal)
 				.ToList();
 
 			// Solo un puñado (≈ 7001 ida + 7002 vuelta), no una malla cada hora
@@ -115,7 +117,8 @@ namespace Diamond.Tests.Rauta
 				Assert.True(ok, "70xx debe ser INC↔SPB, no PMI: " + o + "->" + d);
 			});
 
-			// No deben ser visibles en la vista catálogo Palma–SPB (firma distinta)
+			// 70xx (INC↔SPB) puede proyectarse en T3+T2 solo en el tramo T2 (Enllaç–SPB),
+			// no es el mismo corredor completo que PMI↔SPB.
 			RouteView? palmaSpb = null;
 			Station? pmi = layout.Stations.FirstOrDefault(s => s.Avr == "PMI" || s.Id == "01");
 			Station? spb = layout.Stations.FirstOrDefault(s => s.Avr == "SPB" || s.Id == "33");
@@ -130,8 +133,8 @@ namespace Diamond.Tests.Rauta
 			{
 				Assert.All(series70, c =>
 					Assert.False(
-						MeshCantonGeometry.IsVisibleOnView(c.Asimilation, palmaSpb),
-						"700x no debe pintarse en la vista Palma–SPB"));
+						c.Asimilation.View.IsSameOrReversePath(palmaSpb),
+						"700x no es el corredor completo Palma–SPB"));
 			}
 		}
 

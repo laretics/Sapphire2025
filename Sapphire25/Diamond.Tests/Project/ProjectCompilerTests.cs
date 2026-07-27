@@ -52,9 +52,9 @@ namespace Diamond.Tests.Project
 			Assert.Equal(first.Asimilation.Origin.DisplayCode, first.Origin.DisplayCode);
 
 			// Numeración: si la malla tiene service numbers, el proyecto los conserva
-			if (mesh.Circulations.Any(c => c.ServiceNumber > 0))
+			if (mesh.Circulations.Any(c => c.HasServiceNumber))
 			{
-				Assert.Contains(project.Circulations, c => c.ServiceNumber > 0);
+				Assert.Contains(project.Circulations, c => c.HasServiceNumber);
 			}
 		}
 

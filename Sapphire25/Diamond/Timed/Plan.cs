@@ -18,6 +18,7 @@ namespace Diamond.Timed
 		private readonly List<TrainSpecs> mcolTrainSpecs;
 		private readonly List<DemandRequirement> mcolDemand;
 		private readonly List<DemandDeleteOp> mcolDeletes;
+		private readonly List<DemandAsimilationDef> mcolAsimilationDefs;
 		private string mvarDemandScript;
 
 		public Plan()
@@ -29,6 +30,7 @@ namespace Diamond.Timed
 			mcolTrainSpecs = new List<TrainSpecs>();
 			mcolDemand = new List<DemandRequirement>();
 			mcolDeletes = new List<DemandDeleteOp>();
+			mcolAsimilationDefs = new List<DemandAsimilationDef>();
 			mvarDemandScript = string.Empty;
 		}
 
@@ -95,6 +97,14 @@ namespace Diamond.Timed
 		public IReadOnlyList<DemandDeleteOp> Deletes
 		{
 			get { return mcolDeletes; }
+		}
+
+		/// <summary>
+		/// Definiciones <c>asim</c> (numeración xx## y color por corredor OD / día).
+		/// </summary>
+		public IReadOnlyList<DemandAsimilationDef> AsimilationDefs
+		{
+			get { return mcolAsimilationDefs; }
 		}
 
 		/// <summary>
@@ -197,6 +207,7 @@ namespace Diamond.Timed
 
 			mcolDemand.Clear();
 			mcolDeletes.Clear();
+			mcolAsimilationDefs.Clear();
 			if (!result.Success)
 			{
 				return result;
@@ -213,6 +224,13 @@ namespace Diamond.Timed
 			while (index < result.Deletes.Count)
 			{
 				mcolDeletes.Add(result.Deletes[index]);
+				index++;
+			}
+
+			index = 0;
+			while (index < result.AsimilationDefs.Count)
+			{
+				mcolAsimilationDefs.Add(result.AsimilationDefs[index]);
 				index++;
 			}
 

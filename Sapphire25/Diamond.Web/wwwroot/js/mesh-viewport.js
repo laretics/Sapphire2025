@@ -36,12 +36,21 @@ window.diamondMeshViewport = {
         }
       }
 
-      dotNetRef.invokeMethodAsync("OnWheelFromJs", e.deltaY, sx, sy);
+      // Evitar unhandled promise rejection si el circuito Blazor está ocupado/disposed.
+      try {
+        var p = dotNetRef.invokeMethodAsync("OnWheelFromJs", e.deltaY, sx, sy);
+        if (p && typeof p.catch === "function") {
+          p.catch(function () { /* ignore */ });
+        }
+      } catch (err) {
+        // ignore
+      }
     };
 
     element.addEventListener("wheel", handler, { passive: false, capture: true });
     this._handlers.set(element, handler);
   },
+
 
   /**
    * @param {HTMLElement} element

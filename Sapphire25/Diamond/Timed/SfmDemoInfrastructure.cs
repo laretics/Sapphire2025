@@ -103,7 +103,18 @@ namespace Diamond.Timed
 				palmaPk = palma.PK;
 			}
 
-			axis.SetTrackCount(palmaPk, enllacPk.Value, 2);
+			// [palma, enllac] inclusivo en la práctica: el extremo Enllaç es estación de cruce
+			// en zona de doble vía (el span es semiabierto, por eso +1 m).
+			long endExclusive = enllacPk.Value + 1L;
+			if (axis.IsBuilt && endExclusive > axis.PKEnd)
+			{
+				endExclusive = axis.PKEnd;
+			}
+
+			if (endExclusive > palmaPk)
+			{
+				axis.SetTrackCount(palmaPk, endExclusive, 2);
+			}
 		}
 
 		private static long? FindEnllacPk(Axis axis)

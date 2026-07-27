@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Diamond.Rauta
@@ -53,13 +54,55 @@ namespace Diamond.Rauta
 
 	public sealed class RautaInfo
 	{
-		public string Id { get; set; } = string.Empty;
-		public string TopoId { get; set; } = string.Empty;
-		public string Name { get; set; } = string.Empty;
-		public string Description { get; set; } = string.Empty;
-		public string Comment { get; set; } = string.Empty;
-		public string Version { get; set; } = string.Empty;
-		public string Author { get; set; } = string.Empty;
+		private string mvarId = string.Empty;
+		private string mvarTopoId = string.Empty;
+		private string mvarName = string.Empty;
+		private string mvarDescription = string.Empty;
+		private string mvarComment = string.Empty;
+		private string mvarVersion = string.Empty;
+		private string mvarAuthor = string.Empty;
+
+		public string Id
+		{
+			get { return mvarId; }
+			set { mvarId = value ?? string.Empty; }
+		}
+
+		public string TopoId
+		{
+			get { return mvarTopoId; }
+			set { mvarTopoId = value ?? string.Empty; }
+		}
+
+		public string Name
+		{
+			get { return mvarName; }
+			set { mvarName = value ?? string.Empty; }
+		}
+
+		public string Description
+		{
+			get { return mvarDescription; }
+			set { mvarDescription = value ?? string.Empty; }
+		}
+
+		public string Comment
+		{
+			get { return mvarComment; }
+			set { mvarComment = value ?? string.Empty; }
+		}
+
+		public string Version
+		{
+			get { return mvarVersion; }
+			set { mvarVersion = value ?? string.Empty; }
+		}
+
+		public string Author
+		{
+			get { return mvarAuthor; }
+			set { mvarAuthor = value ?? string.Empty; }
+		}
 	}
 
 	/// <summary>
@@ -68,15 +111,32 @@ namespace Diamond.Rauta
 	public sealed class RautaPlan
 	{
 		private readonly List<RautaBlock> mcolBlocks;
+		private string mvarId = string.Empty;
+		private string mvarName = string.Empty;
+		private string mvarComment = string.Empty;
 
 		public RautaPlan()
 		{
 			mcolBlocks = new List<RautaBlock>();
 		}
 
-		public string Id { get; set; } = string.Empty;
-		public string Name { get; set; } = string.Empty;
-		public string Comment { get; set; } = string.Empty;
+		public string Id
+		{
+			get { return mvarId; }
+			set { mvarId = value ?? string.Empty; }
+		}
+
+		public string Name
+		{
+			get { return mvarName; }
+			set { mvarName = value ?? string.Empty; }
+		}
+
+		public string Comment
+		{
+			get { return mvarComment; }
+			set { mvarComment = value ?? string.Empty; }
+		}
 
 		public IReadOnlyList<RautaBlock> Blocks
 		{
@@ -98,6 +158,9 @@ namespace Diamond.Rauta
 	public sealed class RautaBlock
 	{
 		private readonly List<RautaCirculation> mcolCirculations;
+		private string mvarAsimilationId = string.Empty;
+		private string mvarFreq = string.Empty;
+		private string mvarPattern = string.Empty;
 
 		public RautaBlock()
 		{
@@ -105,13 +168,25 @@ namespace Diamond.Rauta
 		}
 
 		/// <summary>Id de asimilación del topo (p. ej. 44x3L).</summary>
-		public string AsimilationId { get; set; } = string.Empty;
+		public string AsimilationId
+		{
+			get { return mvarAsimilationId; }
+			set { mvarAsimilationId = value ?? string.Empty; }
+		}
 
 		/// <summary>lab | fes | …</summary>
-		public string Freq { get; set; } = string.Empty;
+		public string Freq
+		{
+			get { return mvarFreq; }
+			set { mvarFreq = value ?? string.Empty; }
+		}
 
 		/// <summary>Máscara de numeración (p. ej. 49##).</summary>
-		public string Pattern { get; set; } = string.Empty;
+		public string Pattern
+		{
+			get { return mvarPattern; }
+			set { mvarPattern = value ?? string.Empty; }
+		}
 
 		public IReadOnlyList<RautaCirculation> Circulations
 		{
@@ -129,12 +204,34 @@ namespace Diamond.Rauta
 
 	public sealed class RautaCirculation
 	{
-		public string Id { get; set; } = string.Empty;
-		public TimeSpan Departure { get; set; }
+		private string mvarId = string.Empty;
+		private TimeSpan mvarDeparture;
+		private string? mvarAsimilationId;
+		private string? mvarFreq;
+
+		public string Id
+		{
+			get { return mvarId; }
+			set { mvarId = value ?? string.Empty; }
+		}
+
+		public TimeSpan Departure
+		{
+			get { return mvarDeparture; }
+			set { mvarDeparture = value; }
+		}
 
 		/// <summary>Si viene en el cir en lugar del block.</summary>
-		public string? AsimilationId { get; set; }
+		public string? AsimilationId
+		{
+			get { return mvarAsimilationId; }
+			set { mvarAsimilationId = value; }
+		}
 
-		public string? Freq { get; set; }
+		public string? Freq
+		{
+			get { return mvarFreq; }
+			set { mvarFreq = value; }
+		}
 	}
 }

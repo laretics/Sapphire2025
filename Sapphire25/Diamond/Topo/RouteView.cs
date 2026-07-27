@@ -356,6 +356,227 @@ namespace Diamond.Topo
 		}
 
 		/// <summary>
+		/// True si <paramref name="other"/> recorre el mismo corredor en sentido opuesto
+		/// (mismos tramos de eje, orden y extremos invertidos).
+		/// </summary>
+		public bool IsReversePath(RouteView other)
+		{
+			if (other is null)
+			{
+				return false;
+			}
+
+			return string.Equals(PathSignature(), other.ReversePathSignature(), StringComparison.Ordinal);
+		}
+
+		/// <summary>
+		/// Mismo corredor en el mismo sentido o en el inverso (p. ej. PMI→SPB y SPB→PMI).
+		/// </summary>
+		public bool IsSameOrReversePath(RouteView other)
+		{
+			return IsSamePath(other) || IsReversePath(other);
+		}
+
+		/// <summary>
+		/// Firma de camino con tramos en orden inverso y extremos de eje intercambiados.
+		/// </summary>
+		public string ReversePathSignature()
+		{
+			StringBuilder sb = new StringBuilder();
+			int index = mcolLegs.Count - 1;
+			bool first = true;
+			while (index >= 0)
+			{
+				if (!first)
+				{
+					sb.Append('+');
+				}
+
+				first = false;
+				RouteLeg leg = mcolLegs[index];
+				sb.Append(leg.Axis.Id);
+				sb.Append(':');
+				// Invertir sentido del tramo: To → From
+				sb.Append(leg.AxisToPk);
+				sb.Append('>');
+				sb.Append(leg.AxisFromPk);
+				index--;
+			}
+
+			return sb.ToString();
+		}
+
+		/// <summary>
+		/// Proyecta un PK de ruta de <paramref name="source"/> a esta vista cuando comparten
+		/// el mismo corredor (mismo sentido o inverso) o un tramo físico de eje (proyección parcial).
+		/// </summary>
+		public bool TryMapRoutePkFrom(RouteView source, long sourceRoutePk, out long thisRoutePk)
+		{
+			thisRoutePk = 0L;
+			if (source is null)
+			{
+				return false;
+			}
+
+			if (IsSamePath(source))
+			{
+				// Misma orientación: conservar distancia desde el origen de ruta.
+				thisRoutePk = mvarPk0 + (sourceRoutePk - source.PK);
+				return true;
+			}
+
+			if (IsReversePath(source))
+			{
+				// Sentido opuesto: el origen de source es el final de this.
+				long distFromSourceStart = sourceRoutePk - source.PK;
+				thisRoutePk = mvarPk0 + mvarLength - distFromSourceStart;
+				return true;
+			}
+
+			// Proyección parcial: sourceRoutePk → (eje, PK eje) → PK de esta vista.
+			Axis? axis;
+			long axisPk;
+			if (!source.TryMapRouteToAxis(sourceRoutePk, out axis, out axisPk) || axis is null)
+			{
+				return false;
+			}
+
+			return TryMapAxisToRoute(axis, axisPk, out thisRoutePk);
+		}
+
+		/// <summary>
+		/// True si ambas vistas comparten algún tramo físico de eje (solape de intervalos de PK de eje).
+		/// Sirve para pintar en T3+T2 los trenes del corredor T3 solo en Palma–Enllaç, etc.
+		/// </summary>
+		public bool OverlapsPhysically(RouteView other)
+		{
+			if (other is null)
+			{
+				return false;
+			}
+
+			int i = 0;
+			while (i < mcolLegs.Count)
+			{
+				RouteLeg a = mcolLegs[i];
+				long aMin = a.AxisFromPk < a.AxisToPk ? a.AxisFromPk : a.AxisToPk;
+				long aMax = a.AxisFromPk > a.AxisToPk ? a.AxisFromPk : a.AxisToPk;
+
+				int j = 0;
+				while (j < other.Legs.Count)
+				{
+					RouteLeg b = other.Legs[j];
+					if (string.Equals(a.Axis.Id, b.Axis.Id, StringComparison.Ordinal))
+					{
+						long bMin = b.AxisFromPk < b.AxisToPk ? b.AxisFromPk : b.AxisToPk;
+						long bMax = b.AxisFromPk > b.AxisToPk ? b.AxisFromPk : b.AxisToPk;
+						// Solape de intervalos cerrados en eje.
+						if (aMin < bMax && bMin < aMax)
+						{
+							return true;
+						}
+
+						// Extremos coincidentes (enlace).
+						if (aMin <= bMax && bMin <= aMax)
+						{
+							return true;
+						}
+					}
+
+					j++;
+				}
+
+				i++;
+			}
+
+			return false;
+		}
+
+		/// <summary>
+		/// Proyecta un intervalo de cantón [pk0, pkf) definido en <paramref name="source"/>
+		/// a coordenadas de ruta de esta vista (mismo corredor o inverso).
+		/// </summary>
+		public bool TryMapCantonIntervalFrom(
+			RouteView source,
+			long sourcePk0,
+			long sourcePkf,
+			out long thisPk0,
+			out long thisPkf)
+		{
+			thisPk0 = 0L;
+			thisPkf = 0L;
+			if (source is null)
+			{
+				return false;
+			}
+
+			if (IsSamePath(source))
+			{
+				thisPk0 = mvarPk0 + (sourcePk0 - source.PK);
+				thisPkf = mvarPk0 + (sourcePkf - source.PK);
+				return thisPkf > thisPk0;
+			}
+
+			if (IsReversePath(source))
+			{
+				// [s0,s1) en source → distancia desde el final de this.
+				long d0 = sourcePk0 - source.PK;
+				long d1 = sourcePkf - source.PK;
+				// Extremos invertidos: el tramo físico se reorienta.
+				long a = mvarPk0 + mvarLength - d1;
+				long b = mvarPk0 + mvarLength - d0;
+				if (b < a)
+				{
+					long swap = a;
+					a = b;
+					b = swap;
+				}
+
+				thisPk0 = a;
+				thisPkf = b;
+				return thisPkf > thisPk0;
+			}
+
+			// Proyección parcial (p. ej. cantón de T3+T2 sobre asimilación solo-T3):
+			// mapear extremos (y un punto medio) vía ejes físicos.
+			long p0;
+			long p1;
+			bool ok0 = TryMapRoutePkFrom(source, sourcePk0, out p0);
+			bool ok1 = TryMapRoutePkFrom(source, sourcePkf > sourcePk0 ? sourcePkf - 1 : sourcePkf, out p1);
+			if (!ok0 && !ok1)
+			{
+				// Probar puntos interiores del cantón fuente.
+				long mid = (sourcePk0 + sourcePkf) / 2;
+				if (!TryMapRoutePkFrom(source, mid, out p0))
+				{
+					return false;
+				}
+
+				p1 = p0;
+			}
+			else if (!ok0)
+			{
+				p0 = p1;
+			}
+			else if (!ok1)
+			{
+				p1 = p0;
+			}
+
+			if (p1 < p0)
+			{
+				long swap = p0;
+				p0 = p1;
+				p1 = swap;
+			}
+
+			// Intervalo semiabierto local: ampliar 1 m si degenera en un punto.
+			thisPk0 = p0;
+			thisPkf = p1 > p0 ? p1 + 1 : p0 + 1;
+			return true;
+		}
+
+		/// <summary>
 		/// True si hay solape de ejes físicos (útil para filtrar circulaciones en un render).
 		/// </summary>
 		public bool SharesPhysicalAxis(RouteView other)

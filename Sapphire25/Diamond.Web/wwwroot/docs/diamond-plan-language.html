@@ -458,7 +458,7 @@
       <h2 id="regions">14. Regiones de definición</h2>
       <p>
         Una <strong>región</strong> es un bloque indentado que fija valores por defecto
-        (<code>days</code>, <code>color</code>, …) para todos los <code>require</code> que contiene.
+        (<code>days</code>, <code>color</code>, …) para todos los <code>require</code> y <code>asim</code> que contiene.
         Las regiones se anidan: el hijo redefine o añade propiedades; al salir del indentado, el ámbito se cierra.
       </p>
       <table>
@@ -480,6 +480,44 @@
 
 <span class="k">with days</span> fes <span class="k">color</span> <span class="n">#38bdf8</span>
   <span class="k">req</span> PMI <span class="p">-&gt;</span> MAN <span class="n">08:00-20:00</span> <span class="k">as</span> R-fes</pre>
+
+      <h2 id="asim">14.b Definición de asimilaciones — <code>asim</code></h2>
+      <p>
+        Asigna un <strong>patrón de numeración</strong> (texto) y/o un <strong>color de traza</strong>
+        a un corredor origen–destino. El número de tren es siempre un <strong>string</strong>:
+        clásico SFM (<code>4901</code>) o especiales (<code>P1MTX</code>, <code>P3MTX</code>…).
+        Suele ir indentado bajo <code>days</code> para que dependa del día de la semana.
+        El corredor es <strong>no dirigido</strong>: <code>PMI -&gt; MAN</code> aplica a ida y vuelta
+        (secuencia impar / par según sentido de marcha).
+      </p>
+      <table>
+        <thead><tr><th>Forma</th><th>Ejemplo</th></tr></thead>
+        <tbody>
+          <tr><td>Línea completa</td><td><code>asim PMI -&gt; MAN numbers 49## color #38bdf8</code></td></tr>
+          <tr><td>Especiales</td><td><code>asim PMI -&gt; MTX numbers P##MTX</code> → <code>P1MTX</code>, <code>P3MTX</code>…</td></tr>
+          <tr><td>Con continuaciones</td><td><code>asim PMI -&gt; SPB</code> + indent <code>numbers 47##</code> / <code>color orange</code></td></tr>
+          <tr><td>Sinónimos</td><td><code>asimilacion</code>, <code>asimilation</code>; <code>numbers</code>/<code>serie</code>/<code>nums</code></td></tr>
+          <tr><td>Patrones</td><td><code>49##</code> → 4901/4902; <code>P##MTX</code> → P1MTX/P2MTX; <code>45</code>/<code>47xx</code></td></tr>
+        </tbody>
+      </table>
+<pre><span class="k">days</span> lab
+  <span class="k">asim</span> PMI <span class="p">-&gt;</span> MAN <span class="k">numbers</span> <span class="n">49##</span> <span class="k">color</span> <span class="n">#e11d48</span>
+  <span class="k">asim</span> PMI <span class="p">-&gt;</span> SPB
+    <span class="k">numbers</span> <span class="n">47##</span>
+    <span class="k">color</span> <span class="n">#38bdf8</span>
+  <span class="k">req both ways every 40 min</span> PMI <span class="p">-&gt;</span> MAN <span class="n">06:00-22:00</span> <span class="k">as</span> R-T3
+
+<span class="k">days</span> fes
+  <span class="k">asim</span> PMI <span class="p">-&gt;</span> MAN <span class="k">numbers</span> <span class="n">44##</span> <span class="k">color</span> <span class="n">#fbbf24</span>
+  <span class="k">req both ways every 60 min</span> PMI <span class="p">-&gt;</span> MAN <span class="n">08:00-20:00</span> <span class="k">as</span> R-fes</pre>
+      <div class="note">
+        <strong>Prioridad de color:</strong> <code>color</code> en el <code>require</code>
+        &gt; <code>color</code> de la definición <code>asim</code> aplicable
+        &gt; paleta automática por perfil de marcha.
+        <strong>Prioridad de serie:</strong> <code>asim … numbers</code> del script (día aplicable)
+        &gt; tablas SFM embebidas (49 Palma–Manacor, 47 Palma–Sa Pobla…)
+        &gt; serie por hash del corredor.
+      </div>
       <div class="note">
         <strong>Prioridad:</strong> valor en el propio <code>require</code> (inline o continuación indentada)
         &gt; región más interna &gt; regiones externas &gt; defecto del lenguaje

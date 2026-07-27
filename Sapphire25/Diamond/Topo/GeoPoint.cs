@@ -5,15 +5,24 @@ namespace Diamond.Topo
 	/// </summary>
 	public readonly struct GeoPoint
 	{
+		private readonly double mvarLatitude;
+		private readonly double mvarLongitude;
+
 		public GeoPoint(double latitude, double longitude)
 		{
-			Latitude = latitude;
-			Longitude = longitude;
+			mvarLatitude = latitude;
+			mvarLongitude = longitude;
 		}
 
-		public double Latitude { get; }
+		public double Latitude
+		{
+			get { return mvarLatitude; }
+		}
 
-		public double Longitude { get; }
+		public double Longitude
+		{
+			get { return mvarLongitude; }
+		}
 
 		public override string ToString()
 		{

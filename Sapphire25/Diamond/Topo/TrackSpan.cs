@@ -5,6 +5,10 @@ namespace Diamond.Topo
 	/// </summary>
 	public readonly struct TrackSpan
 	{
+		private readonly long mvarPk0;
+		private readonly long mvarPkf;
+		private readonly int mvarTrackCount;
+
 		public TrackSpan(long pk0, long pkf, int trackCount)
 		{
 			if (trackCount < 1)
@@ -19,18 +23,27 @@ namespace Diamond.Topo
 				pkf = swap;
 			}
 
-			Pk0 = pk0;
-			Pkf = pkf;
-			TrackCount = trackCount;
+			mvarPk0 = pk0;
+			mvarPkf = pkf;
+			mvarTrackCount = trackCount;
 		}
 
-		public long Pk0 { get; }
+		public long Pk0
+		{
+			get { return mvarPk0; }
+		}
 
-		public long Pkf { get; }
+		public long Pkf
+		{
+			get { return mvarPkf; }
+		}
 
 		/// <summary>
 		/// Número de vías (1 = única, 2 = doble, …).
 		/// </summary>
-		public int TrackCount { get; }
+		public int TrackCount
+		{
+			get { return mvarTrackCount; }
+		}
 	}
 }
