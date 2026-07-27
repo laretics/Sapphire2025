@@ -1,11 +1,23 @@
 /* Diamond mesh host */
 .mesh-svg-host {
-	overflow: auto;
+	overflow: hidden;
 	max-width: 100%;
+	touch-action: none;
+	cursor: grab;
+	user-select: none;
 }
 
-.mesh-svg-host svg {
+.mesh-svg-host.mesh-dragging {
+	cursor: grabbing;
+}
+
+.mesh-svg-canvas {
 	display: block;
-	max-width: 100%;
+	width: 100%;
 	height: auto;
+	max-height: 85vh;
+}
+
+.mesh-zoom-toolbar .btn {
+	min-width: 2.25rem;
 }

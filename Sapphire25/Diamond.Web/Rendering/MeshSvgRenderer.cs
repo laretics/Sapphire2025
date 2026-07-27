@@ -17,7 +17,32 @@ namespace Diamond.Web.Rendering
 		/// </summary>
 		private const double StripWidth = 11;
 
+		/// <summary>
+		/// SVG completo listo para embeber (sin pan/zoom interactivo).
+		/// </summary>
 		public static string Render(
+			Mesh mesh,
+			Axis axis,
+			TimeSpan timeStart,
+			TimeSpan timeEnd,
+			int width = 1200,
+			int height = 720,
+			bool showCantonOccupations = true)
+		{
+			StringBuilder sb = new StringBuilder();
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" viewBox=\"0 0 {width} {height}\">");
+			sb.Append("<rect width=\"100%\" height=\"100%\" fill=\"#0f1419\"/>");
+			sb.Append(RenderContent(mesh, axis, timeStart, timeEnd, width, height, showCantonOccupations));
+			sb.Append("</svg>");
+			return sb.ToString();
+		}
+
+		/// <summary>
+		/// Contenido interior del SVG (sin etiqueta &lt;svg&gt;), para aplicar
+		/// <c>transform="translate(...) scale(...)"</c> desde la UI.
+		/// </summary>
+		public static string RenderContent(
 			Mesh mesh,
 			Axis axis,
 			TimeSpan timeStart,
@@ -75,9 +100,9 @@ namespace Diamond.Web.Rendering
 			}
 
 			StringBuilder sb = new StringBuilder();
+			// Fondo fijo del diagrama (se mueve con el pan del grupo exterior si se desea)
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" viewBox=\"0 0 {width} {height}\">");
-			sb.Append("<rect width=\"100%\" height=\"100%\" fill=\"#0f1419\"/>");
+				$"<rect x=\"0\" y=\"0\" width=\"{width}\" height=\"{height}\" fill=\"#0f1419\"/>");
 
 			// Franja 1: velocidad
 			List<SpeedBand> speedBands = BuildSpeedBands(axis, pkMin, pkMax);
@@ -280,7 +305,6 @@ namespace Diamond.Web.Rendering
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<text x=\"12\" y=\"{marginTop + plotH / 2}\" fill=\"#cbd5e1\" font-size=\"12\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\" transform=\"rotate(-90 12,{marginTop + plotH / 2})\">Estaciones</text>");
 
-			sb.Append("</svg>");
 			return sb.ToString();
 		}
 
