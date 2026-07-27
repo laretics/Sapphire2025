@@ -1,18 +1,20 @@
 @page "/mesh"
 @rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject IJSRuntime Js
 @using System.Globalization
 @using Diamond.Timed
 @using Diamond.Topo
 @using Diamond.Web.Rendering
 @using Diamond.Web.Services
+@using Microsoft.JSInterop
 
 <PageTitle>Malla T3 — Diamond</PageTitle>
 
 <h1>Malla horaria</h1>
 <p class="text-muted mb-2">
-	Eje <strong>T3 Palma–Manacor</strong> del sample SFM.
-	Eje X = tiempo · Eje Y = estaciones.
-	<strong>Rueda</strong> = zoom · <strong>Arrastrar</strong> = desplazar · botones = control fino.
+	Eje <strong>T3 Palma–Manacor</strong>. Zoom/pan sobre el plot; reglas fijas.
+	La rueda no desplaza la página. El zoom se puede limitar a <strong>tiempo</strong>, <strong>PK</strong> o <strong>ambos</strong>.
 </p>
 
 @if (_error is not null)
@@ -25,7 +27,7 @@ else if (_mesh is not null && _axis is not null)
 		<span class="badge bg-info text-dark">@_axis.Id · @_axis.Name</span>
 		<span class="badge bg-success">@(_mesh.Success ? "OK" : "Con errores")</span>
 		<span class="badge bg-secondary">@_mesh.Circulations.Count circulaciones</span>
-		<span class="badge bg-secondary">@_mesh.Asimilations.Count asimilaciones</span>
+		<span class="badge bg-secondary">@_mesh.Asimilations.Count asimilations</span>
 		<span class="badge bg-warning text-dark">@_mesh.Warnings.Count warnings</span>
 		<span class="badge bg-danger">@_mesh.Errors.Count errors</span>
 		<button class="btn btn-sm btn-outline-secondary" @onclick="Rebuild">Regenerar</button>
@@ -35,11 +37,32 @@ else if (_mesh is not null && _axis is not null)
 		<button type="button" class="btn btn-sm btn-outline-light" @onclick="ZoomIn" title="Acercar">+</button>
 		<button type="button" class="btn btn-sm btn-outline-light" @onclick="ZoomOut" title="Alejar">−</button>
 		<button type="button" class="btn btn-sm btn-outline-light" @onclick="ResetView" title="Vista inicial">Reset</button>
-		<button type="button" class="btn btn-sm btn-outline-light" @onclick="() => Nudge(-80, 0)">←</button>
-		<button type="button" class="btn btn-sm btn-outline-light" @onclick="() => Nudge(80, 0)">→</button>
-		<button type="button" class="btn btn-sm btn-outline-light" @onclick="() => Nudge(0, -80)">↑</button>
-		<button type="button" class="btn btn-sm btn-outline-light" @onclick="() => Nudge(0, 80)">↓</button>
-		<span class="badge bg-dark text-light border">zoom @((_scale * 100).ToString("0", CultureInfo.InvariantCulture))%</span>
+		<button type="button" class="btn btn-sm btn-outline-light" @onclick="() => NudgeTime(-1)">← t</button>
+		<button type="button" class="btn btn-sm btn-outline-light" @onclick="() => NudgeTime(1)">t →</button>
+		<button type="button" class="btn btn-sm btn-outline-light" @onclick="() => NudgePk(1)">↑ PK</button>
+		<button type="button" class="btn btn-sm btn-outline-light" @onclick="() => NudgePk(-1)">↓ PK</button>
+
+		<span class="text-light small ms-1">Zoom:</span>
+		<div class="btn-group btn-group-sm" role="group" aria-label="Ejes de zoom">
+			<button type="button"
+					class="btn @ZoomModeButtonClass(ZoomAxisMode.Both)"
+					@onclick="() => SetZoomMode(ZoomAxisMode.Both)"
+					title="Zoom en tiempo y PK">Ambos</button>
+			<button type="button"
+					class="btn @ZoomModeButtonClass(ZoomAxisMode.Time)"
+					@onclick="() => SetZoomMode(ZoomAxisMode.Time)"
+					title="Solo eje horizontal (tiempo)">Tiempo</button>
+			<button type="button"
+					class="btn @ZoomModeButtonClass(ZoomAxisMode.Space)"
+					@onclick="() => SetZoomMode(ZoomAxisMode.Space)"
+					title="Solo eje vertical (PK / estaciones)">PK</button>
+		</div>
+
+		<span class="badge bg-dark text-light border">
+			@FormatClock(_viewT0)–@FormatClock(_viewT1)
+			· @FormatPkShort(_viewPkMin)–@FormatPkShort(_viewPkMax)
+			· @_zoomModeLabel
+		</span>
 	</div>
 
 	@if (_mesh.Warnings.Count > 0)
@@ -68,9 +91,8 @@ else if (_mesh is not null && _axis is not null)
 		</details>
 	}
 
-	<div class="mesh-svg-host border rounded bg-dark @(_dragging ? "mesh-dragging" : "")"
-		 @onwheel="OnWheel"
-		 @onwheel:preventDefault
+	<div @ref="_host"
+		 class="mesh-svg-host border rounded bg-dark @(_dragging ? "mesh-dragging" : "")"
 		 @onpointerdown="OnPointerDown"
 		 @onpointermove="OnPointerMove"
 		 @onpointerup="OnPointerUp"
@@ -81,12 +103,7 @@ else if (_mesh is not null && _axis is not null)
 			 height="@_svgHeight"
 			 viewBox="0 0 @_svgWidth @_svgHeight"
 			 class="mesh-svg-canvas">
-			@* Fondo de recorte de la ventana *@
-			<rect width="100%" height="100%" fill="#0f1419" />
-			@* Contenido de malla: pan/zoom vía transform SVG *@
-			<g transform="@TransformAttribute">
-				@((MarkupString)_svgContent)
-			</g>
+			@((MarkupString)_svgContent)
 		</svg>
 	</div>
 
@@ -94,9 +111,21 @@ else if (_mesh is not null && _axis is not null)
 }
 
 @code {
-	private const double MinScale = 0.35;
-	private const double MaxScale = 6.0;
-	private const double ZoomStep = 1.2;
+	private enum ZoomAxisMode
+	{
+		Both,
+		Time,
+		Space
+	}
+
+	private const double MinTimeSpanHours = 0.5;
+	private const double MaxTimeSpanHours = 24.0;
+	private const long MinPkSpan = 2000L;
+	private const double ZoomStep = 1.25;
+
+	private ElementReference _host;
+	private DotNetObjectReference<MeshView>? _dotNetRef;
+	private bool _wheelAttached;
 
 	private Diamond.Timed.Mesh? _mesh;
 	private Axis? _axis;
@@ -108,19 +137,84 @@ else if (_mesh is not null && _axis is not null)
 	private int _svgWidth = 1400;
 	private int _svgHeight = 900;
 
-	private double _scale = 1.0;
-	private double _tx = 0.0;
-	private double _ty = 0.0;
+	private TimeSpan _viewT0;
+	private TimeSpan _viewT1;
+	private long _viewPkMin;
+	private long _viewPkMax;
+
+	private long _axisPkMin;
+	private long _axisPkMax;
+
 	private bool _dragging;
 	private double _lastPointerX;
 	private double _lastPointerY;
 
-	private string TransformAttribute =>
-		string.Create(CultureInfo.InvariantCulture, $"translate({_tx} {_ty}) scale({_scale})");
+	private ZoomAxisMode _zoomMode = ZoomAxisMode.Both;
+
+	private string _zoomModeLabel =>
+		_zoomMode switch
+		{
+			ZoomAxisMode.Time => "zoom: tiempo",
+			ZoomAxisMode.Space => "zoom: PK",
+			_ => "zoom: ambos"
+		};
 
 	protected override void OnInitialized()
 	{
 		Rebuild();
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (_mesh is null || _error is not null)
+		{
+			return;
+		}
+
+		if (!_wheelAttached)
+		{
+			_dotNetRef ??= DotNetObjectReference.Create(this);
+			try
+			{
+				await Js.InvokeVoidAsync("diamondMeshViewport.attach", _host, _dotNetRef);
+				_wheelAttached = true;
+			}
+			catch (JSException)
+			{
+				// Script aún no cargado en el primer frame; se reintentará.
+			}
+		}
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		if (_wheelAttached)
+		{
+			try
+			{
+				await Js.InvokeVoidAsync("diamondMeshViewport.detach", _host);
+			}
+			catch
+			{
+				// ignore dispose races
+			}
+
+			_wheelAttached = false;
+		}
+
+		_dotNetRef?.Dispose();
+		_dotNetRef = null;
+	}
+
+	/// <summary>
+	/// Invocado desde JS (listener wheel non-passive) para evitar el scroll de página.
+	/// </summary>
+	[JSInvokable]
+	public Task OnWheelFromJs(double deltaY, double svgX, double svgY)
+	{
+		double factor = deltaY < 0 ? ZoomStep : 1.0 / ZoomStep;
+		ZoomAtScreen(svgX, svgY, factor);
+		return InvokeAsync(StateHasChanged);
 	}
 
 	private void Rebuild()
@@ -130,14 +224,16 @@ else if (_mesh is not null && _axis is not null)
 			_error = null;
 			(_plan, _mesh, _axis) = DemoMeshService.BuildDemo();
 			_script = _plan!.DemandScript;
-			_svgContent = MeshSvgRenderer.RenderContent(
-				_mesh!,
-				_axis!,
-				TimeSpan.FromHours(6),
-				TimeSpan.FromHours(14),
-				width: _svgWidth,
-				height: _svgHeight);
-			ResetView();
+
+			_axisPkMin = Math.Min(_axis!.PK, _axis.PKEnd);
+			_axisPkMax = Math.Max(_axis.PK, _axis.PKEnd);
+
+			_viewT0 = TimeSpan.FromHours(6);
+			_viewT1 = TimeSpan.FromHours(14);
+			_viewPkMin = _axisPkMin;
+			_viewPkMax = _axisPkMax;
+
+			RefreshSvg();
 		}
 		catch (Exception ex)
 		{
@@ -148,34 +244,77 @@ else if (_mesh is not null && _axis is not null)
 		}
 	}
 
+	private void RefreshSvg()
+	{
+		if (_mesh is null || _axis is null)
+		{
+			return;
+		}
+
+		ClampView();
+		_svgContent = MeshSvgRenderer.RenderContent(
+			_mesh,
+			_axis,
+			_viewT0,
+			_viewT1,
+			_viewPkMin,
+			_viewPkMax,
+			width: _svgWidth,
+			height: _svgHeight);
+	}
+
 	private void ResetView()
 	{
-		_scale = 1.0;
-		_tx = 0.0;
-		_ty = 0.0;
+		_viewT0 = TimeSpan.FromHours(6);
+		_viewT1 = TimeSpan.FromHours(14);
+		_viewPkMin = _axisPkMin;
+		_viewPkMax = _axisPkMax;
+		RefreshSvg();
+	}
+
+	private void SetZoomMode(ZoomAxisMode mode)
+	{
+		_zoomMode = mode;
+	}
+
+	private string ZoomModeButtonClass(ZoomAxisMode mode)
+	{
+		return _zoomMode == mode ? "btn-light" : "btn-outline-light";
 	}
 
 	private void ZoomIn()
 	{
-		ZoomAt(_svgWidth * 0.5, _svgHeight * 0.5, ZoomStep);
+		ZoomAtPlotCenter(ZoomStep);
 	}
 
 	private void ZoomOut()
 	{
-		ZoomAt(_svgWidth * 0.5, _svgHeight * 0.5, 1.0 / ZoomStep);
+		ZoomAtPlotCenter(1.0 / ZoomStep);
 	}
 
-	private void Nudge(double dx, double dy)
+	private void ZoomAtPlotCenter(double factor)
 	{
-		_tx += dx;
-		_ty += dy;
+		double cx = MeshSvgLayout.PlotLeft + MeshSvgLayout.PlotWidth(_svgWidth) * 0.5;
+		double cy = MeshSvgLayout.PlotTop + MeshSvgLayout.PlotHeight(_svgHeight) * 0.5;
+		ZoomAtScreen(cx, cy, factor);
 	}
 
-	private void OnWheel(WheelEventArgs e)
+	private void NudgeTime(double direction)
 	{
-		double factor = e.DeltaY < 0 ? ZoomStep : 1.0 / ZoomStep;
-		// OffsetX/Y relativos al elemento que recibe el evento (el host del SVG)
-		ZoomAt(e.OffsetX, e.OffsetY, factor);
+		double span = (_viewT1 - _viewT0).TotalSeconds;
+		double delta = direction * span * 0.15;
+		_viewT0 += TimeSpan.FromSeconds(delta);
+		_viewT1 += TimeSpan.FromSeconds(delta);
+		RefreshSvg();
+	}
+
+	private void NudgePk(double direction)
+	{
+		double span = _viewPkMax - _viewPkMin;
+		long delta = (long)(direction * span * 0.15);
+		_viewPkMin += delta;
+		_viewPkMax += delta;
+		RefreshSvg();
 	}
 
 	private void OnPointerDown(PointerEventArgs e)
@@ -201,8 +340,21 @@ else if (_mesh is not null && _axis is not null)
 		double dy = e.ClientY - _lastPointerY;
 		_lastPointerX = e.ClientX;
 		_lastPointerY = e.ClientY;
-		_tx += dx;
-		_ty += dy;
+
+		double plotW = MeshSvgLayout.PlotWidth(_svgWidth);
+		double plotH = MeshSvgLayout.PlotHeight(_svgHeight);
+		double timeSpan = (_viewT1 - _viewT0).TotalSeconds;
+		double pkSpan = _viewPkMax - _viewPkMin;
+
+		// Pan siempre en ambos ejes (desplazamiento libre); el bloqueo es solo del zoom.
+		double dTime = -dx / plotW * timeSpan;
+		double dPk = dy / plotH * pkSpan;
+
+		_viewT0 += TimeSpan.FromSeconds(dTime);
+		_viewT1 += TimeSpan.FromSeconds(dTime);
+		_viewPkMin += (long)Math.Round(dPk);
+		_viewPkMax += (long)Math.Round(dPk);
+		RefreshSvg();
 	}
 
 	private void OnPointerUp(PointerEventArgs e)
@@ -211,28 +363,110 @@ else if (_mesh is not null && _axis is not null)
 	}
 
 	/// <summary>
-	/// Zoom centrado en un punto del SVG (coordenadas del viewport del diagrama).
-	/// Mantiene fijo el punto del mundo bajo el cursor.
+	/// Zoom de la ventana de datos centrado en un punto de pantalla.
+	/// Respeta <see cref="_zoomMode"/> (tiempo, PK o ambos).
 	/// </summary>
-	private void ZoomAt(double svgX, double svgY, double factor)
+	private void ZoomAtScreen(double screenX, double screenY, double factor)
 	{
-		double newScale = _scale * factor;
-		if (newScale < MinScale)
+		if (!MeshSvgLayout.IsInsidePlot(screenX, screenY, _svgWidth, _svgHeight))
 		{
-			newScale = MinScale;
+			screenX = MeshSvgLayout.PlotLeft + MeshSvgLayout.PlotWidth(_svgWidth) * 0.5;
+			screenY = MeshSvgLayout.PlotTop + MeshSvgLayout.PlotHeight(_svgHeight) * 0.5;
 		}
 
-		if (newScale > MaxScale)
+		double anchorTime = MeshSvgLayout.TimeAtX(screenX, _viewT0, _viewT1, _svgWidth);
+		double anchorPk = MeshSvgLayout.PkAtY(screenY, _viewPkMin, _viewPkMax, _svgHeight);
+
+		double uTime = (screenX - MeshSvgLayout.PlotLeft) / MeshSvgLayout.PlotWidth(_svgWidth);
+		double uPkFromTop = (screenY - MeshSvgLayout.PlotTop) / MeshSvgLayout.PlotHeight(_svgHeight);
+
+		bool zoomTime = _zoomMode == ZoomAxisMode.Both || _zoomMode == ZoomAxisMode.Time;
+		bool zoomSpace = _zoomMode == ZoomAxisMode.Both || _zoomMode == ZoomAxisMode.Space;
+
+		if (zoomTime)
 		{
-			newScale = MaxScale;
+			double timeSpan = (_viewT1 - _viewT0).TotalSeconds / factor;
+			if (timeSpan < MinTimeSpanHours * 3600.0)
+			{
+				timeSpan = MinTimeSpanHours * 3600.0;
+			}
+
+			if (timeSpan > MaxTimeSpanHours * 3600.0)
+			{
+				timeSpan = MaxTimeSpanHours * 3600.0;
+			}
+
+			_viewT0 = TimeSpan.FromSeconds(anchorTime - uTime * timeSpan);
+			_viewT1 = TimeSpan.FromSeconds(anchorTime + (1.0 - uTime) * timeSpan);
 		}
 
-		// world = (screen - t) / s
-		// screen = world * s' + t'  =>  t' = screen - world * s'
-		double worldX = (svgX - _tx) / _scale;
-		double worldY = (svgY - _ty) / _scale;
-		_scale = newScale;
-		_tx = svgX - worldX * _scale;
-		_ty = svgY - worldY * _scale;
+		if (zoomSpace)
+		{
+			double pkSpan = (_viewPkMax - _viewPkMin) / factor;
+			if (pkSpan < MinPkSpan)
+			{
+				pkSpan = MinPkSpan;
+			}
+
+			double maxPkSpan = Math.Max(MinPkSpan, _axisPkMax - _axisPkMin);
+			if (pkSpan > maxPkSpan)
+			{
+				pkSpan = maxPkSpan;
+			}
+
+			double pkMax = anchorPk + uPkFromTop * pkSpan;
+			double pkMin = pkMax - pkSpan;
+			_viewPkMin = (long)Math.Round(pkMin);
+			_viewPkMax = (long)Math.Round(pkMax);
+		}
+
+		RefreshSvg();
+	}
+
+	private void ClampView()
+	{
+		if (_viewT1 <= _viewT0)
+		{
+			_viewT1 = _viewT0 + TimeSpan.FromHours(1);
+		}
+
+		double span = (_viewT1 - _viewT0).TotalSeconds;
+		if (span < MinTimeSpanHours * 3600.0)
+		{
+			double mid = (_viewT0.TotalSeconds + _viewT1.TotalSeconds) * 0.5;
+			_viewT0 = TimeSpan.FromSeconds(mid - MinTimeSpanHours * 1800.0);
+			_viewT1 = TimeSpan.FromSeconds(mid + MinTimeSpanHours * 1800.0);
+		}
+
+		if (_viewPkMax <= _viewPkMin)
+		{
+			_viewPkMax = _viewPkMin + MinPkSpan;
+		}
+
+		if (_viewPkMax - _viewPkMin < MinPkSpan)
+		{
+			long mid = (_viewPkMin + _viewPkMax) / 2;
+			_viewPkMin = mid - MinPkSpan / 2;
+			_viewPkMax = _viewPkMin + MinPkSpan;
+		}
+	}
+
+	private static string FormatClock(TimeSpan ts)
+	{
+		int h = (int)ts.TotalHours;
+		if (h < 0)
+		{
+			h = ((h % 24) + 24) % 24;
+		}
+
+		return h.ToString("00", CultureInfo.InvariantCulture) + ":"
+			+ Math.Abs(ts.Minutes).ToString("00", CultureInfo.InvariantCulture);
+	}
+
+	private static string FormatPkShort(long pk)
+	{
+		long abs = Math.Abs(pk);
+		return (abs / 1000L).ToString(CultureInfo.InvariantCulture) + "+"
+			+ (abs % 1000L).ToString("D3", CultureInfo.InvariantCulture);
 	}
 }

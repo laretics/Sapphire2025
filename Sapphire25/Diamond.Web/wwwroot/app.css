@@ -3,6 +3,7 @@
 	overflow: hidden;
 	max-width: 100%;
 	touch-action: none;
+	overscroll-behavior: none;
 	cursor: grab;
 	user-select: none;
 }
