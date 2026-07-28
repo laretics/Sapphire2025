@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Globalization;
+using System.Threading.Tasks;
 using Tourmaline26.Services.OpenMeteo;
 namespace Tourmaline26.Services
 {
@@ -9,6 +10,8 @@ namespace Tourmaline26.Services
         private WeatherValue? mvarWeatherValue;
         public WeatherValue? WeatherValue { get => mvarWeatherValue; }
         private TourmalineService mvarTourmaline;
+        private double mvarDefaultLatitude = double.NaN;
+        private double mvarDefaultLongitude = double.NaN;
         public MeteoService(
             ILogger<MeteoService> logger,
             IConfiguration config,
@@ -18,6 +21,15 @@ namespace Tourmaline26.Services
             //TODO: Leer valores desde config.
             mvarClient = new OpenMeteoClient();
             mvarTourmaline = tourmalineService;
+            if(mvarTourmaline.SystemConfig.DefaultLocation.Length>0)
+            {
+                string[] coordinates = mvarTourmaline.SystemConfig.DefaultLocation.Split(',');
+                if(coordinates.Length>1)
+                {
+                    double.TryParse(coordinates[0],CultureInfo.InvariantCulture, out mvarDefaultLatitude);
+                    double.TryParse(coordinates[1],CultureInfo.InvariantCulture, out mvarDefaultLongitude);
+                }
+            }
         }
 
         public async Task<bool> ReadLoop()
@@ -25,12 +37,14 @@ namespace Tourmaline26.Services
             try
             {
                 Logic.GPSData? auxGps = mvarTourmaline.SessionConfig.CurrentGPSData;
-                if(null!=auxGps)
-                {
-                    Response? auxRespuesta = await mvarClient.GetCurrentWeatherAsync(auxGps.Latitude, auxGps.Longitude);
-                    if(null!=auxRespuesta)
-                        mvarTourmaline.SessionConfig.CurrentWeather = auxRespuesta.Current;
-                }
+                Response? auxRespuesta = null;
+                if (null != auxGps)
+                    auxRespuesta = await mvarClient.GetCurrentWeatherAsync(auxGps.Latitude, auxGps.Longitude);
+                else if (!double.IsNaN(mvarDefaultLatitude))
+                    auxRespuesta = await mvarClient.GetCurrentWeatherAsync(mvarDefaultLatitude, mvarDefaultLongitude);
+
+                if (null != auxRespuesta)
+                    mvarTourmaline.SessionConfig.CurrentWeather = auxRespuesta.Current;
             }
             catch(Exception ex)
             {

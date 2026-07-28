@@ -70,6 +70,29 @@ namespace Tourmaline26.Services
                 mvarLastMessage = message;
             }
         }
+        public async Task Draw(bool inside, string bitmapId, bool scroll = false, Alignment alignment = Alignment.Center)
+        {
+            // Lee el archivo BMP como array de bytes
+            string auxPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "bmp", $"{bitmapId}.bmp");
+            if(File.Exists(auxPath))
+            {
+                byte[] bmpBytes = await File.ReadAllBytesAsync(auxPath);
+                foreach (DeviceMapped auxDevice in mcolPanels)
+                {
+                    if (auxDevice.HeaderSize < 1)
+                    {
+                        if (inside)
+                            await mvarController.PushBitmapAsync(auxDevice.Address, bmpBytes);
+                    }
+                    else
+                    {
+                        if (!inside)
+                            await mvarController.PushBitmapAsync(auxDevice.Address, bmpBytes);
+                    }
+                }
+            }
+        }
+
         public async Task Cls()
         {
             if(mvarLastMessage.Length>0)

@@ -96,7 +96,9 @@ namespace Tourmaline26.Services
             }
             mvarLogger.LogInformation("Total de dispositivos detectados: {DeviceCount}", deviceCount);
             mvarLedDisplayService.Init(Devices);
-            await mvarLedDisplayService.Print(true,$"Tourmaline {SystemConfig.Version}",true);
+            await mvarLedDisplayService.Print(true,$"Tourmaline {SystemConfig.Version}",false,Alignment.Center);
+            //El envío de BMP a paneles sigue sin funcionar. Hay que estudiarlo con calma.
+            //await mvarLedDisplayService.Draw(true, "Tren81");
             await mvarLedDisplayService.Print(false, "SFM", false);
 
             //await mvarLedDisplayService.ClearAsync();

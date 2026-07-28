@@ -168,9 +168,12 @@
     {
         get
         {
-            var session = mvarTourmaline.SessionConfig;
+            SessionConfiguration session = mvarTourmaline.SessionConfig;
             if (!session.PassengerAnnouncementEnabled)
                 return null;
+            if(null!= session.PassengerAnnouncement)
+                session.PassengerAnnouncement.LanguageIndex = session.PassengerAnnouncementLanguage;
+
             return session.PassengerAnnouncement;
         }
     }

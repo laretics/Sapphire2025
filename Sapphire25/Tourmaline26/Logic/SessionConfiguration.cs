@@ -76,7 +76,24 @@ namespace Tourmaline26.Logic
         /// Mensaje de anuncio seleccionado para difundir a los viajeros (popup).
         /// Null = ningún mensaje elegido aún.
         /// </summary>
-        public PassengerInformation? PassengerAnnouncement { get; set; }
+        private PassengerInformation? mvarPassengerAnnouncement;
+        public PassengerInformation? PassengerAnnouncement 
+        { 
+            get => mvarPassengerAnnouncement; 
+            set
+            {
+                mvarPassengerAnnouncement = value;
+                mvarPassengerAnnouncementLanguage = 0;
+            }
+        }
+        private byte mvarPassengerAnnouncementLanguage = 0;
+        public byte PassengerAnnouncementLanguage { get => mvarPassengerAnnouncementLanguage;} //Idioma actual en el que se muestran los mensajes.
+        public void IncLanguage()
+        {
+            mvarPassengerAnnouncementLanguage++;
+            if (mvarPassengerAnnouncementLanguage > 2)
+                mvarPassengerAnnouncementLanguage = 0;
+        }
 
         public SessionModel? Session { get; set; } = null; //Información sobre el usuario actual
         public Dictionary<Guid, UserModelBase>? ColUsers{ get; set; } = null; //Colección de usuarios del tren, con su Guid de Zafiro como clave.

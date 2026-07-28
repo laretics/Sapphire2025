@@ -1,16 +1,10 @@
-﻿using Microsoft.Extensions.FileSystemGlobbing.Internal.PathSegments;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Net.Http.Headers;
-using System.Security.AccessControl;
-using System.Threading;
-using System.Threading.Tasks;
-using TimeNet2026.Production;
+﻿using TimeNet2026.Production;
 using TimeNet2026.Timed;
 using Tourmaline26.Logic;
 using Tourmaline26.Services.Armandito;
 using Tourmaline26.Services.TourmalineExperience;
+using System.Globalization;
+using BlazorBootstrap;
 
 namespace Tourmaline26.Services
 {
@@ -128,6 +122,7 @@ namespace Tourmaline26.Services
             DateTime auxLastMeteoCheck = DateTime.Today; //Momento de la última comprobación de la meteorología
             DateTime auxLastPanelsUpdate = DateTime.Today; //Momento de la última actualización de paneles led.            
             DateTime auxLastArmanditoUpdate = DateTime.Today; //Última recepción de mensajes de tierra
+            DateTime auxLastPassengerLanguageChange = DateTime.Today; //Última vez que cambiamos de idioma en la información al viajero.
             mvarLogger.LogInformation("System started.");
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -199,7 +194,7 @@ namespace Tourmaline26.Services
                     {
                         mvarLogger.LogDebug("Pool Meteo");
                         mvarMeteoTask = PoolMeteo();
-                        auxLastMeteoCheck = DateTime.Now.AddSeconds(30);
+                        auxLastMeteoCheck = DateTime.Now.AddSeconds(60);
                     }
                     if (null == mvarArmanditoTask
                         && mvarTourmaline.SessionConfig.InternetOK
@@ -214,6 +209,13 @@ namespace Tourmaline26.Services
                         mvarLogger.LogDebug("Pool Led Teleindicators");
                         mvarLedPanelsTask = PoolLedPanels();
                         auxLastPanelsUpdate = DateTime.Now.AddSeconds(4);
+                    }
+
+                    if(auxLastPassengerLanguageChange<DateTime.Now)
+                    {
+                        mvarLogger.LogDebug("PassengerLanguageChange");
+                        mvarTourmaline.SessionConfig.IncLanguage();
+                        auxLastPassengerLanguageChange = DateTime.Now.AddSeconds(20);
                     }
 
                     if (null != mvarTourmaline.SessionConfig.TNEnvironment)
@@ -465,7 +467,7 @@ namespace Tourmaline26.Services
                             await LedPanelsStation(auxTn.CurrentStation.Name, auxTn.Circulation.Parent.asimilation.Destination.Name);
                     }
                     else
-                        await LedPanelsShowTime(auxTn.Circulation);
+                        await LedPanelsShowInfo(auxTn.Circulation);
                 }
             }
             else
@@ -477,28 +479,55 @@ namespace Tourmaline26.Services
         
         private async Task LedPanelsStation(string currentStation, string currentDestination)
         {
-            await mvarLedService.Print(true,$"Tren a {currentStation}",true);
+            await mvarLedService.Print(true,$"Propera estació {currentStation}",true);
             await mvarLedService.Print(false, currentDestination, false);
         }
-        private async Task LedPanelsShowTime(Circulation? auxCirc)
+        private async Task LedPanelsShowInfo(Circulation? auxCirc)
         {
-            //Dentro muestran la hora actual.
-            string cadenaTemp = "";
-            string cadenaSpeed = "";
-            if (null != mvarTourmaline.SessionConfig.CurrentWeather)
-                cadenaTemp = $"   {mvarTourmaline.SessionConfig.CurrentWeather.Temperature2m}.C";
-            int auxSpeed = Math.Min(mvarTourmaline.SessionConfig.CurrentSpeed, 100);
-            if (auxSpeed > 40)
+            bool externalPriority = false;
+            if(null==mvarTourmaline.SessionConfig)
             {
-                cadenaSpeed = $"   {auxSpeed}Km/h";
+                //Si no tengo sessionConfig sólo puedo anunciar la hora.
+                await mvarLedService.Print(true, $"{DateTime.Now:t}", false,Alignment.Center);
+                await mvarLedService.Print(false, "S F M",false,Alignment.Center);
             }
-            string auxMensaje = $"{DateTime.Now:t}{cadenaTemp}{cadenaSpeed}";
-            await mvarLedService.Print(true,auxMensaje, false);
-            //Fuera muestran el número de tren.
-            if (null == auxCirc)
-                await mvarLedService.Print(false, " ", false);
             else
-                await mvarLedService.Print(false, auxCirc.name,false);
+            {
+                if(mvarTourmaline.SessionConfig.PassengerAnnouncementEnabled &&
+                    null!=mvarTourmaline.SessionConfig.PassengerAnnouncement &&
+                    mvarTourmaline.SessionConfig.PassengerAnnouncement.Importance>127)
+                {
+                    //Anuncio a los viajeros activado
+                    string auxCadenaTotal = mvarTourmaline.SessionConfig.PassengerAnnouncement.MessageText.Replace("|", "   ");
+                    await mvarLedService.Print(true, auxCadenaTotal);
+                    if (mvarTourmaline.SessionConfig.PassengerAnnouncement.Importance > 200)
+                    {
+                        externalPriority = true;
+                        await mvarLedService.Print(false, mvarTourmaline.SessionConfig.PassengerAnnouncement.MessageText);
+                    }                       
+                }
+                else
+                {
+                    //Dentro muestran la hora actual.
+                    string cadenaTemp = "";
+                    string cadenaSpeed = "";
+                    if (null != mvarTourmaline.SessionConfig.CurrentWeather)
+                        cadenaTemp = string.Format(CultureInfo.InvariantCulture, "   {0}ºC", mvarTourmaline.SessionConfig.CurrentWeather.Temperature2m);
+                    int auxSpeed = Math.Min(mvarTourmaline.SessionConfig.CurrentSpeed, 100);
+                    if (auxSpeed > 40)
+                        cadenaSpeed = $"   {auxSpeed}Km/h";
+                    string auxMensaje = $"{DateTime.Now:t}{cadenaTemp}{cadenaSpeed}";
+                    await mvarLedService.Print(true, auxMensaje, false);
+                    //Fuera muestran el número de tren.
+                }
+            }
+            if(!externalPriority)
+            {
+                if (null == auxCirc)
+                    await mvarLedService.Print(false, " ", false);
+                else
+                    await mvarLedService.Print(false, auxCirc.name, false);
+            }
         }
         private async Task LedPanelsShowDestination()
         {
@@ -510,14 +539,14 @@ namespace Tourmaline26.Services
                 Asimilation asimila = enviro.Asimilation;
                 if (null != asimila && null!=asimila.Destination)
                 {
-                    string auxMensaje = $"Aquest tren es dirigeix a {asimila.Destination.Name}";
+                    string auxMensaje = $"Tren amb destinació {asimila.Destination.Name}";
                     await mvarLedService.Print(true,auxMensaje,true);
                 }
                 else
-                    await LedPanelsShowTime(null); 
+                    await LedPanelsShowInfo(null); 
             }
             else
-                await LedPanelsShowTime(null);
+                await LedPanelsShowInfo(null);
         }
         
         /// <summary>
