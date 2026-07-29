@@ -15,6 +15,7 @@ namespace Tourmaline26.Services
         private readonly ArmanditoService mvarArmandito;
         private readonly TourmalineExperienceService mvarExperience;
         private readonly GPSService mvarGPSService;
+        private static readonly TimeSpan GpsStaleTimeout = TimeSpan.FromSeconds(5);
         private readonly MVBService mvarMVBService;
         private readonly LEDDisplayService mvarLedService;
         private readonly MeteoService mvarMeteoService;
@@ -26,7 +27,6 @@ namespace Tourmaline26.Services
         private DateTime mvarLastDate = DateTime.MinValue; //Uso este valor para cambiar de fecha automáticamente.
 
         private Task<bool>? mvarGpsTask;
-        private Task<bool>? mvarMvbTask;
         private Task<bool>? mvarArmanditoTask;
         private Task<bool>? mvarInternetTask;
         private Task<bool>? mvarLocationTask;
@@ -85,6 +85,12 @@ namespace Tourmaline26.Services
             mvarGPSService = gpsService;
             mvarMeteoService = meteoService;
             mvarLedService = displayService;
+
+            mvarTourmaline.SessionConfig.ServiceMode.MVBEnabledChanged += enabled =>
+            {
+                if (enabled)
+                    mvarMVBService.ResetRetries();
+            };
         }
         /// <summary>
         /// Actualización express de los paneles HMI.
@@ -128,6 +134,8 @@ namespace Tourmaline26.Services
             {
                 try
                 {
+                    CheckMVB();
+
                     if(mvarNextScreenChange<DateTime.Now)
                     {
                         mvarScreen++;
@@ -147,10 +155,6 @@ namespace Tourmaline26.Services
                     }
                     if (null != mvarLocationTask && mvarLocationTask.IsCompleted)
                         mvarLocationTask = null;
-                    if (null != mvarMvbTask && mvarMvbTask.IsCompleted)
-                    {
-                        mvarMvbTask = null;
-                    }
                     if (null != mvarInternetTask && mvarInternetTask.IsCompleted)
                     {
                         if (mvarInternetTask.IsCompletedSuccessfully)
@@ -177,11 +181,6 @@ namespace Tourmaline26.Services
                     {
                         mvarLogger.LogDebug("Pool Onix");
                         mvarLocationTask = PoolLinearLocation();
-                    }
-                    if (null == mvarMvbTask && mvarMVBService.IsOK)
-                    {                        
-                        mvarLogger.LogDebug("Pool MVB");
-                        mvarMvbTask = PoolMVB();
                     }
                     if (null == mvarInternetTask)
                     {
@@ -312,6 +311,14 @@ namespace Tourmaline26.Services
                         {
                             mvarTourmaline.SessionConfig.GPSLastUpdate = DateTime.Now;
                             mvarTourmaline.SessionConfig.CurrentGPSData = mvarGPSService.CurrentData;
+                            mvarTourmaline.SessionConfig.GPSOK = true;
+                            return true;
+                        }
+
+                        if(null!=mvarTourmaline.SessionConfig.CurrentGPSData &&
+                            DateTime.Now - mvarTourmaline.SessionConfig.GPSLastUpdate < GpsStaleTimeout)
+                        {
+                            mvarTourmaline.SessionConfig.GPSOK = true;
                             return true;
                         }
                     }
@@ -322,6 +329,7 @@ namespace Tourmaline26.Services
                     }
                 }
             }
+            mvarTourmaline.SessionConfig.GPSOK = false;
             mvarTourmaline.SessionConfig.CurrentGPSData = null;
             return false;
         }
@@ -361,53 +369,39 @@ namespace Tourmaline26.Services
             }
             return false;
         }
-        private async Task<bool> PoolMVB()
+        private void CheckMVB()
         {
             if (mvarTourmaline.SessionConfig.ServiceMode.MVBDummy)
+                RefreshDummyMVB();
+            else
             {
-                // Conservar el MVB dummy (controles del panel / velocidad de demo).
-                if (null == mvarTourmaline.SessionConfig.CurrentMVBData)
-                    mvarTourmaline.SessionConfig.CurrentMVBData = new MVBData();
+                if (mvarTourmaline.SessionConfig.ServiceMode.MVBEnabled)
+                    RefreshRealMVB();
+            }
+        }
+        private void RefreshDummyMVB()
+        {
+            // Conservar el MVB dummy (controles del panel / velocidad de demo).
+            if (null == mvarTourmaline.SessionConfig.CurrentMVBData)
+                mvarTourmaline.SessionConfig.CurrentMVBData = new MVBData();
 
-                if (mvarTourmaline.SessionConfig.ServiceMode.DemoMode)
-                {
-                    mvarTourmaline.SessionConfig.CurrentMVBData.Speed = mvarTourmaline.SessionConfig.SimulatedSpeed;
-                    mvarTourmaline.SessionConfig.CurrentMVBData.SimulateLoops();
-                }
+            if (mvarTourmaline.SessionConfig.ServiceMode.DemoMode)
+            {
+                mvarTourmaline.SessionConfig.CurrentMVBData.Speed = mvarTourmaline.SessionConfig.SimulatedSpeed;
+                mvarTourmaline.SessionConfig.CurrentMVBData.SimulateLoops();
+            }
 
+            mvarTourmaline.SessionConfig.MVBLastUpdate = DateTime.Now;
+        }
+        private void RefreshRealMVB()
+        {
+            MVB8100Data? data = mvarMVBService.CurrentData;
+            if (null != data)
+            {
                 mvarTourmaline.SessionConfig.MVBLastUpdate = DateTime.Now;
-                return true;
+                mvarTourmaline.SessionConfig.MVBError = string.Empty;
+                mvarTourmaline.SessionConfig.CurrentMVBData = new MVBData(data);
             }
-
-            mvarTourmaline.SessionConfig.CurrentMVBData = new MVBData();
-
-            if (mvarTourmaline.SessionConfig.ServiceMode.MVBEnabled)
-            {
-                try
-                {
-                    MVB8100Data? salida = await mvarMVBService.GetMVBDataAsync();
-                    if (null != salida)
-                    {
-                        mvarTourmaline.SessionConfig.MVBLastUpdate = DateTime.Now;
-                        mvarTourmaline.SessionConfig.MVBError = string.Empty;
-                        mvarTourmaline.SessionConfig.CurrentMVBData = new MVBData(salida);
-                        return true;
-                    }
-                    else
-                        mvarLogger.LogWarning("MVB data from GetMVBDataAsync() is null");
-                }
-                catch (TimeoutException ex)
-                {
-                    mvarLogger.LogWarning(ex, "Timeout en MVB.");
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    mvarLogger.LogError(ex, "Critical in MVB");
-                    mvarTourmaline.SessionConfig.MVBError = ex.Message;
-                }
-            }
-            return false;
         }
         private async Task<bool> PoolInternet()
         {
@@ -720,7 +714,7 @@ namespace Tourmaline26.Services
             if (speed < 0) speed = 0;
 
             // 0=&lt;10  1=10–49  2=50–69  3=≥70
-            int band = speed < 10 ? 0 : speed < 50 ? 1 : speed < 70 ? 2 : 3;
+            int band = speed < 10 ? 0 : speed < 45 ? 1 : speed < 65 ? 2 : 3;
             bool bandChanged = band != mvarLastCameraSpeedBand;
 
             TourmalineCameraOrder order;

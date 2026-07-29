@@ -6,13 +6,26 @@
         private bool mvarServiceKeyboard= false; //Captura los eventos de teclado para simular sucesos de Onice.
         private bool mvarGPSDummy = false;//Posicionamiento Fake para pruebas
         private bool mvarMVBDummy = false;//Emulación del bus MVB para probar interface.
+        private bool mvarMVBEnabled = true; //Estado del bus MVB
         private bool mvarCaret = false; //Muestra la carta de ajuste en los monitores de viajeros cuando está en modo servicio.
         private bool mvarDemoMode = false; //Modo de demostración para enseñar las capacidades del sistema a tren parado.
+
+        public event Action<bool>? MVBEnabledChanged;
 
         public bool ServiceKeyboard { get => Main&&mvarServiceKeyboard; set => mvarServiceKeyboard = Main; }
         public bool GPSDummy { get => Main && mvarGPSDummy; set => mvarGPSDummy = value; } 
         public bool MVBDummy { get => Main && mvarMVBDummy; set => mvarMVBDummy = value; }
-        public bool MVBEnabled { get; set; } = true; //Estado del bus MVB.
+        public bool MVBEnabled
+        {
+            get => mvarMVBEnabled;
+            set
+            {
+                if (value == mvarMVBEnabled) return; //Sin cambios
+
+                mvarMVBEnabled = value;
+                MVBEnabledChanged?.Invoke(value);
+            }
+        }
         public bool DemoMode 
         { 
             get => mvarDemoMode; 
