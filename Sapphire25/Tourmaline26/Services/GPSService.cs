@@ -59,6 +59,19 @@ namespace Tourmaline26.Services
         public bool IsConfigured { get; private set; } = false;
         public bool IsConnected { get; private set; } = false;
 
+        /// <summary>True cuando Tourmaline actúa solo como receptor UDP (GpsEmitter en otro PC).</summary>
+        public bool IsUdpReceiver => GpsMode.UdpReceiver == mvarMode;
+
+        /// <summary>Etiqueta legible del modo activo (UI).</summary>
+        public string ModeDisplayName => IsUdpReceiver ? "Receptor UDP" : "Emisor serie";
+
+        public int ListenPort => mvarListenPort;
+        public int BroadcastPort => mvarBroadcastPort;
+        public string BroadcastAddress => mvarBroadcastAddress;
+
+        /// <summary>Origen del último paquete UDP recibido (IP:puerto), si aplica.</summary>
+        public string? LastRemoteEndPoint { get; private set; }
+
 
         public GPSService(
             ILogger<GPSService> logger,
@@ -264,6 +277,7 @@ namespace Tourmaline26.Services
                 {
                     IPEndPoint remote = new(IPAddress.Any, 0);
                     byte[] buffer = mvarUdpReceiveClient.Receive(ref remote);
+                    LastRemoteEndPoint = remote.ToString();
 
                     GpsBroadcastPacket? packet = JsonSerializer.Deserialize<GpsBroadcastPacket>(buffer, mvarJsonOptions);
                     if (null == packet) continue;
@@ -358,12 +372,12 @@ namespace Tourmaline26.Services
             return false;
         }
 
-        public string? Port { get => Port; }
-        public int Bauds { get => mvarBauds; }
-        public int DataBits { get => mvarDataBits; }
-        public Parity Parity { get => mvarParity; }
-        public StopBits StopBits { get => mvarStopBits; }
-        public Handshake Handshake { get => mvarHandshake; }
+        public string? Port => mvarPort;
+        public int Bauds => mvarBauds;
+        public int DataBits => mvarDataBits;
+        public Parity Parity => mvarParity;
+        public StopBits StopBits => mvarStopBits;
+        public Handshake Handshake => mvarHandshake;
 
         private DateTime? ParseNmeaTime(string time, string? date)
         {

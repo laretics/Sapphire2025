@@ -191,15 +191,27 @@ namespace TimeNet2026.Timed
 			}
 			return null; //No contiene la estación.
 		}
+		/// <summary>
+		/// Offset desde la salida de origen hasta la <b>llegada</b> a <paramref name="station"/>
+		/// (hora de paso). En origen es cero. Suma tripTime al llegar y stopTime al partir.
+		/// </summary>
 		internal TimeSpan departureFrom(Station station)
 		{
-			if (station == Origin) return TimeSpan.Zero;
+			if (null == station)
+				return TimeSpan.MaxValue;
+			if (null != Origin && (ReferenceEquals(station, Origin) || station.Id == Origin.Id))
+				return TimeSpan.Zero;
+
 			TimeSpan salida = TimeSpan.Zero;
 			for (int i = 0; i < mcolSteps.Count; i++)
 			{
-				if (mcolSteps[i].destination == station) return salida;
-				salida += mcolSteps[i].stopTime;
+				// Primero el trayecto hasta la estación del step; luego la parada.
 				salida += mcolSteps[i].tripTime;
+				Station dest = mcolSteps[i].destination;
+				if (ReferenceEquals(dest, station) || (null != dest && dest.Id == station.Id))
+					return salida;
+
+				salida += mcolSteps[i].stopTime;
 			}
 			return TimeSpan.MaxValue;
 		}

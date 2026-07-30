@@ -28,12 +28,19 @@
     }
     private void SetServiceMode(bool value)
     {
+        // Al desactivar servicio, ServiceMode limpia Demo/MVBDummy/GPSDummy.
         TourmalineService.SessionConfig.ServiceMode.Main = value;
         TourmalineService.RaiseHMIUpdate();
     }
     private void SetDemoMode(bool value)
     {
-        TourmalineService.SessionConfig.ServiceMode.DemoMode=value;
+        // Demo enciende/apaga MVBDummy y GPSDummy de forma explícita.
+        TourmalineService.SessionConfig.ServiceMode.DemoMode = value;
+        if (value && TourmalineService.SessionConfig.CurrentMVBData is null)
+        {
+            TourmalineService.SessionConfig.CurrentMVBData = new MVBData();
+            TourmalineService.SessionConfig.CurrentMVBData.SimulateLoops();
+        }
         TourmalineService.RaiseHMIUpdate();
     }
     private string ReleaseInfo

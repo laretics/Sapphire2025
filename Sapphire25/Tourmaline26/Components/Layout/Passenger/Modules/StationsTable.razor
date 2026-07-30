@@ -1,31 +1,31 @@
-﻿@using TimeNet2026.Topo
+@using TimeNet2026.Topo
 @using TimeNet2026.Timed
 @using TimeNet2026.Production
-<div class="route-box">
+<div class="route-box @(OverlayOnVideo ? "route-box--overlay" : null)">
     <div class="route-title">Pròximes aturades</div>
     <table class="route-table">
-        @if(null!=Circulation)
+        @if (null != Circulation)
         {
             <tbody>
-                @for (int index = 0; index<mcolItinerary.Length;index++)
+                @for (int index = 0; index < mcolItinerary.Length; index++)
                 {
                     <tr>
-                        @if(null!=mcolItinerary[index].Station)
+                        @if (null != mcolItinerary[index].Station)
                         {
                             <td>
                                 <span class="stop-dot"></span>
                             </td>
-                            @if(mcolItinerary[index].Station?.ShortName==mcolItinerary[index].Station?.ShortName.ToUpper())
+                            @if (mcolItinerary[index].Station?.ShortName == mcolItinerary[index].Station?.ShortName.ToUpper())
                             {
                                 <td class="stop-name-high">@mcolItinerary[index].Station?.Name</td>
                             }
                             else
                             {
                                 <td class="stop-name">@mcolItinerary[index].Station?.Name</td>
-                            }                            
-                            @if(ShowEstimatedTimes && mcolItinerary[index].Arrival.Ticks>0)
+                            }
+                            @if (ShowEstimatedTimes && mcolItinerary[index].Arrival.Ticks > 0)
                             {
-                                <td class="stop-time">@Enums.autoInterval(mcolItinerary[index].Arrival,true,false)</td>
+                                <td class="stop-time">@Enums.autoInterval(mcolItinerary[index].Arrival, true, false)</td>
                             }
                         }
                         else
@@ -41,20 +41,26 @@
 </div>
 @code {
     [Parameter]
-    public SessionConfiguration? Session{ get; set; }
+    public SessionConfiguration? Session { get; set; }
     [Parameter]
-    public int Rows { get; set; } = 4; //Número de filas que puede representar esta tabla.
+    public int Rows { get; set; } = 4;
     [Parameter]
-    public bool ShowEstimatedTimes { get; set; } //Muestra (u oculta las horas estimadas de llegada)
-    private RowContent[] mcolItinerary = new RowContent[0];
+    public bool ShowEstimatedTimes { get; set; }
+
+    /// <summary>
+    /// Tipografía clara con sombra para legibilidad sobre vídeo de fondo.
+    /// </summary>
+    [Parameter]
+    public bool OverlayOnVideo { get; set; }
+
+    private RowContent[] mcolItinerary = Array.Empty<RowContent>();
 
     private Circulation? Circulation
     {
         get
         {
-            if(null!=Session && null!=Session.TNEnvironment && null!=Session.TNEnvironment.Circulation)
+            if (null != Session && null != Session.TNEnvironment && null != Session.TNEnvironment.Circulation)
                 return Session.TNEnvironment.Circulation;
-
             return null;
         }
     }
@@ -68,97 +74,129 @@
     private void auxRecalculateDestinations()
     {
         mcolItinerary = Array.Empty<RowContent>();
-        if(null==Session || null==Session.TNEnvironment ||null == Circulation)
+        if (null == Session || null == Session.TNEnvironment || null == Circulation)
             return;
 
-        TimeNetEnvironment? enviro = Session.TNEnvironment;
+        TimeNetEnvironment enviro = Session.TNEnvironment;
 
-        if (null == enviro.RouteAsimilation || null == enviro.RouteAsimilation.Origin)
+        // Asimilación completa del servicio (horarios teóricos desde el origen del tren).
+        Asimilation? fullRoute = enviro.Asimilation ?? Circulation.Parent?.asimilation;
+        // Tramo residual desde el PK actual (solo estaciones aún por hacer).
+        Asimilation? remaining = enviro.RouteAsimilation;
+
+        if (null == fullRoute?.Origin || null == remaining?.Origin)
             return;
+
+        TimeSpan delay = enviro.CurrentDelay.Ticks > 0 ? enviro.CurrentDelay : TimeSpan.Zero;
+
+        // Horas de paso/llegada teóricas por estación, calculadas sobre la ruta COMPLETA.
+        Dictionary<string, TimeSpan> scheduledByStationId = BuildScheduledArrivals(fullRoute, Circulation.departure, delay);
 
         var auxItinerary = new List<RowContent>();
 
-        TimeSpan cumul = Circulation.departure;
-        if (enviro.CurrentDelay.Ticks > 0)
-            cumul += enviro.CurrentDelay;
+        // Primera del residual = próxima (o la de origen si aún no se ha salido).
+        AddIfScheduled(auxItinerary, remaining.Origin, scheduledByStationId);
 
-
-        // Estación de origen
-        auxItinerary.Add(new RowContent
+        foreach (AsimilationStep paso in remaining.Steps)
         {
-            Station = enviro.RouteAsimilation.Origin,
-            Arrival = cumul
-        });
-      
-        foreach (AsimilationStep paso in enviro.RouteAsimilation.Steps)
-        {
-            cumul += paso.tripTime;
-
-            if (paso.stopTime.Ticks > 0 || paso.destination == enviro.RouteAsimilation.Destination)
-            {
-                auxItinerary.Add(new RowContent
-                {
-                    Station = paso.destination,
-                    Arrival = cumul
-                });
-                cumul += paso.stopTime;                
-            }
+            if (paso.stopTime.Ticks > 0 || paso.destination == remaining.Destination)
+                AddIfScheduled(auxItinerary, paso.destination, scheduledByStationId);
         }
 
         if (auxItinerary.Count == 0)
             return;
 
-        // Buscar desde dónde empezar (NextStation)
-        int startIndex = 0;
-
-        var relevantStations = auxItinerary.Skip(startIndex).ToList();
-
-        // === LÓGICA DE TRUNCADO CORREGIDA ===
-        if (relevantStations.Count <= Rows)
+        // Truncado para el número de filas del panel.
+        if (auxItinerary.Count <= Rows)
         {
-            mcolItinerary = relevantStations.ToArray();
+            mcolItinerary = auxItinerary.ToArray();
+            return;
         }
-        else
+
+        var result = new List<RowContent>(Rows);
+        result.Add(auxItinerary[0]);
+
+        if (Rows >= 3)
         {
-            var result = new List<RowContent>(Rows);
+            int middleCount = Rows - 2;
+            for (int i = 1; i <= middleCount && i < auxItinerary.Count - 1; i++)
+                result.Add(auxItinerary[i]);
 
-            // 1. Primera estación = NextStation
-            result.Add(relevantStations[0]);
-
-            if (Rows >= 3)
-            {
-                // Añadimos estaciones intermedias (las que quepan entre la primera y el separador)
-                int middleCount = Rows - 2;
-
-                // Cogemos desde la segunda estación hasta donde quepa
-                for (int i = 1; i <= middleCount && i < relevantStations.Count - 1; i++)
-                {
-                    result.Add(relevantStations[i]);
-                }
-
-                // Penúltimo: separador
-                result.Add(new RowContent { Separator = true });
-
-                // Último: SIEMPRE el destino final
-                result.Add(relevantStations[^1]);
-            }
-            else if (Rows == 2)
-            {
-                // Solo NextStation + Destino final
-                result.Add(relevantStations[^1]);
-            }
-            // Rows == 1 → solo la primera (NextStation)
-
-            mcolItinerary = result.ToArray();
+            result.Add(new RowContent { Separator = true });
+            result.Add(auxItinerary[^1]);
         }
+        else if (Rows == 2)
+        {
+            result.Add(auxItinerary[^1]);
+        }
+
+        mcolItinerary = result.ToArray();
+    }
+
+    /// <summary>
+    /// Construye la hora de llegada/paso a cada parada a partir del horario de origen
+    /// del tren + tiempos de trayecto/parada de la asimilación completa + retraso.
+    /// </summary>
+    private static Dictionary<string, TimeSpan> BuildScheduledArrivals(
+        Asimilation fullRoute,
+        TimeSpan tripDeparture,
+        TimeSpan delay)
+    {
+        var map = new Dictionary<string, TimeSpan>(StringComparer.Ordinal);
+
+        void Put(Station? station, TimeSpan when)
+        {
+            if (null == station || string.IsNullOrEmpty(station.Id))
+                return;
+            map[station.Id] = when;
+        }
+
+        // Origen del servicio: hora de salida del tren (no se reutiliza a ciegas en el residual).
+        Put(fullRoute.Origin, tripDeparture + delay);
+
+        TimeSpan cumul = tripDeparture + delay;
+        foreach (AsimilationStep paso in fullRoute.Steps)
+        {
+            cumul += paso.tripTime;
+
+            // Misma regla de “parada comercial” que la tabla residual.
+            if (paso.stopTime.Ticks > 0 || paso.destination == fullRoute.Destination)
+            {
+                Put(paso.destination, cumul);
+                cumul += paso.stopTime;
+            }
+        }
+
+        return map;
+    }
+
+    private static void AddIfScheduled(
+        List<RowContent> list,
+        Station? station,
+        Dictionary<string, TimeSpan> scheduledByStationId)
+    {
+        if (null == station)
+            return;
+
+        TimeSpan arrival = TimeSpan.Zero;
+        if (!string.IsNullOrEmpty(station.Id)
+            && scheduledByStationId.TryGetValue(station.Id, out TimeSpan scheduled))
+        {
+            arrival = scheduled;
+        }
+
+        list.Add(new RowContent
+        {
+            Station = station,
+            Arrival = arrival
+        });
     }
 
     private struct RowContent
     {
-        public Station? Station { get; set; } //Estación.
-        public TimeSpan Arrival{ get; set; } //Hora estimada de llegada.
-        public bool Separator{ get; set; } //Representa una separación en la tabla.
-        public bool Pointer{ get; set; } //Marca la estación con un puntero.
+        public Station? Station { get; set; }
+        public TimeSpan Arrival { get; set; }
+        public bool Separator { get; set; }
+        public bool Pointer { get; set; }
     }
-
 }

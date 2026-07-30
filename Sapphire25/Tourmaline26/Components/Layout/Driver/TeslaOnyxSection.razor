@@ -38,22 +38,27 @@ mvarControlEnvironment.Environment.IsViewComplete)
     }
 
 
+    /// <summary>
+    /// Velocímetro de cabina: velocidad del tren (MVB / demo), nunca GPS.
+    /// Visible en Demo siempre; con MVB solo con marcha adelante o atrás (no neutro).
+    /// </summary>
     private bool SpeedometerVisible
     {
         get
         {
-            if (null == mvarConfig.CurrentMVBData)                
-            {
-                if (null != mvarConfig.CurrentGPSData)
-                    return true; //Si tenemos satélite, mostramos velocímetro.
-            }
-            else
-            { //Teniendo datos MVB, el velocímetro se muestra cuando el tren no está parado
-                return (!(mvarConfig.CurrentMVBData.Inverter == MVBData.InverterPosition.Iddle)
-                        && (mvarConfig.CurrentMVBData.DoorsLoop));
-            }
-            return false;
+            // Modo demostración: siempre visible (usa SimulatedSpeed / MVB dummy).
+            if (mvarConfig.ServiceMode.DemoMode)
+                return true;
+
+            // Sin fuente MVB (real o dummy) no hay velocidad de tren para la aguja.
+            if (null == mvarConfig.CurrentMVBData)
+                return false;
+            if (!mvarConfig.ServiceMode.MVBEnabled && !mvarConfig.ServiceMode.MVBDummy)
+                return false;
+
+            // Solo marcha adelante o atrás; en neutro (y resto) se oculta.
+            return mvarConfig.SpeedometerDriveSelected;
         }
     }
-
 }
+

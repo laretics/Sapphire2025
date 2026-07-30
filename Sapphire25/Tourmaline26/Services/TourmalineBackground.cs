@@ -1,5 +1,6 @@
 ﻿using TimeNet2026.Production;
 using TimeNet2026.Timed;
+using TimeNet2026.Topo;
 using Tourmaline26.Logic;
 using Tourmaline26.Services.Armandito;
 using Tourmaline26.Services.TourmalineExperience;
@@ -42,6 +43,16 @@ namespace Tourmaline26.Services
         private const double DemoAccelKmhPerSec = 8.0;
         private DateTime mvarLastDemoSpeedUpdate = DateTime.MinValue;
         private Task? mvarDemoSetSpeedTask;
+        /// <summary>Última velocidad enviada al TE en modo normal (seguimiento PK).</summary>
+        private int mvarLastExperienceSpeedSent = int.MinValue;
+        private Task? mvarExperienceSyncTask;
+        /// <summary>
+        /// Ganancia de corrección: km/h por metro de desfase a lo largo de la marcha.
+        /// p.ej. 0.06 → 100 m de retraso ≈ +6 km/h sobre la velocidad MVB.
+        /// </summary>
+        private const double ExperienceSyncGainKmhPerMeter = 0.06;
+        /// <summary>Tope de velocidad al simulador (evita valores absurdos en TE).</summary>
+        private const int ExperienceMaxSpeedKmh = 200;
         /// <summary>Estado anterior de MVB ZeroSpeed (null = aún no leído).</summary>
         private bool? mvarPrevMvbZeroSpeed;
 
@@ -230,6 +241,7 @@ namespace Tourmaline26.Services
                     }
                     CalculateTelemetry();
                     UpdateDemoSpeed();
+                    UpdateExperienceSpeedSync();
                     UpdateStationLeaveFromMvb();
                     UpdateExperienceCamera();
                     mvarTourmaline.UpdatePassengerInformationMode();
@@ -343,6 +355,11 @@ namespace Tourmaline26.Services
             TimeNetEnvironment auxEnvironment = mvarTourmaline.SessionConfig.TNEnvironment;
             if (null == auxEnvironment.TopoStorage)
                 return false;
+
+            // Si hay misión, el GPS→PK se restringe a los ejes de la asimilación.
+            mvarTourmaline.SessionConfig.LinearLocation.Asimilation = auxEnvironment.Asimilation
+                ?? auxEnvironment.Circulation?.Parent?.asimilation;
+
             if(null==auxEnvironment.Circulation)
             {
                 //Localización por ejes cercanos.
@@ -359,7 +376,6 @@ namespace Tourmaline26.Services
             }
             else
             {
-                //TODO: Modificar esto para poner el eje en el que estamos.
                 if( mvarTourmaline.SessionConfig.LinearLocation.TryLocateBySatellite(mvarTourmaline.SessionConfig.CurrentGPSData.GeoLocation, auxEnvironment.TopoStorage))
                 {
                     auxEnvironment.PK = mvarTourmaline.SessionConfig.LinearLocation.PKRef;
@@ -607,7 +623,132 @@ namespace Tourmaline26.Services
                 && (mvarDemoSetSpeedTask == null || mvarDemoSetSpeedTask.IsCompleted))
             {
                 mvarLastDemoSpeedSent = newSpeed;
-                mvarDemoSetSpeedTask = SendDemoSpeedAsync(newSpeed);
+                mvarDemoSetSpeedTask = SendExperienceSpeedAsync(newSpeed, "DemoMode");
+            }
+        }
+
+        /// <summary>
+        /// Modo normal (no Demo): el tren de Tourmaline Experience sigue al tren real.
+        /// <list type="bullet">
+        /// <item>PK real: GPS → <see cref="LinearLocation.TryLocateBySatellite"/> (ya en el bucle).</item>
+        /// <item>PK simulado: lat/lon de telemetría TE → mismo algoritmo.</item>
+        /// <item>Velocidad base: MVB / emulación MVB (<see cref="SessionConfiguration.CurrentSpeed"/>).</item>
+        /// <item>Corrección: desfase a lo largo de la marcha (positivo = sim retrasado → más velocidad).</item>
+        /// <item>Tope: <see cref="ExperienceMaxSpeedKmh"/> km/h.</item>
+        /// </list>
+        /// </summary>
+        private void UpdateExperienceSpeedSync()
+        {
+            SessionConfiguration session = mvarTourmaline.SessionConfig;
+
+            // Demo tiene su propia rampa; no mezclar.
+            if (session.ServiceMode.DemoMode)
+            {
+                mvarLastExperienceSpeedSent = int.MinValue;
+                return;
+            }
+
+            // Sin misión / topología no hay eje de referencia.
+            TimeNetEnvironment? env = session.TNEnvironment;
+            if (null == env?.TopoStorage || null == env.Circulation)
+                return;
+
+            // PK real aún no resuelto.
+            if (env.PK < 0 || session.LinearLocation.PKRef < 0)
+                return;
+
+            // Evitar solapar peticiones a TE.
+            if (mvarExperienceSyncTask != null && !mvarExperienceSyncTask.IsCompleted)
+                return;
+
+            mvarExperienceSyncTask = ExperienceSpeedSyncAsync();
+        }
+
+        private async Task ExperienceSpeedSyncAsync()
+        {
+            SessionConfiguration session = mvarTourmaline.SessionConfig;
+            TimeNetEnvironment? env = session.TNEnvironment;
+            if (null == env?.TopoStorage)
+                return;
+
+            try
+            {
+                TourmalineTelemetryResponse? telemetry = await mvarExperience.GetTelemetry();
+                if (null == telemetry || !telemetry.success)
+                {
+                    // Algunas builds de TE no rellenan success; aceptar coords no nulas.
+                    if (null == telemetry
+                        || (Math.Abs(telemetry.Latitude) < 1e-8 && Math.Abs(telemetry.Longitude) < 1e-8))
+                        return;
+                }
+
+                Asimilation? asim = env.Asimilation ?? env.Circulation?.Parent?.asimilation;
+                LinearLocation simLoc = session.SimulatedLinearLocation;
+                simLoc.Asimilation = asim;
+
+                GeoLocation simGeo = new(telemetry!.Latitude, telemetry.Longitude);
+                if (!simLoc.TryLocateBySatellite(simGeo, env.TopoStorage))
+                {
+                    mvarLogger.LogDebug(
+                        "TE sync: no se pudo localizar el tren simulado en la topología ({Lat},{Lon})",
+                        telemetry.Latitude,
+                        telemetry.Longitude);
+                    return;
+                }
+
+                long realPk = env.PK;
+                long simPk = simLoc.PKRef;
+                if (realPk < 0 || simPk < 0)
+                    return;
+
+                // Sentido de la marcha a lo largo del PK: asimilación si hay, si no el del GPS real.
+                bool ascending = asim?.isAscendent ?? env.PKIncreasing;
+
+                // Desfase en el sentido de la circulación: + = simulado por detrás del real.
+                long lagMeters = ascending
+                    ? (realPk - simPk)
+                    : (simPk - realPk);
+
+                session.ExperiencePkLagMeters = lagMeters;
+
+                // Velocidad del tren real (MVB), no GPS.
+                int realSpeed = Math.Max(0, session.CurrentSpeed);
+                double correction = lagMeters * ExperienceSyncGainKmhPerMeter;
+                int commanded = (int)Math.Round(realSpeed + correction);
+                commanded = Math.Clamp(commanded, 0, ExperienceMaxSpeedKmh);
+
+                session.ExperienceCommandedSpeed = commanded;
+
+                mvarLogger.LogDebug(
+                    "TE sync: realPk={RealPk} simPk={SimPk} lag={Lag}m asc={Asc} realV={RealV} → cmd={Cmd}",
+                    realPk, simPk, lagMeters, ascending, realSpeed, commanded);
+
+                if (commanded != mvarLastExperienceSpeedSent)
+                {
+                    mvarLastExperienceSpeedSent = commanded;
+                    await SendExperienceSpeedAsync(commanded, "Sync");
+                }
+            }
+            catch (Exception ex)
+            {
+                mvarLogger.LogWarning(ex, "TE sync: error al sincronizar velocidad del simulador");
+                mvarLastExperienceSpeedSent = int.MinValue;
+            }
+        }
+
+        private async Task SendExperienceSpeedAsync(int speed, string context)
+        {
+            try
+            {
+                await mvarExperience.SetSpeed(speed);
+                mvarLogger.LogDebug("TE {Context}: velocidad enviada = {Speed}", context, speed);
+            }
+            catch (Exception ex)
+            {
+                mvarLogger.LogWarning(ex, "TE {Context}: error enviando velocidad {Speed}", context, speed);
+                // Permitir reintento en el siguiente ciclo.
+                mvarLastDemoSpeedSent = int.MinValue;
+                mvarLastExperienceSpeedSent = int.MinValue;
             }
         }
 
@@ -664,21 +805,6 @@ namespace Tourmaline26.Services
             }
 
             mvarPrevMvbZeroSpeed = mvbZeroSpeed;
-        }
-
-        private async Task SendDemoSpeedAsync(int speed)
-        {
-            try
-            {
-                await mvarExperience.SetSpeed(speed);
-                mvarLogger.LogDebug("DemoMode: velocidad enviada al simulador = {Speed}", speed);
-            }
-            catch (Exception ex)
-            {
-                mvarLogger.LogWarning(ex, "DemoMode: error enviando velocidad {Speed} al simulador", speed);
-                // Permitir reintento en el siguiente ciclo.
-                mvarLastDemoSpeedSent = int.MinValue;
-            }
         }
 
         /// <summary>

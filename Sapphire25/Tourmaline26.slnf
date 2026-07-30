@@ -3,6 +3,7 @@
     "path": "Sapphire25.sln",
     "projects": [
       "Tourmaline26\\Tourmaline26.csproj",
+      "GpsEmitter\\GpsEmitter.csproj",
       "Sapphire2026Clients\\Sapphire2026Clients.csproj",
       "Sapphire2026Data\\Sapphire2026Data.csproj",
       "TimeNet2026\\TimeNet2026.csproj",

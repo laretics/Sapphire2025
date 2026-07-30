@@ -15,8 +15,9 @@ window.tourmalinePopup = {
             element.closest(".popup-information-text-host") || element.parentElement;
         if (!parent) return 0;
 
-        const min = typeof minPx === "number" ? minPx : 10;
-        const max = typeof maxPx === "number" ? maxPx : 220;
+        // Suelos más altos por defecto (los monitores de viajero se leen de lejos).
+        const min = typeof minPx === "number" ? minPx : 40;
+        const max = typeof maxPx === "number" ? maxPx : 280;
 
         // Restablece estilos de medición
         element.style.whiteSpace = "pre-wrap";
