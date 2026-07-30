@@ -1,13 +1,15 @@
-﻿@using Tourmaline26.Components.Controls.Floatings
+@using Tourmaline26.Components.Controls.Floatings
 @using Sapphire2026.Data.Models
 @using Sapphire2025Models.Aeneas
 @using Sapphire2025Models.Authentication
-@using Microsoft.EntityFrameworkCore;
+@using Microsoft.EntityFrameworkCore
 @using Tourmaline26.Services.LocalDataModel
+@using Sapphire2025.Storage
 @inject Tourmaline26.Logic.TourmalineContext database
 @inject TourmalineService TourmalineService
-@inject Sapphire2025.Storage.AeneasClient AeneasService
+@inject AeneasClient AeneasService
 @inject ILogger<AeneasLog> logger
+
 <FloatRightContainer>
     @if (mvarIsLoading)
     {
@@ -30,18 +32,18 @@
             <h2>Error</h2>
             <p>@mvarErrorMessage</p>
         }
-        @if (mcolNotes.Count > 0)
+        @if (FeedItems.Count > 0)
         {
             <h3>Historial de taller</h3>
             <div style="max-height: 580px; overflow-y: auto;">
                 <CascadingValue Value="TourmalineService.SessionConfig.ColUsers">
-                    @foreach(FeedEntry entry in FeedItems)
+                    @foreach (FeedEntry entry in FeedItems)
                     {
-                        if(entry.Kind== FeedKind.Note && null!=entry.Note)
+                        if (entry.Kind == FeedKind.Note && null != entry.Note)
                         {
                             <NoteChatEntry Note="entry.Note" />
                         }
-                        if(entry.Kind== FeedKind.StatusChange && null!=entry.StatusChange)
+                        if (entry.Kind == FeedKind.StatusChange && null != entry.StatusChange)
                         {
                             <StatusChangeChatEntry ChangeModel="entry.StatusChange" />
                         }
@@ -49,16 +51,17 @@
                 </CascadingValue>
             </div>
         }
-        else
+        else if (Guid.Empty != TourmalineService.SystemConfig.TrainId && mvarErrorMessage.Length == 0)
         {
             <p>El historial de mantenimiento está vacío</p>
         }
     }
 </FloatRightContainer>
-    @code {
+
+@code {
     private string mvarErrorMessage = string.Empty;
-    private List<NoteModel> mcolNotes = new List<NoteModel>();
-    private List<StatusChangeModel> mcolStatusChanges = new List<StatusChangeModel>();
+    private List<NoteModel> mcolNotes = new();
+    private List<StatusChangeModel> mcolStatusChanges = new();
     private List<FeedEntry> FeedItems { get; set; } = new();
     private bool mvarIsLoading = true;
     private string mvarProcessMessage = string.Empty;
@@ -69,61 +72,54 @@
         mvarProcessMessage = "Recuperando información de la base de datos...";
         await InvokeAsync(StateHasChanged);
         await TourmalineService.EnsureInitialized();
-        if(null== TourmalineService.SessionConfig.ColUsers)
+
+        if (null == TourmalineService.SessionConfig.ColUsers)
         {
             mvarProcessMessage = "Obteniendo colección de usuarios...";
             await InvokeAsync(StateHasChanged);
-
             await TourmalineService.RetrieveUsers();
-        }        
+        }
 
         mvarProcessMessage = "Conectando con Zafiro...";
         await InvokeAsync(StateHasChanged);
-
         await SyncAeneas();
 
         mvarProcessMessage = "Obteniendo notas...";
         await InvokeAsync(StateHasChanged);
         try
         {
-            mcolNotes = await GetNotes();
-            mcolStatusChanges = await GetChanges();
+            mcolNotes = GetNotesFromLocal();
+            mcolStatusChanges = GetChangesFromLocal();
             BuildFeed();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex.Message);
+            logger.LogError(ex, "Error al montar el historial de taller local");
+            mvarErrorMessage = ex.Message;
         }
 
         mvarIsLoading = false;
         await InvokeAsync(StateHasChanged);
     }
 
-    private UserModelBase? userFromStatus(StatusChangeModel rhs)
-    {
-        System.Diagnostics.Debug.Assert(null != TourmalineService.SessionConfig.ColUsers);
-        Dictionary<Guid, UserModelBase> Users = TourmalineService.SessionConfig.ColUsers;
-        if (Guid.Empty != rhs.userId && Users.ContainsKey(rhs.userId))
-            return Users[rhs.userId];
-        return null;
-    }
-
     /// <summary>
-    /// Intenta sincronizar la base de datos con Zafiro. Si no lo consigue, mostrará la base de datos local.
+    /// Sincroniza con Zafiro vía <see cref="AeneasClient"/> (Sapphire2026Clients)
+    /// y actualiza la BD SQLite local. Si falla, se muestra el almacén local.
     /// </summary>
-    /// <returns></returns>
     private async Task SyncAeneas()
     {
-        Note? oldest = null;
+        Guid trainId = TourmalineService.SystemConfig.TrainId;
+        if (Guid.Empty == trainId)
+            return;
+
         try
         {
-            List<NoteModel> auxLista
-            = await AeneasService.retrieveNotes(TourmalineService.SystemConfig.TrainId, "", 100);
-            if(auxLista.Count>0)
+            // Misma API que NoteChatEx en Sapphire2025: retrieveNotes + trainChangesList.
+            List<NoteModel> auxLista = await AeneasService.retrieveNotes(trainId, type: "", max: 100);
+            if (auxLista.Count > 0)
             {
-                //Sustituyo el contenido íntegro de la tabla local por el que acabo de descargar.
                 database.Notes.RemoveRange(database.Notes);
-                foreach(NoteModel note in auxLista)
+                foreach (NoteModel note in auxLista)
                 {
                     database.Notes.Add(new Note
                     {
@@ -132,45 +128,52 @@
                         UserId = note.UserId,
                         TimeStamp = note.TimeStamp,
                         Text = note.Text,
-                        Type= note.Type
+                        Type = note.Type
                     });
                 }
-                await database.SaveChangesAsync();                
-                oldest = await database.Notes.OrderBy(x => x.TimeStamp).FirstOrDefaultAsync();
+                await database.SaveChangesAsync();
                 await TourmalineService.DoAeneasSync();
             }
-            DateTime auxFecha = null == oldest ? DateTime.MinValue : oldest.TimeStamp;
-            IEnumerable<StatusChangeModel> auxChanges
-            = await AeneasService.trainChangesList(TourmalineService.SystemConfig.TrainId, auxFecha);
-            if(auxChanges.Any())
+
+            DateTime oldest = auxLista.Count > 0
+                ? auxLista.Min(n => n.TimeStamp)
+                : DateTime.MinValue;
+
+            IEnumerable<StatusChangeModel> auxChanges =
+                await AeneasService.trainChangesList(trainId, oldest);
+
+            if (auxChanges.Any())
             {
                 database.StatusChanges.RemoveRange(database.StatusChanges);
-                foreach(StatusChangeModel change in auxChanges)
+                foreach (StatusChangeModel change in auxChanges)
                 {
-                    database.StatusChanges.Add(
-                        new StatusChange
-                            {
-                                Guid = change.guid,
-                                TrainId = change.trainId,
-                                TimeStamp = change.timeStamp,
-                                Operation = change.operation,
-                                UserId = change.userId
-                            });
+                    database.StatusChanges.Add(new StatusChange
+                    {
+                        Guid = change.guid,
+                        TrainId = change.trainId,
+                        TimeStamp = change.timeStamp,
+                        Operation = change.operation,
+                        UserId = change.userId
+                    });
                 }
                 await database.SaveChangesAsync();
                 await TourmalineService.DoAeneasSync();
             }
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
-            mvarErrorMessage = string.Format("No se han podido sincronizar los datos con Zafiro. Se mostrarán los datos almacenados en la base de datos local. Detalle del error: {0}", ex.Message);
+            logger.LogWarning(ex, "Fallo al sincronizar Aeneas con Zafiro");
+            mvarErrorMessage =
+                "No se han podido sincronizar los datos con Zafiro. " +
+                "Se mostrarán los datos almacenados en la base de datos local. " +
+                $"Detalle: {ex.Message}";
         }
     }
-    private async Task<List<NoteModel>> GetNotes()
+
+    private List<NoteModel> GetNotesFromLocal()
     {
-        List<NoteModel> result = new List<NoteModel>();
-        List<Note> auxLista = database.Notes.OrderByDescending(n => n.TimeStamp).ToList();
-        foreach(Note note in auxLista)
+        List<NoteModel> result = new();
+        foreach (Note note in database.Notes.OrderByDescending(n => n.TimeStamp))
         {
             result.Add(new NoteModel
             {
@@ -183,67 +186,51 @@
         }
         return result;
     }
-    private async Task<List<StatusChangeModel>> GetChanges()
+
+    private List<StatusChangeModel> GetChangesFromLocal()
     {
-        List<StatusChangeModel> result = new List<StatusChangeModel>();
-        List<StatusChange> auxLista = database.StatusChanges.OrderByDescending(n => n.TimeStamp).ToList();
-        foreach(StatusChange change in auxLista)
+        List<StatusChangeModel> result = new();
+        foreach (StatusChange change in database.StatusChanges.OrderByDescending(n => n.TimeStamp))
         {
             result.Add(new StatusChangeModel
-                {
-                    guid = change.Guid,
-                    trainId = change.TrainId,
-                    timeStamp = change.TimeStamp,
-                    operation = change.Operation,
-                    userId = change.UserId
-                });
+            {
+                guid = change.Guid,
+                trainId = change.TrainId,
+                timeStamp = change.TimeStamp,
+                operation = change.Operation,
+                userId = change.UserId
+            });
         }
         return result;
     }
-
-
 
     private enum FeedKind : byte
     {
         Note,
         StatusChange
     }
-    private sealed record FeedEntry
-    (
+
+    private sealed record FeedEntry(
         FeedKind Kind,
         DateTime TimeStamp,
         int sequence,
         NoteModel? Note,
-        StatusChangeModel? StatusChange
-    );
+        StatusChangeModel? StatusChange);
 
-    private string BuildStatusSummary(StatusChangeModel rhs)
-    {
-        string userName = userFromStatus(rhs)?.Name ?? "[Desconocido]";
-        if (string.IsNullOrWhiteSpace(rhs.comment))
-            return $"{userName} · {rhs.description}";
-
-        return $"{userName} · {rhs.description} · {rhs.comment}";
-    }
     private void BuildFeed()
     {
         List<FeedEntry> items = new();
         int sequence = 0;
-        if (null != mcolNotes)
-        {
-            foreach (NoteModel note in mcolNotes)
-                items.Add(new FeedEntry(FeedKind.Note, note.TimeStamp, sequence++, note, null));
-        }
-        if (null != mcolStatusChanges)
-        {
-            foreach (StatusChangeModel change in mcolStatusChanges)
-                items.Add(new FeedEntry(FeedKind.StatusChange, change.timeStamp, sequence++, null, change));
-        }
 
-        FeedItems = items.OrderByDescending(x => x.TimeStamp)
-                    .ThenBy(x => x.sequence)
-                    .ToList();
+        foreach (NoteModel note in mcolNotes)
+            items.Add(new FeedEntry(FeedKind.Note, note.TimeStamp, sequence++, note, null));
+
+        foreach (StatusChangeModel change in mcolStatusChanges)
+            items.Add(new FeedEntry(FeedKind.StatusChange, change.timeStamp, sequence++, null, change));
+
+        FeedItems = items
+            .OrderByDescending(x => x.TimeStamp)
+            .ThenBy(x => x.sequence)
+            .ToList();
     }
-
-
 }

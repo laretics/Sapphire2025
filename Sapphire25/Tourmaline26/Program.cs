@@ -23,7 +23,11 @@ builder.Services.AddSingleton<TourmalineService>();
 builder.Services.AddHostedService<TourmalineBackground>();
 builder.Services.AddHttpContextAccessor();
 
-string auxApiAddress = builder.Configuration["ApiBaseAddress"] ?? "https://material.trensfm.com:5031/tourmaline/";
+// Misma base que Sapphire2025 / Sapphire2026Clients (controladores en /api/sapphireaeneas, etc.).
+// Ojo: no usar .../tourmaline/ — los clientes componen rutas relativas tipo "sapphireaeneas/getnotes".
+string auxApiAddress = builder.Configuration["ApiBaseAddress"] ?? "https://material.trensfm.com:5031/api/";
+if (!auxApiAddress.EndsWith('/'))
+    auxApiAddress += "/";
 Console.WriteLine($"API Address for SFM: {auxApiAddress}");
 
 Uri apiBaseUri;
