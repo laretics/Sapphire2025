@@ -1,66 +1,113 @@
-﻿using Microsoft.EntityFrameworkCore.Storage.Json;
-using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
-using System.Reflection.Metadata.Ecma335;
-using System.Text.Json;
 using Tourmaline26.Logic;
+
 namespace Tourmaline26.Services
 {
-    public class MVBService:BackgroundService
+    /// <summary>
+    /// Polling del endpoint MVB del tren. Debe registrarse como Singleton + HostedService
+    /// (ver Program.cs): si solo se usa AddHttpClient&lt;MVBService&gt;, ExecuteAsync nunca arranca
+    /// y CurrentData queda siempre null.
+    /// </summary>
+    public class MVBService : BackgroundService
     {
-        private readonly HttpClient mvarHttpClient;
-        private ILogger<MVBService> mvarLogger;
+        private readonly IHttpClientFactory mvarHttpClientFactory;
+        private readonly ILogger<MVBService> mvarLogger;
         private readonly string mvarUrl;
         private readonly TimeSpan mvarPollInterval = TimeSpan.FromMilliseconds(100);
         private readonly object mvarLock = new();
         private MVB8100Data? mvarLastData;
+
         public MVB8100Data? CurrentData
         {
             get { lock (mvarLock) return mvarLastData; }
         }
-        private int DEFAULT_MAX_RETRIES => 5;
-        private int mvarRetries=0; //Intentos hasta deshabilitar MVB.
 
-        private readonly int mvarMaxRetries; //Intentos máximos hasta deshabilitar MVB.
-        private DateTime mvarNextAttempt = DateTime.MinValue; //Próximo reintento.
+        private const int DefaultMaxRetries = 5;
+        /// <summary>Fallos consecutivos (solo para backoff y logging).</summary>
+        private int mvarConsecutiveFailures;
+        private readonly int mvarMaxRetries;
+        private DateTime mvarNextAttempt = DateTime.MinValue;
+        private long mvarSuccessCount;
+        private long mvarFailureCount;
 
-        protected async override Task ExecuteAsync(CancellationToken stoppingToken)
+        public long SuccessCount => Interlocked.Read(ref mvarSuccessCount);
+        public long FailureCount => Interlocked.Read(ref mvarFailureCount);
+        public string Url => mvarUrl;
+        public bool IsConfigured => !string.IsNullOrWhiteSpace(mvarUrl);
+
+        public MVBService(
+            IHttpClientFactory httpClientFactory,
+            ILogger<MVBService> logger,
+            IConfiguration config)
         {
+            mvarHttpClientFactory = httpClientFactory;
+            mvarLogger = logger;
+
+            mvarUrl = config.GetSection("SystemConfiguration")["MVBUrl"] ?? string.Empty;
+            if (mvarUrl.Length < 1)
+                mvarLogger.LogError("MVB parameter missing in configuration");
+            else
+                mvarLogger.LogInformation("MVB service configured. URL: {Url}", mvarUrl);
+
+            string auxNum = config.GetSection("SystemConfiguration")["MVBRetries"] ?? DefaultMaxRetries.ToString();
+            if (!int.TryParse(auxNum, out mvarMaxRetries))
+                mvarMaxRetries = DefaultMaxRetries;
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            if (string.IsNullOrWhiteSpace(mvarUrl))
+            {
+                mvarLogger.LogError("MVB background loop not started: URL empty.");
+                return;
+            }
+
+            mvarLogger.LogInformation("MVB background loop started.");
+            HttpClient httpClient = mvarHttpClientFactory.CreateClient("MVB");
+
             using PeriodicTimer auxTimer = new PeriodicTimer(mvarPollInterval);
 
-            while(await auxTimer.WaitForNextTickAsync(stoppingToken))
+            while (await auxTimer.WaitForNextTickAsync(stoppingToken))
             {
-                if (string.IsNullOrWhiteSpace(mvarUrl)) continue;
-                if (DateTime.UtcNow < mvarNextAttempt) continue;
+                if (DateTime.UtcNow < mvarNextAttempt)
+                    continue;
+
                 try
                 {
-                    using HttpResponseMessage response = await mvarHttpClient.GetAsync(
+                    using HttpResponseMessage response = await httpClient.GetAsync(
                         mvarUrl,
                         HttpCompletionOption.ResponseHeadersRead,
                         stoppingToken);
                     response.EnsureSuccessStatusCode();
 
-                    MVB8100Data? data = await response.Content.ReadFromJsonAsync<MVB8100Data>(cancellationToken: stoppingToken);
-                    if(null!=data)
+                    MVB8100Data? data = await response.Content.ReadFromJsonAsync<MVB8100Data>(
+                        cancellationToken: stoppingToken);
+
+                    if (null != data)
                     {
                         lock (mvarLock)
                         {
                             mvarLastData = data;
-                            mvarRetries = 0;
+                            mvarConsecutiveFailures = 0;
                             mvarNextAttempt = DateTime.MinValue;
                         }
-                    }                    
+
+                        long n = Interlocked.Increment(ref mvarSuccessCount);
+                        if (1 == n || 0 == n % 100)
+                            mvarLogger.LogDebug("MVB data OK (#{Count}). Speed={Speed}", n, data.current_speed);
+                    }
                 }
-                catch(OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
                     break;
                 }
                 catch (Exception ex)
                 {
                     RegisterFailure(ex);
-                    
                 }
             }
+
+            mvarLogger.LogInformation("MVB background loop stopped.");
         }
 
         private void RegisterFailure(Exception ex)
@@ -70,77 +117,43 @@ namespace Tourmaline26.Services
 
             lock (mvarLock)
             {
-                mvarRetries++;
-                failures = mvarRetries;
+                mvarConsecutiveFailures++;
+                failures = mvarConsecutiveFailures;
                 backoff = GetBackoff(failures);
                 mvarNextAttempt = DateTime.UtcNow.Add(backoff);
             }
-            //El logging se limita. Ponemos el primer fallo y luego cada 10.
-            if (1==failures || 0 == failures % 10)
-                mvarLogger.LogWarning(ex, $"MVB poll failed: {ex.Message}. Retry in {backoff}. Consecutive failures: {failures}");
+
+            Interlocked.Increment(ref mvarFailureCount);
+
+            // Primer fallo y luego cada 10 para no saturar el log.
+            if (1 == failures || 0 == failures % 10)
+                mvarLogger.LogWarning(
+                    ex,
+                    "MVB poll failed: {Message}. Retry in {Backoff}. Consecutive failures: {Failures}",
+                    ex.Message,
+                    backoff,
+                    failures);
         }
 
-        private TimeSpan GetBackoff(int failures)
+        private static TimeSpan GetBackoff(int failures)
         {
             int exponent = Math.Min(failures - 1, 7);
             int milliseconds = Math.Min(30000, (int)(250 * Math.Pow(2, exponent)));
             return TimeSpan.FromMilliseconds(milliseconds);
         }
 
-        public MVBService(
-            HttpClient httpClient, 
-            ILogger<MVBService> logger,
-            IConfiguration config)
+        /// <summary>
+        /// Reinicia el contador de fallos y permite reintentar de inmediato
+        /// (p. ej. al reactivar MVB desde la UI).
+        /// </summary>
+        public void ResetRetries()
         {
-            mvarHttpClient = httpClient;
-            mvarLogger = logger;
-            mvarHttpClient.Timeout = TimeSpan.FromSeconds(2);
-            mvarUrl = config.GetSection("SystemConfiguration")["MVBUrl"] ?? string.Empty;
-            if (mvarUrl.Length < 1)
-                mvarLogger.LogError("MVB parameter missing in configuration");            
-
-            string auxNum = config.GetSection("SystemConfiguration")["MVBRetries"] ?? DEFAULT_MAX_RETRIES.ToString();
-            if (!int.TryParse(auxNum, out mvarMaxRetries))
-                mvarMaxRetries = DEFAULT_MAX_RETRIES;
-
-        //    ResetRetries();
-        }
-        //public bool IsOK { get => mvarUrl.Length > 0 && mvarRetries>0; }
-        public void ResetRetries() 
-        { 
-            lock(mvarLock)
+            lock (mvarLock)
             {
-                mvarRetries = 0;
+                mvarConsecutiveFailures = 0;
                 mvarNextAttempt = DateTime.MinValue;
             }
-            mvarRetries = mvarMaxRetries; 
+            mvarLogger.LogInformation("MVB retries reset (max configured={Max}).", mvarMaxRetries);
         }
-        //public async Task<MVB8100Data?> GetMVBDataAsync()
-        //{
-        //    if (mvarRetries < 1) 
-        //        return null;
-        //    try
-        //    {
-        //        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        //        var response = await mvarHttpClient.GetAsync(mvarUrl,cts.Token);
-        //        response.EnsureSuccessStatusCode();
-        //        var jsonString = await response.Content.ReadAsStringAsync();
-        //        mvarLogger.LogInformation("MVB data read {0}", response.StatusCode);
-        //        return JsonSerializer.Deserialize<MVB8100Data>(jsonString);
-        //    }
-        //    catch (TaskCanceledException ex)
-        //    {                
-        //        mvarRetries--;
-        //        mvarLogger.LogError($"MVB error: Timeout. {mvarRetries} retries.");
-        //        if (mvarRetries < 1)
-        //            mvarLogger.LogError("MVB intents exceeded");
-        //        throw new TimeoutException("Timeout while trying to get MVB data");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        mvarLogger.LogError("MVB error: {0}", ex.Message);
-        //    }
-        //    return null;
-        //} 
     }
 }

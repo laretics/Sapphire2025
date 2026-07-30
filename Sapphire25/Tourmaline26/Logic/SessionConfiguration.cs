@@ -34,6 +34,13 @@ namespace Tourmaline26.Logic
         public FeatureSwitches MainSwitches { get; } = new FeatureSwitches();
         public ServiceMode ServiceMode { get; } = new ServiceMode();
 
+        /// <summary>
+        /// Última opción del menú lateral (Id de <see cref="Generical.MenuOptionModel"/>).
+        /// Sobrevive al cerrar/abrir el panel; si la opción no es visible
+        /// (p. ej. solo modo servicio), el menú cae a la primera disponible.
+        /// </summary>
+        public string LastSideMenuOptionId { get; set; } = "pass";
+
         #region Telemetria
         /// <summary>
         /// Velocidad actual simulada en DemoMode. TourmalineBackground la acerca

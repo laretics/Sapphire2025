@@ -60,6 +60,19 @@ namespace Tourmaline26.Services
 			SystemConfiguration? auxConfig = config.GetSection("SystemConfiguration").Get<SystemConfiguration>();            
 			if (null != auxConfig)
 				SystemConfig = auxConfig;
+
+            // Las cámaras suelen estar en la raíz del appsettings ("Cameras"), no dentro de SystemConfiguration.
+            if (SystemConfig.Cameras is null || SystemConfig.Cameras.Count == 0)
+            {
+                List<CameraInfo>? rootCameras = config.GetSection("Cameras").Get<List<CameraInfo>>();
+                if (rootCameras is { Count: > 0 })
+                    SystemConfig.Cameras = rootCameras;
+            }
+
+            mvarLogger.LogInformation(
+                "Cámaras cargadas: {Count}",
+                SystemConfig.Cameras?.Count ?? 0);
+
             IConfigurationSection debugStartupSession = config.GetSection("debugStartSession");
             if (debugStartupSession.Exists())
                 debugStartupSession.Bind(mvarSessionConfig);
