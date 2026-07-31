@@ -133,21 +133,13 @@ namespace Sapphire2026Telegram
 						}
 					});
 				});
-				try
-				{
-					await mvarHubConnection.StartAsync(cancellationToken);
-					await OnConnected();
-					mvarLogger.LogInformation("Conectado exitosamente al hub de SignalR.");
-				}
-				catch (Exception ex)
-				{
-					mvarLogger.LogWarning(ex, "No se pudo conectar con el hub de SignalR. El servicio continuará en modo standalone.");
-					// No relanzamos la excepción para permitir que el servicio continúe en modo standalone
-				}
+				// La conexiÃ³n inicial puede fallar si el API aÃºn no estÃ¡ listo (despliegue paralelo).
+				// No abortamos el worker: ExecuteAsync reintentarÃ¡ StartAsync periÃ³dicamente.
+				await TryConnectHubAsync(cancellationToken);
 			}
 			else
 			{
-				mvarLogger.LogInformation("SignalR deshabilitado. El servicio funcionará en modo standalone.");
+				mvarLogger.LogInformation("SignalR deshabilitado. El servicio funcionarÃ¡ en modo standalone.");
 			}
 
 			await base.StartAsync(cancellationToken);
@@ -157,27 +149,33 @@ namespace Sapphire2026Telegram
 		{
 			while (!stoppingToken.IsCancellationRequested)
 			{
-				// Lugar para poner la lógica de recepción de mensajes del Telegram.
-				if (mvarHubConnection?.State == HubConnectionState.Connected)
+				if (mvarHubEnabled && mvarHubConnection != null)
 				{
-					//Esto es una simulación de un evento.
-					if (mvarLogger.IsEnabled(LogLevel.Information))
+					// WithAutomaticReconnect solo actÃºa tras una conexiÃ³n inicial exitosa.
+					// Si StartAsync fallÃ³ al arrancar, o se agotaron los reintentos automÃ¡ticos,
+					// el estado queda en Disconnected y hay que volver a llamar a StartAsync.
+					if (mvarHubConnection.State == HubConnectionState.Disconnected)
 					{
-						mvarLogger.LogInformation("Worker running at: {time} [Modo: Conectado]", DateTimeOffset.Now);
+						await TryConnectHubAsync(stoppingToken);
+					}
+					else if (mvarHubConnection.State == HubConnectionState.Connected)
+					{
+						if (mvarLogger.IsEnabled(LogLevel.Information))
+						{
+							mvarLogger.LogInformation("Worker running at: {time} [Modo: Conectado]", DateTimeOffset.Now);
+						}
+					}
+					else
+					{
+						// Connecting / Reconnecting: esperar sin spamear ni llamar a StartAsync.
+						mvarLogger.LogDebug("Hub en estado transitorio: {State}", mvarHubConnection.State);
 					}
 				}
 				else
 				{
-					if (mvarHubEnabled)
+					if (mvarLogger.IsEnabled(LogLevel.Information))
 					{
-						mvarLogger.LogWarning("No conectado al hub. Estado:{0}", mvarHubConnection?.State);
-					}
-					else
-					{
-						if (mvarLogger.IsEnabled(LogLevel.Information))
-						{
-							mvarLogger.LogInformation("Worker running at: {time} [Modo: Standalone]", DateTimeOffset.Now);
-						}
+						mvarLogger.LogInformation("Worker running at: {time} [Modo: Standalone]", DateTimeOffset.Now);
 					}
 				}
 
@@ -186,8 +184,36 @@ namespace Sapphire2026Telegram
 		}
 
 		/// <summary>
-		/// Envía un mensaje que hayamos recibido del bot al servidor a través del hub SignalR.
-		/// Nota importante: En este caso, el mensaje sólo nos va a servir para sincronizar la recepción y
+		/// Intenta StartAsync solo si el hub estÃ¡ desconectado. Seguro ante carreras de arranque/despliegue.
+		/// </summary>
+		private async Task TryConnectHubAsync(CancellationToken cancellationToken)
+		{
+			if (!mvarHubEnabled || mvarHubConnection == null)
+				return;
+
+			if (mvarHubConnection.State != HubConnectionState.Disconnected)
+				return;
+
+			try
+			{
+				mvarLogger.LogInformation("Intentando conectar al hub de SignalR ({0})...", mvarConfiguration["SignalR:HubUrl"]);
+				await mvarHubConnection.StartAsync(cancellationToken);
+				await OnConnected();
+				mvarLogger.LogInformation("Conectado exitosamente al hub de SignalR.");
+			}
+			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+			{
+				throw;
+			}
+			catch (Exception ex)
+			{
+				mvarLogger.LogWarning(ex, "No se pudo conectar con el hub de SignalR. Se reintentarÃ¡ en unos segundos.");
+			}
+		}
+
+		/// <summary>
+		/// Envï¿½a un mensaje que hayamos recibido del bot al servidor a travï¿½s del hub SignalR.
+		/// Nota importante: En este caso, el mensaje sï¿½lo nos va a servir para sincronizar la recepciï¿½n y
 		/// hacer polling sobre la base de datos. Al recibir el mensaje, el servidor va a consultar la base
 		/// de datos de mensajes recibidos para procesarlos.
 		/// </summary>
@@ -198,13 +224,13 @@ namespace Sapphire2026Telegram
 		{
 			if (mvarHubConnection?.State == HubConnectionState.Connected)
 			{
-				// Implementar el envío al hub
+				// Implementar el envï¿½o al hub
 				mvarLogger.LogInformation("Mensaje enviado al hub: ChatId={0}", chatId);
 			}
 			else
 			{
 				mvarLogger.LogDebug("Modo standalone: Mensaje no enviado al hub. ChatId={0}", chatId);
-				// Aquí podrías implementar una lógica alternativa, como guardar en base de datos local
+				// Aquï¿½ podrï¿½as implementar una lï¿½gica alternativa, como guardar en base de datos local
 			}
 		}
 
@@ -223,7 +249,7 @@ namespace Sapphire2026Telegram
 		}
 		private async Task OnClosed(System.Exception? er)
 		{
-			mvarLogger.LogError("Conexión cerrada con el hub de SignalR. Error: {0}", er?.Message);
+			mvarLogger.LogError("Conexiï¿½n cerrada con el hub de SignalR. Error: {0}", er?.Message);
 		}
 		private async Task OnTelegramMessageAcknowelged(long chatId, bool success)
 		{
@@ -231,36 +257,36 @@ namespace Sapphire2026Telegram
 		}
 		private async Task OnTelegramBroadcast1(string message, bool priority = false, string filters = "")
 		{
-			mvarLogger.LogInformation("Transmisión Telegram Message:{0} Priority:{1} Filters:{2}", message, priority, filters);
+			mvarLogger.LogInformation("Transmisiï¿½n Telegram Message:{0} Priority:{1} Filters:{2}", message, priority, filters);
 			await mvarBotSoul.BroadcastToAll(message, priority, filters);
 		}
 		private async Task OnTelegramBroadcast2(string message, bool priority = false, params Common.UserRole[] roles)
 		{
-			mvarLogger.LogInformation("Transmisión Telegram Message:{0} Priority:{1} Roles:{2}", message, false, roles);
+			mvarLogger.LogInformation("Transmisiï¿½n Telegram Message:{0} Priority:{1} Roles:{2}", message, false, roles);
 			await mvarBotSoul.BroadcastByRole(message, priority, roles);
 		}
 		private async Task OnRequestPairingCode(string requestId, string userId)
 		{
-			mvarLogger.LogInformation("Solicitud de código de emparejamiento recibida: RequestId={0}, UserId={1}", requestId, userId);
+			mvarLogger.LogInformation("Solicitud de cï¿½digo de emparejamiento recibida: RequestId={0}, UserId={1}", requestId, userId);
 			try
 			{
 				if (Guid.TryParse(userId, out Guid userGuid))
 				{
 					string pairingCode = mvarBotSoul.GenerateTicket(userGuid);
-					//Envío del código al servidor.
+					//Envï¿½o del cï¿½digo al servidor.
 					if (mvarHubConnection?.State == HubConnectionState.Connected)
 					{
 						await mvarHubConnection.InvokeAsync("SendPairingCodeResponse", requestId, pairingCode);
-						mvarLogger.LogInformation("Código de emparejamiento {0} generado para el usuario {1}", pairingCode, userId);
+						mvarLogger.LogInformation("Cï¿½digo de emparejamiento {0} generado para el usuario {1}", pairingCode, userId);
 					}
 					else
 					{
-						mvarLogger.LogWarning("No se pudo enviar el código de emparejamiento. Hub desconectado.");
+						mvarLogger.LogWarning("No se pudo enviar el cï¿½digo de emparejamiento. Hub desconectado.");
 					}
 				}
 				else
 				{
-					mvarLogger.LogError("User Id inválido: {0}", userId);
+					mvarLogger.LogError("User Id invï¿½lido: {0}", userId);
 					if (mvarHubConnection?.State == HubConnectionState.Connected)
 					{
 						await mvarHubConnection.InvokeAsync("SendPairingCodeResponse", requestId, string.Empty);
@@ -269,7 +295,7 @@ namespace Sapphire2026Telegram
 			}
 			catch (Exception e)
 			{
-				mvarLogger.LogError(e, "Error al generar el código de emparejamiento");
+				mvarLogger.LogError(e, "Error al generar el cï¿½digo de emparejamiento");
 				if (mvarHubConnection?.State == HubConnectionState.Connected)
 				{
 					await mvarHubConnection.InvokeAsync("SendPairingCodeResponse", requestId, string.Empty);

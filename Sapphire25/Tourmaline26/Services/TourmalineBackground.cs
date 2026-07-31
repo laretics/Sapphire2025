@@ -48,9 +48,16 @@ namespace Tourmaline26.Services
         private Task? mvarExperienceSyncTask;
         /// <summary>
         /// Ganancia de corrección: km/h por metro de desfase a lo largo de la marcha.
-        /// p.ej. 0.06 → 100 m de retraso ≈ +6 km/h sobre la velocidad MVB.
+        /// p.ej. 0.20 → 100 m de retraso ≈ +20 km/h sobre la velocidad MVB
+        /// (curva de acercamiento más dura que el 0.06 anterior).
         /// </summary>
-        private const double ExperienceSyncGainKmhPerMeter = 0.06;
+        private const double ExperienceSyncGainKmhPerMeter = 0.20;
+        /// <summary>
+        /// Desfase (m) a partir del cual se fuerza recuperación o parada del tren simulado:
+        /// retraso ≥ umbral → el sim no se detiene aunque el real esté parado;
+        /// adelanto ≥ umbral → el sim se detiene aunque el real circule.
+        /// </summary>
+        private const int ExperienceSyncHardThresholdMeters = 100;
         /// <summary>Tope de velocidad al simulador (evita valores absurdos en TE).</summary>
         private const int ExperienceMaxSpeedKmh = 200;
         /// <summary>Estado anterior de MVB ZeroSpeed (null = aún no leído).</summary>
@@ -630,10 +637,13 @@ namespace Tourmaline26.Services
         /// <summary>
         /// Modo normal (no Demo): el tren de Tourmaline Experience sigue al tren real.
         /// <list type="bullet">
+        /// <item>Sin GPS válido (antena, túnel…): velocidad del sim = MVB, sin corrección PK.</item>
         /// <item>PK real: GPS → <see cref="LinearLocation.TryLocateBySatellite"/> (ya en el bucle).</item>
         /// <item>PK simulado: lat/lon de telemetría TE → mismo algoritmo.</item>
         /// <item>Velocidad base: MVB / emulación MVB (<see cref="SessionConfiguration.CurrentSpeed"/>).</item>
         /// <item>Corrección: desfase a lo largo de la marcha (positivo = sim retrasado → más velocidad).</item>
+        /// <item>Retraso ≥ <see cref="ExperienceSyncHardThresholdMeters"/> m: el sim sigue aunque el real esté parado.</item>
+        /// <item>Adelanto ≥ umbral: el sim se detiene aunque el real circule.</item>
         /// <item>Tope: <see cref="ExperienceMaxSpeedKmh"/> km/h.</item>
         /// </list>
         /// </summary>
@@ -648,20 +658,65 @@ namespace Tourmaline26.Services
                 return;
             }
 
-            // Sin misión / topología no hay eje de referencia.
+            // Sin ubicación GPS válida no hay PK fiable: el simulado copia la velocidad MVB.
+            // Evita corregir contra un PK antiguo (p. ej. al entrar en un túnel).
+            if (!HasValidGpsLocation(session))
+            {
+                ApplyMvbOnlyExperienceSpeed(session, "MVB-noGPS");
+                return;
+            }
+
+            // Sin misión / topología no hay eje de referencia para corrección PK.
             TimeNetEnvironment? env = session.TNEnvironment;
             if (null == env?.TopoStorage || null == env.Circulation)
+            {
+                ApplyMvbOnlyExperienceSpeed(session, "MVB-noTopo");
                 return;
+            }
 
-            // PK real aún no resuelto.
+            // GPS hay, pero PK real aún no resuelto → también MVB puro.
             if (env.PK < 0 || session.LinearLocation.PKRef < 0)
+            {
+                ApplyMvbOnlyExperienceSpeed(session, "MVB-noPK");
                 return;
+            }
 
             // Evitar solapar peticiones a TE.
             if (mvarExperienceSyncTask != null && !mvarExperienceSyncTask.IsCompleted)
                 return;
 
             mvarExperienceSyncTask = ExperienceSpeedSyncAsync();
+        }
+
+        /// <summary>
+        /// True si hay lectura GPS usable para localización lineal (no solo bandera de módulo).
+        /// </summary>
+        private static bool HasValidGpsLocation(SessionConfiguration session)
+        {
+            if (!session.GPSOK)
+                return false;
+            GPSData? gps = session.CurrentGPSData;
+            return gps != null && gps.IsValid;
+        }
+
+        /// <summary>
+        /// Envía al simulador la velocidad MVB tal cual, sin corrección por desfase PK.
+        /// </summary>
+        private void ApplyMvbOnlyExperienceSpeed(SessionConfiguration session, string context)
+        {
+            // No pisar un ciclo de sync PK en curso.
+            if (mvarExperienceSyncTask != null && !mvarExperienceSyncTask.IsCompleted)
+                return;
+
+            int commanded = Math.Clamp(Math.Max(0, session.CurrentSpeed), 0, ExperienceMaxSpeedKmh);
+            session.ExperienceCommandedSpeed = commanded;
+            session.ExperiencePkLagMeters = 0;
+
+            if (commanded != mvarLastExperienceSpeedSent)
+            {
+                mvarLastExperienceSpeedSent = commanded;
+                mvarExperienceSyncTask = SendExperienceSpeedAsync(commanded, context);
+            }
         }
 
         private async Task ExperienceSpeedSyncAsync()
@@ -713,15 +768,36 @@ namespace Tourmaline26.Services
 
                 // Velocidad del tren real (MVB), no GPS.
                 int realSpeed = Math.Max(0, session.CurrentSpeed);
-                double correction = lagMeters * ExperienceSyncGainKmhPerMeter;
-                int commanded = (int)Math.Round(realSpeed + correction);
-                commanded = Math.Clamp(commanded, 0, ExperienceMaxSpeedKmh);
+                int commanded;
+
+                if (lagMeters <= -ExperienceSyncHardThresholdMeters)
+                {
+                    // Simulado muy por delante: parar aunque el real circule.
+                    // Así se cede el espacio perdido en lugar de seguir abriendo el desfase.
+                    commanded = 0;
+                }
+                else
+                {
+                    double correction = lagMeters * ExperienceSyncGainKmhPerMeter;
+                    commanded = (int)Math.Round(realSpeed + correction);
+
+                    // Simulado muy por detrás: no detenerse aunque el real esté parado.
+                    // La parada del real es una oportunidad para recuperar metros.
+                    if (lagMeters >= ExperienceSyncHardThresholdMeters && realSpeed <= 0)
+                    {
+                        commanded = Math.Max(commanded, (int)Math.Round(correction));
+                        if (commanded < 1)
+                            commanded = 1;
+                    }
+
+                    commanded = Math.Clamp(commanded, 0, ExperienceMaxSpeedKmh);
+                }
 
                 session.ExperienceCommandedSpeed = commanded;
 
                 mvarLogger.LogDebug(
-                    "TE sync: realPk={RealPk} simPk={SimPk} lag={Lag}m asc={Asc} realV={RealV} → cmd={Cmd}",
-                    realPk, simPk, lagMeters, ascending, realSpeed, commanded);
+                    "TE sync: realPk={RealPk} simPk={SimPk} lag={Lag}m thr={Thr}m asc={Asc} realV={RealV} → cmd={Cmd}",
+                    realPk, simPk, lagMeters, ExperienceSyncHardThresholdMeters, ascending, realSpeed, commanded);
 
                 if (commanded != mvarLastExperienceSpeedSent)
                 {

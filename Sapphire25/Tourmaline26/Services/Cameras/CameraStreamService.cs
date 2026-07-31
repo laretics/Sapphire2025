@@ -125,8 +125,21 @@ namespace Tourmaline26.Services.Cameras
                 Stream body = response.Body;
 
                 byte[]? lastSent = null;
+                // Si el RTSP se queda mudo pero deja el último JPEG, el <img> no dispara
+                // onerror y el HMI parece "congelado". Cortamos el HTTP para forzar reintento.
+                const int mjpegStaleSeconds = 20;
                 while (!token.IsCancellationRequested)
                 {
+                    DateTime? frameUtc = session.LastFrameUtc;
+                    if (frameUtc.HasValue
+                        && (DateTime.UtcNow - frameUtc.Value).TotalSeconds > mjpegStaleSeconds)
+                    {
+                        mvarLogger.LogDebug(
+                            "MJPEG stale camera {Id}: sin frames nuevos > {Sec}s; cerrando stream HTTP",
+                            cameraId, mjpegStaleSeconds);
+                        break;
+                    }
+
                     byte[]? jpeg = session.GetLatestJpegCopy();
                     if (jpeg is null || (lastSent is not null && jpeg.AsSpan().SequenceEqual(lastSent)))
                     {
@@ -218,6 +231,13 @@ namespace Tourmaline26.Services.Cameras
 
         private sealed class CameraSession : IDisposable
         {
+            /// <summary>
+            /// Sin JPEG nuevo en este tiempo → se considera el RTSP muerto aunque el socket
+            /// siga abierto (caso típico de congelado sin reintento).
+            /// </summary>
+            private const int FrameStaleTimeoutSeconds = 12;
+            private const int MaxBackoffMs = 10000;
+
             private readonly CameraInfo mvarCam;
             private readonly ILogger mvarLogger;
             private readonly object mvarLock = new();
@@ -269,14 +289,25 @@ namespace Tourmaline26.Services.Cameras
             public void EnsureStarted()
             {
                 if (mvarDisposed) return;
-                if (mvarLoop is { IsCompleted: false }) return;
 
                 lock (mvarLock)
                 {
-                    if (mvarLoop is { IsCompleted: false }) return;
+                    if (mvarDisposed) return;
+
+                    // Solo reutilizar el loop si sigue vivo y no está en parada.
+                    bool loopHealthy = mvarLoop is { IsCompleted: false }
+                        && mvarCts is { IsCancellationRequested: false };
+                    if (loopHealthy)
+                        return;
+
+                    // Cancelar un loop moribundo (Stop previo) antes de otro.
+                    // No Dispose del CTS viejo aquí: el loop anterior aún puede observar su token.
+                    try { mvarCts?.Cancel(); } catch { /* ignore */ }
+
                     mvarCts = new CancellationTokenSource();
                     CancellationToken token = mvarCts.Token;
-                    mvarLoop = Task.Run(() => ReceiveLoopAsync(token), token);
+                    // No pasar token a Task.Run: si estuviera cancelado, el loop no arrancaría.
+                    mvarLoop = Task.Run(() => ReceiveLoopAsync(token));
                     mvarLogger.LogInformation(
                         "RTSP start camera {Id} ({Name}) → {Url}",
                         mvarCam.Id, mvarCam.Name, SanitizeUrl(mvarRtspUrl));
@@ -285,9 +316,13 @@ namespace Tourmaline26.Services.Cameras
 
             private void Stop()
             {
-                try { mvarCts?.Cancel(); } catch { /* ignore */ }
-                mvarCts = null;
-                mvarLoop = null;
+                lock (mvarLock)
+                {
+                    try { mvarCts?.Cancel(); } catch { /* ignore */ }
+                    // No anular mvarLoop aquí: EnsureStarted mira IsCompleted y evita
+                    // un segundo ReceiveLoop mientras el anterior aún se cierra.
+                    // Tampoco se pone mvarLoop = null (antes dejaba carrera al reabrir el <img>).
+                }
             }
 
             private async Task ReceiveLoopAsync(CancellationToken token)
@@ -295,6 +330,7 @@ namespace Tourmaline26.Services.Cameras
                 int backoffMs = 500;
                 while (!token.IsCancellationRequested)
                 {
+                    CancellationTokenSource? sessionCts = null;
                     try
                     {
                         Uri uri = new(mvarRtspUrl);
@@ -306,21 +342,77 @@ namespace Tourmaline26.Services.Cameras
                             ReceiveTimeout = TimeSpan.FromSeconds(10)
                         };
 
+                        sessionCts = CancellationTokenSource.CreateLinkedTokenSource(token);
                         using RtspClient client = new(parameters);
                         client.FrameReceived += OnFrameReceived;
+                        try
+                        {
+                            await client.ConnectAsync(sessionCts.Token);
+                            LastError = null;
+                            backoffMs = 500;
+                            DateTime connectedUtc = DateTime.UtcNow;
+                            mvarLogger.LogInformation(
+                                "RTSP connected camera {Id} ({Name})",
+                                mvarCam.Id, mvarCam.Name);
 
-                        await client.ConnectAsync(token);
-                        LastError = null;
-                        backoffMs = 500;
-                        mvarLogger.LogInformation(
-                            "RTSP connected camera {Id} ({Name})",
-                            mvarCam.Id, mvarCam.Name);
+                            // ReceiveAsync solo termina si el socket cae o hay timeout de librería.
+                            // Si la cámara deja de mandar JPEG pero mantiene el TCP, se queda colgado
+                            // sin reintentar: watchdog por silencio de frames.
+                            Task receiveTask = client.ReceiveAsync(sessionCts.Token);
+                            while (!receiveTask.IsCompleted && !token.IsCancellationRequested)
+                            {
+                                await Task.WhenAny(receiveTask, Task.Delay(1000, token));
+                                if (receiveTask.IsCompleted)
+                                    break;
 
-                        await client.ReceiveAsync(token);
+                                DateTime? last = LastFrameUtc;
+                                bool gotFrameThisSession = last.HasValue && last.Value >= connectedUtc;
+                                TimeSpan silence = gotFrameThisSession
+                                    ? DateTime.UtcNow - last!.Value
+                                    : DateTime.UtcNow - connectedUtc;
+
+                                if (silence.TotalSeconds >= FrameStaleTimeoutSeconds)
+                                {
+                                    LastError = gotFrameThisSession
+                                        ? $"Sin frames durante {(int)silence.TotalSeconds}s; reconectando"
+                                        : "Sin frames tras conectar; reintentando";
+                                    mvarLogger.LogWarning(
+                                        "RTSP stale camera {Id} ({Name}): {Seconds}s sin JPEG nuevo. Reconectando…",
+                                        mvarCam.Id, mvarCam.Name, (int)silence.TotalSeconds);
+                                    try { sessionCts.Cancel(); } catch { /* ignore */ }
+                                    break;
+                                }
+                            }
+
+                            // Esperar cierre de ReceiveAsync (error de red, timeout o cancel del watchdog).
+                            try
+                            {
+                                await receiveTask;
+                            }
+                            catch (OperationCanceledException) when (!token.IsCancellationRequested)
+                            {
+                                // Watchdog de sesión: el bucle exterior reintenta.
+                            }
+                        }
+                        finally
+                        {
+                            client.FrameReceived -= OnFrameReceived;
+                        }
                     }
                     catch (OperationCanceledException) when (token.IsCancellationRequested)
                     {
                         break;
+                    }
+                    catch (OperationCanceledException ex)
+                    {
+                        // Cancel del watchdog de sesión (no del Stop global) → reintento.
+                        LastError = ex.Message;
+                        mvarLogger.LogWarning(
+                            "RTSP session cancel camera {Id} ({Name}): {Message}. Reintento en {Ms} ms",
+                            mvarCam.Id, mvarCam.Name, ex.Message, backoffMs);
+                        try { await Task.Delay(backoffMs, token); }
+                        catch (OperationCanceledException) { break; }
+                        backoffMs = Math.Min(MaxBackoffMs, backoffMs * 2);
                     }
                     catch (Exception ex)
                     {
@@ -328,8 +420,13 @@ namespace Tourmaline26.Services.Cameras
                         mvarLogger.LogWarning(
                             "RTSP error camera {Id} ({Name}): {Message}. Reintento en {Ms} ms",
                             mvarCam.Id, mvarCam.Name, ex.Message, backoffMs);
-                        try { await Task.Delay(backoffMs, token); } catch (OperationCanceledException) { break; }
-                        backoffMs = Math.Min(10000, backoffMs * 2);
+                        try { await Task.Delay(backoffMs, token); }
+                        catch (OperationCanceledException) { break; }
+                        backoffMs = Math.Min(MaxBackoffMs, backoffMs * 2);
+                    }
+                    finally
+                    {
+                        try { sessionCts?.Dispose(); } catch { /* ignore */ }
                     }
                 }
 
