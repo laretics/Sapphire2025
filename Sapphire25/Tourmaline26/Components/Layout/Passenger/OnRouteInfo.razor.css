@@ -139,8 +139,155 @@
 
 
 
-/* ==================== FAREWELL (EndOfTrip) ==================== */
+/* ==================== WELCOME / FAREWELL (BeginOfTrip · EndOfTrip) ==================== */
 
+.journey-splash {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	min-height: 0;
+	text-align: center;
+	padding: 3vh 5vw;
+	gap: 1.2vh;
+	border-radius: 1.2vw;
+	box-sizing: border-box;
+	overflow: hidden;
+	position: relative;
+}
+
+.journey-splash--welcome {
+	background:
+		radial-gradient(ellipse 80% 60% at 50% 0%, rgba(13, 110, 253, 0.14), transparent 70%),
+		linear-gradient(165deg, #f8fafc 0%, #eef2ff 45%, #f5f5f5 100%);
+	border: 1px solid rgba(13, 110, 253, 0.12);
+}
+
+.journey-splash--farewell {
+	background:
+		radial-gradient(ellipse 80% 60% at 50% 100%, rgba(25, 135, 84, 0.14), transparent 70%),
+		linear-gradient(165deg, #f8fafc 0%, #ecfdf5 45%, #f5f5f5 100%);
+	border: 1px solid rgba(25, 135, 84, 0.12);
+}
+
+.journey-splash-kicker {
+	font-size: clamp(1.8vw, 2.4vw, 3vw);
+	font-weight: 600;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: #64748b;
+}
+
+.journey-splash--welcome .journey-splash-kicker {
+	color: #0d47a1;
+}
+
+.journey-splash--farewell .journey-splash-kicker {
+	color: #146c43;
+}
+
+.journey-splash-title {
+	font-size: clamp(4.2vw, 6.5vw, 8vw);
+	font-weight: 800;
+	line-height: 1.1;
+	color: #0f172a;
+	max-width: 95%;
+	letter-spacing: -0.02em;
+}
+
+.journey-splash-rule {
+	width: min(28vw, 220px);
+	height: 0.45vh;
+	min-height: 3px;
+	border-radius: 999px;
+	margin: 0.8vh 0 0.4vh 0;
+	background: linear-gradient(90deg, transparent, #0d6efd, transparent);
+}
+
+.journey-splash--farewell .journey-splash-rule {
+	background: linear-gradient(90deg, transparent, #198754, transparent);
+}
+
+.journey-splash-lead {
+	font-size: clamp(2.2vw, 3vw, 3.6vw);
+	font-weight: 500;
+	color: #64748b;
+	margin-top: 0.5vh;
+}
+
+.journey-splash-highlight {
+	font-size: clamp(5.5vw, 9vw, 11vw);
+	font-weight: 800;
+	line-height: 1.05;
+	color: #111;
+	max-width: 95%;
+	word-break: break-word;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.journey-splash--welcome .journey-splash-highlight {
+	color: #0b3d91;
+}
+
+.journey-splash--farewell .journey-splash-highlight {
+	color: #0f5132;
+}
+
+.journey-splash-meta {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.4vh;
+	margin-top: 1.2vh;
+}
+
+.journey-splash-meta-label {
+	font-size: clamp(1.6vw, 2.1vw, 2.6vw);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: #94a3b8;
+}
+
+.journey-splash-meta-value {
+	font-size: clamp(2.8vw, 3.8vw, 4.6vw);
+	font-weight: 700;
+	color: #334155;
+}
+
+.journey-splash-chip {
+	margin-top: 1.5vh;
+	padding: 0.7vh 2.2vw;
+	border-radius: 999px;
+	font-size: clamp(1.8vw, 2.4vw, 3vw);
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	background: rgba(15, 23, 42, 0.06);
+	color: #1e293b;
+	border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.journey-splash-footer {
+	margin-top: 2vh;
+	font-size: clamp(2.2vw, 3vw, 3.6vw);
+	font-weight: 600;
+	color: #475569;
+}
+
+.journey-splash--welcome .journey-splash-footer {
+	color: #0d6efd;
+}
+
+.journey-splash--farewell .journey-splash-footer {
+	color: #198754;
+}
+
+/* Compatibilidad por si queda alguna referencia antigua */
 .farewell-panel {
 	display: flex;
 	flex-direction: column;
@@ -164,6 +311,72 @@
 	font-size: clamp(2.5vw, 3.5vw, 4.5vw);
 	font-weight: 500;
 	color: #666;
+}
+
+/* ==================== LISTA DE PARADAS SOBRE VÍDEO ==================== */
+
+.route-stops-stage {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	min-height: 0;
+	overflow: hidden;
+	background: #1a1a1a;
+}
+
+/* Stream a pantalla completa, desenfocado y algo “lavado” */
+.route-stops-bg {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.route-stops-bg ::deep .simulator-stream-container {
+	width: 100%;
+	height: 100%;
+}
+
+/* Aclarar / suavizar el paisaje para que no compita con el texto */
+.route-stops-bg ::deep .simulator-stream-canvas,
+.route-stops-bg ::deep .simulator-stream-img {
+	filter: blur(10px) brightness(1.15) saturate(0.85) contrast(0.92);
+	transform: scale(1.08);
+}
+
+.route-stops-bg-veil {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	/* Veladura clara + viñeta inferior para anclar la tabla */
+	background:
+		linear-gradient(
+			180deg,
+			rgba(248, 250, 252, 0.55) 0%,
+			rgba(248, 250, 252, 0.38) 40%,
+			rgba(15, 23, 42, 0.22) 100%
+		),
+		radial-gradient(
+			ellipse 90% 70% at 20% 50%,
+			rgba(255, 255, 255, 0.35) 0%,
+			transparent 65%
+		);
+	pointer-events: none;
+}
+
+/* Tabla encima del paisaje */
+.route-stops-fg {
+	position: relative;
+	z-index: 2;
+	height: 100%;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	padding: 3vh 5vw 4vh 5vw;
+	box-sizing: border-box;
+	overflow: hidden;
 }
 
 .panel-body-content {

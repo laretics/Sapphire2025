@@ -60,6 +60,19 @@ namespace Tourmaline26.Services
 			SystemConfiguration? auxConfig = config.GetSection("SystemConfiguration").Get<SystemConfiguration>();            
 			if (null != auxConfig)
 				SystemConfig = auxConfig;
+
+            // Las cámaras suelen estar en la raíz del appsettings ("Cameras"), no dentro de SystemConfiguration.
+            if (SystemConfig.Cameras is null || SystemConfig.Cameras.Count == 0)
+            {
+                List<CameraInfo>? rootCameras = config.GetSection("Cameras").Get<List<CameraInfo>>();
+                if (rootCameras is { Count: > 0 })
+                    SystemConfig.Cameras = rootCameras;
+            }
+
+            mvarLogger.LogInformation(
+                "Cámaras cargadas: {Count}",
+                SystemConfig.Cameras?.Count ?? 0);
+
             IConfigurationSection debugStartupSession = config.GetSection("debugStartSession");
             if (debugStartupSession.Exists())
                 debugStartupSession.Bind(mvarSessionConfig);
@@ -96,7 +109,9 @@ namespace Tourmaline26.Services
             }
             mvarLogger.LogInformation("Total de dispositivos detectados: {DeviceCount}", deviceCount);
             mvarLedDisplayService.Init(Devices);
-            await mvarLedDisplayService.Print(true,$"Tourmaline {SystemConfig.Version}",true);
+            await mvarLedDisplayService.Print(true,$"Tourmaline {SystemConfig.Version}",false,Alignment.Center);
+            //El envío de BMP a paneles sigue sin funcionar. Hay que estudiarlo con calma.
+            //await mvarLedDisplayService.Draw(true, "Tren81");
             await mvarLedDisplayService.Print(false, "SFM", false);
 
             //await mvarLedDisplayService.ClearAsync();
@@ -346,8 +361,11 @@ namespace Tourmaline26.Services
 
         /// <summary>
         /// Actualiza <see cref="SessionConfiguration.InformationMode"/> según la fase del viaje:
-        /// sin circulación → Default; sin estación actual → Route (&lt;60 km/h) o Cruise (≥60);
-        /// en estación → EndOfTrip si es destino final, NextStopInfo (Arriv) en el resto.
+        /// sin circulación → Default;
+        /// en estación de origen (aún no se ha salido) → BeginOfTrip;
+        /// en destino final → EndOfTrip;
+        /// en otra estación → NextStopInfo;
+        /// sin estación actual → NextStopsList (&lt;60 km/h) o Cruise (≥60).
         /// En modo de servicio sin DemoMode no se sobreescribe (el radio del menú lateral manda);
         /// con DemoMode la conmutación es automática. Siempre se vuelve a Default al anular la circulación.
         /// </summary>
@@ -370,6 +388,7 @@ namespace Tourmaline26.Services
 
             Enums.PassengerInformationMode next;
             Station? currentStation = enviro!.CurrentStation;
+            Asimilation? asim = enviro.Asimilation ?? circulation.Parent?.asimilation;
 
             if (null == currentStation)
             {
@@ -380,15 +399,27 @@ namespace Tourmaline26.Services
             }
             else
             {
-                Station? lastStation = enviro.Asimilation?.Destination
-                    ?? circulation.Parent?.asimilation?.Destination;
+                Station? lastStation = asim?.Destination;
+                Station? originStation = asim?.Origin;
 
-                bool isEndOfTrip = null != lastStation
-                    && string.Equals(currentStation.Id, lastStation.Id, StringComparison.Ordinal);
+                bool sameStation(Station a, Station b) =>
+                    string.Equals(a.Id, b.Id, StringComparison.Ordinal);
 
-                next = isEndOfTrip
-                    ? Enums.PassengerInformationMode.EndOfTrip
-                    : Enums.PassengerInformationMode.NextStopInfo;
+                if (null != lastStation && sameStation(currentStation, lastStation))
+                {
+                    // Destino final del trayecto.
+                    next = Enums.PassengerInformationMode.EndOfTrip;
+                }
+                else if (null != originStation && sameStation(currentStation, originStation))
+                {
+                    // Todavía en origen (antes de LeaveCurrentStation al arrancar).
+                    next = Enums.PassengerInformationMode.BeginOfTrip;
+                }
+                else
+                {
+                    // Parada intermedia: anuncio de llegada / próxima estación.
+                    next = Enums.PassengerInformationMode.NextStopInfo;
+                }
             }
 
             if (session.InformationMode != next)

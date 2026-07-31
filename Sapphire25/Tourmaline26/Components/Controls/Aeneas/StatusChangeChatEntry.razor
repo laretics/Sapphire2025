@@ -41,10 +41,13 @@
 @code {
 	[Parameter]
 	public StatusChangeModel? ChangeModel{ get; set; }
+	/// <summary>Misma cascada por tipo que NoteChatEntry.Users.</summary>
 	[CascadingParameter]
-	public Dictionary<Guid,UserModelBase>? ColUsers{ get; set; }
+	public Dictionary<Guid, UserModelBase>? Users { get; set; }
+
 	private string statusColor { get; set; } = "defaultcolor";
 	private UserModelBase? User { get; set; } = null;
+
 	private string GetStatusColor(Sapphire2025Models.Common.TrainStatus status)
 	{
 		int index = (byte)status;
@@ -53,21 +56,17 @@
 
 		return "#6c757d";
 	}
+
 	protected override void OnParametersSet()
 	{
 		base.OnParametersSet();
-		if(null!=ChangeModel)
-		{
-			statusColor = GetStatusColor(ChangeModel.status);
-			if(null!=ColUsers)
-			{
-				if (ColUsers.ContainsKey(ChangeModel.userId))
-					User = ColUsers[ChangeModel.userId];
-			}
-		}
-		
-		
+		if (null == ChangeModel)
+			return;
 
+		statusColor = GetStatusColor(ChangeModel.status);
+		User = null != Users && Users.ContainsKey(ChangeModel.userId)
+			? Users[ChangeModel.userId]
+			: null;
 	}
 
 }

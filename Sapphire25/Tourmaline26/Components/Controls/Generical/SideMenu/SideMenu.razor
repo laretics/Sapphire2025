@@ -1,50 +1,54 @@
-﻿@using Tourmaline26.Components.Controls.Floatings
+@using Tourmaline26.Components.Controls.Floatings
 @using Tourmaline26.Components.Controls.SideMenu
 @using Tourmaline26.Components.Controls.Generical.SlidingMenu
 @using Tourmaline26.Components.Images
-<div class="side-menu-container">    
+@using Tourmaline26.Logic.Generical
+
+<div class="side-menu-container">
     <FloatRightContainer>
-        <SideHeader/>
+        <SideHeader />
         <div class="side-menu-content-row">
             <div class="sliding-menu">
-                <SlidingMenu Options="auxOptions" @ref="mvarSlidingMenu" OnSelectedIndexChanged="OnMenuChanged" />
+                <SlidingMenu Options="auxOptions"
+                             @ref="mvarSlidingMenu"
+                             OnSelectedIndexChanged="OnMenuChanged" />
             </div>
             <div class="side-option-scroll">
                 <SideOptionContainer>
-                    @switch (auxOptions[mvarSlidingMenu?.SelectedIndex ?? -0].Id)
+                    @switch (CurrentOptionId)
                     {
                         case "pass":
-                            <SideOptionPassengers/>
+                            <SideOptionPassengers />
                             break;
                         case "cam":
-                            <SideOptionCameras/>
+                            <SideOptionCameras />
                             break;
                         case "onyx":
-                            <SideOptionOnyx/>
+                            <SideOptionOnyx />
                             break;
                         case "arm":
-                            <SideOptionArmandito/>
+                            <SideOptionArmandito />
                             break;
                         case "info":
-                            <SideOptionInfo/>
+                            <SideOptionInfo />
                             break;
                         case "cli":
-                            <SideOptionClientSapphire/>
+                            <SideOptionClientSapphire />
                             break;
                         case "sys":
-                            <SideOptionSystemConfig/>
+                            <SideOptionSystemConfig />
                             break;
                         case "gps":
-                            <SideOptionDummyLocation/>
+                            <SideOptionDummyLocation />
                             break;
                         case "mvb":
-                            <SideOptionMVB/>
+                            <SideOptionMVB />
                             break;
                         case "3de":
-                            <SideOptionTourmalineExperience/>
+                            <SideOptionTourmalineExperience />
                             break;
                         case "cre":
-                            <SideOptionCredits/>
+                            <SideOptionCredits />
                             break;
                         default:
                             <div></div>
@@ -55,38 +59,66 @@
         </div>
     </FloatRightContainer>
 </div>
+
 @code {
     private SlidingMenu? mvarSlidingMenu;
+
     [Inject]
     TourmalineService mvarTourmaline { get; set; } = default!;
-    SystemConfiguration? mvarConfig{ get; set; }
+
     private List<MenuOptionModel> auxOptions =
-    new MenuOptionModel[]{
-    new MenuOptionModel("pass","Pasaje",@<ColorIcon Name="People" Size="64"/>),
-    new MenuOptionModel("cam","CCTV",@<ColorIcon Name="CCTV" Size="64" />),
-    new MenuOptionModel("onyx","Onice",@<ColorIcon Name="Edata" Size="64" />),
-    new MenuOptionModel("cli","Zafiro",@<ColorIcon Name="OutboundConnect" Color="red" Size="64" />,true),
-    new MenuOptionModel("arm","Tierra",@<ColorIcon Name="RemoteNews" Size="64" />),
-    new MenuOptionModel("sys","Config",@<ColorIcon Name="Wrench" Color="red" Size="64" />,true),
-    new MenuOptionModel("mvb","MVB",@<ColorIcon Name="MVB" Color="red" Size="64" />,true),
-    new MenuOptionModel("gps","GPS",@<ColorIcon Name="Satellite" Color="red" Size="64" />,true),
-    new MenuOptionModel("3de","Experience",@<ColorIcon Name="3DOn" Color="red" Size="64" />,true),
-    new MenuOptionModel("cre","Nosotros",@<ColorIcon Name="Team" Color="magenta" Size="64" />,true),
-    new MenuOptionModel("info","Información",@<ColorIcon Name="Info" Size="64" />),
-    }.ToList();
-    protected override void OnInitialized()
+        new MenuOptionModel[]
+        {
+            new MenuOptionModel("pass", "Pasaje", @<ColorIcon Name="People" Size="64"/>),
+            new MenuOptionModel("cam", "CCTV", @<ColorIcon Name="CCTV" Size="64" />),
+            new MenuOptionModel("onyx", "Onice", @<ColorIcon Name="Edata" Size="64" />),
+            new MenuOptionModel("cli", "Zafiro", @<ColorIcon Name="OutboundConnect" Color="red" Size="64" />, true),
+            new MenuOptionModel("arm", "Tierra", @<ColorIcon Name="RemoteNews" Size="64" />),
+            new MenuOptionModel("sys", "Config", @<ColorIcon Name="Wrench" Color="red" Size="64" />, true),
+            new MenuOptionModel("mvb", "MVB", @<ColorIcon Name="MVB" Color="red" Size="64" />, true),
+            new MenuOptionModel("gps", "GPS", @<ColorIcon Name="Satellite" Color="red" Size="64" />, true),
+            new MenuOptionModel("3de", "Experience", @<ColorIcon Name="3DOn" Color="red" Size="64" />, true),
+            new MenuOptionModel("cre", "Nosotros", @<ColorIcon Name="Team" Color="magenta" Size="64" />, true),
+            new MenuOptionModel("info", "Información", @<ColorIcon Name="Info" Size="64" />),
+        }.ToList();
+
+    /// <summary>
+    /// Id de la opción a mostrar. Prioriza el índice del SlidingMenu;
+    /// si aún no está montado, usa la sesión (misma clave que se persiste).
+    /// </summary>
+    private string CurrentOptionId
     {
-        base.OnInitialized();
-        mvarConfig = mvarTourmaline.SystemConfig;
+        get
+        {
+            if (mvarSlidingMenu is not null)
+            {
+                int idx = mvarSlidingMenu.SelectedIndex;
+                if (idx >= 0 && idx < auxOptions.Count && IsOptionAvailable(auxOptions[idx]))
+                    return auxOptions[idx].Id;
+            }
+
+            string saved = mvarTourmaline.SessionConfig.LastSideMenuOptionId;
+            MenuOptionModel? byId = auxOptions.FirstOrDefault(o =>
+                string.Equals(o.Id, saved, StringComparison.OrdinalIgnoreCase)
+                && IsOptionAvailable(o));
+            if (byId is not null)
+                return byId.Id;
+
+            return auxOptions.FirstOrDefault(IsOptionAvailable)?.Id ?? "pass";
+        }
     }
+
+    private bool IsOptionAvailable(MenuOptionModel opt) =>
+        !opt.ServiceMode || mvarTourmaline.SessionConfig.ServiceMode.Main;
+
     public async Task ManagePhysicalKeyboard(string key)
     {
         if (null != mvarSlidingMenu)
             await mvarSlidingMenu.ManagePhysicalKeyboard(key);
     }
-    private void OnMenuChanged()
+
+    private void OnMenuChanged(int _)
     {
         StateHasChanged();
     }
-
 }

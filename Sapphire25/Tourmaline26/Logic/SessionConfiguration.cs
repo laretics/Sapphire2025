@@ -34,6 +34,13 @@ namespace Tourmaline26.Logic
         public FeatureSwitches MainSwitches { get; } = new FeatureSwitches();
         public ServiceMode ServiceMode { get; } = new ServiceMode();
 
+        /// <summary>
+        /// Última opción del menú lateral (Id de <see cref="Generical.MenuOptionModel"/>).
+        /// Sobrevive al cerrar/abrir el panel; si la opción no es visible
+        /// (p. ej. solo modo servicio), el menú cae a la primera disponible.
+        /// </summary>
+        public string LastSideMenuOptionId { get; set; } = "pass";
+
         #region Telemetria
         /// <summary>
         /// Velocidad actual simulada en DemoMode. TourmalineBackground la acerca
@@ -41,26 +48,56 @@ namespace Tourmaline26.Logic
         /// </summary>
         public int SimulatedSpeed { get; set; } = 0;
 
-        public int CurrentSpeed //Velocidad actual, leída de GPS o MVB
-        { 
+        /// <summary>
+        /// Velocidad del tren para HMI (velocímetro, demos, paneles).
+        /// Fuente: Demo (rampa) o MVB / emulación MVB. La velocidad GPS no se usa aquí
+        /// (queda en <see cref="CurrentGPSData"/> para usos posteriores).
+        /// </summary>
+        public int CurrentSpeed
+        {
             get
             {
-                // En demo la aguja de velocidad es la simulada (rampa hacia el objetivo).
+                // Demo: rampa hacia la consigna (también se refleja en el MVB dummy).
                 if (ServiceMode.DemoMode)
                     return SimulatedSpeed;
 
-                //Prioridad MVB                
-                if ((ServiceMode.MVBEnabled|| ServiceMode.MVBDummy) && null != CurrentMVBData)
-                    return (int)CurrentMVBData.Speed;
-                if ((GPSEnabled || ServiceMode.GPSDummy) && null != CurrentGPSData)
-                    return (int)CurrentGPSData.SpeedKmh;
+                // Bus real o emulación MVB.
+                if ((ServiceMode.MVBEnabled || ServiceMode.MVBDummy) && null != CurrentMVBData)
+                    return CurrentMVBData.Speed;
 
-                return 0; //Cuando todo lo demás falla, devuelve cero.
+                return 0;
             }
-        }        
+        }
+
+        /// <summary>
+        /// True si el inversor está en marcha adelante o atrás (no neutro / túnel / maniobra).
+        /// Condición de visibilidad del velocímetro con datos MVB.
+        /// </summary>
+        public bool SpeedometerDriveSelected
+        {
+            get
+            {
+                if (null == CurrentMVBData)
+                    return false;
+                return CurrentMVBData.Inverter is MVBData.InverterPosition.Forward
+                    or MVBData.InverterPosition.Reverse;
+            }
+        }
+
         public int CurrentLimitSpeed { get; set; } = 100; //Velocidad máxima del tren en este tramo
         public int CurrentNeutralSpeed { get; set; } = 0; //Velocidad objetivo (Ónice / consigna de demo)
         public LinearLocation LinearLocation { get; set; } = new LinearLocation(); //Ubicación lineal de este tren (si la puedo sacar)
+
+        /// <summary>
+        /// Localización lineal del tren de Tourmaline Experience (mismo algoritmo GPS→PK).
+        /// </summary>
+        public LinearLocation SimulatedLinearLocation { get; set; } = new LinearLocation();
+
+        /// <summary>Último desfase PK a lo largo de la marcha (m). Positivo = simulado retrasado respecto al real.</summary>
+        public long ExperiencePkLagMeters { get; set; }
+
+        /// <summary>Última velocidad objetivo enviada al simulador (km/h), tras corrección por desfase.</summary>
+        public int ExperienceCommandedSpeed { get; set; }
 
 		#endregion Telemetria
 
@@ -76,7 +113,24 @@ namespace Tourmaline26.Logic
         /// Mensaje de anuncio seleccionado para difundir a los viajeros (popup).
         /// Null = ningún mensaje elegido aún.
         /// </summary>
-        public PassengerInformation? PassengerAnnouncement { get; set; }
+        private PassengerInformation? mvarPassengerAnnouncement;
+        public PassengerInformation? PassengerAnnouncement 
+        { 
+            get => mvarPassengerAnnouncement; 
+            set
+            {
+                mvarPassengerAnnouncement = value;
+                mvarPassengerAnnouncementLanguage = 0;
+            }
+        }
+        private byte mvarPassengerAnnouncementLanguage = 0;
+        public byte PassengerAnnouncementLanguage { get => mvarPassengerAnnouncementLanguage;} //Idioma actual en el que se muestran los mensajes.
+        public void IncLanguage()
+        {
+            mvarPassengerAnnouncementLanguage++;
+            if (mvarPassengerAnnouncementLanguage > 2)
+                mvarPassengerAnnouncementLanguage = 0;
+        }
 
         public SessionModel? Session { get; set; } = null; //Información sobre el usuario actual
         public Dictionary<Guid, UserModelBase>? ColUsers{ get; set; } = null; //Colección de usuarios del tren, con su Guid de Zafiro como clave.

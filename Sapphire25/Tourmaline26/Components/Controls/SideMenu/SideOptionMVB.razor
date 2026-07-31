@@ -1,361 +1,657 @@
-﻿@using BlazorBootstrap
-@using TimeNetComponents.TreeView
-@using Tourmaline26.Components.Controls.Floatings
-@using Tourmaline26.Components.Images
-@inject Services.TourmalineService Tourmaline
+@using Tourmaline26.Components.Controls.Generical
+@using Tourmaline26.Logic
+@implements IDisposable
+@inject TourmalineService Tourmaline
 @inject Services.TourmalineExperience.TourmalineExperienceService Experience
-<Tourmaline26.Components.Controls.Generical.Switch 
-    Label="MVB Main" 
-    Value="@Tourmaline.SessionConfig.ServiceMode.MVBEnabled"
-    ValueChanged="@((bool v) => SetMVBEnabled(v))"/>
-@if(Tourmaline.SessionConfig.MVBLastUpdate>DateTime.MinValue)
-{
-    <p>Last update: @Tourmaline.SessionConfig.MVBLastUpdate</p>
-}
-else
-{
-    <p>No updates yet</p>
-}
-@if(Tourmaline.SessionConfig.MVBError.Length>0)
-{
-    <div class="alert alert-danger" role="alert">
-        @Tourmaline.SessionConfig.MVBError
+
+<div class="mvb-panel">
+
+    @* ── Cabecera ── *@
+    <div class="mvb-header">
+        <h3 class="mvb-header-title">Bus MVB</h3>
+        <div class="mvb-badges">
+            <span class="badge @ModeBadgeClass">
+                <span class="mvb-live-dot @ModeDotClass"></span>@ModeLabel
+            </span>
+            @if (HasData)
+            {
+                <span class="badge text-bg-light border">@AgeLabel</span>
+            }
+            @if (Session.ServiceMode.DemoMode)
+            {
+                <span class="badge text-bg-info">Demo</span>
+            }
+        </div>
     </div>
-}
-@if(Tourmaline.SessionConfig.ServiceMode.MVBEnabled && null!=Tourmaline.SessionConfig.CurrentMVBData)
-{
-    <table class="table table-striped table-bordered mt-4">
-        <thead>
-            <tr>
-                <th>Field</th>
-                <th>Value</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>Speed</td>
-                <td>@mvarData.Speed</td>
-            </tr>
-            <tr>
-                <td>Odometer</td>
-                <td>@mvarData.Odometer</td>
-            </tr>
-            <tr>
-                <td>Time</td>
-                <td>@mvarData.Time</td>
-            </tr>
-            <tr>
-                <td>Speed validator?</td>
-                <td>@mvarData.SpeedValidation</td>
-            </tr>
-        </tbody>
-    </table>
 
-        <table class="table table-striped table-bordered mt-4">
-        <thead>
-            <tr>
-                <th>Order</th>
-                <th>Zero</th>
-                <th>T</th>
-                <th>T Loop</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>
-                    <BooleanFlag value="@mvarData.DriveCommand" />
-                </td>
-                <td>
-                    <BooleanFlag value="@mvarData.ZeroSpeed" />
-                </td>
-                <td>@mvarData.Advance.ToString()</td>
-                <td>
-                    <BooleanFlag value="@mvarData.TractionLoop" />
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    @* ── Fuentes ── *@
+    <div class="mvb-card">
+        <div class="mvb-card-header">
+            <span>Fuentes</span>
+            <span class="text-muted fw-normal text-lowercase" style="letter-spacing:0;">@UpdateStamp</span>
+        </div>
+        <div class="mvb-card-body mvb-switch-row">
+            <Switch Label="MVB activo"
+                    Value="@Session.ServiceMode.MVBEnabled"
+                    ValueChanged="@((bool v) => SetMVBEnabled(v))" />
+            @if (Session.ServiceMode.Main)
+            {
+                <Switch Label="Emulación (Dummy)"
+                        Value="@Session.ServiceMode.MVBDummy"
+                        ValueChanged="@((bool v) => SwitchDummyMode(v))" />
+            }
+            @if (IsDummy)
+            {
+                <div class="alert alert-warning py-2 mb-0 small" role="status">
+                    Emulación local — no se consulta el bus real.
+                    @if (Session.ServiceMode.DemoMode)
+                    {
+                        <span> Activado por modo Demo.</span>
+                    }
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(Session.MVBError))
+            {
+                <div class="alert alert-danger py-2 mb-0 small" role="alert">
+                    @Session.MVBError
+                </div>
+            }
+        </div>
+    </div>
 
-    <p>Inverter: @mvarData.Inverter.ToString()</p>    
-    <p>Handler: @mvarData.Handler.ToString()</p>
-    <p>Braking</p>
-    <table class="table table-striped table-bordered mt-4">
-        <thead>
-            <tr>
-                <th>Value</th>
-                <th>M1</th>
-                <th>N1</th>
-                <th>N2</th>
-                <th>M2</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>@mvarData.BrakePower</td>
-                @for(int i =0;i<4;i++)
-                {
-                    <td>
-                        <BooleanFlag Value="@mvarData.Wagons[i].BrakeLoop" />
-                    </td>
-                }
-            </tr>
-        </tbody>
-    </table>
-    <p>Cabin Enabled: @mvarData.Cabin.ToString()</p>
-    <p>Doors</p>
-    <table class="table table-striped table-bordered mt-4">
-        <thead>
-            <tr>
-                <th>Left</th>
-                <th>Loop</th>
-                <th>Right</th>
-            </tr>            
-        </thead>
-        <tbody>
-             <tr>
-                <td>
-                    <BooleanFlag Value="@mvarData.LeftDoors" />
-                </td>
-                <td>
-                    <BooleanFlag Value="@mvarData.DoorsLoop" />
-                </td>
-                <td>
-                    <BooleanFlag Value="@mvarData.RightDoors" />
-                </td>
-            </tr>
-        </tbody>
-    </table>
-    <p>Controls</p>
-        <table class="table table-striped table-bordered mt-4">
-        <thead>
-            <tr>
-                <th></th>
-                <th>M1</th>
-                <th>N1</th>
-                <th>N2</th>
-                <th>M2</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>Light</td>
-                @for(int i=0; i<4;i++)
-                {
-                    <td>
-                        <BooleanFlag value="@mvarData.Wagons[i].PassengerLight" />
-                    </td>
-                }
-            </tr>
-            <tr>
-                <td>Temp In</td>
-                @for (int i = 0; i < 4; i++)
-                {
-                    <td>
-                        @mvarData.Wagons[i].InsideTemp
-                    </td>
-                }
-            </tr>
-            <tr>
-                <td>Temp Out</td>
-                @for (int i = 0; i < 4; i++)
-                {
-                    <td>
-                        @mvarData.Wagons[i].OutsideTemp
-                    </td>
-                }
-            </tr>
-        </tbody>
-    </table>
-}
-else
-{
-    <Tourmaline26.Components.Controls.Generical.Switch Label="MVB Dummy"
-                                                       Value="@Tourmaline.SessionConfig.ServiceMode.MVBEnabled"
-                                                       ValueChanged="@((bool v) => SwitchDummyMode(v))" />
-
-    @if(Tourmaline.SessionConfig.ServiceMode.MVBDummy && null!=Tourmaline.SessionConfig.CurrentMVBData)
+    @if (!HasData)
     {
-        <div class="mb-3">
-            <label>Current Speed (@mvarData.Speed)</label>
-            <input type="range"
-                    min="0"
-                    max="140"
-                    value="@mvarData.Speed"
-                    @oninput="e => SetCurrentSpeedValue(e.Value?.ToString())" />
-        </div>
-        <div class="mb-3">
-            <label>Inverter</label>
-            <div class="btn-group" role="group" aria-label="Inverter">
-                <button type="button"
-                        class="btn @(mvarData?.Inverter== MVBData.InverterPosition.Reverse? "btn-primary" : "btn-outline-primary")"
-                        @onclick="() => SetInverterState(MVBData.InverterPosition.Reverse)">
-                    R
-                </button>
-                <button type="button"
-                        class="btn @(mvarData?.Inverter == MVBData.InverterPosition.Iddle ? "btn-dark" : "btn-outline-dark")"
-                        @onclick="() => SetInverterState(MVBData.InverterPosition.Iddle)">
-                    O
-                </button>
-                <button type="button"
-                        class="btn @(mvarData?.Inverter == MVBData.InverterPosition.Tunnel ? "btn-primary" : "btn-outline-primary")"
-                        @onclick="() => SetInverterState(MVBData.InverterPosition.Tunnel)">
-                    T
-                </button>
-                <button type="button"
-                        class="btn @(mvarData?.Inverter == MVBData.InverterPosition.Shunting ? "btn-primary" : "btn-outline-primary")"
-                        @onclick="() => SetInverterState(MVBData.InverterPosition.Shunting)">
-                    M
-                </button>
-                <button type="button"
-                        class="btn @(mvarData?.Inverter == MVBData.InverterPosition.Forward ? "btn-primary" : "btn-outline-primary")"
-                        @onclick="() => SetInverterState(MVBData.InverterPosition.Forward)">
-                    F
-                </button>
+        <div class="mvb-card">
+            <div class="mvb-card-body mvb-empty">
+                @if (Session.ServiceMode.MVBEnabled || IsDummy)
+                {
+                    <div class="spinner-border text-primary mb-2" role="status">
+                        <span class="visually-hidden">Cargando…</span>
+                    </div>
+                    <div>@(IsDummy ? "Preparando emulación…" : "Esperando trama del bus MVB…")</div>
+                }
+                else
+                {
+                    <div class="mb-1">MVB desactivado</div>
+                    <div class="small">Activa «MVB activo» o la emulación en modo de servicio.</div>
+                }
             </div>
-        </div>
-        <div class="mb-3">
-            <label>Handler</label>
-            <div class="btn-group" role="group" aria-label="Handler">
-                <button type="button"
-                        class="btn @(mvarData.Handler==MVBData.HandlerPosition.EmergencyBrake ? "btn-danger" : "btn-outline-danger")"
-                        @onclick="() => SetHandlerState(MVBData.HandlerPosition.EmergencyBrake)">
-                    E
-                </button>
-                <button type="button"
-                        class="btn @(mvarData.Handler == MVBData.HandlerPosition.Braking ? "btn-warning" : "btn-outline-warning")"
-                        @onclick="() => SetHandlerState(MVBData.HandlerPosition.Braking)">
-                    F
-                </button>
-                <button type="button"
-                        class="btn @(mvarData.Handler == MVBData.HandlerPosition.Iddle ? "btn-dark" : "btn-outline-dark")"
-                        @onclick="() => SetHandlerState(MVBData.HandlerPosition.Iddle)">
-                    N
-                </button>
-                <button type="button"
-                        class="btn @(mvarData.Handler == MVBData.HandlerPosition.Traction ? "btn-primary" : "btn-outline-primary")"
-                        @onclick="() => SetHandlerState(MVBData.HandlerPosition.Traction)">
-                    T
-                </button>
-            </div>
-        </div>
-        <div class="mb-3">
-            <label>Brake (@mvarData.BrakePower)</label>
-            <input type="range"
-                   min="0"
-                   max="100"
-                   value="@mvarData.BrakePower"
-                   @oninput="e => SetBrakeValue(e.Value?.ToString())" />
-        </div>
-        <div class="mb-3">
-            <label>Traction (@mvarData.TractionPower)</label>
-            <input type="range"
-                   min="0"
-                   max="100"
-                   value="@mvarData.TractionPower"
-                   @oninput="e => SetTractionValue(e.Value?.ToString())" />
-        </div>
-
-        <div class="mb-3">
-            <label>Doors Enabled Left</label>
-            <input type="checkbox"
-                    checked="@mvarData.LeftDoors"
-                    @onchange="e => SetDoorsEnabledLeft((bool)e.Value)" />
-        </div>
-        <div class="mb-3">
-            <label>Doors Enabled Right</label>
-            <input type="checkbox"
-                    checked="@mvarData.RightDoors"
-                    @onchange="e => SetDoorsEnabledRight((bool)e.Value)" />
-        </div>
-        <div class="mb-3">
-            <label>Cabin</label>
-            <select class="form-select"
-                    @bind="mvarData.Cabin"
-                    >
-                <option value="@MVBData.Habilitation.None">Ninguna</option>
-                <option value="@MVBData.Habilitation.M1">M1</option>
-                <option value="@MVBData.Habilitation.M2">M2</option>
-            </select>
-        </div>
-        <div class="mb-3">
-            <label>Passenger Light</label>
-            <input type="checkbox"
-                   checked="@mvarData.PassengerLight"
-                   @onchange="e => SetPassengerLight((bool)e.Value)" />
         </div>
     }
-}
+    else if (mvarData is not null)
+    {
+        @* ── KPIs ── *@
+        <div class="mvb-card">
+            <div class="mvb-card-header"><span>Telemetría</span></div>
+            <div class="mvb-card-body">
+                <div class="mvb-kpi-row">
+                    <div class="mvb-kpi @(FlashSpeed ? "flash" : null)">
+                        <div class="mvb-kpi-label">Velocidad</div>
+                        <div class="mvb-kpi-value">
+                            @mvarData.Speed<span class="mvb-kpi-unit">km/h</span>
+                        </div>
+                    </div>
+                    <div class="mvb-kpi @(FlashOdo ? "flash" : null)">
+                        <div class="mvb-kpi-label">Odómetro</div>
+                        <div class="mvb-kpi-value sm">@mvarData.Odometer</div>
+                    </div>
+                    <div class="mvb-kpi">
+                        <div class="mvb-kpi-label">Cabina</div>
+                        <div class="mvb-kpi-value sm">@CabinLabel(mvarData.Cabin)</div>
+                    </div>
+                    <div class="mvb-kpi">
+                        <div class="mvb-kpi-label">Sentido</div>
+                        <div class="mvb-kpi-value sm">@CabinLabel(mvarData.Advance)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* ── Lazos y puertas ── *@
+        <div class="mvb-card">
+            <div class="mvb-card-header"><span>Lazos · puertas · mando</span></div>
+            <div class="mvb-card-body">
+                <div class="mvb-loop-grid mb-3">
+                    <div class="mvb-loop">
+                        <span class="mvb-loop-name">Tracción</span>
+                        @BoolPill(mvarData.TractionLoop, "OK", "Abierto")
+                    </div>
+                    <div class="mvb-loop">
+                        <span class="mvb-loop-name">Puertas</span>
+                        @BoolPill(mvarData.DoorsLoop, "Cerrado", "Abierto")
+                    </div>
+                    <div class="mvb-loop">
+                        <span class="mvb-loop-name">Freno</span>
+                        @BoolPill(mvarData.BrakeLoop, "OK", "Abierto")
+                    </div>
+                    <div class="mvb-loop">
+                        <span class="mvb-loop-name">Orden marcha</span>
+                        @BoolPill(mvarData.DriveCommand, "Sí", "No")
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    @BoolPill(mvarData.ZeroSpeed, "Vel. cero", "En marcha", warnWhenTrue: true)
+                    @BoolPill(mvarData.SpeedValidation, "Vel. válida", "Vel. no válida")
+                    @if (mvarData.WarningSign)
+                    {
+                        <span class="mvb-status-pill warn">⚠ Advertencia</span>
+                    }
+                    @if (mvarData.OpenLoop)
+                    {
+                        <span class="mvb-status-pill bad">Lazo abierto</span>
+                    }
+                </div>
+
+                <div class="row g-2 mb-2">
+                    <div class="col-12 col-sm-6">
+                        <div class="small text-muted fw-semibold mb-1">Inversor</div>
+                        <span class="mvb-status-pill info">@InverterLabel(mvarData.Inverter)</span>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <div class="small text-muted fw-semibold mb-1">Manipulador</div>
+                        <span class="mvb-status-pill @HandlerPillClass(mvarData.Handler)">@HandlerLabel(mvarData.Handler)</span>
+                    </div>
+                </div>
+
+                <div class="mvb-door-row mt-2">
+                    <span class="small text-muted fw-semibold me-1">Puertas</span>
+                    @DoorChip("Izq.", mvarData.LeftDoors)
+                    @DoorChip("Der.", mvarData.RightDoors)
+                    <span class="mvb-status-pill @(mvarData.DoorsLoop ? "ok" : "bad")">
+                        Lazo @(mvarData.DoorsLoop ? "cerrado" : "abierto")
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        @* ── Potencia ── *@
+        <div class="mvb-card">
+            <div class="mvb-card-header"><span>Potencia</span></div>
+            <div class="mvb-card-body mvb-power-row">
+                <div>
+                    <div class="mvb-power-label">
+                        <span>Tracción</span>
+                        <span>@mvarData.TractionPower %</span>
+                    </div>
+                    <div class="mvb-progress traction">
+                        <span style="width: @ClampPct(mvarData.TractionPower)%"></span>
+                    </div>
+                </div>
+                <div>
+                    <div class="mvb-power-label">
+                        <span>Freno</span>
+                        <span>@mvarData.BrakePower %</span>
+                    </div>
+                    <div class="mvb-progress brake">
+                        <span style="width: @ClampPct(mvarData.BrakePower)%"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* ── Coches ── *@
+        <div class="mvb-card">
+            <div class="mvb-card-header"><span>Composición</span></div>
+            <div class="mvb-card-body">
+                <div class="mvb-wagon-grid">
+                    @for (int i = 0; i < 4; i++)
+                    {
+                        var w = mvarData.Wagons[i];
+                        <div class="mvb-wagon">
+                            <div class="mvb-wagon-id">@WagonName(i)</div>
+                            <div class="mvb-wagon-meta mb-1">
+                                In @w.InsideTemp° · Out @w.OutsideTemp°
+                            </div>
+                            <div class="d-flex flex-wrap gap-1">
+                                <span class="mvb-status-pill @(w.PassengerLight ? "ok" : "neutral")">
+                                    @(w.PassengerLight ? "Luz" : "Oscuro")
+                                </span>
+                                <span class="mvb-status-pill @(w.BrakeLoop ? "ok" : "bad")">
+                                    Freno
+                                </span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (mvarData.Time > DateTime.MinValue)
+        {
+            <p class="small text-muted mb-3">
+                Reloj MVB: <strong>@mvarData.Time.ToString("yyyy-MM-dd HH:mm:ss")</strong>
+            </p>
+        }
+
+        @* ── Controles Dummy ── *@
+        @if (IsDummy)
+        {
+            <div class="mvb-card border-warning">
+                <div class="mvb-card-header">
+                    <span>Controles de emulación</span>
+                    <span class="badge text-bg-warning">Editable</span>
+                </div>
+                <div class="mvb-card-body mvb-controls-grid">
+
+                    <div>
+                        <div class="mvb-form-label">
+                            <span>Velocidad</span>
+                            <span class="text-primary">@mvarData.Speed km/h</span>
+                        </div>
+                        <input type="range" class="form-range mvb-range"
+                               min="0" max="140" step="1"
+                               value="@mvarData.Speed"
+                               @oninput="OnSpeedInput" />
+                    </div>
+
+                    <div>
+                        <div class="mvb-form-label"><span>Inversor</span></div>
+                        <div class="btn-group flex-wrap mvb-btn-group-wrap" role="group" aria-label="Inversor">
+                            @InverterBtn(MVBData.InverterPosition.Reverse, "R", "btn-outline-primary")
+                            @InverterBtn(MVBData.InverterPosition.Iddle, "O", "btn-outline-dark")
+                            @InverterBtn(MVBData.InverterPosition.Tunnel, "T", "btn-outline-primary")
+                            @InverterBtn(MVBData.InverterPosition.Shunting, "M", "btn-outline-primary")
+                            @InverterBtn(MVBData.InverterPosition.Forward, "F", "btn-outline-primary")
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="mvb-form-label"><span>Manipulador</span></div>
+                        <div class="btn-group flex-wrap mvb-btn-group-wrap" role="group" aria-label="Manipulador">
+                            @HandlerBtn(MVBData.HandlerPosition.EmergencyBrake, "E", "btn-outline-danger")
+                            @HandlerBtn(MVBData.HandlerPosition.Braking, "F", "btn-outline-warning")
+                            @HandlerBtn(MVBData.HandlerPosition.Iddle, "N", "btn-outline-dark")
+                            @HandlerBtn(MVBData.HandlerPosition.Traction, "T", "btn-outline-primary")
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="mvb-form-label">
+                            <span>Freno</span>
+                            <span>@mvarData.BrakePower %</span>
+                        </div>
+                        <input type="range" class="form-range mvb-range brake"
+                               min="0" max="100" step="1"
+                               value="@mvarData.BrakePower"
+                               @oninput="OnBrakeInput" />
+                    </div>
+
+                    <div>
+                        <div class="mvb-form-label">
+                            <span>Tracción</span>
+                            <span>@mvarData.TractionPower %</span>
+                        </div>
+                        <input type="range" class="form-range mvb-range traction"
+                               min="0" max="100" step="1"
+                               value="@mvarData.TractionPower"
+                               @oninput="OnTractionInput" />
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-12 col-sm-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="mvbDoorL"
+                                       checked="@mvarData.LeftDoors"
+                                       @onchange="e => SetDoorsEnabledLeft(AsBool(e))" />
+                                <label class="form-check-label" for="mvbDoorL">Puerta izquierda</label>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="mvbDoorR"
+                                       checked="@mvarData.RightDoors"
+                                       @onchange="e => SetDoorsEnabledRight(AsBool(e))" />
+                                <label class="form-check-label" for="mvbDoorR">Puerta derecha</label>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="mvbLight"
+                                       checked="@mvarData.PassengerLight"
+                                       @onchange="e => SetPassengerLight(AsBool(e))" />
+                                <label class="form-check-label" for="mvbLight">Luz viajeros (M1)</label>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <label class="form-label small fw-semibold mb-1" for="mvbCabin">Cabina</label>
+                            <select id="mvbCabin" class="form-select form-select-sm"
+                                    value="@((int)mvarData.Cabin)"
+                                    @onchange="OnCabinChanged">
+                                <option value="@((int)MVBData.Habilitation.None)">Ninguna</option>
+                                <option value="@((int)MVBData.Habilitation.M1)">M1</option>
+                                <option value="@((int)MVBData.Habilitation.M2)">M2</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
 
 @code {
-    private MVBData mvarData = new();
-    protected override void OnInitialized()
+    private MVBData? mvarData;
+    private int mvarPrevSpeed = int.MinValue;
+    private int mvarPrevOdo = int.MinValue;
+    private bool FlashSpeed;
+    private bool FlashOdo;
+    private DateTime mvarLastUiTick = DateTime.MinValue;
+    private System.Threading.Timer? mvarAgeTimer;
+
+    private SessionConfiguration Session => Tourmaline.SessionConfig;
+    private bool IsDummy => Session.ServiceMode.MVBDummy;
+    private bool HasData => mvarData is not null && Session.CurrentMVBData is not null;
+
+    private string ModeLabel =>
+        IsDummy ? "Dummy" :
+        Session.ServiceMode.MVBEnabled ? (HasData ? "En vivo" : "Escuchando") :
+        "Off";
+
+    private string ModeBadgeClass =>
+        IsDummy ? "text-bg-warning" :
+        Session.ServiceMode.MVBEnabled && HasData ? "text-bg-success" :
+        Session.ServiceMode.MVBEnabled ? "text-bg-secondary" :
+        "text-bg-dark";
+
+    private string ModeDotClass =>
+        IsDummy ? "dummy" :
+        Session.ServiceMode.MVBEnabled && HasData ? "on" :
+        !string.IsNullOrEmpty(Session.MVBError) ? "err" :
+        "";
+
+    private string AgeLabel
     {
-        base.OnInitialized();
-        if(null!=Tourmaline.SessionConfig.CurrentMVBData)
-            mvarData = Tourmaline.SessionConfig.CurrentMVBData;
-        Tourmaline.HMIUpdateRequested += auxHMIRefresh;
-    }
-    void SwitchDummyMode(bool rhs)
-    {
-        mvarData = new MVBData();
-        Tourmaline.SessionConfig.ServiceMode.MVBDummy = rhs;
-        Tourmaline.SessionConfig.CurrentMVBData = mvarData;
-    }
-    void SetHandlerState(MVBData.HandlerPosition state)
-    {
-        mvarData.Handler = state;
-        mvarData.SimulateLoops();
-    }
-    void SetInverterState(MVBData.InverterPosition state)
-    {
-        mvarData.Inverter = state;
-        mvarData.SimulateLoops();
-    }
-    private void SetMVBEnabled(bool value)
-    {
-        Tourmaline.SessionConfig.ServiceMode.MVBEnabled = value;
-    }
-    public void Dispose()
-    {
-        Tourmaline.HMIUpdateRequested -= auxHMIRefresh;
+        get
+        {
+            if (Session.MVBLastUpdate <= DateTime.MinValue)
+                return "sin marca";
+            double sec = (DateTime.Now - Session.MVBLastUpdate).TotalSeconds;
+            if (sec < 1.5) return "ahora";
+            if (sec < 60) return $"hace {sec:F0} s";
+            if (sec < 3600) return $"hace {sec / 60:F0} min";
+            return Session.MVBLastUpdate.ToString("HH:mm:ss");
+        }
     }
 
-    private void auxHMIRefresh(object? sender, EventArgs e)
+    private string UpdateStamp =>
+        Session.MVBLastUpdate > DateTime.MinValue
+            ? Session.MVBLastUpdate.ToString("HH:mm:ss")
+            : "—";
+
+    protected override void OnInitialized()
     {
-        InvokeAsync(StateHasChanged);
+        SyncFromSession(forceFlash: false);
+        Tourmaline.HMIUpdateRequested += OnHmiRefresh;
+        // Refresco ligero de la etiqueta de antigüedad aunque no haya tramas nuevas.
+        mvarAgeTimer = new System.Threading.Timer(
+            _ => _ = InvokeAsync(StateHasChanged),
+            null,
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(1));
     }
-    void SetBrakeValue(string? value)
+
+    public void Dispose()
     {
-        if (int.TryParse(value, out var v))
-            mvarData.BrakePower = v;
+        Tourmaline.HMIUpdateRequested -= OnHmiRefresh;
+        mvarAgeTimer?.Dispose();
+        mvarAgeTimer = null;
     }
-    void SetTractionValue(string? value)
+
+    private void OnHmiRefresh(object? sender, EventArgs e)
     {
-        if (int.TryParse(value, out var v))
-            mvarData.TractionPower = v;
-    }
-    async Task SetCurrentSpeedValue(string? value)
-    {
-        if (int.TryParse(value, out var v))
+        _ = InvokeAsync(() =>
         {
-            mvarData.Speed = v;
-            await Experience.SetSpeed(v);
+            SyncFromSession(forceFlash: true);
+            StateHasChanged();
+        });
+    }
+
+    private void SyncFromSession(bool forceFlash)
+    {
+        MVBData? next = Session.CurrentMVBData;
+        if (next is null)
+        {
+            mvarData = null;
+            return;
+        }
+
+        // En dummy el objeto es el mismo; en real se sustituye cada poll.
+        mvarData = next;
+
+        if (forceFlash)
+        {
+            FlashSpeed = mvarPrevSpeed != int.MinValue && mvarPrevSpeed != next.Speed;
+            FlashOdo = mvarPrevOdo != int.MinValue && mvarPrevOdo != next.Odometer;
+        }
+
+        mvarPrevSpeed = next.Speed;
+        mvarPrevOdo = next.Odometer;
+        mvarLastUiTick = DateTime.UtcNow;
+    }
+
+    private void TouchDummy()
+    {
+        if (mvarData is null) return;
+        mvarData.SimulateLoops();
+        Session.CurrentMVBData = mvarData;
+        Session.MVBLastUpdate = DateTime.Now;
+        FlashSpeed = false;
+        FlashOdo = false;
+        mvarPrevSpeed = mvarData.Speed;
+        mvarPrevOdo = mvarData.Odometer;
+        StateHasChanged();
+        Tourmaline.RaiseHMIUpdate();
+    }
+
+    private void SwitchDummyMode(bool enabled)
+    {
+        Session.ServiceMode.MVBDummy = enabled;
+        if (enabled)
+        {
+            mvarData = new MVBData();
             mvarData.SimulateLoops();
-        }        
+            Session.CurrentMVBData = mvarData;
+            Session.MVBLastUpdate = DateTime.Now;
+            Session.MVBError = string.Empty;
+            mvarPrevSpeed = mvarData.Speed;
+            mvarPrevOdo = mvarData.Odometer;
+        }
+        else
+        {
+            Session.CurrentMVBData = null;
+            mvarData = null;
+            mvarPrevSpeed = int.MinValue;
+            mvarPrevOdo = int.MinValue;
+        }
+        Tourmaline.RaiseHMIUpdate();
     }
-    void SetDoorsEnabledLeft(bool value)
+
+    private void SetMVBEnabled(bool value)
     {
+        Session.ServiceMode.MVBEnabled = value;
+        if (!value && !IsDummy)
+        {
+            Session.CurrentMVBData = null;
+            mvarData = null;
+        }
+        StateHasChanged();
+    }
+
+    private async Task OnSpeedInput(ChangeEventArgs e)
+    {
+        if (mvarData is null || !int.TryParse(e.Value?.ToString(), out int v))
+            return;
+        mvarData.Speed = v;
+        mvarData.SimulateLoops();
+        Session.MVBLastUpdate = DateTime.Now;
+        FlashSpeed = true;
+        mvarPrevSpeed = v;
+        StateHasChanged();
+        try { await Experience.SetSpeed(v); }
+        catch { /* el HMI dummy sigue aunque falle Experience */ }
+        Tourmaline.RaiseHMIUpdate();
+    }
+
+    private void OnBrakeInput(ChangeEventArgs e)
+    {
+        if (mvarData is null || !int.TryParse(e.Value?.ToString(), out int v))
+            return;
+        mvarData.BrakePower = v;
+        TouchDummy();
+    }
+
+    private void OnTractionInput(ChangeEventArgs e)
+    {
+        if (mvarData is null || !int.TryParse(e.Value?.ToString(), out int v))
+            return;
+        mvarData.TractionPower = v;
+        TouchDummy();
+    }
+
+    private void SetInverterState(MVBData.InverterPosition state)
+    {
+        if (mvarData is null) return;
+        mvarData.Inverter = state;
+        TouchDummy();
+    }
+
+    private void SetHandlerState(MVBData.HandlerPosition state)
+    {
+        if (mvarData is null) return;
+        mvarData.Handler = state;
+        TouchDummy();
+    }
+
+    private void SetDoorsEnabledLeft(bool value)
+    {
+        if (mvarData is null) return;
         mvarData.LeftDoors = value;
-        mvarData.SimulateLoops();
+        TouchDummy();
     }
-    void SetDoorsEnabledRight(bool value)
+
+    private void SetDoorsEnabledRight(bool value)
     {
+        if (mvarData is null) return;
         mvarData.RightDoors = value;
-        mvarData.SimulateLoops();
+        TouchDummy();
     }
-    void SetPassengerLight(bool value)
+
+    private void SetPassengerLight(bool value)
     {
+        if (mvarData is null) return;
         mvarData.PassengerLight = value;
-        mvarData.SimulateLoops();
+        TouchDummy();
     }
+
+    private void OnCabinChanged(ChangeEventArgs e)
+    {
+        if (mvarData is null) return;
+        if (int.TryParse(e.Value?.ToString(), out int v)
+            && Enum.IsDefined(typeof(MVBData.Habilitation), (byte)v))
+        {
+            mvarData.Cabin = (MVBData.Habilitation)v;
+            TouchDummy();
+        }
+    }
+
+    private static bool AsBool(ChangeEventArgs e) =>
+        e.Value is bool b ? b : string.Equals(e.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+
+    private static int ClampPct(int v) => Math.Clamp(v, 0, 100);
+
+    private static string WagonName(int i) => i switch
+    {
+        0 => "M1",
+        1 => "N1",
+        2 => "N2",
+        3 => "M2",
+        _ => $"C{i}"
+    };
+
+    private static string CabinLabel(MVBData.Habilitation h) => h switch
+    {
+        MVBData.Habilitation.M1 => "M1",
+        MVBData.Habilitation.M2 => "M2",
+        MVBData.Habilitation.Other => "Acoplada",
+        MVBData.Habilitation.None => "—",
+        _ => "?"
+    };
+
+    private static string InverterLabel(MVBData.InverterPosition p) => p switch
+    {
+        MVBData.InverterPosition.Reverse => "Marcha atrás",
+        MVBData.InverterPosition.Iddle => "Neutro",
+        MVBData.InverterPosition.Tunnel => "Túnel",
+        MVBData.InverterPosition.Shunting => "Maniobra",
+        MVBData.InverterPosition.Forward => "Adelante",
+        _ => "Desconocido"
+    };
+
+    private static string HandlerLabel(MVBData.HandlerPosition p) => p switch
+    {
+        MVBData.HandlerPosition.EmergencyBrake => "Emergencia",
+        MVBData.HandlerPosition.Braking => "Freno",
+        MVBData.HandlerPosition.Iddle => "Neutro",
+        MVBData.HandlerPosition.Traction => "Tracción",
+        _ => "Desconocido"
+    };
+
+    private static string HandlerPillClass(MVBData.HandlerPosition p) => p switch
+    {
+        MVBData.HandlerPosition.EmergencyBrake => "bad",
+        MVBData.HandlerPosition.Braking => "warn",
+        MVBData.HandlerPosition.Traction => "ok",
+        _ => "neutral"
+    };
+
+    private RenderFragment BoolPill(bool ok, string okText, string badText, bool warnWhenTrue = false) => builder =>
+    {
+        string cls = warnWhenTrue
+            ? (ok ? "warn" : "ok")
+            : (ok ? "ok" : "bad");
+        string text = ok ? okText : badText;
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", $"mvb-status-pill {cls}");
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    };
+
+    private RenderFragment DoorChip(string side, bool enabled) => builder =>
+    {
+        string cls = enabled ? "warn" : "ok";
+        string text = enabled ? $"{side} liberada" : $"{side} bloqueada";
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", $"mvb-status-pill {cls}");
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    };
+
+    private RenderFragment InverterBtn(MVBData.InverterPosition pos, string label, string outline) => builder =>
+    {
+        bool active = mvarData?.Inverter == pos;
+        string cls = active
+            ? outline.Replace("outline-", "") + " mvb-chip-btn"
+            : outline + " mvb-chip-btn";
+        builder.OpenElement(0, "button");
+        builder.AddAttribute(1, "type", "button");
+        builder.AddAttribute(2, "class", $"btn {cls}");
+        builder.AddAttribute(3, "onclick", EventCallback.Factory.Create(this, () => SetInverterState(pos)));
+        builder.AddContent(4, label);
+        builder.CloseElement();
+    };
+
+    private RenderFragment HandlerBtn(MVBData.HandlerPosition pos, string label, string outline) => builder =>
+    {
+        bool active = mvarData?.Handler == pos;
+        string cls = active
+            ? outline.Replace("outline-", "") + " mvb-chip-btn"
+            : outline + " mvb-chip-btn";
+        builder.OpenElement(0, "button");
+        builder.AddAttribute(1, "type", "button");
+        builder.AddAttribute(2, "class", $"btn {cls}");
+        builder.AddAttribute(3, "onclick", EventCallback.Factory.Create(this, () => SetHandlerState(pos)));
+        builder.AddContent(4, label);
+        builder.CloseElement();
+    };
 }

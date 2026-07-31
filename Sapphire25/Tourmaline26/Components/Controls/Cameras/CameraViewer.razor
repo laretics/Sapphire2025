@@ -1,4 +1,8 @@
-﻿@inject IJSRuntime JS
+@*
+  Visor de cámara: consume el proxy MJPEG nativo de Tourmaline
+  (/api/cameras/{id}/mjpeg) — sin MediaMTX ni HLS.
+*@
+@implements IDisposable
 
 <div class="camera-viewer">
     <div class="camera-overlay">
@@ -7,65 +11,74 @@
     </div>
 
     <div class="video-container">
-        <video id="@VideoElementId"
-               autoplay
-               muted
-               playsinline
-               class="camera-video">
-        </video>
+        @if (CameraId >= 0)
+        {
+            <img src="@MjpegUrl"
+                 class="camera-video"
+                 alt="@CameraName"
+                 @onload="OnImageLoaded"
+                 @onerror="OnImageError" />
+        }
+        else
+        {
+            <div class="fallback-overlay">
+                <div>Sin cámara asignada</div>
+            </div>
+        }
     </div>
 </div>
 
-<!-- Script inline - más fiable en Blazor Server -->
-<script>
-    console.log("=== Script inline de HLS cargado ===");
-
-    window.playHLS = function (videoId, hlsUrl) {
-        console.log(`=== playHLS llamado para ${videoId} | URL: ${hlsUrl} ===`);
-
-        const video = document.getElementById(videoId);
-        if (!video) {
-            console.error("No se encontró el elemento video");
-            return;
-        }
-
-        if (typeof Hls !== "undefined" && Hls.isSupported()) {
-            console.log("HLS.js soportado. Creando instancia...");
-            const hls = new Hls();
-            hls.loadSource(hlsUrl);
-            hls.attachMedia(video);
-
-            hls.on(Hls.Events.MANIFEST_PARSED, function () {
-                console.log("Manifest parsed - Reproduciendo");
-                video.play().catch(e => console.warn("Auto-play bloqueado:", e));
-            });
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            console.log("Usando reproducción nativa");
-            video.src = hlsUrl;
-            video.play();
-        } else {
-            console.error("Navegador no soporta HLS");
-        }
-    };
-</script>
-
 @code {
+    /// <summary>Id de la cámara en appsettings (Cameras[].Id).</summary>
+    [Parameter] public int CameraId { get; set; } = -1;
+
     [Parameter] public string CameraName { get; set; } = "Cámara";
-    [Parameter] public string PathName { get; set; } = "cc1";
-    [Parameter] public string ServerIp { get; set; } = "192.168.0.9";
 
-    private string VideoElementId => $"video_{PathName}";
+    /// <summary>Compat: se ignora (antes era el path de MediaMTX).</summary>
+    [Parameter] public string PathName { get; set; } = "";
 
-    private string StatusMessage { get; set; } = "Conectando...";
+    /// <summary>Compat: se ignora (antes era el host de MediaMTX).</summary>
+    [Parameter] public string ServerIp { get; set; } = "";
+
+    private string StatusMessage { get; set; } = "Conectando…";
     private string StatusClass { get; set; } = "status-connecting";
+    private int mvarCacheBust;
+    private System.Threading.Timer? mvarRetryTimer;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private string MjpegUrl =>
+        CameraId < 0
+            ? string.Empty
+            : $"/api/cameras/{CameraId}/mjpeg?v={mvarCacheBust}";
+
+    private void OnImageLoaded()
     {
-        if (firstRender)
+        StatusMessage = "En vivo";
+        StatusClass = "status-live";
+        mvarRetryTimer?.Dispose();
+        mvarRetryTimer = null;
+    }
+
+    private void OnImageError()
+    {
+        StatusMessage = "Sin señal";
+        StatusClass = "status-error";
+        // Reintento suave: cambia query para forzar recarga del <img>.
+        mvarRetryTimer?.Dispose();
+        mvarRetryTimer = new System.Threading.Timer(_ =>
         {
-            var url = $"http://{ServerIp}:8888/{PathName}";
-            Console.WriteLine($"[CameraViewer] Llamando playHLS para {CameraName} → {url}");
-            await JS.InvokeVoidAsync("playHLS", VideoElementId, url);
-        }
+            _ = InvokeAsync(() =>
+            {
+                mvarCacheBust++;
+                StatusMessage = "Reconectando…";
+                StatusClass = "status-connecting";
+                StateHasChanged();
+            });
+        }, null, TimeSpan.FromSeconds(3), Timeout.InfiniteTimeSpan);
+    }
+
+    public void Dispose()
+    {
+        mvarRetryTimer?.Dispose();
+        mvarRetryTimer = null;
     }
 }

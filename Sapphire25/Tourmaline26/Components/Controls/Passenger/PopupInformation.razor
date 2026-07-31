@@ -28,7 +28,8 @@
                             </span>
                         }
                         <h5 id="@_titleId"
-                            class="modal-title fw-semibold mb-0 text-truncate flex-grow-1">
+                            class="modal-title popup-information-title fw-semibold mb-0 text-truncate flex-grow-1"
+                            style="@TitleStyle">
                             @Header
                         </h5>
                     </div>
@@ -66,7 +67,25 @@
     private string AnimationKey =>
         $"{Importance}|{Info?.LanguageIndex}|{Header}|{BodyText}|{IconName}|{Info?.Comment}";
 
-    private double Scale => Importance / 255.0;
+    /// <summary>
+    /// Escala visual del diálogo. Antes era Importance/255 (los de baja prioridad
+    /// quedaban minúsculos). Ahora hay un suelo alto (~58%) y se sube hasta el 100%,
+    /// de modo que un mensaje de prioridad baja se ve ~3–4× más grande que con la
+    /// escala lineal antigua en esa zona.
+    /// </summary>
+    private double Scale
+    {
+        get
+        {
+            if (Importance == 0)
+                return 0;
+            double t = Importance / 255.0;
+            // t=0.20 → 0.58+0.084=0.66 (antes 0.20 → ~3.3×)
+            // t=0.47 (120/255) → 0.58+0.20=0.78 (antes 0.47 → ~1.7×, sigue muy legible)
+            // t=1.00 → 1.00
+            return 0.58 + 0.42 * t;
+        }
+    }
 
     private string DialogStyle =>
         $"width: {Scale * 100:0.###}%; height: {Scale * 100:0.###}%; max-width: none; margin: 0 auto;";
@@ -75,13 +94,28 @@
         // z-index alto dentro de panel-body (no fixed al viewport).
         "z-index: 20; --bs-modal-bg: transparent; background-color: rgba(0, 0, 0, 0.35);";
 
+    private string TitleStyle
+    {
+        get
+        {
+            // Título también más generoso en baja prioridad (antes ~1rem fijo de Bootstrap).
+            int px = Math.Clamp((int)Math.Round(28 + Scale * 36), 28, 72);
+            return $"font-size: {px}px; line-height: 1.15;";
+        }
+    }
+
     private int IconSize =>
-        Math.Clamp((int)Math.Round(22 + Scale * 42), 22, 72);
+        Math.Clamp((int)Math.Round(36 + Scale * 48), 36, 96);
 
+    /// <summary>Techo del auto-fit del cuerpo: más alto y con suelo generoso.</summary>
     private int MaxFontPx =>
-        Math.Clamp((int)Math.Round(48 + Scale * 180), 48, 240);
+        Math.Clamp((int)Math.Round(96 + Scale * 200), 120, 320);
 
-    private int MinFontPx => 12;
+    /// <summary>
+    /// Suelo del auto-fit: antes 12 px (ilegible en TFT). ~3–4× → 40–56 px.
+    /// </summary>
+    private int MinFontPx =>
+        Math.Clamp((int)Math.Round(40 + Scale * 16), 40, 64);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

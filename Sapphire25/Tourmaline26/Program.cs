@@ -5,6 +5,7 @@ using Tourmaline26.Components;
 using Tourmaline26.Logic;
 using Tourmaline26.Services;
 using Tourmaline26.Services.Armandito;
+using Tourmaline26.Services.Cameras;
 using Tourmaline26.Services.Logging;
 using Tourmaline26.Services.TourmalineExperience;
 
@@ -22,7 +23,11 @@ builder.Services.AddSingleton<TourmalineService>();
 builder.Services.AddHostedService<TourmalineBackground>();
 builder.Services.AddHttpContextAccessor();
 
-string auxApiAddress = builder.Configuration["ApiBaseAddress"] ?? "https://material.trensfm.com:5031/tourmaline/";
+// Misma base que Sapphire2025 / Sapphire2026Clients (controladores en /api/sapphireaeneas, etc.).
+// Ojo: no usar .../tourmaline/ — los clientes componen rutas relativas tipo "sapphireaeneas/getnotes".
+string auxApiAddress = builder.Configuration["ApiBaseAddress"] ?? "https://material.trensfm.com:5031/api/";
+if (!auxApiAddress.EndsWith('/'))
+    auxApiAddress += "/";
 Console.WriteLine($"API Address for SFM: {auxApiAddress}");
 
 Uri apiBaseUri;
@@ -40,6 +45,8 @@ builder.Services.AddScoped<AeneasClient>();
 builder.Services.AddScoped<ExpertClient>();
 builder.Services.AddScoped<TimeNetClient>();
 builder.Services.AddHostedService<MediaMTXService>();
+// Proxy RTSP → MJPEG nativo (sin MediaMTX en el camino de visualización HMI).
+builder.Services.AddSingleton<CameraStreamService>();
 builder.Services.AddSingleton<GPSService>();
 builder.Services.AddHttpClient<LedPanelController>();
 builder.Services.AddSingleton<LEDDisplayService>();
@@ -50,7 +57,15 @@ builder.Services.AddHttpClient<MediaMTXService>("CameraService", client =>
 {
 	client.Timeout = TimeSpan.FromSeconds(30);
 });
-builder.Services.AddHttpClient<MVBService>();
+// MVBService es BackgroundService: debe ser Singleton + HostedService.
+// AddHttpClient<MVBService>() solo registra el typed client (Transient) y NUNCA
+// arranca ExecuteAsync → CurrentData quedaba siempre null.
+builder.Services.AddHttpClient("MVB", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(2);
+});
+builder.Services.AddSingleton<MVBService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<MVBService>());
 builder.Services.AddHttpClient<TourmalineExperienceService>();
 builder.Services.AddHttpClient<ArmanditoService>(client =>
 {
@@ -89,5 +104,36 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+// ── Cámaras: snapshot JPEG y stream MJPEG (proxy RTSP nativo) ──────────────
+// El <img src="..."> del HMI apunta aquí; no pasa por antiforgery de formularios.
+app.MapGet("/api/cameras/{id:int}/snapshot.jpg", async (
+    int id,
+    CameraStreamService cameras,
+    HttpContext http,
+    CancellationToken ct) =>
+{
+    await cameras.WriteSnapshotAsync(id, http.Response, ct);
+}).DisableAntiforgery();
+
+app.MapGet("/api/cameras/{id:int}/mjpeg", async (
+    int id,
+    CameraStreamService cameras,
+    HttpContext http,
+    CancellationToken ct) =>
+{
+    await cameras.WriteMjpegAsync(id, http.Response, ct);
+}).DisableAntiforgery();
+
+app.MapGet("/api/cameras", (CameraStreamService cameras) =>
+    Results.Ok(cameras.Cameras.Select(c => new
+    {
+        c.Id,
+        c.Name,
+        c.Address,
+        c.CameraType,
+        Stream = $"/api/cameras/{c.Id}/mjpeg",
+        Snapshot = $"/api/cameras/{c.Id}/snapshot.jpg"
+    }))).DisableAntiforgery();
 
 app.Run();

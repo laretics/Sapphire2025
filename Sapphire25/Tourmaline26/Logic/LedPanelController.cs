@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Routing;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Net.Http.Headers;
 
 namespace Tourmaline26.Logic
 {
@@ -69,6 +70,35 @@ Temperatura\s*\(.C\)\s*<!--STEMP-->\s*""(?<temp>[^""]*)""";
                 auxWebScrap(html);
             }
         }
+        private static string UrlEncodeLatin1(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return string.Empty;
+
+            byte[] bytes = Encoding.Latin1.GetBytes(value);
+            var sb = new StringBuilder(bytes.Length * 3);
+
+            foreach (byte b in bytes)
+            {
+                if ((b >= (byte)'a' && b <= (byte)'z') ||
+                    (b >= (byte)'A' && b <= (byte)'Z') ||
+                    (b >= (byte)'0' && b <= (byte)'9') ||
+                    b is (byte)'-' or (byte)'_' or (byte)'.' or (byte)'*')
+                {
+                    sb.Append((char)b);
+                }
+                else if (b == (byte)' ')
+                {
+                    sb.Append('+');
+                }
+                else
+                {
+                    sb.Append('%').Append(b.ToString("X2"));
+                }
+            }
+
+            return sb.ToString();
+        }
         public async Task<HttpResponseMessage?> PushMessageAsync(IPAddress address, string text, bool scroll, Alignment alignment)
         {
             string auxAlign = "Center";
@@ -115,14 +145,14 @@ Temperatura\s*\(.C\)\s*<!--STEMP-->\s*""(?<temp>[^""]*)""";
     $"&mesf=0" +
     $"&horaf=0" +
     $"&minf=0" +
-    $"&data1={Uri.EscapeDataString(text)}" +
-    $"&jsfs1={Uri.EscapeDataString(auxAlign)}" +
+    $"&data1={UrlEncodeLatin1(text)}" +
+    $"&jsfs1={UrlEncodeLatin1(auxAlign)}" +
     $"&ofx1={(scroll ? "Scroll" : "Static")}" +
     $"&ffx1=0" +
     $"&falt1=0" +
     $"&accion=update";
 
-            using var content = new StringContent(body, Encoding.ASCII, "application/x-www-form-urlencoded");
+            using var content = new StringContent(body, Encoding.Latin1, "application/x-www-form-urlencoded");
             string auxUrl = $"http://{address}/pagina1.html";
             HttpResponseMessage? response = null;
             try
@@ -141,22 +171,44 @@ Temperatura\s*\(.C\)\s*<!--STEMP-->\s*""(?<temp>[^""]*)""";
             var url = $"http://{address}/pagina1.html";
             using var form = new MultipartFormDataContent();
 
-            form.Add(new StringContent("Static"), "ofx1");
-            form.Add(new StringContent("0"), "ffx1");
-            // El campo del bitmap:
-            form.Add(new ByteArrayContent(bmpBytes), "fbmp2", "image.bmp");
-            // Otros campos de ejemplo:
-            form.Add(new StringContent("Center"), "jsfs2");
-            form.Add(new StringContent("Static"), "ofx2");
-            form.Add(new StringContent("0"), "ffx2");
+            form.Add(new StringContent("P1S002"), "typepage");
+            form.Add(new StringContent("Center"), "jsfs3");
+            form.Add(new StringContent("Static"), "ofx3");
+            form.Add(new StringContent("0"), "ffx3");
+
+            var bmpContent = new ByteArrayContent(bmpBytes);
+            bmpContent.Headers.ContentType = new MediaTypeHeaderValue("image/bmp");
+            form.Add(bmpContent, "fbmp3", "image.bmp");
+
             form.Add(new StringContent("update"), "accion");
 
-            var respuesta = await mvarClient.PostAsync(url, form);
-            return respuesta;
+            try
+            {
+                mvarLogger.LogInformation(
+                    "Enviando BMP a {Url}. Bytes={Bytes}",
+                    url, bmpBytes.Length);
+
+                var response = await mvarClient.PostAsync(url, form);
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                mvarLogger.LogInformation(
+                    "PushBitmapAsync => HTTP {StatusCode} {ReasonPhrase}. Respuesta: {Body}",
+                    (int)response.StatusCode,
+                    response.ReasonPhrase,
+                    responseBody);
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                mvarLogger.LogError(ex, "Error enviando BMP a {Address}", address);
+                throw;
+            }
         }
         public async Task<HttpResponseMessage> PushBitmapAsync(IPAddress address, string bmpFilePath)
         {
             // Lee el archivo BMP como array de bytes
+            System.Diagnostics.Debug.Assert(File.Exists(bmpFilePath));
             byte[] bmpBytes = await File.ReadAllBytesAsync(bmpFilePath);
 
             // Llama al método polimórfico que ya tienes
@@ -175,7 +227,7 @@ Temperatura\s*\(.C\)\s*<!--STEMP-->\s*""(?<temp>[^""]*)""";
         {
             //await ClearAsync(address);
             await PushMessageAsync(address, message, scroll,alignment);
-        }
+        }        
         public async Task Cls(IPAddress address)
         {
             await ClearAsync(address);

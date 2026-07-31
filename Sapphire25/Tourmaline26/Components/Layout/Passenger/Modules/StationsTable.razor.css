@@ -1,6 +1,7 @@
-﻿.route-box {
+.route-box {
     flex: 2 1 0;
     min-width: 0;
+    width: 100%;
 }
 
 .route-title {
@@ -31,7 +32,7 @@
     .route-table td {
         border: none;
         padding: 0.5vh 0.5vw;
-        font-size: 3.2vw; /* igual que antes para los nombres */
+        font-size: 3.2vw;
         vertical-align: middle;
     }
 
@@ -42,6 +43,9 @@
     min-height: 22px;
     margin-right: 1.5vw;
     border: 0.5vw solid #bbb;
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
 }
 
 .stop-time {
@@ -49,7 +53,9 @@
     font-size: 3vw;
     text-align: right;
     padding-left: 2vw;
+    white-space: nowrap;
 }
+
 .stop-name {
     color: #444;
     font-weight: 400;
@@ -61,7 +67,7 @@
 }
 
 .stop-name-high {
-    color: #1a237e; /* Azul oscuro para destacar */
+    color: #1a237e;
     font-weight: 700;
     font-size: 3.4vw;
     letter-spacing: 0.04em;
@@ -69,4 +75,78 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* —— Sobre vídeo de fondo: contraste + sombra de lectura —— */
+
+.route-box--overlay {
+    /* Halo suave detrás de toda la tabla para aislarla del movimiento */
+    background: linear-gradient(
+        90deg,
+        rgba(15, 23, 42, 0.42) 0%,
+        rgba(15, 23, 42, 0.28) 55%,
+        rgba(15, 23, 42, 0.12) 100%
+    );
+    border-radius: 1.2vw;
+    padding: 2.2vh 2.5vw 2.5vh 2.2vw;
+    box-shadow: 0 0.6vh 2.5vh rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+.route-box--overlay .route-title {
+    color: #f8fafc;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: clamp(1.8vw, 2.2vw, 2.6vw);
+    text-shadow:
+        0 0 0.6vw rgba(0, 0, 0, 0.85),
+        0 0.15vh 0.4vh rgba(0, 0, 0, 0.9),
+        0 0 1.2vw rgba(0, 0, 0, 0.55);
+    margin-bottom: 1.6vh;
+}
+
+.route-box--overlay .route-table td {
+    padding: 0.85vh 0.6vw;
+}
+
+.route-box--overlay .stop-name {
+    color: #ffffff;
+    font-weight: 600;
+    font-size: clamp(2.8vw, 3.4vw, 4vw);
+    text-shadow:
+        0 0 0.5vw rgba(0, 0, 0, 0.9),
+        0 0.2vh 0.5vh rgba(0, 0, 0, 0.95),
+        0 0 1.4vw rgba(0, 0, 0, 0.6),
+        0 1px 0 rgba(0, 0, 0, 0.8);
+}
+
+.route-box--overlay .stop-name-high {
+    color: #e8f0ff;
+    font-weight: 800;
+    font-size: clamp(3vw, 3.6vw, 4.2vw);
+    text-shadow:
+        0 0 0.55vw rgba(0, 0, 0, 0.95),
+        0 0.25vh 0.55vh rgba(0, 0, 0, 1),
+        0 0 1.6vw rgba(13, 71, 161, 0.55),
+        0 1px 0 rgba(0, 0, 0, 0.85);
+}
+
+.route-box--overlay .stop-time {
+    color: #b8f5c8;
+    font-weight: 700;
+    font-size: clamp(2.6vw, 3.2vw, 3.8vw);
+    text-shadow:
+        0 0 0.5vw rgba(0, 0, 0, 0.9),
+        0 0.2vh 0.5vh rgba(0, 0, 0, 0.95),
+        0 0 1.2vw rgba(0, 0, 0, 0.55);
+}
+
+.route-box--overlay .stop-dot {
+    border-color: #f1f5f9;
+    background: rgba(255, 255, 255, 0.35);
+    box-shadow:
+        0 0 0.4vw rgba(0, 0, 0, 0.65),
+        0 0 0.8vw rgba(255, 255, 255, 0.25);
 }
