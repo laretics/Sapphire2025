@@ -1,4 +1,4 @@
-﻿
+﻿@inject ExpertClient mvarExpertClient
 
 @if(null==Users)
 {
@@ -52,7 +52,7 @@ else
 													@foreach (AssignationContentModel assignation in AssignationsByTemplate(mcolTemplates[col, row].Name))
 													{
 														<tr>
-															<td>
+															<td style="@GetAgentStyle(assignation.AgentId)">
 																@GetUserString(assignation.AgentId)</td>
 														</tr>
 													}
@@ -71,6 +71,9 @@ else
 }
 
 @code {
+	private DateTime? mvarLastDisplayedDate;
+	private readonly Dictionary<Guid, WorkShiftTemplateModel?> mcolTodayAgentTemplates = new();
+
 	[CascadingParameter] //Diccionario de usuarios a representar
 	public Dictionary<Guid, UserModelBase>? Users { get; set; }
 	[CascadingParameter] //Rodaja de días.
@@ -94,12 +97,92 @@ else
 
 	private WorkShiftTemplateCollectionModel? mvarPlan;
 
-	protected override void OnParametersSet()
+	protected async override Task OnParametersSetAsync()
 	{
-		base.OnParametersSet();
-
 		ComposeArray();
+		DateTime? displayedDate = TimeSlice?.InitialDate.Date;
+		if (mvarLastDisplayedDate == displayedDate) return;
+
+		mvarLastDisplayedDate = displayedDate;
+		mcolTodayAgentTemplates.Clear();
+
+		//Sólo cargaremos las asignaciones de hoy, si las asignaciones que se muestran son futuras
+		if(displayedDate.HasValue && displayedDate.Value>DateTime.Today)
+		{
+			PlansYearSlice? todaySlice = await mvarExpertClient.PlansTimeSlice(DateTime.Today);
+			List<AssignationContentModel>? todayAssignations = await mvarExpertClient.Assignations(DateTime.Today);
+
+			if(null!=todaySlice && null!=todayAssignations)
+			{
+				WorkShiftTemplateCollectionModel? todayPlan = todaySlice.GetPlan(0);
+				if(null!=todayPlan)
+				{
+					foreach(AssignationContentModel todayAssignation in todayAssignations)
+					{
+						if (string.IsNullOrWhiteSpace(todayAssignation.Definitive))
+							continue;
+
+
+						WorkShiftTemplateModel? template =
+							todayPlan.Template(
+								todayAssignation.Definitive,
+								todaySlice.GetDay(0),
+								todaySlice.GetFestive(0));
+
+						mcolTodayAgentTemplates[todayAssignation.AgentId] = template;
+					}
+				}
+
+			}
+		}
+
 	}
+
+	public string GetAgentStyle(Guid agentId)
+	{
+		//Si no es una fecha futura, no se pinta nada
+		if (null == TimeSlice || TimeSlice.InitialDate.Date <= DateTime.Today)
+			return string.Empty;
+
+		//Si el Agente no trabaja hoy, no habrá estilo.
+		if (!mcolTodayAgentTemplates.TryGetValue(agentId, out WorkShiftTemplateModel? template))
+			return string.Empty;
+
+		//Ponemos en negrita a todos los que trabajan hoy.
+		string style = "font-weight: 700;";
+
+		//Ponemos el mismo estado que tengan ahora mismo.
+		string? statusStyle = GetTodayStatusStyle(template);
+		if (string.IsNullOrWhiteSpace(statusStyle))
+			return style;
+
+		return $"{style} {statusStyle}";
+	}
+	private string GetTodayStatusStyle(WorkShiftTemplateModel? rhs)
+	{
+		if(!FollowingMode)
+			return string.Empty;
+
+		if (rhs is not AttTemplateModel AttTurno)
+			return string.Empty;
+
+		TimeSpan horaComienzo = AttTurno.StartTime.Add(TimeSpan.FromMinutes(MinutesBeforeWorksheet));
+		TimeSpan horaDeje = AttTurno.EndTime.Add(TimeSpan.FromMinutes(-MinutesAfterWorksheet));
+
+		string? color = null;
+
+		if (mvarNow >= AttTurno.StartTime && mvarNow < horaComienzo)
+			color = "#A8F0AD"; // Verde
+		else if (mvarNow >= horaComienzo && mvarNow < horaDeje)
+			color = "#8B9DFF"; // Azul
+		else if (mvarNow >= horaDeje && mvarNow < AttTurno.EndTime)
+			color = "#FC92AC"; // Rojo
+
+		return string.IsNullOrWhiteSpace(color)
+			? string.Empty
+			: $"background: linear-gradient(to right, {color}, transparent);";
+	}
+
 
 	public List<AssignationContentModel> AssignationsByTemplate(string? assignationText)
 	{

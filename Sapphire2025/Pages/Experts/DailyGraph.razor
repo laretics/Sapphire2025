@@ -1,5 +1,7 @@
 ﻿@page "/dailyGraph"
+@using Sapphire2025.Icons
 @using Sapphire2025Models.Expert.WorkshiftTemplates
+@using Sapphire2025.Layout.Expert
 @inject IJSRuntime mvarJSRuntime
 @inject ExpertClient mvarExpertClient
 @inject AuthenticationClient mvarAuthClient
@@ -7,16 +9,16 @@
 <ModalDialog @ref="mvarModal" />
 
 <div class="daily-graph-page">
-    <Sapphire2025.Layout.Expert.ExpertDayContext ExcelImportDayCount="4" ExcelImportFeature=true RealTimeFollowFeature=true>
+    <ExpertDayContext ExcelImportDayCount="4" ExcelImportFeature=true RealTimeFollowFeature=true>
         <div class="daily-graph-tabs">
-            <TabControl Classic=true>
+            <TabControl Classic=true PersistenceKey="dailyGraph.activeTab" RestoreToken="@CurrentDate">
                 <TabPage Text="Circulaciones">
                     <Icon>
-                        <Sapphire2025.Icons.Headers.UT color="#2020A0"/>
+                        <GenIcon Name="UT" color="#2020A0" />
                     </Icon>
                     <ChildContent>
                         <div class="daily-graph-pane">
-                            <Sapphire2025.Layout.Expert.CirculationsExpertGrid MinutesAfterTrain="15" MinutesBeforeTrain="10" />
+                            <CirculationsExpertGrid MinutesAfterTrain="15" MinutesBeforeTrain="10" />
                         </div>
                     </ChildContent>
                 </TabPage>
@@ -26,27 +28,39 @@
                     </Icon>
                     <ChildContent>
                         <div class="daily-graph-pane">
-                            <Sapphire2025.Layout.Expert.DepotsExpertGrid MinutesShortAtt="25"
+                            <DepotsExpertGrid MinutesShortAtt="25"
                                                                      MinutesLongAtt="60" />
                         </div>
                     </ChildContent>
                 </TabPage>
                 <TabPage Text="Asignaciones">
                     <Icon>
-                        <Sapphire2025.Icons.Headers.EventDateTime color="#2020A0" />
+                        <GenIcon Name="EventDateTime" color="#2020A0"/>
                     </Icon>
                     <ChildContent>
                         <div class="daily-graph-pane">
-                            <Sapphire2025.Layout.Expert.AssignationDayCalendar MinutesBeforeWorksheet="25" MinutesAfterWorksheet="10" />
+                            <AssignationDayCalendar MinutesBeforeWorksheet="25" MinutesAfterWorksheet="10" />
+                        </div>
+                    </ChildContent>
+                </TabPage>
+                <TabPage Text="Vacantes">
+                    <Icon>
+                        <GenIcon Name="Att" Color="#2020A0"/>
+                    </Icon>
+                    <ChildContent>
+                        <div class="daily-graph-pane">
+                            <IddleDayCalendar/>
                         </div>
                     </ChildContent>
                 </TabPage>
             </TabControl>
         </div>
-    </Sapphire2025.Layout.Expert.ExpertDayContext>
+    </ExpertDayContext>
 </div>
 
 @code {
+    [CascadingParameter]
+    public DateTime CurrentDate{ get; set; }
     private ModalDialog mvarModal { get; set; } = new ModalDialog();
 
 }

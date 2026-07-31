@@ -1,73 +1,115 @@
-﻿@if(Classic)
+﻿@using System.Threading.Tasks
+@inject Sapphire2025.Storage.IntStorageService mvarStorage
+@if(Classic)
 {
-	<ul class="nav nav-tabs mb-3 tab-control-classic" style="--bs-nav-tabs-link-active-bg: #f8f9fa;">
-	@foreach (TabPage tabPage in Pages)
-		{
-			<li class="nav-item" role="presentation">
-				<button type="button"
-						class="nav-link @(tabPage == ActivePage ? "active" : "")"
-						@onclick="() => ActivatePage(tabPage)"
-						style="display: flex; align-items: center; gap: 0.5rem;">
-					@if (tabPage.Icon != null)
-					{
-						<span class="me-1">@tabPage.Icon</span>
-					}
-					<span>@tabPage.Text</span>
-				</button>
-			</li>
-		}
-	</ul>
+    <ul class="nav nav-tabs mb-3 tab-control-classic" style="--bs-nav-tabs-link-active-bg: #f8f9fa;">
+        @foreach (TabPage tabPage in Pages)
+        {
+            <li class="nav-item" role="presentation">
+                <button type="button"
+                class="nav-link @(tabPage == ActivePage ? "active" : "")"
+                @onclick="() => ActivatePage(tabPage)"
+                style="display: flex; align-items: center; gap: 0.5rem;">
+                    @if (tabPage.Icon != null)
+                    {
+                        <span class="me-1">@tabPage.Icon</span>
+                    }
+                    <span>@tabPage.Text</span>
+                </button>
+            </li>
+        }
+    </ul>
 }
 else
 {
-	<div class="btn-group tab-control-buttons" role="group">
+    <div class="btn-group tab-control-buttons" role="group">
 
-		@foreach (TabPage tabPage in Pages)
-		{
-			<button type="button"
-					class="btn @GetButtonClass(tabPage)"
-					@onclick=@(() => ActivatePage(tabPage))>
-				@if (tabPage.Icon != null)
-				{
-					<span class="me-1">@tabPage.Icon</span>
-				}
-				<span>@tabPage.Text</span>
-			</button>
-		}
-	</div>
-	<hr class="mt-0 mb-3 border-primary" style="height:3px;opacity:0.5;" />
+        @foreach (TabPage tabPage in Pages)
+        {
+            <button type="button"
+            class="btn @GetButtonClass(tabPage)"
+            @onclick=@(() => ActivatePage(tabPage))>
+                @if (tabPage.Icon != null)
+                {
+                    <span class="me-1">@tabPage.Icon</span>
+                }
+                <span>@tabPage.Text</span>
+            </button>
+        }
+    </div>
+    <hr class="mt-0 mb-3 border-primary" style="height:3px;opacity:0.5;" />
 }
 <CascadingValue Value="this">
-	@ChildContent
+    @ChildContent
 </CascadingValue>
 
 
 
 @code {
-	//Hace falta este parámetro para añadir componentes <TabPage> dentro.
-	[Parameter]
-	public RenderFragment? ChildContent { get; set; }
-	[Parameter]
-	public bool Classic { get; set; }
+    //Hace falta este parámetro para añadir componentes <TabPage> dentro.
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+    [Parameter]
+    public bool Classic { get; set; }
+    [Parameter]
+    public string? PersistenceKey { get; set; }
 
-	public TabPage? ActivePage { get; set; }
-	List<TabPage> Pages = new List<TabPage>();
+    [Parameter] public object? RestoreToken{ get; set; } //A cambiar cuando cambie el día o el contexto, pero no quiera cambiar de solapa.
 
-	internal void AddPage(TabPage tabPage)
-	{
-		Pages.Add(tabPage);
-		if (Pages.Count == 1)
-			ActivePage = tabPage;
-		StateHasChanged();
-	}
+    public TabPage? ActivePage { get; set; }
+    private readonly List<TabPage> Pages = new List<TabPage>();
+    private string? mvarSavedKey;
+    private object? mvarLastRestoreToken;
 
-	string GetButtonClass(TabPage page)
-	{
-		return page == ActivePage ? "btn-primary" : "btn-secondary";
-	}
+    protected async override Task OnParametersSetAsync()
+    {
+        if(!string.IsNullOrWhiteSpace(PersistenceKey) &&
+        !Equals(mvarLastRestoreToken,RestoreToken))
+        {
+            mvarLastRestoreToken = RestoreToken;
+            mvarSavedKey = await mvarStorage.GetStringValue(PersistenceKey, session: false);
+            auxRestoreActivePage();
+        }        
+    }
+    internal void AddPage(TabPage tabPage)
+    {
+        Pages.Add(tabPage);
+        auxRestoreActivePage();
+        StateHasChanged();
+    }
 
-	void ActivatePage(TabPage page)
-	{
-		ActivePage = page;
-	}
+    private void auxRestoreActivePage()
+    {
+        if(string.IsNullOrWhiteSpace(mvarSavedKey))
+        {
+            if (ActivePage is null && Pages.Count > 0)
+                ActivePage = Pages[0];            
+        }
+        else
+        {
+            TabPage? auxPage = Pages.FirstOrDefault(p => p.Key == mvarSavedKey || p.Text == mvarSavedKey);
+            if (null != auxPage)
+                ActivePage = auxPage;
+            else if (null == ActivePage && Pages.Count > 0)
+                ActivePage = Pages[0];
+        }
+
+    }
+    private string auxGetPageKey(TabPage page) => page.Key ?? page.Text ?? string.Empty;
+
+    async Task ActivatePage(TabPage page)
+    {
+        ActivePage = page;
+        mvarSavedKey = auxGetPageKey(page);
+
+        if (!string.IsNullOrWhiteSpace(PersistenceKey))
+            await mvarStorage.SetStringValue(PersistenceKey, mvarSavedKey, session: false);
+    }
+
+    string GetButtonClass(TabPage page)
+    {
+        return page == ActivePage ? "btn-primary" : "btn-secondary";
+    }
+
+
 }
