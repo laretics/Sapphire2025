@@ -19,17 +19,45 @@
 
 <body>
     <div id="app">
-        <svg class="loading-progress">
-            <circle r="40%" cx="50%" cy="50%" />
-            <circle r="40%" cx="50%" cy="50%" />
-        </svg>
-        <div class="loading-progress-text">Cargando Zafiro...</div>
+        <div class="app-loading">
+            <!-- Solo se activa en pantallas grandes (ver script inferior). muted + playsinline permiten autoplay. -->
+            <video id="app-loading-video"
+                   class="app-loading-video"
+                   muted
+                   autoplay
+                   loop
+                   playsinline
+                   preload="none"
+                   aria-hidden="true"></video>
+            <div class="app-loading-ui">
+                <svg class="loading-progress">
+                    <circle r="40%" cx="50%" cy="50%" />
+                    <circle r="40%" cx="50%" cy="50%" />
+                </svg>
+                <div class="loading-progress-text">Cargando Zafiro...</div>
+            </div>
+        </div>
     </div>
     <div id="blazor-error-ui">
         An unhandled error has occurred.
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
+    <script>
+        // Vídeo de carga solo en pantallas grandes: no se descarga en móvil/tablet.
+        (function () {
+            var minWidth = 992; // Bootstrap lg
+            var video = document.getElementById('app-loading-video');
+            if (!video) return;
+            if (window.matchMedia('(min-width: ' + minWidth + 'px)').matches) {
+                video.src = 'Video/Sapphire2026.mp4';
+                video.muted = true;
+                video.play().catch(function () { /* autoplay bloqueado: se queda el spinner */ });
+            } else {
+                video.remove();
+            }
+        })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!--Script de importación de Excel para Jefes de Maquinistas (y lo que se tercie)-->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
