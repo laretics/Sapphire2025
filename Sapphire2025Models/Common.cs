@@ -10,7 +10,7 @@ namespace Sapphire2025Models
 	{
 		public static string SapphireSoftwareVersion => "26.8.2";
 		public static bool MajorVersion => false; //Muestra el aviso de actualización sólo cuando este flag es true.
-		public static string LastChangesText => "Splash de carga|Pestaña de turnos vacantes";
+		public static string LastChangesText => "Splash de carga|Gráfico Maquinistas";
 
 		public static readonly Guid TelegramToken = new Guid("3a7f9c2e-8b4d-4f1a-9e6c-7d2b5a8f3e1c"); //Token de sesión sólo para operaciones desde Telegram.
 
