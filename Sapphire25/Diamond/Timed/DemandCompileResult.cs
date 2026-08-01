@@ -10,6 +10,7 @@ namespace Diamond.Timed
 		private readonly List<DemandRequirement> mcolRequirements;
 		private readonly List<DemandDeleteOp> mcolDeletes;
 		private readonly List<DemandAsimilationDef> mcolAsimilationDefs;
+		private readonly List<DemandTopoConstraint> mcolTopoConstraints;
 		private readonly List<string> mcolErrors;
 		private string mvarPlanName;
 
@@ -18,6 +19,7 @@ namespace Diamond.Timed
 			mcolRequirements = new List<DemandRequirement>();
 			mcolDeletes = new List<DemandDeleteOp>();
 			mcolAsimilationDefs = new List<DemandAsimilationDef>();
+			mcolTopoConstraints = new List<DemandTopoConstraint>();
 			mcolErrors = new List<string>();
 			mvarPlanName = string.Empty;
 		}
@@ -49,6 +51,14 @@ namespace Diamond.Timed
 			get { return mcolAsimilationDefs; }
 		}
 
+		/// <summary>
+		/// Restricciones de topología de sesión (<c>single</c>/<c>tracks</c>/<c>limit</c>/<c>vmax</c>).
+		/// </summary>
+		public IReadOnlyList<DemandTopoConstraint> TopoConstraints
+		{
+			get { return mcolTopoConstraints; }
+		}
+
 		public IReadOnlyList<string> Errors
 		{
 			get { return mcolErrors; }
@@ -72,6 +82,11 @@ namespace Diamond.Timed
 		internal void AddAsimilationDef(DemandAsimilationDef definition)
 		{
 			mcolAsimilationDefs.Add(definition);
+		}
+
+		internal void AddTopoConstraint(DemandTopoConstraint constraint)
+		{
+			mcolTopoConstraints.Add(constraint);
 		}
 
 		internal void AddError(string message)

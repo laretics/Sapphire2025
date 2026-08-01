@@ -19,6 +19,7 @@ namespace Diamond.Timed
 		private readonly List<DemandRequirement> mcolDemand;
 		private readonly List<DemandDeleteOp> mcolDeletes;
 		private readonly List<DemandAsimilationDef> mcolAsimilationDefs;
+		private readonly List<DemandTopoConstraint> mcolTopoConstraints;
 		private string mvarDemandScript;
 
 		public Plan()
@@ -31,6 +32,7 @@ namespace Diamond.Timed
 			mcolDemand = new List<DemandRequirement>();
 			mcolDeletes = new List<DemandDeleteOp>();
 			mcolAsimilationDefs = new List<DemandAsimilationDef>();
+			mcolTopoConstraints = new List<DemandTopoConstraint>();
 			mvarDemandScript = string.Empty;
 		}
 
@@ -105,6 +107,15 @@ namespace Diamond.Timed
 		public IReadOnlyList<DemandAsimilationDef> AsimilationDefs
 		{
 			get { return mcolAsimilationDefs; }
+		}
+
+		/// <summary>
+		/// Restricciones de topología de sesión del script (<c>single</c>, <c>tracks</c>, <c>limit</c>, <c>vmax</c>).
+		/// Se aplican a <see cref="Axis.SessionLimits"/> / <see cref="Axis.SessionTrackSpans"/> al compilar.
+		/// </summary>
+		public IReadOnlyList<DemandTopoConstraint> TopoConstraints
+		{
+			get { return mcolTopoConstraints; }
 		}
 
 		/// <summary>
@@ -208,8 +219,15 @@ namespace Diamond.Timed
 			mcolDemand.Clear();
 			mcolDeletes.Clear();
 			mcolAsimilationDefs.Clear();
+			mcolTopoConstraints.Clear();
 			if (!result.Success)
 			{
+				// Script inválido: quitar overlays de sesión residuales.
+				if (mvarTopo is not null)
+				{
+					DemandTopoOverlay.Clear(mvarTopo);
+				}
+
 				return result;
 			}
 
@@ -234,10 +252,19 @@ namespace Diamond.Timed
 				index++;
 			}
 
+			index = 0;
+			while (index < result.TopoConstraints.Count)
+			{
+				mcolTopoConstraints.Add(result.TopoConstraints[index]);
+				index++;
+			}
+
 			if (resolveStations && mvarTopo is not null)
 			{
 				List<string> resolveErrors = new List<string>();
 				DemandStationResolver.Resolve(result, mvarTopo, resolveErrors);
+				// Capas de sesión: vías simples y límites del script (no tocan la topo base).
+				DemandTopoOverlay.Apply(mvarTopo, mcolTopoConstraints, resolveErrors);
 				int e = 0;
 				while (e < resolveErrors.Count)
 				{
@@ -245,15 +272,39 @@ namespace Diamond.Timed
 					e++;
 				}
 			}
+			else if (mvarTopo is not null)
+			{
+				// Sin resolución de estaciones no se pueden aplicar tramos; limpiar sesión.
+				DemandTopoOverlay.Clear(mvarTopo);
+			}
 
 			return result;
+		}
+
+		/// <summary>
+		/// Reaplica las restricciones de topología de sesión ya compiladas (p. ej. al planificar).
+		/// </summary>
+		public void ApplyTopoSessionOverlays()
+		{
+			if (mvarTopo is null)
+			{
+				return;
+			}
+
+			DemandTopoOverlay.Apply(mvarTopo, mcolTopoConstraints, errors: null);
 		}
 
 		public void ClearDemand()
 		{
 			mcolDemand.Clear();
 			mcolDeletes.Clear();
+			mcolAsimilationDefs.Clear();
+			mcolTopoConstraints.Clear();
 			mvarDemandScript = string.Empty;
+			if (mvarTopo is not null)
+			{
+				DemandTopoOverlay.Clear(mvarTopo);
+			}
 		}
 
 		public override string ToString()

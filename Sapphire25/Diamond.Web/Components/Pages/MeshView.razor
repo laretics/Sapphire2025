@@ -130,6 +130,9 @@
 							 Height="900"
 							 ShowLayerToolbar="true"
 							 ShowZoomToolbar="true"
+							 PlanName="@(mvarPlan?.Name ?? mvarFileName)"
+							 PlanningDay="mvarSelectedDay"
+							 PrintNotes="@PrintNotesForMesh"
 							 @bind-SelectedCirculation="mvarSelectedCirculation" />
 
 				@* Inspector inferior de la malla *@
@@ -494,6 +497,34 @@
 
 	private string FileDisplayName =>
 		mvarDirty ? mvarFileName + " *" : mvarFileName;
+
+	/// <summary>Notas para la carátula de impresión de malla.</summary>
+	private string PrintNotesForMesh
+	{
+		get
+		{
+			List<string> parts = new List<string>();
+			if (!string.IsNullOrWhiteSpace(mvarFileName))
+			{
+				parts.Add("Archivo: " + mvarFileName);
+			}
+
+			if (mvarMeshStale)
+			{
+				parts.Add("Malla desactualizada respecto al script.");
+			}
+
+			if (mvarSelectedCirculation is not null)
+			{
+				string id = mvarSelectedCirculation.HasServiceNumber
+					? mvarSelectedCirculation.ServiceNumber
+					: mvarSelectedCirculation.Id;
+				parts.Add("Última selección en pantalla: " + id);
+			}
+
+			return string.Join(" · ", parts);
+		}
+	}
 
 	private string StatusText
 	{

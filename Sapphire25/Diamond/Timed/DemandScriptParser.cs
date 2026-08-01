@@ -26,6 +26,9 @@ namespace Diamond.Timed
 	/// por OD dirigido (PMI→MAN ≠ MAN→PMI) y días de la región.
 	/// <c>delete HH:mm-HH:mm [all]</c> elimina circulaciones ya planificadas en esa franja
 	/// (en orden de script; ver <see cref="DemandDeleteOp"/>).
+	/// Restricciones de topología de sesión (no modifican el XML base):
+	/// <c>single track A -&gt; B [on EJE]</c>, <c>tracks N A -&gt; B</c>,
+	/// <c>limit 60 [km/h] A -&gt; B</c>, <c>vmax 80 A -&gt; B</c>.
 	/// </remarks>
 	public static class DemandScriptParser
 	{
@@ -192,6 +195,21 @@ namespace Diamond.Timed
 					continue;
 				}
 
+				if (IsTopoConstraintHead(head))
+				{
+					if (currentAsim is not null)
+					{
+						CommitAsimDef(currentAsim, result);
+						currentAsim = null;
+						currentAsimIndent = -1;
+					}
+
+					ParseTopoConstraintLine(tokens, sourceLine, result, ref scriptOrder);
+					current = null;
+					currentIndent = -1;
+					continue;
+				}
+
 				if (LooksLikeScopeHeader(tokens))
 				{
 					if (currentAsim is not null)
@@ -214,7 +232,7 @@ namespace Diamond.Timed
 				result.AddError(
 					sourceLine,
 					"palabra clave desconocida '" + tokens[0]
-					+ "' (se esperaba plan, require/req, asim, delete, o región days|color|with|con|region).");
+					+ "' (se esperaba plan, require/req, asim, delete, single/tracks/limit/vmax, o región days|color|with|con|region).");
 			}
 
 			if (currentAsim is not null)
@@ -811,6 +829,207 @@ namespace Diamond.Timed
 				defaultDays);
 			scriptOrder++;
 			result.AddDelete(op);
+		}
+
+		private static bool IsTopoConstraintHead(string head)
+		{
+			return head == "single"
+				|| head == "tracks"
+				|| head == "track"
+				|| head == "via"
+				|| head == "vía"
+				|| head == "vias"
+				|| head == "vías"
+				|| head == "limit"
+				|| head == "limite"
+				|| head == "límite"
+				|| head == "vmax"
+				|| head == "speed";
+		}
+
+		/// <summary>
+		/// <c>single [track|tracks|via|vía] FROM -&gt; TO [on AXIS]</c><br/>
+		/// <c>via simple FROM -&gt; TO</c><br/>
+		/// <c>tracks N FROM -&gt; TO [on AXIS]</c><br/>
+		/// <c>limit N [km/h|kmh] FROM -&gt; TO [on AXIS]</c><br/>
+		/// <c>vmax N FROM -&gt; TO [on AXIS]</c>
+		/// </summary>
+		private static void ParseTopoConstraintLine(
+			List<string> tokens,
+			int sourceLine,
+			DemandCompileResult result,
+			ref int scriptOrder)
+		{
+			if (tokens.Count < 2)
+			{
+				result.AddError(
+					sourceLine,
+					"uso: single track A -> B | tracks 1 A -> B | limit 60 A -> B | vmax 80 A -> B");
+				return;
+			}
+
+			string head = tokens[0].ToLowerInvariant();
+			int index = 1;
+			DemandTopoConstraintKind kind;
+			int value;
+
+			if (head == "single"
+				|| head == "via"
+				|| head == "vía")
+			{
+				// single [track|tracks|via|vía] | via simple | single
+				if (index < tokens.Count)
+				{
+					string opt = tokens[index].ToLowerInvariant();
+					if (opt == "track" || opt == "tracks" || opt == "via" || opt == "vía"
+						|| opt == "simple" || opt == "unica" || opt == "única")
+					{
+						index++;
+					}
+				}
+
+				kind = DemandTopoConstraintKind.TrackCount;
+				value = 1;
+			}
+			else if (head == "tracks" || head == "track" || head == "vias" || head == "vías")
+			{
+				if (index >= tokens.Count)
+				{
+					result.AddError(sourceLine, "uso: tracks N ORIGEN -> DESTINO [on EJE]");
+					return;
+				}
+
+				int n;
+				if (!int.TryParse(tokens[index], NumberStyles.Integer, CultureInfo.InvariantCulture, out n)
+					|| n < 1)
+				{
+					result.AddError(sourceLine, "número de vías no válido '" + tokens[index] + "' (entero ≥ 1).");
+					return;
+				}
+
+				index++;
+				kind = DemandTopoConstraintKind.TrackCount;
+				value = n;
+			}
+			else if (head == "limit" || head == "limite" || head == "límite"
+				|| head == "vmax" || head == "speed")
+			{
+				if (index >= tokens.Count)
+				{
+					result.AddError(sourceLine, "uso: limit 60 [km/h] ORIGEN -> DESTINO [on EJE]");
+					return;
+				}
+
+				int speed;
+				if (!int.TryParse(tokens[index], NumberStyles.Integer, CultureInfo.InvariantCulture, out speed)
+					|| speed < 1)
+				{
+					result.AddError(sourceLine, "velocidad no válida '" + tokens[index] + "' (km/h ≥ 1).");
+					return;
+				}
+
+				index++;
+				// Unidad opcional.
+				if (index < tokens.Count)
+				{
+					string unit = tokens[index].ToLowerInvariant();
+					if (unit == "km/h" || unit == "kmh" || unit == "kph" || unit == "km"
+						|| unit == "kmph")
+					{
+						index++;
+					}
+				}
+
+				kind = DemandTopoConstraintKind.SpeedLimit;
+				value = speed;
+			}
+			else
+			{
+				result.AddError(sourceLine, "restricción de topología no reconocida '" + tokens[0] + "'.");
+				return;
+			}
+
+			StationRef? from;
+			StationRef? to;
+			string? axisId;
+			string? spanError;
+			if (!TryParseStationSpan(tokens, ref index, sourceLine, out from, out to, out axisId, out spanError)
+				|| from is null
+				|| to is null)
+			{
+				result.AddError(sourceLine, spanError ?? "uso: … ORIGEN -> DESTINO [on EJE]");
+				return;
+			}
+
+			if (index < tokens.Count)
+			{
+				result.AddError(sourceLine, "token inesperado '" + tokens[index] + "'.");
+				return;
+			}
+
+			DemandTopoConstraint constraint = new DemandTopoConstraint(
+				kind,
+				value,
+				from,
+				to,
+				axisId,
+				sourceLine,
+				scriptOrder);
+			scriptOrder++;
+			result.AddTopoConstraint(constraint);
+		}
+
+		/// <summary>
+		/// Lee <c>FROM -&gt; TO [on AXIS]</c> a partir de <paramref name="index"/>.
+		/// </summary>
+		private static bool TryParseStationSpan(
+			List<string> tokens,
+			ref int index,
+			int sourceLine,
+			out StationRef? from,
+			out StationRef? to,
+			out string? axisId,
+			out string? error)
+		{
+			from = null;
+			to = null;
+			axisId = null;
+			error = null;
+
+			if (index >= tokens.Count)
+			{
+				error = "falta estación de origen.";
+				return false;
+			}
+
+			from = new StationRef(tokens[index]);
+			index++;
+
+			if (index >= tokens.Count || tokens[index] != "->")
+			{
+				error = "se esperaba '->' entre origen y destino.";
+				return false;
+			}
+
+			index++;
+			if (index >= tokens.Count)
+			{
+				error = "falta estación de destino.";
+				return false;
+			}
+
+			to = new StationRef(tokens[index]);
+			index++;
+
+			if (index < tokens.Count
+				&& string.Equals(tokens[index], "on", StringComparison.OrdinalIgnoreCase)
+				&& index + 1 < tokens.Count)
+			{
+				axisId = tokens[index + 1];
+				index += 2;
+			}
+
+			return true;
 		}
 
 		private static DemandRequirement? ParseRequireLine(

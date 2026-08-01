@@ -116,6 +116,7 @@ namespace Diamond.Controls.Rendering
 
 			NormalizePkRange(ref pkMin, ref pkMax);
 
+			MeshSvgPalette palette = options.Palette;
 			bool externalStations = options.ExternalStationColumn;
 			double plotLeft = MeshSvgLayout.GetPlotLeft(externalStations);
 			double plotTop = MeshSvgLayout.PlotTop;
@@ -135,19 +136,23 @@ namespace Diamond.Controls.Rendering
 
 			StringBuilder sb = new StringBuilder(64 * 1024);
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"0\" y=\"0\" width=\"{width}\" height=\"{height}\" fill=\"#0f1419\"/>");
+				$"<rect x=\"0\" y=\"0\" width=\"{width}\" height=\"{height}\" fill=\"{palette.Background}\"/>");
 
 			// Defs reutilizables (reloj actual, clip)
 			string clipId = "plotClip";
 			sb.Append("<defs>");
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<clipPath id=\"{clipId}\"><rect x=\"{plotLeft}\" y=\"{plotTop}\" width=\"{plotW}\" height=\"{plotH}\"/></clipPath>");
-			sb.Append(
-				"<linearGradient id=\"meshNowGrad\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">"
-				+ "<stop offset=\"0%\" stop-color=\"#67e8f9\" stop-opacity=\"0.15\"/>"
-				+ "<stop offset=\"50%\" stop-color=\"#22d3ee\" stop-opacity=\"0.95\"/>"
-				+ "<stop offset=\"100%\" stop-color=\"#67e8f9\" stop-opacity=\"0.15\"/>"
-				+ "</linearGradient>");
+			if (!palette.IsPaper)
+			{
+				sb.Append(
+					"<linearGradient id=\"meshNowGrad\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">"
+					+ "<stop offset=\"0%\" stop-color=\"#67e8f9\" stop-opacity=\"0.15\"/>"
+					+ "<stop offset=\"50%\" stop-color=\"#22d3ee\" stop-opacity=\"0.95\"/>"
+					+ "<stop offset=\"100%\" stop-color=\"#67e8f9\" stop-opacity=\"0.15\"/>"
+					+ "</linearGradient>");
+			}
+
 			sb.Append("</defs>");
 
 			// —— Franjas V y # (solo PK de ruta visible) ——
@@ -163,15 +168,16 @@ namespace Diamond.Controls.Rendering
 					AppendPkBandRect(
 						sb, speedStripX, stripW,
 						band.PkStart, band.PkEnd, pkMin, pkMax, plotTop, plotH, yScale,
-						SpeedToColor(band.SpeedKmh),
-						band.SpeedKmh + " km/h · " + FormatPk(band.PkStart) + "–" + FormatPk(band.PkEnd));
+						palette.MapUiColor(SpeedToColor(band.SpeedKmh)),
+						band.SpeedKmh + " km/h · " + FormatPk(band.PkStart) + "–" + FormatPk(band.PkEnd),
+						palette);
 					bi++;
 				}
 
 				sb.Append(CultureInfo.InvariantCulture,
-					$"<rect x=\"{speedStripX}\" y=\"{plotTop}\" width=\"{stripW}\" height=\"{plotH}\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"1\"/>");
+					$"<rect x=\"{speedStripX}\" y=\"{plotTop}\" width=\"{stripW}\" height=\"{plotH}\" fill=\"none\" stroke=\"{palette.StripBorder}\" stroke-width=\"1\"/>");
 				sb.Append(CultureInfo.InvariantCulture,
-					$"<text x=\"{speedStripX + stripW / 2}\" y=\"{plotTop - 8}\" fill=\"#94a3b8\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\">V</text>");
+					$"<text x=\"{speedStripX + stripW / 2}\" y=\"{plotTop - 8}\" fill=\"{palette.TextMuted}\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\">V</text>");
 			}
 
 			if (options.ShowTrackStrip)
@@ -187,25 +193,26 @@ namespace Diamond.Controls.Rendering
 					AppendPkBandRect(
 						sb, trackStripX, stripW,
 						band.PkStart, band.PkEnd, pkMin, pkMax, plotTop, plotH, yScale,
-						TrackCountToColor(band.TrackCount),
-						trackTitle);
+						palette.MapUiColor(TrackCountToColor(band.TrackCount)),
+						trackTitle,
+						palette);
 					ti++;
 				}
 
 				sb.Append(CultureInfo.InvariantCulture,
-					$"<rect x=\"{trackStripX}\" y=\"{plotTop}\" width=\"{stripW}\" height=\"{plotH}\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"1\"/>");
+					$"<rect x=\"{trackStripX}\" y=\"{plotTop}\" width=\"{stripW}\" height=\"{plotH}\" fill=\"none\" stroke=\"{palette.StripBorder}\" stroke-width=\"1\"/>");
 				sb.Append(CultureInfo.InvariantCulture,
-					$"<text x=\"{trackStripX + stripW / 2}\" y=\"{plotTop - 8}\" fill=\"#94a3b8\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\">#</text>");
+					$"<text x=\"{trackStripX + stripW / 2}\" y=\"{plotTop - 8}\" fill=\"{palette.TextMuted}\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\">#</text>");
 			}
 
 			// —— Plot (fondo + clip) ——
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{plotLeft}\" y=\"{plotTop}\" width=\"{plotW}\" height=\"{plotH}\" fill=\"#1a2332\" stroke=\"#3d4f66\"/>");
+				$"<rect x=\"{plotLeft}\" y=\"{plotTop}\" width=\"{plotW}\" height=\"{plotH}\" fill=\"{palette.PlotBackground}\" stroke=\"{palette.PlotBorder}\"/>");
 
 			sb.Append(CultureInfo.InvariantCulture, $"<g clip-path=\"url(#{clipId})\">");
 
 			// Grid horario (según ventana visible)
-			DrawTimeGrid(sb, t0, t1, plotLeft, plotTop, plotW, plotH);
+			DrawTimeGrid(sb, t0, t1, plotLeft, plotTop, plotW, plotH, palette);
 
 			// Ocupaciones de cantón (costosas: se omiten en pan/zoom interactivo)
 			if (options.ShowCantonOccupations)
@@ -238,17 +245,18 @@ namespace Diamond.Controls.Rendering
 			// —— Regla de estaciones (fija a la izquierda; contenido según PK visible) ——
 			DrawStationRuler(
 				sb, view, pkMin, pkMax, plotLeft, plotTop, plotW, plotH, speedStripX, yScale,
-				drawLabels: options.ShowStationLabels && !options.ExternalStationColumn);
+				drawLabels: options.ShowStationLabels && !options.ExternalStationColumn,
+				palette);
 
 			// —— Regla de tiempo (fija abajo; contenido según tiempo visible) ——
-			DrawTimeRuler(sb, t0, t1, plotLeft, plotTop, plotW, plotH, height);
+			DrawTimeRuler(sb, t0, t1, plotLeft, plotTop, plotW, plotH, height, palette);
 
 			// Marcos plot encima del clip
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{plotLeft}\" y=\"{plotTop}\" width=\"{plotW}\" height=\"{plotH}\" fill=\"none\" stroke=\"#3d4f66\" stroke-width=\"1.2\"/>");
+				$"<rect x=\"{plotLeft}\" y=\"{plotTop}\" width=\"{plotW}\" height=\"{plotH}\" fill=\"none\" stroke=\"{palette.PlotBorder}\" stroke-width=\"1.2\"/>");
 
 			// Cabecera/badge del reloj actual (fuera del clip, encima del marco)
-			if (options.ShowNowLine && options.NowTime.HasValue)
+			if (options.ShowNowLine && options.NowTime.HasValue && !palette.IsPaper)
 			{
 				DrawNowLine(sb, options.NowTime.Value, t0, t1, plotLeft, plotTop, plotW, plotH, drawChrome: true);
 			}
@@ -256,7 +264,7 @@ namespace Diamond.Controls.Rendering
 			// Leyendas
 			if (options.ShowSpeedStrip)
 			{
-				DrawSpeedLegend(sb, speedsUsed, plotLeft + plotW - 8, plotTop + 8);
+				DrawSpeedLegend(sb, speedsUsed, plotLeft + plotW - 8, plotTop + 8, palette);
 			}
 
 			if (options.ShowTrackStrip)
@@ -267,7 +275,7 @@ namespace Diamond.Controls.Rendering
 					legendTop = plotTop + 8 + 12 + Math.Max(1, speedsUsed.Count) * 14 + 16;
 				}
 
-				DrawTrackLegend(sb, plotLeft + plotW - 8, legendTop);
+				DrawTrackLegend(sb, plotLeft + plotW - 8, legendTop, palette);
 			}
 
 			string title = "View " + view.Id + " · " + view.Name
@@ -276,11 +284,11 @@ namespace Diamond.Controls.Rendering
 				+ " · PK " + FormatPk(pkMin) + "–" + FormatPk(pkMax);
 
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<text x=\"{plotLeft}\" y=\"20\" fill=\"#e2e8f0\" font-size=\"13\" font-family=\"Segoe UI,sans-serif\">{Escape(title)}</text>");
+				$"<text x=\"{plotLeft}\" y=\"20\" fill=\"{palette.TextPrimary}\" font-size=\"13\" font-family=\"Segoe UI,sans-serif\">{Escape(title)}</text>");
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<text x=\"{(plotLeft + plotLeft + plotW) / 2}\" y=\"{height - 4}\" fill=\"#cbd5e1\" font-size=\"12\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\">Tiempo</text>");
+				$"<text x=\"{(plotLeft + plotLeft + plotW) / 2}\" y=\"{height - 4}\" fill=\"{palette.TextSecondary}\" font-size=\"12\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\">Tiempo</text>");
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<text x=\"12\" y=\"{plotTop + plotH / 2}\" fill=\"#cbd5e1\" font-size=\"12\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\" transform=\"rotate(-90 12,{plotTop + plotH / 2})\">Estaciones</text>");
+				$"<text x=\"12\" y=\"{plotTop + plotH / 2}\" fill=\"{palette.TextSecondary}\" font-size=\"12\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\" transform=\"rotate(-90 12,{plotTop + plotH / 2})\">Estaciones</text>");
 
 			return sb.ToString();
 		}
@@ -318,7 +326,8 @@ namespace Diamond.Controls.Rendering
 			double plotLeft,
 			double plotTop,
 			double plotW,
-			double plotH)
+			double plotH,
+			MeshSvgPalette palette)
 		{
 			double spanHours = (t1 - t0) / 3600.0;
 			double stepHours = ChooseTimeStepHours(spanHours);
@@ -331,7 +340,7 @@ namespace Diamond.Controls.Rendering
 				double x = plotLeft + (t - t0) / (t1 - t0) * plotW;
 				bool major = Math.Abs(t / 3600.0 - Math.Round(t / 3600.0)) < 1e-6
 					|| stepHours >= 1.0;
-				string stroke = major ? "#334155" : "#243041";
+				string stroke = major ? palette.GridMajor : palette.GridMinor;
 				sb.Append(CultureInfo.InvariantCulture,
 					$"<line x1=\"{x}\" y1=\"{plotTop}\" x2=\"{x}\" y2=\"{plotTop + plotH}\" stroke=\"{stroke}\" stroke-width=\"1\"/>");
 				t += stepSec;
@@ -441,11 +450,12 @@ namespace Diamond.Controls.Rendering
 			double plotTop,
 			double plotW,
 			double plotH,
-			int svgHeight)
+			int svgHeight,
+			MeshSvgPalette palette)
 		{
 			// Banda fija bajo el plot
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{plotLeft}\" y=\"{plotTop + plotH}\" width=\"{plotW}\" height=\"{MeshSvgLayout.MarginBottom - 4}\" fill=\"#0f1419\"/>");
+				$"<rect x=\"{plotLeft}\" y=\"{plotTop + plotH}\" width=\"{plotW}\" height=\"{MeshSvgLayout.MarginBottom - 4}\" fill=\"{palette.Background}\"/>");
 
 			double spanHours = (t1 - t0) / 3600.0;
 			double stepHours = ChooseTimeStepHours(spanHours);
@@ -459,9 +469,9 @@ namespace Diamond.Controls.Rendering
 				if (x >= plotLeft - 1 && x <= plotLeft + plotW + 1)
 				{
 					sb.Append(CultureInfo.InvariantCulture,
-						$"<line x1=\"{x}\" y1=\"{plotTop + plotH}\" x2=\"{x}\" y2=\"{plotTop + plotH + 6}\" stroke=\"#94a3b8\" stroke-width=\"1\"/>");
+						$"<line x1=\"{x}\" y1=\"{plotTop + plotH}\" x2=\"{x}\" y2=\"{plotTop + plotH + 6}\" stroke=\"{palette.AxisTick}\" stroke-width=\"1\"/>");
 					sb.Append(CultureInfo.InvariantCulture,
-						$"<text x=\"{x}\" y=\"{svgHeight - 14}\" fill=\"#9fb3c8\" font-size=\"11\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\">{FormatClock(TimeSpan.FromSeconds(t))}</text>");
+						$"<text x=\"{x}\" y=\"{svgHeight - 14}\" fill=\"{palette.TextClock}\" font-size=\"11\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\">{FormatClock(TimeSpan.FromSeconds(t))}</text>");
 				}
 
 				t += stepSec;
@@ -479,7 +489,8 @@ namespace Diamond.Controls.Rendering
 			double plotH,
 			double speedStripX,
 			MeshYScale yScale,
-			bool drawLabels)
+			bool drawLabels,
+			MeshSvgPalette palette)
 		{
 			IReadOnlyList<StationMark> stations = BuildStationMarks(view);
 			int mi = 0;
@@ -489,14 +500,14 @@ namespace Diamond.Controls.Rendering
 				if (mark.Pk >= pkMin && mark.Pk <= pkMax)
 				{
 					double y = PkToY(yScale, mark.Pk, plotTop, plotH);
-					string lineColor = mark.IsPrincipal ? "#475569" : "#2a3544";
+					string lineColor = mark.IsPrincipal ? palette.StationLinePrincipal : palette.StationLineHalt;
 					string dash = mark.IsPrincipal ? "none" : "3 3";
 					sb.Append(CultureInfo.InvariantCulture,
 						$"<line x1=\"{plotLeft}\" y1=\"{y}\" x2=\"{plotLeft + plotW}\" y2=\"{y}\" stroke=\"{lineColor}\" stroke-width=\"1\" stroke-dasharray=\"{dash}\"/>");
 
 					if (drawLabels)
 					{
-						string fill = mark.IsPrincipal ? "#e2e8f0" : "#94a3b8";
+						string fill = mark.IsPrincipal ? palette.TextPrimary : palette.TextMuted;
 						string fontWeight = mark.IsPrincipal ? "600" : "400";
 						sb.Append(CultureInfo.InvariantCulture,
 							$"<text x=\"{speedStripX - 6}\" y=\"{y + 3.5}\" fill=\"{fill}\" font-size=\"10\" font-weight=\"{fontWeight}\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"end\">{Escape(mark.Label)}</text>");
@@ -698,11 +709,11 @@ namespace Diamond.Controls.Rendering
 			// Un color por asimilación (mismo perfil de marcha → mismo color).
 			Dictionary<Asimilation, string> colorByAsim = BuildAsimilationColorMap(mesh);
 
-			// Etiquetas de número en una pasada posterior (encima de las polilíneas).
+			// Etiquetas de número en una pasada posterior (encima de las trazas).
 			List<NumberLabel> labels = new List<NumberLabel>();
 
 			// Circulación seleccionada: se dibuja al final (encima del resto).
-			string? selectedPoints = null;
+			string? selectedPath = null;
 			string? selectedColor = null;
 			string? selectedTip = null;
 
@@ -727,26 +738,32 @@ namespace Diamond.Controls.Rendering
 					continue;
 				}
 
+				MeshSvgPalette palette = options.Palette;
 				// Color del script (requisito) tiene prioridad sobre la paleta por asimilación.
 				string color;
 				if (c.HasColor)
 				{
-					color = c.Color;
+					color = palette.MapTrainColor(c.Color);
 				}
 				else if (!colorByAsim.TryGetValue(c.Asimilation, out color!))
 				{
-					color = "#94a3b8";
+					color = palette.DefaultTrain;
+				}
+				else
+				{
+					color = palette.MapTrainColor(color);
 				}
 
 				double labelX;
 				double labelY;
 				bool wantLabel = options.ShowTrainNumbers;
-				string points = BuildPolylinePoints(
+				// Spline Catmull-Rom centrípeta (Bezier SVG) con puntos clave en paradas.
+				string pathD = MeshTrainPathBuilder.BuildSvgPath(
 					c, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH, yScale,
 					options.MaxPolylineSamples,
 					wantLabel,
 					out labelX, out labelY);
-				if (points.Length > 0 || !double.IsNaN(labelX))
+				if (pathD.Length > 0 || !double.IsNaN(labelX))
 				{
 					string numberText = c.HasServiceNumber
 						? c.ServiceNumber
@@ -758,21 +775,21 @@ namespace Diamond.Controls.Rendering
 					bool selected = options.SelectedTechnicalId is not null
 						&& string.Equals(c.TechnicalId, options.SelectedTechnicalId, StringComparison.Ordinal);
 
-					if (options.ShowTrainPaths && points.Length > 0)
+					if (options.ShowTrainPaths && pathD.Length > 0)
 					{
 						if (selected)
 						{
-							selectedPoints = points;
+							selectedPath = pathD;
 							selectedColor = color;
 							selectedTip = tip + " · seleccionado";
 						}
 						else
 						{
 							sb.Append(CultureInfo.InvariantCulture,
-								$"<polyline fill=\"none\" stroke=\"{color}\" stroke-width=\"2\" points=\"{points}\">");
+								$"<path fill=\"none\" stroke=\"{color}\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"{pathD}\">");
 							sb.Append(CultureInfo.InvariantCulture,
 								$"<title>{Escape(tip)}</title>");
-							sb.Append("</polyline>");
+							sb.Append("</path>");
 						}
 
 						drawn++;
@@ -787,7 +804,7 @@ namespace Diamond.Controls.Rendering
 						&& c.HasServiceNumber
 						&& !double.IsNaN(labelX))
 					{
-						string labelColor = selected ? "#fef08a" : color;
+						string labelColor = selected ? options.Palette.SelectionLabel : color;
 						labels.Add(new NumberLabel(labelX, labelY, numberText, labelColor));
 					}
 				}
@@ -796,21 +813,22 @@ namespace Diamond.Controls.Rendering
 			}
 
 			if (options.ShowTrainPaths
-				&& selectedPoints is not null
+				&& selectedPath is not null
 				&& selectedColor is not null)
 			{
+				MeshSvgPalette palette = options.Palette;
 				sb.Append(CultureInfo.InvariantCulture,
-					$"<polyline fill=\"none\" stroke=\"#fef08a\" stroke-width=\"7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" opacity=\"0.9\" points=\"{selectedPoints}\" pointer-events=\"none\"/>");
+					$"<path fill=\"none\" stroke=\"{palette.SelectionHalo}\" stroke-width=\"7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" opacity=\"0.9\" d=\"{selectedPath}\" pointer-events=\"none\"/>");
 				sb.Append(CultureInfo.InvariantCulture,
-					$"<polyline fill=\"none\" stroke=\"{selectedColor}\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" points=\"{selectedPoints}\">");
+					$"<path fill=\"none\" stroke=\"{selectedColor}\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"{selectedPath}\">");
 				sb.Append(CultureInfo.InvariantCulture,
 					$"<title>{Escape(selectedTip ?? string.Empty)}</title>");
-				sb.Append("</polyline>");
+				sb.Append("</path>");
 			}
 
 			if (options.ShowTrainNumbers)
 			{
-				AppendTrainNumberLabels(sb, labels);
+				AppendTrainNumberLabels(sb, labels, options.Palette);
 			}
 
 			return drawn;
@@ -820,7 +838,7 @@ namespace Diamond.Controls.Rendering
 		/// Dibuja números de tren con culling espacial barato (rejilla ~40 px) para no
 		/// saturar el SVG cuando hay muchas circulaciones en la ventana.
 		/// </summary>
-		private static void AppendTrainNumberLabels(StringBuilder sb, List<NumberLabel> labels)
+		private static void AppendTrainNumberLabels(StringBuilder sb, List<NumberLabel> labels, MeshSvgPalette palette)
 		{
 			if (labels.Count == 0)
 			{
@@ -844,7 +862,7 @@ namespace Diamond.Controls.Rendering
 
 				// Halo ligero (stroke 2) en lugar de 3: suficiente legibilidad, menos coste de paint.
 				sb.Append(CultureInfo.InvariantCulture,
-					$"<text x=\"{lab.X.ToString("0.#", CultureInfo.InvariantCulture)}\" y=\"{lab.Y.ToString("0.#", CultureInfo.InvariantCulture)}\" fill=\"{lab.Color}\" stroke=\"#0f1419\" stroke-width=\"2\" paint-order=\"stroke fill\" font-size=\"11\" font-weight=\"700\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\" dominant-baseline=\"middle\">{Escape(lab.Text)}</text>");
+					$"<text x=\"{lab.X.ToString("0.#", CultureInfo.InvariantCulture)}\" y=\"{lab.Y.ToString("0.#", CultureInfo.InvariantCulture)}\" fill=\"{lab.Color}\" stroke=\"{palette.LabelHalo}\" stroke-width=\"2\" paint-order=\"stroke fill\" font-size=\"11\" font-weight=\"700\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\" dominant-baseline=\"middle\">{Escape(lab.Text)}</text>");
 				li++;
 			}
 		}
@@ -943,7 +961,8 @@ namespace Diamond.Controls.Rendering
 			double plotH,
 			MeshYScale yScale,
 			string color,
-			string title)
+			string title,
+			MeshSvgPalette palette)
 		{
 			// Intersección con ventana visible
 			long a = Math.Max(pkStart, pkMin);
@@ -963,7 +982,7 @@ namespace Diamond.Controls.Rendering
 			}
 
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{x}\" y=\"{y}\" width=\"{width}\" height=\"{h}\" fill=\"{color}\" stroke=\"#0f1419\" stroke-width=\"0.35\">");
+				$"<rect x=\"{x}\" y=\"{y}\" width=\"{width}\" height=\"{h}\" fill=\"{color}\" stroke=\"{palette.BandStroke}\" stroke-width=\"0.35\">");
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<title>{Escape(title)}</title>");
 			sb.Append("</rect>");
@@ -1064,7 +1083,7 @@ namespace Diamond.Controls.Rendering
 			return step < 5L ? 5L : step;
 		}
 
-		private static void DrawSpeedLegend(StringBuilder sb, SortedSet<int> speeds, double rightX, double topY)
+		private static void DrawSpeedLegend(StringBuilder sb, SortedSet<int> speeds, double rightX, double topY, MeshSvgPalette palette)
 		{
 			if (speeds.Count == 0)
 			{
@@ -1078,44 +1097,46 @@ namespace Diamond.Controls.Rendering
 			double boxH = pad + headerH + speeds.Count * rowH + pad;
 			double boxX = rightX - boxW;
 			double boxY = topY;
+			string boxOpacity = palette.IsPaper ? "0.96" : "0.88";
 
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{boxX}\" y=\"{boxY}\" width=\"{boxW}\" height=\"{boxH}\" rx=\"3\" fill=\"#0f1419\" fill-opacity=\"0.88\" stroke=\"#475569\"/>");
+				$"<rect x=\"{boxX}\" y=\"{boxY}\" width=\"{boxW}\" height=\"{boxH}\" rx=\"3\" fill=\"{palette.LegendBoxFill}\" fill-opacity=\"{boxOpacity}\" stroke=\"{palette.LegendBoxStroke}\"/>");
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<text x=\"{boxX + pad}\" y=\"{boxY + pad + 9}\" fill=\"#94a3b8\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\">V (km/h)</text>");
+				$"<text x=\"{boxX + pad}\" y=\"{boxY + pad + 9}\" fill=\"{palette.TextMuted}\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\">V (km/h)</text>");
 
 			int row = 0;
 			foreach (int speed in speeds)
 			{
 				double y = boxY + pad + headerH + row * rowH + 10;
 				sb.Append(CultureInfo.InvariantCulture,
-					$"<rect x=\"{boxX + pad}\" y=\"{y - 8}\" width=\"10\" height=\"10\" rx=\"1\" fill=\"{SpeedToColor(speed)}\" stroke=\"#1e293b\"/>");
+					$"<rect x=\"{boxX + pad}\" y=\"{y - 8}\" width=\"10\" height=\"10\" rx=\"1\" fill=\"{palette.MapUiColor(SpeedToColor(speed))}\" stroke=\"{palette.LegendBoxStroke}\"/>");
 				sb.Append(CultureInfo.InvariantCulture,
-					$"<text x=\"{boxX + pad + 14}\" y=\"{y}\" fill=\"#e2e8f0\" font-size=\"10\" font-family=\"Segoe UI,sans-serif\">{speed}</text>");
+					$"<text x=\"{boxX + pad + 14}\" y=\"{y}\" fill=\"{palette.TextPrimary}\" font-size=\"10\" font-family=\"Segoe UI,sans-serif\">{speed}</text>");
 				row++;
 			}
 		}
 
-		private static void DrawTrackLegend(StringBuilder sb, double rightX, double topY)
+		private static void DrawTrackLegend(StringBuilder sb, double rightX, double topY, MeshSvgPalette palette)
 		{
 			double boxW = 78;
 			double boxH = 44;
 			double pad = 6;
 			double boxX = rightX - boxW;
 			double boxY = topY;
+			string boxOpacity = palette.IsPaper ? "0.96" : "0.88";
 
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{boxX}\" y=\"{boxY}\" width=\"{boxW}\" height=\"{boxH}\" rx=\"3\" fill=\"#0f1419\" fill-opacity=\"0.88\" stroke=\"#475569\"/>");
+				$"<rect x=\"{boxX}\" y=\"{boxY}\" width=\"{boxW}\" height=\"{boxH}\" rx=\"3\" fill=\"{palette.LegendBoxFill}\" fill-opacity=\"{boxOpacity}\" stroke=\"{palette.LegendBoxStroke}\"/>");
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<text x=\"{boxX + pad}\" y=\"{boxY + pad + 9}\" fill=\"#94a3b8\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\">Vías</text>");
+				$"<text x=\"{boxX + pad}\" y=\"{boxY + pad + 9}\" fill=\"{palette.TextMuted}\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\">Vías</text>");
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{boxX + pad}\" y=\"{boxY + 20}\" width=\"10\" height=\"10\" rx=\"1\" fill=\"{TrackCountToColor(1)}\" stroke=\"#1e293b\"/>");
+				$"<rect x=\"{boxX + pad}\" y=\"{boxY + 20}\" width=\"10\" height=\"10\" rx=\"1\" fill=\"{palette.MapUiColor(TrackCountToColor(1))}\" stroke=\"{palette.LegendBoxStroke}\"/>");
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<text x=\"{boxX + pad + 14}\" y=\"{boxY + 28}\" fill=\"#e2e8f0\" font-size=\"10\" font-family=\"Segoe UI,sans-serif\">única</text>");
+				$"<text x=\"{boxX + pad + 14}\" y=\"{boxY + 28}\" fill=\"{palette.TextPrimary}\" font-size=\"10\" font-family=\"Segoe UI,sans-serif\">única</text>");
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{boxX + pad}\" y=\"{boxY + 32}\" width=\"10\" height=\"10\" rx=\"1\" fill=\"{TrackCountToColor(2)}\" stroke=\"#1e293b\"/>");
+				$"<rect x=\"{boxX + pad}\" y=\"{boxY + 32}\" width=\"10\" height=\"10\" rx=\"1\" fill=\"{palette.MapUiColor(TrackCountToColor(2))}\" stroke=\"{palette.LegendBoxStroke}\"/>");
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<text x=\"{boxX + pad + 14}\" y=\"{boxY + 40}\" fill=\"#e2e8f0\" font-size=\"10\" font-family=\"Segoe UI,sans-serif\">doble</text>");
+				$"<text x=\"{boxX + pad + 14}\" y=\"{boxY + 40}\" fill=\"{palette.TextPrimary}\" font-size=\"10\" font-family=\"Segoe UI,sans-serif\">doble</text>");
 		}
 
 		private static string SpeedToColor(int speedKmh)
@@ -1213,155 +1234,6 @@ namespace Diamond.Controls.Rendering
 			}
 
 			return station.Id;
-		}
-
-		/// <summary>
-		/// Construye la polilínea muestreando el tramo temporal de la ventana (con un margen)
-		/// y un presupuesto de muestras acotado por píxeles. Los puntos pueden caer fuera del
-		/// recuadro PK/tiempo: el <c>clipPath</c> del plot recorta; así los segmentos que
-		/// cruzan el borde superior/inferior/lateral llegan al límite en lugar de quedar cortados.
-		/// La etiqueta usa el punto medio solo de muestras interiores.
-		/// </summary>
-		private static string BuildPolylinePoints(
-			Circulation c,
-			RouteView displayView,
-			long pkMin,
-			long pkMax,
-			double t0,
-			double t1,
-			double plotLeft,
-			double plotTop,
-			double plotW,
-			double plotH,
-			MeshYScale yScale,
-			int maxSamples,
-			bool wantLabel,
-			out double labelX,
-			out double labelY)
-		{
-			labelX = double.NaN;
-			labelY = double.NaN;
-
-			Asimilation asim = c.Asimilation;
-			double tripSec = asim.TotalTime.TotalSeconds;
-			if (tripSec <= 0.0)
-			{
-				return string.Empty;
-			}
-
-			double depSec = c.Departure.TotalSeconds;
-			double timeSpanSec = t1 - t0;
-			if (timeSpanSec < 1.0)
-			{
-				timeSpanSec = 1.0;
-			}
-
-			// Margen temporal (~2 % o 30 s) para que el clip lateral no deje el trazo a medias.
-			double timeMarginSec = timeSpanSec * 0.02;
-			if (timeMarginSec < 30.0)
-			{
-				timeMarginSec = 30.0;
-			}
-
-			if (timeMarginSec > timeSpanSec * 0.15)
-			{
-				timeMarginSec = timeSpanSec * 0.15;
-			}
-
-			double relStart = (t0 - timeMarginSec) - depSec;
-			double relEnd = (t1 + timeMarginSec) - depSec;
-			if (relStart < 0.0)
-			{
-				relStart = 0.0;
-			}
-
-			if (relEnd > tripSec)
-			{
-				relEnd = tripSec;
-			}
-
-			if (relEnd < relStart)
-			{
-				return string.Empty;
-			}
-
-			// Presupuesto: ~1 muestra cada ~10 px de anchura estimada de la traza en pantalla.
-			double sampleTimeSec = relEnd - relStart;
-			double approxWidthPx = (sampleTimeSec / timeSpanSec) * plotW;
-			int steps = (int)Math.Ceiling(approxWidthPx / 10.0);
-			if (steps < 12)
-			{
-				steps = 12;
-			}
-
-			if (steps > maxSamples)
-			{
-				steps = maxSamples;
-			}
-
-			StringBuilder pts = new StringBuilder(steps * 14);
-			int interiorCount = 0;
-			double firstInteriorX = 0.0;
-			double firstInteriorY = 0.0;
-			double lastInteriorX = 0.0;
-			double lastInteriorY = 0.0;
-			int emitted = 0;
-
-			int s = 0;
-			while (s <= steps)
-			{
-				double u = (double)s / steps;
-				double relSec = relStart + (relEnd - relStart) * u;
-				long asimPk = asim.PKByTime(TimeSpan.FromSeconds(relSec));
-				// Proyectar al PK de la vista del diagrama (mismo corredor, inverso o tramo común).
-				long pk;
-				if (!displayView.TryMapRoutePkFrom(asim.View, asimPk, out pk))
-				{
-					// Fuera del corredor de la vista (p. ej. T3 más allá de Enllaç en T3+T2).
-					s++;
-					continue;
-				}
-
-				double absSec = depSec + relSec;
-				double x = plotLeft + (absSec - t0) / timeSpanSec * plotW;
-				// Y puede quedar fuera del plot (pk fuera de [pkMin,pkMax]): el clip cierra el trazo al borde.
-				double y = PkToY(yScale, pk, plotTop, plotH);
-
-				if (emitted > 0)
-				{
-					pts.Append(' ');
-				}
-
-				pts.Append(x.ToString("0.#", CultureInfo.InvariantCulture));
-				pts.Append(',');
-				pts.Append(y.ToString("0.#", CultureInfo.InvariantCulture));
-				emitted++;
-
-				// Etiqueta solo con muestras en el interior del plot.
-				bool interior = absSec >= t0 && absSec <= t1 && pk >= pkMin && pk <= pkMax;
-				if (interior)
-				{
-					if (interiorCount == 0)
-					{
-						firstInteriorX = x;
-						firstInteriorY = y;
-					}
-
-					lastInteriorX = x;
-					lastInteriorY = y;
-					interiorCount++;
-				}
-
-				s++;
-			}
-
-			if (wantLabel && interiorCount > 0)
-			{
-				labelX = (firstInteriorX + lastInteriorX) * 0.5;
-				labelY = (firstInteriorY + lastInteriorY) * 0.5;
-			}
-
-			return emitted > 0 ? pts.ToString() : string.Empty;
 		}
 
 		private static string FormatPk(long pk)

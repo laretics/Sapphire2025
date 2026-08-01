@@ -659,6 +659,7 @@ namespace Diamond.Controls.Rendering
 				RouteLeg leg = view.Legs[li];
 				CollectSpeedMap(view, leg.Axis, leg.Axis.FixedLimits, lo, hi, set);
 				CollectSpeedMap(view, leg.Axis, leg.Axis.TemporaryLimits, lo, hi, set);
+				CollectSpeedMap(view, leg.Axis, leg.Axis.SessionLimits, lo, hi, set);
 				li++;
 			}
 		}

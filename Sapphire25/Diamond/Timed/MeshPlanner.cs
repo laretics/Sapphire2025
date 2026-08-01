@@ -55,6 +55,9 @@ namespace Diamond.Timed
 				return mesh;
 			}
 
+			// Capas de sesión del script (vía simple / límites): condicionan cinemática y conflictos.
+			mvarPlan.ApplyTopoSessionOverlays();
+
 			if (mvarPlan.Demand.Count == 0 && mvarPlan.Deletes.Count == 0)
 			{
 				mesh.AddWarning("[" + dayTag + "] No hay requisitos de demanda que planificar.");
@@ -449,7 +452,10 @@ namespace Diamond.Timed
 			int safety = 0;
 			const int maxAttempts = 10000;
 
-			while (cursor + asim.TotalTime <= windowEnd + Epsilon && safety < maxAttempts)
+			// Ventana de SALIDAS [windowStart, windowEnd) — coherente con CountDesiredTrips.
+			// No exigir que la llegada caiga dentro de la ventana: con `stops` un PMI→MAN
+			// supera 1 h y `06:00` (= 06:00–07:00) debe poder sacar el tren a las 06:00.
+			while (cursor < windowEnd && safety < maxAttempts)
 			{
 				safety++;
 				TimeSpan dep = cursor;
@@ -495,9 +501,19 @@ namespace Diamond.Timed
 
 			if (placedDeps.Count == 0)
 			{
+				string extra = string.Empty;
+				if (asim.TotalTime > windowEnd - windowStart)
+				{
+					extra = " (el trayecto dura " + FormatHeadway(asim.TotalTime)
+						+ "; la ventana " + FormatTime(windowStart) + "–" + FormatTime(windowEnd)
+						+ " solo limita la hora de salida).";
+				}
+
 				mesh.AddError(Tag(
 					dayTag,
-					"Requisito " + demand.Id + " (" + job.Label + "): no se pudo programar ninguna circulación factible."));
+					"Requisito " + demand.Id + " (" + job.Label
+					+ "): no se pudo programar ninguna circulación en la ventana de salidas."
+					+ extra));
 			}
 		}
 

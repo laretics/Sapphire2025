@@ -222,6 +222,7 @@ namespace Diamond.Controls.Rendering
 				RouteLeg leg = view.Legs[li];
 				CollectSpeedFrontiers(view, leg.Axis, leg.Axis.FixedLimits, pkMin, pkMax, set);
 				CollectSpeedFrontiers(view, leg.Axis, leg.Axis.TemporaryLimits, pkMin, pkMax, set);
+				CollectSpeedFrontiers(view, leg.Axis, leg.Axis.SessionLimits, pkMin, pkMax, set);
 				li++;
 			}
 

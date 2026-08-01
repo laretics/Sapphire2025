@@ -73,6 +73,13 @@
 				</button>
 				<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearSelection" title="Quitar selección">×</button>
 			}
+			<button type="button"
+					class="btn btn-sm btn-outline-light"
+					title="Imprimir la ventana actual (A3 apaisado, tema papel)"
+					disabled="@(Mesh is null || View is null)"
+					@onclick="OpenPrintPreview">
+				Imprimir
+			</button>
 			<span class="badge bg-dark text-light border">
 				@FormatClock(mvarViewT0)–@FormatClock(mvarViewT1)
 				· @FormatPkShort(mvarViewPkMin)–@FormatPkShort(mvarViewPkMax)
@@ -95,7 +102,8 @@
 							  PlotTop="MeshSvgLayout.PlotTop"
 							  PlotHeight="MeshSvgLayout.PlotHeight(Height)"
 							  Side="StationRulerSide.Left"
-							  YScaleMode="mvarYScaleMode" />
+							  YScaleMode="mvarYScaleMode"
+							  SelectedCirculation="SelectedCirculation" />
 				<div @ref="mvarPlotHost"
 					 class="diamond-mesh-plot-host @(mvarPanning ? "diamond-mesh-dragging" : null)"
 					 @onpointerdown="OnPointerDown"
@@ -122,7 +130,8 @@
 								  PlotTop="MeshSvgLayout.PlotTop"
 								  PlotHeight="MeshSvgLayout.PlotHeight(Height)"
 								  Side="StationRulerSide.Right"
-								  YScaleMode="mvarYScaleMode" />
+								  YScaleMode="mvarYScaleMode"
+								  SelectedCirculation="SelectedCirculation" />
 				}
 			</div>
 		</div>
@@ -141,6 +150,13 @@
 							  MaxFrontiersPerPage="MaxFrontiersPerPage"
 							  OnClose="CloseCirculationSheet" />
 	}
+
+	<MeshPrintView @ref="mvarPrintView"
+				   Mesh="Mesh"
+				   View="View"
+				   PlanName="PlanName"
+				   PlanningDay="PlanningDay"
+				   Notes="PrintNotes" />
 </div>
 
 @code {
@@ -193,6 +209,18 @@
 	[Parameter]
 	public int MaxFrontiersPerPage { get; set; } = CirculationSheetPager.DefaultMaxFrontiersPerPage;
 
+	/// <summary>Nombre del plan (carátula de impresión).</summary>
+	[Parameter]
+	public string PlanName { get; set; } = string.Empty;
+
+	/// <summary>Día de planificación mostrado (carátula).</summary>
+	[Parameter]
+	public DayOfWeek? PlanningDay { get; set; }
+
+	/// <summary>Notas opcionales en la carátula de impresión.</summary>
+	[Parameter]
+	public string? PrintNotes { get; set; }
+
 	/// <summary>Ancho lógico del SVG del plot (sin columnas de estaciones).</summary>
 	private int PlotSvgWidth
 	{
@@ -225,6 +253,7 @@
 	}
 
 	private string mvarSvgContent = string.Empty;
+	private MeshPrintView? mvarPrintView;
 	private TimeSpan mvarViewT0 = TimeSpan.FromHours(6);
 	private TimeSpan mvarViewT1 = TimeSpan.FromHours(14);
 	private long mvarViewPkMin;
@@ -502,7 +531,7 @@
 			showTrackStrip: mvarShowTrackStrip,
 			showNowLine: mvarShowNowLine,
 			nowTime: mvarShowNowLine ? mvarClockNow : null,
-			maxPolylineSamples: interactive ? 16 : 48,
+			maxPolylineSamples: interactive ? 32 : 96,
 			showStationLabels: false,
 			externalStationColumn: true,
 			yScaleMode: mvarYScaleMode,
@@ -833,6 +862,38 @@
 		}
 
 		mvarShowSheet = true;
+	}
+
+	private void OpenPrintPreview()
+	{
+		if (Mesh is null || View is null || mvarPrintView is null)
+		{
+			return;
+		}
+
+		ClampView();
+		MeshSvgDrawOptions screenOptions = MeshSvgDrawOptions.Create(
+			showCantonOccupations: mvarShowOccupations,
+			showTrainPaths: mvarShowTrainPaths,
+			showTrainNumbers: mvarShowTrainNumbers,
+			showConflicts: mvarShowConflicts,
+			showSpeedStrip: mvarShowSpeedStrip,
+			showTrackStrip: mvarShowTrackStrip,
+			showNowLine: false,
+			nowTime: null,
+			maxPolylineSamples: 96,
+			showStationLabels: false,
+			externalStationColumn: true,
+			yScaleMode: mvarYScaleMode,
+			selectedTechnicalId: null);
+
+		mvarPrintView.Open(
+			mvarViewT0,
+			mvarViewT1,
+			mvarViewPkMin,
+			mvarViewPkMax,
+			screenOptions,
+			mvarYScaleMode);
 	}
 
 	private void CloseCirculationSheet()

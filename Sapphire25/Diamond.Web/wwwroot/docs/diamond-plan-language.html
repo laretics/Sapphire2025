@@ -183,6 +183,7 @@
       <a href="#color">Color (color)</a>
       <a href="#regions">Regiones (with/days/color)</a>
       <a href="#delete">Borrado (delete)</a>
+      <a href="#topo-session">Topo de sesión (single/limit)</a>
       <div class="sec">Planificación</div>
       <a href="#semantics">Semántica del motor</a>
       <a href="#numbering">Numeración SFM</a>
@@ -232,6 +233,10 @@
 <pre><span class="c"># Comentario hasta fin de línea</span>
 <span class="k">plan</span> <span class="s">"nombre del plan"</span>
 
+<span class="c"># Restricciones de topología de sesión (no editan el XML base)</span>
+<span class="k">single track</span> Enllaç <span class="p">-&gt;</span> Manacor
+<span class="k">limit</span> <span class="n">60</span> Petra <span class="p">-&gt;</span> Manacor
+
 <span class="k">days</span> lab
   <span class="k">color</span> <span class="n">#38bdf8</span>
     <span class="k">require</span>|<span class="k">req</span> [<span class="k">both</span> [<span class="k">ways</span>]] [&lt;frecuencia&gt;] &lt;origen&gt; <span class="p">-&gt;</span> &lt;destino&gt;
@@ -250,6 +255,7 @@
           <tr><td><code>require</code> / <code>req</code></td><td>Un requisito de servicio (genera una o dos series de circulaciones). <code>req</code> es alias corto de <code>require</code>.</td></tr>
           <tr><td>Regiones de definición</td><td><code>days</code>, <code>color</code> (o <code>with</code>/<code>con</code>/<code>region</code> …): valores heredados por los <code>require</code> más indentados.</td></tr>
           <tr><td><code>delete</code> / <code>del</code></td><td>Tras planificar lo anterior: elimina circulaciones en una franja (opcional <code>all</code> = solape de trayecto).</td></tr>
+          <tr><td><code>single</code> / <code>tracks</code> / <code>limit</code> / <code>vmax</code></td><td>Restricciones de <strong>topología de sesión</strong>: vía simple/doble y límites de velocidad sobre la topo base, solo para esta malla.</td></tr>
           <tr><td>Continuaciones de require</td><td><code>stops</code>, <code>skip</code>, <code>dwell</code>, <code>cross</code>, <code>days</code>, <code>color</code> (solo ese requisito; gana a la región).</td></tr>
           <tr><td>Tokens entre comillas</td><td>Nombres con espacios: <code>"Sant Joan"</code>.</td></tr>
         </tbody>
@@ -683,7 +689,80 @@
 <span class="k">require every</span> <span class="n">1440 min</span> SPB <span class="p">-&gt;</span> INC <span class="n">22:30-23:30</span> <span class="k">as</span> R-70-vuelta
   <span class="k">days</span> lab</pre>
 
-      <h2 id="inverse">20. Importación desde rauta (compilador inverso)</h2>
+      <h2 id="topo-session">20. Topología de sesión (<code>single</code> / <code>tracks</code> / <code>limit</code> / <code>vmax</code>)</h2>
+      <p>
+        Para mallas <strong>custom</strong> puedes declarar tramos de vía simple y limitaciones
+        de velocidad <em>sin editar el XML de topología</em>. Se aplican como
+        <strong>capas de sesión</strong> sobre el layout cargado: condicionan la cinemática
+        (asimilaciones) y los conflictos de cantón/cruce de la misma compilación, y se
+        limpian al recompilar el script.
+      </p>
+      <div class="note">
+        La topo base (fijas, spans de vías del XML / demo) <strong>no se modifica</strong>.
+        Internamente se usan <code>Axis.SessionTrackSpans</code> y <code>Axis.SessionLimits</code>.
+      </div>
+
+      <h3>Vías</h3>
+      <table>
+        <thead><tr><th>Sintaxis</th><th>Significado</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>single track A -&gt; B</code></td>
+            <td>Vía única (1 vía) entre las estaciones A y B (orden indiferente).</td>
+          </tr>
+          <tr>
+            <td><code>single A -&gt; B</code> · <code>via simple A -&gt; B</code></td>
+            <td>Alias de vía única.</td>
+          </tr>
+          <tr>
+            <td><code>tracks N A -&gt; B</code></td>
+            <td>Fija N vías en el tramo (N ≥ 1). Útil para forzar doble vía en un escenario what-if.</td>
+          </tr>
+          <tr>
+            <td><code>… on T3</code></td>
+            <td>Opcional: eje concreto cuando ambas estaciones existen en varios ejes.</td>
+          </tr>
+        </tbody>
+      </table>
+<pre><span class="c"># Escenario: obras entre Enllaç y Manacor → vía simple de sesión</span>
+<span class="k">single track</span> Enllaç <span class="p">-&gt;</span> MAN
+<span class="k">req both ways every</span> <span class="n">40 min</span> PMI <span class="p">-&gt;</span> MAN <span class="n">06:00-22:00</span> <span class="k">as</span> R-lab
+  <span class="k">stops</span> 30s
+  <span class="k">days</span> lab</pre>
+
+      <h3>Limitaciones de velocidad</h3>
+      <table>
+        <thead><tr><th>Sintaxis</th><th>Significado</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>limit 60 A -&gt; B</code></td>
+            <td>Máximo 60 km/h en el tramo (la más restrictiva gana frente a fijas/temporales).</td>
+          </tr>
+          <tr>
+            <td><code>limit 60 km/h A -&gt; B</code></td>
+            <td>Igual; unidad opcional (<code>km/h</code>, <code>kmh</code>, <code>kph</code>).</td>
+          </tr>
+          <tr>
+            <td><code>vmax 80 A -&gt; B</code></td>
+            <td>Alias de <code>limit</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+<pre><span class="k">limit</span> <span class="n">40</span> Petra <span class="p">-&gt;</span> Manacor
+<span class="k">vmax</span> <span class="n">80</span> INC <span class="p">-&gt;</span> Enllaç <span class="k">on</span> T3</pre>
+      <p>
+        Las estaciones se resuelven igual que en <code>require</code> (AVR, id, nombre).
+        El tramo es el intervalo de PK entre ambas en un eje común (semiabierto, inclusivo
+        en la práctica en los extremos de estación). Si hay varios ejes candidatos y no
+        indicas <code>on</code>, se elige de forma determinista (id de eje menor).
+      </p>
+      <div class="note warn">
+        Las directivas son de <strong>nivel raíz</strong> (no van indentadas bajo un
+        <code>require</code>). Al pulsar Aplicar/Regenerar se recalculan; un script sin
+        <code>single</code>/<code>limit</code> deja la topo efectiva igual que la base.
+      </div>
+
+      <h2 id="inverse">21. Importación desde rauta (compilador inverso)</h2>
       <p>
         Diamond puede inferir un <strong>borrador</strong> de script a partir de una malla rauta
         Onice + catálogo de asimilaciones del topo:
@@ -701,17 +780,21 @@
         clon 1:1 de las horas rauta.
       </div>
 
-      <h2 id="tips">21. Consejos prácticos</h2>
+      <h2 id="tips">22. Consejos prácticos</h2>
       <ul>
         <li>Usa <strong>AVR</strong> estables (<code>PMI</code>, <code>MAN</code>) en lugar de nombres largos.</li>
         <li>Pon <code>days lab</code> / <code>days fes</code> en productos distintos; filtra el día en la UI.</li>
         <li>Para multi-eje, elige la <em>View</em> correcta en la malla (p. ej. <code>T3+T2</code> para Palma–SPB).</li>
         <li>Si ves muchos rectángulos rojos, revisa cadencia y vía única; el motor no “empuja” trenes para evitar el choque.</li>
         <li>Los ids <code>as R-…</code> ayudan a leer errores y numeración en depuración.</li>
+        <li>Para escenarios what-if (obras, vía simple temporal), usa <code>single track</code> / <code>limit</code> en el script en lugar de tocar el topo XML.</li>
       </ul>
 
-      <h2 id="ref-quick">22. Chuleta rápida</h2>
+      <h2 id="ref-quick">23. Chuleta rápida</h2>
 <pre><span class="k">plan</span> <span class="s">"…"</span>
+<span class="k">single track</span> A <span class="p">-&gt;</span> B [<span class="k">on</span> EJE]
+<span class="k">tracks</span> N A <span class="p">-&gt;</span> B
+<span class="k">limit</span>|<span class="k">vmax</span> V [km/h] A <span class="p">-&gt;</span> B
 <span class="k">require</span>|<span class="k">req</span> [<span class="k">both ways</span>] [<span class="n">N/h</span> | <span class="n">every N min</span>]  ORIGEN <span class="p">-&gt;</span> DESTINO  [HH:MM-HH:MM]  [<span class="k">using</span> flota]  [<span class="k">as</span> id]
   <span class="k">days</span> lab|fes|all|lun-vie|…
   <span class="k">stops</span> 30s|1min
@@ -722,7 +805,7 @@
       <footer>
         Documento generado para el proyecto <strong>Diamond</strong> (Sapphire25).
         Implementación de referencia: <code>Diamond.Timed.DemandScriptParser</code>,
-        <code>MeshPlanner</code>, <code>TrainNumbering</code>.
+        <code>DemandTopoOverlay</code>, <code>MeshPlanner</code>, <code>TrainNumbering</code>.
         · Archivo: <code>wwwroot/docs/diamond-plan-language.html</code>
       </footer>
     </main>

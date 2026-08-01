@@ -63,8 +63,8 @@ namespace Diamond.Controls.Rendering
 			Circulation? best = null;
 			double bestDistSq = maxDistSq;
 
-			// Muestreo denso para el hit-test (independiente del LOD de dibujo).
-			int samples = 40;
+			// Mismos puntos de control que el dibujo (spline), suficientes para el hit-test.
+			const int hitSamples = 64;
 			int ci = 0;
 			while (ci < mesh.Circulations.Count)
 			{
@@ -86,7 +86,7 @@ namespace Diamond.Controls.Rendering
 				double distSq = MinDistanceSquaredToPath(
 					c, view, pkMin, pkMax, t0, t1,
 					plotLeft, plotTop, plotW, plotH, yScale,
-					svgX, svgY, samples);
+					svgX, svgY, hitSamples);
 
 				if (distSq < bestDistSq)
 				{
@@ -116,100 +116,54 @@ namespace Diamond.Controls.Rendering
 			double py,
 			int maxSamples)
 		{
-			Asimilation asim = c.Asimilation;
-			double tripSec = asim.TotalTime.TotalSeconds;
-			if (tripSec <= 0.0)
+			// Reutiliza el muestreo de la spline (paradas + relleno); hit-test por aristas
+			// entre puntos de control (aproximación fiel y barata de la cúbica).
+			List<MeshTrainPathBuilder.Point> points = MeshTrainPathBuilder.CollectControlPoints(
+				c,
+				displayView,
+				pkMin,
+				pkMax,
+				t0,
+				t1,
+				plotLeft,
+				plotTop,
+				plotW,
+				plotH,
+				yScale,
+				maxSamples,
+				wantLabel: false,
+				out _,
+				out _);
+
+			if (points.Count == 0)
 			{
 				return double.PositiveInfinity;
-			}
-
-			double depSec = c.Departure.TotalSeconds;
-			double timeSpanSec = t1 - t0;
-			if (timeSpanSec < 1.0)
-			{
-				timeSpanSec = 1.0;
-			}
-
-			// Misma ventana temporal que el render (con margen ligero).
-			double timeMarginSec = timeSpanSec * 0.02;
-			if (timeMarginSec < 30.0)
-			{
-				timeMarginSec = 30.0;
-			}
-
-			if (timeMarginSec > timeSpanSec * 0.15)
-			{
-				timeMarginSec = timeSpanSec * 0.15;
-			}
-
-			double relStart = (t0 - timeMarginSec) - depSec;
-			double relEnd = (t1 + timeMarginSec) - depSec;
-			if (relStart < 0.0)
-			{
-				relStart = 0.0;
-			}
-
-			if (relEnd > tripSec)
-			{
-				relEnd = tripSec;
-			}
-
-			if (relEnd < relStart)
-			{
-				return double.PositiveInfinity;
-			}
-
-			int steps = maxSamples;
-			if (steps < 12)
-			{
-				steps = 12;
 			}
 
 			double minDistSq = double.PositiveInfinity;
-			bool hasPrev = false;
-			double prevX = 0.0;
-			double prevY = 0.0;
-
-			int s = 0;
-			while (s <= steps)
+			int i = 0;
+			while (i < points.Count)
 			{
-				double u = (double)s / steps;
-				double relSec = relStart + (relEnd - relStart) * u;
-				long asimPk = asim.PKByTime(TimeSpan.FromSeconds(relSec));
-				long pk;
-				if (!displayView.TryMapRoutePkFrom(asim.View, asimPk, out pk))
-				{
-					hasPrev = false;
-					s++;
-					continue;
-				}
-
-				double absSec = depSec + relSec;
-				double x = plotLeft + (absSec - t0) / timeSpanSec * plotW;
-				double y = yScale.PkToY(pk, plotTop, plotH);
-
-				// Distancia al vértice (y, si hay segmento, a la arista).
-				double dx = x - px;
-				double dy = y - py;
+				MeshTrainPathBuilder.Point p = points[i];
+				double dx = p.X - px;
+				double dy = p.Y - py;
 				double dVertex = dx * dx + dy * dy;
 				if (dVertex < minDistSq)
 				{
 					minDistSq = dVertex;
 				}
 
-				if (hasPrev)
+				if (i > 0)
 				{
-					double dSeg = DistanceSquaredPointToSegment(px, py, prevX, prevY, x, y);
+					MeshTrainPathBuilder.Point prev = points[i - 1];
+					double dSeg = DistanceSquaredPointToSegment(px, py, prev.X, prev.Y, p.X, p.Y);
 					if (dSeg < minDistSq)
 					{
 						minDistSq = dSeg;
 					}
 				}
 
-				prevX = x;
-				prevY = y;
-				hasPrev = true;
-				s++;
+				i++;
 			}
 
 			return minDistSq;

@@ -58,6 +58,32 @@ namespace Diamond.Tests.Timed
 			Assert.True(mesh.Asimilations.Count >= 1);
 		}
 
+		[Fact]
+		public void Solve_CompactWindow_WithStops_StillSchedulesDeparture()
+		{
+			// Regresión: `06:00` ≡ 06:00–07:00 es ventana de SALIDAS.
+			// Con stops, PMI→MAN dura > 1 h; no debe bloquear la salida a las 06:00.
+			TopoLayout topo = TopoXmlSerializer.Load(SamplePaths.TopoSfm227);
+			SfmDemoInfrastructure.Apply(topo);
+			Plan plan = new Plan(topo);
+			plan.EnsureDefaultTrainSpecs();
+			plan.DemandScript = """
+				days lab
+				  req PMI -> MAN 06:00
+				    stops 30s
+				""";
+			DemandCompileResult compiled = plan.CompileDemand();
+			Assert.True(compiled.Success, string.Join("; ", compiled.Errors));
+			Assert.Equal(new TimeOnly(6, 0), compiled.Requirements[0].WindowStart);
+			Assert.Equal(new TimeOnly(7, 0), compiled.Requirements[0].WindowEnd);
+
+			Mesh mesh = new MeshPlanner(plan).Solve(DayOfWeek.Monday);
+			Assert.NotEmpty(mesh.Circulations);
+			Assert.Equal(TimeSpan.FromHours(6), mesh.Circulations[0].Departure);
+			// El trayecto con paradas supera la hora de ventana, y eso es válido.
+			Assert.True(mesh.Circulations[0].Asimilation.TotalTime > TimeSpan.FromHours(1));
+		}
+
 		private static Plan CreatePlanWithCorridor(bool doubleTrack = false)
 		{
 			// Eje sintético 0..20000 m, estaciones principales A (0), M (10000), B (20000).

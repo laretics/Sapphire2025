@@ -15,8 +15,12 @@ namespace Diamond.Topo
 		private readonly List<StationOnAxis> mcolStations;
 		private readonly SpeedLimitMap mvarFixedLimits;
 		private readonly SpeedLimitMap mvarTemporaryLimits;
+		/// <summary>Límites de velocidad de sesión (script de malla); no se serializan en topo XML.</summary>
+		private readonly SpeedLimitMap mvarSessionLimits;
 		private readonly List<long> mcolCantonFrontiers;
 		private readonly List<TrackSpan> mcolTrackSpans;
+		/// <summary>Tramos de vías de sesión (script); tienen prioridad sobre <see cref="TrackSpans"/> base.</summary>
+		private readonly List<TrackSpan> mcolSessionTrackSpans;
 		private SpatialNode? mvarSpatialRoot;
 		private bool mvarIsBuilt;
 		private string mvarId;
@@ -34,8 +38,10 @@ namespace Diamond.Topo
 			mcolStations = new List<StationOnAxis>();
 			mvarFixedLimits = new SpeedLimitMap();
 			mvarTemporaryLimits = new SpeedLimitMap();
+			mvarSessionLimits = new SpeedLimitMap();
 			mcolCantonFrontiers = new List<long>();
 			mcolTrackSpans = new List<TrackSpan>();
+			mcolSessionTrackSpans = new List<TrackSpan>();
 			mvarSpatialRoot = null;
 			mvarIsBuilt = false;
 			mvarId = string.Empty;
@@ -119,6 +125,15 @@ namespace Diamond.Topo
 		}
 
 		/// <summary>
+		/// Limitaciones de sesión (mini-DSL de malla). No forman parte del XML de topología;
+		/// se limpian y reaplica al compilar el script. Más restrictivas que fijas/temporales.
+		/// </summary>
+		public SpeedLimitMap SessionLimits
+		{
+			get { return mvarSessionLimits; }
+		}
+
+		/// <summary>
 		/// PKs de frontera de acantonamiento (ordenados, únicos).
 		/// Entre dos fronteras consecutivas solo puede haber un tren a la vez (por vía lógica).
 		/// </summary>
@@ -128,11 +143,19 @@ namespace Diamond.Topo
 		}
 
 		/// <summary>
-		/// Tramos con número de vías distinto del valor por defecto.
+		/// Tramos con número de vías distinto del valor por defecto (topología base).
 		/// </summary>
 		public IReadOnlyList<TrackSpan> TrackSpans
 		{
 			get { return mcolTrackSpans; }
+		}
+
+		/// <summary>
+		/// Tramos de vías de sesión (script de malla). Tienen prioridad sobre <see cref="TrackSpans"/>.
+		/// </summary>
+		public IReadOnlyList<TrackSpan> SessionTrackSpans
+		{
+			get { return mcolSessionTrackSpans; }
 		}
 
 		/// <summary>
@@ -213,7 +236,8 @@ namespace Diamond.Topo
 		}
 
 		/// <summary>
-		/// Asigna un número de vías en [pk0, pkf). Por defecto el resto del eje usa <see cref="DefaultTrackCount"/>.
+		/// Asigna un número de vías en [pk0, pkf) en la topología base.
+		/// Por defecto el resto del eje usa <see cref="DefaultTrackCount"/>.
 		/// </summary>
 		public void SetTrackCount(long pk0, long pkf, int trackCount)
 		{
@@ -226,7 +250,29 @@ namespace Diamond.Topo
 		}
 
 		/// <summary>
-		/// Número de vías en el PK indicado (último span que contiene el punto, si hay solape).
+		/// Asigna vías de sesión en [pk0, pkf) (script de malla; no toca la topo base).
+		/// </summary>
+		public void SetSessionTrackCount(long pk0, long pkf, int trackCount)
+		{
+			if (trackCount < 1)
+			{
+				throw new ArgumentOutOfRangeException(nameof(trackCount));
+			}
+
+			mcolSessionTrackSpans.Add(new TrackSpan(pk0, pkf, trackCount));
+		}
+
+		/// <summary>
+		/// Limpia solo las capas de sesión (vías + límites de script). No altera fijas ni spans base.
+		/// </summary>
+		public void ClearSessionOverlays()
+		{
+			mcolSessionTrackSpans.Clear();
+			mvarSessionLimits.Clear();
+		}
+
+		/// <summary>
+		/// Número de vías en el PK indicado: default → spans base → spans de sesión (prioridad).
 		/// </summary>
 		public int GetTrackCountAt(long pk)
 		{
@@ -235,6 +281,18 @@ namespace Diamond.Topo
 			while (index < mcolTrackSpans.Count)
 			{
 				TrackSpan span = mcolTrackSpans[index];
+				if (pk >= span.Pk0 && pk < span.Pkf)
+				{
+					tracks = span.TrackCount;
+				}
+
+				index++;
+			}
+
+			index = 0;
+			while (index < mcolSessionTrackSpans.Count)
+			{
+				TrackSpan span = mcolSessionTrackSpans[index];
 				if (pk >= span.Pk0 && pk < span.Pkf)
 				{
 					tracks = span.TrackCount;
@@ -256,32 +314,21 @@ namespace Diamond.Topo
 		}
 
 		/// <summary>
-		/// Velocidad efectiva en un PK: la más restrictiva entre fijas y temporales que cubren el punto.
+		/// Velocidad efectiva en un PK: la más restrictiva entre fijas, temporales y de sesión.
 		/// Si no hay limitación en capas, devuelve <see cref="Vmax"/> del eje cuando es &gt; 0; si no, null.
 		/// </summary>
 		public int? GetEffectiveSpeedLimit(long pk)
 		{
 			int? fixedSpeed = mvarFixedLimits.GetMinSpeedAt(pk);
 			int? temporarySpeed = mvarTemporaryLimits.GetMinSpeedAt(pk);
+			int? sessionSpeed = mvarSessionLimits.GetMinSpeedAt(pk);
 
-			if (fixedSpeed.HasValue && temporarySpeed.HasValue)
+			int? layered = MinSpeed(fixedSpeed, temporarySpeed);
+			layered = MinSpeed(layered, sessionSpeed);
+
+			if (layered.HasValue)
 			{
-				if (temporarySpeed.Value < fixedSpeed.Value)
-				{
-					return temporarySpeed;
-				}
-
-				return fixedSpeed;
-			}
-
-			if (fixedSpeed.HasValue)
-			{
-				return fixedSpeed;
-			}
-
-			if (temporarySpeed.HasValue)
-			{
-				return temporarySpeed;
+				return layered;
 			}
 
 			if (mvarVmax > 0)
@@ -290,6 +337,21 @@ namespace Diamond.Topo
 			}
 
 			return null;
+		}
+
+		private static int? MinSpeed(int? a, int? b)
+		{
+			if (a.HasValue && b.HasValue)
+			{
+				return a.Value < b.Value ? a : b;
+			}
+
+			if (a.HasValue)
+			{
+				return a;
+			}
+
+			return b;
 		}
 
 		public void AddVertex(double latitude, double longitude)

@@ -19,6 +19,7 @@ namespace Diamond.Controls.Rendering
 		private readonly TimeSpan? mvarNowTime;
 		private readonly int mvarMaxPolylineSamples;
 		private readonly string? mvarSelectedTechnicalId;
+		private readonly bool mvarPaperTheme;
 
 		public MeshSvgDrawOptions(
 			bool showCantonOccupations,
@@ -33,7 +34,8 @@ namespace Diamond.Controls.Rendering
 			bool showStationLabels = true,
 			bool externalStationColumn = false,
 			MeshYScaleMode yScaleMode = MeshYScaleMode.LinearPk,
-			string? selectedTechnicalId = null)
+			string? selectedTechnicalId = null,
+			bool paperTheme = false)
 		{
 			mvarShowCantonOccupations = showCantonOccupations;
 			mvarShowTrainPaths = showTrainPaths;
@@ -48,6 +50,7 @@ namespace Diamond.Controls.Rendering
 			mvarNowTime = nowTime;
 			mvarMaxPolylineSamples = maxPolylineSamples < 8 ? 8 : maxPolylineSamples;
 			mvarSelectedTechnicalId = string.IsNullOrEmpty(selectedTechnicalId) ? null : selectedTechnicalId;
+			mvarPaperTheme = paperTheme;
 		}
 
 		/// <summary>Compatibilidad: capas completas por defecto.</summary>
@@ -80,7 +83,7 @@ namespace Diamond.Controls.Rendering
 			}
 		}
 
-		/// <summary>Durante arrastre/rueda: trazas baratas, sin números ni ocupaciones.</summary>
+		/// <summary>Durante arrastre/rueda: menos puntos de control, sin números ni ocupaciones.</summary>
 		public static MeshSvgDrawOptions Interactive
 		{
 			get
@@ -88,7 +91,7 @@ namespace Diamond.Controls.Rendering
 				return Create(
 					showCantonOccupations: false,
 					showTrainNumbers: false,
-					maxPolylineSamples: 16);
+					maxPolylineSamples: 32);
 			}
 		}
 
@@ -101,11 +104,12 @@ namespace Diamond.Controls.Rendering
 			bool showTrackStrip = true,
 			bool showNowLine = false,
 			TimeSpan? nowTime = null,
-			int maxPolylineSamples = 48,
+			int maxPolylineSamples = 96,
 			bool showStationLabels = true,
 			bool externalStationColumn = false,
 			MeshYScaleMode yScaleMode = MeshYScaleMode.LinearPk,
-			string? selectedTechnicalId = null)
+			string? selectedTechnicalId = null,
+			bool paperTheme = false)
 		{
 			return new MeshSvgDrawOptions(
 				showCantonOccupations,
@@ -120,11 +124,13 @@ namespace Diamond.Controls.Rendering
 				showStationLabels,
 				externalStationColumn,
 				yScaleMode,
-				selectedTechnicalId);
+				selectedTechnicalId,
+				paperTheme);
 		}
 
 		/// <summary>
-		/// Variante ligera para pan/zoom: omite ocupaciones/numeros y reduce muestreo.
+		/// Variante ligera para pan/zoom: omite ocupaciones/números y reduce puntos de control
+		/// de la spline (sigue siendo Catmull-Rom, no polilínea gruesa).
 		/// </summary>
 		public MeshSvgDrawOptions ForInteractiveLod()
 		{
@@ -137,11 +143,12 @@ namespace Diamond.Controls.Rendering
 				showTrackStrip: mvarShowTrackStrip,
 				showNowLine: mvarShowNowLine,
 				nowTime: mvarNowTime,
-				maxPolylineSamples: 16,
+				maxPolylineSamples: 32,
 				showStationLabels: mvarShowStationLabels,
 				externalStationColumn: mvarExternalStationColumn,
 				yScaleMode: mvarYScaleMode,
-				selectedTechnicalId: mvarSelectedTechnicalId);
+				selectedTechnicalId: mvarSelectedTechnicalId,
+				paperTheme: mvarPaperTheme);
 		}
 
 		public bool ShowCantonOccupations
@@ -211,10 +218,21 @@ namespace Diamond.Controls.Rendering
 			get { return mvarSelectedTechnicalId; }
 		}
 
-		/// <summary>Tope de segmentos por polilinea.</summary>
+		/// <summary>Tope de puntos de control por traza (spline Catmull-Rom → Bezier SVG).</summary>
 		public int MaxPolylineSamples
 		{
 			get { return mvarMaxPolylineSamples; }
+		}
+
+		/// <summary>Tema papel: fondo claro, trazas en tinta oscura (impresión / A3).</summary>
+		public bool PaperTheme
+		{
+			get { return mvarPaperTheme; }
+		}
+
+		public MeshSvgPalette Palette
+		{
+			get { return mvarPaperTheme ? MeshSvgPalette.Paper : MeshSvgPalette.Screen; }
 		}
 	}
 }

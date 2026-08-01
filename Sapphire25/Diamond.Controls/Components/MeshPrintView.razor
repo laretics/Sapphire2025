@@ -1,0 +1,135 @@
+@namespace Diamond.Controls
+@using Diamond.Controls.Rendering
+@using Diamond.Timed
+@using MeshRouteView = Diamond.Topo.RouteView
+@inject IJSRuntime Js
+
+@*
+  Vista previa de impresión de malla: carátula + diagrama (tema papel).
+  window.print con CSS @media print (A3 apaisado recomendado).
+*@
+@if (mvarOpen)
+{
+	<div class="diamond-mesh-print-overlay" @onclick="Close">
+		<div class="diamond-mesh-print-dialog" @onclick:stopPropagation="true">
+			<div class="diamond-mesh-print-toolbar no-print">
+				<span class="diamond-mesh-print-toolbar-title">
+					Imprimir malla
+					<span class="text-muted"> · A3 apaisado recomendado · tema papel</span>
+				</span>
+				<span class="diamond-mesh-print-toolbar-actions">
+					<button type="button" class="btn btn-sm btn-primary" @onclick="PrintAsync" title="Abrir diálogo de impresión">Imprimir…</button>
+					<button type="button" class="btn btn-sm btn-outline-light" @onclick="Close" title="Cerrar">Cerrar</button>
+				</span>
+			</div>
+			<div class="diamond-mesh-print-pages">
+				<div class="diamond-mesh-print-page diamond-mesh-print-cover">
+					@((MarkupString)mvarCoverHtml)
+				</div>
+				<div class="diamond-mesh-print-page diamond-mesh-print-mesh">
+					@((MarkupString)mvarMeshSvg)
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	private bool mvarOpen;
+	private string mvarCoverHtml = string.Empty;
+	private string mvarMeshSvg = string.Empty;
+
+	[Parameter]
+	public Mesh? Mesh { get; set; }
+
+	[Parameter]
+	public MeshRouteView? View { get; set; }
+
+	[Parameter]
+	public string PlanName { get; set; } = string.Empty;
+
+	[Parameter]
+	public DayOfWeek? PlanningDay { get; set; }
+
+	[Parameter]
+	public string? Notes { get; set; }
+
+	/// <summary>Abre la vista previa con la ventana y capas actuales del diagrama.</summary>
+	public void Open(
+		TimeSpan timeStart,
+		TimeSpan timeEnd,
+		long pkMin,
+		long pkMax,
+		MeshSvgDrawOptions screenOptions,
+		MeshYScaleMode yScaleMode)
+	{
+		if (Mesh is null || View is null)
+		{
+			return;
+		}
+
+		int visible = MeshPrintDocument.CountVisibleCirculations(Mesh, View, timeStart, timeEnd);
+		List<string> layers = new List<string>();
+		if (screenOptions.ShowTrainPaths) { layers.Add("trazas"); }
+		if (screenOptions.ShowTrainNumbers) { layers.Add("números"); }
+		if (screenOptions.ShowConflicts) { layers.Add("conflictos"); }
+		if (screenOptions.ShowSpeedStrip) { layers.Add("V"); }
+		if (screenOptions.ShowTrackStrip) { layers.Add("#"); }
+		// Cantones omitidos a propósito en papel (tóner).
+
+		MeshPrintDocument.CoverInfo cover = new MeshPrintDocument.CoverInfo
+		{
+			PlanName = PlanName,
+			ViewId = View.Id,
+			ViewName = View.Name,
+			PathSignature = View.PathSignature(),
+			PlanningDay = PlanningDay,
+			TimeStart = timeStart,
+			TimeEnd = timeEnd,
+			PkMin = pkMin,
+			PkMax = pkMax,
+			CirculationCount = Mesh.Circulations.Count,
+			VisibleCirculationCount = visible,
+			AsimilationCount = Mesh.Asimilations.Count,
+			WarningCount = Mesh.Warnings.Count,
+			ErrorCount = Mesh.Errors.Count,
+			YScaleLabel = yScaleMode == MeshYScaleMode.SteppedSingular
+				? "Escalonada (singulares)"
+				: "PK lineal",
+			LayersSummary = layers.Count > 0 ? string.Join(", ", layers) : "—",
+			PrintedAt = DateTime.Now,
+			Notes = Notes ?? string.Empty
+		};
+
+		mvarCoverHtml = MeshPrintDocument.BuildCoverHtml(cover);
+		mvarMeshSvg = MeshPrintDocument.BuildMeshSvg(
+			Mesh,
+			View,
+			timeStart,
+			timeEnd,
+			pkMin,
+			pkMax,
+			screenOptions);
+		mvarOpen = true;
+		StateHasChanged();
+	}
+
+	public void Close()
+	{
+		mvarOpen = false;
+		mvarCoverHtml = string.Empty;
+		mvarMeshSvg = string.Empty;
+	}
+
+	private async Task PrintAsync()
+	{
+		try
+		{
+			await Js.InvokeVoidAsync("diamondMeshPrint.print");
+		}
+		catch (Exception)
+		{
+			// Si el JS no está cargado, el usuario puede usar Ctrl+P sobre la vista previa.
+		}
+	}
+}

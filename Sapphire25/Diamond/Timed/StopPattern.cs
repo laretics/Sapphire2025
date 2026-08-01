@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
 
 namespace Diamond.Timed
 {
@@ -125,6 +127,11 @@ namespace Diamond.Timed
 			return false;
 		}
 
+		/// <summary>
+		/// Coincide por id, AVR o nombre completo (sin distinguir mayúsculas ni acentos).
+		/// No usa subcadenas: <c>INC</c> no debe emparejar <c>Pont d'Inca</c>
+		/// (antes <c>IndexOf</c> hinchaba el dwell en varias estaciones).
+		/// </summary>
 		public static bool Matches(StationRef reference, string stationId, string avr, string name)
 		{
 			string key = reference.Text.Trim();
@@ -148,20 +155,46 @@ namespace Diamond.Timed
 				return true;
 			}
 
-			// "Enllaç" / "Enllac" / fragmento de nombre
-			if (name.Length > 0 && name.IndexOf(key, StringComparison.OrdinalIgnoreCase) >= 0)
+			// Misma igualdad sin acentos (Enllaç / Enllac, Lloseta / …).
+			string keyFold = FoldAccents(key);
+			if (avr.Length > 0 && string.Equals(keyFold, FoldAccents(avr), StringComparison.OrdinalIgnoreCase))
 			{
 				return true;
 			}
 
-			// AVR que empieza por EL… para Enllaç
-			if (avr.Length > 0 && key.Length >= 2
-				&& avr.StartsWith(key, StringComparison.OrdinalIgnoreCase))
+			if (name.Length > 0 && string.Equals(keyFold, FoldAccents(name), StringComparison.OrdinalIgnoreCase))
 			{
 				return true;
 			}
 
 			return false;
+		}
+
+		/// <summary>
+		/// Quita marcas diacríticas para comparar nombres/AVR de forma tolerante.
+		/// </summary>
+		internal static string FoldAccents(string text)
+		{
+			if (string.IsNullOrEmpty(text))
+			{
+				return string.Empty;
+			}
+
+			string normalized = text.Normalize(NormalizationForm.FormD);
+			StringBuilder sb = new StringBuilder(normalized.Length);
+			int i = 0;
+			while (i < normalized.Length)
+			{
+				UnicodeCategory cat = CharUnicodeInfo.GetUnicodeCategory(normalized[i]);
+				if (cat != UnicodeCategory.NonSpacingMark)
+				{
+					sb.Append(normalized[i]);
+				}
+
+				i++;
+			}
+
+			return sb.ToString().Normalize(NormalizationForm.FormC);
 		}
 	}
 

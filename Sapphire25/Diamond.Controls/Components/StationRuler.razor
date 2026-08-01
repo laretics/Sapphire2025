@@ -1,5 +1,6 @@
 @namespace Diamond.Controls
 @using Diamond.Controls.Rendering
+@using Diamond.Timed
 @using MeshRouteView = Diamond.Topo.RouteView
 
 @*
@@ -8,6 +9,8 @@
   Side=Left: etiquetas ancladas a la derecha de la columna.
   Side=Right: etiquetas ancladas a la izquierda (espejo).
   Usa la misma MeshYScale que el plot (lineal o escalonada).
+  Si hay SelectedCirculation, bajo cada estación del trayecto se muestra la hora
+  (parada momentánea · / comercial ll–sal / paso en otro color).
 *@
 <div class="diamond-station-ruler side-@(Side == StationRulerSide.Right ? "right" : "left")"
 	 style="width: @(Width.ToString(CultureInfo.InvariantCulture))px;">
@@ -15,6 +18,11 @@
 </div>
 
 @code {
+	/// <summary>Color de horas de parada (origen, destino, momentánea, comercial).</summary>
+	private const string StopTimeFill = "#fcd34d";
+	/// <summary>Color de horas de paso sin parada.</summary>
+	private const string PassTimeFill = "#38bdf8";
+
 	[Parameter]
 	public MeshRouteView? View { get; set; }
 
@@ -44,9 +52,13 @@
 	[Parameter]
 	public MeshYScaleMode YScaleMode { get; set; } = MeshYScaleMode.LinearPk;
 
+	/// <summary>Tren seleccionado: si no es null, se anotan horas de paso/parada por estación.</summary>
+	[Parameter]
+	public Circulation? SelectedCirculation { get; set; }
+
 	private string BuildSvg()
 	{
-		StringBuilder sb = new StringBuilder(2048);
+		StringBuilder sb = new StringBuilder(4096);
 		string w = Width.ToString(CultureInfo.InvariantCulture);
 		string h = Height.ToString(CultureInfo.InvariantCulture);
 		sb.Append(CultureInfo.InvariantCulture,
@@ -60,6 +72,7 @@
 			double textX = right ? 8.0 : Width - 8.0;
 			string anchor = right ? "start" : "end";
 			MeshYScale yScale = MeshYScale.Create(YScaleMode, View, PkMin, PkMax);
+			bool showTimes = SelectedCirculation is not null;
 
 			IReadOnlyList<MeshSvgRenderer.StationMark> all = MeshSvgRenderer.BuildStationMarks(View);
 			int i = 0;
@@ -72,8 +85,29 @@
 					string fill = mark.IsPrincipal ? "#e2e8f0" : "#94a3b8";
 					string fontWeight = mark.IsPrincipal ? "600" : "400";
 					string safe = System.Security.SecurityElement.Escape(mark.Label) ?? string.Empty;
+
+					// Con horas: nombre un poco más arriba; la hora va en la línea inferior.
+					double nameY = showTimes ? y - 1.0 : y + 3.5;
 					sb.Append(CultureInfo.InvariantCulture,
-						$"<text x=\"{textX.ToString(CultureInfo.InvariantCulture)}\" y=\"{(y + 3.5).ToString(CultureInfo.InvariantCulture)}\" fill=\"{fill}\" font-size=\"10\" font-weight=\"{fontWeight}\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"{anchor}\">{safe}</text>");
+						$"<text x=\"{textX.ToString(CultureInfo.InvariantCulture)}\" y=\"{nameY.ToString(CultureInfo.InvariantCulture)}\" fill=\"{fill}\" font-size=\"10\" font-weight=\"{fontWeight}\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"{anchor}\">{safe}</text>");
+
+					// mark.Pk es de la vista de pantalla; la asimilación puede ir en sentido
+					// inverso (SPB→PMI en catálogo T3+T2 Palma→SPB). Hay que proyectar.
+					if (showTimes
+						&& StationTimeLabels.TryCreate(
+							SelectedCirculation!,
+							View,
+							mark.Pk,
+							out StationTimeLabels.Annotation ann)
+						&& ann.Kind != StationTimeLabels.Kind.None
+						&& ann.Text.Length > 0)
+					{
+						string timeFill = ann.IsStopStyle ? StopTimeFill : PassTimeFill;
+						string timeSafe = System.Security.SecurityElement.Escape(ann.Text) ?? string.Empty;
+						double timeY = y + 11.0;
+						sb.Append(CultureInfo.InvariantCulture,
+							$"<text x=\"{textX.ToString(CultureInfo.InvariantCulture)}\" y=\"{timeY.ToString(CultureInfo.InvariantCulture)}\" fill=\"{timeFill}\" font-size=\"9\" font-weight=\"600\" font-family=\"Segoe UI,Consolas,monospace\" text-anchor=\"{anchor}\" class=\"{(ann.IsStopStyle ? "diamond-station-time-stop" : "diamond-station-time-pass")}\">{timeSafe}</text>");
+					}
 				}
 
 				i++;
