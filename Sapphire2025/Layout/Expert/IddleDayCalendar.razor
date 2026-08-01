@@ -1,5 +1,700 @@
-﻿<h3>IddleDayCalendar</h3>
+@inject ExpertClient mvarExpertClient
+
+@if (null == Users)
+{
+	<LoadingTab ElementText="Cargando lista de usuarios" />
+}
+else if (null == TimeSlice)
+{
+	<LoadingTab ElementText="Cargando información de fecha" />
+}
+else if (null == ColAssignations)
+{
+	<LoadingTab ElementText="Cargando asignaciones de turnos" />
+}
+else if (mvarLoadingStreaks)
+{
+	<LoadingTab ElementText="Calculando rachas de trabajo" />
+}
+else
+{
+	<div class="row">
+		<div class="col-12">
+			<div class="d-flex flex-row flex-wrap gap-3 gap-md-4 justify-content-start iddle-day-scroll">
+				@foreach (var column in Columns)
+				{
+					<div class="table-responsive flex-fill iddle-day-col">
+						<table class="table table-bordered text-center custom-width-table mb-0">
+							<thead class="table-light">
+								<tr>
+									<th title="@column.Description">
+										@column.Title
+										<span class="iddle-count">(@column.Items.Count)</span>
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								@if (column.Items.Count == 0)
+								{
+									<tr>
+										<td class="text-muted small py-3">Sin registros</td>
+									</tr>
+								}
+								else
+								{
+									@foreach (AssignationContentModel assignation in column.Items)
+									{
+										<tr>
+											<td class="cell-content custom-cell text-start align-middle"
+												style="@GetAgentStyle(assignation.AgentId)">
+												<div class="cell-content-inner iddle-agent-row">
+													<span class="iddle-agent-name">
+														<AgentScheduleLink AgentId="assignation.AgentId" />
+													</span>
+													<span class="iddle-badges">
+														@if (column.ShowDdShiftBadges)
+														{
+															@if (ShowDdMorningBadge(assignation.AgentId))
+															{
+																<span class="iddle-shift-badge iddle-shift-m"
+																	  title="Disponible para turno de mañana">
+																	M
+																</span>
+															}
+															@if (ShowDdAfternoonBadge(assignation.AgentId))
+															{
+																<span class="iddle-shift-badge iddle-shift-t"
+																	  title="Disponible para turno de tarde">
+																	T
+																</span>
+															}
+														}
+														else if (column.ShowRestStreaks)
+														{
+															@if (GetPastStreak(assignation.AgentId) is int pastDays && pastDays > 0)
+															{
+																<span class="iddle-streak-badge @(IsRestCycleOverloaded(assignation.AgentId) ? "iddle-streak-past iddle-streak-overload" : "iddle-streak-past")"
+																	  title="@($"Lleva {pastDays} día(s) seguidos trabajando antes de este descanso")">
+																	←@pastDays
+																</span>
+															}
+															@if (GetFutureStreak(assignation.AgentId) is int futureDays && futureDays > 0)
+															{
+																<span class="iddle-streak-badge @(IsRestCycleOverloaded(assignation.AgentId) ? "iddle-streak-future iddle-streak-overload" : "iddle-streak-future")"
+																	  title="@($"Trabajará {futureDays} día(s) seguidos a partir de mañana")">
+																	@futureDays→
+																</span>
+															}
+														}
+														else if (!string.IsNullOrWhiteSpace(assignation.Definitive)
+															&& !column.HideCodeBadge)
+														{
+															<span class="iddle-code-badge"
+																  style="@GetCodeBadgeStyle(assignation.Definitive)">
+																@assignation.Definitive
+															</span>
+														}
+													</span>
+												</div>
+											</td>
+										</tr>
+									}
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+}
 
 @code {
+	/// <summary>Días hacia atrás/adelante para calcular rachas de trabajo alrededor del día mostrado.</summary>
+	private const int StreakWindowDays = 45;
+	/// <summary>Inicio después de mediodía = turno de tarde.</summary>
+	private static readonly TimeSpan AfternoonThreshold = TimeSpan.FromHours(12);
 
+	private DateTime? mvarLastDisplayedDate;
+	private bool mvarLoadingStreaks;
+	private readonly Dictionary<Guid, WorkShiftTemplateModel?> mcolTodayAgentTemplates = new();
+	private readonly Dictionary<(Guid AgentId, DateTime Day), DayShiftInfo> mcolDayShift = new();
+	private readonly Dictionary<Guid, int> mcolPastWorkStreak = new();
+	private readonly Dictionary<Guid, int> mcolFutureWorkStreak = new();
+	private readonly Dictionary<Guid, DdAvailability> mcolDdAvailability = new();
+
+	private static readonly HashSet<string> VacationAndIllnessCodes = new(StringComparer.OrdinalIgnoreCase)
+	{
+		"V", "VA",
+		"E", "I", "LEF"
+	};
+
+	private static readonly HashSet<string> LicenseCodes = new(StringComparer.OrdinalIgnoreCase)
+	{
+		"AU", "L31", "L24", "LAP", "LSN",
+		"DC", "DCX"
+	};
+
+	[CascadingParameter]
+	public Dictionary<Guid, UserModelBase>? Users { get; set; }
+	[CascadingParameter]
+	public Sapphire2025Models.Expert.WorkshiftTemplates.PlansYearSlice? TimeSlice { get; set; }
+	[CascadingParameter]
+	public List<AssignationContentModel>? ColAssignations { get; set; }
+	[CascadingParameter]
+	public List<WorkShiftTemplateModel>? SortedTemplates { get; set; }
+	[CascadingParameter]
+	public TimeSpan mvarNow { get; set; }
+	[CascadingParameter(Name = "FollowingMode")]
+	public bool FollowingMode { get; set; }
+
+	[Parameter]
+	public int MinutesBeforeWorksheet { get; set; } = 25;
+	[Parameter]
+	public int MinutesAfterWorksheet { get; set; } = 10;
+
+	private List<IdleColumn> Columns { get; set; } = new();
+
+	protected override async Task OnParametersSetAsync()
+	{
+		RebuildColumns();
+
+		DateTime? displayedDate = TimeSlice?.InitialDate.Date;
+		if (mvarLastDisplayedDate == displayedDate) return;
+
+		mvarLastDisplayedDate = displayedDate;
+		mcolTodayAgentTemplates.Clear();
+		mcolDayShift.Clear();
+		mcolPastWorkStreak.Clear();
+		mcolFutureWorkStreak.Clear();
+		mcolDdAvailability.Clear();
+
+		if (!displayedDate.HasValue) return;
+
+		mvarLoadingStreaks = true;
+		try
+		{
+			// Resaltado "trabaja hoy" al mirar un día futuro
+			if (displayedDate.Value > DateTime.Today)
+				await LoadTodayWorkHighlightsAsync();
+
+			// Ventana de asignaciones: rachas (columna D) y M/T (columna DD)
+			await LoadWorkStreakWindowAsync(displayedDate.Value);
+			ComputeRestStreaks(displayedDate.Value);
+			ComputeDdAvailability(displayedDate.Value);
+			// Reordenar columnas ya con rachas y disponibilidad calculadas
+			RebuildColumns();
+		}
+		finally
+		{
+			mvarLoadingStreaks = false;
+		}
+	}
+
+	private async Task LoadTodayWorkHighlightsAsync()
+	{
+		PlansYearSlice? todaySlice = await mvarExpertClient.PlansTimeSlice(DateTime.Today);
+		List<AssignationContentModel>? todayAssignations = await mvarExpertClient.Assignations(DateTime.Today);
+
+		if (null == todaySlice || null == todayAssignations)
+			return;
+
+		WorkShiftTemplateCollectionModel? todayPlan = todaySlice.GetPlan(0);
+		if (null == todayPlan)
+			return;
+
+		foreach (AssignationContentModel todayAssignation in todayAssignations)
+		{
+			if (string.IsNullOrWhiteSpace(todayAssignation.Definitive))
+				continue;
+
+			WorkShiftTemplateModel? template =
+				todayPlan.Template(
+					todayAssignation.Definitive,
+					todaySlice.GetDay(0),
+					todaySlice.GetFestive(0));
+
+			if (template is AttTemplateModel)
+				mcolTodayAgentTemplates[todayAssignation.AgentId] = template;
+		}
+	}
+
+	private async Task LoadWorkStreakWindowAsync(DateTime selectedDate)
+	{
+		DateTime windowStart = selectedDate.Date.AddDays(-StreakWindowDays);
+		int dayCount = (StreakWindowDays * 2) + 1;
+
+		PlansYearSlice? slice = await mvarExpertClient.PlansTimeSlice(windowStart, dayCount);
+		List<AssignationContentModel>? rangeAssignations =
+			await mvarExpertClient.Assignations(windowStart, dayCount);
+
+		if (null == rangeAssignations)
+			return;
+
+		foreach (AssignationContentModel assignation in rangeAssignations)
+		{
+			if (string.IsNullOrWhiteSpace(assignation.Definitive))
+				continue;
+
+			DateTime day = assignation.Date.Date;
+			WorkShiftTemplateModel? template = null;
+
+			if (null != slice)
+			{
+				WorkShiftTemplateCollectionModel? plan = slice.GetPlan(day);
+				if (null != plan)
+					template = plan.Template(assignation.Definitive, day, slice.GetFestive(day));
+			}
+
+			DayShiftInfo? info = ClassifyDayShift(assignation.Definitive, template);
+			if (null == info)
+				continue;
+
+			mcolDayShift[(assignation.AgentId, day)] = info;
+		}
+	}
+
+	/// <summary>
+	/// Clasifica el día: trabajo (con hora de inicio si se conoce) o no trabajo.
+	/// null = no clasificable.
+	/// </summary>
+	private DayShiftInfo? ClassifyDayShift(string definitive, WorkShiftTemplateModel? template)
+	{
+		if (string.IsNullOrWhiteSpace(definitive))
+			return null;
+
+		if (template is AttTemplateModel att)
+			return new DayShiftInfo(IsWork: true, StartTime: att.StartTime);
+
+		if (template is RestTemplateModel)
+			return new DayShiftInfo(IsWork: false, StartTime: null);
+
+		IdleCategory category = Classify(definitive);
+		if (category != IdleCategory.None)
+			return new DayShiftInfo(IsWork: false, StartTime: null);
+
+		// Turno numérico sin plantilla resuelta: cuenta como trabajo, sin franja horaria.
+		return new DayShiftInfo(IsWork: true, StartTime: null);
+	}
+
+	private void ComputeRestStreaks(DateTime selectedDate)
+	{
+		mcolPastWorkStreak.Clear();
+		mcolFutureWorkStreak.Clear();
+
+		// Solo agentes con D en el día seleccionado
+		IEnumerable<Guid> restAgents = (ColAssignations ?? Enumerable.Empty<AssignationContentModel>())
+			.Where(a => !string.IsNullOrWhiteSpace(a.Definitive)
+				&& a.Definitive.Trim().Equals("D", StringComparison.OrdinalIgnoreCase))
+			.Select(a => a.AgentId)
+			.Distinct();
+
+		foreach (Guid agentId in restAgents)
+		{
+			int past = CountPastWorkStreak(agentId, selectedDate);
+			int future = CountFutureWorkStreak(agentId, selectedDate);
+
+			if (past > 0)
+				mcolPastWorkStreak[agentId] = past;
+			if (future > 0)
+				mcolFutureWorkStreak[agentId] = future;
+		}
+	}
+
+	/// <summary>
+	/// Días seguidos de trabajo terminando en ayer (0 si ayer no trabajó o no hay datos).
+	/// </summary>
+	private int CountPastWorkStreak(Guid agentId, DateTime selectedDate)
+	{
+		int streak = 0;
+		for (int offset = 1; offset <= StreakWindowDays; offset++)
+		{
+			DateTime day = selectedDate.Date.AddDays(-offset);
+			if (!mcolDayShift.TryGetValue((agentId, day), out DayShiftInfo? info) || null == info)
+				break; // fin de datos o hueco
+
+			if (!info.IsWork)
+				break;
+
+			streak++;
+		}
+		return streak;
+	}
+
+	/// <summary>
+	/// Días seguidos de trabajo empezando mañana (0 si mañana no trabaja o no hay datos).
+	/// </summary>
+	private int CountFutureWorkStreak(Guid agentId, DateTime selectedDate)
+	{
+		int streak = 0;
+		for (int offset = 1; offset <= StreakWindowDays; offset++)
+		{
+			DateTime day = selectedDate.Date.AddDays(offset);
+			if (!mcolDayShift.TryGetValue((agentId, day), out DayShiftInfo? info) || null == info)
+				break; // fin de asignaciones
+
+			if (!info.IsWork)
+				break;
+
+			streak++;
+		}
+		return streak;
+	}
+
+	private void ComputeDdAvailability(DateTime selectedDate)
+	{
+		mcolDdAvailability.Clear();
+
+		IEnumerable<Guid> ddAgents = (ColAssignations ?? Enumerable.Empty<AssignationContentModel>())
+			.Where(a => !string.IsNullOrWhiteSpace(a.Definitive)
+				&& a.Definitive.Trim().Equals("DD", StringComparison.OrdinalIgnoreCase))
+			.Select(a => a.AgentId)
+			.Distinct();
+
+		DateTime prevDay = selectedDate.Date.AddDays(-1);
+		DateTime nextDay = selectedDate.Date.AddDays(1);
+
+		foreach (Guid agentId in ddAgents)
+		{
+			bool hasPrev = mcolDayShift.TryGetValue((agentId, prevDay), out DayShiftInfo? prev) && null != prev;
+			bool hasNext = mcolDayShift.TryGetValue((agentId, nextDay), out DayShiftInfo? next) && null != next;
+
+			bool prevWorkedAfternoon = hasPrev && prev!.IsWork && IsAfternoonShift(prev);
+			bool prevDidNotWork = hasPrev && !prev!.IsWork;
+
+			bool nextWorksMorning = hasNext && next!.IsWork && IsMorningShift(next);
+			bool nextWorksAfternoon = hasNext && next!.IsWork && IsAfternoonShift(next);
+			bool nextDoesNotWork = hasNext && !next!.IsWork;
+
+			bool showM = false;
+			bool showT = false;
+
+			// 1) Día anterior trabajó de tarde → T
+			if (prevWorkedAfternoon)
+				showT = true;
+
+			// 2) Día anterior no trabajó y el siguiente trabaja de mañana → sólo M
+			if (prevDidNotWork && nextWorksMorning)
+			{
+				showM = true;
+				showT = false;
+			}
+			// 3) Día siguiente no trabaja o trabaja de tarde → M y T
+			else if (nextDoesNotWork || nextWorksAfternoon)
+			{
+				showM = true;
+				showT = true;
+			}
+
+			if (showM || showT)
+				mcolDdAvailability[agentId] = new DdAvailability(showM, showT);
+		}
+	}
+
+	private static bool IsMorningShift(DayShiftInfo info)
+		=> info.IsWork && info.StartTime.HasValue && info.StartTime.Value <= AfternoonThreshold;
+
+	private static bool IsAfternoonShift(DayShiftInfo info)
+		=> info.IsWork && info.StartTime.HasValue && info.StartTime.Value > AfternoonThreshold;
+
+	private bool ShowDdMorningBadge(Guid agentId)
+		=> mcolDdAvailability.TryGetValue(agentId, out DdAvailability? avail) && null != avail && avail.Morning;
+
+	private bool ShowDdAfternoonBadge(Guid agentId)
+		=> mcolDdAvailability.TryGetValue(agentId, out DdAvailability? avail) && null != avail && avail.Afternoon;
+
+	private int GetPastStreak(Guid agentId)
+		=> mcolPastWorkStreak.TryGetValue(agentId, out int days) ? days : 0;
+
+	private int GetFutureStreak(Guid agentId)
+		=> mcolFutureWorkStreak.TryGetValue(agentId, out int days) ? days : 0;
+
+	/// <summary>
+	/// true si pasado + descanso actual + futuro supera 6 días de ciclo.
+	/// En ese caso no conviene asignarle un turno en este descanso.
+	/// </summary>
+	private bool IsRestCycleOverloaded(Guid agentId)
+	{
+		int past = GetPastStreak(agentId);
+		int future = GetFutureStreak(agentId);
+		return (past + future + 1) > 6;
+	}
+
+	private void RebuildColumns()
+	{
+		var dd = new List<AssignationContentModel>();
+		var descanso = new List<AssignationContentModel>();
+		var licencias = new List<AssignationContentModel>();
+		var vacaciones = new List<AssignationContentModel>();
+
+		if (null != ColAssignations)
+		{
+			foreach (AssignationContentModel assignation in ColAssignations)
+			{
+				if (string.IsNullOrWhiteSpace(assignation.Definitive))
+					continue;
+
+				switch (Classify(assignation.Definitive))
+				{
+					case IdleCategory.DescansoDisponible:
+						dd.Add(assignation);
+						break;
+					case IdleCategory.Descanso:
+						descanso.Add(assignation);
+						break;
+					case IdleCategory.Licencia:
+						licencias.Add(assignation);
+						break;
+					case IdleCategory.Vacaciones:
+						vacaciones.Add(assignation);
+						break;
+				}
+			}
+		}
+
+		Columns = new List<IdleColumn>
+		{
+			new IdleColumn("DD", "Descanso disponible — M = mañana, T = tarde", SortDdAgents(dd), HideCodeBadge: true, ShowDdShiftBadges: true),
+			new IdleColumn("D", "Descanso — badges: ←días trabajados antes / días de trabajo después→", SortRestAgents(descanso), HideCodeBadge: true, ShowRestStreaks: true),
+			new IdleColumn("Licencias", "Licencias y otras ausencias", SortByUser(licencias)),
+			new IdleColumn("Vac. / Enf.", "Vacaciones y enfermedades (V, VA, E, I, LEF)", SortVacationIllness(vacaciones))
+		};
+	}
+
+	/// <summary>DD: primero sólo M, luego sólo T, luego M+T; dentro de cada grupo por CF/nombre.</summary>
+	private List<AssignationContentModel> SortDdAgents(List<AssignationContentModel> items)
+	{
+		return items
+			.OrderBy(a => GetDdSortGroup(a.AgentId))
+			.ThenBy(a => GetUserSortKey(a.AgentId))
+			.ToList();
+	}
+
+	/// <summary>0 = sólo M, 1 = sólo T, 2 = M+T, 3 = sin badges.</summary>
+	private int GetDdSortGroup(Guid agentId)
+	{
+		bool m = ShowDdMorningBadge(agentId);
+		bool t = ShowDdAfternoonBadge(agentId);
+		if (m && !t) return 0;
+		if (!m && t) return 1;
+		if (m && t) return 2;
+		return 3;
+	}
+
+	/// <summary>
+	/// Descansos: sin flechas primero; con flechas por (antes+después) creciente, luego por antes, luego nombre.
+	/// </summary>
+	private List<AssignationContentModel> SortRestAgents(List<AssignationContentModel> items)
+	{
+		return items
+			.OrderBy(a =>
+			{
+				int past = GetPastStreak(a.AgentId);
+				int future = GetFutureStreak(a.AgentId);
+				bool hasArrows = past > 0 || future > 0;
+				return hasArrows ? 1 : 0;
+			})
+			.ThenBy(a => GetPastStreak(a.AgentId) + GetFutureStreak(a.AgentId))
+			.ThenBy(a => GetPastStreak(a.AgentId))
+			.ThenBy(a => GetFutureStreak(a.AgentId))
+			.ThenBy(a => GetUserSortKey(a.AgentId))
+			.ToList();
+	}
+
+	/// <summary>Vac./Enf.: primero enfermedades (E, I, LEF), luego vacaciones (V, VA); dentro por código y nombre.</summary>
+	private List<AssignationContentModel> SortVacationIllness(List<AssignationContentModel> items)
+	{
+		return items
+			.OrderBy(a => IsIllnessCode(a.Definitive) ? 0 : 1)
+			.ThenBy(a => a.Definitive ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+			.ThenBy(a => GetUserSortKey(a.AgentId))
+			.ToList();
+	}
+
+	private static bool IsIllnessCode(string? definitive)
+	{
+		if (string.IsNullOrWhiteSpace(definitive)) return false;
+		string code = definitive.Trim();
+		return code.Equals("E", StringComparison.OrdinalIgnoreCase)
+			|| code.Equals("I", StringComparison.OrdinalIgnoreCase)
+			|| code.Equals("LEF", StringComparison.OrdinalIgnoreCase);
+	}
+
+	private IdleCategory Classify(string definitive)
+	{
+		string code = definitive.Trim();
+
+		if (code.Equals("DD", StringComparison.OrdinalIgnoreCase))
+			return IdleCategory.DescansoDisponible;
+
+		if (code.Equals("D", StringComparison.OrdinalIgnoreCase))
+			return IdleCategory.Descanso;
+
+		if (VacationAndIllnessCodes.Contains(code))
+			return IdleCategory.Vacaciones;
+
+		if (LicenseCodes.Contains(code))
+			return IdleCategory.Licencia;
+
+		if (IsRestTemplate(code))
+			return IdleCategory.Licencia;
+
+		return IdleCategory.None;
+	}
+
+	private bool IsRestTemplate(string definitive)
+	{
+		if (null == TimeSlice || string.IsNullOrWhiteSpace(definitive))
+			return false;
+
+		WorkShiftTemplateCollectionModel? plan = TimeSlice.GetPlan(0);
+		if (null == plan)
+			return false;
+
+		WorkShiftTemplateModel? template = plan.Template(
+			definitive,
+			TimeSlice.GetDay(0),
+			TimeSlice.GetFestive(0));
+
+		return template is RestTemplateModel;
+	}
+
+	private List<AssignationContentModel> SortByUser(List<AssignationContentModel> items)
+	{
+		return items
+			.OrderBy(a => GetUserSortKey(a.AgentId))
+			.ToList();
+	}
+
+	private string GetUserSortKey(Guid userId)
+	{
+		if (null != Users && Users.TryGetValue(userId, out UserModelBase? user) && null != user)
+		{
+			string cf = user.CF ?? string.Empty;
+			string name = user.Name ?? string.Empty;
+			return $"{cf} {name}";
+		}
+		return "~~~~";
+	}
+
+	private string GetAgentStyle(Guid agentId)
+	{
+		if (null == TimeSlice || TimeSlice.InitialDate.Date <= DateTime.Today)
+			return string.Empty;
+
+		if (!mcolTodayAgentTemplates.TryGetValue(agentId, out WorkShiftTemplateModel? template)
+			|| template is not AttTemplateModel)
+			return string.Empty;
+
+		string style = "font-weight: 700;";
+
+		string? statusStyle = GetTodayStatusStyle(template);
+		if (string.IsNullOrWhiteSpace(statusStyle))
+			return style;
+
+		return $"{style} {statusStyle}";
+	}
+
+	private string GetTodayStatusStyle(WorkShiftTemplateModel? rhs)
+	{
+		if (!FollowingMode)
+			return string.Empty;
+
+		if (rhs is not AttTemplateModel AttTurno)
+			return string.Empty;
+
+		TimeSpan horaComienzo = AttTurno.StartTime.Add(TimeSpan.FromMinutes(MinutesBeforeWorksheet));
+		TimeSpan horaDeje = AttTurno.EndTime.Add(TimeSpan.FromMinutes(-MinutesAfterWorksheet));
+
+		string? color = null;
+
+		if (mvarNow >= AttTurno.StartTime && mvarNow < horaComienzo)
+			color = "#A8F0AD";
+		else if (mvarNow >= horaComienzo && mvarNow < horaDeje)
+			color = "#8B9DFF";
+		else if (mvarNow >= horaDeje && mvarNow < AttTurno.EndTime)
+			color = "#FC92AC";
+
+		return string.IsNullOrWhiteSpace(color)
+			? string.Empty
+			: $"background: linear-gradient(to right, {color}, transparent);";
+	}
+
+	private string GetCodeBadgeStyle(string? definitive)
+	{
+		if (string.IsNullOrWhiteSpace(definitive) || null == TimeSlice)
+			return string.Empty;
+
+		WorkShiftTemplateCollectionModel? plan = TimeSlice.GetPlan(0);
+		WorkShiftTemplateModel? template = plan?.Template(
+			definitive,
+			TimeSlice.GetDay(0),
+			TimeSlice.GetFestive(0));
+
+		if (null == template)
+			return "background: #e9ecef; color: #495057;";
+
+		string color = template.Color ?? "#212529";
+		string bg = template.BgColor ?? "#e9ecef";
+		return $"background: {bg}; color: {color};";
+	}
+
+	private enum IdleCategory
+	{
+		None,
+		DescansoDisponible,
+		Descanso,
+		Licencia,
+		Vacaciones
+	}
+
+	private sealed class IdleColumn
+	{
+		public IdleColumn(
+			string title,
+			string description,
+			List<AssignationContentModel> items,
+			bool HideCodeBadge = false,
+			bool ShowRestStreaks = false,
+			bool ShowDdShiftBadges = false)
+		{
+			Title = title;
+			Description = description;
+			Items = items;
+			this.HideCodeBadge = HideCodeBadge;
+			this.ShowRestStreaks = ShowRestStreaks;
+			this.ShowDdShiftBadges = ShowDdShiftBadges;
+		}
+
+		public string Title { get; }
+		public string Description { get; }
+		public List<AssignationContentModel> Items { get; }
+		public bool HideCodeBadge { get; }
+		public bool ShowRestStreaks { get; }
+		public bool ShowDdShiftBadges { get; }
+	}
+
+	private sealed class DayShiftInfo
+	{
+		public DayShiftInfo(bool IsWork, TimeSpan? StartTime)
+		{
+			this.IsWork = IsWork;
+			this.StartTime = StartTime;
+		}
+
+		public bool IsWork { get; }
+		public TimeSpan? StartTime { get; }
+	}
+
+	private sealed class DdAvailability
+	{
+		public DdAvailability(bool Morning, bool Afternoon)
+		{
+			this.Morning = Morning;
+			this.Afternoon = Afternoon;
+		}
+
+		public bool Morning { get; }
+		public bool Afternoon { get; }
+	}
 }

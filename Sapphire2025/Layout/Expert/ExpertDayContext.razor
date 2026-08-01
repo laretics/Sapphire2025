@@ -84,6 +84,13 @@ else
                                             <GenIcon Name="Printer" Color="currentColor" />
                                         </button>
                                     }
+                                    @if(DailySheetPrintFeature)
+                                    {
+                                        <button class="btn btn-outline-secondary" title="Imprimir hoja del día (1 página)"
+                                                @onclick="OnDailySheetPrint">
+                                            <GenIcon Name="Printer" Color="currentColor" />
+                                        </button>
+                                    }
                                     
                                     @if(ExcelImportFeature)
                                     {
@@ -167,6 +174,9 @@ else
     public bool RealTimeFollowFeature{ get; set; }
     [Parameter]
     public bool PrintFeature{ get; set; }
+    /// <summary>Botón para imprimir la hoja condensada del día (DailyGraph).</summary>
+    [Parameter]
+    public bool DailySheetPrintFeature { get; set; }
     [Parameter]
     public int ExcelImportDayCount { get; set; } = 4;
 
@@ -382,6 +392,14 @@ else
     {
         await CopyAgentsReportToLocale();
         string printUrl = mvarNavigationManager.ToAbsoluteUri("agentsprintview").AbsoluteUri;
+        await mvarJSRuntime.InvokeVoidAsync("open", printUrl, "_blank");
+    }
+
+    private async Task OnDailySheetPrint()
+    {
+        await CopyAgentsReportToLocale();
+        await mvarIntStorage.SetStringValue("dailysheetplanname", Plan?.Name ?? string.Empty, false);
+        string printUrl = mvarNavigationManager.ToAbsoluteUri("experts/dailysheetprint").AbsoluteUri;
         await mvarJSRuntime.InvokeVoidAsync("open", printUrl, "_blank");
     }
 

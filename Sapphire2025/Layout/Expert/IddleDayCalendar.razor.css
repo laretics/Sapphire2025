@@ -1,0 +1,174 @@
+.custom-width-table th,
+.custom-width-table td {
+	width: 100%;
+}
+
+.cell-content {
+	background: #fff;
+	transition: background 0.2s;
+}
+
+	.cell-content:hover {
+		background: #f1f3f4;
+	}
+
+.custom-cell {
+	border-radius: 0.4em !important;
+	overflow: hidden;
+	padding: 0.35rem 0.6rem !important;
+	position: relative;
+}
+
+.cell-content-inner {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	position: relative;
+	height: 100%;
+}
+
+.iddle-agent-row {
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.5rem;
+	width: 100%;
+}
+
+.iddle-agent-name {
+	text-align: left;
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.iddle-badges {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	flex: 0 0 auto;
+}
+
+.iddle-code-badge {
+	flex: 0 0 auto;
+	font-size: 0.7rem;
+	font-weight: 600;
+	padding: 0.1rem 0.4rem;
+	border-radius: 0.3rem;
+	line-height: 1.2;
+	white-space: nowrap;
+}
+
+/* Racha de días trabajados ANTES del descanso (pasado) */
+.iddle-streak-badge {
+	flex: 0 0 auto;
+	font-size: 0.7rem;
+	font-weight: 700;
+	padding: 0.12rem 0.4rem;
+	border-radius: 0.3rem;
+	line-height: 1.2;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+.iddle-streak-past {
+	background: #ffedd5;
+	color: #9a3412;
+	border: 1px solid #fdba74;
+}
+
+/* Racha de días de trabajo DESPUÉS del descanso (futuro) */
+.iddle-streak-future {
+	background: #dbeafe;
+	color: #1e40af;
+	border: 1px solid #93c5fd;
+}
+
+.iddle-d-ok {
+	background: #f3f4f6;
+	color: #374151;
+	border: 1px solid #d1d5db;
+}
+
+/* Disponibilidad DD: M = mañana, T = tarde */
+.iddle-shift-badge {
+	flex: 0 0 auto;
+	font-size: 0.72rem;
+	font-weight: 800;
+	padding: 0.12rem 0.42rem;
+	border-radius: 0.3rem;
+	line-height: 1.2;
+	white-space: nowrap;
+	min-width: 1.35rem;
+	text-align: center;
+}
+
+/* T = amarillo, M = morado (intercambiados respecto al diseño inicial) */
+.iddle-shift-m {
+	background: #ede9fe;
+	color: #5b21b6;
+	border: 1px solid #c4b5fd;
+}
+
+.iddle-shift-t {
+	background: #fef9c3;
+	color: #854d0e;
+	border: 1px solid #fde047;
+}
+
+/* Ciclo pasado+futuro+1 > 6: resaltar flechas en rojo */
+.iddle-streak-overload {
+	background: #fee2e2 !important;
+	color: #b91c1c !important;
+	border-color: #f87171 !important;
+	font-weight: 800;
+}
+
+.iddle-count {
+	font-weight: 500;
+	color: #6c757d;
+	font-size: 0.85em;
+}
+
+.iddle-day-scroll {
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	width: 100%;
+	padding-bottom: 0.5rem;
+}
+
+.iddle-day-col {
+	min-width: 220px;
+	max-width: 100%;
+}
+
+	.iddle-day-col thead th {
+		white-space: nowrap;
+	}
+
+@media (max-width: 767.98px) {
+	.iddle-day-col {
+		min-width: min(100%, 280px);
+		flex: 1 1 100%;
+	}
+
+	.custom-width-table {
+		font-size: 0.85rem;
+	}
+}
+
+@media (min-width: 768px) and (max-width: 1199.98px) {
+	.iddle-day-col {
+		min-width: 240px;
+		flex: 1 1 45%;
+	}
+}
+
+@media (min-width: 1200px) {
+	.iddle-day-col {
+		flex: 1 1 22%;
+		min-width: 200px;
+	}
+}

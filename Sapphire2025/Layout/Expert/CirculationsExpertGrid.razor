@@ -44,7 +44,7 @@ else
 								</div>
 								<div class="col-7 border border-secondary rounded circulation-cell" style="@AssignationCellStyle(mcolCirculations[col, row])">
 									<div class="small ms-2 text-break">
-										@AssignationString(mcolCirculations[col, row])
+										@RenderAssignationLinks(mcolCirculations[col, row])
 									</div>
 								</div>
 							</div>
@@ -187,45 +187,36 @@ else
 		}
 		return string.Empty;
 	}
-	private string AssignationString(TrainWorkShiftContentModel circulation)
+	private RenderFragment RenderAssignationLinks(TrainWorkShiftContentModel circulation) => builder =>
 	{
-		if(null!=circulation.Parent && null!=Users)
+		if (null == circulation.Parent || null == Users)
+			return;
+
+		List<AssignationContentModel> auxAssignations = AssignationsByTemplate(circulation.Parent.Name);
+		int seq = 0;
+		builder.OpenElement(seq++, "span");
+		builder.AddContent(seq++, $"{circulation.Parent.Name}: ");
+
+		if (auxAssignations.Count == 0)
 		{
-			List<AssignationContentModel> auxAssignations = AssignationsByTemplate(circulation.Parent.Name);			
-			if(auxAssignations.Count>0)
-			{
-				System.Text.StringBuilder salida = new System.Text.StringBuilder();
-				salida.AppendFormat("{0}: ", circulation.Parent.Name);
-
-				if(1==auxAssignations.Count)
-				{
-					if (Users.ContainsKey(auxAssignations[0].AgentId))
-						salida.Append(Users[auxAssignations[0].AgentId].Name);
-					else
-						salida.Append("desconocido");
-				}
-				else
-				{
-					for (int i = 0; i < auxAssignations.Count; i++)
-					{
-						if (i == (auxAssignations.Count - 1))
-							salida.Append(" y ");
-						else if (i > 0)
-							salida.Append(" , ");
-
-						if (Users.ContainsKey(auxAssignations[i].AgentId))
-							salida.Append(Users[auxAssignations[i].AgentId].Name);
-						else
-							salida.Append("desconocido");
-					}
-				}
-				return salida.ToString();
-			}			
-			else
-				return string.Format("Turno {0} descubierto!", circulation.Parent.Name);
+			builder.AddContent(seq++, "descubierto!");
+			builder.CloseElement();
+			return;
 		}
-		return string.Empty;
-	}
+
+		for (int i = 0; i < auxAssignations.Count; i++)
+		{
+			if (i > 0)
+				builder.AddContent(seq++, i == auxAssignations.Count - 1 ? " y " : ", ");
+
+			Guid agentId = auxAssignations[i].AgentId;
+			builder.OpenComponent<AgentScheduleLink>(seq++);
+			builder.AddAttribute(seq++, "AgentId", agentId);
+			builder.AddAttribute(seq++, "ShowCf", false);
+			builder.CloseComponent();
+		}
+		builder.CloseElement();
+	};
 	private string CirculationCellStyle(TrainWorkShiftContentModel circulation)
 	{
 		string salida = "transparent";

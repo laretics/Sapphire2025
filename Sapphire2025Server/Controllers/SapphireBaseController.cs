@@ -123,6 +123,12 @@ namespace Sapphire2025Server.Controllers
 		/// <summary>
 		/// Versión estática para métodos static de controladores (Telegram, etc.).
 		/// </summary>
+		/// <summary>
+		/// Límite práctico de hostPoint. En algunos despliegues la columna es VARCHAR corta
+		/// (p. ej. 255); longtext en migraciones EF no garantiza el esquema real.
+		/// </summary>
+		protected const int SessionEventHostPointMaxLength = 255;
+
 		protected static async Task addSessionEventStatic(
 			IConfiguration config,
 			string userId,
@@ -132,6 +138,8 @@ namespace Sapphire2025Server.Controllers
 			if (string.IsNullOrWhiteSpace(userId) || null == config)
 				return;
 
+			string safeHost = TruncateHostPoint(hostPoint);
+
 			using (DataStorage almacen = new DataStorage(config))
 			{
 				SessionEvent nuevo = new SessionEvent
@@ -139,12 +147,21 @@ namespace Sapphire2025Server.Controllers
 					Id = Guid.NewGuid().ToString(),
 					userId = userId,
 					type = type,
-					hostPoint = hostPoint ?? string.Empty,
+					hostPoint = safeHost,
 					timeSpan = DateTime.UtcNow
 				};
 				almacen.SessionEvents.Add(nuevo);
 				await almacen.SaveChangesAsync();
 			}
+		}
+
+		protected static string TruncateHostPoint(string? hostPoint)
+		{
+			if (string.IsNullOrEmpty(hostPoint))
+				return string.Empty;
+			if (hostPoint.Length <= SessionEventHostPointMaxLength)
+				return hostPoint;
+			return hostPoint.Substring(0, SessionEventHostPointMaxLength);
 		}
 
 		protected static Task addSessionEventStatic(

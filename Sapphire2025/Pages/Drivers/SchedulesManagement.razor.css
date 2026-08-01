@@ -1,0 +1,567 @@
+/* ========== Base ========== */
+.sched-page {
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+	padding: 0.25rem 0.35rem 1rem;
+	box-sizing: border-box;
+}
+
+.sched-dev-bar {
+	background: #f8fafc;
+	border: 1px solid #e5e7eb !important;
+}
+
+.sched-dev-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem 0.75rem;
+}
+
+.sched-cf-group {
+	max-width: 220px;
+	flex: 1 1 auto;
+}
+
+.sched-user-chip {
+	font-size: 0.95rem;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.sched-my-user-btn {
+	margin-left: auto;
+}
+
+.sched-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 0.85rem;
+	align-items: stretch;
+}
+
+.sched-panel {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	border-radius: 0.75rem;
+}
+
+.sched-panel .card-header,
+.sched-panel-header {
+	flex: 0 0 auto;
+}
+
+.sched-panel-scroll {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
+	overscroll-behavior: contain;
+	max-height: min(70vh, 720px);
+}
+
+.sched-shift-badge {
+	display: inline-block;
+	font-weight: 700;
+	font-size: 0.85rem;
+	padding: 0.15rem 0.5rem;
+	border-radius: 0.35rem;
+	border: 1px solid rgba(0, 0, 0, 0.08);
+	line-height: 1.25;
+	min-width: 2rem;
+	text-align: center;
+}
+
+.sched-shift-badge-lg {
+	font-size: 1.05rem;
+	padding: 0.25rem 0.65rem;
+}
+
+.sched-day-title {
+	font-size: 1.15rem;
+	font-weight: 600;
+	line-height: 1.3;
+	text-transform: capitalize;
+}
+
+.sched-train-row {
+	margin-bottom: 0.4rem;
+}
+
+.sched-train-id {
+	padding: 0.5rem 0.65rem;
+	background: #fff;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.35rem 0.75rem;
+}
+
+.sched-train-main {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.sched-train-time {
+	color: #374151;
+	font-variant-numeric: tabular-nums;
+}
+
+.sched-depot-row {
+	background: #f8fafc;
+	font-size: 0.9rem;
+}
+
+.sched-query-list .list-group-item {
+	border-color: #e5e7eb;
+}
+
+.sched-query-item {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 0.5rem;
+}
+
+.sched-query-item-main {
+	min-width: 0;
+	flex: 1 1 12rem;
+}
+
+.smallest {
+	font-size: 0.7rem;
+}
+
+.sched-day-summary {
+	padding-bottom: 0.75rem;
+	border-bottom: 1px solid #e5e7eb;
+}
+
+.sched-datepicker-wrap {
+	width: 100%;
+	min-width: 0;
+}
+
+.sched-export-btn {
+	white-space: nowrap;
+	flex: 0 0 auto;
+}
+
+.sched-export-icon {
+	margin-right: 0.15rem;
+	font-size: 0.85em;
+}
+
+	.sched-datepicker-wrap ::deep .input-group {
+		flex-wrap: wrap;
+		width: 100%;
+	}
+
+	.sched-datepicker-wrap ::deep .form-control {
+		min-width: 0;
+		flex: 1 1 auto;
+	}
+
+/* ========== Escritorio: tabla de asignaciones ========== */
+.sched-assign-table th,
+.sched-assign-table td {
+	vertical-align: middle;
+	padding: 0.45rem 0.55rem;
+}
+
+.sched-assign-table tbody tr:hover {
+	background: #f1f5f9;
+}
+
+.sched-row-selected {
+	background: #e0e7ff !important;
+	box-shadow: inset 3px 0 0 #4f46e5;
+}
+
+.sched-row-today .sched-day-cell .fw-semibold {
+	color: #1d4ed8;
+}
+
+/* Cards táctiles: ocultas en escritorio */
+.sched-day-cards {
+	display: none;
+}
+
+/* Nav móvil: oculta en escritorio */
+.sched-mobile-nav {
+	display: none;
+}
+
+/* ========== Desktop ≥ 992px: 3 columnas ========== */
+@media (min-width: 992px) {
+	.sched-page {
+		padding: 0.25rem 0.15rem 1rem;
+	}
+
+	.sched-grid {
+		grid-template-columns: minmax(240px, 1.1fr) minmax(280px, 1.2fr) minmax(240px, 1fr);
+		min-height: calc(100vh - 12rem);
+	}
+
+	.sched-panel-scroll {
+		max-height: none;
+	}
+
+	.sched-panel {
+		max-height: calc(100vh - 12rem);
+	}
+
+	.sched-day-cards {
+		display: none !important;
+	}
+
+	.sched-assign-table {
+		display: table;
+		width: 100%;
+	}
+
+	.sched-mobile-nav {
+		display: none !important;
+	}
+
+	/* En desktop las 3 columnas siempre visibles */
+	.sched-panel-left,
+	.sched-panel-center,
+	.sched-panel-right {
+		display: flex !important;
+	}
+}
+
+/* ========== Tablet / móvil &lt; 992px ========== */
+@media (max-width: 991.98px) {
+	.sched-page {
+		padding: 0.35rem 0.5rem;
+		/* Hueco para la barra inferior fija + safe area */
+		padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+	}
+
+	.sched-dev-row {
+		gap: 0.4rem;
+	}
+
+	.sched-dev-label {
+		width: 100%;
+		font-size: 0.7rem;
+		letter-spacing: 0.04em;
+	}
+
+	.sched-cf-group {
+		max-width: none;
+		flex: 1 1 100%;
+	}
+
+	.sched-my-user-btn {
+		margin-left: 0;
+	}
+
+	.sched-user-chip {
+		font-size: 0.88rem;
+		flex: 1 1 auto;
+	}
+
+	/* Una sola sección visible a la vez */
+	.sched-grid {
+		gap: 0;
+		min-height: 0;
+	}
+
+	.sched-panel {
+		display: none;
+		border-radius: 0.9rem;
+		box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06) !important;
+		max-height: none;
+		min-height: calc(100vh - 11.5rem - env(safe-area-inset-bottom, 0px));
+	}
+
+	.sched-panel.sched-panel-active {
+		display: flex;
+		animation: sched-fade-in 0.18s ease-out;
+	}
+
+	.sched-panel-scroll {
+		max-height: none;
+		flex: 1 1 auto;
+	}
+
+	/* Cards en lugar de tabla */
+	.sched-assign-table {
+		display: none !important;
+	}
+
+	.sched-day-cards {
+		display: flex;
+		flex-direction: column;
+		gap: 0.45rem;
+		padding: 0.55rem;
+	}
+
+	.sched-day-card {
+		display: grid;
+		grid-template-columns: auto 1fr auto;
+		align-items: center;
+		gap: 0.65rem;
+		width: 100%;
+		text-align: left;
+		border: 1px solid #e5e7eb;
+		border-radius: 0.75rem;
+		background: #fff;
+		padding: 0.55rem 0.65rem;
+		min-height: 3.6rem;
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+		transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+		.sched-day-card:active {
+			transform: scale(0.99);
+		}
+
+		.sched-day-card.selected {
+			border-color: #818cf8;
+			background: #eef2ff;
+			box-shadow: 0 0 0 1px #a5b4fc;
+		}
+
+		.sched-day-card.today .sched-day-card-num {
+			color: #1d4ed8;
+		}
+
+	.sched-day-card-date {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		min-width: 2.75rem;
+		padding: 0.2rem 0.35rem;
+		border-radius: 0.5rem;
+		background: #f3f4f6;
+		line-height: 1.15;
+	}
+
+	.sched-day-card-dow {
+		font-size: 0.65rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		color: #6b7280;
+		letter-spacing: 0.02em;
+	}
+
+	.sched-day-card-num {
+		font-size: 1.15rem;
+		font-weight: 800;
+		color: #111827;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.sched-day-card-mon {
+		font-size: 0.65rem;
+		text-transform: uppercase;
+		color: #9ca3af;
+	}
+
+	.sched-day-card-body {
+		min-width: 0;
+	}
+
+	.sched-day-card-time {
+		font-size: 0.8rem;
+		margin-top: 0.15rem;
+		color: #374151;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.sched-day-card-note {
+		font-size: 0.72rem;
+		color: #6b7280;
+		margin-top: 0.1rem;
+		max-width: 100%;
+	}
+
+	.sched-day-card-chevron {
+		font-size: 1.35rem;
+		color: #9ca3af;
+		font-weight: 300;
+		line-height: 1;
+		padding-right: 0.1rem;
+	}
+
+	.sched-day-title {
+		font-size: 1.02rem;
+	}
+
+	.sched-touch-btn {
+		min-height: 2.4rem;
+		padding-left: 0.9rem;
+		padding-right: 0.9rem;
+	}
+
+	.sched-touch-input {
+		min-height: 2.4rem;
+		font-size: 1rem !important; /* evita zoom iOS en focus */
+	}
+
+	.sched-query-input-group {
+		flex-wrap: nowrap;
+	}
+
+		.sched-query-input-group .btn {
+			min-height: 2.4rem;
+		}
+
+	/* Barra de pestañas fija inferior */
+	.sched-mobile-nav {
+		display: grid;
+		grid-template-columns: 1fr 1fr 1fr;
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 1040;
+		background: rgba(255, 255, 255, 0.92);
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+		border-top: 1px solid #e5e7eb;
+		box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.06);
+		padding: 0.35rem 0.4rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+		gap: 0.25rem;
+	}
+
+	.sched-mobile-tab {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 0.1rem;
+		border: none;
+		background: transparent;
+		border-radius: 0.65rem;
+		padding: 0.4rem 0.25rem;
+		min-height: 3.15rem;
+		color: #6b7280;
+		font-size: 0.72rem;
+		font-weight: 600;
+		line-height: 1.1;
+		-webkit-tap-highlight-color: transparent;
+		transition: background 0.15s ease, color 0.15s ease;
+	}
+
+		.sched-mobile-tab.active {
+			background: #eef2ff;
+			color: #3730a3;
+		}
+
+	.sched-mobile-tab-icon {
+		font-size: 1.05rem;
+		line-height: 1;
+		opacity: 0.9;
+	}
+
+	.sched-mobile-tab-label {
+		letter-spacing: 0.01em;
+	}
+
+	.sched-mobile-tab-chip {
+		font-size: 0.65rem;
+		font-weight: 800;
+		padding: 0.05rem 0.35rem;
+		border-radius: 0.3rem;
+		border: 1px solid rgba(0, 0, 0, 0.08);
+		max-width: 3.2rem;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		margin-top: 0.05rem;
+	}
+
+	/* Modal de cambio más cómodo en pantallas estrechas */
+	.sched-swap-dialog {
+		margin: 0.6rem;
+		max-width: calc(100vw - 1.2rem);
+	}
+
+	.sched-swap-overlay .modal-footer {
+		flex-wrap: wrap;
+		gap: 0.35rem;
+	}
+
+		.sched-swap-overlay .modal-footer .btn {
+			flex: 1 1 auto;
+			min-height: 2.5rem;
+		}
+}
+
+/* Móviles muy estrechos */
+@media (max-width: 399.98px) {
+	.sched-page {
+		padding-left: 0.4rem;
+		padding-right: 0.4rem;
+	}
+
+	.sched-day-card {
+		gap: 0.45rem;
+		padding: 0.5rem 0.55rem;
+	}
+
+	.sched-mobile-tab-label {
+		font-size: 0.68rem;
+	}
+
+	.sched-day-title {
+		font-size: 0.95rem;
+	}
+}
+
+/* Landscape estrecho: un poco más de altura útil */
+@media (max-width: 991.98px) and (orientation: landscape) {
+	.sched-panel {
+		min-height: calc(100vh - 8.5rem - env(safe-area-inset-bottom, 0px));
+	}
+
+	.sched-mobile-nav {
+		padding-top: 0.25rem;
+		padding-bottom: calc(0.25rem + env(safe-area-inset-bottom, 0px));
+	}
+
+	.sched-mobile-tab {
+		min-height: 2.6rem;
+		flex-direction: row;
+		gap: 0.35rem;
+		font-size: 0.75rem;
+	}
+}
+
+@keyframes sched-fade-in {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* Preferencia de menos movimiento */
+@media (prefers-reduced-motion: reduce) {
+	.sched-panel.sched-panel-active {
+		animation: none;
+	}
+
+	.sched-day-card:active {
+		transform: none;
+	}
+}

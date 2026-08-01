@@ -9,7 +9,7 @@
 <ModalDialog @ref="mvarModal" />
 
 <div class="daily-graph-page">
-    <ExpertDayContext ExcelImportDayCount="4" ExcelImportFeature=true RealTimeFollowFeature=true>
+    <ExpertDayContext ExcelImportDayCount="4" ExcelImportFeature=true RealTimeFollowFeature=true DailySheetPrintFeature=true>
         <div class="daily-graph-tabs">
             <TabControl Classic=true PersistenceKey="dailyGraph.activeTab" RestoreToken="@CurrentDate">
                 <TabPage Text="Circulaciones">
@@ -24,7 +24,7 @@
                 </TabPage>
                 <TabPage Text="Depósitos">
                     <Icon>
-                        <Sapphire2025.Icons.Inspector.Att color="#2020A0" />
+                        <GenIcon Name="Att" color="#2020A0" />
                     </Icon>
                     <ChildContent>
                         <div class="daily-graph-pane">
@@ -49,7 +49,7 @@
                     </Icon>
                     <ChildContent>
                         <div class="daily-graph-pane">
-                            <IddleDayCalendar/>
+                            <IddleDayCalendar MinutesBeforeWorksheet="25" MinutesAfterWorksheet="10" />
                         </div>
                     </ChildContent>
                 </TabPage>

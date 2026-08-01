@@ -831,6 +831,60 @@ namespace Sapphire2025Server.Controllers
 		}
 
 		/// <summary>
+		/// Registra un evento de actividad iniciado desde el cliente (p. ej. cuadrante de maquinistas).
+		/// Solo se admiten tipos de evento de la familia "schedule*" y el usuario de la sesión autenticada.
+		/// </summary>
+		[HttpPost("logactivity")]
+		public async Task<bool> LogActivity(SessionEventLogRequest? request)
+		{
+			if (null == request || Guid.Empty.Equals(request.SessionToken))
+				return false;
+
+			Common.sessionEventType eventType = (Common.sessionEventType)request.EventType;
+			if (!IsClientAllowedEventType(eventType))
+				return false;
+
+			User? actor = await retrieveSessionUser(request.SessionToken);
+			if (null == actor || string.IsNullOrWhiteSpace(actor.Id))
+				return false;
+
+			// Preferir el detalle de la acción; la IP va al final si cabe.
+			// hostPoint en BD puede ser VARCHAR corto → TruncateHostPoint en addSessionEventStatic.
+			string ip = clientHostPoint() ?? string.Empty;
+			string detail = (request.Detail ?? string.Empty).Trim();
+			string host;
+			if (string.IsNullOrWhiteSpace(detail))
+				host = ip;
+			else if (string.IsNullOrWhiteSpace(ip))
+				host = detail;
+			else
+				host = $"{detail}|{ip}";
+
+			try
+			{
+				await addLoginRecord(actor.Id, eventType, host);
+				return true;
+			}
+			catch (Exception)
+			{
+				// Nunca tumbar la UI del cuadrante por un fallo de log.
+				return false;
+			}
+		}
+
+		/// <summary>
+		/// Tipos de evento que un cliente autenticado puede registrar por sí mismo.
+		/// Evita que se falsifiquen logins, cambios de rol, etc.
+		/// </summary>
+		private static bool IsClientAllowedEventType(Common.sessionEventType eventType)
+		{
+			return eventType == Common.sessionEventType.scheduleViewOpened
+				|| eventType == Common.sessionEventType.scheduleDayViewed
+				|| eventType == Common.sessionEventType.scheduleShiftQueried
+				|| eventType == Common.sessionEventType.scheduleSwapRequested;
+		}
+
+		/// <summary>
 		/// Búsqueda avanzada de eventos de actividad (SessionEvents) para administradores.
 		/// Filtros: fechas, usuarios, tipos de evento y host/origen.
 		/// </summary>

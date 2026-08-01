@@ -1,0 +1,1193 @@
+@page "/drivers/schedules"
+@using System.Text
+@using Sapphire2025.Layout.Expert
+@using Sapphire2025Models
+@using Sapphire2025Models.Expert.WorkshiftTemplates
+@inject ExpertClient mvarExpertClient
+@inject AuthenticationClient mvarAuthClient
+@inject IntStorageService mvarIntStorage
+@inject IJSRuntime mvarJS
+
+<PageTitle>Mi cuadrante</PageTitle>
+<ModalDialog @ref="mvarModal" />
+
+<div class="sched-page @(mvarMobilePanel.ToString().ToLowerInvariant())">
+	@* —— Barra de desarrollo / identidad (solo administradores Root) —— *@
+	@if (IsAdmin)
+	{
+		<div class="sched-dev-bar card border-0 shadow-sm mb-2 mb-md-3">
+			<div class="card-body py-2 px-3">
+				<div class="sched-dev-row">
+					<div class="sched-dev-label text-muted small text-uppercase fw-semibold">Vista como</div>
+					<div class="input-group input-group-sm sched-cf-group">
+						<span class="input-group-text">CF</span>
+						<input type="text"
+							   class="form-control"
+							   @bind="mvarCfInput"
+							   @bind:event="oninput"
+							   placeholder="ej. 196"
+							   maxlength="8"
+							   inputmode="numeric"
+							   autocomplete="off"
+							   title="CF del maquinista a simular (solo desarrollo)" />
+						<button type="button" class="btn btn-outline-primary" @onclick="ApplyCfAsync">Ver</button>
+					</div>
+					@if (null != ViewedUser)
+					{
+						<div class="sched-user-chip">
+							<span class="fw-semibold text-truncate">(@ViewedUser.CF) @ViewedUser.Name</span>
+							@if (IsImpersonating)
+							{
+								<span class="badge bg-warning text-dark">Simulación</span>
+							}
+						</div>
+					}
+					else if (!string.IsNullOrWhiteSpace(mvarCfError))
+					{
+						<span class="text-danger small">@mvarCfError</span>
+					}
+					<button type="button"
+							class="btn btn-sm btn-outline-secondary sched-my-user-btn"
+							@onclick="UseMyUserAsync"
+							title="Usar el usuario de la sesión actual">
+						Mi usuario
+					</button>
+				</div>
+			</div>
+		</div>
+	}
+
+	@if (mvarLoading)
+	{
+		<LoadingTab ElementText="@mvarLoadingText" />
+	}
+	else if (null == ViewedUser)
+	{
+		<div class="alert alert-info">
+			Indica un <strong>CF</strong> de maquinista (p. ej. 196) para cargar su gráfico, o pulsa <em>Mi usuario</em>.
+		</div>
+	}
+	else
+	{
+		@* Navegación inferior / superior solo en pantallas reducidas *@
+		<nav class="sched-mobile-nav" aria-label="Secciones del cuadrante">
+			<button type="button"
+					class="sched-mobile-tab @(mvarMobilePanel == MobilePanel.Assignations ? "active" : null)"
+					@onclick="() => SetMobilePanel(MobilePanel.Assignations)">
+				<span class="sched-mobile-tab-icon" aria-hidden="true">☰</span>
+				<span class="sched-mobile-tab-label">Gráfico</span>
+			</button>
+			<button type="button"
+					class="sched-mobile-tab @(mvarMobilePanel == MobilePanel.Day ? "active" : null)"
+					@onclick="() => SetMobilePanel(MobilePanel.Day)">
+				<span class="sched-mobile-tab-icon" aria-hidden="true">◎</span>
+				<span class="sched-mobile-tab-label">Turnos</span>
+				@if (null != SelectedRow?.Assignation)
+				{
+					<span class="sched-mobile-tab-chip"
+						  style="@GetTemplateStyle(SelectedRow.Template, SelectedRow.Assignation.TD)">
+						@SelectedRow.Assignation.Definitive
+					</span>
+				}
+			</button>
+			<button type="button"
+					class="sched-mobile-tab @(mvarMobilePanel == MobilePanel.Query ? "active" : null)"
+					@onclick="() => SetMobilePanel(MobilePanel.Query)">
+				<span class="sched-mobile-tab-icon" aria-hidden="true">⌕</span>
+				<span class="sched-mobile-tab-label">Consulta</span>
+			</button>
+		</nav>
+
+		<div class="sched-grid" data-active-panel="@mvarMobilePanel">
+			@* ========== IZQUIERDA: asignaciones ========== *@
+			<section class="sched-panel sched-panel-left card shadow-sm border-0 @(mvarMobilePanel == MobilePanel.Assignations ? "sched-panel-active" : null)">
+				<div class="card-header bg-white border-bottom sched-panel-header">
+					<div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+						<div>
+							<div class="fw-semibold">Mi gráfico</div>
+							<div class="small text-muted">@RangeLabel</div>
+						</div>
+						<button type="button"
+								class="btn btn-outline-success btn-sm sched-touch-btn sched-export-btn"
+								disabled="@(AgentRows.Count == 0)"
+								title="Descargar el periodo visible como calendario (.ics) para Google Calendar, Outlook, etc."
+								@onclick="ExportIcsAsync">
+							<span class="sched-export-icon" aria-hidden="true">⬇</span>
+							Exportar .ics
+						</button>
+					</div>
+				</div>
+				<div class="card-body p-0 sched-panel-scroll">
+					@if (AgentRows.Count == 0)
+					{
+						<div class="p-3 text-muted small">No hay turnos.</div>
+					}
+					else
+					{
+						@* Lista táctil (móvil / tablet estrecha) *@
+						<div class="sched-day-cards">
+							@foreach (AgentDayRow row in AgentRows)
+							{
+								<button type="button"
+										class="sched-day-card @(IsSelectedRow(row) ? "selected" : null) @(row.IsToday ? "today" : null)"
+										@onclick="() => SelectDayFromList(row.Date)">
+									<div class="sched-day-card-date">
+										<span class="sched-day-card-dow">@DayName(row.Date)</span>
+										<span class="sched-day-card-num">@row.Date.ToString("dd")</span>
+										<span class="sched-day-card-mon">@row.Date.ToString("MMM")</span>
+									</div>
+									<div class="sched-day-card-body">
+										@if (null != row.Assignation)
+										{
+											<div class="d-flex align-items-center flex-wrap gap-1">
+												<span class="sched-shift-badge"
+													  style="@GetTemplateStyle(row.Template, row.Assignation.TD)">
+													@(row.Assignation.Definitive ?? "—")
+												</span>
+												@if (row.Assignation.TD)
+												{
+													<span class="badge text-bg-success">TD</span>
+												}
+												@if (row.Assignation.SwappingAgent != Guid.Empty)
+												{
+													<span class="badge text-bg-info">Cambio</span>
+												}
+											</div>
+											@if (row.Template is AttTemplateModel attCard)
+											{
+												<div class="sched-day-card-time">
+													@Sapphire2025Models.Utils.autoInterval(attCard.StartTime, true)–@Sapphire2025Models.Utils.autoInterval(attCard.EndTime, true)
+													<span class="text-muted"> · @Sapphire2025Models.Utils.autoInterval(attCard.Duration, false)</span>
+												</div>
+											}
+											@if (!string.IsNullOrWhiteSpace(row.Assignation.Comment))
+											{
+												<div class="sched-day-card-note text-truncate">@row.Assignation.Comment</div>
+											}
+										}
+										else
+										{
+											<span class="text-muted">Sin asignación</span>
+										}
+									</div>
+									<span class="sched-day-card-chevron" aria-hidden="true">›</span>
+								</button>
+							}
+						</div>
+
+						@* Tabla densa (escritorio) *@
+						<table class="table table-sm table-hover mb-0 sched-assign-table">
+							<thead class="table-light sticky-top">
+								<tr>
+									<th>Día</th>
+									<th>Turno</th>
+									<th class="d-none d-xl-table-cell">Horario</th>
+									<th class="d-none d-xxl-table-cell">Notas</th>
+								</tr>
+							</thead>
+							<tbody>
+								@foreach (AgentDayRow row in AgentRows)
+								{
+									<tr class="@(IsSelectedRow(row) ? "sched-row-selected" : null) @(row.IsToday ? "sched-row-today" : null)"
+										@onclick="() => SelectDay(row.Date)"
+										style="cursor: pointer;">
+										<td class="sched-day-cell">
+											<div class="fw-semibold">@row.Date.ToString("dd/MM")</div>
+											<div class="small text-muted text-uppercase">@DayName(row.Date)</div>
+										</td>
+										<td>
+											@if (null != row.Assignation)
+											{
+												<span class="sched-shift-badge"
+													  style="@GetTemplateStyle(row.Template, row.Assignation.TD)"
+													  title="@(row.Assignation.AssignationsChain ?? row.Assignation.Definitive)">
+													@(row.Assignation.Definitive ?? "—")
+												</span>
+												@if (row.Assignation.TD)
+												{
+													<span class="badge bg-success-subtle text-success border ms-1" title="Turno en descanso">TD</span>
+												}
+												@if (row.Assignation.SwappingAgent != Guid.Empty)
+												{
+													<span class="badge bg-info-subtle text-info border ms-1" title="@GetUserName(row.Assignation.SwappingAgent)">Cambio</span>
+												}
+												@if (!string.IsNullOrWhiteSpace(row.Template?.comment))
+												{
+													<div class="smallest text-muted mt-1">@row.Template.comment</div>
+												}
+											}
+											else
+											{
+												<span class="text-muted">—</span>
+											}
+										</td>
+										<td class="d-none d-xl-table-cell small">
+											@if (row.Template is AttTemplateModel att)
+											{
+												@($"{Sapphire2025Models.Utils.autoInterval(att.StartTime, true)}–{Sapphire2025Models.Utils.autoInterval(att.EndTime, true)}")
+												<div class="text-muted">@Sapphire2025Models.Utils.autoInterval(att.Duration, false)</div>
+											}
+										</td>
+										<td class="d-none d-xxl-table-cell small text-muted">
+											@(row.Assignation?.Comment)
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					}
+				</div>
+			</section>
+
+			@* ========== CENTRO: fecha + trenes del turno ========== *@
+			<section class="sched-panel sched-panel-center card shadow-sm border-0 @(mvarMobilePanel == MobilePanel.Day ? "sched-panel-active" : null)">
+				<div class="card-header bg-white border-bottom sched-panel-header">
+					<div class="fw-semibold mb-2">Día</div>
+					<div class="sched-datepicker-wrap">
+						<DateTimePicker @bind-SelectedDate="SelectedDate" />
+					</div>
+				</div>
+				<div class="card-body sched-panel-scroll">
+					@if (null == SelectedRow)
+					{
+						<p class="text-muted small mb-0">Selecciona un día en la lista o con el selector de fecha.</p>
+					}
+					else
+					{
+						<div class="sched-day-summary mb-3">
+							<div class="d-flex flex-wrap align-items-center gap-2">
+								<span class="sched-day-title">@SelectedDate.ToString("dddd d MMMM yyyy")</span>
+								@if (null != SelectedRow.Assignation)
+								{
+									<span class="sched-shift-badge sched-shift-badge-lg"
+										  style="@GetTemplateStyle(SelectedRow.Template, SelectedRow.Assignation.TD)">
+										@(SelectedRow.Assignation.Definitive ?? "—")
+									</span>
+								}
+							</div>
+							@if (SelectedRow.Template is AttTemplateModel selAtt)
+							{
+								<div class="text-muted mt-1">
+									@Sapphire2025Models.Utils.autoInterval(selAtt.StartTime, true) – @Sapphire2025Models.Utils.autoInterval(selAtt.EndTime, true)
+									<span class="ms-1">(@Sapphire2025Models.Utils.autoInterval(selAtt.Duration, false))</span>
+								</div>
+							}
+							else if (null != SelectedRow.Assignation)
+							{
+								<div class="text-muted mt-1 small">Sin horario de trabajo (descanso / licencia / vacaciones).</div>
+							}
+							else
+							{
+								<div class="text-muted mt-1 small">Sin turno grafiado este día.</div>
+							}
+							@if (!string.IsNullOrWhiteSpace(SelectedRow.Assignation?.Comment))
+							{
+								<div class="alert alert-secondary py-2 px-3 small mt-2 mb-0">
+									<strong>Nota JM:</strong> @SelectedRow.Assignation.Comment
+								</div>
+							}
+							@if (SelectedRow.Assignation is not null && SelectedRow.Template is AttTemplateModel)
+							{
+								<button type="button"
+										class="btn btn-outline-primary btn-sm mt-2 sched-touch-btn"
+										@onclick="OpenSwapDialog">
+									Pedir cambio de turno…
+								</button>
+							}
+						</div>
+
+						<h6 class="text-uppercase text-muted small fw-semibold">Circulaciones del turno</h6>
+						@if (SelectedTrains.Count == 0 && SelectedDepots.Count == 0)
+						{
+							<p class="text-muted small">No hay trenes ni depósitos asociados a este turno.</p>
+						}
+						else
+						{
+							<div class="sched-content-list">
+								@foreach (TrainWorkShiftContentModel train in SelectedTrains)
+								{
+									<div class="sched-train-row">
+										<div class="sched-train-id border border-secondary rounded"
+											 style="@GetTrainColorStyle(train)">
+											<div class="sched-train-main">
+												<span class="fw-semibold">@train.TrainId</span>
+												@if (train.Discrectional)
+												{
+													<span class="badge bg-secondary">Opcional</span>
+												}
+											</div>
+											<span class="sched-train-time small">
+												@Sapphire2025Models.Utils.autoInterval(train.StartTime, true)–@Sapphire2025Models.Utils.autoInterval(train.EndTime, true)
+											</span>
+										</div>
+									</div>
+								}
+								@if (SelectedDepots.Count > 0)
+								{
+									<h6 class="text-uppercase text-muted small fw-semibold mt-3">Depósitos / disponibilidad</h6>
+									@foreach (AttWorkShiftContentModel depot in SelectedDepots)
+									{
+										<div class="sched-depot-row border border-secondary rounded mb-1 px-2 py-2">
+											<span class="fw-semibold">
+												@Sapphire2025Models.Utils.autoInterval(depot.StartTime, true)–@Sapphire2025Models.Utils.autoInterval(depot.EndTime, true)
+											</span>
+											<span class="text-muted small ms-2">(@Sapphire2025Models.Utils.autoInterval(depot.Duration, false))</span>
+											@if (depot.Foreign)
+											{
+												<span class="badge bg-warning-subtle text-warning-emphasis border ms-1">Fuera</span>
+											}
+										</div>
+									}
+								}
+							</div>
+						}
+					}
+				</div>
+			</section>
+
+			@* ========== DERECHA: consulta + cambio ========== *@
+			<section class="sched-panel sched-panel-right card shadow-sm border-0 @(mvarMobilePanel == MobilePanel.Query ? "sched-panel-active" : null)">
+				<div class="card-header bg-white border-bottom sched-panel-header">
+					<div class="fw-semibold">Consultas</div>
+					<div class="small text-muted">Quién hace un turno</div>
+				</div>
+				<div class="card-body sched-panel-scroll">
+					<div class="mb-3">
+						<label class="form-label small fw-semibold mb-1">Fecha</label>
+						<InputDate class="form-control form-control-sm sched-touch-input" @bind-Value="mvarQueryDate" />
+					</div>
+					<div class="mb-3">
+						<label class="form-label small fw-semibold mb-1">Turno</label>
+						<div class="input-group input-group-sm sched-query-input-group">
+							<input type="text"
+								   class="form-control sched-touch-input"
+								   @bind="mvarQueryShift"
+								   @bind:event="oninput"
+								   placeholder="ej. 3, 1f, DD…"
+								   list="sched-shift-suggestions"
+								   autocomplete="off" />
+							<button type="button" class="btn btn-primary sched-touch-btn" @onclick="QueryShiftAsync">Buscar</button>
+						</div>
+						<datalist id="sched-shift-suggestions">
+							@foreach (string name in ShiftSuggestions)
+							{
+								<option value="@name"></option>
+							}
+						</datalist>
+					</div>
+
+					@if (!string.IsNullOrWhiteSpace(mvarQueryError))
+					{
+						<div class="alert alert-warning py-2 small">@mvarQueryError</div>
+					}
+
+					@if (mvarQueryRan)
+					{
+						<div class="sched-query-result">
+							<div class="small text-muted mb-2">
+								Resultado para <strong>@mvarQueryShift</strong> el @mvarQueryDate.ToString("dd/MM/yyyy")
+							</div>
+							@if (QueryResults.Count == 0)
+							{
+								<div class="text-muted small">Nadie asignado a ese turno ese día (o turno no grafiado).</div>
+							}
+							else
+							{
+								<ul class="list-group list-group-flush sched-query-list">
+									@foreach (AssignationContentModel hit in QueryResults)
+									{
+										<li class="list-group-item px-0 sched-query-item">
+											<div class="sched-query-item-main">
+												<div class="fw-semibold">@GetUserDisplay(hit.AgentId)</div>
+												@if (!string.IsNullOrWhiteSpace(hit.Comment))
+												{
+													<div class="small text-muted">@hit.Comment</div>
+												}
+											</div>
+											@if (hit.AgentId != ViewedUser?.guid)
+											{
+												<button type="button"
+														class="btn btn-outline-primary btn-sm sched-touch-btn"
+														@onclick="() => OpenSwapDialogFor(hit)">
+													Pedir cambio
+												</button>
+											}
+											else
+											{
+												<span class="badge text-bg-light border align-self-center">Tú</span>
+											}
+										</li>
+									}
+								</ul>
+							}
+						</div>
+					}
+
+					<hr class="my-3" />
+					<div class="small text-muted">
+						<strong>Próximamente:</strong> el cambio de turno se enviará al otro maquinista y al JM.
+						De momento puedes esbozar la solicitud con el diálogo.
+					</div>
+				</div>
+			</section>
+		</div>
+	}
+</div>
+
+@* —— Diálogo esbozo: petición de cambio de turno —— *@
+@if (mvarShowSwapDialog)
+{
+	<div class="modal fade show d-block sched-swap-overlay" tabindex="-1" style="background-color: rgba(0,0,0,0.45);">
+		<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable sched-swap-dialog">
+			<div class="modal-content shadow">
+				<div class="modal-header">
+					<h5 class="modal-title">Pedir cambio de turno</h5>
+					<button type="button" class="btn-close" @onclick="CloseSwapDialog"></button>
+				</div>
+				<div class="modal-body">
+					<p class="small text-muted">
+						Esbozo de la petición. Aún no se envía al servidor.
+					</p>
+					<div class="mb-2">
+						<label class="form-label small fw-semibold">Tu turno</label>
+						<div>
+							<span class="sched-shift-badge"
+								  style="@GetTemplateStyle(mvarSwapOwnTemplate, mvarSwapOwnTd)">
+								@(mvarSwapOwnShift ?? "—")
+							</span>
+							<span class="ms-2 small">@mvarSwapDate.ToString("dd/MM/yyyy")</span>
+						</div>
+					</div>
+					<div class="mb-2">
+						<label class="form-label small fw-semibold">Maquinista destino</label>
+						<input type="text" class="form-control form-control-sm" @bind="mvarSwapTargetDisplay" readonly />
+					</div>
+					<div class="mb-2">
+						<label class="form-label small fw-semibold">Turno que ofrece / pide</label>
+						<input type="text" class="form-control form-control-sm" @bind="mvarSwapTargetShift" />
+					</div>
+					<div class="mb-2">
+						<label class="form-label small fw-semibold">Mensaje</label>
+						<textarea class="form-control form-control-sm" rows="3" @bind="mvarSwapMessage"
+								  placeholder="Motivo del cambio, preferencia de contacto…"></textarea>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-outline-secondary" @onclick="CloseSwapDialog">Cancelar</button>
+					<button type="button" class="btn btn-primary" @onclick="SubmitSwapSketchAsync">
+						Enviar solicitud (esbozo)
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	private const int DayHorizon = 16;
+	private const string DevCfStorageKey = "schedules.devCf";
+
+	private enum MobilePanel { Assignations, Day, Query }
+	private MobilePanel mvarMobilePanel = MobilePanel.Day;
+
+	/// <summary>CF opcional desde DailyGraph u otros enlaces: /drivers/schedules?cf=196</summary>
+	[SupplyParameterFromQuery(Name = "cf")]
+	public string? CfFromQuery { get; set; }
+
+	private ModalDialog mvarModal { get; set; } = new();
+	private Dictionary<Guid, UserModelBase>? mcolUsers;
+	private PlansYearSlice? mvarTimeSlice;
+	private List<AssignationContentModel> mcolRangeAssignations = new();
+	private List<AgentDayRow> AgentRows { get; set; } = new();
+	private List<TrainWorkShiftContentModel> SelectedTrains { get; set; } = new();
+	private List<AttWorkShiftContentModel> SelectedDepots { get; set; } = new();
+	private List<AssignationContentModel> QueryResults { get; set; } = new();
+	private List<string> ShiftSuggestions { get; set; } = new();
+
+	private UserModelBase? ViewedUser { get; set; }
+	private UserModelBase? SessionUser { get; set; }
+	private SessionModel? mvarSession;
+	private AgentDayRow? SelectedRow { get; set; }
+	private string? mvarAppliedQueryCf;
+
+	private bool mvarLoading;
+	private string mvarLoadingText = "Cargando cuadrante…";
+	private string mvarCfInput = string.Empty;
+	private string? mvarCfError;
+	/// <summary>Administrador del sistema (rol Root) — ve la barra de simulación.</summary>
+	private bool IsAdmin => Sapphire2025Models.Utils.isRoot(mvarSession);
+	/// <summary>Expert / Root pueden abrir el cuadrante de otro CF (enlaces desde DailyGraph).</summary>
+	private bool CanViewOtherAgents => Sapphire2025Models.Utils.isExpert(mvarSession);
+	private bool IsImpersonating =>
+		CanViewOtherAgents && null != ViewedUser && null != SessionUser && ViewedUser.guid != SessionUser.guid;
+
+	private DateTime mvarSelectedDate = DateTime.Today;
+	private DateTime SelectedDate
+	{
+		get => mvarSelectedDate;
+		set
+		{
+			if (mvarSelectedDate.Date == value.Date) return;
+			mvarSelectedDate = value.Date;
+			_ = OnSelectedDateChangedAsync();
+		}
+	}
+
+	private DateTime mvarQueryDate = DateTime.Today;
+	private string mvarQueryShift = string.Empty;
+	private string? mvarQueryError;
+	private bool mvarQueryRan;
+
+	// Swap dialog sketch
+	private bool mvarShowSwapDialog;
+	private DateTime mvarSwapDate;
+	private string? mvarSwapOwnShift;
+	private bool mvarSwapOwnTd;
+	private WorkShiftTemplateModel? mvarSwapOwnTemplate;
+	private string mvarSwapTargetDisplay = string.Empty;
+	private Guid mvarSwapTargetId = Guid.Empty;
+	private string mvarSwapTargetShift = string.Empty;
+	private string mvarSwapMessage = string.Empty;
+
+	private string RangeLabel =>
+		null == mvarTimeSlice
+			? string.Empty
+			: $"{mvarTimeSlice.InitialDate:dd/MM} – {mvarTimeSlice.InitialDate.AddDays(DayHorizon - 1):dd/MM}";
+
+	protected override async Task OnInitializedAsync()
+	{
+		mvarLoading = true;
+		mvarLoadingText = "Cargando usuarios…";
+		mvarSession = await mvarIntStorage.GetSessionInfo();
+		mcolUsers = await mvarAuthClient.cachedUserList();
+		SessionUser = await mvarAuthClient.GetCurrentUser();
+
+		await ApplyInitialViewedUserAsync();
+
+		if (null != ViewedUser)
+		{
+			await LoadRangeAsync(SelectedDate);
+			await LogScheduleAsync(
+				Common.sessionEventType.scheduleViewOpened,
+				$"cf={ViewedUser.CF}|sim={IsImpersonating}|origen=init");
+		}
+		else
+			mvarLoading = false;
+	}
+
+	protected override async Task OnParametersSetAsync()
+	{
+		// Navegación desde DailyGraph con otro ?cf= sin recrear el componente.
+		if (!CanViewOtherAgents || string.IsNullOrWhiteSpace(CfFromQuery))
+			return;
+
+		string q = CfFromQuery.Trim();
+		if (string.Equals(mvarAppliedQueryCf, q, StringComparison.OrdinalIgnoreCase))
+			return;
+		if (null != ViewedUser && string.Equals(ViewedUser.CF?.Trim(), q, StringComparison.OrdinalIgnoreCase)
+			&& string.Equals(mvarAppliedQueryCf, q, StringComparison.OrdinalIgnoreCase))
+			return;
+
+		if (!ResolveViewedUserFromCf(q))
+			return;
+
+		mvarAppliedQueryCf = q;
+		mvarCfInput = q;
+		if (IsAdmin)
+			await mvarIntStorage.SetStringValue(DevCfStorageKey, q, false);
+
+		await LoadRangeAsync(SelectedDate);
+		await LogScheduleAsync(
+			Common.sessionEventType.scheduleViewOpened,
+			$"cf={ViewedUser?.CF}|sim={IsImpersonating}|origen=query");
+	}
+
+	private async Task ApplyInitialViewedUserAsync()
+	{
+		// 1) Enlace ?cf= (Expert / Root desde DailyGraph)
+		if (CanViewOtherAgents && !string.IsNullOrWhiteSpace(CfFromQuery))
+		{
+			string q = CfFromQuery.Trim();
+			if (ResolveViewedUserFromCf(q))
+			{
+				mvarCfInput = q;
+				mvarAppliedQueryCf = q;
+				if (IsAdmin)
+					await mvarIntStorage.SetStringValue(DevCfStorageKey, q, false);
+				return;
+			}
+		}
+
+		// 2) Root: último CF simulado en almacenamiento local
+		if (IsAdmin)
+		{
+			string? storedCf = await mvarIntStorage.GetStringValue(DevCfStorageKey, false);
+			if (!string.IsNullOrWhiteSpace(storedCf) && ResolveViewedUserFromCf(storedCf.Trim()))
+			{
+				mvarCfInput = storedCf.Trim();
+				return;
+			}
+		}
+
+		// 3) Propio usuario de sesión
+		ViewedUser = SessionUser;
+		mvarCfInput = SessionUser?.CF ?? string.Empty;
+	}
+
+	private async Task ApplyCfAsync()
+	{
+		if (!IsAdmin) return;
+
+		mvarCfError = null;
+		if (string.IsNullOrWhiteSpace(mvarCfInput))
+		{
+			mvarCfError = "Introduce un CF.";
+			return;
+		}
+
+		if (!ResolveViewedUserFromCf(mvarCfInput.Trim()))
+		{
+			mvarCfError = $"No se encontró ningún usuario con CF «{mvarCfInput.Trim()}».";
+			ViewedUser = null;
+			AgentRows.Clear();
+			return;
+		}
+
+		await mvarIntStorage.SetStringValue(DevCfStorageKey, mvarCfInput.Trim(), false);
+		await LoadRangeAsync(SelectedDate);
+		await LogScheduleAsync(
+			Common.sessionEventType.scheduleViewOpened,
+			$"cf={ViewedUser?.CF}|sim={IsImpersonating}|origen=dev-cf");
+	}
+
+	private async Task UseMyUserAsync()
+	{
+		if (!IsAdmin) return;
+
+		mvarCfError = null;
+		if (null == SessionUser)
+			SessionUser = await mvarAuthClient.GetCurrentUser();
+
+		if (null == SessionUser)
+		{
+			mvarCfError = "No hay usuario de sesión.";
+			return;
+		}
+
+		ViewedUser = SessionUser;
+		mvarCfInput = SessionUser.CF ?? string.Empty;
+		await mvarIntStorage.SetStringValue(DevCfStorageKey, mvarCfInput, false);
+		await LoadRangeAsync(SelectedDate);
+		await LogScheduleAsync(
+			Common.sessionEventType.scheduleViewOpened,
+			$"cf={ViewedUser?.CF}|sim=False|origen=mi-usuario");
+	}
+
+	private bool ResolveViewedUserFromCf(string cf)
+	{
+		if (null == mcolUsers) return false;
+		UserModelBase? found = mcolUsers.Values
+			.FirstOrDefault(u => string.Equals(u.CF?.Trim(), cf.Trim(), StringComparison.OrdinalIgnoreCase));
+		if (null == found) return false;
+		ViewedUser = found;
+		return true;
+	}
+
+	private async Task LoadRangeAsync(DateTime anchorDate)
+	{
+		if (null == ViewedUser) return;
+
+		mvarLoading = true;
+		mvarLoadingText = "Cargando asignaciones…";
+		StateHasChanged();
+
+		DateTime rangeStart = anchorDate.Date;
+		// Si el ancla está cerca del final del horizonte cargado, recentramos; al inicio siempre desde el día elegido.
+		mvarTimeSlice = await mvarExpertClient.PlansTimeSlice(rangeStart, DayHorizon);
+		List<AssignationContentModel>? all =
+			await mvarExpertClient.Assignations(rangeStart, DayHorizon);
+		mcolRangeAssignations = all ?? new List<AssignationContentModel>();
+
+		BuildAgentRows(rangeStart);
+		BuildShiftSuggestions();
+		SelectDayInternal(SelectedDate.Date, reloadIfOutside: false);
+		// Si el día seleccionado no está en el nuevo rango, alinear al primer día.
+		if (null == SelectedRow && AgentRows.Count > 0)
+			SelectDayInternal(AgentRows[0].Date, reloadIfOutside: false);
+
+		mvarLoading = false;
+		StateHasChanged();
+	}
+
+	private void BuildAgentRows(DateTime rangeStart)
+	{
+		AgentRows = new List<AgentDayRow>();
+		if (null == ViewedUser || null == mvarTimeSlice) return;
+
+		Dictionary<DateTime, AssignationContentModel> byDay = mcolRangeAssignations
+			.Where(a => a.AgentId == ViewedUser.guid)
+			.GroupBy(a => a.Date.Date)
+			.ToDictionary(g => g.Key, g => g.First());
+
+		for (int i = 0; i < DayHorizon; i++)
+		{
+			DateTime day = rangeStart.Date.AddDays(i);
+			byDay.TryGetValue(day, out AssignationContentModel? assignation);
+
+			WorkShiftTemplateModel? template = null;
+			if (null != assignation && !string.IsNullOrWhiteSpace(assignation.Definitive))
+			{
+				WorkShiftTemplateCollectionModel? plan = mvarTimeSlice.GetPlan(day);
+				if (null != plan)
+					template = plan.Template(assignation.Definitive, day, mvarTimeSlice.GetFestive(day));
+			}
+
+			AgentRows.Add(new AgentDayRow
+			{
+				Date = day,
+				Assignation = assignation,
+				Template = template,
+				IsToday = day == DateTime.Today
+			});
+		}
+	}
+
+	private void BuildShiftSuggestions()
+	{
+		HashSet<string> names = new(StringComparer.OrdinalIgnoreCase);
+		if (null != mvarTimeSlice)
+		{
+			for (int i = 0; i < mvarTimeSlice.DayCount; i++)
+			{
+				WorkShiftTemplateCollectionModel? plan = mvarTimeSlice.GetPlan(i);
+				if (plan?.Templates == null) continue;
+				foreach (WorkShiftTemplateModel t in plan.Templates)
+				{
+					if (!string.IsNullOrWhiteSpace(t.Name))
+						names.Add(t.Name);
+				}
+			}
+		}
+		foreach (AssignationContentModel a in mcolRangeAssignations)
+		{
+			if (!string.IsNullOrWhiteSpace(a.Definitive))
+				names.Add(a.Definitive.Trim());
+		}
+		ShiftSuggestions = names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+	}
+
+	private async Task OnSelectedDateChangedAsync()
+	{
+		mvarQueryDate = SelectedDate;
+		// Si la fecha cae fuera del rango cargado, recargar
+		if (null == mvarTimeSlice
+			|| SelectedDate.Date < mvarTimeSlice.InitialDate.Date
+			|| SelectedDate.Date >= mvarTimeSlice.InitialDate.Date.AddDays(DayHorizon))
+		{
+			await LoadRangeAsync(SelectedDate);
+			await LogDayViewedAsync(SelectedDate);
+			return;
+		}
+
+		SelectDayInternal(SelectedDate, reloadIfOutside: false);
+		await LogDayViewedAsync(SelectedDate);
+		StateHasChanged();
+	}
+
+	private void SetMobilePanel(MobilePanel panel)
+	{
+		mvarMobilePanel = panel;
+	}
+
+	private void SelectDay(DateTime day)
+	{
+		mvarSelectedDate = day.Date;
+		mvarQueryDate = day.Date;
+		SelectDayInternal(day.Date, reloadIfOutside: true);
+		_ = LogDayViewedAsync(day.Date);
+	}
+
+	/// <summary>Desde la lista táctil: selecciona el día y salta a la pestaña Jornada en móvil.</summary>
+	private void SelectDayFromList(DateTime day)
+	{
+		SelectDay(day);
+		mvarMobilePanel = MobilePanel.Day;
+	}
+
+	private async Task LogDayViewedAsync(DateTime day)
+	{
+		AgentDayRow? row = AgentRows.FirstOrDefault(r => r.Date.Date == day.Date) ?? SelectedRow;
+		string turno = row?.Assignation?.Definitive ?? "—";
+		string cf = ViewedUser?.CF ?? "?";
+		await LogScheduleAsync(
+			Common.sessionEventType.scheduleDayViewed,
+			$"cf={cf}|día={day:yyyy-MM-dd}|turno={turno}|sim={IsImpersonating}");
+	}
+
+	private async Task LogScheduleAsync(Common.sessionEventType eventType, string? detail)
+	{
+		try
+		{
+			await mvarAuthClient.LogActivity(eventType, detail);
+		}
+		catch
+		{
+			// El log no debe romper la UI.
+		}
+	}
+
+	/// <summary>
+	/// Genera y descarga un fichero iCalendar (.ics) con el periodo cargado del cuadrante.
+	/// Importable en Google Calendar, Outlook, Apple Calendar, etc.
+	/// </summary>
+	private async Task ExportIcsAsync()
+	{
+		if (null == ViewedUser || AgentRows.Count == 0)
+			return;
+
+		string ics = BuildIcsCalendar();
+		string safeCf = SanitizeFilePart(ViewedUser.CF);
+		string from = AgentRows[0].Date.ToString("yyyyMMdd");
+		string to = AgentRows[^1].Date.ToString("yyyyMMdd");
+		string fileName = $"cuadrante_{safeCf}_{from}_{to}.ics";
+
+		await mvarJS.InvokeVoidAsync(
+			"downloadTextFile",
+			ics,
+			fileName,
+			"text/calendar;charset=utf-8");
+
+		await LogScheduleAsync(
+			Common.sessionEventType.scheduleViewOpened,
+			$"acción=export-ics|cf={ViewedUser.CF}|desde={AgentRows[0].Date:yyyy-MM-dd}|hasta={AgentRows[^1].Date:yyyy-MM-dd}|eventos={CountExportableRows()}");
+	}
+
+	private int CountExportableRows()
+		=> AgentRows.Count(r => r.Assignation is not null && !string.IsNullOrWhiteSpace(r.Assignation.Definitive));
+
+	private string BuildIcsCalendar()
+	{
+		StringBuilder sb = new StringBuilder();
+		string cf = ViewedUser?.CF ?? "?";
+		string name = ViewedUser?.Name ?? "Maquinista";
+		string calName = EscapeIcsText($"Cuadrante ({cf}) {name}");
+		DateTime stamp = DateTime.UtcNow;
+
+		sb.AppendLine("BEGIN:VCALENDAR");
+		sb.AppendLine("VERSION:2.0");
+		sb.AppendLine("PRODID:-//Sapphire//Cuadrante Maquinistas//ES");
+		sb.AppendLine("CALSCALE:GREGORIAN");
+		sb.AppendLine("METHOD:PUBLISH");
+		sb.AppendLine($"X-WR-CALNAME:{calName}");
+		sb.AppendLine("X-WR-TIMEZONE:Europe/Madrid");
+
+		foreach (AgentDayRow row in AgentRows)
+		{
+			if (row.Assignation is null || string.IsNullOrWhiteSpace(row.Assignation.Definitive))
+				continue;
+
+			AppendIcsEvent(sb, row, stamp);
+		}
+
+		sb.AppendLine("END:VCALENDAR");
+		return sb.ToString();
+	}
+
+	private void AppendIcsEvent(StringBuilder sb, AgentDayRow row, DateTime stampUtc)
+	{
+		string definitive = row.Assignation!.Definitive!.Trim();
+		string uid = $"sapphire-sched-{SanitizeFilePart(ViewedUser?.CF)}-{row.Date:yyyyMMdd}-{SanitizeFilePart(definitive)}@sapphire.local";
+		string summary;
+		string description = BuildEventDescription(row);
+
+		sb.AppendLine("BEGIN:VEVENT");
+		sb.AppendLine($"UID:{uid}");
+		sb.AppendLine($"DTSTAMP:{stampUtc:yyyyMMdd'T'HHmmss'Z'}");
+
+		if (row.Template is AttTemplateModel att)
+		{
+			// Turno de trabajo / depósito: evento con hora (hora local Europe/Madrid)
+			DateTime start = row.Date.Date.Add(att.StartTime);
+			DateTime end = row.Date.Date.Add(att.EndTime);
+			if (end <= start)
+				end = end.AddDays(1); // turno que cruza medianoche
+
+			summary = EscapeIcsText($"Turno {definitive}");
+			sb.AppendLine($"DTSTART;TZID=Europe/Madrid:{start:yyyyMMdd'T'HHmmss}");
+			sb.AppendLine($"DTEND;TZID=Europe/Madrid:{end:yyyyMMdd'T'HHmmss}");
+		}
+		else
+		{
+			// Descanso, licencia, vacaciones…: todo el día
+			summary = EscapeIcsText(BuildRestSummary(definitive));
+			sb.AppendLine($"DTSTART;VALUE=DATE:{row.Date:yyyyMMdd}");
+			sb.AppendLine($"DTEND;VALUE=DATE:{row.Date.AddDays(1):yyyyMMdd}");
+			sb.AppendLine("TRANSP:TRANSPARENT");
+		}
+
+		sb.AppendLine($"SUMMARY:{summary}");
+		if (!string.IsNullOrWhiteSpace(description))
+			sb.AppendLine($"DESCRIPTION:{EscapeIcsText(description)}");
+		sb.AppendLine("END:VEVENT");
+	}
+
+	private static string BuildRestSummary(string definitive)
+	{
+		string code = definitive.Trim().ToUpperInvariant();
+		return code switch
+		{
+			"D" => "Descanso (D)",
+			"DD" => "Descanso disponible (DD)",
+			"V" or "VA" => $"Vacaciones ({code})",
+			"E" => "Enfermedad (E)",
+			"I" => "Indisposición (I)",
+			"LEF" => "LEF",
+			_ => definitive
+		};
+	}
+
+	private string BuildEventDescription(AgentDayRow row)
+	{
+		StringBuilder desc = new StringBuilder();
+		string definitive = row.Assignation?.Definitive?.Trim() ?? "";
+		desc.AppendLine($"Turno: {definitive}");
+		desc.AppendLine($"Fecha: {row.Date:dd/MM/yyyy}");
+		desc.AppendLine($"Agente: ({ViewedUser?.CF}) {ViewedUser?.Name}");
+
+		if (row.Template is AttTemplateModel att)
+		{
+			desc.AppendLine($"Horario: {Sapphire2025Models.Utils.autoInterval(att.StartTime, true)} – {Sapphire2025Models.Utils.autoInterval(att.EndTime, true)} ({Sapphire2025Models.Utils.autoInterval(att.Duration, false)})");
+			if (!string.IsNullOrWhiteSpace(att.comment))
+				desc.AppendLine($"Plantilla: {att.comment}");
+
+			if (null != att.Content)
+			{
+				var trains = att.Content.OfType<TrainWorkShiftContentModel>().OrderBy(t => t.StartTime).ToList();
+				if (trains.Count > 0)
+				{
+					desc.AppendLine("Circulaciones:");
+					foreach (var t in trains)
+					{
+						string opt = t.Discrectional ? " (opcional)" : "";
+						desc.AppendLine($"  · {t.TrainId} {Sapphire2025Models.Utils.autoInterval(t.StartTime, true)}-{Sapphire2025Models.Utils.autoInterval(t.EndTime, true)}{opt}");
+					}
+				}
+
+				var depots = att.Content.OfType<AttWorkShiftContentModel>().OrderBy(d => d.StartTime).ToList();
+				if (depots.Count > 0)
+				{
+					desc.AppendLine("Depósitos:");
+					foreach (var d in depots)
+					{
+						string fu = d.Foreign ? " (fuera)" : "";
+						desc.AppendLine($"  · {Sapphire2025Models.Utils.autoInterval(d.StartTime, true)}-{Sapphire2025Models.Utils.autoInterval(d.EndTime, true)}{fu}");
+					}
+				}
+			}
+		}
+
+		if (row.Assignation?.TD == true)
+			desc.AppendLine("TD: turno en descanso");
+		if (!string.IsNullOrWhiteSpace(row.Assignation?.Comment))
+			desc.AppendLine($"Nota JM: {row.Assignation.Comment}");
+		if (row.Assignation?.SwappingAgent is Guid swap && swap != Guid.Empty)
+			desc.AppendLine($"Cambio con: {GetUserName(swap)}");
+
+		desc.Append("Generado por Sapphire");
+		return desc.ToString().TrimEnd();
+	}
+
+	/// <summary>Escapa texto para propiedades de texto ICS (RFC 5545).</summary>
+	private static string EscapeIcsText(string? text)
+	{
+		if (string.IsNullOrEmpty(text)) return string.Empty;
+		return text
+			.Replace("\\", "\\\\")
+			.Replace(";", "\\;")
+			.Replace(",", "\\,")
+			.Replace("\r\n", "\\n")
+			.Replace("\n", "\\n")
+			.Replace("\r", "\\n");
+	}
+
+	private static string SanitizeFilePart(string? value)
+	{
+		if (string.IsNullOrWhiteSpace(value)) return "x";
+		char[] invalid = Path.GetInvalidFileNameChars();
+		StringBuilder sb = new StringBuilder(value.Length);
+		foreach (char c in value.Trim())
+		{
+			if (invalid.Contains(c) || c == ' ')
+				sb.Append('_');
+			else
+				sb.Append(c);
+		}
+		return sb.Length == 0 ? "x" : sb.ToString();
+	}
+
+	private void SelectDayInternal(DateTime day, bool reloadIfOutside)
+	{
+		SelectedRow = AgentRows.FirstOrDefault(r => r.Date.Date == day.Date);
+		SelectedTrains = new List<TrainWorkShiftContentModel>();
+		SelectedDepots = new List<AttWorkShiftContentModel>();
+
+		if (SelectedRow?.Template is AttTemplateModel att && null != att.Content)
+		{
+			SelectedTrains = att.Content
+				.OfType<TrainWorkShiftContentModel>()
+				.OrderBy(t => t.StartTime)
+				.ToList();
+			SelectedDepots = att.Content
+				.OfType<AttWorkShiftContentModel>()
+				.OrderBy(d => d.StartTime)
+				.ToList();
+		}
+
+		if (reloadIfOutside
+			&& null == SelectedRow
+			&& null != ViewedUser
+			&& (null == mvarTimeSlice
+				|| day.Date < mvarTimeSlice.InitialDate.Date
+				|| day.Date >= mvarTimeSlice.InitialDate.Date.AddDays(DayHorizon)))
+		{
+			_ = LoadRangeAsync(day);
+		}
+	}
+
+	private bool IsSelectedRow(AgentDayRow row)
+		=> null != SelectedRow && SelectedRow.Date.Date == row.Date.Date;
+
+	private async Task QueryShiftAsync()
+	{
+		mvarQueryError = null;
+		mvarQueryRan = false;
+		QueryResults = new List<AssignationContentModel>();
+
+		if (string.IsNullOrWhiteSpace(mvarQueryShift))
+		{
+			mvarQueryError = "Indica el código de turno.";
+			return;
+		}
+
+		DateTime day = mvarQueryDate.Date;
+		// Cargar día si no está en el rango
+		List<AssignationContentModel>? dayAssignations;
+		if (null != mvarTimeSlice
+			&& day >= mvarTimeSlice.InitialDate.Date
+			&& day < mvarTimeSlice.InitialDate.Date.AddDays(DayHorizon))
+		{
+			dayAssignations = mcolRangeAssignations
+				.Where(a => a.Date.Date == day)
+				.ToList();
+		}
+		else
+		{
+			dayAssignations = await mvarExpertClient.Assignations(day, 1);
+		}
+
+		string key = mvarQueryShift.Trim();
+		QueryResults = (dayAssignations ?? new List<AssignationContentModel>())
+			.Where(a => string.Equals(a.Definitive?.Trim(), key, StringComparison.OrdinalIgnoreCase))
+			.OrderBy(a => GetUserDisplay(a.AgentId))
+			.ToList();
+
+		mvarQueryRan = true;
+
+		await LogScheduleAsync(
+			Common.sessionEventType.scheduleShiftQueried,
+			$"día={day:yyyy-MM-dd}|turno={key}|resultados={QueryResults.Count}|cf={ViewedUser?.CF ?? "?"}");
+	}
+
+	private void OpenSwapDialog()
+	{
+		if (null == SelectedRow?.Assignation || null == ViewedUser) return;
+
+		mvarSwapDate = SelectedRow.Date;
+		mvarSwapOwnShift = SelectedRow.Assignation.Definitive;
+		mvarSwapOwnTd = SelectedRow.Assignation.TD;
+		mvarSwapOwnTemplate = SelectedRow.Template;
+		mvarSwapTargetDisplay = string.Empty;
+		mvarSwapTargetId = Guid.Empty;
+		mvarSwapTargetShift = string.Empty;
+		mvarSwapMessage = string.Empty;
+		mvarShowSwapDialog = true;
+	}
+
+	private void OpenSwapDialogFor(AssignationContentModel hit)
+	{
+		mvarSwapDate = mvarQueryDate.Date;
+		mvarSwapOwnShift = SelectedRow?.Assignation?.Definitive;
+		mvarSwapOwnTd = SelectedRow?.Assignation?.TD ?? false;
+		mvarSwapOwnTemplate = SelectedRow?.Template;
+		mvarSwapTargetId = hit.AgentId;
+		mvarSwapTargetDisplay = GetUserDisplay(hit.AgentId);
+		mvarSwapTargetShift = hit.Definitive ?? mvarQueryShift;
+		mvarSwapMessage = string.Empty;
+		mvarShowSwapDialog = true;
+	}
+
+	private void CloseSwapDialog() => mvarShowSwapDialog = false;
+
+	private async Task SubmitSwapSketchAsync()
+	{
+		mvarShowSwapDialog = false;
+
+		await LogScheduleAsync(
+			Common.sessionEventType.scheduleSwapRequested,
+			$"día={mvarSwapDate:yyyy-MM-dd}|propio={mvarSwapOwnShift ?? "—"}|destino={mvarSwapTargetDisplay}|turno={mvarSwapTargetShift}|cf={ViewedUser?.CF ?? "?"}");
+
+		await mvarModal.show(
+			"Solicitud de cambio (esbozo)",
+			"La petición de cambio de turno aún no está conectada al servidor. " +
+			$"Cuando lo esté, se enviará a {mvarSwapTargetDisplay} y al Jefe de Maquinistas.\n\n" +
+			$"Fecha: {mvarSwapDate:dd/MM/yyyy}\n" +
+			$"Tu turno: {mvarSwapOwnShift}\n" +
+			$"Turno solicitado: {mvarSwapTargetShift}\n" +
+			$"Mensaje: {mvarSwapMessage}",
+			"Entendido",
+			"Cerrar");
+	}
+
+	private string GetTemplateStyle(WorkShiftTemplateModel? template, bool isTd)
+	{
+		if (null == template)
+			return "background: #dc3545; color: #fff;";
+
+		string color = template.Color ?? "black";
+		string bg = template.BgColor ?? "transparent";
+		if (isTd) color = "#00CC00";
+		return $"background: {bg}; color: {color};";
+	}
+
+	private string GetTrainColorStyle(TrainWorkShiftContentModel train)
+	{
+		var asim = Sapphire2025Models.Utils.GetAsimilation(train.TrainId);
+		string color = Sapphire2025Models.Utils.AsimilationColor(asim);
+		return $"background: linear-gradient(to right, {color}, transparent);";
+	}
+
+	private string GetUserDisplay(Guid agentId)
+	{
+		if (null != mcolUsers && mcolUsers.TryGetValue(agentId, out UserModelBase? u) && null != u)
+			return $"({u.CF}) {u.Name}";
+		return "Desconocido";
+	}
+
+	private string GetUserName(Guid agentId)
+	{
+		if (null != mcolUsers && mcolUsers.TryGetValue(agentId, out UserModelBase? u) && null != u)
+			return u.Name ?? "—";
+		return "—";
+	}
+
+	private static string DayName(DateTime day)
+		=> day.ToString("ddd", new System.Globalization.CultureInfo("es-ES"));
+
+	private sealed class AgentDayRow
+	{
+		public DateTime Date { get; set; }
+		public AssignationContentModel? Assignation { get; set; }
+		public WorkShiftTemplateModel? Template { get; set; }
+		public bool IsToday { get; set; }
+	}
+}

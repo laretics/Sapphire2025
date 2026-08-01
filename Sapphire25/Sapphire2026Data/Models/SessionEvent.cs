@@ -19,6 +19,11 @@ namespace Sapphire2026.Data.Models
 			set => eventType = (byte)value;
 		}
 		public DateTime timeSpan { get; set; }
+		/// <summary>
+		/// Origen (IP) y/o detalle de la acción. En producción puede ser VARCHAR corta;
+		/// el servidor trunca al escribir (ver SapphireBaseController.TruncateHostPoint).
+		/// </summary>
+		[MaxLength(255)]
 		public string hostPoint {  get; set; }
 
 		public SessionEvent()

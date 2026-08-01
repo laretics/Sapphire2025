@@ -77,6 +77,30 @@
     max-width: 100%;
 }
 
+/* Turno de conducción sin asignar */
+.assignation-row-unassigned td.assignation-unassigned {
+    background: #dc2626 !important;
+    color: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.assignation-unassigned .cell-content-inner,
+.assignation-unassigned .smallest-text,
+.assignation-unassigned-time {
+    color: #fff !important;
+}
+
+.assignation-unassigned-label {
+    font-weight: 800;
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.5rem;
+    text-align: center;
+    color: #fff;
+}
+
 @media (max-width: 767.98px) {
     .assignation-day-col {
         min-width: min(100%, 280px);

@@ -487,6 +487,35 @@ namespace Sapphire2025.Storage
 				return await respuesta.Content.ReadFromJsonAsync<SessionEventSearchResponse>();
 			return null;
 		}
+
+		/// <summary>
+		/// Registra un evento de actividad del usuario actual (cuadrante, etc.).
+		/// Fallos de red se ignoran para no bloquear la UI.
+		/// </summary>
+		public async Task<bool> LogActivity(Common.sessionEventType eventType, string? detail = null)
+		{
+			try
+			{
+				SessionEventLogRequest request = new SessionEventLogRequest
+				{
+					SessionToken = await getCurrentToken(),
+					EventType = (byte)eventType,
+					Detail = detail
+				};
+				if (Guid.Empty.Equals(request.SessionToken))
+					return false;
+
+				string jsonString = JsonSerializer.Serialize(request);
+				HttpResponseMessage respuesta = await sendPostRequest("logactivity", jsonString);
+				if (respuesta.IsSuccessStatusCode)
+					return await respuesta.Content.ReadFromJsonAsync<bool>();
+			}
+			catch
+			{
+				// No interrumpir la experiencia del maquinista por un fallo de log.
+			}
+			return false;
+		}
 		
         public static string userIconHtml(List<Common.UserRole> roles, string color)
         {

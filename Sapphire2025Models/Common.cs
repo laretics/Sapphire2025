@@ -8,7 +8,7 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public static string SapphireSoftwareVersion => "26.07.31";
+		public static string SapphireSoftwareVersion => "26.8.2";
 		public static bool MajorVersion => false; //Muestra el aviso de actualización sólo cuando este flag es true.
 		public static string LastChangesText => "Splash de carga|Pestaña de turnos vacantes";
 
@@ -260,7 +260,13 @@ namespace Sapphire2025Models
 			expertPlanDeleted = 61,     //Borrado de plan de explotación
 			festiveChanged = 62,        //Cambio de festivo
 			timeNetUploaded = 63,       //Subida de topología/rautatie TimeNet
-			timeNetTopoDeleted = 64     //Borrado de TopoStorage
+			timeNetTopoDeleted = 64,    //Borrado de TopoStorage
+
+			// Cuadrante de maquinistas (SchedulesManagement)
+			scheduleViewOpened = 70,    //Apertura de la vista de cuadrante
+			scheduleDayViewed = 71,     //Consulta de un día del cuadrante propio (o simulado)
+			scheduleShiftQueried = 72,  //Consulta de quién realiza un turno
+			scheduleSwapRequested = 73  //Solicitud de cambio de turno
 		}
 
 		/// <summary>
@@ -300,6 +306,10 @@ namespace Sapphire2025Models
 				sessionEventType.festiveChanged => "Cambio de festivo",
 				sessionEventType.timeNetUploaded => "Subida TimeNet",
 				sessionEventType.timeNetTopoDeleted => "Borrado topología TimeNet",
+				sessionEventType.scheduleViewOpened => "Apertura de cuadrante",
+				sessionEventType.scheduleDayViewed => "Consulta día de cuadrante",
+				sessionEventType.scheduleShiftQueried => "Consulta de turno ajeno",
+				sessionEventType.scheduleSwapRequested => "Solicitud de cambio de turno",
 				_ => "¿?"
 			};
 		}

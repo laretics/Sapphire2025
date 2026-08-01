@@ -1,0 +1,502 @@
+@page "/experts/dailysheetprint"
+@layout EmptyLayout
+@using System.Globalization
+@using System.Text
+@using Sapphire2025Models.Expert.WorkshiftTemplates
+@inject IJSRuntime mvarJSRuntime
+@inject IntStorageService mvarLocalStorage
+
+<PageTitle>Hoja del día · @mvarCurrentDate.ToString("dd/MM/yyyy")</PageTitle>
+
+<div class="dsp-toolbar no-print">
+	<button type="button" class="btn btn-primary btn-sm" @onclick="PrintNow">Imprimir</button>
+	<span class="text-muted small ms-2">Diseñada para una sola página A4 apaisada.</span>
+</div>
+
+<div class="dsp-sheet print-area">
+	<header class="dsp-header">
+		<img src="img/sfmImg.png" alt="SFM" class="dsp-logo" />
+		<div class="dsp-header-main">
+			<div class="dsp-title">Hoja de tracción</div>
+			<div class="dsp-subtitle">
+				@GetDiaSemana(mvarCurrentDate)
+				<span class="dsp-dot">·</span>
+				@mvarCurrentDate.ToString("dd/MM/yyyy")
+				@if (!string.IsNullOrWhiteSpace(mvarPlanName))
+				{
+					<span class="dsp-dot">·</span>
+					<span class="dsp-plan">@mvarPlanName</span>
+				}
+			</div>
+		</div>
+		<div class="dsp-header-meta">
+			<div><strong>@WorkShifts.Count</strong> turnos</div>
+			<div><strong>@Depots.Count</strong> depósitos</div>
+			<div><strong>@Trains.Count</strong> trenes</div>
+		</div>
+	</header>
+
+	@if (!mvarLoaded)
+	{
+		<div class="dsp-empty">Cargando datos…</div>
+	}
+	else
+	{
+		<div class="dsp-body">
+			@* —— Columna turnos —— *@
+			<section class="dsp-col dsp-col-shifts">
+				<h2 class="dsp-section-title">Turnos</h2>
+				<div class="dsp-shift-grid">
+					@foreach (ShiftPrintRow s in WorkShifts)
+					{
+						<div class="dsp-shift-card @(s.Unassigned ? "dsp-unassigned" : null)" style="@ShiftStyle(s)">
+							<div class="dsp-shift-code">@s.Code</div>
+							<div class="dsp-shift-agent" title="@s.AgentFull">@s.AgentShort</div>
+							<div class="dsp-shift-time">@s.TimeRange</div>
+							@if (!string.IsNullOrEmpty(s.BarColor) && !s.Unassigned)
+							{
+								<div class="dsp-shift-bar" style="background:@s.BarColor"></div>
+							}
+						</div>
+					}
+				</div>
+
+				@if (RestRows.Count > 0)
+				{
+					<h2 class="dsp-section-title dsp-section-rest">Ausencias / descansos</h2>
+					<div class="dsp-rest-list">
+						@foreach (var g in RestRows.GroupBy(r => r.Code).OrderBy(g => g.Key))
+						{
+							<div class="dsp-rest-line">
+								<span class="dsp-rest-code">@g.Key</span>
+								<span class="dsp-rest-names">@string.Join(", ", g.Select(x => x.AgentShort))</span>
+							</div>
+						}
+					</div>
+				}
+			</section>
+
+			@* —— Columna depósitos —— *@
+			<section class="dsp-col dsp-col-depots">
+				<h2 class="dsp-section-title">Depósitos</h2>
+				@if (DepotsMorning.Count > 0)
+				{
+					<div class="dsp-band dsp-band-am">Mañana</div>
+					<table class="dsp-table">
+						<thead>
+							<tr>
+								<th class="dsp-th-time">Hora</th>
+								<th>T</th>
+								<th>Agente</th>
+							</tr>
+						</thead>
+						<tbody>
+							@foreach (DepotPrintRow d in DepotsMorning)
+							{
+								<tr class="@(d.Foreign ? "dsp-foreign" : null)">
+									<td class="dsp-mono">@Fmt(d.Start)–@Fmt(d.End)</td>
+									<td class="dsp-shift-mini">@d.Shift</td>
+									<td class="dsp-name" title="@d.AgentFull">@d.AgentShort</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				}
+				@if (DepotsAfternoon.Count > 0)
+				{
+					<div class="dsp-band dsp-band-pm">Tarde</div>
+					<table class="dsp-table">
+						<thead>
+							<tr>
+								<th class="dsp-th-time">Hora</th>
+								<th>T</th>
+								<th>Agente</th>
+							</tr>
+						</thead>
+						<tbody>
+							@foreach (DepotPrintRow d in DepotsAfternoon)
+							{
+								<tr class="@(d.Foreign ? "dsp-foreign" : null)">
+									<td class="dsp-mono">@Fmt(d.Start)–@Fmt(d.End)</td>
+									<td class="dsp-shift-mini">@d.Shift</td>
+									<td class="dsp-name" title="@d.AgentFull">@d.AgentShort</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				}
+				@if (Depots.Count == 0)
+				{
+					<div class="dsp-empty-soft">Sin depósitos</div>
+				}
+			</section>
+
+			@* —— Columna circulaciones —— *@
+			<section class="dsp-col dsp-col-trains">
+				<h2 class="dsp-section-title">Circulaciones</h2>
+				<table class="dsp-table dsp-table-trains">
+					<thead>
+						<tr>
+							<th>Tren</th>
+							<th class="dsp-th-time">Hora</th>
+							<th>T</th>
+							<th>Agente</th>
+						</tr>
+					</thead>
+					<tbody>
+						@foreach (TrainPrintRow t in Trains)
+						{
+							<tr class="@TrainRowClass(t)">
+								<td class="dsp-train-id" style="@TrainCellStyle(t)">
+									@t.TrainId
+									@if (t.Discretionary)
+									{
+										<span class="dsp-opt-mark">*</span>
+									}
+								</td>
+								<td class="dsp-mono">@Fmt(t.Start)–@Fmt(t.End)</td>
+								<td class="dsp-shift-mini">@t.Shift</td>
+								<td class="dsp-name" title="@t.AgentFull">@t.AgentShort</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+				@if (Trains.Count == 0)
+				{
+					<div class="dsp-empty-soft">Sin circulaciones</div>
+				}
+				else if (Trains.Any(t => t.Discretionary))
+				{
+					<div class="dsp-footnote">* tren opcional</div>
+				}
+			</section>
+		</div>
+
+		<footer class="dsp-footer">
+			<span>Sapphire · hoja del día</span>
+			<span class="dsp-footer-sep">·</span>
+			<span>@DateTime.Now.ToString("dd/MM/yyyy HH:mm")</span>
+		</footer>
+	}
+</div>
+
+@code {
+	private static readonly TimeSpan Noon = TimeSpan.FromHours(12);
+	private static readonly CultureInfo Es = new("es-ES");
+
+	private DateTime mvarCurrentDate = DateTime.Today;
+	private string mvarPlanName = string.Empty;
+	private Dictionary<Guid, UserModelBase>? Users;
+	private List<AssignationContentModel> Assignations = new();
+	private List<WorkShiftTemplateModel> Templates = new();
+	private bool mvarLoaded;
+	private bool mvarReadyToPrint;
+
+	private List<ShiftPrintRow> WorkShifts { get; set; } = new();
+	private List<RestPrintRow> RestRows { get; set; } = new();
+	private List<DepotPrintRow> Depots { get; set; } = new();
+	private List<DepotPrintRow> DepotsMorning => Depots.Where(d => d.Start < Noon).ToList();
+	private List<DepotPrintRow> DepotsAfternoon => Depots.Where(d => d.Start >= Noon).ToList();
+	private List<TrainPrintRow> Trains { get; set; } = new();
+
+	protected override async Task OnParametersSetAsync()
+	{
+		await LoadDataAsync();
+		BuildReport();
+		mvarLoaded = true;
+		mvarReadyToPrint = true;
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (mvarReadyToPrint)
+		{
+			mvarReadyToPrint = false;
+			await Task.Delay(400);
+			await mvarJSRuntime.InvokeVoidAsync("window.print");
+		}
+	}
+
+	private async Task LoadDataAsync()
+	{
+		Users = await mvarLocalStorage.GetUsersCache();
+		mvarCurrentDate = await mvarLocalStorage.GetInspectorReportDate();
+		Assignations = await mvarLocalStorage.GetInspectorReportAssignations() ?? new();
+		Templates = await mvarLocalStorage.GetInspectorSortedTemplates() ?? new();
+		mvarPlanName = await mvarLocalStorage.GetStringValue("dailysheetplanname", false) ?? string.Empty;
+	}
+
+	private void BuildReport()
+	{
+		WorkShifts = new();
+		RestRows = new();
+		Depots = new();
+		Trains = new();
+
+		foreach (WorkShiftTemplateModel template in Templates)
+		{
+			List<AssignationContentModel> agents = AssignationsFor(template);
+			bool unassigned = agents.Count == 0;
+			bool isDriving = IsDrivingShift(template);
+
+			// Sin asignación: solo nos interesan turnos de conducción (se marcan en rojo).
+			// Descansos/depósitos sin gente no se listan como “descubiertos”.
+			if (unassigned && !isDriving)
+				continue;
+
+			string agentShort = unassigned ? "¡DESCUBIERTO!" : FormatAgentsShort(agents);
+			string agentFull = unassigned ? "Turno de conducción sin asignar" : FormatAgentsFull(agents);
+
+			if (template is AttTemplateModel att)
+			{
+				WorkShifts.Add(new ShiftPrintRow
+				{
+					Code = template.Name ?? "?",
+					AgentShort = agentShort,
+					AgentFull = agentFull,
+					TimeRange = $"{Fmt(att.StartTime)}–{Fmt(att.EndTime)}",
+					Bg = unassigned ? "#dc2626" : (template.BgColor ?? "#f3f4f6"),
+					Fg = unassigned ? "#ffffff" : (template.Color ?? "#111827"),
+					BarColor = unassigned ? "#7f1d1d" : (template.StripeColor ?? string.Empty),
+					Unassigned = unassigned
+				});
+
+				if (null != att.Content)
+				{
+					foreach (WorkShiftContentModel c in att.Content)
+					{
+						if (c is TrainWorkShiftContentModel train && !string.IsNullOrWhiteSpace(train.TrainId))
+						{
+							var asim = Sapphire2025Models.Utils.GetAsimilation(train.TrainId);
+							Trains.Add(new TrainPrintRow
+							{
+								TrainId = train.TrainId,
+								Start = train.StartTime,
+								End = train.EndTime,
+								Shift = template.Name ?? "?",
+								AgentShort = agentShort,
+								AgentFull = agentFull,
+								Discretionary = train.Discrectional,
+								LineColor = unassigned ? "#dc2626" : Sapphire2025Models.Utils.AsimilationColor(asim),
+								Unassigned = unassigned
+							});
+						}
+						else if (c is AttWorkShiftContentModel depot && !unassigned)
+						{
+							// Depósitos solo si el turno está cubierto (si no, el aviso va en turnos/trenes)
+							Depots.Add(new DepotPrintRow
+							{
+								Start = depot.StartTime,
+								End = depot.EndTime,
+								Shift = template.Name ?? "?",
+								AgentShort = agentShort,
+								AgentFull = agentFull,
+								Foreign = depot.Foreign
+							});
+						}
+					}
+				}
+			}
+			else if (!unassigned)
+			{
+				// Descansos / licencias / vacaciones
+				foreach (AssignationContentModel a in agents)
+				{
+					RestRows.Add(new RestPrintRow
+					{
+						Code = a.Definitive?.Trim() ?? template.Name ?? "?",
+						AgentShort = ShortName(a.AgentId),
+						AgentFull = FullName(a.AgentId)
+					});
+				}
+			}
+		}
+
+		// También capturar asignaciones de descanso no enlazadas a plantilla del día
+		foreach (AssignationContentModel a in Assignations)
+		{
+			if (string.IsNullOrWhiteSpace(a.Definitive)) continue;
+			if (Templates.Any(t => MatchesTemplate(t, a.Definitive))) continue;
+			// Código no numérico típico de ausencia
+			if (LooksLikeWorkCode(a.Definitive)) continue;
+			RestRows.Add(new RestPrintRow
+			{
+				Code = a.Definitive.Trim(),
+				AgentShort = ShortName(a.AgentId),
+				AgentFull = FullName(a.AgentId)
+			});
+		}
+
+		WorkShifts = WorkShifts
+			.OrderBy(s => ParseShiftSort(s.Code))
+			.ThenBy(s => s.Code)
+			.ToList();
+		Depots = Depots.OrderBy(d => d.Start).ThenBy(d => d.End).ToList();
+		Trains = Trains.OrderBy(t => t.Start).ThenBy(t => t.TrainId).ToList();
+		RestRows = RestRows
+			.GroupBy(r => (r.Code, r.AgentShort))
+			.Select(g => g.First())
+			.OrderBy(r => r.Code)
+			.ThenBy(r => r.AgentShort)
+			.ToList();
+	}
+
+	private List<AssignationContentModel> AssignationsFor(WorkShiftTemplateModel template)
+	{
+		return Assignations
+			.Where(a => !string.IsNullOrWhiteSpace(a.Definitive) && MatchesTemplate(template, a.Definitive))
+			.ToList();
+	}
+
+	private static bool MatchesTemplate(WorkShiftTemplateModel template, string definitive)
+	{
+		if (string.Equals(template.Name, definitive, StringComparison.OrdinalIgnoreCase))
+			return true;
+		return template.Match(definitive);
+	}
+
+	/// <summary>
+	/// Turno de conducción: plantilla de trabajo (Work) o Att con al menos un tren en el contenido.
+	/// </summary>
+	private static bool IsDrivingShift(WorkShiftTemplateModel template)
+	{
+		if (template is WorkTemplateModel)
+			return true;
+		if (template is AttTemplateModel att && null != att.Content)
+			return att.Content.Any(c => c is TrainWorkShiftContentModel tw
+				&& !string.IsNullOrWhiteSpace(tw.TrainId));
+		return false;
+	}
+
+	private static bool LooksLikeWorkCode(string code)
+	{
+		string t = code.Trim();
+		if (t.Length == 0) return false;
+		// 1, 2f, 10, 151…
+		if (char.IsDigit(t[0])) return true;
+		return false;
+	}
+
+	private static int ParseShiftSort(string code)
+	{
+		string t = code.Trim();
+		int i = 0;
+		while (i < t.Length && char.IsDigit(t[i])) i++;
+		if (i > 0 && int.TryParse(t[..i], out int n)) return n;
+		return 9999;
+	}
+
+	private string FormatAgentsShort(List<AssignationContentModel> agents)
+	{
+		if (agents.Count == 0) return "—";
+		if (agents.Count == 1) return ShortName(agents[0].AgentId);
+		return string.Join(", ", agents.Select(a => ShortName(a.AgentId)));
+	}
+
+	private string FormatAgentsFull(List<AssignationContentModel> agents)
+	{
+		if (agents.Count == 0) return string.Empty;
+		return string.Join(", ", agents.Select(a => FullName(a.AgentId)));
+	}
+
+	private string ShortName(Guid id)
+	{
+		if (null != Users && Users.TryGetValue(id, out UserModelBase? u) && null != u)
+		{
+			string name = u.Name ?? "";
+			// Apellido o primera palabra si es muy largo
+			if (name.Length > 14)
+			{
+				string[] parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+				if (parts.Length >= 2)
+					return parts[^1].Length <= 14 ? parts[^1] : parts[^1][..14];
+				return name[..14];
+			}
+			return string.IsNullOrWhiteSpace(name) ? (u.CF ?? "?") : name;
+		}
+		return "?";
+	}
+
+	private string FullName(Guid id)
+	{
+		if (null != Users && Users.TryGetValue(id, out UserModelBase? u) && null != u)
+			return $"({u.CF}) {u.Name}";
+		return "desconocido";
+	}
+
+	private static string Fmt(TimeSpan t) => $"{t.Hours:00}:{t.Minutes:00}";
+
+	private static string ShiftStyle(ShiftPrintRow s)
+	{
+		if (s.Unassigned)
+			return "background:#dc2626;color:#fff;border-color:#991b1b;";
+		return $"background:{s.Bg};color:{s.Fg};";
+	}
+
+	private static string TrainCellStyle(TrainPrintRow t)
+	{
+		if (t.Unassigned)
+			return "background:#dc2626;color:#fff;";
+		return $"background:linear-gradient(90deg,{t.LineColor}55,transparent);";
+	}
+
+	private static string TrainRowClass(TrainPrintRow t)
+	{
+		if (t.Unassigned && t.Discretionary) return "dsp-unassigned-row dsp-opt";
+		if (t.Unassigned) return "dsp-unassigned-row";
+		if (t.Discretionary) return "dsp-opt";
+		return string.Empty;
+	}
+
+	private static string GetDiaSemana(DateTime d)
+	{
+		string name = d.ToString("dddd", Es);
+		if (string.IsNullOrEmpty(name)) return "";
+		return char.ToUpper(name[0], Es) + name[1..];
+	}
+
+	private async Task PrintNow()
+		=> await mvarJSRuntime.InvokeVoidAsync("window.print");
+
+	private sealed class ShiftPrintRow
+	{
+		public string Code { get; set; } = "";
+		public string AgentShort { get; set; } = "";
+		public string AgentFull { get; set; } = "";
+		public string TimeRange { get; set; } = "";
+		public string Bg { get; set; } = "#fff";
+		public string Fg { get; set; } = "#000";
+		public string BarColor { get; set; } = "";
+		public bool Unassigned { get; set; }
+	}
+
+	private sealed class RestPrintRow
+	{
+		public string Code { get; set; } = "";
+		public string AgentShort { get; set; } = "";
+		public string AgentFull { get; set; } = "";
+	}
+
+	private sealed class DepotPrintRow
+	{
+		public TimeSpan Start { get; set; }
+		public TimeSpan End { get; set; }
+		public string Shift { get; set; } = "";
+		public string AgentShort { get; set; } = "";
+		public string AgentFull { get; set; } = "";
+		public bool Foreign { get; set; }
+	}
+
+	private sealed class TrainPrintRow
+	{
+		public string TrainId { get; set; } = "";
+		public TimeSpan Start { get; set; }
+		public TimeSpan End { get; set; }
+		public string Shift { get; set; } = "";
+		public string AgentShort { get; set; } = "";
+		public string AgentFull { get; set; } = "";
+		public bool Discretionary { get; set; }
+		public string LineColor { get; set; } = "#94a3b8";
+		public bool Unassigned { get; set; }
+	}
+}

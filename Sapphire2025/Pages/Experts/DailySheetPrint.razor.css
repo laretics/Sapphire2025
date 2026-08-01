@@ -1,0 +1,430 @@
+/* ========== Pantalla (vista previa) ========== */
+.dsp-toolbar {
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	background: #f8fafc;
+	border-bottom: 1px solid #e2e8f0;
+	padding: 0.5rem 0.75rem;
+	display: flex;
+	align-items: center;
+}
+
+.dsp-sheet {
+	max-width: 297mm;
+	margin: 0.75rem auto 1.5rem;
+	padding: 8mm 7mm 6mm;
+	background: #fff;
+	box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+	border: 1px solid #e5e7eb;
+	box-sizing: border-box;
+	color: #0f172a;
+	font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.dsp-header {
+	display: grid;
+	grid-template-columns: auto 1fr auto;
+	gap: 0.65rem 0.85rem;
+	align-items: center;
+	padding-bottom: 0.4rem;
+	border-bottom: 2px solid #1e3a5f;
+	margin-bottom: 0.45rem;
+}
+
+.dsp-logo {
+	height: 28px;
+	width: auto;
+}
+
+.dsp-title {
+	font-size: 13pt;
+	font-weight: 800;
+	letter-spacing: 0.02em;
+	color: #0f2744;
+	line-height: 1.1;
+}
+
+.dsp-subtitle {
+	font-size: 8.5pt;
+	color: #475569;
+	margin-top: 0.1rem;
+}
+
+.dsp-dot {
+	margin: 0 0.25rem;
+	opacity: 0.5;
+}
+
+.dsp-plan {
+	font-weight: 600;
+	color: #1e40af;
+}
+
+.dsp-header-meta {
+	text-align: right;
+	font-size: 7.5pt;
+	color: #64748b;
+	line-height: 1.25;
+}
+
+	.dsp-header-meta strong {
+		color: #0f172a;
+		font-variant-numeric: tabular-nums;
+	}
+
+.dsp-body {
+	display: grid;
+	grid-template-columns: 0.95fr 1.05fr 1.2fr;
+	gap: 0.45rem 0.55rem;
+	align-items: start;
+}
+
+.dsp-section-title {
+	font-size: 7.5pt;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: #1e3a5f;
+	margin: 0 0 0.25rem;
+	padding-bottom: 0.12rem;
+	border-bottom: 1px solid #cbd5e1;
+}
+
+.dsp-section-rest {
+	margin-top: 0.4rem;
+	color: #64748b;
+	border-bottom-color: #e2e8f0;
+}
+
+/* Turnos */
+.dsp-shift-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0.18rem 0.25rem;
+}
+
+.dsp-shift-card {
+	border-radius: 0.2rem;
+	padding: 0.12rem 0.28rem 0.18rem;
+	border: 1px solid rgba(15, 23, 42, 0.08);
+	min-width: 0;
+	position: relative;
+	overflow: hidden;
+	-webkit-print-color-adjust: exact;
+	print-color-adjust: exact;
+}
+
+.dsp-shift-code {
+	font-weight: 800;
+	font-size: 8pt;
+	line-height: 1.1;
+	font-variant-numeric: tabular-nums;
+}
+
+.dsp-shift-agent {
+	font-size: 6.5pt;
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-height: 1.15;
+}
+
+.dsp-shift-time {
+	font-size: 6pt;
+	opacity: 0.85;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.1;
+}
+
+.dsp-shift-bar {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 2px;
+	opacity: 0.85;
+	-webkit-print-color-adjust: exact;
+	print-color-adjust: exact;
+}
+
+/* Turno de conducción sin asignar */
+.dsp-shift-card.dsp-unassigned {
+	background: #dc2626 !important;
+	color: #fff !important;
+	border: 1.5px solid #7f1d1d !important;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+	font-weight: 700;
+	-webkit-print-color-adjust: exact !important;
+	print-color-adjust: exact !important;
+}
+
+	.dsp-shift-card.dsp-unassigned .dsp-shift-agent {
+		font-weight: 800;
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
+		font-size: 6pt;
+	}
+
+.dsp-unassigned-row {
+	background: #fef2f2 !important;
+	-webkit-print-color-adjust: exact !important;
+	print-color-adjust: exact !important;
+}
+
+	.dsp-unassigned-row .dsp-name {
+		color: #b91c1c;
+		font-weight: 800;
+	}
+
+	.dsp-unassigned-row .dsp-shift-mini {
+		color: #dc2626;
+	}
+
+	.dsp-unassigned-row .dsp-train-id {
+		background: #dc2626 !important;
+		color: #fff !important;
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+	}
+
+/* Rest */
+.dsp-rest-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.08rem;
+}
+
+.dsp-rest-line {
+	font-size: 6.2pt;
+	line-height: 1.15;
+	display: grid;
+	grid-template-columns: 2.2rem 1fr;
+	gap: 0.2rem;
+}
+
+.dsp-rest-code {
+	font-weight: 800;
+	color: #475569;
+}
+
+.dsp-rest-names {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: #334155;
+}
+
+/* Bandas mañana/tarde */
+.dsp-band {
+	font-size: 6.5pt;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	padding: 0.08rem 0.3rem;
+	border-radius: 0.15rem;
+	margin: 0.15rem 0 0.12rem;
+	-webkit-print-color-adjust: exact;
+	print-color-adjust: exact;
+}
+
+.dsp-band-am {
+	background: #fef9c3;
+	color: #854d0e;
+}
+
+.dsp-band-pm {
+	background: #ede9fe;
+	color: #5b21b6;
+}
+
+/* Tablas */
+.dsp-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 6.3pt;
+	line-height: 1.12;
+	table-layout: fixed;
+}
+
+	.dsp-table th {
+		text-align: left;
+		font-size: 5.8pt;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		color: #64748b;
+		border-bottom: 1px solid #cbd5e1;
+		padding: 0.05rem 0.15rem 0.1rem;
+	}
+
+	.dsp-table td {
+		padding: 0.04rem 0.15rem;
+		border-bottom: 1px solid #f1f5f9;
+		vertical-align: middle;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.dsp-table tbody tr:nth-child(even) {
+		background: #f8fafc;
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+	}
+
+.dsp-th-time {
+	width: 4.6rem;
+}
+
+.dsp-mono {
+	font-variant-numeric: tabular-nums;
+	font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+	font-size: 6pt;
+}
+
+.dsp-shift-mini {
+	font-weight: 700;
+	width: 1.6rem;
+	color: #1e40af;
+	font-variant-numeric: tabular-nums;
+}
+
+.dsp-name {
+	font-weight: 600;
+}
+
+.dsp-train-id {
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	padding-left: 0.2rem !important;
+	border-radius: 0.12rem;
+	-webkit-print-color-adjust: exact;
+	print-color-adjust: exact;
+}
+
+.dsp-foreign .dsp-name::after {
+	content: " ↗";
+	font-weight: 400;
+	opacity: 0.55;
+	font-size: 5.5pt;
+}
+
+.dsp-opt {
+	opacity: 0.82;
+}
+
+.dsp-opt-mark {
+	font-weight: 400;
+	font-size: 5.5pt;
+	margin-left: 0.1rem;
+}
+
+.dsp-footnote {
+	font-size: 5.5pt;
+	color: #94a3b8;
+	margin-top: 0.15rem;
+}
+
+.dsp-empty,
+.dsp-empty-soft {
+	font-size: 7.5pt;
+	color: #94a3b8;
+	padding: 0.4rem 0;
+}
+
+.dsp-footer {
+	margin-top: 0.35rem;
+	padding-top: 0.25rem;
+	border-top: 1px solid #e2e8f0;
+	font-size: 5.5pt;
+	color: #94a3b8;
+	display: flex;
+	gap: 0.25rem;
+	justify-content: flex-end;
+}
+
+.dsp-footer-sep {
+	opacity: 0.5;
+}
+
+/* ========== Impresión: 1 página A4 apaisada ========== */
+@media print {
+	.no-print {
+		display: none !important;
+	}
+
+	html, body {
+		margin: 0 !important;
+		padding: 0 !important;
+		background: #fff !important;
+	}
+
+	body * {
+		visibility: hidden !important;
+	}
+
+	.print-area,
+	.print-area * {
+		visibility: visible !important;
+	}
+
+	@page {
+		size: A4 landscape;
+		margin: 5mm;
+	}
+
+	.dsp-sheet,
+	.print-area {
+		position: absolute;
+		left: 0;
+		top: 0;
+		width: 100% !important;
+		max-width: none !important;
+		margin: 0 !important;
+		padding: 0 !important;
+		border: none !important;
+		box-shadow: none !important;
+		/* Escala ligera para forzar cabida en una hoja */
+		transform-origin: top left;
+	}
+
+	.dsp-header {
+		margin-bottom: 0.3rem;
+		padding-bottom: 0.25rem;
+	}
+
+	.dsp-logo {
+		height: 22px !important;
+	}
+
+	.dsp-title {
+		font-size: 11pt !important;
+	}
+
+	.dsp-subtitle {
+		font-size: 7.5pt !important;
+	}
+
+	.dsp-body {
+		gap: 0.3rem 0.4rem;
+	}
+
+	.dsp-shift-grid {
+		gap: 0.12rem 0.18rem;
+	}
+
+	.dsp-table td {
+		padding-top: 0.02rem !important;
+		padding-bottom: 0.02rem !important;
+	}
+
+	.dsp-shift-card,
+	.dsp-band,
+	.dsp-train-id,
+	.dsp-table tbody tr:nth-child(even) {
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+	}
+}

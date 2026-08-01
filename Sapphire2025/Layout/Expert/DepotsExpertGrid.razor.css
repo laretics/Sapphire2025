@@ -1,11 +1,228 @@
-﻿.depot-cell {
-    border: 1px solid #d1d5db; /* Gris claro */
-    border-radius: 6px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-    /* Opcional: transición suave al hacer hover */
-    transition: box-shadow 0.2s;
+.depots-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 1rem;
+	width: 100%;
 }
 
-    .depot-cell:hover {
-        box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-    }
+@media (min-width: 992px) {
+	.depots-grid {
+		grid-template-columns: 1fr 1fr;
+		align-items: start;
+	}
+
+	/* Si solo hay una sección (día no hoy / sin seguimiento), ocupa todo el ancho */
+	.depots-grid:has(> .depot-section:only-child) {
+		grid-template-columns: 1fr;
+	}
+}
+
+.depot-section {
+	background: #f8f9fb;
+	border: 1px solid #e5e7eb;
+	border-radius: 0.75rem;
+	padding: 0.75rem 0.85rem 0.9rem;
+	min-width: 0;
+}
+
+.depot-section-header {
+	margin-bottom: 0.65rem;
+	padding-bottom: 0.45rem;
+	border-bottom: 1px solid #e5e7eb;
+}
+
+.depot-section-title {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	font-weight: 700;
+	font-size: 1rem;
+	color: #1f2937;
+}
+
+.depot-section-dot {
+	width: 0.65rem;
+	height: 0.65rem;
+	border-radius: 50%;
+	flex: 0 0 auto;
+	background: #9ca3af;
+}
+
+.depot-section-active .depot-section-dot {
+	background: #4f6bff;
+	box-shadow: 0 0 0 3px rgba(79, 107, 255, 0.18);
+}
+
+.depot-section-upcoming .depot-section-dot {
+	background: #22c55e;
+	box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+.depot-section-done .depot-section-dot {
+	background: #9ca3af;
+}
+
+.depot-section-done {
+	opacity: 0.85;
+}
+
+@media (min-width: 992px) {
+	.depot-section-done {
+		grid-column: 1 / -1;
+	}
+}
+
+.depot-section-count {
+	margin-left: auto;
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: #6b7280;
+	background: #fff;
+	border: 1px solid #e5e7eb;
+	border-radius: 999px;
+	padding: 0.05rem 0.5rem;
+	min-width: 1.6rem;
+	text-align: center;
+}
+
+.depot-section-subtitle {
+	margin-top: 0.2rem;
+	font-size: 0.78rem;
+	color: #6b7280;
+	padding-left: 1.1rem;
+}
+
+.depot-empty {
+	padding: 1rem 0.5rem;
+	text-align: center;
+	font-size: 0.9rem;
+}
+
+.depot-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.45rem;
+}
+
+.depot-card {
+	border: 1px solid #d1d5db;
+	border-radius: 0.55rem;
+	background: #fff;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+	padding: 0.55rem 0.7rem;
+	transition: box-shadow 0.15s ease, border-color 0.15s ease;
+	overflow: hidden;
+}
+
+	.depot-card:hover {
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+		border-color: #9ca3af;
+	}
+
+.depot-card-main {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	min-width: 0;
+}
+
+.depot-time-primary {
+	font-weight: 700;
+	font-size: 0.98rem;
+	color: #111827;
+	line-height: 1.25;
+}
+
+.depot-time-secondary {
+	font-size: 0.78rem;
+	color: #6b7280;
+	line-height: 1.2;
+}
+
+.depot-agent-block {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 0.5rem;
+	margin-top: 0.15rem;
+}
+
+.depot-agents {
+	font-size: 0.88rem;
+	color: #1f2937;
+	word-break: break-word;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.depot-badge {
+	flex: 0 0 auto;
+	font-size: 0.68rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+	padding: 0.12rem 0.4rem;
+	border-radius: 0.3rem;
+	line-height: 1.2;
+	white-space: nowrap;
+}
+
+.depot-badge-foreign {
+	background: #fef3c7;
+	color: #92400e;
+	border: 1px solid #fcd34d;
+}
+
+/* Estados de color (refuerzo además del gradient inline) */
+.depot-status-soon {
+	border-color: #86efac;
+}
+
+.depot-status-active {
+	border-color: #a5b4fc;
+}
+
+.depot-status-ending {
+	border-color: #fda4af;
+}
+
+.depot-status-later {
+	border-color: #e5e7eb;
+}
+
+.depot-status-done {
+	opacity: 0.65;
+}
+
+.depot-progress {
+	margin-top: 0.45rem;
+	height: 0.35rem;
+	background: #e5e7eb;
+	border-radius: 999px;
+	overflow: hidden;
+}
+
+.depot-progress-bar {
+	height: 100%;
+	background: linear-gradient(90deg, #6366f1, #8b9dff);
+	border-radius: 999px;
+	transition: width 0.4s ease;
+}
+
+.depot-status-ending .depot-progress-bar {
+	background: linear-gradient(90deg, #f43f5e, #fc92ac);
+}
+
+@media (max-width: 575.98px) {
+	.depot-section {
+		padding: 0.65rem 0.7rem 0.75rem;
+	}
+
+	.depot-time-primary {
+		font-size: 0.92rem;
+	}
+
+	.depot-agents {
+		font-size: 0.84rem;
+	}
+}

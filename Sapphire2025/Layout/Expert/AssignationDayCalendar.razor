@@ -37,26 +37,43 @@ else
 								{
 									@if (null != mcolTemplates[col, row])
 									{
-										<tr>
-											<td class="cell-content custom-cell text-center align-middle"
-												style="@GetCellStyle(mcolTemplates[col, row])">
+										var template = mcolTemplates[col, row];
+										var assignations = AssignationsByTemplate(template.Name);
+										bool unassignedDriving = IsUnassignedDrivingShift(template, assignations);
+										<tr class="@(unassignedDriving ? "assignation-row-unassigned" : null)">
+											<td class="cell-content custom-cell text-center align-middle @(unassignedDriving ? "assignation-unassigned" : null)"
+												style="@GetCellStyle(template, unassignedDriving)">
 												<div class="cell-content-inner">
-													<span>@GetCellText(mcolTemplates[col, row])</span>
-													<span class="smallest-text">@GetCellTime(mcolTemplates[col, row])</span>
-													<div class="cell-bar"
-															style="@GetBarStyle(mcolTemplates[col, row])" />
+													<span>@GetCellText(template)</span>
+													<span class="smallest-text @(unassignedDriving ? "assignation-unassigned-time" : null)">@GetCellTime(template)</span>
+													@if (!unassignedDriving)
+													{
+														<div class="cell-bar"
+																style="@GetBarStyle(template)" />
+													}
 												</div>
 											</td>
-											<td style="@GetAssignationStyle(mcolTemplates[col, row])">
-												<table >
-													@foreach (AssignationContentModel assignation in AssignationsByTemplate(mcolTemplates[col, row].Name))
-													{
-														<tr>
-															<td style="@GetAgentStyle(assignation.AgentId)">
-																@GetUserString(assignation.AgentId)</td>
-														</tr>
-													}
-												</table>
+											<td class="@(unassignedDriving ? "assignation-unassigned" : null)"
+												style="@GetAssignationStyle(template, unassignedDriving)">
+												@if (unassignedDriving)
+												{
+													<div class="assignation-unassigned-label" title="Turno de conducción sin asignar">
+														¡DESCUBIERTO!
+													</div>
+												}
+												else
+												{
+													<table>
+														@foreach (AssignationContentModel assignation in assignations)
+														{
+															<tr>
+																<td style="@GetAgentStyle(assignation.AgentId)">
+																	<AgentScheduleLink AgentId="assignation.AgentId" />
+																</td>
+															</tr>
+														}
+													</table>
+												}
 											</td>
 										</tr>
 									}
@@ -122,14 +139,15 @@ else
 						if (string.IsNullOrWhiteSpace(todayAssignation.Definitive))
 							continue;
 
-
 						WorkShiftTemplateModel? template =
 							todayPlan.Template(
 								todayAssignation.Definitive,
 								todaySlice.GetDay(0),
 								todaySlice.GetFestive(0));
 
-						mcolTodayAgentTemplates[todayAssignation.AgentId] = template;
+						// Solo turnos de trabajo reales (no DD, D, licencias, vacaciones, etc.)
+						if (template is AttTemplateModel)
+							mcolTodayAgentTemplates[todayAssignation.AgentId] = template;
 					}
 				}
 
@@ -144,8 +162,9 @@ else
 		if (null == TimeSlice || TimeSlice.InitialDate.Date <= DateTime.Today)
 			return string.Empty;
 
-		//Si el Agente no trabaja hoy, no habrá estilo.
-		if (!mcolTodayAgentTemplates.TryGetValue(agentId, out WorkShiftTemplateModel? template))
+		// Solo negrita si hoy tiene un turno de trabajo (AttTemplateModel).
+		if (!mcolTodayAgentTemplates.TryGetValue(agentId, out WorkShiftTemplateModel? template)
+			|| template is not AttTemplateModel)
 			return string.Empty;
 
 		//Ponemos en negrita a todos los que trabajan hoy.
@@ -195,14 +214,36 @@ else
 		return salida;
 	}
 
+	/// <summary>
+	/// Turno de conducción (Work o Att con trenes) sin ningún maquinista asignado.
+	/// </summary>
+	private bool IsUnassignedDrivingShift(WorkShiftTemplateModel? template, List<AssignationContentModel> assignations)
+	{
+		if (null == template) return false;
+		if (assignations.Count > 0) return false;
+		return IsDrivingShift(template);
+	}
+
+	private static bool IsDrivingShift(WorkShiftTemplateModel template)
+	{
+		if (template is WorkTemplateModel)
+			return true;
+		if (template is AttTemplateModel att && null != att.Content)
+			return att.Content.Any(c => c is TrainWorkShiftContentModel tw
+				&& !string.IsNullOrWhiteSpace(tw.TrainId));
+		return false;
+	}
 
 	private bool IsToday()
 	{
 		return (null != TimeSlice && TimeSlice.InitialDate.Date == DateTime.Today);
 	}
 
-	private string GetCellStyle(WorkShiftTemplateModel? rhs)
+	private string GetCellStyle(WorkShiftTemplateModel? rhs, bool unassignedDriving = false)
 	{
+		if (unassignedDriving)
+			return "background: #dc2626; color: #ffffff;";
+
 		string auxColor = "black";
 		string auxFondo = "transparent";
 		if (null != rhs)
@@ -212,8 +253,11 @@ else
 		}
 		return string.Format("background: {1}; color: {0};", auxColor, auxFondo);
 	}
-	private string GetAssignationStyle(WorkShiftTemplateModel? rhs)
+	private string GetAssignationStyle(WorkShiftTemplateModel? rhs, bool unassignedDriving = false)
 	{
+		if (unassignedDriving)
+			return "background: #dc2626; color: #ffffff;";
+
 		string salida = "transparent";
 		if (IsToday() && FollowingMode)
 		{
@@ -266,17 +310,6 @@ else
 	{
 		return string.Format("background: {0};", rhs?.StripeColor ?? "transparent");
 	}
-	private string GetUserString(Guid userId)
-	{
-		if(null!=Users && Users.ContainsKey(userId))
-		{
-			if(null==Users[userId]) return "???";
-			UserModelBase usuario = Users[userId];
-			return string.Format("({0}) {1}", usuario.CF, usuario.Name);
-		}
-		return "????";
-	}
-
 	private void ComposeArray()
 	{
 		if(null!=SortedTemplates)

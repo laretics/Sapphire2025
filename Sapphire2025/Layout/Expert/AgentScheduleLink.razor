@@ -1,0 +1,67 @@
+@*
+	Enlace al cuadrante del agente (/drivers/schedules?cf=…).
+	Usado desde DailyGraph (circulaciones, depósitos, asignaciones, vacantes).
+*@
+@if (string.IsNullOrWhiteSpace(Cf))
+{
+	<span class="agent-schedule-link agent-schedule-link-disabled @CssClass" title="Sin CF">@Text</span>
+}
+else
+{
+	<a href="@Href"
+	   class="agent-schedule-link @CssClass"
+	   title="@(Title ?? $"Ver cuadrante de {Text}")"
+	   @onclick:stopPropagation="true">
+		@Text
+	</a>
+}
+
+@code {
+	[Parameter]
+	public Guid AgentId { get; set; }
+
+	[CascadingParameter]
+	public Dictionary<Guid, UserModelBase>? Users { get; set; }
+
+	/// <summary>Texto forzado; si es null se genera desde el usuario (CF + nombre o solo nombre).</summary>
+	[Parameter]
+	public string? DisplayText { get; set; }
+
+	/// <summary>Si es true, muestra "(CF) Nombre"; si no, solo el nombre (estilo circulaciones).</summary>
+	[Parameter]
+	public bool ShowCf { get; set; } = true;
+
+	[Parameter]
+	public string? CssClass { get; set; }
+
+	[Parameter]
+	public string? Title { get; set; }
+
+	private UserModelBase? User
+	{
+		get
+		{
+			if (null != Users && Users.TryGetValue(AgentId, out UserModelBase? u))
+				return u;
+			return null;
+		}
+	}
+
+	private string? Cf => string.IsNullOrWhiteSpace(User?.CF) ? null : User!.CF.Trim();
+
+	private string Text
+	{
+		get
+		{
+			if (!string.IsNullOrWhiteSpace(DisplayText))
+				return DisplayText;
+			if (null == User)
+				return "????";
+			if (ShowCf)
+				return $"({User.CF}) {User.Name}";
+			return User.Name ?? "desconocido";
+		}
+	}
+
+	private string Href => $"/drivers/schedules?cf={Uri.EscapeDataString(Cf ?? string.Empty)}";
+}
