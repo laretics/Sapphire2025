@@ -71,6 +71,12 @@
         auxRecalculateDestinations();
     }
 
+    /// <summary>
+    /// Paradas con menos de este tiempo en malla se tratan como técnicas (p. ej. Son Rullán)
+    /// y no se anuncian en la lista de próximas estaciones.
+    /// </summary>
+    private static readonly TimeSpan MinCommercialStop = TimeSpan.FromSeconds(10);
+
     private void auxRecalculateDestinations()
     {
         mcolItinerary = Array.Empty<RowContent>();
@@ -94,12 +100,14 @@
 
         var auxItinerary = new List<RowContent>();
 
-        // Primera del residual = próxima (o la de origen si aún no se ha salido).
-        AddIfScheduled(auxItinerary, remaining.Origin, scheduledByStationId);
+        // Primera del residual = próxima estación del SubAsimilation (su stopTime no queda en Origin;
+        // se consulta en la malla completa).
+        if (IsCommercialStop(fullRoute, remaining.Origin, fullRoute.Destination))
+            AddIfScheduled(auxItinerary, remaining.Origin, scheduledByStationId);
 
         foreach (AsimilationStep paso in remaining.Steps)
         {
-            if (paso.stopTime.Ticks > 0 || paso.destination == remaining.Destination)
+            if (IsCommercialStop(paso, remaining.Destination))
                 AddIfScheduled(auxItinerary, paso.destination, scheduledByStationId);
         }
 
@@ -160,14 +168,40 @@
             cumul += paso.tripTime;
 
             // Misma regla de “parada comercial” que la tabla residual.
-            if (paso.stopTime.Ticks > 0 || paso.destination == fullRoute.Destination)
-            {
+            // El tiempo de parada técnica (&lt; 10 s) se suma al acumulado igualmente
+            // para no desfasar el reloj de las siguientes estaciones.
+            if (IsCommercialStop(paso, fullRoute.Destination))
                 Put(paso.destination, cumul);
-                cumul += paso.stopTime;
-            }
+
+            cumul += paso.stopTime;
         }
 
         return map;
+    }
+
+    /// <summary>
+    /// Parada comercial: destino final o tiempo de parada en malla ≥ 10 s.
+    /// Las técnicas (p. ej. Son Rullán) quedan fuera del anuncio al viajero.
+    /// </summary>
+    private static bool IsCommercialStop(AsimilationStep paso, Station? finalDestination)
+    {
+        if (null == paso.destination)
+            return false;
+        if (finalDestination is not null && paso.destination == finalDestination)
+            return true;
+        return paso.stopTime >= MinCommercialStop;
+    }
+
+    private static bool IsCommercialStop(Asimilation fullRoute, Station? station, Station? finalDestination)
+    {
+        if (null == station)
+            return false;
+        if (finalDestination is not null && station == finalDestination)
+            return true;
+        // Origen del servicio: siempre es punto de itinerario (salida).
+        if (fullRoute.Origin is not null && station == fullRoute.Origin)
+            return true;
+        return fullRoute.stationStopTime(station) >= MinCommercialStop;
     }
 
     private static void AddIfScheduled(

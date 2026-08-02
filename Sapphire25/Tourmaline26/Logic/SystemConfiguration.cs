@@ -19,6 +19,10 @@ namespace Tourmaline26.Logic
 		public string TExperienceStr { get; set; } = "http://192.168.0.9:5005/stream"; //Streamer de Tourmaline Experience
 		public string SfmInfoUrl { get; set; } = "https://info.trensfm.com:8084"; //Url del proveedor Armandito
 		public string SfmInfoToken { get; set; } = "SFM2026"; //Token para Armandito
+		/// <summary>Base del panel de información al viajero (salidas por estación, Socket.IO).</summary>
+		public string SfmPanelUrl { get; set; } = "https://info.trensfm.com";
+		/// <summary>Estación inicial opcional (<c>cod_ubicacion</c>) para el panel de salidas.</summary>
+		public int? SfmPanelDefaultStation { get; set; }
 		public string DefaultLocation { get; set; } = "39.57634918310896,2.6546805667305313"; //Ubicación por defecto (para extraer Meteo).
 
 	}

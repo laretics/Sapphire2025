@@ -143,10 +143,11 @@ namespace Sapphire2025Server.Expert
                 template.Name = name;
 
             template.Tokens = name;
-			template.Comment = nodo.Attributes["comment"]?.Value;
-			template.Color = nodo.Attributes["col"]?.Value;
-			template.BgColor = nodo.Attributes["bgcol"]?.Value;
-			template.StripeColor = nodo.Attributes["stcol"]?.Value;
+			template.Comment = ReadAttr(nodo, "comment");
+			// col / color → texto; bgcol / bgcolor → fondo; stcol / stripe / stripecolor → franja
+			template.Color = ReadColorAttr(nodo, "col", "color");
+			template.BgColor = ReadColorAttr(nodo, "bgcol", "bgcolor", "background");
+			template.StripeColor = ReadColorAttr(nodo, "stcol", "stripe", "stripecolor");
             string? auxWeek = nodo.Attributes["week"]?.Value;
             template.PerWeek = parseWeekDays(auxWeek);
             template.CoorX = -1;
@@ -282,5 +283,28 @@ namespace Sapphire2025Server.Expert
             salida.ContentType = contentType;
             return salida;
         }
+
+        /// <summary>
+        /// Lee el primer atributo no vacío de la lista de nombres candidatos.
+        /// </summary>
+        private static string? ReadAttr(XmlNode nodo, params string[] names)
+        {
+            if (null == nodo.Attributes || null == names)
+                return null;
+            foreach (string name in names)
+            {
+                string? value = nodo.Attributes[name]?.Value;
+                if (!string.IsNullOrWhiteSpace(value))
+                    return value.Trim();
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Igual que ReadAttr, pero devuelve null si el valor no es un color usable
+        /// (vacío o solo espacios). No valida el formato del color: eso lo hace el CSS del cliente.
+        /// </summary>
+        private static string? ReadColorAttr(XmlNode nodo, params string[] names)
+            => ReadAttr(nodo, names);
     }
 }

@@ -1,10 +1,9 @@
-﻿/* Celdas de contenido */
+﻿/* No forzar fondo blanco: el color de plantilla va en style inline (BgColor). */
 .cell-content {
-    background: #fff;
-    transition: background 0.2s;
+    transition: filter 0.2s;
 }
 .cell-content:hover {
-    background: #f1f3f4;
+    filter: brightness(0.97);
 }
 /* Celdas con esquinas redondeadas */
 .custom-cell {
@@ -16,7 +15,9 @@
 
 .smallest-text {
     font-size: 0.6rem; /* Muy pequeño */
-    color: #333;
+    /* Hereda el color del template; no forzar #333 sobre fondos oscuros */
+    color: inherit;
+    opacity: 0.9;
     display: block;
     margin-top: 2px;
     white-space: nowrap;

@@ -71,14 +71,13 @@
 	public Sapphire2025Models.Inspector.AgentsListRecordModel? Model{ get; set; }
 	private string GetCellStyle()
 	{
-		string auxColor = "black";
-		string auxFondo = "transparent";
-		if(null!=Model)
-		{
-			auxColor = Model.Color ?? "black";
-			auxFondo = Model.BgColor ?? "transparent";
-		}
-		return string.Format("background: {1}; color: {0};", auxColor, auxFondo);
+		// Misma lógica de contraste que AssignationCell (Color=texto, BgColor=fondo).
+		string? color = Model?.Color;
+		string? bg = Model?.BgColor;
+		if (string.IsNullOrWhiteSpace(color) || !Sapphire2025Models.Utils.HasReadableContrast(color, bg ?? "transparent"))
+			color = Sapphire2025Models.Utils.ContrastingTextColor(bg);
+		bg = string.IsNullOrWhiteSpace(bg) ? "transparent" : bg.Trim();
+		return $"background: {bg}; color: {color ?? "black"};";
 	}
 	private string GetCellText()
 	{

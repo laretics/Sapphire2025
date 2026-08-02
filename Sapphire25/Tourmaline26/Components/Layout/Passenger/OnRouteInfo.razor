@@ -96,45 +96,9 @@
                     }
                     else if (InformationMode == Enums.PassengerInformationMode.NextStopInfo)
                     {
-                        <div class="arrival-panel">
-                            <div class="arrival-label">Propera estació</div>
-                            <div class="arrival-station">@(NextStationName)</div>
-                            <div class="correspondences-box">
-                                <div class="correspondences-title">Correspondències</div>
-                                <table class="correspondences-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Línia</th>
-                                            <th>Destinació</th>
-                                            <th>Andana</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @* Contenido estático de prueba; se sustituirá por datos reales de transbordo. *@
-                                        <tr>
-                                            <td><span class="line-badge line-t1">T1</span></td>
-                                            <td>Palma</td>
-                                            <td>2</td>
-                                        </tr>
-                                        <tr>
-                                            <td><span class="line-badge line-t2">T2</span></td>
-                                            <td>Marratxí</td>
-                                            <td>1</td>
-                                        </tr>
-                                        <tr>
-                                            <td><span class="line-badge line-t3">T3</span></td>
-                                            <td>Manacor</td>
-                                            <td>3</td>
-                                        </tr>
-                                        <tr>
-                                            <td><span class="line-badge line-bus">L30</span></td>
-                                            <td>Aeroport</td>
-                                            <td>—</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        <NextStationTable NextStationName="@NextStationName"
+                                          TrainDestinationName="@DestinationName"
+                                          MaxDepartures="@Math.Max(10, Lines + 4)" />
                     }
                     else if (InformationMode == Enums.PassengerInformationMode.Cruise)
                     {
@@ -239,7 +203,8 @@
 
     /// <summary>Estación de llegada / parada actual (modo Arriv).</summary>
     private string NextStationName =>
-        mvarTourmaline.SessionConfig.TNEnvironment?.CurrentStation?.Name
+        mvarTourmaline.SessionConfig.PreviewArrivalStation?.Name
+        ?? mvarTourmaline.SessionConfig.TNEnvironment?.CurrentStation?.Name
         ?? Circulation?.Parent?.asimilation?.Destination?.Name
         ?? "—";
 

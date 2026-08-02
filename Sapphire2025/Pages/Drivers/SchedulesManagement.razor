@@ -3,6 +3,7 @@
 @using Sapphire2025.Layout.Expert
 @using Sapphire2025Models
 @using Sapphire2025Models.Expert.WorkshiftTemplates
+@implements IDisposable
 @inject ExpertClient mvarExpertClient
 @inject AuthenticationClient mvarAuthClient
 @inject IntStorageService mvarIntStorage
@@ -160,9 +161,9 @@
 													<span class="text-muted"> · @Sapphire2025Models.Utils.autoInterval(attCard.Duration, false)</span>
 												</div>
 											}
-											@if (!string.IsNullOrWhiteSpace(row.Assignation.Comment))
+											@if (!string.IsNullOrWhiteSpace(FormatAssignationNote(row.Assignation.Comment)))
 											{
-												<div class="sched-day-card-note text-truncate">@row.Assignation.Comment</div>
+												<div class="sched-day-card-note text-truncate">@FormatAssignationNote(row.Assignation.Comment)</div>
 											}
 										}
 										else
@@ -229,7 +230,7 @@
 											}
 										</td>
 										<td class="d-none d-xxl-table-cell small text-muted">
-											@(row.Assignation?.Comment)
+											@(FormatAssignationNote(row.Assignation?.Comment))
 										</td>
 									</tr>
 								}
@@ -250,16 +251,22 @@
 				<div class="card-body sched-panel-scroll">
 					@if (null == SelectedRow)
 					{
-						<p class="text-muted small mb-0">Selecciona un día en la lista o con el selector de fecha.</p>
+						<div class="sched-empty-state">
+							<div class="sched-empty-icon" aria-hidden="true">◎</div>
+							<p class="text-muted small mb-0">Selecciona un día en la lista o con el selector de fecha.</p>
+						</div>
 					}
 					else
 					{
-						<div class="sched-day-summary mb-3">
-							<div class="d-flex flex-wrap align-items-center gap-2">
-								<span class="sched-day-title">@SelectedDate.ToString("dddd d MMMM yyyy")</span>
+						<div class="sched-day-hero mb-3">
+							<div class="sched-day-hero-top">
+								<div class="sched-day-hero-text">
+									<span class="sched-day-kicker">Jornada</span>
+									<span class="sched-day-title">@SelectedDate.ToString("dddd d MMMM yyyy")</span>
+								</div>
 								@if (null != SelectedRow.Assignation)
 								{
-									<span class="sched-shift-badge sched-shift-badge-lg"
+									<span class="sched-shift-badge sched-shift-badge-lg sched-shift-badge-glow"
 										  style="@GetTemplateStyle(SelectedRow.Template, SelectedRow.Assignation.TD)">
 										@(SelectedRow.Assignation.Definitive ?? "—")
 									</span>
@@ -267,79 +274,174 @@
 							</div>
 							@if (SelectedRow.Template is AttTemplateModel selAtt)
 							{
-								<div class="text-muted mt-1">
-									@Sapphire2025Models.Utils.autoInterval(selAtt.StartTime, true) – @Sapphire2025Models.Utils.autoInterval(selAtt.EndTime, true)
-									<span class="ms-1">(@Sapphire2025Models.Utils.autoInterval(selAtt.Duration, false))</span>
+								<div class="sched-day-hero-meta">
+									<span class="sched-meta-chip">
+										<span class="sched-meta-chip-label">Horario</span>
+										<span class="sched-meta-chip-value">
+											@Sapphire2025Models.Utils.autoInterval(selAtt.StartTime, true)–@Sapphire2025Models.Utils.autoInterval(selAtt.EndTime, true)
+										</span>
+									</span>
+									<span class="sched-meta-chip">
+										<span class="sched-meta-chip-label">Duración</span>
+										<span class="sched-meta-chip-value">@Sapphire2025Models.Utils.autoInterval(selAtt.Duration, false)</span>
+									</span>
+									@if (SelectedTrains.Count > 0)
+									{
+										<span class="sched-meta-chip">
+											<span class="sched-meta-chip-label">Trenes</span>
+											<span class="sched-meta-chip-value">@SelectedTrains.Count</span>
+										</span>
+									}
 								</div>
 							}
 							else if (null != SelectedRow.Assignation)
 							{
-								<div class="text-muted mt-1 small">Sin horario de trabajo (descanso / licencia / vacaciones).</div>
+								<div class="sched-day-hero-hint">Sin horario de trabajo (descanso / licencia / vacaciones).</div>
 							}
 							else
 							{
-								<div class="text-muted mt-1 small">Sin turno grafiado este día.</div>
+								<div class="sched-day-hero-hint">Sin turno grafiado este día.</div>
 							}
-							@if (!string.IsNullOrWhiteSpace(SelectedRow.Assignation?.Comment))
+							@if (!string.IsNullOrWhiteSpace(FormatAssignationNote(SelectedRow.Assignation?.Comment)))
 							{
-								<div class="alert alert-secondary py-2 px-3 small mt-2 mb-0">
-									<strong>Nota JM:</strong> @SelectedRow.Assignation.Comment
+								<div class="sched-jm-note mt-2">
+									<span class="sched-jm-note-label">Nota JM</span>
+									<span class="sched-jm-note-text">@FormatAssignationNote(SelectedRow.Assignation?.Comment)</span>
 								</div>
 							}
-							@if (SelectedRow.Assignation is not null && SelectedRow.Template is AttTemplateModel)
+							<div class="sched-day-hero-actions">
+								@if (SelectedTrains.Count > 0 || SelectedDepots.Count > 0)
+								{
+									<button type="button"
+											class="btn btn-outline-success btn-sm mt-3 sched-touch-btn sched-export-day-btn"
+											title="Descargar trenes y depósitos de este turno como calendario (.ics)"
+											@onclick="ExportDayShiftIcsAsync">
+										<span class="sched-export-icon" aria-hidden="true">⬇</span>
+										Exportar trenes .ics
+									</button>
+								}
+								@if (SelectedRow.Assignation is not null && SelectedRow.Template is AttTemplateModel)
+								{
+									<button type="button"
+											class="btn btn-primary btn-sm mt-3 sched-touch-btn sched-swap-cta"
+											@onclick="OpenSwapDialog">
+										Pedir cambio de turno…
+									</button>
+								}
+							</div>
+							@if (IsSelectedDayTimelineActive)
 							{
-								<button type="button"
-										class="btn btn-outline-primary btn-sm mt-2 sched-touch-btn"
-										@onclick="OpenSwapDialog">
-									Pedir cambio de turno…
-								</button>
+								<div class="sched-live-hint mt-2">
+									<span class="sched-live-dot" aria-hidden="true"></span>
+									Resalte en vivo · @DateTime.Now.ToString("HH:mm")
+								</div>
 							}
 						</div>
 
-						<h6 class="text-uppercase text-muted small fw-semibold">Circulaciones del turno</h6>
 						@if (SelectedTrains.Count == 0 && SelectedDepots.Count == 0)
 						{
-							<p class="text-muted small">No hay trenes ni depósitos asociados a este turno.</p>
+							<div class="sched-section">
+								<div class="sched-section-head">
+									<h6 class="sched-section-title">Circulaciones del turno</h6>
+								</div>
+								<p class="text-muted small mb-0">No hay trenes ni depósitos asociados a este turno.</p>
+							</div>
 						}
 						else
 						{
-							<div class="sched-content-list">
-								@foreach (TrainWorkShiftContentModel train in SelectedTrains)
-								{
-									<div class="sched-train-row">
-										<div class="sched-train-id border border-secondary rounded"
-											 style="@GetTrainColorStyle(train)">
-											<div class="sched-train-main">
-												<span class="fw-semibold">@train.TrainId</span>
-												@if (train.Discrectional)
-												{
-													<span class="badge bg-secondary">Opcional</span>
-												}
-											</div>
-											<span class="sched-train-time small">
-												@Sapphire2025Models.Utils.autoInterval(train.StartTime, true)–@Sapphire2025Models.Utils.autoInterval(train.EndTime, true)
-											</span>
+							@if (SelectedTrains.Count > 0)
+							{
+								<div class="sched-section">
+									<div class="sched-section-head">
+										<h6 class="sched-section-title">Circulaciones del turno</h6>
+										<div class="d-flex align-items-center gap-2">
+											<span class="sched-section-count">@SelectedTrains.Count</span>
+											<button type="button"
+													class="btn btn-outline-success btn-sm sched-export-mini"
+													title="Exportar trenes y depósitos de este turno a .ics"
+													@onclick="ExportDayShiftIcsAsync">
+												.ics
+											</button>
 										</div>
 									</div>
-								}
-								@if (SelectedDepots.Count > 0)
-								{
-									<h6 class="text-uppercase text-muted small fw-semibold mt-3">Depósitos / disponibilidad</h6>
-									@foreach (AttWorkShiftContentModel depot in SelectedDepots)
-									{
-										<div class="sched-depot-row border border-secondary rounded mb-1 px-2 py-2">
-											<span class="fw-semibold">
-												@Sapphire2025Models.Utils.autoInterval(depot.StartTime, true)–@Sapphire2025Models.Utils.autoInterval(depot.EndTime, true)
-											</span>
-											<span class="text-muted small ms-2">(@Sapphire2025Models.Utils.autoInterval(depot.Duration, false))</span>
-											@if (depot.Foreign)
-											{
-												<span class="badge bg-warning-subtle text-warning-emphasis border ms-1">Fuera</span>
-											}
-										</div>
-									}
-								}
-							</div>
+									<div class="sched-content-list">
+										@foreach (TrainWorkShiftContentModel train in SelectedTrains)
+										{
+											var slot = GetSlotStatus(train.StartTime, train.EndTime);
+											<div class="sched-train-card @SlotCss(slot)"
+												 style="@GetTrainColorStyle(train)"
+												 title="@SlotTitle(slot, train.StartTime, train.EndTime)">
+												<div class="sched-train-rail" aria-hidden="true"></div>
+												<div class="sched-train-body">
+													<div class="sched-train-main">
+														<span class="sched-train-number">@train.TrainId</span>
+														@if (slot == SlotStatus.Current)
+														{
+															<span class="sched-pill sched-pill-live">En curso</span>
+														}
+														else if (slot == SlotStatus.Past)
+														{
+															<span class="sched-pill sched-pill-done">Hecho</span>
+														}
+														@if (train.Discrectional)
+														{
+															<span class="sched-pill sched-pill-optional">Opcional</span>
+														}
+													</div>
+													<div class="sched-train-time">
+														<span class="sched-time-start">@Sapphire2025Models.Utils.autoInterval(train.StartTime, true)</span>
+														<span class="sched-time-sep" aria-hidden="true">→</span>
+														<span class="sched-time-end">@Sapphire2025Models.Utils.autoInterval(train.EndTime, true)</span>
+													</div>
+												</div>
+											</div>
+										}
+									</div>
+								</div>
+							}
+							@if (SelectedDepots.Count > 0)
+							{
+								<div class="sched-section @(SelectedTrains.Count > 0 ? "mt-3" : null)">
+									<div class="sched-section-head">
+										<h6 class="sched-section-title">Depósitos / disponibilidad</h6>
+										<span class="sched-section-count">@SelectedDepots.Count</span>
+									</div>
+									<div class="sched-content-list">
+										@foreach (AttWorkShiftContentModel depot in SelectedDepots)
+										{
+											var slot = GetSlotStatus(depot.StartTime, depot.EndTime);
+											<div class="sched-depot-card @(depot.Foreign ? "is-foreign" : null) @SlotCss(slot)"
+												 title="@SlotTitle(slot, depot.StartTime, depot.EndTime)">
+												<div class="sched-depot-icon" aria-hidden="true">▣</div>
+												<div class="sched-depot-body">
+													<div class="sched-depot-time">
+														@Sapphire2025Models.Utils.autoInterval(depot.StartTime, true)–@Sapphire2025Models.Utils.autoInterval(depot.EndTime, true)
+													</div>
+													<div class="sched-depot-meta">
+														<span>@Sapphire2025Models.Utils.autoInterval(depot.Duration, false)</span>
+														@if (slot == SlotStatus.Current)
+														{
+															<span class="sched-pill sched-pill-live">En curso</span>
+														}
+														else if (slot == SlotStatus.Past)
+														{
+															<span class="sched-pill sched-pill-done">Hecho</span>
+														}
+														@if (depot.Foreign)
+														{
+															<span class="sched-pill sched-pill-foreign">Fuera</span>
+														}
+														else
+														{
+															<span class="sched-pill sched-pill-depot">Depósito</span>
+														}
+													</div>
+												</div>
+											</div>
+										}
+									</div>
+								</div>
+							}
 						}
 					}
 				</div>
@@ -399,9 +501,9 @@
 										<li class="list-group-item px-0 sched-query-item">
 											<div class="sched-query-item-main">
 												<div class="fw-semibold">@GetUserDisplay(hit.AgentId)</div>
-												@if (!string.IsNullOrWhiteSpace(hit.Comment))
+												@if (!string.IsNullOrWhiteSpace(FormatAssignationNote(hit.Comment)))
 												{
-													<div class="small text-muted">@hit.Comment</div>
+													<div class="small text-muted">@FormatAssignationNote(hit.Comment)</div>
 												}
 											</div>
 											@if (hit.AgentId != ViewedUser?.guid)
@@ -488,7 +590,11 @@
 	private const string DevCfStorageKey = "schedules.devCf";
 
 	private enum MobilePanel { Assignations, Day, Query }
+	private enum SlotStatus { Future, Current, Past }
+
 	private MobilePanel mvarMobilePanel = MobilePanel.Day;
+	/// <summary>Actualiza el resalte «en curso / hecho» mientras se mira el día de hoy.</summary>
+	private System.Threading.Timer? mvarClockTimer;
 
 	/// <summary>CF opcional desde DailyGraph u otros enlaces: /drivers/schedules?cf=196</summary>
 	[SupplyParameterFromQuery(Name = "cf")]
@@ -553,6 +659,11 @@
 		null == mvarTimeSlice
 			? string.Empty
 			: $"{mvarTimeSlice.InitialDate:dd/MM} – {mvarTimeSlice.InitialDate.AddDays(DayHorizon - 1):dd/MM}";
+
+	/// <summary>Resalte en vivo solo para el día de hoy (pasado = todo hecho; futuro = nada tachado).</summary>
+	private bool IsSelectedDayTimelineActive
+		=> SelectedDate.Date == DateTime.Today
+			&& (SelectedTrains.Count > 0 || SelectedDepots.Count > 0);
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -862,6 +973,34 @@
 			$"acción=export-ics|cf={ViewedUser.CF}|desde={AgentRows[0].Date:yyyy-MM-dd}|hasta={AgentRows[^1].Date:yyyy-MM-dd}|eventos={CountExportableRows()}");
 	}
 
+	/// <summary>
+	/// Exporta trenes y depósitos del turno del día seleccionado como eventos .ics individuales.
+	/// Incluye COLOR / categorías (best-effort: Google al importar .ics suele ignorar colores libres).
+	/// </summary>
+	private async Task ExportDayShiftIcsAsync()
+	{
+		if (null == ViewedUser || null == SelectedRow)
+			return;
+		if (SelectedTrains.Count == 0 && SelectedDepots.Count == 0)
+			return;
+
+		string ics = BuildDayShiftIcsCalendar();
+		string safeCf = SanitizeFilePart(ViewedUser.CF);
+		string day = SelectedRow.Date.ToString("yyyyMMdd");
+		string shift = SanitizeFilePart(SelectedRow.Assignation?.Definitive ?? "turno");
+		string fileName = $"turno_{safeCf}_{day}_{shift}.ics";
+
+		await mvarJS.InvokeVoidAsync(
+			"downloadTextFile",
+			ics,
+			fileName,
+			"text/calendar;charset=utf-8");
+
+		await LogScheduleAsync(
+			Common.sessionEventType.scheduleViewOpened,
+			$"acción=export-day-ics|cf={ViewedUser.CF}|día={SelectedRow.Date:yyyy-MM-dd}|turno={SelectedRow.Assignation?.Definitive}|trenes={SelectedTrains.Count}|depósitos={SelectedDepots.Count}");
+	}
+
 	private int CountExportableRows()
 		=> AgentRows.Count(r => r.Assignation is not null && !string.IsNullOrWhiteSpace(r.Assignation.Definitive));
 
@@ -988,8 +1127,9 @@
 
 		if (row.Assignation?.TD == true)
 			desc.AppendLine("TD: turno en descanso");
-		if (!string.IsNullOrWhiteSpace(row.Assignation?.Comment))
-			desc.AppendLine($"Nota JM: {row.Assignation.Comment}");
+		string? note = FormatAssignationNote(row.Assignation?.Comment);
+		if (!string.IsNullOrWhiteSpace(note))
+			desc.AppendLine($"Nota JM: {note}");
 		if (row.Assignation?.SwappingAgent is Guid swap && swap != Guid.Empty)
 			desc.AppendLine($"Cambio con: {GetUserName(swap)}");
 
@@ -1025,6 +1165,274 @@
 		return sb.Length == 0 ? "x" : sb.ToString();
 	}
 
+	/// <summary>
+	/// De la nota del turno solo se muestra lo que hay a partir del marcador "nnn"
+	/// (sin distinguir mayúsculas/minúsculas). Si no hay marcador, no se muestra nada.
+	/// </summary>
+	private static string? FormatAssignationNote(string? raw)
+	{
+		if (string.IsNullOrWhiteSpace(raw))
+			return null;
+
+		const string marker = "nnn";
+		int idx = raw.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+		if (idx < 0)
+			return null;
+
+		string rest = raw.Substring(idx + marker.Length).Trim();
+		return string.IsNullOrWhiteSpace(rest) ? null : rest;
+	}
+
+	private string BuildDayShiftIcsCalendar()
+	{
+		StringBuilder sb = new StringBuilder();
+		string cf = ViewedUser?.CF ?? "?";
+		string name = ViewedUser?.Name ?? "Maquinista";
+		string definitive = SelectedRow?.Assignation?.Definitive?.Trim() ?? "turno";
+		DateTime day = SelectedRow?.Date.Date ?? SelectedDate.Date;
+		string calName = EscapeIcsText($"Turno {definitive} ({cf}) {day:dd/MM/yyyy} — {name}");
+		DateTime stamp = DateTime.UtcNow;
+
+		sb.AppendLine("BEGIN:VCALENDAR");
+		sb.AppendLine("VERSION:2.0");
+		sb.AppendLine("PRODID:-//Sapphire//Turno del día//ES");
+		sb.AppendLine("CALSCALE:GREGORIAN");
+		sb.AppendLine("METHOD:PUBLISH");
+		sb.AppendLine($"X-WR-CALNAME:{calName}");
+		sb.AppendLine("X-WR-TIMEZONE:Europe/Madrid");
+
+		int idx = 0;
+		foreach (TrainWorkShiftContentModel train in SelectedTrains)
+		{
+			idx++;
+			string color = GetTrainAccentColor(train);
+			string category = GetTrainCategory(train);
+			string summary = EscapeIcsText($"Tren {train.TrainId}" + (train.Discrectional ? " (opc.)" : ""));
+			string desc = BuildTrainEventDescription(train, definitive, day);
+			string uid = $"sapphire-train-{SanitizeFilePart(cf)}-{day:yyyyMMdd}-{SanitizeFilePart(train.TrainId)}-{idx}@sapphire.local";
+			AppendTimedIcsEvent(sb, uid, stamp, day, train.StartTime, train.EndTime, summary, desc, color, category);
+		}
+
+		idx = 0;
+		foreach (AttWorkShiftContentModel depot in SelectedDepots)
+		{
+			idx++;
+			string color = depot.Foreign ? "#fbbf24" : "#818cf8";
+			string category = depot.Foreign ? "DepositoFuera" : "Deposito";
+			string summary = EscapeIcsText(depot.Foreign ? "Depósito (fuera)" : "Depósito / disponibilidad");
+			string desc = BuildDepotEventDescription(depot, definitive, day);
+			string uid = $"sapphire-depot-{SanitizeFilePart(cf)}-{day:yyyyMMdd}-{idx}@sapphire.local";
+			AppendTimedIcsEvent(sb, uid, stamp, day, depot.StartTime, depot.EndTime, summary, desc, color, category);
+		}
+
+		sb.AppendLine("END:VCALENDAR");
+		return sb.ToString();
+	}
+
+	private void AppendTimedIcsEvent(
+		StringBuilder sb,
+		string uid,
+		DateTime stampUtc,
+		DateTime day,
+		TimeSpan startTs,
+		TimeSpan endTs,
+		string summaryEscaped,
+		string description,
+		string? colorHex,
+		string? category)
+	{
+		DateTime start = day.Date.Add(startTs);
+		DateTime end = day.Date.Add(endTs);
+		if (end <= start)
+			end = end.AddDays(1);
+
+		sb.AppendLine("BEGIN:VEVENT");
+		sb.AppendLine($"UID:{uid}");
+		sb.AppendLine($"DTSTAMP:{stampUtc:yyyyMMdd'T'HHmmss'Z'}");
+		sb.AppendLine($"DTSTART;TZID=Europe/Madrid:{start:yyyyMMdd'T'HHmmss}");
+		sb.AppendLine($"DTEND;TZID=Europe/Madrid:{end:yyyyMMdd'T'HHmmss}");
+		sb.AppendLine($"SUMMARY:{summaryEscaped}");
+		if (!string.IsNullOrWhiteSpace(description))
+			sb.AppendLine($"DESCRIPTION:{EscapeIcsText(description)}");
+		if (!string.IsNullOrWhiteSpace(category))
+			sb.AppendLine($"CATEGORIES:{EscapeIcsText(category)}");
+
+		// Color best-effort (RFC 7986 COLOR + extensiones). Google Calendar al importar .ics
+		// normalmente ignora hex libres y solo aplica colorId vía API; Apple/Outlook varían.
+		if (!string.IsNullOrWhiteSpace(colorHex))
+		{
+			string hex = colorHex.Trim();
+			if (!hex.StartsWith('#')) hex = "#" + hex;
+			sb.AppendLine($"COLOR:{hex}");
+			sb.AppendLine($"X-COLOR:{hex}");
+			sb.AppendLine($"X-APPLE-CALENDAR-COLOR:{hex}");
+			int googleId = MapHexToGoogleColorId(hex);
+			sb.AppendLine($"X-GOOGLE-CALENDAR-CONTENT-COLOR:{hex}");
+			sb.AppendLine($"X-SAPPHIRE-COLOR:{hex}");
+			sb.AppendLine($"X-SAPPHIRE-GOOGLE-COLOR-ID:{googleId}");
+		}
+
+		sb.AppendLine("END:VEVENT");
+	}
+
+	private string BuildTrainEventDescription(TrainWorkShiftContentModel train, string definitive, DateTime day)
+	{
+		var asim = Sapphire2025Models.Utils.GetAsimilation(train.TrainId);
+		StringBuilder desc = new StringBuilder();
+		desc.AppendLine($"Tren: {train.TrainId}");
+		desc.AppendLine($"Turno: {definitive}");
+		desc.AppendLine($"Fecha: {day:dd/MM/yyyy}");
+		desc.AppendLine($"Horario: {Sapphire2025Models.Utils.autoInterval(train.StartTime, true)}–{Sapphire2025Models.Utils.autoInterval(train.EndTime, true)}");
+		desc.AppendLine($"Agente: ({ViewedUser?.CF}) {ViewedUser?.Name}");
+		desc.AppendLine($"Línea: {asim}");
+		desc.AppendLine($"Color: {GetTrainAccentColor(train)}");
+		if (train.Discrectional)
+			desc.AppendLine("Opcional / discrecional");
+		desc.Append("Generado por Sapphire");
+		return desc.ToString().TrimEnd();
+	}
+
+	private string BuildDepotEventDescription(AttWorkShiftContentModel depot, string definitive, DateTime day)
+	{
+		StringBuilder desc = new StringBuilder();
+		desc.AppendLine(depot.Foreign ? "Depósito fuera de residencia" : "Depósito / disponibilidad");
+		desc.AppendLine($"Turno: {definitive}");
+		desc.AppendLine($"Fecha: {day:dd/MM/yyyy}");
+		desc.AppendLine($"Horario: {Sapphire2025Models.Utils.autoInterval(depot.StartTime, true)}–{Sapphire2025Models.Utils.autoInterval(depot.EndTime, true)} ({Sapphire2025Models.Utils.autoInterval(depot.Duration, false)})");
+		desc.AppendLine($"Agente: ({ViewedUser?.CF}) {ViewedUser?.Name}");
+		desc.AppendLine($"Color: {(depot.Foreign ? "#fbbf24" : "#818cf8")}");
+		desc.Append("Generado por Sapphire");
+		return desc.ToString().TrimEnd();
+	}
+
+	private static string GetTrainAccentColor(TrainWorkShiftContentModel train)
+	{
+		var asim = Sapphire2025Models.Utils.GetAsimilation(train.TrainId);
+		return Sapphire2025Models.Utils.AsimilationColor(asim);
+	}
+
+	private static string GetTrainCategory(TrainWorkShiftContentModel train)
+	{
+		var asim = Sapphire2025Models.Utils.GetAsimilation(train.TrainId);
+		return asim.ToString();
+	}
+
+	/// <summary>
+	/// Mapea un color hex al colorId más cercano de la paleta fija de Google Calendar (1–11).
+	/// Útil como referencia; el importador web de Google no aplica colorId desde .ics.
+	/// </summary>
+	private static int MapHexToGoogleColorId(string hex)
+	{
+		// Paleta Google event colors (aprox. hex oficiales de la UI)
+		(int id, int r, int g, int b)[] palette =
+		{
+			(1, 0xa4, 0xbd, 0xfc), // lavender
+			(2, 0x7a, 0xe7, 0xbf), // sage
+			(3, 0xdb, 0xad, 0xff), // grape
+			(4, 0xff, 0x88, 0x7c), // flamingo
+			(5, 0xfb, 0xd7, 0x5b), // banana
+			(6, 0xff, 0xb8, 0x78), // tangerine
+			(7, 0x46, 0xd6, 0xdb), // peacock
+			(8, 0xe1, 0xe1, 0xe1), // graphite
+			(9, 0x54, 0x84, 0xed), // blueberry
+			(10, 0x51, 0xb7, 0x49), // basil
+			(11, 0xdc, 0x21, 0x27), // tomato
+		};
+
+		if (!Sapphire2025Models.Utils.TryParseCssColor(hex, out int r, out int g, out int b))
+			return 9;
+
+		int bestId = 9;
+		long bestDist = long.MaxValue;
+		foreach (var p in palette)
+		{
+			long dr = r - p.r;
+			long dg = g - p.g;
+			long db = b - p.b;
+			long dist = dr * dr + dg * dg + db * db;
+			if (dist < bestDist)
+			{
+				bestDist = dist;
+				bestId = p.id;
+			}
+		}
+		return bestId;
+	}
+
+	private SlotStatus GetSlotStatus(TimeSpan start, TimeSpan end)
+	{
+		DateTime day = SelectedDate.Date;
+		DateTime today = DateTime.Today;
+
+		if (day < today)
+			return SlotStatus.Past;
+		if (day > today)
+			return SlotStatus.Future;
+
+		TimeSpan now = DateTime.Now.TimeOfDay;
+
+		// Tramo que cruza medianoche (p. ej. 22:00→01:30): en el día del turno
+		// solo resaltamos desde la hora de inicio; el tramo de madrugada
+		// se interpreta al ver el día siguiente o como continuación del turno.
+		if (end <= start)
+		{
+			if (now >= start)
+				return SlotStatus.Current;
+			return SlotStatus.Future;
+		}
+
+		if (now >= end)
+			return SlotStatus.Past;
+		if (now >= start)
+			return SlotStatus.Current;
+		return SlotStatus.Future;
+	}
+
+	private static string SlotCss(SlotStatus status)
+		=> status switch
+		{
+			SlotStatus.Current => "is-current",
+			SlotStatus.Past => "is-past",
+			_ => "is-upcoming"
+		};
+
+	private static string SlotTitle(SlotStatus status, TimeSpan start, TimeSpan end)
+		=> status switch
+		{
+			SlotStatus.Current => $"En curso ({Sapphire2025Models.Utils.autoInterval(start, true)}–{Sapphire2025Models.Utils.autoInterval(end, true)})",
+			SlotStatus.Past => $"Realizado ({Sapphire2025Models.Utils.autoInterval(start, true)}–{Sapphire2025Models.Utils.autoInterval(end, true)})",
+			_ => $"Pendiente ({Sapphire2025Models.Utils.autoInterval(start, true)}–{Sapphire2025Models.Utils.autoInterval(end, true)})"
+		};
+
+	private void EnsureClockTimer()
+	{
+		bool needTimer = SelectedDate.Date == DateTime.Today
+			&& (SelectedTrains.Count > 0 || SelectedDepots.Count > 0);
+
+		if (needTimer)
+		{
+			mvarClockTimer ??= new System.Threading.Timer(
+				_ =>
+				{
+					_ = InvokeAsync(StateHasChanged);
+				},
+				null,
+				TimeSpan.FromSeconds(20),
+				TimeSpan.FromSeconds(20));
+		}
+		else
+		{
+			mvarClockTimer?.Dispose();
+			mvarClockTimer = null;
+		}
+	}
+
+	public void Dispose()
+	{
+		mvarClockTimer?.Dispose();
+		mvarClockTimer = null;
+	}
+
 	private void SelectDayInternal(DateTime day, bool reloadIfOutside)
 	{
 		SelectedRow = AgentRows.FirstOrDefault(r => r.Date.Date == day.Date);
@@ -1042,6 +1450,8 @@
 				.OrderBy(d => d.StartTime)
 				.ToList();
 		}
+
+		EnsureClockTimer();
 
 		if (reloadIfOutside
 			&& null == SelectedRow
@@ -1150,20 +1560,19 @@
 
 	private string GetTemplateStyle(WorkShiftTemplateModel? template, bool isTd)
 	{
-		if (null == template)
-			return "background: #dc3545; color: #fff;";
-
-		string color = template.Color ?? "black";
-		string bg = template.BgColor ?? "transparent";
-		if (isTd) color = "#00CC00";
-		return $"background: {bg}; color: {color};";
+		// Mismo criterio que AssignationCell / AssignationDayCalendar.
+		return Sapphire2025Models.Utils.WorkShiftTemplateStyle(
+			template,
+			isTd: isTd,
+			missingTemplateStyle: "background: #dc3545; color: #fff;");
 	}
 
 	private string GetTrainColorStyle(TrainWorkShiftContentModel train)
 	{
 		var asim = Sapphire2025Models.Utils.GetAsimilation(train.TrainId);
 		string color = Sapphire2025Models.Utils.AsimilationColor(asim);
-		return $"background: linear-gradient(to right, {color}, transparent);";
+		// Variable CSS para degradados/sombras en la tarjeta del tren.
+		return $"--train-accent: {color};";
 	}
 
 	private string GetUserDisplay(Guid agentId)

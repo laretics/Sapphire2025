@@ -236,7 +236,11 @@ namespace TimeNet2026.Timed
 			}
 			return null;
 		}
-		internal TimeSpan stationStopTime(Station rhs)
+		/// <summary>
+		/// Tiempo de parada en malla en <paramref name="rhs"/>.
+		/// En el origen del servicio es cero; en el resto, el <see cref="AsimilationStep.stopTime"/> del paso.
+		/// </summary>
+		public TimeSpan stationStopTime(Station rhs)
 		{
 			if (rhs == Origin) return TimeSpan.Zero; //Estación de salida.
 			foreach (AsimilationStep step in mcolSteps)

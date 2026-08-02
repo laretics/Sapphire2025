@@ -634,9 +634,9 @@ else
 		if (null == template)
 			return "background: #e9ecef; color: #495057;";
 
-		string color = template.Color ?? "#212529";
-		string bg = template.BgColor ?? "#e9ecef";
-		return $"background: {bg}; color: {color};";
+		return Sapphire2025Models.Utils.WorkShiftTemplateStyle(
+			template,
+			missingTemplateStyle: "background: #e9ecef; color: #495057;");
 	}
 
 	private enum IdleCategory

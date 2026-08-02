@@ -72,25 +72,12 @@ else
     }
     private string GetCellStyle()
     {
-        string auxColor = "black";
-        string auxBackgroundColor = "transparent";
-        if(null==mvarTemplate)
-        {
-            //Tenemos una asignación, pero no hemos encontrado un turno en este plan.
-            //Mostraremos la asignación en colores que sean fáciles de distinguir.
-            auxColor = "white";
-            auxBackgroundColor = "red";
-        }
-        else
-        {
-            auxColor = mvarTemplate.Color ?? "black";
-            auxBackgroundColor = mvarTemplate.BgColor ?? "transparent";
-            if (null != Assignation)
-            {
-                if (Assignation.TD) auxColor = "#00CC00"; //Color del TD
-            }
-        }
-        return string.Format("background: {1}; color: {0};", auxColor, auxBackgroundColor);
+        // Asignación sin plantilla en el plan → rojo/blanco para destacarlo.
+        bool isTd = null != Assignation && Assignation.TD;
+        return Sapphire2025Models.Utils.WorkShiftTemplateStyle(
+            mvarTemplate,
+            isTd: isTd,
+            missingTemplateStyle: "background: red; color: white;");
     }
     private string GetCellText()
     {
@@ -105,7 +92,7 @@ else
     }
     private string GetBarStyle()
     {
-        return string.Format("background: {0};", mvarTemplate?.StripeColor ?? "transparent");
+        return Sapphire2025Models.Utils.WorkShiftTemplateBarStyle(mvarTemplate);
     }
     private bool HasChange()
     {

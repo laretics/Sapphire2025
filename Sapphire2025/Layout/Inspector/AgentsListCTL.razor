@@ -60,14 +60,9 @@ else
 
     private string GetCellStyle(WorkShiftTemplateModel? rhs)
     {
-        string auxColor = "black";
-        string auxFondo = "transparent";
-        if (null != rhs)
-        {
-            auxColor = rhs.Color ?? "black";
-            auxFondo = rhs.BgColor ?? "transparent";
-        }
-        return string.Format("background: {1}; color: {0};", auxColor, auxFondo);
+        return Sapphire2025Models.Utils.WorkShiftTemplateStyle(
+            rhs,
+            missingTemplateStyle: "background: transparent; color: black;");
     }
 
     private string GetCellText(WorkShiftTemplateModel? rhs)

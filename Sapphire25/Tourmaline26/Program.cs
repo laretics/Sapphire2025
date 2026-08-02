@@ -7,6 +7,7 @@ using Tourmaline26.Services;
 using Tourmaline26.Services.Armandito;
 using Tourmaline26.Services.Cameras;
 using Tourmaline26.Services.Logging;
+using Tourmaline26.Services.SfmInfo;
 using Tourmaline26.Services.TourmalineExperience;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -76,6 +77,19 @@ builder.Services.AddHttpClient<ArmanditoService>(client =>
         builder.Configuration["SystemConfiguration:SfmInfoToken"] ?? "SFM2026");
     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
+
+// Panel de salidas SFM (info.trensfm.com): REST catálogo + Socket.IO long-poll.
+builder.Services.AddHttpClient(SfmDeparturesService.HttpClientName, client =>
+{
+    string panelUrl = builder.Configuration["SystemConfiguration:SfmPanelUrl"] ?? "https://info.trensfm.com";
+    client.BaseAddress = new Uri(panelUrl.EndsWith("/") ? panelUrl : panelUrl + "/");
+    // Long-poll de Engine.IO puede quedar abierto ~20–25 s.
+    client.Timeout = TimeSpan.FromSeconds(60);
+    client.DefaultRequestHeaders.Accept.Add(
+        new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+});
+builder.Services.AddSingleton<SfmDeparturesService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<SfmDeparturesService>());
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();

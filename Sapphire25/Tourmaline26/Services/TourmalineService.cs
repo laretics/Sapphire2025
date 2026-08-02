@@ -377,6 +377,7 @@ namespace Tourmaline26.Services
 
             if (null == circulation)
             {
+                session.PreviewArrivalStation = null;
                 if (session.InformationMode != Enums.PassengerInformationMode.Default)
                     session.InformationMode = Enums.PassengerInformationMode.Default;
                 return;
@@ -385,6 +386,9 @@ namespace Tourmaline26.Services
             // En modo de servicio el radio del menú manda, salvo DemoMode (conmutación automática).
             if (session.ServiceMode.Main && !session.ServiceMode.DemoMode)
                 return;
+
+            // La conmutación automática deja de forzar la previsualización de llegada.
+            session.PreviewArrivalStation = null;
 
             Enums.PassengerInformationMode next;
             Station? currentStation = enviro!.CurrentStation;
@@ -415,9 +419,16 @@ namespace Tourmaline26.Services
                     // Todavía en origen (antes de LeaveCurrentStation al arrancar).
                     next = Enums.PassengerInformationMode.BeginOfTrip;
                 }
+                else if (null != asim && asim.stationStopTime(currentStation) < TimeSpan.FromSeconds(10))
+                {
+                    // Parada técnica en malla (< 10 s, p. ej. Son Rullán): no anunciar al viajero.
+                    next = session.CurrentSpeed < 60
+                        ? Enums.PassengerInformationMode.NextStopsList
+                        : Enums.PassengerInformationMode.Cruise;
+                }
                 else
                 {
-                    // Parada intermedia: anuncio de llegada / próxima estación.
+                    // Parada intermedia comercial: anuncio de llegada / próxima estación.
                     next = Enums.PassengerInformationMode.NextStopInfo;
                 }
             }
