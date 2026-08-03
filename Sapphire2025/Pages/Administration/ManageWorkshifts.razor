@@ -21,6 +21,9 @@
             <button class="btn btn-success" @onclick="onImportExcel">Importar Excel</button>
         </div>
         <div class="col-auto">
+            <button class="btn btn-outline-success" @onclick="onImportXml" title="Subir plan de explotación o lista de agentes en XML">Importar XML</button>
+        </div>
+        <div class="col-auto">
             <div class="form-check form-switch">
                 <InputCheckbox @bind-Value="TelegramServerEnabled" class="form-check-input" id="telegramServerSwitch" />
                 <label class="form-check-label ms-2" for="telegramServerSwitch">Telegram</label>
@@ -39,7 +42,7 @@
     else if (!mcolPlanes.Any())
     {
         <ErrorTab Description="No hay turnos registrados."
-                  Instructions="Importe turnos desde Excel o cree nuevos manualmente."
+                  Instructions="Importe turnos desde Excel/XML o cree nuevos manualmente."
                   AlertColor="warning" />
     }
     else
@@ -78,12 +81,14 @@
 </div>
 
 <InputFile style="display:none" @ref="mvarCBExcelInputRef" OnChange="onExcelImport" MaxAllowedSize="5242880" accept=".xlsx" />
+<InputFile style="display:none" @ref="mvarXmlInputRef" OnChange="onXmlImport" MaxAllowedSize="10485760" accept=".xml" />
 
 @code {
     private ModalDialog mvarModal { get; set; } = new ModalDialog();
     private List<Sapphire2025Models.Expert.WorkShiftTemplateCollectionModel>? mcolPlanes;
     private Dictionary<Guid, Sapphire2025Models.Authentication.UserModelBase>? mcolUsers;
     private InputFile? mvarCBExcelInputRef;
+    private InputFile? mvarXmlInputRef;
     private bool mvarLoading;
     private string mvarLoadingString = "Procesando solicitud";
     private int mvarNumDay { get; set; } = 4;
@@ -129,6 +134,11 @@
         if (mvarCBExcelInputRef != null)
             await mvarJSRuntime.InvokeVoidAsync("triggerFileInputClick", mvarCBExcelInputRef.Element);
     }
+    private async Task onImportXml()
+    {
+        if (mvarXmlInputRef != null)
+            await mvarJSRuntime.InvokeVoidAsync("triggerFileInputClick", mvarXmlInputRef.Element);
+    }
     private async Task onExcelImport(InputFileChangeEventArgs e)
     {
         mvarLoadingString = "Importando turnos desde Excel";
@@ -149,6 +159,36 @@
             if (!string.IsNullOrEmpty(salidaCompilacion))
                 await mvarModal.show("Error de importación", salidaCompilacion, "Salir");
         }
+        mvarLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task onXmlImport(InputFileChangeEventArgs e)
+    {
+        mvarLoadingString = "Importando plan de explotación desde XML";
+        mvarLoading = true;
+        StateHasChanged();
+
+        var archivo = e.File;
+        if (archivo != null)
+        {
+            await using var corriente = archivo.OpenReadStream(10485760);
+            var resultado = await mvarExpertClient.UploadXML(corriente, archivo.Name);
+            if (!string.IsNullOrEmpty(resultado) && resultado != "Unknown error")
+            {
+                await mvarModal.show("Error de importación XML", resultado, "Aceptar");
+            }
+            else if (resultado == "Unknown error")
+            {
+                await mvarModal.show("Error de importación XML", "No se pudo completar la subida (error de comunicación con el servidor).", "Aceptar");
+            }
+            else
+            {
+                mcolPlanes = await mvarExpertClient.Plans();
+                await mvarModal.show("Importación XML", "El archivo se importó correctamente.", "Aceptar");
+            }
+        }
+
         mvarLoading = false;
         StateHasChanged();
     }
