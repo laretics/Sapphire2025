@@ -105,6 +105,13 @@ namespace Tourmaline26.Logic
         public Enums.PassengerInformationMode InformationMode { get; set; } = Enums.PassengerInformationMode.Default; //Contenido de la info.
 
         /// <summary>
+        /// Estación forzada para previsualizar el anuncio de llegada (menú de servicio).
+        /// Si no es null, tiene prioridad sobre <see cref="TimeNetEnvironment.CurrentStation"/>
+        /// en la pantalla de viajeros. Se limpia al cambiar de modo automático o manual.
+        /// </summary>
+        public Station? PreviewArrivalStation { get; set; }
+
+        /// <summary>
         /// Si es true, el anuncio emergente (<see cref="PassengerAnnouncement"/>) se representa en los TFT.
         /// </summary>
         public bool PassengerAnnouncementEnabled { get; set; } = false;

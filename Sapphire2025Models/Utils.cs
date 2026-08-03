@@ -120,6 +120,146 @@ namespace Sapphire2025Models
 		}
 
 		/// <summary>
+		/// Estilo CSS de celda/badge de turno: fondo = BgColor, texto = Color.
+		/// Si falta Color, o el contraste texto/fondo es insuficiente (p. ej. colores
+		/// invertidos o col ausente en el XML), se elige blanco o negro según la
+		/// luminancia del fondo para que el número de turno siga siendo legible.
+		/// </summary>
+		public static string WorkShiftTemplateStyle(
+			Expert.WorkshiftTemplates.WorkShiftTemplateModel? template,
+			bool isTd = false,
+			string missingTemplateStyle = "background: #dc3545; color: #fff;")
+		{
+			if (null == template)
+				return missingTemplateStyle;
+
+			string bg = NormalizeCssColor(template.BgColor) ?? "transparent";
+			string? color = NormalizeCssColor(template.Color);
+			if (string.IsNullOrEmpty(color) || !HasReadableContrast(color, bg))
+				color = ContrastingTextColor(bg);
+			if (isTd)
+				color = "#00CC00";
+
+			return $"background: {bg}; color: {color};";
+		}
+
+		/// <summary>
+		/// Color de franja inferior del turno (StripeColor).
+		/// </summary>
+		public static string WorkShiftTemplateBarStyle(
+			Expert.WorkshiftTemplates.WorkShiftTemplateModel? template)
+		{
+			string bar = NormalizeCssColor(template?.StripeColor) ?? "transparent";
+			return $"background: {bar};";
+		}
+
+		/// <summary>
+		/// Devuelve blanco o negro según la luminancia del color de fondo.
+		/// Fondos transparentes o no parseables → negro (comportamiento histórico).
+		/// </summary>
+		public static string ContrastingTextColor(string? backgroundColor)
+		{
+			if (!TryParseCssColor(backgroundColor, out int r, out int g, out int b))
+				return "black";
+
+			// Luminancia relativa (sRGB aproximada). Umbral ~0.45 favorece texto claro sobre grises medios-oscuros.
+			double luminance = RelativeLuminance(r, g, b);
+			return luminance < 0.45 ? "#ffffff" : "black";
+		}
+
+		/// <summary>
+		/// Contraste suficiente entre texto y fondo (diferencia de luminancia).
+		/// Si el fondo no se puede parsear (transparent), se asume legible.
+		/// </summary>
+		public static bool HasReadableContrast(string? foreground, string? background)
+		{
+			if (!TryParseCssColor(background, out int br, out int bg, out int bb))
+				return true; // transparente / desconocido: no forzamos
+
+			if (!TryParseCssColor(foreground, out int fr, out int fg, out int fb))
+			{
+				// Nombres CSS comunes
+				if (string.Equals(foreground, "black", StringComparison.OrdinalIgnoreCase)
+					|| string.Equals(foreground, "#000", StringComparison.OrdinalIgnoreCase)
+					|| string.Equals(foreground, "#000000", StringComparison.OrdinalIgnoreCase))
+				{
+					fr = fg = fb = 0;
+				}
+				else if (string.Equals(foreground, "white", StringComparison.OrdinalIgnoreCase)
+					|| string.Equals(foreground, "#fff", StringComparison.OrdinalIgnoreCase)
+					|| string.Equals(foreground, "#ffffff", StringComparison.OrdinalIgnoreCase))
+				{
+					fr = fg = fb = 255;
+				}
+				else
+					return false; // no parseable → tratar como ilegible y recalcular
+			}
+
+			double lf = RelativeLuminance(fr, fg, fb);
+			double lb = RelativeLuminance(br, bg, bb);
+			// Diferencia mínima ~0.35: negro (#000, L=0) sobre #555 (L≈0.27) fallaría; sobre #d3d3e8 pasa.
+			return Math.Abs(lf - lb) >= 0.35;
+		}
+
+		private static double RelativeLuminance(int r, int g, int b)
+			=> (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
+
+		/// <summary>
+		/// Normaliza un color CSS: trim y null si está vacío.
+		/// </summary>
+		public static string? NormalizeCssColor(string? value)
+		{
+			if (string.IsNullOrWhiteSpace(value))
+				return null;
+			return value.Trim();
+		}
+
+		/// <summary>
+		/// Intenta parsear #RGB, #RRGGBB o #AARRGGBB (ignora alpha).
+		/// </summary>
+		public static bool TryParseCssColor(string? value, out int r, out int g, out int b)
+		{
+			r = g = b = 0;
+			string? color = NormalizeCssColor(value);
+			if (null == color || color.Equals("transparent", StringComparison.OrdinalIgnoreCase))
+				return false;
+			if (!color.StartsWith('#'))
+				return false;
+
+			string hex = color.Substring(1);
+			try
+			{
+				if (hex.Length == 3)
+				{
+					r = Convert.ToInt32(new string(hex[0], 2), 16);
+					g = Convert.ToInt32(new string(hex[1], 2), 16);
+					b = Convert.ToInt32(new string(hex[2], 2), 16);
+					return true;
+				}
+				if (hex.Length == 6)
+				{
+					r = Convert.ToInt32(hex.Substring(0, 2), 16);
+					g = Convert.ToInt32(hex.Substring(2, 2), 16);
+					b = Convert.ToInt32(hex.Substring(4, 2), 16);
+					return true;
+				}
+				if (hex.Length == 8)
+				{
+					// AARRGGBB → ignoramos alpha
+					r = Convert.ToInt32(hex.Substring(2, 2), 16);
+					g = Convert.ToInt32(hex.Substring(4, 2), 16);
+					b = Convert.ToInt32(hex.Substring(6, 2), 16);
+					return true;
+				}
+			}
+			catch
+			{
+				return false;
+			}
+			return false;
+		}
+
+		/// <summary>
 		/// Traduce un intervalo en texto
 		/// </summary>
 		/// <param name="rhs">Intervalo</param>

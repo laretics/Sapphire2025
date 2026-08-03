@@ -1,79 +1,375 @@
-﻿@using Tourmaline26.Components.Controls.Generical
+@using TimeNet2026.Timed
+@using TimeNet2026.Topo
+@using Tourmaline26.Components.Controls.Generical
+@using Tourmaline26.Logic
 @inject TourmalineService TourmalineService
 
-<h4>Información al viajero</h4>
-<Switch Label="Conexión" Value="@TourmalineService.SessionConfig.MainSwitches.PASEnabled" 
-    ValueChanged="@((bool v) => SetPASEnabled(v))" />
-@if(TourmalineService.SessionConfig.ServiceMode.Main)
-{
-    <h3 class="bg-danger">Modo de servicio</h3>
-    <Switch Label="Carta de Ajuste" Value="@TourmalineService.SessionConfig.ServiceMode.PassengerCaretOnServiceMode"
-            ValueChanged="@((bool v) => SetCaret(v))" />
-    <btn class="btn btn-outline-danger" @onclick="@TogglePassengerScreenOnHMI">Ver Viajeros</btn>
-    <h4 class="bg-danger">Anuncio</h4>
-    <RadioButton Options="@(new List<string> { "Def", "Init", "Route", "Arriv", "Cruise", "End" })"
-                 SelectedIndex="@( (int)(byte)TourmalineService.SessionConfig.InformationMode )"
-                 SelectedIndexChanged="@((int v) => SetPassengerMode(v))" />
-}
-<h4>Anunciador</h4>
-<RadioButton Options="@(new List<string> { "Desactivado", "Ruta", "Tren Sin Servicio" })"
-             SelectedIndex="@( (int)(byte)TourmalineService.SessionConfig.InformationLevel )"
-             SelectedIndexChanged="@((int v) => SetRouteMode(v))" />
-             
-<Switch Label="Monitores Vídeo" Value="@TourmalineService.SessionConfig.MainSwitches.TFTEnabled" 
-    ValueChanged="@((bool v) => SetTFTEnabled(v))" />
-<Switch Label="Sonido" Value="@TourmalineService.SessionConfig.MainSwitches.SoundEnabled"
-        ValueChanged="@((bool v) => SetSoundEnabled(v))" />
-<Switch Label="Teleindicadores" Value="@TourmalineService.SessionConfig.MainSwitches.TeleindicatorsEnabled"
-        ValueChanged="@((bool v) => SetTeleindicatorsEnabled(v))" />
-<Switch Label="Frontales" Value="@TourmalineService.SessionConfig.MainSwitches.ExternalTeleindicatorsEnabled"
-        ValueChanged="@((bool v) => SetExternalTeleindicatorsEnabled(v))" />
+<div class="pas-panel">
+
+    @* ── Cabecera ── *@
+    <div class="pas-header">
+        <h3 class="pas-header-title">Información al viajero</h3>
+        <div class="pas-badges">
+            <span class="badge @PasBadgeClass">
+                <span class="pas-live-dot @PasDotClass"></span>@PasStatusLabel
+            </span>
+            @if (Session.ServiceMode.Main)
+            {
+                <span class="badge text-bg-danger">Servicio</span>
+            }
+            @if (Session.PreviewArrivalStation is not null)
+            {
+                <span class="badge text-bg-warning text-dark">Preview</span>
+            }
+        </div>
+    </div>
+
+    @* ── Sistema ── *@
+    <div class="pas-card">
+        <div class="pas-card-header"><span>Sistema</span></div>
+        <div class="pas-card-body pas-switch-stack">
+            <Switch Label="Conexión PAS"
+                    Value="@Session.MainSwitches.PASEnabled"
+                    ValueChanged="@((bool v) => SetPASEnabled(v))" />
+            <Switch Label="Monitores vídeo (TFT)"
+                    Value="@Session.MainSwitches.TFTEnabled"
+                    ValueChanged="@((bool v) => SetTFTEnabled(v))" />
+            <Switch Label="Sonido"
+                    Value="@Session.MainSwitches.SoundEnabled"
+                    ValueChanged="@((bool v) => SetSoundEnabled(v))" />
+            <Switch Label="Teleindicadores"
+                    Value="@Session.MainSwitches.TeleindicatorsEnabled"
+                    ValueChanged="@((bool v) => SetTeleindicatorsEnabled(v))" />
+            <Switch Label="Frontales de destino"
+                    Value="@Session.MainSwitches.ExternalTeleindicatorsEnabled"
+                    ValueChanged="@((bool v) => SetExternalTeleindicatorsEnabled(v))" />
+        </div>
+    </div>
+
+    @* ── Nivel de anuncio ── *@
+    <div class="pas-card">
+        <div class="pas-card-header">
+            <span>Nivel de anuncio</span>
+            <span class="pas-card-hint">@InformationLevelLabel</span>
+        </div>
+        <div class="pas-card-body">
+            <RadioButton Options="@(new List<string> { "Desactivado", "Ruta", "Sin servicio" })"
+                         SelectedIndex="@((int)(byte)Session.InformationLevel)"
+                         SelectedIndexChanged="@((int v) => SetRouteMode(v))" />
+        </div>
+    </div>
+
+    @if (Session.ServiceMode.Main)
+    {
+        @* ── Vista HMI ── *@
+        <div class="pas-card pas-card--service">
+            <div class="pas-card-header">
+                <span>Vista en HMI</span>
+                <span class="pas-card-hint">Modo servicio</span>
+            </div>
+            <div class="pas-card-body pas-switch-stack">
+                <Switch Label="Carta de ajuste"
+                        Value="@Session.ServiceMode.PassengerCaretOnServiceMode"
+                        ValueChanged="@((bool v) => SetCaret(v))" />
+                <button type="button"
+                        class="btn btn-outline-primary pas-btn"
+                        @onclick="TogglePassengerScreenOnHMI">
+                    Ver pantalla de viajeros
+                </button>
+            </div>
+        </div>
+
+        @* ── Modo de contenido ── *@
+        <div class="pas-card pas-card--service">
+            <div class="pas-card-header">
+                <span>Contenido de pantalla</span>
+                <span class="pas-card-hint">@PassengerModeLabel</span>
+            </div>
+            <div class="pas-card-body">
+                <RadioButton Options="@(new List<string> { "Def", "Init", "Route", "Arriv", "Cruise", "End" })"
+                             SelectedIndex="@((int)(byte)Session.InformationMode)"
+                             SelectedIndexChanged="@((int v) => SetPassengerMode(v))" />
+                <div class="pas-mode-legend">
+                    <span>Def · inicio</span>
+                    <span>Init · bienvenida</span>
+                    <span>Route · paradas</span>
+                    <span>Arriv · llegada</span>
+                    <span>Cruise · vídeo</span>
+                    <span>End · destino</span>
+                </div>
+            </div>
+        </div>
+
+        @* ── Preview llegada aleatoria ── *@
+        <div class="pas-card pas-card--preview">
+            <div class="pas-card-header">
+                <span>Probar llegada</span>
+                <span class="pas-card-hint">Arriv + salidas SFM</span>
+            </div>
+            <div class="pas-card-body">
+                <p class="pas-preview-lead">
+                    Elige una parada comercial al azar de la ruta cargada, fuerza el modo
+                    <strong>Arriv</strong> y abre la vista de viajeros para revisar el panel
+                    (estación + sortides en viu).
+                </p>
+
+                @if (!string.IsNullOrEmpty(mvarPreviewStatus))
+                {
+                    <div class="@PreviewStatusCssClass">
+                        @mvarPreviewStatus
+                    </div>
+                }
+
+                @if (Session.PreviewArrivalStation is not null)
+                {
+                    <div class="pas-preview-chip">
+                        <span class="pas-preview-chip-label">Estación forzada</span>
+                        <span class="pas-preview-chip-value">@Session.PreviewArrivalStation.Name</span>
+                    </div>
+                }
+
+                <div class="pas-preview-actions">
+                    <button type="button"
+                            class="btn btn-primary pas-btn"
+                            disabled="@(!HasLoadedRoute)"
+                            @onclick="PreviewRandomArrival">
+                        Anunciar estación aleatoria
+                    </button>
+                    @if (Session.PreviewArrivalStation is not null)
+                    {
+                        <button type="button"
+                                class="btn btn-outline-secondary pas-btn"
+                                @onclick="ClearPreviewArrival">
+                            Quitar preview
+                        </button>
+                    }
+                </div>
+
+                @if (!HasLoadedRoute)
+                {
+                    <div class="pas-preview-hint">
+                        Carga una circulación / asimilación en TimeNet para habilitar la prueba.
+                    </div>
+                }
+                else
+                {
+                    <div class="pas-preview-hint">
+                        Ruta: <strong>@LoadedRouteName</strong>
+                        · @CommercialStopCount parada(s) comercial(es) candidatas
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
 @code {
     [CascadingParameter]
     public Action? UpdateView { get; set; }
+
+    private string mvarPreviewStatus = string.Empty;
+    private bool mvarPreviewIsError;
+
+    private SessionConfiguration Session => TourmalineService.SessionConfig;
+
+    private bool HasLoadedRoute => LoadedAsimilation is not null;
+
+    private Asimilation? LoadedAsimilation =>
+        Session.TNEnvironment?.Asimilation
+        ?? Session.TNEnvironment?.Circulation?.Parent?.asimilation
+        ?? Session.TNEnvironment?.ViewAsimilation;
+
+    private string LoadedRouteName =>
+        LoadedAsimilation?.Name
+        ?? Session.TNEnvironment?.Circulation?.name
+        ?? "—";
+
+    private int CommercialStopCount => CollectCommercialStops(LoadedAsimilation, intermediateOnly: true).Count;
+
+    private string PasStatusLabel =>
+        !Session.MainSwitches.PASEnabled ? "PAS off"
+        : Session.InformationLevel == Enums.InformationLevel.Disabled ? "Anuncio off"
+        : Session.InformationLevel == Enums.InformationLevel.Route ? "Ruta"
+        : "Sin servicio";
+
+    private string PasBadgeClass =>
+        !Session.MainSwitches.PASEnabled ? "text-bg-secondary"
+        : Session.InformationLevel == Enums.InformationLevel.Disabled ? "text-bg-secondary"
+        : "text-bg-success";
+
+    private string PasDotClass =>
+        Session.MainSwitches.PASEnabled && Session.InformationLevel != Enums.InformationLevel.Disabled
+            ? "on"
+            : "off";
+
+    private string InformationLevelLabel => Session.InformationLevel switch
+    {
+        Enums.InformationLevel.Disabled => "Desactivado",
+        Enums.InformationLevel.Route => "Ruta",
+        _ => "Sin servicio"
+    };
+
+    private string PassengerModeLabel => Session.InformationMode switch
+    {
+        Enums.PassengerInformationMode.Default => "Default",
+        Enums.PassengerInformationMode.BeginOfTrip => "Inicio",
+        Enums.PassengerInformationMode.NextStopsList => "Paradas",
+        Enums.PassengerInformationMode.NextStopInfo => "Llegada",
+        Enums.PassengerInformationMode.Cruise => "Crucero",
+        Enums.PassengerInformationMode.EndOfTrip => "Destino",
+        _ => Session.InformationMode.ToString()
+    };
+
+    private string PreviewStatusCssClass =>
+        mvarPreviewIsError
+            ? "pas-preview-status pas-preview-status--err"
+            : "pas-preview-status pas-preview-status--ok";
+
     private void SetCaret(bool value)
     {
-        TourmalineService.SessionConfig.ServiceMode.PassengerCaretOnServiceMode = value;
+        Session.ServiceMode.PassengerCaretOnServiceMode = value;
         TourmalineService.RaisePassengerUpdate();
     }
+
     private void TogglePassengerScreenOnHMI()
     {
-        TourmalineService.SessionConfig.ServiceMode.PassengerScreenOnHMI = true;
+        Session.ServiceMode.PassengerScreenOnHMI = true;
         UpdateView?.Invoke();
     }
+
     private void SetRouteMode(int index)
     {
-        TourmalineService.SessionConfig.InformationLevel = (Enums.InformationLevel)(byte)index;
+        Session.InformationLevel = (Enums.InformationLevel)(byte)index;
         TourmalineService.RaiseHMIUpdate();
+        TourmalineService.RaisePassengerUpdate();
     }
+
     private void SetPassengerMode(int index)
     {
-        TourmalineService.SessionConfig.InformationMode = (Enums.PassengerInformationMode)(byte)index;
+        var mode = (Enums.PassengerInformationMode)(byte)index;
+        Session.InformationMode = mode;
+        if (mode != Enums.PassengerInformationMode.NextStopInfo)
+            Session.PreviewArrivalStation = null;
         TourmalineService.RaiseHMIUpdate();
+        TourmalineService.RaisePassengerUpdate();
     }
+
     private void SetPASEnabled(bool value)
     {
-        TourmalineService.SessionConfig.MainSwitches.PASEnabled = value;
+        Session.MainSwitches.PASEnabled = value;
         TourmalineService.RaiseHMIUpdate();
     }
+
     private void SetTFTEnabled(bool value)
     {
-        TourmalineService.SessionConfig.MainSwitches.TFTEnabled = value;
+        Session.MainSwitches.TFTEnabled = value;
         TourmalineService.RaiseHMIUpdate();
     }
+
     private void SetSoundEnabled(bool value)
     {
-        TourmalineService.SessionConfig.MainSwitches.SoundEnabled = value;
+        Session.MainSwitches.SoundEnabled = value;
         TourmalineService.RaiseHMIUpdate();
     }
+
     private void SetTeleindicatorsEnabled(bool value)
     {
-        TourmalineService.SessionConfig.MainSwitches.TeleindicatorsEnabled = value;
+        Session.MainSwitches.TeleindicatorsEnabled = value;
         TourmalineService.RaiseHMIUpdate();
     }
+
     private void SetExternalTeleindicatorsEnabled(bool value)
     {
-        TourmalineService.SessionConfig.MainSwitches.ExternalTeleindicatorsEnabled = value;
+        Session.MainSwitches.ExternalTeleindicatorsEnabled = value;
         TourmalineService.RaiseHMIUpdate();
+    }
+
+    private void PreviewRandomArrival()
+    {
+        Asimilation? asim = LoadedAsimilation;
+        if (asim is null)
+        {
+            SetPreviewFeedback("No hay ruta cargada. Selecciona una circulación en TimeNet.", error: true);
+            return;
+        }
+
+        List<Station> candidates = CollectCommercialStops(asim, intermediateOnly: true);
+        if (candidates.Count == 0)
+            candidates = CollectCommercialStops(asim, intermediateOnly: false);
+
+        if (candidates.Count == 0)
+        {
+            SetPreviewFeedback("La malla no tiene paradas comerciales (≥ 10 s).", error: true);
+            return;
+        }
+
+        Station pick = candidates[Random.Shared.Next(candidates.Count)];
+
+        Session.PreviewArrivalStation = pick;
+        Session.InformationLevel = Enums.InformationLevel.Route;
+        Session.InformationMode = Enums.PassengerInformationMode.NextStopInfo;
+        Session.MainSwitches.PASEnabled = true;
+        Session.MainSwitches.TFTEnabled = true;
+        Session.ServiceMode.PassengerScreenOnHMI = true;
+
+        TourmalineService.RaisePassengerUpdate();
+        TourmalineService.RaiseHMIUpdate();
+        UpdateView?.Invoke();
+
+        SetPreviewFeedback($"Anunciando llegada a «{pick.Name}» (modo Arriv).", error: false);
+    }
+
+    private void ClearPreviewArrival()
+    {
+        Session.PreviewArrivalStation = null;
+        mvarPreviewStatus = string.Empty;
+        TourmalineService.RaisePassengerUpdate();
+        TourmalineService.RaiseHMIUpdate();
+        UpdateView?.Invoke();
+    }
+
+    private void SetPreviewFeedback(string message, bool error)
+    {
+        mvarPreviewStatus = message;
+        mvarPreviewIsError = error;
+    }
+
+    /// <summary>
+    /// Paradas comerciales de la asimilación (stopTime ≥ 10 s o destino final).
+    /// Con <paramref name="intermediateOnly"/> se excluyen origen y destino
+    /// para forzar un anuncio de llegada intermedia.
+    /// </summary>
+    private static List<Station> CollectCommercialStops(Asimilation? asim, bool intermediateOnly)
+    {
+        var list = new List<Station>();
+        if (asim is null)
+            return list;
+
+        TimeSpan minStop = TimeSpan.FromSeconds(10);
+
+        foreach (AsimilationStep step in asim.Steps)
+        {
+            Station? st = step.destination;
+            if (st is null)
+                continue;
+
+            bool isFinal = asim.Destination is not null && st == asim.Destination;
+            bool commercial = isFinal || step.stopTime >= minStop;
+            if (!commercial)
+                continue;
+
+            if (intermediateOnly)
+            {
+                if (asim.Origin is not null && st == asim.Origin)
+                    continue;
+                if (isFinal)
+                    continue;
+            }
+
+            if (!list.Contains(st))
+                list.Add(st);
+        }
+
+        return list;
     }
 }

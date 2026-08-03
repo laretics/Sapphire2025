@@ -244,14 +244,11 @@ else
 		if (unassignedDriving)
 			return "background: #dc2626; color: #ffffff;";
 
-		string auxColor = "black";
-		string auxFondo = "transparent";
-		if (null != rhs)
-		{
-			auxColor = rhs.Color ?? "black";
-			auxFondo = rhs.BgColor ?? "transparent";
-		}
-		return string.Format("background: {1}; color: {0};", auxColor, auxFondo);
+		// Mismo criterio que AssignationCell: Color=texto, BgColor=fondo;
+		// si falta Color se elige contraste automático según luminancia del fondo.
+		return Sapphire2025Models.Utils.WorkShiftTemplateStyle(
+			rhs,
+			missingTemplateStyle: "background: transparent; color: black;");
 	}
 	private string GetAssignationStyle(WorkShiftTemplateModel? rhs, bool unassignedDriving = false)
 	{
@@ -308,7 +305,7 @@ else
 	}
 	private string GetBarStyle(WorkShiftTemplateModel? rhs)
 	{
-		return string.Format("background: {0};", rhs?.StripeColor ?? "transparent");
+		return Sapphire2025Models.Utils.WorkShiftTemplateBarStyle(rhs);
 	}
 	private void ComposeArray()
 	{
