@@ -11,6 +11,8 @@ namespace Diamond.Controls.Rendering
 	/// spline Catmull-Rom centrípeta convertida a cúbicas Bezier SVG.
 	/// Incluye puntos clave en origen, destino y paradas para no aplanar
 	/// aceleraciones, frenados ni dwells horizontales.
+	/// Las tangentes usan la derivada no uniforme (no la cuerda P0–P2) y se clampean
+	/// para no invertir el sentido del tramo en ida ni en vuelta.
 	/// </summary>
 	public static class MeshTrainPathBuilder
 	{
@@ -45,6 +47,10 @@ namespace Diamond.Controls.Rendering
 		/// <summary>
 		/// Atributo <c>d</c> del path SVG de la traza (vacío si no hay puntos proyectables).
 		/// </summary>
+		/// <param name="useSpline">
+		/// True: cúbicas Bezier (Catmull-Rom). False: polilínea por los puntos de control
+		/// (más barato y estable en pan/zoom interactivo).
+		/// </param>
 		public static string BuildSvgPath(
 			Circulation circulation,
 			RouteView displayView,
@@ -60,7 +66,8 @@ namespace Diamond.Controls.Rendering
 			int maxSamples,
 			bool wantLabel,
 			out double labelX,
-			out double labelY)
+			out double labelY,
+			bool useSpline = true)
 		{
 			labelX = double.NaN;
 			labelY = double.NaN;
@@ -82,7 +89,7 @@ namespace Diamond.Controls.Rendering
 				out labelX,
 				out labelY);
 
-			return ToSvgPath(points);
+			return ToSvgPath(points, useSpline);
 		}
 
 		/// <summary>
@@ -210,9 +217,11 @@ namespace Diamond.Controls.Rendering
 		}
 
 		/// <summary>
-		/// Convierte puntos de control en path SVG con cúbicas Bezier (Catmull-Rom centrípeta).
+		/// Convierte puntos de control en path SVG.
+		/// Con <paramref name="useSpline"/>: cúbicas Bezier (Catmull-Rom centrípeta).
+		/// Sin spline: polilínea <c>M … L …</c> (LOD de interacción).
 		/// </summary>
-		public static string ToSvgPath(IReadOnlyList<Point> points)
+		public static string ToSvgPath(IReadOnlyList<Point> points, bool useSpline = true)
 		{
 			if (points is null || points.Count == 0)
 			{
@@ -225,12 +234,9 @@ namespace Diamond.Controls.Rendering
 					+ Fmt(points[0].X) + "," + Fmt(points[0].Y);
 			}
 
-			if (points.Count == 2)
+			if (points.Count == 2 || !useSpline)
 			{
-				return "M"
-					+ Fmt(points[0].X) + "," + Fmt(points[0].Y)
-					+ " L"
-					+ Fmt(points[1].X) + "," + Fmt(points[1].Y);
+				return ToPolylineSvgPath(points);
 			}
 
 			StringBuilder sb = new StringBuilder(points.Count * 48);
@@ -239,15 +245,19 @@ namespace Diamond.Controls.Rendering
 			sb.Append(',');
 			sb.Append(Fmt(points[0].Y));
 
-			// Extremos: duplicar primer y último punto (tangente natural).
+			// Extremos abiertos: reflexión del vecino (mejor que duplicar: no aplana la tangente).
 			int last = points.Count - 1;
 			int i = 0;
 			while (i < last)
 			{
-				Point p0 = i == 0 ? points[0] : points[i - 1];
 				Point p1 = points[i];
 				Point p2 = points[i + 1];
-				Point p3 = i + 1 >= last ? points[last] : points[i + 2];
+				Point p0 = i == 0
+					? Reflect(p1, p2)
+					: points[i - 1];
+				Point p3 = i + 1 >= last
+					? Reflect(p2, p1)
+					: points[i + 2];
 
 				double c1x, c1y, c2x, c2y;
 				CentripetalSegmentControls(
@@ -274,8 +284,48 @@ namespace Diamond.Controls.Rendering
 		}
 
 		/// <summary>
+		/// Path SVG como polilínea (solo M/L): barato y estable al re-muestrear en pan/zoom.
+		/// </summary>
+		public static string ToPolylineSvgPath(IReadOnlyList<Point> points)
+		{
+			if (points is null || points.Count == 0)
+			{
+				return string.Empty;
+			}
+
+			StringBuilder sb = new StringBuilder(points.Count * 24);
+			sb.Append('M');
+			sb.Append(Fmt(points[0].X));
+			sb.Append(',');
+			sb.Append(Fmt(points[0].Y));
+
+			int i = 1;
+			while (i < points.Count)
+			{
+				sb.Append(" L");
+				sb.Append(Fmt(points[i].X));
+				sb.Append(',');
+				sb.Append(Fmt(points[i].Y));
+				i++;
+			}
+
+			return sb.ToString();
+		}
+
+		/// <summary>
+		/// Refleja <paramref name="other"/> sobre <paramref name="center"/>: 2·center − other.
+		/// Usado para vecinos fantasma en extremos abiertos de la spline.
+		/// </summary>
+		private static Point Reflect(Point center, Point other)
+		{
+			return new Point(2.0 * center.X - other.X, 2.0 * center.Y - other.Y);
+		}
+
+		/// <summary>
 		/// Controles de la cúbica Bezier del segmento centrípeto P1→P2
 		/// (vecinos P0 y P3; α = <see cref="CentripetalAlpha"/>).
+		/// Tangentes según la derivada Catmull-Rom no uniforme (no el atajo de cuerda P0–P2),
+		/// con clamp para no invertir el sentido del tramo (crítico en ida vs vuelta).
 		/// </summary>
 		public static void CentripetalSegmentControls(
 			double p0x, double p0y,
@@ -285,32 +335,105 @@ namespace Diamond.Controls.Rendering
 			out double c1x, out double c1y,
 			out double c2x, out double c2y)
 		{
-			double t0 = 0.0;
-			double t1 = t0 + Math.Pow(Distance(p0x, p0y, p1x, p1y), CentripetalAlpha);
-			double t2 = t1 + Math.Pow(Distance(p1x, p1y, p2x, p2y), CentripetalAlpha);
-			double t3 = t2 + Math.Pow(Distance(p2x, p2y, p3x, p3y), CentripetalAlpha);
+			double t01 = Math.Pow(Distance(p0x, p0y, p1x, p1y), CentripetalAlpha);
+			double t12 = Math.Pow(Distance(p1x, p1y, p2x, p2y), CentripetalAlpha);
+			double t23 = Math.Pow(Distance(p2x, p2y, p3x, p3y), CentripetalAlpha);
 
-			// Puntos coincidentes: caer en segmento lineal.
-			if (t1 - t0 < 1e-9)
+			// Segmentos degenerados → Bezier lineal P1–P2.
+			if (t12 < 1e-9)
 			{
-				t1 = t0 + 1.0;
+				c1x = p1x + (p2x - p1x) / 3.0;
+				c1y = p1y + (p2y - p1y) / 3.0;
+				c2x = p1x + 2.0 * (p2x - p1x) / 3.0;
+				c2y = p1y + 2.0 * (p2y - p1y) / 3.0;
+				return;
 			}
 
-			if (t2 - t1 < 1e-9)
+			if (t01 < 1e-9)
 			{
-				t2 = t1 + 1.0;
+				t01 = t12;
 			}
 
-			if (t3 - t2 < 1e-9)
+			if (t23 < 1e-9)
 			{
-				t3 = t2 + 1.0;
+				t23 = t12;
 			}
 
-			double dt = t2 - t1;
-			c1x = p1x + (p2x - p0x) / (t2 - t0) * dt / 3.0;
-			c1y = p1y + (p2y - p0y) / (t2 - t0) * dt / 3.0;
-			c2x = p2x - (p3x - p1x) / (t3 - t1) * dt / 3.0;
-			c2y = p2y - (p3y - p1y) / (t3 - t1) * dt / 3.0;
+			// Tangentes m1 en P1 y m2 en P2 (param u∈[0,1] del segmento), α-céntripeta.
+			// m1 = (P2−P1) + t12·((P1−P0)/t01 − (P2−P0)/(t01+t12))
+			// m2 = (P2−P1) + t12·((P3−P2)/t23 − (P3−P1)/(t12+t23))
+			double t01t12 = t01 + t12;
+			double t12t23 = t12 + t23;
+
+			double m1x = (p2x - p1x) + t12 * ((p1x - p0x) / t01 - (p2x - p0x) / t01t12);
+			double m1y = (p2y - p1y) + t12 * ((p1y - p0y) / t01 - (p2y - p0y) / t01t12);
+			double m2x = (p2x - p1x) + t12 * ((p3x - p2x) / t23 - (p3x - p1x) / t12t23);
+			double m2y = (p2y - p1y) + t12 * ((p3y - p2y) / t23 - (p3y - p1y) / t12t23);
+
+			// Bezier: c1 = P1 + m1/3, c2 = P2 − m2/3
+			c1x = p1x + m1x / 3.0;
+			c1y = p1y + m1y / 3.0;
+			c2x = p2x - m2x / 3.0;
+			c2y = p2y - m2y / 3.0;
+
+			// Evitar handles que inviertan el sentido del tramo (p. ej. vuelta vs ida
+			// con overshoot de la Catmull-Rom en el plano tiempo×PK).
+			ClampHandleToSegment(p1x, p1y, p2x, p2y, ref c1x, ref c1y, towardEnd: true);
+			ClampHandleToSegment(p1x, p1y, p2x, p2y, ref c2x, ref c2y, towardEnd: false);
+		}
+
+		/// <summary>
+		/// Proyecta el handle sobre el tramo P1→P2 si tira hacia atrás (proyección &lt; 0)
+		/// y mantiene la componente de tiempo monótona (X entre P1 y P2).
+		/// </summary>
+		private static void ClampHandleToSegment(
+			double p1x, double p1y,
+			double p2x, double p2y,
+			ref double cx, ref double cy,
+			bool towardEnd)
+		{
+			double segDx = p2x - p1x;
+			double segDy = p2y - p1y;
+			double len2 = segDx * segDx + segDy * segDy;
+			if (len2 < 1e-12)
+			{
+				cx = p1x;
+				cy = p1y;
+				return;
+			}
+
+			// Vector desde el ancla del handle (P1 si towardEnd, P2 si no).
+			double ax = towardEnd ? p1x : p2x;
+			double ay = towardEnd ? p1y : p2y;
+			double hx = cx - ax;
+			double hy = cy - ay;
+
+			// Sentido de marcha a lo largo del tramo desde el ancla:
+			// desde P1 → +seg; desde P2 → −seg (hacia el interior del tramo).
+			double dirX = towardEnd ? segDx : -segDx;
+			double dirY = towardEnd ? segDy : -segDy;
+			double proj = (hx * dirX + hy * dirY) / len2;
+
+			if (proj < 0.0)
+			{
+				// Invertido: colapsar sobre la cuerda hacia el interior.
+				double amount = Math.Min(1.0 / 3.0, 0.5);
+				cx = ax + dirX * amount;
+				cy = ay + dirY * amount;
+			}
+
+			// Tiempo (X) monótono en diagramas marcha: el handle no sale del intervalo [P1x, P2x].
+			double xMin = p1x < p2x ? p1x : p2x;
+			double xMax = p1x > p2x ? p1x : p2x;
+			if (cx < xMin)
+			{
+				cx = xMin;
+			}
+
+			if (cx > xMax)
+			{
+				cx = xMax;
+			}
 		}
 
 		/// <summary>

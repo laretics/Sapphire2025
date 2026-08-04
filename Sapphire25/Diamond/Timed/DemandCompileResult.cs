@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Diamond.Motion;
 
 namespace Diamond.Timed
 {
@@ -11,8 +12,10 @@ namespace Diamond.Timed
 		private readonly List<DemandDeleteOp> mcolDeletes;
 		private readonly List<DemandAsimilationDef> mcolAsimilationDefs;
 		private readonly List<DemandTopoConstraint> mcolTopoConstraints;
+		private readonly List<TrainSpecs> mcolFleet;
 		private readonly List<string> mcolErrors;
 		private string mvarPlanName;
+		private string mvarIncludedTopoPath;
 
 		public DemandCompileResult()
 		{
@@ -20,14 +23,26 @@ namespace Diamond.Timed
 			mcolDeletes = new List<DemandDeleteOp>();
 			mcolAsimilationDefs = new List<DemandAsimilationDef>();
 			mcolTopoConstraints = new List<DemandTopoConstraint>();
+			mcolFleet = new List<TrainSpecs>();
 			mcolErrors = new List<string>();
 			mvarPlanName = string.Empty;
+			mvarIncludedTopoPath = string.Empty;
 		}
 
 		public string PlanName
 		{
 			get { return mvarPlanName; }
 			internal set { mvarPlanName = value ?? string.Empty; }
+		}
+
+		/// <summary>
+		/// Ruta del XML de topología declarada con <c>include</c> (tal cual en el script).
+		/// Vacía si el script no incluye topología.
+		/// </summary>
+		public string IncludedTopoPath
+		{
+			get { return mvarIncludedTopoPath; }
+			internal set { mvarIncludedTopoPath = value ?? string.Empty; }
 		}
 
 		public IReadOnlyList<DemandRequirement> Requirements
@@ -59,6 +74,15 @@ namespace Diamond.Timed
 			get { return mcolTopoConstraints; }
 		}
 
+		/// <summary>
+		/// Tipos de tren declarados con <c>train</c>/<c>tren</c> (catálogo de flota del script).
+		/// Vacío si el script no define ninguno (el plan usará el modelo por defecto).
+		/// </summary>
+		public IReadOnlyList<TrainSpecs> Fleet
+		{
+			get { return mcolFleet; }
+		}
+
 		public IReadOnlyList<string> Errors
 		{
 			get { return mcolErrors; }
@@ -87,6 +111,14 @@ namespace Diamond.Timed
 		internal void AddTopoConstraint(DemandTopoConstraint constraint)
 		{
 			mcolTopoConstraints.Add(constraint);
+		}
+
+		internal void AddFleet(TrainSpecs specs)
+		{
+			if (specs is not null)
+			{
+				mcolFleet.Add(specs);
+			}
 		}
 
 		internal void AddError(string message)

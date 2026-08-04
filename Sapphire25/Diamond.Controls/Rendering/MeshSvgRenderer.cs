@@ -757,12 +757,13 @@ namespace Diamond.Controls.Rendering
 				double labelX;
 				double labelY;
 				bool wantLabel = options.ShowTrainNumbers;
-				// Spline Catmull-Rom centrípeta (Bezier SVG) con puntos clave en paradas.
+				// Completo: spline Catmull-Rom → Bezier. Interactivo (pan/zoom): polilínea.
 				string pathD = MeshTrainPathBuilder.BuildSvgPath(
 					c, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH, yScale,
 					options.MaxPolylineSamples,
 					wantLabel,
-					out labelX, out labelY);
+					out labelX, out labelY,
+					useSpline: options.UseSplinePaths);
 				if (pathD.Length > 0 || !double.IsNaN(labelX))
 				{
 					string numberText = c.HasServiceNumber

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using Diamond.Motion;
 
 namespace Diamond.Timed
 {
@@ -10,7 +11,10 @@ namespace Diamond.Timed
 	/// </summary>
 	/// <remarks>
 	/// <code>
+	/// include toposfm227
 	/// plan "nombre"
+	/// train default "Modelo" accel 0.9 brake 0.8 vmax 160
+	/// train s3300 "Civia" accel 0.85 brake 0.75 vmax 120
 	/// days lab
 	///   color #38bdf8
 	///     require|req [both [ways]] [&lt;freq&gt;] &lt;from&gt; -&gt; &lt;to&gt; [ventana] [using id] [as id]
@@ -19,6 +23,12 @@ namespace Diamond.Timed
 	///       dwell INC 60s
 	///       cross at Enllaç
 	/// </code>
+	/// <c>include [topo] nombre</c> declara la topología Diamond (XML) que usará el plan.
+	/// Basta el nombre (<c>include toposfm227</c>); se asume extensión <c>.xml</c> salvo que
+	/// la ruta ya la lleve o sea un path explícito con <c>.xml</c>.
+	/// Se carga al compilar (ver <see cref="Plan.CompileDemand"/> y <see cref="TopoStorage"/>).
+	/// <c>train|tren id ["nombre"] [accel N] [brake N] [vmax N]</c> define un
+	/// <see cref="TrainSpecs"/> del catálogo; si no hay ninguno, el plan usa el modelo por defecto.
 	/// Regiones de definición: una línea <c>days</c>/<c>color</c> (opcionalmente
 	/// prefijada con <c>with</c>/<c>con</c>/<c>region</c>) abre un ámbito; los
 	/// <c>require</c> y <c>asim</c> más indentados heredan esos valores.
@@ -49,6 +59,8 @@ namespace Diamond.Timed
 			int currentIndent = -1;
 			AsimDefBuilder? currentAsim = null;
 			int currentAsimIndent = -1;
+			TrainDefBuilder? currentTrain = null;
+			int currentTrainIndent = -1;
 			List<DefinitionScope> scopes = new List<DefinitionScope>();
 
 			while (lineNumber < lines.Length)
@@ -95,6 +107,14 @@ namespace Diamond.Timed
 					currentAsimIndent = -1;
 				}
 
+				// Cerrar y materializar el train abierto.
+				if (currentTrain is not null && indent <= currentTrainIndent)
+				{
+					CommitTrainDef(currentTrain, result);
+					currentTrain = null;
+					currentTrainIndent = -1;
+				}
+
 				// Continuación del require actual (más indentada).
 				if (current is not null && indent > currentIndent)
 				{
@@ -109,6 +129,13 @@ namespace Diamond.Timed
 					continue;
 				}
 
+				// Continuación de train (name / accel / brake / vmax).
+				if (currentTrain is not null && indent > currentTrainIndent)
+				{
+					ParseTrainContinuation(tokens, sourceLine, currentTrain, result);
+					continue;
+				}
+
 				// Pop de regiones cuyo cuerpo ya terminó (indent <= scope.Indent).
 				while (scopes.Count > 0 && scopes[scopes.Count - 1].Indent >= indent)
 				{
@@ -116,6 +143,18 @@ namespace Diamond.Timed
 				}
 
 				string head = tokens[0].ToLowerInvariant();
+				if (head == "include" || head == "incluir")
+				{
+					if (indent > 0)
+					{
+						result.AddError(sourceLine, "'include' solo se admite al nivel raíz (sin indentar).");
+						continue;
+					}
+
+					ParseIncludeLine(tokens, sourceLine, result);
+					continue;
+				}
+
 				if (head == "plan")
 				{
 					if (indent > 0)
@@ -128,6 +167,28 @@ namespace Diamond.Timed
 					continue;
 				}
 
+				if (head == "train" || head == "tren" || head == "fleet" || head == "trainspecs")
+				{
+					if (indent > 0)
+					{
+						result.AddError(sourceLine, "'train' solo se admite al nivel raíz (sin indentar).");
+						continue;
+					}
+
+					if (currentAsim is not null)
+					{
+						CommitAsimDef(currentAsim, result);
+						currentAsim = null;
+						currentAsimIndent = -1;
+					}
+
+					current = null;
+					currentIndent = -1;
+					currentTrain = ParseTrainLine(tokens, sourceLine, result);
+					currentTrainIndent = currentTrain is null ? -1 : indent;
+					continue;
+				}
+
 				if (head == "require" || head == "req")
 				{
 					if (currentAsim is not null)
@@ -135,6 +196,13 @@ namespace Diamond.Timed
 						CommitAsimDef(currentAsim, result);
 						currentAsim = null;
 						currentAsimIndent = -1;
+					}
+
+					if (currentTrain is not null)
+					{
+						CommitTrainDef(currentTrain, result);
+						currentTrain = null;
+						currentTrainIndent = -1;
 					}
 
 					ServiceDays defaultDays;
@@ -159,6 +227,13 @@ namespace Diamond.Timed
 						CommitAsimDef(currentAsim, result);
 						currentAsim = null;
 						currentAsimIndent = -1;
+					}
+
+					if (currentTrain is not null)
+					{
+						CommitTrainDef(currentTrain, result);
+						currentTrain = null;
+						currentTrainIndent = -1;
 					}
 
 					current = null;
@@ -186,6 +261,13 @@ namespace Diamond.Timed
 						currentAsimIndent = -1;
 					}
 
+					if (currentTrain is not null)
+					{
+						CommitTrainDef(currentTrain, result);
+						currentTrain = null;
+						currentTrainIndent = -1;
+					}
+
 					ServiceDays defaultDays;
 					string defaultColor;
 					ResolveScopeDefaults(scopes, out defaultDays, out defaultColor);
@@ -204,6 +286,13 @@ namespace Diamond.Timed
 						currentAsimIndent = -1;
 					}
 
+					if (currentTrain is not null)
+					{
+						CommitTrainDef(currentTrain, result);
+						currentTrain = null;
+						currentTrainIndent = -1;
+					}
+
 					ParseTopoConstraintLine(tokens, sourceLine, result, ref scriptOrder);
 					current = null;
 					currentIndent = -1;
@@ -219,6 +308,13 @@ namespace Diamond.Timed
 						currentAsimIndent = -1;
 					}
 
+					if (currentTrain is not null)
+					{
+						CommitTrainDef(currentTrain, result);
+						currentTrain = null;
+						currentTrainIndent = -1;
+					}
+
 					DefinitionScope? scope;
 					if (!TryParseScopeHeader(tokens, indent, sourceLine, result, out scope) || scope is null)
 					{
@@ -232,12 +328,17 @@ namespace Diamond.Timed
 				result.AddError(
 					sourceLine,
 					"palabra clave desconocida '" + tokens[0]
-					+ "' (se esperaba plan, require/req, asim, delete, single/tracks/limit/vmax, o región days|color|with|con|region).");
+					+ "' (se esperaba include, plan, train/tren, require/req, asim, delete, single/tracks/limit/vmax, o región days|color|with|con|region).");
 			}
 
 			if (currentAsim is not null)
 			{
 				CommitAsimDef(currentAsim, result);
+			}
+
+			if (currentTrain is not null)
+			{
+				CommitTrainDef(currentTrain, result);
 			}
 
 			return result;
@@ -481,6 +582,338 @@ namespace Diamond.Timed
 				builder.SourceLine,
 				builder.ScriptOrder);
 			result.AddAsimilationDef(def);
+		}
+
+		/// <summary>
+		/// <c>train id ["nombre"] [accel N] [brake N] [vmax N]</c>
+		/// · alias <c>tren</c> / <c>fleet</c> / <c>trainspecs</c>.
+		/// </summary>
+		private static TrainDefBuilder? ParseTrainLine(
+			List<string> tokens,
+			int sourceLine,
+			DemandCompileResult result)
+		{
+			// tokens[0] = train|tren|…
+			if (tokens.Count < 2)
+			{
+				result.AddError(sourceLine, "uso: train <id> [\"nombre\"] [accel N] [brake N] [vmax N]");
+				return null;
+			}
+
+			string id = tokens[1];
+			if (id.Length == 0)
+			{
+				result.AddError(sourceLine, "train: el identificador no puede estar vacío.");
+				return null;
+			}
+
+			if (IsTrainPropertyKeyword(id) || IsReservedTrainToken(id))
+			{
+				result.AddError(sourceLine, "train: '" + id + "' no es un id válido (palabra reservada).");
+				return null;
+			}
+
+			TrainDefBuilder builder = new TrainDefBuilder(id, sourceLine);
+			int index = 2;
+
+			// Nombre opcional: literal no-keyword, o name/nombre "…"
+			if (index < tokens.Count)
+			{
+				string lower = tokens[index].ToLowerInvariant();
+				if (lower == "name" || lower == "nombre")
+				{
+					if (index + 1 >= tokens.Count)
+					{
+						result.AddError(sourceLine, "uso: train id name \"nombre\"");
+						return builder;
+					}
+
+					builder.Name = tokens[index + 1];
+					index += 2;
+				}
+				else if (!IsTrainPropertyKeyword(tokens[index]))
+				{
+					builder.Name = tokens[index];
+					index++;
+				}
+			}
+
+			while (index < tokens.Count)
+			{
+				if (!TryApplyTrainProperty(tokens, ref index, sourceLine, builder, result))
+				{
+					return builder;
+				}
+			}
+
+			return builder;
+		}
+
+		private static void ParseTrainContinuation(
+			List<string> tokens,
+			int sourceLine,
+			TrainDefBuilder builder,
+			DemandCompileResult result)
+		{
+			int index = 0;
+			while (index < tokens.Count)
+			{
+				if (!TryApplyTrainProperty(tokens, ref index, sourceLine, builder, result))
+				{
+					return;
+				}
+			}
+		}
+
+		private static bool TryApplyTrainProperty(
+			List<string> tokens,
+			ref int index,
+			int sourceLine,
+			TrainDefBuilder builder,
+			DemandCompileResult result)
+		{
+			if (index >= tokens.Count)
+			{
+				return false;
+			}
+
+			string lower = tokens[index].ToLowerInvariant();
+
+			if (lower == "name" || lower == "nombre")
+			{
+				if (index + 1 >= tokens.Count)
+				{
+					result.AddError(sourceLine, "uso: name \"nombre del tren\"");
+					return false;
+				}
+
+				builder.Name = tokens[index + 1];
+				index += 2;
+				return true;
+			}
+
+			if (lower == "accel" || lower == "a" || lower == "acceleration"
+				|| lower == "aceleracion" || lower == "aceleración")
+			{
+				double value;
+				if (!TryParseTrainNumber(tokens, ref index, sourceLine, "accel", out value, result))
+				{
+					return false;
+				}
+
+				if (value <= 0.0)
+				{
+					result.AddError(sourceLine, "accel debe ser > 0 (m/s²).");
+					return false;
+				}
+
+				builder.Acceleration = value;
+				return true;
+			}
+
+			if (lower == "brake" || lower == "b" || lower == "freno"
+				|| lower == "servicebrake" || lower == "decel")
+			{
+				double value;
+				if (!TryParseTrainNumber(tokens, ref index, sourceLine, "brake", out value, result))
+				{
+					return false;
+				}
+
+				if (value <= 0.0)
+				{
+					result.AddError(sourceLine, "brake debe ser > 0 (m/s²).");
+					return false;
+				}
+
+				builder.ServiceBrake = value;
+				return true;
+			}
+
+			if (lower == "vmax" || lower == "v" || lower == "maxspeed"
+				|| lower == "speed" || lower == "vel")
+			{
+				double value;
+				if (!TryParseTrainNumber(tokens, ref index, sourceLine, "vmax", out value, result))
+				{
+					return false;
+				}
+
+				if (value <= 0.0)
+				{
+					result.AddError(sourceLine, "vmax debe ser > 0 (km/h).");
+					return false;
+				}
+
+				builder.MaxSpeedKmh = value;
+				return true;
+			}
+
+			result.AddError(
+				sourceLine,
+				"propiedad de train desconocida '" + tokens[index]
+				+ "' (name|accel|brake|vmax).");
+			return false;
+		}
+
+		/// <summary>
+		/// Consume keyword + número [unidad opcional]. Avanza <paramref name="index"/> tras el keyword.
+		/// </summary>
+		private static bool TryParseTrainNumber(
+			List<string> tokens,
+			ref int index,
+			int sourceLine,
+			string keyword,
+			out double value,
+			DemandCompileResult result)
+		{
+			value = 0.0;
+			// index apunta al keyword
+			if (index + 1 >= tokens.Count)
+			{
+				result.AddError(sourceLine, "uso: " + keyword + " <número>");
+				return false;
+			}
+
+			string numberToken = tokens[index + 1];
+			if (!double.TryParse(numberToken, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
+			{
+				result.AddError(sourceLine, keyword + ": número no válido '" + numberToken + "'.");
+				return false;
+			}
+
+			index += 2;
+			// Unidad opcional: m/s2, km/h, …
+			if (index < tokens.Count && IsTrainUnitToken(tokens[index]))
+			{
+				index++;
+			}
+
+			return true;
+		}
+
+		private static bool IsTrainPropertyKeyword(string token)
+		{
+			string lower = token.ToLowerInvariant();
+			return lower == "name" || lower == "nombre"
+				|| lower == "accel" || lower == "a" || lower == "acceleration"
+				|| lower == "aceleracion" || lower == "aceleración"
+				|| lower == "brake" || lower == "b" || lower == "freno"
+				|| lower == "servicebrake" || lower == "decel"
+				|| lower == "vmax" || lower == "v" || lower == "maxspeed"
+				|| lower == "speed" || lower == "vel";
+		}
+
+		private static bool IsReservedTrainToken(string token)
+		{
+			string lower = token.ToLowerInvariant();
+			return lower == "train" || lower == "tren" || lower == "fleet" || lower == "trainspecs"
+				|| lower == "include" || lower == "plan" || lower == "require" || lower == "req"
+				|| lower == "using" || lower == "as";
+		}
+
+		private static bool IsTrainUnitToken(string token)
+		{
+			string lower = token.ToLowerInvariant();
+			return lower == "m/s2" || lower == "m/s²" || lower == "ms-2" || lower == "ms2"
+				|| lower == "km/h" || lower == "kmh" || lower == "kph" || lower == "km";
+		}
+
+		private static void CommitTrainDef(TrainDefBuilder builder, DemandCompileResult result)
+		{
+			if (builder.Id.Length == 0)
+			{
+				result.AddError(builder.SourceLine, "train sin identificador.");
+				return;
+			}
+
+			int i = 0;
+			while (i < result.Fleet.Count)
+			{
+				if (string.Equals(result.Fleet[i].Id, builder.Id, StringComparison.OrdinalIgnoreCase))
+				{
+					result.AddError(
+						builder.SourceLine,
+						"train id duplicado '" + builder.Id + "'.");
+					return;
+				}
+
+				i++;
+			}
+
+			TrainSpecs defaults = TrainSpecs.DefaultModel;
+			string name = builder.Name;
+			if (name.Length == 0)
+			{
+				name = builder.Id;
+			}
+
+			double accel = builder.Acceleration ?? defaults.Acceleration;
+			double brake = builder.ServiceBrake ?? defaults.ServiceBrake;
+			double vmax = builder.MaxSpeedKmh ?? defaults.MaxSpeedKmh;
+
+			try
+			{
+				result.AddFleet(new TrainSpecs(builder.Id, name, accel, brake, vmax));
+			}
+			catch (ArgumentException ex)
+			{
+				result.AddError(builder.SourceLine, "train '" + builder.Id + "': " + ex.Message);
+			}
+		}
+
+		private sealed class TrainDefBuilder
+		{
+			private readonly string mvarId;
+			private string mvarName;
+			private double? mvarAcceleration;
+			private double? mvarServiceBrake;
+			private double? mvarMaxSpeedKmh;
+			private readonly int mvarSourceLine;
+
+			public TrainDefBuilder(string id, int sourceLine)
+			{
+				mvarId = id ?? string.Empty;
+				mvarName = string.Empty;
+				mvarAcceleration = null;
+				mvarServiceBrake = null;
+				mvarMaxSpeedKmh = null;
+				mvarSourceLine = sourceLine;
+			}
+
+			public string Id
+			{
+				get { return mvarId; }
+			}
+
+			public string Name
+			{
+				get { return mvarName; }
+				set { mvarName = value ?? string.Empty; }
+			}
+
+			public double? Acceleration
+			{
+				get { return mvarAcceleration; }
+				set { mvarAcceleration = value; }
+			}
+
+			public double? ServiceBrake
+			{
+				get { return mvarServiceBrake; }
+				set { mvarServiceBrake = value; }
+			}
+
+			public double? MaxSpeedKmh
+			{
+				get { return mvarMaxSpeedKmh; }
+				set { mvarMaxSpeedKmh = value; }
+			}
+
+			public int SourceLine
+			{
+				get { return mvarSourceLine; }
+			}
 		}
 
 		private static string JoinTokens(List<string> tokens, int fromInclusive, int toInclusive)
@@ -739,6 +1172,68 @@ namespace Diamond.Timed
 			}
 
 			result.PlanName = name.ToString();
+		}
+
+		/// <summary>
+		/// <c>include toposfm227</c> · <c>include "ruta.xml"</c> · <c>include topo nombre</c> · <c>incluir …</c>
+		/// Sin extensión se asume <c>.xml</c> (ver <see cref="TopoStorage.EnsureXmlExtension"/>).
+		/// </summary>
+		private static void ParseIncludeLine(List<string> tokens, int sourceLine, DemandCompileResult result)
+		{
+			if (tokens.Count < 2)
+			{
+				result.AddError(sourceLine, "uso: include nombre-topo (o include topo \"ruta.xml\").");
+				return;
+			}
+
+			int index = 1;
+			string marker = tokens[index].ToLowerInvariant();
+			if (marker == "topo" || marker == "topologia" || marker == "topología" || marker == "topology")
+			{
+				index++;
+			}
+
+			if (index >= tokens.Count)
+			{
+				result.AddError(sourceLine, "uso: include nombre-topo (falta el nombre o la ruta del XML).");
+				return;
+			}
+
+			// Una sola ruta (token ya desentrecomillado por Tokenize). Si hay más tokens, unir con espacio
+			// (p. ej. rutas con espacios entre comillas rotas — normalmente es un token).
+			StringBuilder path = new StringBuilder();
+			while (index < tokens.Count)
+			{
+				if (path.Length > 0)
+				{
+					path.Append(' ');
+				}
+
+				path.Append(tokens[index]);
+				index++;
+			}
+
+			string includePath = TopoStorage.EnsureXmlExtension(path.ToString());
+			if (includePath.Length == 0)
+			{
+				result.AddError(sourceLine, "uso: include nombre-topo (ruta vacía).");
+				return;
+			}
+
+			if (result.IncludedTopoPath.Length > 0)
+			{
+				if (!string.Equals(result.IncludedTopoPath, includePath, StringComparison.OrdinalIgnoreCase))
+				{
+					result.AddError(
+						sourceLine,
+						"solo se admite un include de topología; ya hay include \""
+						+ result.IncludedTopoPath + "\".");
+				}
+
+				return;
+			}
+
+			result.IncludedTopoPath = includePath;
 		}
 
 		private static void ParseDeleteLine(

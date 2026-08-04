@@ -171,7 +171,9 @@
       <a href="#pipeline">Flujo de trabajo</a>
       <div class="sec">Sintaxis</div>
       <a href="#grammar">Gramática</a>
+      <a href="#include">include (topo)</a>
       <a href="#plan">plan</a>
+      <a href="#train">train (flota)</a>
       <a href="#require">require / req</a>
       <a href="#freq">Frecuencia</a>
       <a href="#window">Ventana horaria</a>
@@ -216,9 +218,8 @@
 
       <h2 id="pipeline">2. Flujo de trabajo</h2>
       <ol>
-        <li><strong>Topología</strong> — ejes, estaciones, cantones y vías (XML Onice / canónico).</li>
-        <li><strong>Script de demanda</strong> — este mini-DSL (<code>plan</code> + <code>require</code>…).</li>
-        <li><strong>Compilación</strong> — <code>DemandScriptParser</code> + resolución de estaciones contra el topo.</li>
+        <li><strong>Script de demanda</strong> — mini-DSL con <code>include</code> del XML de topología + <code>plan</code> + <code>require</code>…</li>
+        <li><strong>Compilación</strong> — <code>DemandScriptParser</code> + carga del topo vía <code>TopoStorage</code> + resolución de estaciones.</li>
         <li><strong>Planificación</strong> — <code>MeshPlanner.Solve(día)</code> genera circulaciones y asimilaciones.</li>
         <li><strong>Numeración</strong> — series SFM por corredor OD (impares ↑PK, pares ↓PK).</li>
         <li><strong>Visualización</strong> — malla tiempo × PK; conflictos en rojo.</li>
@@ -230,7 +231,9 @@
 
       <h2 id="grammar">3. Gramática resumida</h2>
 <pre><span class="c"># Comentario hasta fin de línea</span>
+<span class="k">include</span> toposfm227
 <span class="k">plan</span> <span class="s">"nombre del plan"</span>
+<span class="k">train</span> default <span class="s">"Modelo"</span> <span class="k">accel</span> <span class="n">0.9</span> <span class="k">brake</span> <span class="n">0.8</span> <span class="k">vmax</span> <span class="n">160</span>
 
 <span class="k">days</span> lab
   <span class="k">color</span> <span class="n">#38bdf8</span>
@@ -246,7 +249,9 @@
           <tr><th>Elemento</th><th>Descripción</th></tr>
         </thead>
         <tbody>
+          <tr><td><code>include</code></td><td>Declara la topología Diamond a cargar (<code>TopoStorage</code>). Basta el nombre; se asume <code>.xml</code>. Alias: <code>incluir</code>.</td></tr>
           <tr><td><code>plan</code></td><td>Nombre opcional del plan (metadato).</td></tr>
+          <tr><td><code>train</code> / <code>tren</code></td><td>Tipo de material (<code>TrainSpecs</code>): id, nombre, accel, brake, vmax. Si no hay ninguno, se usa el modelo por defecto.</td></tr>
           <tr><td><code>require</code> / <code>req</code></td><td>Un requisito de servicio (genera una o dos series de circulaciones). <code>req</code> es alias corto de <code>require</code>.</td></tr>
           <tr><td>Regiones de definición</td><td><code>days</code>, <code>color</code> (o <code>with</code>/<code>con</code>/<code>region</code> …): valores heredados por los <code>require</code> más indentados.</td></tr>
           <tr><td><code>delete</code> / <code>del</code></td><td>Tras planificar lo anterior: elimina circulaciones en una franja (opcional <code>all</code> = solape de trayecto).</td></tr>
@@ -255,14 +260,62 @@
         </tbody>
       </table>
 
-      <h2 id="plan">4. <code>plan</code></h2>
+      <h2 id="include">4. <code>include</code> — topología</h2>
+<pre><span class="k">include</span> toposfm227
+<span class="k">include</span> topo <span class="s">"Samples/Onice/toposfm227"</span>
+<span class="k">incluir</span> <span class="s">"C:/datos/mi-red.xml"</span></pre>
+      <p>
+        Declara el <strong>almacén de topología</strong> (<code>TopoStorage</code>) del plan: un fichero XML
+        Diamond (formato canónico o legacy Onice) con ejes, estaciones y vías.
+        Al compilar (<code>Plan.CompileDemand</code>), se carga el layout y se usa para resolver
+        estaciones y restricciones de sesión. No hace falta inyectar el topo desde fuera.
+      </p>
+      <ul>
+        <li>Solo se admite <strong>un</strong> <code>include</code> de topología por script (nivel raíz, sin indentar).</li>
+        <li>La extensión es siempre <code>.xml</code>: con solo el nombre (<code>include toposfm227</code>) se asume
+            <code>toposfm227.xml</code>. Si la ruta ya termina en <code>.xml</code>, no se duplica.</li>
+        <li>Rutas relativas se resuelven con <code>Plan.ScriptBaseDirectory</code> (si está vacío, el cwd).</li>
+        <li>Formas: <code>include nombre</code>, <code>include "ruta"</code>, <code>include topo …</code>, <code>incluir …</code>.</li>
+        <li>Sigue siendo válido asignar <code>Plan.Topo</code> a mano (tests, host) si no hay <code>include</code>.</li>
+      </ul>
+
+      <h2 id="plan">5. <code>plan</code></h2>
 <pre><span class="k">plan</span> <span class="s">"SFM T3 laborables"</span></pre>
       <p>
         Asigna el nombre del plan al resultado de compilación. No afecta a la malla.
         Si se omite, el plan puede quedar sin nombre o con el que asigne la aplicación.
       </p>
 
-      <h2 id="require">5. <code>require</code> / <code>req</code></h2>
+      <h2 id="train">6. <code>train</code> / <code>tren</code> — material rodante</h2>
+<pre><span class="k">train</span> default <span class="s">"Modelo"</span> <span class="k">accel</span> <span class="n">0.9</span> <span class="k">brake</span> <span class="n">0.8</span> <span class="k">vmax</span> <span class="n">160</span>
+<span class="k">train</span> s3300 <span class="s">"Civia S-3300"</span> <span class="k">accel</span> <span class="n">0.85</span> <span class="k">brake</span> <span class="n">0.75</span> <span class="k">vmax</span> <span class="n">120</span>
+<span class="k">tren</span> metro
+  <span class="k">name</span> <span class="s">"UT Metro"</span>
+  <span class="k">accel</span> <span class="n">1.0</span> m/s2
+  <span class="k">brake</span> <span class="n">0.9</span>
+  <span class="k">vmax</span> <span class="n">100</span> km/h</pre>
+      <p>
+        Define un <code>Diamond.Motion.TrainSpecs</code> en el catálogo del plan (cabecera del script).
+        Los <code>require … using id</code> referencian este id.
+      </p>
+      <table>
+        <thead><tr><th>Campo</th><th>Sintaxis</th><th>Unidad / defecto</th></tr></thead>
+        <tbody>
+          <tr><td>Id</td><td>primer token tras <code>train</code></td><td>obligatorio, estable</td></tr>
+          <tr><td>Nombre</td><td>literal o <code>name "…"</code></td><td>por defecto = id</td></tr>
+          <tr><td>Aceleración</td><td><code>accel</code> / <code>a</code></td><td>m/s² (defecto 0.9)</td></tr>
+          <tr><td>Freno servicio</td><td><code>brake</code> / <code>freno</code> / <code>b</code></td><td>m/s² (defecto 0.8)</td></tr>
+          <tr><td>Vmax material</td><td><code>vmax</code> / <code>v</code></td><td>km/h (defecto 160)</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>Nivel raíz (sin indentar). Alias: <code>tren</code>, <code>fleet</code>.</li>
+        <li>Propiedades omitidas heredan los del <strong>modelo por defecto</strong> (<code>TrainSpecs.DefaultModel</code>).</li>
+        <li>Si el script <strong>no declara ningún</strong> <code>train</code>, al compilar se genera automáticamente el tipo <code>default</code>.</li>
+        <li>Si declara al menos uno, el catálogo del plan se sustituye por el del script (fuente de verdad).</li>
+      </ul>
+
+      <h2 id="require">7. <code>require</code> / <code>req</code></h2>
       <p>Forma general (<code>req</code> es sinónimo de <code>require</code>):</p>
 <pre><span class="k">require</span>|<span class="k">req</span> [<span class="k">both</span> [<span class="k">ways</span>]] &lt;freq&gt; &lt;from&gt; <span class="p">-&gt;</span> &lt;to&gt; [ventana] [<span class="k">using</span> id] [<span class="k">as</span> id]</pre>
 
@@ -358,11 +411,12 @@
         </div>
       </div>
 
-      <h2 id="fleet">9. Flota — <code>using</code></h2>
-<pre><span class="k">require</span> <span class="n">every 15 min</span> PMI <span class="p">-&gt;</span> UIB <span class="k">using</span> default <span class="k">as</span> R-Metro</pre>
+      <h2 id="fleet">10. Flota — <code>using</code></h2>
+<pre><span class="k">require</span> <span class="n">every 15 min</span> PMI <span class="p">-&gt;</span> UIB <span class="k">using</span> metro <span class="k">as</span> R-Metro</pre>
       <p>
         Selecciona el material / <code>TrainSpecs</code> del catálogo del plan
-        (aceleración, frenado, Vmax del tren). Si el id no existe, se avisa y se usa el modelo por defecto.
+        (declarado con <a href="#train"><code>train</code></a>: aceleración, frenado, Vmax).
+        Si el id no existe, se avisa y se usa el modelo por defecto.
       </p>
 
       <h2 id="days">10. Días de servicio — <code>days</code> / <code>on</code></h2>

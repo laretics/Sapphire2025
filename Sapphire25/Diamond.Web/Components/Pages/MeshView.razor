@@ -1186,17 +1186,15 @@
 
 		try
 		{
-			TopoLayout topo = DemoMeshService.LoadTopoWithInfrastructure();
-			IReadOnlyList<MeshRouteView> views = DemoMeshService.BuildDemoViews(topo);
-			mcolViews = new List<MeshRouteView>(views);
-
-			Plan plan = new Plan(topo);
+			// Topología desde el script (include) o fallback al sample SFM si el script aún no la declara.
+			Plan plan = new Plan();
 			plan.Name = Path.GetFileNameWithoutExtension(mvarFileName);
 			if (string.IsNullOrWhiteSpace(plan.Name) || plan.Name == "sin título" || plan.Name == "sin titulo")
 			{
 				plan.Name = "SFM demo";
 			}
 
+			plan.ScriptBaseDirectory = Path.GetDirectoryName(DemoMeshService.ResolveTopoPath()) ?? string.Empty;
 			plan.EnsureDefaultTrainSpecs();
 			plan.DemandScript = mvarScript;
 
@@ -1211,6 +1209,31 @@
 				mvarProject = null;
 				return;
 			}
+
+			if (plan.Topo is null)
+			{
+				// Compat: scripts sin include siguen usando el sample demo.
+				plan.Topo = DemoMeshService.LoadTopoWithInfrastructure();
+				compiled = plan.CompileDemand(mvarScript);
+				if (!compiled.Success)
+				{
+					mcolCompileErrors = BuildDiagnosticsFromCompile(compiled);
+					mvarError = "El script no compila tras cargar topología por defecto ("
+						+ mcolCompileErrors.Count.ToString(CultureInfo.InvariantCulture) + " error(es)).";
+					mvarMeshStale = mvarMesh is not null;
+					mvarProject = null;
+					return;
+				}
+			}
+			else
+			{
+				// Infraestructura demo (cantones SFM) sobre la topo del include.
+				SfmDemoInfrastructure.Apply(plan.Topo);
+			}
+
+			TopoLayout topo = plan.Topo;
+			IReadOnlyList<MeshRouteView> views = DemoMeshService.BuildDemoViews(topo);
+			mcolViews = new List<MeshRouteView>(views);
 
 			mcolCompileErrors = new List<ScriptDiagnostic>();
 

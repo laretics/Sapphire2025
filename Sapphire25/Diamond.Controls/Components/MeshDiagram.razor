@@ -209,15 +209,15 @@
 	[Parameter]
 	public int MaxFrontiersPerPage { get; set; } = CirculationSheetPager.DefaultMaxFrontiersPerPage;
 
-	/// <summary>Nombre del plan (carátula de impresión).</summary>
+	/// <summary>Nombre del plan (cajetín DIN de impresión).</summary>
 	[Parameter]
 	public string PlanName { get; set; } = string.Empty;
 
-	/// <summary>Día de planificación mostrado (carátula).</summary>
+	/// <summary>Día de planificación mostrado (cajetín DIN).</summary>
 	[Parameter]
 	public DayOfWeek? PlanningDay { get; set; }
 
-	/// <summary>Notas opcionales en la carátula de impresión.</summary>
+	/// <summary>Notas opcionales en el cajetín DIN de impresión.</summary>
 	[Parameter]
 	public string? PrintNotes { get; set; }
 

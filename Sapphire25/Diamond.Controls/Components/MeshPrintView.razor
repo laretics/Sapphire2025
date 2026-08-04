@@ -5,8 +5,8 @@
 @inject IJSRuntime Js
 
 @*
-  Vista previa de impresión de malla: carátula + diagrama (tema papel).
-  window.print con CSS @media print (A3 apaisado recomendado).
+  Vista previa de impresión de malla: una sola hoja A3 apaisada
+  (dibujo + cajetín DIN inferior), tema papel. window.print + CSS @media print.
 *@
 @if (mvarOpen)
 {
@@ -15,7 +15,7 @@
 			<div class="diamond-mesh-print-toolbar no-print">
 				<span class="diamond-mesh-print-toolbar-title">
 					Imprimir malla
-					<span class="text-muted"> · A3 apaisado recomendado · tema papel</span>
+					<span class="text-muted"> · A3 apaisado · cajetín DIN en la misma hoja</span>
 				</span>
 				<span class="diamond-mesh-print-toolbar-actions">
 					<button type="button" class="btn btn-sm btn-primary" @onclick="PrintAsync" title="Abrir diálogo de impresión">Imprimir…</button>
@@ -23,11 +23,11 @@
 				</span>
 			</div>
 			<div class="diamond-mesh-print-pages">
-				<div class="diamond-mesh-print-page diamond-mesh-print-cover">
-					@((MarkupString)mvarCoverHtml)
-				</div>
-				<div class="diamond-mesh-print-page diamond-mesh-print-mesh">
-					@((MarkupString)mvarMeshSvg)
+				<div class="diamond-mesh-print-page diamond-mesh-print-sheet">
+					<div class="diamond-mesh-print-drawing">
+						@((MarkupString)mvarMeshSvg)
+					</div>
+					@((MarkupString)mvarTitleBlockHtml)
 				</div>
 			</div>
 		</div>
@@ -36,7 +36,7 @@
 
 @code {
 	private bool mvarOpen;
-	private string mvarCoverHtml = string.Empty;
+	private string mvarTitleBlockHtml = string.Empty;
 	private string mvarMeshSvg = string.Empty;
 
 	[Parameter]
@@ -101,7 +101,7 @@
 			Notes = Notes ?? string.Empty
 		};
 
-		mvarCoverHtml = MeshPrintDocument.BuildCoverHtml(cover);
+		mvarTitleBlockHtml = MeshPrintDocument.BuildTitleBlockHtml(cover);
 		mvarMeshSvg = MeshPrintDocument.BuildMeshSvg(
 			Mesh,
 			View,
@@ -117,7 +117,7 @@
 	public void Close()
 	{
 		mvarOpen = false;
-		mvarCoverHtml = string.Empty;
+		mvarTitleBlockHtml = string.Empty;
 		mvarMeshSvg = string.Empty;
 	}
 

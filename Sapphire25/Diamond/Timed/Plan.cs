@@ -8,6 +8,8 @@ namespace Diamond.Timed
 	/// <summary>
 	/// Proyecto de horarios de trenes (malla).
 	/// Fuente de verdad de la demanda: script mini-DSL (compilación determinista).
+	/// La topología puede declararse en el script con <c>include nombre-topo</c>
+	/// (extensión <c>.xml</c> implícita) y se carga vía <see cref="TopoStorage"/> al compilar.
 	/// </summary>
 	public sealed class Plan
 	{
@@ -15,6 +17,8 @@ namespace Diamond.Timed
 		private string mvarName;
 		private string mvarComment;
 		private TopoLayout? mvarTopo;
+		private TopoStorage? mvarTopoStorage;
+		private string mvarScriptBaseDirectory;
 		private readonly List<TrainSpecs> mcolTrainSpecs;
 		private readonly List<DemandRequirement> mcolDemand;
 		private readonly List<DemandDeleteOp> mcolDeletes;
@@ -28,6 +32,8 @@ namespace Diamond.Timed
 			mvarName = string.Empty;
 			mvarComment = string.Empty;
 			mvarTopo = null;
+			mvarTopoStorage = null;
+			mvarScriptBaseDirectory = string.Empty;
 			mcolTrainSpecs = new List<TrainSpecs>();
 			mcolDemand = new List<DemandRequirement>();
 			mcolDeletes = new List<DemandDeleteOp>();
@@ -45,6 +51,18 @@ namespace Diamond.Timed
 			}
 
 			mvarTopo = topo;
+		}
+
+		public Plan(TopoStorage topoStorage)
+			: this()
+		{
+			if (topoStorage is null)
+			{
+				throw new ArgumentNullException(nameof(topoStorage));
+			}
+
+			mvarTopoStorage = topoStorage;
+			mvarTopo = topoStorage.Layout;
 		}
 
 		/// <summary>
@@ -69,12 +87,40 @@ namespace Diamond.Timed
 		}
 
 		/// <summary>
-		/// Topología asociada (opcional en esta fase).
+		/// Topología asociada. Puede fijarse a mano o cargarse desde
+		/// <c>include</c> al compilar el script (<see cref="TopoStorage"/>).
 		/// </summary>
 		public TopoLayout? Topo
 		{
 			get { return mvarTopo; }
-			set { mvarTopo = value; }
+			set
+			{
+				mvarTopo = value;
+				// Asignación explícita: ya no hay vínculo con un include previo.
+				if (mvarTopoStorage is not null && !ReferenceEquals(mvarTopoStorage.Layout, value))
+				{
+					mvarTopoStorage = null;
+				}
+			}
+		}
+
+		/// <summary>
+		/// Almacén de topología cargado por <c>include</c> (ruta + layout).
+		/// Null si la topología se inyectó sin pasar por el script.
+		/// </summary>
+		public TopoStorage? TopoStorage
+		{
+			get { return mvarTopoStorage; }
+		}
+
+		/// <summary>
+		/// Directorio base para resolver rutas relativas de <c>include</c>
+		/// (p. ej. carpeta del script o de samples). Vacío = cwd.
+		/// </summary>
+		public string ScriptBaseDirectory
+		{
+			get { return mvarScriptBaseDirectory; }
+			set { mvarScriptBaseDirectory = value ?? string.Empty; }
 		}
 
 		/// <summary>
@@ -196,15 +242,17 @@ namespace Diamond.Timed
 
 		/// <summary>
 		/// Compila <see cref="DemandScript"/> de forma determinista y sustituye <see cref="Demand"/>.
-		/// Si hay <see cref="Topo"/>, resuelve estaciones. Devuelve el resultado (errores incluidos).
+		/// Si el script tiene <c>include</c>, carga el XML en <see cref="TopoStorage"/> / <see cref="Topo"/>.
+		/// Si hay topología, resuelve estaciones. Devuelve el resultado (errores incluidos).
 		/// </summary>
 		public DemandCompileResult CompileDemand()
 		{
-			return CompileDemand(mvarDemandScript, resolveStations: mvarTopo is not null);
+			return CompileDemand(mvarDemandScript, resolveStations: true);
 		}
 
 		/// <summary>
 		/// Compila el script indicado, lo guarda en <see cref="DemandScript"/> y actualiza <see cref="Demand"/>.
+		/// Aplica <c>include</c> de topología si está presente.
 		/// </summary>
 		public DemandCompileResult CompileDemand(string script, bool resolveStations = true)
 		{
@@ -220,6 +268,13 @@ namespace Diamond.Timed
 			mcolDeletes.Clear();
 			mcolAsimilationDefs.Clear();
 			mcolTopoConstraints.Clear();
+
+			// include topo: carga el XML y fija Topo / TopoStorage (fuente de verdad del script).
+			if (result.IncludedTopoPath.Length > 0)
+			{
+				ApplyIncludedTopo(result);
+			}
+
 			if (!result.Success)
 			{
 				// Script inválido: quitar overlays de sesión residuales.
@@ -259,7 +314,12 @@ namespace Diamond.Timed
 				index++;
 			}
 
-			if (resolveStations && mvarTopo is not null)
+			ApplyCompiledFleet(result);
+
+			// Si hubo include, la resolución de estaciones es necesaria para un plan usable.
+			bool shouldResolve = resolveStations || result.IncludedTopoPath.Length > 0;
+
+			if (shouldResolve && mvarTopo is not null)
 			{
 				List<string> resolveErrors = new List<string>();
 				DemandStationResolver.Resolve(result, mvarTopo, resolveErrors);
@@ -279,6 +339,53 @@ namespace Diamond.Timed
 			}
 
 			return result;
+		}
+
+		/// <summary>
+		/// Aplica el catálogo <c>train</c> del script. Si el script no define ninguno,
+		/// asegura el modelo por defecto (<see cref="TrainSpecs.DefaultModel"/>).
+		/// </summary>
+		private void ApplyCompiledFleet(DemandCompileResult result)
+		{
+			if (result.Fleet.Count > 0)
+			{
+				mcolTrainSpecs.Clear();
+				int index = 0;
+				while (index < result.Fleet.Count)
+				{
+					mcolTrainSpecs.Add(result.Fleet[index]);
+					index++;
+				}
+
+				return;
+			}
+
+			// Sin declaraciones en el script: conservar catálogo del host y garantizar default.
+			EnsureDefaultTrainSpecs();
+		}
+
+		/// <summary>
+		/// Carga el XML declarado por <c>include</c> y actualiza <see cref="Topo"/> / <see cref="TopoStorage"/>.
+		/// </summary>
+		private void ApplyIncludedTopo(DemandCompileResult result)
+		{
+			string? baseDir = mvarScriptBaseDirectory.Length > 0 ? mvarScriptBaseDirectory : null;
+			TopoStorage? storage;
+			string? error;
+			if (!TopoStorage.TryLoadFromXml(result.IncludedTopoPath, baseDir, out storage, out error) || storage is null)
+			{
+				result.AddError(error ?? "no se pudo cargar la topología del include.");
+				return;
+			}
+
+			// Sustituir topología previa de sesión (overlays) si había otra.
+			if (mvarTopo is not null && !ReferenceEquals(mvarTopo, storage.Layout))
+			{
+				DemandTopoOverlay.Clear(mvarTopo);
+			}
+
+			mvarTopoStorage = storage;
+			mvarTopo = storage.Layout;
 		}
 
 		/// <summary>
@@ -305,6 +412,20 @@ namespace Diamond.Timed
 			{
 				DemandTopoOverlay.Clear(mvarTopo);
 			}
+		}
+
+		/// <summary>
+		/// Quita la topología asociada (include o asignación manual) y limpia overlays de sesión.
+		/// </summary>
+		public void ClearTopo()
+		{
+			if (mvarTopo is not null)
+			{
+				DemandTopoOverlay.Clear(mvarTopo);
+			}
+
+			mvarTopo = null;
+			mvarTopoStorage = null;
 		}
 
 		public override string ToString()

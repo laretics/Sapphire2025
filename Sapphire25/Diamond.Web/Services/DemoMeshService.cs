@@ -18,9 +18,11 @@ namespace Diamond.Web.Services
 		/// Demanda manual de referencia (laborables T3).
 		/// </summary>
 		public const string SfmT3DemandScript = """
+			include toposfm227
 			plan "SFM T3 laborables"
+			train default "SFM diésel" accel 0.9 brake 0.8 vmax 100
 			# Cadencia ~40 min; ida y vuelta; cruce en Petra
-			require both ways every 40 min PMI -> MAN 06:00-22:00 as R-T3
+			require both ways every 40 min PMI -> MAN 06:00-22:00 using default as R-T3
 			  days lab
 			  stops 30s
 			  skip RLL Enllaç "Sant Joan" PSJ
@@ -32,8 +34,10 @@ namespace Diamond.Web.Services
 		/// Demanda multi-eje Palma–Sa Pobla (T3 + T2).
 		/// </summary>
 		public const string SfmPalmaSaPoblaDemandScript = """
+			include toposfm227
 			plan "SFM Palma-Sa Pobla"
-			require both ways every 60 min PMI -> SPB 06:00-21:00 as R-SPB
+			train default "SFM diésel" accel 0.9 brake 0.8 vmax 100
+			require both ways every 60 min PMI -> SPB 06:00-21:00 using default as R-SPB
 			  days lab
 			  stops 30s
 			  dwell INC 1min
@@ -196,11 +200,10 @@ namespace Diamond.Web.Services
 			DayOfWeek dayOfWeek,
 			string preferredViewId = DefaultViewId)
 		{
-			TopoLayout topo = LoadTopoWithInfrastructure();
-			IReadOnlyList<RouteView> views = BuildDemoViews(topo);
-
-			Plan plan = new Plan(topo);
+			// La topología se declara en el script (include) y se carga al compilar.
+			Plan plan = new Plan();
 			plan.Name = "SFM demo";
+			plan.ScriptBaseDirectory = System.IO.Path.GetDirectoryName(ResolveTopoPath()) ?? string.Empty;
 			plan.EnsureDefaultTrainSpecs();
 			plan.DemandScript = demandScript ?? string.Empty;
 
@@ -210,6 +213,18 @@ namespace Diamond.Web.Services
 				throw new InvalidOperationException(
 					"Falló la compilación de demanda: " + string.Join("; ", compiled.Errors));
 			}
+
+			if (plan.Topo is null)
+			{
+				throw new InvalidOperationException(
+					"El script no cargó topología. Añada include toposfm227 o asigne Plan.Topo.");
+			}
+
+			// Capa de infraestructura demo (vías/cantones SFM) sobre la topo del include.
+			SfmDemoInfrastructure.Apply(plan.Topo);
+
+			TopoLayout topo = plan.Topo;
+			IReadOnlyList<RouteView> views = BuildDemoViews(topo);
 
 			Mesh mesh = new MeshPlanner(plan).Solve(dayOfWeek);
 

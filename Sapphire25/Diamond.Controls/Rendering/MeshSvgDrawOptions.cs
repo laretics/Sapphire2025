@@ -2,7 +2,8 @@ namespace Diamond.Controls.Rendering
 {
 	/// <summary>
 	/// Capas y nivel de detalle del SVG de malla.
-	/// En interacción (pan/zoom) se reduce el muestreo y se omiten capas pesadas.
+	/// En interacción (pan/zoom) se reduce el muestreo, se omiten capas pesadas
+	/// y las trazas pasan a polilínea (sin Bezier) para no deformar al arrastrar.
 	/// </summary>
 	public readonly struct MeshSvgDrawOptions
 	{
@@ -20,6 +21,7 @@ namespace Diamond.Controls.Rendering
 		private readonly int mvarMaxPolylineSamples;
 		private readonly string? mvarSelectedTechnicalId;
 		private readonly bool mvarPaperTheme;
+		private readonly bool mvarUseSplinePaths;
 
 		public MeshSvgDrawOptions(
 			bool showCantonOccupations,
@@ -35,7 +37,8 @@ namespace Diamond.Controls.Rendering
 			bool externalStationColumn = false,
 			MeshYScaleMode yScaleMode = MeshYScaleMode.LinearPk,
 			string? selectedTechnicalId = null,
-			bool paperTheme = false)
+			bool paperTheme = false,
+			bool useSplinePaths = true)
 		{
 			mvarShowCantonOccupations = showCantonOccupations;
 			mvarShowTrainPaths = showTrainPaths;
@@ -51,6 +54,7 @@ namespace Diamond.Controls.Rendering
 			mvarMaxPolylineSamples = maxPolylineSamples < 8 ? 8 : maxPolylineSamples;
 			mvarSelectedTechnicalId = string.IsNullOrEmpty(selectedTechnicalId) ? null : selectedTechnicalId;
 			mvarPaperTheme = paperTheme;
+			mvarUseSplinePaths = useSplinePaths;
 		}
 
 		/// <summary>Compatibilidad: capas completas por defecto.</summary>
@@ -83,7 +87,9 @@ namespace Diamond.Controls.Rendering
 			}
 		}
 
-		/// <summary>Durante arrastre/rueda: menos puntos de control, sin números ni ocupaciones.</summary>
+		/// <summary>
+		/// Durante arrastre/rueda: menos muestras, sin números ni ocupaciones, trazas en polilínea.
+		/// </summary>
 		public static MeshSvgDrawOptions Interactive
 		{
 			get
@@ -91,7 +97,8 @@ namespace Diamond.Controls.Rendering
 				return Create(
 					showCantonOccupations: false,
 					showTrainNumbers: false,
-					maxPolylineSamples: 32);
+					maxPolylineSamples: 32,
+					useSplinePaths: false);
 			}
 		}
 
@@ -109,7 +116,8 @@ namespace Diamond.Controls.Rendering
 			bool externalStationColumn = false,
 			MeshYScaleMode yScaleMode = MeshYScaleMode.LinearPk,
 			string? selectedTechnicalId = null,
-			bool paperTheme = false)
+			bool paperTheme = false,
+			bool useSplinePaths = true)
 		{
 			return new MeshSvgDrawOptions(
 				showCantonOccupations,
@@ -125,12 +133,13 @@ namespace Diamond.Controls.Rendering
 				externalStationColumn,
 				yScaleMode,
 				selectedTechnicalId,
-				paperTheme);
+				paperTheme,
+				useSplinePaths);
 		}
 
 		/// <summary>
-		/// Variante ligera para pan/zoom: omite ocupaciones/números y reduce puntos de control
-		/// de la spline (sigue siendo Catmull-Rom, no polilínea gruesa).
+		/// Variante ligera para pan/zoom: omite ocupaciones/números, reduce muestras
+		/// y pinta trazas como polilínea (sin Bezier) para evitar deformaciones al arrastrar.
 		/// </summary>
 		public MeshSvgDrawOptions ForInteractiveLod()
 		{
@@ -148,7 +157,8 @@ namespace Diamond.Controls.Rendering
 				externalStationColumn: mvarExternalStationColumn,
 				yScaleMode: mvarYScaleMode,
 				selectedTechnicalId: mvarSelectedTechnicalId,
-				paperTheme: mvarPaperTheme);
+				paperTheme: mvarPaperTheme,
+				useSplinePaths: false);
 		}
 
 		public bool ShowCantonOccupations
@@ -218,10 +228,19 @@ namespace Diamond.Controls.Rendering
 			get { return mvarSelectedTechnicalId; }
 		}
 
-		/// <summary>Tope de puntos de control por traza (spline Catmull-Rom → Bezier SVG).</summary>
+		/// <summary>Tope de puntos de control por traza (spline o polilínea).</summary>
 		public int MaxPolylineSamples
 		{
 			get { return mvarMaxPolylineSamples; }
+		}
+
+		/// <summary>
+		/// True: Catmull-Rom → Bezier SVG (calidad completa).
+		/// False: polilínea por los mismos puntos (LOD de arrastre/zoom).
+		/// </summary>
+		public bool UseSplinePaths
+		{
+			get { return mvarUseSplinePaths; }
 		}
 
 		/// <summary>Tema papel: fondo claro, trazas en tinta oscura (impresión / A3).</summary>

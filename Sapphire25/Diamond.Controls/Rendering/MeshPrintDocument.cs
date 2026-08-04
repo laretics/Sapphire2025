@@ -7,15 +7,25 @@ using Diamond.Topo;
 namespace Diamond.Controls.Rendering
 {
 	/// <summary>
-	/// Documento de impresión de malla: carátula + SVG de la ventana actual (tema papel).
+	/// Documento de impresión de malla en una sola hoja A3 apaisada:
+	/// el diagrama llena toda la superficie; el cajetín DIN se superpone
+	/// (plantilla de plano), sin restar área al plot.
 	/// </summary>
 	public static class MeshPrintDocument
 	{
-		/// <summary>Ancho lógico del SVG de malla (aprox. A3 apaisado a ~150 dpi).</summary>
+		/// <summary>
+		/// Ancho lógico del SVG de malla (aprox. 5 px/mm sobre 420 mm de A3).
+		/// </summary>
 		public const int DefaultPrintWidth = 2100;
 
-		/// <summary>Alto lógico del SVG (420×297 mm → ratio ~1.414).</summary>
-		public const int DefaultPrintHeight = 1485;
+		/// <summary>
+		/// Alto lógico del SVG a hoja completa A3 apaisada (297 mm a 5 px/mm).
+		/// El cajetín no reduce este alto: se dibuja encima.
+		/// </summary>
+		public const int DefaultPrintDrawingHeight = 1485;
+
+		/// <summary>Alto de la hoja de impresión (igual al dibujo a página completa).</summary>
+		public const int DefaultPrintHeight = DefaultPrintDrawingHeight;
 
 		public sealed class CoverInfo
 		{
@@ -41,6 +51,7 @@ namespace Diamond.Controls.Rendering
 
 		/// <summary>
 		/// SVG de malla en tema papel, estaciones integradas, misma ventana tiempo/PK.
+		/// Dimensiones por defecto ajustadas al área de dibujo sobre el cajetín DIN.
 		/// </summary>
 		public static string BuildMeshSvg(
 			Mesh mesh,
@@ -51,7 +62,7 @@ namespace Diamond.Controls.Rendering
 			long pkMax,
 			MeshSvgDrawOptions screenOptions,
 			int width = DefaultPrintWidth,
-			int height = DefaultPrintHeight)
+			int height = DefaultPrintDrawingHeight)
 		{
 			if (mesh is null)
 			{
@@ -84,16 +95,19 @@ namespace Diamond.Controls.Rendering
 			string content = MeshSvgRenderer.RenderContent(
 				mesh, view, timeStart, timeEnd, pkMin, pkMax, width, height, options);
 
+			// Hoja completa: el SVG llena 420×297; el cajetín se superpone en CSS.
 			return string.Format(
 				CultureInfo.InvariantCulture,
-				"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{0}\" height=\"{1}\" viewBox=\"0 0 {0} {1}\" class=\"diamond-mesh-print-svg\" preserveAspectRatio=\"xMidYMid meet\">{2}</svg>",
+				"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{0}\" height=\"{1}\" viewBox=\"0 0 {0} {1}\" class=\"diamond-mesh-print-svg\" preserveAspectRatio=\"none\">{2}</svg>",
 				width,
 				height,
 				content);
 		}
 
-		/// <summary>Marcado HTML de la carátula (una página de impresión).</summary>
-		public static string BuildCoverHtml(CoverInfo info)
+		/// <summary>
+		/// Cajetín inferior tipo DIN (misma hoja que el dibujo): identificación del plano.
+		/// </summary>
+		public static string BuildTitleBlockHtml(CoverInfo info)
 		{
 			if (info is null)
 			{
@@ -105,64 +119,77 @@ namespace Diamond.Controls.Rendering
 				? FormatDay(info.PlanningDay.Value)
 				: "—";
 			string printed = info.PrintedAt.ToString("dd/MM/yyyy HH:mm", CultureInfo.GetCultureInfo("es-ES"));
-			string zone = info.ViewId;
+			string zone = string.IsNullOrWhiteSpace(info.ViewId) ? "—" : info.ViewId.Trim();
 			if (!string.IsNullOrWhiteSpace(info.ViewName))
 			{
-				zone = info.ViewId + " — " + info.ViewName;
+				zone = zone + " · " + info.ViewName.Trim();
 			}
 
-			StringBuilder sb = new StringBuilder(2048);
-			sb.Append("<div class=\"diamond-mesh-print-cover-inner\">");
-			sb.Append("<div class=\"diamond-mesh-print-brand\">Diamond · Malla horaria</div>");
-			sb.Append("<h1 class=\"diamond-mesh-print-title\">");
+			string window = FormatClock(info.TimeStart) + " – " + FormatClock(info.TimeEnd);
+			string pkRange = FormatPk(info.PkMin) + " – " + FormatPk(info.PkMax);
+			string scale = string.IsNullOrWhiteSpace(info.YScaleLabel) ? "—" : info.YScaleLabel.Trim();
+			string layers = string.IsNullOrWhiteSpace(info.LayersSummary) ? "—" : info.LayersSummary.Trim();
+			string notes = string.IsNullOrWhiteSpace(info.Notes) ? "—" : info.Notes.Trim();
+			string path = string.IsNullOrWhiteSpace(info.PathSignature) ? "—" : info.PathSignature.Trim();
+
+			StringBuilder sb = new StringBuilder(3072);
+			sb.Append("<div class=\"diamond-mesh-print-titleblock\" aria-label=\"Cajetín del plano\">");
+
+			// Fila principal: marca | título + meta | recuentos | hoja
+			sb.Append("<div class=\"diamond-mesh-print-tb-grid\">");
+
+			sb.Append("<div class=\"diamond-mesh-print-tb-brand\">");
+			sb.Append("<div class=\"diamond-mesh-print-tb-brand-name\">Diamond</div>");
+			sb.Append("<div class=\"diamond-mesh-print-tb-brand-kind\">Malla horaria</div>");
+			sb.Append("<div class=\"diamond-mesh-print-tb-brand-fmt\">A3 · apaisado</div>");
+			sb.Append("</div>");
+
+			sb.Append("<div class=\"diamond-mesh-print-tb-main\">");
+			sb.Append("<div class=\"diamond-mesh-print-tb-title\">");
 			sb.Append(Escape(plan));
-			sb.Append("</h1>");
-			sb.Append("<p class=\"diamond-mesh-print-sub\">Documento de impresión · tema papel (oscuro sobre blanco)</p>");
+			sb.Append("</div>");
+			sb.Append("<table class=\"diamond-mesh-print-tb-fields\">");
+			AppendTitleField(sb, "Vista / zona", zone);
+			AppendTitleField(sb, "Día planif.", day);
+			AppendTitleField(sb, "Ventana", window);
+			AppendTitleField(sb, "Rango PK", pkRange);
+			AppendTitleField(sb, "Escala", scale);
+			AppendTitleField(sb, "Camino", path);
+			AppendTitleField(sb, "Capas", layers);
+			AppendTitleField(sb, "Notas", notes);
+			sb.Append("</table>");
+			sb.Append("</div>");
 
-			sb.Append("<table class=\"diamond-mesh-print-meta\">");
-			AppendRow(sb, "Fecha de impresión", printed);
-			AppendRow(sb, "Día de planificación", day);
-			AppendRow(sb, "Zona / vista", zone);
-			if (!string.IsNullOrWhiteSpace(info.PathSignature))
-			{
-				AppendRow(sb, "Firma de camino", info.PathSignature);
-			}
-
-			AppendRow(sb, "Ventana temporal",
-				FormatClock(info.TimeStart) + " – " + FormatClock(info.TimeEnd));
-			AppendRow(sb, "Rango PK",
-				FormatPk(info.PkMin) + " – " + FormatPk(info.PkMax));
-			AppendRow(sb, "Escala espacial",
-				string.IsNullOrWhiteSpace(info.YScaleLabel) ? "—" : info.YScaleLabel);
-			AppendRow(sb, "Circulaciones (malla)",
-				info.CirculationCount.ToString(CultureInfo.InvariantCulture));
-			AppendRow(sb, "Circulaciones en ventana",
-				info.VisibleCirculationCount.ToString(CultureInfo.InvariantCulture));
-			AppendRow(sb, "Asimilaciones",
-				info.AsimilationCount.ToString(CultureInfo.InvariantCulture));
-			AppendRow(sb, "Avisos / errores",
+			sb.Append("<div class=\"diamond-mesh-print-tb-stats\">");
+			AppendStat(sb, "Circulaciones", info.CirculationCount.ToString(CultureInfo.InvariantCulture));
+			AppendStat(sb, "En ventana", info.VisibleCirculationCount.ToString(CultureInfo.InvariantCulture));
+			AppendStat(sb, "Asimilaciones", info.AsimilationCount.ToString(CultureInfo.InvariantCulture));
+			AppendStat(
+				sb,
+				"Avisos / err.",
 				info.WarningCount.ToString(CultureInfo.InvariantCulture)
 				+ " / "
 				+ info.ErrorCount.ToString(CultureInfo.InvariantCulture));
-			if (!string.IsNullOrWhiteSpace(info.LayersSummary))
-			{
-				AppendRow(sb, "Capas dibujadas", info.LayersSummary);
-			}
-
-			if (!string.IsNullOrWhiteSpace(info.Notes))
-			{
-				AppendRow(sb, "Notas", info.Notes);
-			}
-
-			sb.Append("</table>");
-
-			sb.Append("<div class=\"diamond-mesh-print-footer-note\">");
-			sb.Append("La página siguiente reproduce la ventana de zoom actual de la malla. ");
-			sb.Append("Colores de traza adaptados a impresión (matiz conservado; tonos claros→tinta oscura, oscuros→tinta media). ");
-			sb.Append("Sin relleno de cantones ni línea «ahora» para reducir consumo de tóner.");
+			AppendStat(sb, "Impreso", printed);
 			sb.Append("</div>");
+
+			sb.Append("<div class=\"diamond-mesh-print-tb-sheet\">");
+			sb.Append("<div class=\"diamond-mesh-print-tb-sheet-label\">Hoja</div>");
+			sb.Append("<div class=\"diamond-mesh-print-tb-sheet-num\">1 / 1</div>");
+			sb.Append("<div class=\"diamond-mesh-print-tb-sheet-rev\">Rev. —</div>");
 			sb.Append("</div>");
+
+			sb.Append("</div>"); // grid
+			sb.Append("</div>"); // titleblock
 			return sb.ToString();
+		}
+
+		/// <summary>
+		/// Compatibilidad: genera el cajetín DIN (antes carátula a página completa).
+		/// </summary>
+		public static string BuildCoverHtml(CoverInfo info)
+		{
+			return BuildTitleBlockHtml(info);
 		}
 
 		public static int CountVisibleCirculations(
@@ -197,13 +224,25 @@ namespace Diamond.Controls.Rendering
 			return n;
 		}
 
-		private static void AppendRow(StringBuilder sb, string label, string value)
+		private static void AppendTitleField(StringBuilder sb, string label, string value)
 		{
 			sb.Append("<tr><th>");
 			sb.Append(Escape(label));
 			sb.Append("</th><td>");
 			sb.Append(Escape(value));
 			sb.Append("</td></tr>");
+		}
+
+		private static void AppendStat(StringBuilder sb, string label, string value)
+		{
+			sb.Append("<div class=\"diamond-mesh-print-tb-stat\">");
+			sb.Append("<span class=\"diamond-mesh-print-tb-stat-lab\">");
+			sb.Append(Escape(label));
+			sb.Append("</span>");
+			sb.Append("<span class=\"diamond-mesh-print-tb-stat-val\">");
+			sb.Append(Escape(value));
+			sb.Append("</span>");
+			sb.Append("</div>");
 		}
 
 		private static string Escape(string text)
