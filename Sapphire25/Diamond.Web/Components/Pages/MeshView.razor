@@ -130,7 +130,7 @@
 							 Height="900"
 							 ShowLayerToolbar="true"
 							 ShowZoomToolbar="true"
-							 PlanName="@(mvarPlan?.Name ?? mvarFileName)"
+							 PlanName="@PrintPlanNameForMesh"
 							 PlanningDay="mvarSelectedDay"
 							 PrintNotes="@PrintNotesForMesh"
 							 @bind-SelectedCirculation="mvarSelectedCirculation" />
@@ -498,31 +498,45 @@
 	private string FileDisplayName =>
 		mvarDirty ? mvarFileName + " *" : mvarFileName;
 
-	/// <summary>Notas para la carátula de impresión de malla.</summary>
+	/// <summary>
+	/// Notas del cajetín DIN: preferir <c>notes</c> del script; si no, nombre del plan.
+	/// </summary>
 	private string PrintNotesForMesh
 	{
 		get
 		{
-			List<string> parts = new List<string>();
-			if (!string.IsNullOrWhiteSpace(mvarFileName))
+			if (mvarPlan is not null && !string.IsNullOrWhiteSpace(mvarPlan.Notes))
 			{
-				parts.Add("Archivo: " + mvarFileName);
+				return mvarPlan.Notes.Trim();
 			}
 
-			if (mvarMeshStale)
+			if (mvarPlan is not null && !string.IsNullOrWhiteSpace(mvarPlan.Name))
 			{
-				parts.Add("Malla desactualizada respecto al script.");
+				return mvarPlan.Name.Trim();
 			}
 
-			if (mvarSelectedCirculation is not null)
+			return string.Empty;
+		}
+	}
+
+	/// <summary>Título del cajetín: nombre del plan del script (<c>plan "…"</c>).</summary>
+	private string PrintPlanNameForMesh
+	{
+		get
+		{
+			if (mvarPlan is not null && !string.IsNullOrWhiteSpace(mvarPlan.Name))
 			{
-				string id = mvarSelectedCirculation.HasServiceNumber
-					? mvarSelectedCirculation.ServiceNumber
-					: mvarSelectedCirculation.Id;
-				parts.Add("Última selección en pantalla: " + id);
+				return mvarPlan.Name.Trim();
 			}
 
-			return string.Join(" · ", parts);
+			if (!string.IsNullOrWhiteSpace(mvarFileName)
+				&& !string.Equals(mvarFileName, "sin título", StringComparison.OrdinalIgnoreCase)
+				&& !string.Equals(mvarFileName, "sin titulo", StringComparison.OrdinalIgnoreCase))
+			{
+				return Path.GetFileNameWithoutExtension(mvarFileName);
+			}
+
+			return "Plan";
 		}
 	}
 
@@ -1186,14 +1200,8 @@
 
 		try
 		{
-			// Topología desde el script (include) o fallback al sample SFM si el script aún no la declara.
+			// Topología y cabecera (plan / notes) desde el script.
 			Plan plan = new Plan();
-			plan.Name = Path.GetFileNameWithoutExtension(mvarFileName);
-			if (string.IsNullOrWhiteSpace(plan.Name) || plan.Name == "sin título" || plan.Name == "sin titulo")
-			{
-				plan.Name = "SFM demo";
-			}
-
 			plan.ScriptBaseDirectory = Path.GetDirectoryName(DemoMeshService.ResolveTopoPath()) ?? string.Empty;
 			plan.EnsureDefaultTrainSpecs();
 			plan.DemandScript = mvarScript;
@@ -1231,6 +1239,22 @@
 				SfmDemoInfrastructure.Apply(plan.Topo);
 			}
 
+			// Si el script no trae plan "…", usar nombre de archivo o demo.
+			if (string.IsNullOrWhiteSpace(plan.Name))
+			{
+				string fromFile = Path.GetFileNameWithoutExtension(mvarFileName);
+				if (!string.IsNullOrWhiteSpace(fromFile)
+					&& !string.Equals(fromFile, "sin título", StringComparison.OrdinalIgnoreCase)
+					&& !string.Equals(fromFile, "sin titulo", StringComparison.OrdinalIgnoreCase))
+				{
+					plan.Name = fromFile;
+				}
+				else
+				{
+					plan.Name = "SFM demo";
+				}
+			}
+
 			TopoLayout topo = plan.Topo;
 			IReadOnlyList<MeshRouteView> views = DemoMeshService.BuildDemoViews(topo);
 			mcolViews = new List<MeshRouteView>(views);
@@ -1242,7 +1266,11 @@
 			mvarMesh = mesh;
 			mvarSelectedCirculation = null;
 			mvarMeshStale = false;
-			mvarView = DemoMeshService.FindViewById(mcolViews, mvarSelectedViewId) ?? (mcolViews.Count > 0 ? mcolViews[0] : null);
+
+			// Preferir la vista de catálogo que mejor cubre las asimilaciones de la malla
+			// (p. ej. PMI–SPB → T3+T2; solo T3 → T3). Si la vista elegida es un mal
+			// encaje (trenes T3 en T3+T2: solo se ve Palma–Enllaç), se cambia.
+			mvarView = PreferViewForMesh(mesh, mcolViews, mvarSelectedViewId);
 			if (mvarView is not null)
 			{
 				mvarSelectedViewId = mvarView.Id;
@@ -1593,7 +1621,122 @@
 		InitAxisBounds();
 		ResetViewWindow();
 		RefreshSvg();
-		mvarStatus = "Vista: " + candidate.Id + " · " + candidate.Name + ".";
+		string note = string.Empty;
+		if (mvarMesh is not null && ScoreViewCoverage(mvarMesh, candidate) < 0.85)
+		{
+			note = " · (la malla solo cubre parte de esta vista; traza = tramo común)";
+		}
+
+		mvarStatus = "Vista: " + candidate.Id + " · " + candidate.Name + "." + note;
+	}
+
+	/// <summary>
+	/// Elige la vista de catálogo que mejor proyecta las asimilaciones de la malla.
+	/// Conserva la selección del usuario si su cobertura es casi óptima.
+	/// </summary>
+	private static MeshRouteView? PreferViewForMesh(
+		Diamond.Timed.Mesh mesh,
+		IReadOnlyList<MeshRouteView> views,
+		string preferredId)
+	{
+		if (views is null || views.Count == 0)
+		{
+			return null;
+		}
+
+		MeshRouteView? preferred = DemoMeshService.FindViewById(views, preferredId);
+		if (mesh is null || mesh.Asimilations.Count == 0)
+		{
+			return preferred ?? views[0];
+		}
+
+		// Añadir vistas planificadas multi-eje al catálogo si no hay equivalente.
+		List<MeshRouteView> catalog = new List<MeshRouteView>(views);
+		int ai = 0;
+		while (ai < mesh.Asimilations.Count)
+		{
+			MeshRouteView planned = mesh.Asimilations[ai].View;
+			bool found = false;
+			int vi = 0;
+			while (vi < catalog.Count)
+			{
+				if (catalog[vi].IsSameOrReversePath(planned))
+				{
+					found = true;
+					break;
+				}
+
+				vi++;
+			}
+
+			if (!found)
+			{
+				catalog.Add(planned);
+			}
+
+			ai++;
+		}
+
+		MeshRouteView? best = null;
+		double bestScore = -1.0;
+		int i = 0;
+		while (i < catalog.Count)
+		{
+			double score = ScoreViewCoverage(mesh, catalog[i]);
+			if (score > bestScore)
+			{
+				bestScore = score;
+				best = catalog[i];
+			}
+
+			i++;
+		}
+
+		if (preferred is not null)
+		{
+			double prefScore = ScoreViewCoverage(mesh, preferred);
+			// Mantener la vista del usuario si cubre al menos el 85 % del mejor score.
+			if (prefScore >= bestScore * 0.85 && prefScore > 0.05)
+			{
+				return preferred;
+			}
+		}
+
+		return best ?? preferred ?? views[0];
+	}
+
+	/// <summary>
+	/// 0..1: fracción de asimilaciones bien proyectables (mismo corredor = 1;
+	/// solape físico = ~0.5; nada = 0).
+	/// </summary>
+	private static double ScoreViewCoverage(Diamond.Timed.Mesh mesh, MeshRouteView view)
+	{
+		if (mesh is null || view is null || mesh.Asimilations.Count == 0)
+		{
+			return 0.0;
+		}
+
+		double sum = 0.0;
+		int n = 0;
+		int i = 0;
+		while (i < mesh.Asimilations.Count)
+		{
+			Diamond.Motion.Asimilation asim = mesh.Asimilations[i];
+			if (view.IsSameOrReversePath(asim.View))
+			{
+				sum += 1.0;
+			}
+			else if (view.OverlapsPhysically(asim.View))
+			{
+				// Tramo común (T3 en T3+T2): cobertura parcial.
+				sum += 0.45;
+			}
+
+			n++;
+			i++;
+		}
+
+		return n > 0 ? sum / n : 0.0;
 	}
 
 	private string ViewButtonClass(MeshRouteView candidate)

@@ -13,6 +13,7 @@ namespace Diamond.Timed
 	/// <code>
 	/// include toposfm227
 	/// plan "nombre"
+	/// notes "descripción o observaciones del plan"
 	/// train default "Modelo" accel 0.9 brake 0.8 vmax 160
 	/// train s3300 "Civia" accel 0.85 brake 0.75 vmax 120
 	/// days lab
@@ -164,6 +165,18 @@ namespace Diamond.Timed
 					}
 
 					ParsePlanLine(tokens, sourceLine, result);
+					continue;
+				}
+
+				if (head == "notes" || head == "note" || head == "notas" || head == "nota")
+				{
+					if (indent > 0)
+					{
+						result.AddError(sourceLine, "'notes' solo se admite al nivel raíz (sin indentar).");
+						continue;
+					}
+
+					ParseNotesLine(tokens, sourceLine, result);
 					continue;
 				}
 
@@ -328,7 +341,7 @@ namespace Diamond.Timed
 				result.AddError(
 					sourceLine,
 					"palabra clave desconocida '" + tokens[0]
-					+ "' (se esperaba include, plan, train/tren, require/req, asim, delete, single/tracks/limit/vmax, o región days|color|with|con|region).");
+					+ "' (se esperaba include, plan, notes, train/tren, require/req, asim, delete, single/tracks/limit/vmax, o región days|color|with|con|region).");
 			}
 
 			if (currentAsim is not null)
@@ -1158,20 +1171,39 @@ namespace Diamond.Timed
 				return;
 			}
 
-			StringBuilder name = new StringBuilder();
-			int index = 1;
+			result.PlanName = JoinTokensFrom(tokens, 1);
+		}
+
+		/// <summary>
+		/// <c>notes "texto libre del plan"</c> · alias <c>notas</c> / <c>note</c>.
+		/// </summary>
+		private static void ParseNotesLine(List<string> tokens, int sourceLine, DemandCompileResult result)
+		{
+			if (tokens.Count < 2)
+			{
+				result.AddError(sourceLine, "uso: notes \"texto de observaciones del plan\"");
+				return;
+			}
+
+			result.Notes = JoinTokensFrom(tokens, 1);
+		}
+
+		private static string JoinTokensFrom(List<string> tokens, int fromIndex)
+		{
+			StringBuilder sb = new StringBuilder();
+			int index = fromIndex;
 			while (index < tokens.Count)
 			{
-				if (index > 1)
+				if (sb.Length > 0)
 				{
-					name.Append(' ');
+					sb.Append(' ');
 				}
 
-				name.Append(tokens[index]);
+				sb.Append(tokens[index]);
 				index++;
 			}
 
-			result.PlanName = name.ToString();
+			return sb.ToString();
 		}
 
 		/// <summary>

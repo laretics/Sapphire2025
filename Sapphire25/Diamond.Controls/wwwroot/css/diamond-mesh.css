@@ -155,10 +155,13 @@
 }
 
 /* —— Ficha de marcha (SVG multipágina) —— */
+/* fixed + z-index alto: el diálogo no debe quedar atrapado en overflow de la malla.
+   (Si un ancestro tiene transform/filter, fixed se ancla a ese contenedor; la impresión
+   no depende de esto: circ-sheet.js monta los SVG fuera del árbol de la malla.) */
 .diamond-circ-sheet-overlay {
 	position: fixed;
 	inset: 0;
-	z-index: 2000;
+	z-index: 10050;
 	background: rgba(2, 6, 12, 0.72);
 	display: flex;
 	align-items: stretch;
@@ -303,6 +306,26 @@
 	display: flex;
 	gap: 0.35rem;
 	align-items: center;
+	flex-wrap: wrap;
+}
+
+.diamond-mesh-print-paper-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	margin: 0;
+	font-size: 0.8rem;
+	color: #e2e8f0;
+}
+
+.diamond-mesh-print-paper-select {
+	width: auto;
+	min-width: 8.5rem;
+	padding: 0.15rem 1.6rem 0.15rem 0.4rem;
+	font-size: 0.8rem;
+	background: #0f1419;
+	color: #e2e8f0;
+	border-color: #334155;
 }
 
 .diamond-mesh-print-pages {
@@ -321,53 +344,65 @@
 	color: #111;
 	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
 	width: min(100%, 1100px);
-	/* A3 apaisado 420:297 */
+	/* Proporción por defecto A3; A4 la sobrescribe vía style o clase */
 	aspect-ratio: 420 / 297;
 	overflow: hidden;
 	flex-shrink: 0;
 	box-sizing: border-box;
 }
 
-/* Una sola hoja: malla a página completa; cajetín DIN superpuesto (plantilla de plano) */
-.diamond-mesh-print-sheet {
-	position: relative;
-	display: block;
-	padding: 0;
-	font-family: "Segoe UI", system-ui, sans-serif;
+.diamond-mesh-print-page.diamond-mesh-print-paper-a4 {
+	aspect-ratio: 297 / 210;
+	width: min(100%, 980px);
 }
 
+/* Hoja: columna = zona de malla (flex) + cajetín reservado al pie (sin solape) */
+.diamond-mesh-print-sheet {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	padding: 0;
+	margin: 0;
+	box-sizing: border-box;
+	font-family: "Segoe UI", system-ui, sans-serif;
+	position: relative;
+}
+
+/* Área representable: todo lo que no es cajetín */
 .diamond-mesh-print-drawing {
-	position: absolute;
-	inset: 0;
+	flex: 1 1 0;
+	min-height: 0;
+	position: relative;
 	background: #fff;
-	z-index: 0;
+	/* Proporción ≈ (1485−200)/1485 ≈ 86,5 % de la hoja */
 }
 
 .diamond-mesh-print-drawing svg.diamond-mesh-print-svg {
 	display: block;
 	width: 100%;
 	height: 100%;
+	max-width: none;
+	max-height: none;
 }
 
-/* —— Cajetín tipo DIN superpuesto al pie (tapa solo esa franja del dibujo) —— */
+/* —— Cajetín DIN compacto (A3 y A4): 2 filas × 4 campos —— */
 .diamond-mesh-print-titleblock {
-	position: absolute;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	/* ~40 mm sobre 297 mm ≈ 13,5 % */
-	height: 13.5%;
-	z-index: 2;
+	flex: 0 0 14%;
+	height: 14%;
+	min-height: 0;
+	max-height: none;
+	position: relative;
+	z-index: 1;
 	border-top: 2px solid #111;
 	box-sizing: border-box;
 	background: #fff;
 	overflow: hidden;
-	box-shadow: 0 -1px 0 #111;
 }
 
 .diamond-mesh-print-tb-grid {
 	display: grid;
-	grid-template-columns: 12% 1fr 22% 9%;
+	grid-template-columns: 9% minmax(0, 1fr) 16% 7%;
 	height: 100%;
 	width: 100%;
 	box-sizing: border-box;
@@ -375,106 +410,139 @@
 
 .diamond-mesh-print-tb-brand {
 	border-right: 1.5px solid #111;
-	padding: 0.35rem 0.45rem;
+	padding: 0.15rem 0.25rem;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
-	gap: 0.15rem;
+	align-items: center;
+	gap: 0.05rem;
 	background: #f7f7f7;
 	box-sizing: border-box;
+	min-width: 0;
+	overflow: hidden;
 }
 
 .diamond-mesh-print-tb-brand-name {
 	font-weight: 800;
-	font-size: 0.95rem;
-	letter-spacing: 0.06em;
+	font-size: clamp(0.55rem, 1.4vh, 0.8rem);
+	letter-spacing: 0.04em;
 	text-transform: uppercase;
 	color: #111;
-	line-height: 1.1;
+	line-height: 1.05;
 }
 
 .diamond-mesh-print-tb-brand-kind {
-	font-size: 0.72rem;
+	font-size: clamp(0.45rem, 1.1vh, 0.62rem);
 	font-weight: 600;
 	color: #333;
-}
-
-.diamond-mesh-print-tb-brand-fmt {
-	font-size: 0.65rem;
-	color: #555;
-	margin-top: 0.15rem;
+	line-height: 1.05;
 }
 
 .diamond-mesh-print-tb-main {
 	border-right: 1.5px solid #111;
-	padding: 0.25rem 0.4rem 0.3rem;
+	padding: 0.12rem 0.28rem 0.15rem;
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
+	min-height: 0;
 	box-sizing: border-box;
 	overflow: hidden;
+	gap: 0.1rem;
 }
 
 .diamond-mesh-print-tb-title {
-	font-size: 0.95rem;
+	font-size: clamp(0.55rem, 1.5vh, 0.85rem);
 	font-weight: 700;
 	color: #111;
-	line-height: 1.15;
-	margin-bottom: 0.2rem;
+	line-height: 1.1;
+	flex: 0 0 auto;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
 
+/*
+ * Fila 1: Vista | Día | Ventana | PK | Escala  (5 celdas iguales)
+ * Fila 2: Camino | Capas | Notas (×3 anchos)   (misma unidad de columna)
+ */
 .diamond-mesh-print-tb-fields {
+	display: grid;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+	grid-template-rows: 1fr 1fr;
+	gap: 0;
+	flex: 1 1 auto;
+	min-height: 0;
 	width: 100%;
-	border-collapse: collapse;
-	font-size: 0.62rem;
-	line-height: 1.2;
-	table-layout: fixed;
+	box-sizing: border-box;
 }
 
-.diamond-mesh-print-tb-fields th,
-.diamond-mesh-print-tb-fields td {
+.diamond-mesh-print-tb-cell {
 	border: 1px solid #999;
-	padding: 0.12rem 0.28rem;
-	text-align: left;
-	vertical-align: top;
+	padding: 0.05rem 0.2rem;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+	background: #fff;
+	box-sizing: border-box;
+}
+
+/* Notas ocupa el hueco de 3 celdas (columnas 3–5 de la fila inferior) */
+.diamond-mesh-print-tb-cell-notes {
+	grid-column: 3 / span 3;
+}
+
+.diamond-mesh-print-tb-cell-lab {
+	font-size: clamp(0.4rem, 0.95vh, 0.55rem);
+	font-weight: 700;
+	color: #444;
+	line-height: 1.05;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+
+.diamond-mesh-print-tb-cell-val {
+	font-size: clamp(0.45rem, 1.05vh, 0.62rem);
+	color: #111;
+	line-height: 1.1;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.diamond-mesh-print-tb-fields th {
-	width: 18%;
-	background: #eee;
-	font-weight: 600;
-	color: #222;
-}
-
-.diamond-mesh-print-tb-fields td {
-	color: #111;
+/* Notas: más espacio → permitir hasta 2 líneas */
+.diamond-mesh-print-tb-cell-notes .diamond-mesh-print-tb-cell-val {
+	white-space: normal;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	line-height: 1.15;
 }
 
 .diamond-mesh-print-tb-stats {
 	border-right: 1.5px solid #111;
-	padding: 0.25rem 0.35rem;
+	padding: 0.1rem 0.25rem;
 	display: flex;
 	flex-direction: column;
 	justify-content: space-evenly;
-	gap: 0.1rem;
+	gap: 0;
 	box-sizing: border-box;
 	overflow: hidden;
+	min-width: 0;
 }
 
 .diamond-mesh-print-tb-stat {
 	display: flex;
 	justify-content: space-between;
 	align-items: baseline;
-	gap: 0.35rem;
-	font-size: 0.62rem;
+	gap: 0.25rem;
+	font-size: clamp(0.42rem, 1vh, 0.58rem);
 	border-bottom: 1px solid #ddd;
-	padding-bottom: 0.08rem;
+	padding: 0.02rem 0;
+	min-width: 0;
 }
 
 .diamond-mesh-print-tb-stat:last-child {
@@ -493,6 +561,7 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	min-width: 0;
 }
 
 .diamond-mesh-print-tb-sheet {
@@ -500,160 +569,163 @@
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 0.15rem;
-	padding: 0.3rem;
+	gap: 0.05rem;
+	padding: 0.15rem;
 	background: #f7f7f7;
 	box-sizing: border-box;
 	text-align: center;
+	min-width: 0;
+	overflow: hidden;
 }
 
 .diamond-mesh-print-tb-sheet-label {
-	font-size: 0.6rem;
+	font-size: clamp(0.4rem, 0.9vh, 0.55rem);
 	font-weight: 700;
 	text-transform: uppercase;
-	letter-spacing: 0.06em;
+	letter-spacing: 0.05em;
 	color: #444;
 }
 
 .diamond-mesh-print-tb-sheet-num {
-	font-size: 1.1rem;
+	font-size: clamp(0.7rem, 1.8vh, 1rem);
 	font-weight: 800;
 	color: #111;
 	line-height: 1;
 }
 
-.diamond-mesh-print-tb-sheet-rev {
-	font-size: 0.6rem;
-	color: #555;
-}
-
 @media print {
-	/* Oculta la app; solo ficha de marcha o impresión de malla */
-	body * {
+	/*
+	 * Ficha: html.diamond-printing-sheet + circ-sheet.js (mount A4 + display:none del body).
+	 * Malla: html.diamond-printing-mesh + mesh-print.js (mm fijos A3/A4).
+	 * No mezclar visibility:hidden global: genera páginas basura con la ficha.
+	 */
+
+	html.diamond-printing-mesh body * {
 		visibility: hidden !important;
 	}
 
-	.diamond-circ-sheet-overlay,
-	.diamond-circ-sheet-overlay *,
-	.diamond-circ-sheet-page,
-	.diamond-circ-sheet-page *,
-	.diamond-mesh-print-overlay,
-	.diamond-mesh-print-overlay *,
-	.diamond-mesh-print-page,
-	.diamond-mesh-print-page * {
+	html.diamond-printing-mesh .diamond-mesh-print-overlay,
+	html.diamond-printing-mesh .diamond-mesh-print-overlay *,
+	html.diamond-printing-mesh .diamond-mesh-print-page,
+	html.diamond-printing-mesh .diamond-mesh-print-page * {
 		visibility: visible !important;
 	}
 
-	.diamond-circ-sheet-overlay,
-	.diamond-mesh-print-overlay {
-		position: static !important;
-		background: #fff !important;
-		padding: 0 !important;
-		display: block !important;
+	html.diamond-printing-mesh .diamond-mesh-print-toolbar,
+	html.diamond-printing-mesh .no-print {
+		display: none !important;
 	}
 
-	.diamond-circ-sheet-dialog,
-	.diamond-mesh-print-dialog {
-		width: 100% !important;
+	/*
+	 * Malla: llena el 100 % de la página de impresión (A3 o A4 apaisado).
+	 * Las medidas concretas en mm las inyecta mesh-print.js según el selector.
+	 * Aquí: anclaje + proporciones plot/cajetín (86,5 % / 13,5 %).
+	 */
+	html.diamond-printing-mesh .diamond-mesh-print-overlay {
+		position: absolute !important;
+		left: 0 !important;
+		top: 0 !important;
+		right: auto !important;
+		bottom: auto !important;
+		margin: 0 !important;
+		padding: 0 !important;
+		background: #fff !important;
+		display: block !important;
+		overflow: hidden !important;
+		z-index: 99999 !important;
+	}
+
+	html.diamond-printing-mesh .diamond-mesh-print-dialog {
 		max-height: none !important;
+		margin: 0 !important;
+		padding: 0 !important;
 		border: none !important;
 		box-shadow: none !important;
 		background: #fff !important;
 		border-radius: 0 !important;
+		display: block !important;
+		overflow: hidden !important;
 	}
 
-	.diamond-circ-sheet-toolbar,
-	.diamond-mesh-print-toolbar,
-	.no-print {
-		display: none !important;
-	}
-
-	.diamond-circ-sheet-pages,
-	.diamond-mesh-print-pages {
-		overflow: visible !important;
+	html.diamond-printing-mesh .diamond-mesh-print-pages {
+		overflow: hidden !important;
 		padding: 0 !important;
+		margin: 0 !important;
 		background: #fff !important;
 		gap: 0 !important;
 		display: block !important;
 	}
 
-	.diamond-circ-sheet-page {
-		box-shadow: none !important;
-		page-break-after: always;
-		break-after: page;
-	}
-
-	.diamond-circ-sheet-page:last-child {
-		page-break-after: auto;
-		break-after: auto;
-	}
-
-	.diamond-circ-sheet-page {
-		width: 210mm !important;
-		height: 297mm !important;
-		aspect-ratio: auto !important;
-		overflow: hidden !important;
-		page: circ-sheet;
-	}
-
-	.diamond-circ-sheet-page svg.diamond-circ-sheet-svg {
-		width: 210mm !important;
-		height: 297mm !important;
-		aspect-ratio: auto !important;
-	}
-
-	/* Una sola hoja A3: malla a toda la superficie; cajetín superpuesto al pie */
-	.diamond-mesh-print-page,
-	.diamond-mesh-print-sheet {
+	html.diamond-printing-mesh .diamond-mesh-print-page,
+	html.diamond-printing-mesh .diamond-mesh-print-sheet {
 		box-shadow: none !important;
 		position: relative !important;
-		width: 420mm !important;
-		height: 297mm !important;
-		min-height: 0 !important;
 		aspect-ratio: auto !important;
 		overflow: hidden !important;
 		page: mesh-print;
-		page-break-after: auto !important;
-		break-after: auto !important;
+		page-break-after: avoid !important;
+		break-after: avoid !important;
 		page-break-inside: avoid !important;
 		display: block !important;
+		padding: 0 !important;
+		margin: 0 !important;
 	}
 
-	.diamond-mesh-print-drawing {
-		position: absolute !important;
-		inset: 0 !important;
-		width: 420mm !important;
-		height: 297mm !important;
-		z-index: 0 !important;
-	}
-
-	.diamond-mesh-print-drawing svg.diamond-mesh-print-svg {
-		position: absolute !important;
-		inset: 0 !important;
-		width: 100% !important;
-		height: 100% !important;
-	}
-
-	.diamond-mesh-print-titleblock {
+	/* Plot: 86 % del alto de página (cajetín compacto 14 %) */
+	html.diamond-printing-mesh .diamond-mesh-print-drawing {
 		position: absolute !important;
 		left: 0 !important;
-		right: 0 !important;
-		bottom: 0 !important;
+		top: 0 !important;
 		width: 100% !important;
-		height: 40mm !important;
-		min-height: 40mm !important;
-		max-height: 40mm !important;
-		z-index: 2 !important;
+		height: 86% !important;
+		flex: none !important;
+		margin: 0 !important;
+		padding: 0 !important;
+		overflow: hidden !important;
+		background: #fff !important;
+	}
+
+	html.diamond-printing-mesh .diamond-mesh-print-drawing svg.diamond-mesh-print-svg {
+		position: absolute !important;
+		left: 0 !important;
+		top: 0 !important;
+		display: block !important;
+		width: 100% !important;
+		height: 100% !important;
+		max-width: none !important;
+		max-height: none !important;
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+	}
+
+	/* Cajetín: 14 % inferior (rejilla 2×4: Capas y Notas visibles en A4) */
+	html.diamond-printing-mesh .diamond-mesh-print-titleblock {
+		position: absolute !important;
+		left: 0 !important;
+		top: 86% !important;
+		bottom: auto !important;
+		right: auto !important;
+		width: 100% !important;
+		height: 14% !important;
+		flex: none !important;
+		margin: 0 !important;
 		border-top: 2px solid #111 !important;
 		-webkit-print-color-adjust: exact !important;
 		print-color-adjust: exact !important;
+		overflow: hidden !important;
+		background: #fff !important;
 	}
 
-	.diamond-mesh-print-tb-brand,
-	.diamond-mesh-print-tb-sheet,
-	.diamond-mesh-print-tb-fields th {
+	html.diamond-printing-mesh .diamond-mesh-print-tb-brand,
+	html.diamond-printing-mesh .diamond-mesh-print-tb-sheet,
+	html.diamond-printing-mesh .diamond-mesh-print-tb-fields th {
 		-webkit-print-color-adjust: exact !important;
 		print-color-adjust: exact !important;
+	}
+
+	.diamond-mesh-print-page,
+	.diamond-mesh-print-sheet {
+		page: mesh-print;
 	}
 
 	@page {
@@ -666,6 +738,7 @@
 		margin: 0;
 	}
 
+	/* Fallback si el JS no inyecta @page (el selector JS tiene prioridad) */
 	@page mesh-print {
 		size: A3 landscape;
 		margin: 0;

@@ -93,17 +93,32 @@ namespace Diamond.Controls.Rendering
 			y += ColHeaderH;
 			double bodyTop = y;
 
+			// Alto útil del cuerpo: no superar el pie de página (evita que el SVG
+			// “crezca” de facto y el navegador parta la hoja en una 2.ª página en blanco).
 			double bodyBottom = PageHeight - MarginB - 16;
+			double availBody = bodyBottom - bodyTop;
+			if (availBody < MinRowH)
+			{
+				availBody = MinRowH;
+			}
+
 			int n = Math.Max(1, rows.Count);
-			double rowH = (bodyBottom - bodyTop) / n;
+			// Si hay demasiadas filas para MinRowH, reducir altura de fila (nunca desbordar).
+			double rowH = availBody / n;
 			if (rowH > MaxRowH)
 			{
 				rowH = MaxRowH;
 			}
 
-			if (rowH < MinRowH)
+			if (rowH < MinRowH && n * MinRowH <= availBody + 0.5)
 			{
 				rowH = MinRowH;
+			}
+
+			// Cuerpo siempre dentro del papel.
+			if (n * rowH > availBody)
+			{
+				rowH = availBody / n;
 			}
 
 			double bodyH = rowH * Math.Max(rows.Count, 1);

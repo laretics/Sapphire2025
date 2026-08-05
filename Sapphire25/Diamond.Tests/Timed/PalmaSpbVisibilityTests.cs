@@ -1,3 +1,4 @@
+using Diamond.Controls.Rendering;
 using Diamond.Timed;
 using Diamond.Topo;
 
@@ -113,6 +114,121 @@ namespace Diamond.Tests.Timed
 		}
 
 		[Fact]
+		public void T3Manacor_Trains_MapUpToEnllac_OnPalmaSpbView()
+		{
+			// PMI→MAN en vista T3+T2: la traza debe llegar hasta Enllaç (fin del tramo T3 común),
+			// no cortarse en la parada anterior (p. ej. Inca).
+			TopoLayout topo = TopoXmlSerializer.Load(SamplePaths.TopoSfm227);
+			SfmDemoInfrastructure.Apply(topo);
+			RouteView ui = BuildPalmaSpbCatalogView(topo);
+
+			Axis t3 = topo.FindAxisById("T3")!;
+			StationOnAxis enllacT3 = t3.Stations.First(s =>
+				s.Station.Name.Contains("Enlla", StringComparison.OrdinalIgnoreCase));
+			StationOnAxis palma = t3.Stations.First(s =>
+				string.Equals(s.Station.Avr, "PMI", StringComparison.OrdinalIgnoreCase) || s.Station.Id == "01");
+			long enllacOnUi = enllacT3.PK - palma.PK; // Concat: route PK 0 en Palma
+
+			// Enllaç debe ser estación de la vista y mapearse desde T3 completo.
+			StationOnRoute? enllacUi = ui.Stations.FirstOrDefault(s =>
+				s.Station.Name.Contains("Enlla", StringComparison.OrdinalIgnoreCase));
+			Assert.NotNull(enllacUi);
+
+			RouteView t3View = RouteView.FromAxis(t3);
+			long mappedEnllac;
+			Assert.True(
+				ui.TryMapRoutePkFrom(t3View, enllacT3.PK, out mappedEnllac),
+				"Enllaç en T3 debe proyectarse en T3+T2");
+			Assert.Equal(enllacUi!.PK, mappedEnllac);
+
+			// Como en la demanda demo: Enllaç en skip → no hay key de parada en Enllaç;
+			// la traza debe llegar igual al PK de Enllaç por el extremo del tramo mapeable.
+			string script = """
+				require both ways every 60 min PMI -> MAN 06:00-10:00 as R-T3
+				  days lab
+				  stops 30s
+				  skip RLL Enllaç "Sant Joan" PSJ
+				  dwell INC 1min
+				""";
+			Plan plan = new Plan(topo);
+			plan.EnsureDefaultTrainSpecs();
+			Assert.True(plan.CompileDemand(script).Success);
+			Mesh mesh = new MeshPlanner(plan).Solve(DayOfWeek.Monday);
+
+			// Ida PMI→MAN
+			Circulation? toMan = mesh.Circulations.FirstOrDefault(c =>
+				string.Equals(c.Asimilation.Origin.Station.Avr, "PMI", StringComparison.OrdinalIgnoreCase)
+				&& string.Equals(c.Asimilation.Destination.Station.Avr, "MAN", StringComparison.OrdinalIgnoreCase));
+			Assert.NotNull(toMan);
+
+			long maxDisp = long.MinValue;
+			int s = 0;
+			while (s <= 200)
+			{
+				double u = s / 200.0;
+				long apk = toMan!.Asimilation.PKByTime(
+					TimeSpan.FromSeconds(u * toMan.Asimilation.TotalTime.TotalSeconds));
+				long dpk;
+				if (ui.TryMapRoutePkFrom(toMan.Asimilation.View, apk, out dpk))
+				{
+					if (dpk > maxDisp)
+					{
+						maxDisp = dpk;
+					}
+				}
+
+				s++;
+			}
+
+			// Debe llegar al PK de Enllaç en la vista (tolerancia 500 m por muestreo).
+			Assert.True(
+				maxDisp >= enllacUi.PK - 500L,
+				"PMI→MAN solo llega a display PK=" + maxDisp
+				+ " pero Enllaç está en " + enllacUi.PK
+				+ " (delta=" + (enllacUi.PK - maxDisp) + ")");
+
+			// El builder de traza (mismo camino que el SVG) debe llegar a Enllaç aunque
+			// Enllaç esté en skip (último apeadero comercial en Inca).
+			MeshYScale yScale = MeshYScale.Create(MeshYScaleMode.LinearPk, ui, ui.PK, ui.PKEnd);
+			List<MeshTrainPathBuilder.Point> pts = MeshTrainPathBuilder.CollectControlPoints(
+				toMan!, ui, ui.PK, ui.PKEnd,
+				toMan!.Departure.TotalSeconds - 60, toMan.Arrival.TotalSeconds + 60,
+				40, 36, 800, 600, yScale, 64, false, out _, out _);
+			Assert.True(pts.Count >= 4, "puntos de control PMI→MAN");
+
+			// Reconstruir el max PK display a partir de los puntos Y (Y baja con PK↑).
+			double yEnllac = yScale.PkToY(enllacUi.PK, 36, 600);
+			double yInca = double.NaN;
+			StationOnRoute? incaUi = ui.Stations.FirstOrDefault(s =>
+				string.Equals(s.Station.Avr, "INC", StringComparison.OrdinalIgnoreCase)
+				|| s.Station.Name.Contains("Inca", StringComparison.OrdinalIgnoreCase));
+			if (incaUi is not null)
+			{
+				yInca = yScale.PkToY(incaUi.PK, 36, 600);
+			}
+
+			double minY = pts[0].Y;
+			int pi = 1;
+			while (pi < pts.Count)
+			{
+				if (pts[pi].Y < minY)
+				{
+					minY = pts[pi].Y;
+				}
+
+				pi++;
+			}
+
+			// Debe bajar al menos hasta cerca de Enllaç (no quedarse en Inca).
+			Assert.True(
+				minY <= yEnllac + 8.0,
+				"traza PMI→MAN en T3+T2 se corta antes de Enllaç: minY=" + minY.ToString("F1")
+				+ " yEnllac=" + yEnllac.ToString("F1")
+				+ (double.IsNaN(yInca) ? "" : " yInca=" + yInca.ToString("F1"))
+				+ " pts=" + pts.Count);
+		}
+
+		[Fact]
 		public void T3Corridor_Trains_VisibleOnPalmaSpbView_CommonSegment()
 		{
 			// Malla solo T3 (PMI–MAN): al mirar T3+T2 deben verse en Palma–Enllaç.
@@ -172,6 +288,152 @@ namespace Diamond.Tests.Timed
 				// Enllaç está a ~33573; MAN más lejos → no debe mapear.
 				Assert.False(ok, "MAN no forma parte de T3+T2");
 			}
+		}
+
+		[Fact]
+		public void TryFindPath_And_CatalogConcat_AreSameOrMappable()
+		{
+			TopoLayout topo = TopoXmlSerializer.Load(SamplePaths.TopoSfm227);
+			SfmDemoInfrastructure.Apply(topo);
+			RouteView catalog = BuildPalmaSpbCatalogView(topo);
+
+			Station palma = topo.Stations.First(s =>
+				string.Equals(s.Avr, "PMI", StringComparison.OrdinalIgnoreCase) || s.Id == "01");
+			Station spb = topo.Stations.First(s =>
+				string.Equals(s.Avr, "SPB", StringComparison.OrdinalIgnoreCase) || s.Id == "33");
+
+			RouteView? planned;
+			Assert.True(RouteView.TryFindPath(topo, palma, spb, out planned, out _, out _));
+			Assert.NotNull(planned);
+
+			Console.WriteLine("catalog=" + catalog.PathSignature());
+			Console.WriteLine("planned=" + planned!.PathSignature());
+			Console.WriteLine("same=" + catalog.IsSamePath(planned) + " rev=" + catalog.IsReversePath(planned));
+			Console.WriteLine("catalog len=" + catalog.Length + " planned len=" + planned.Length);
+
+			// Aunque la firma difiera, la proyección punto a punto debe cubrir el trayecto.
+			Assert.True(
+				catalog.IsSamePath(planned)
+				|| catalog.IsReversePath(planned)
+				|| catalog.OverlapsPhysically(planned),
+				"catálogo y camino planificado deben ser el mismo corredor");
+		}
+
+		[Fact]
+		public void PalmaSpb_PathPoints_CoverNearlyFullCatalogViewPk()
+		{
+			// Las trazas PMI↔SPB deben proyectarse casi de PK0 a PKEnd en la vista T3+T2.
+			TopoLayout topo = TopoXmlSerializer.Load(SamplePaths.TopoSfm227);
+			SfmDemoInfrastructure.Apply(topo);
+			RouteView ui = BuildPalmaSpbCatalogView(topo);
+
+			string script = """
+				require both ways every 60 min PMI -> SPB 06:00-12:00 as R-SPB
+				  days lab
+				  stops 30s
+				""";
+
+			Plan plan = new Plan(topo);
+			plan.EnsureDefaultTrainSpecs();
+			Assert.True(plan.CompileDemand(script).Success, "compile");
+			Mesh mesh = new MeshPlanner(plan).Solve(DayOfWeek.Monday);
+			Assert.True(mesh.Circulations.Count >= 2);
+
+			MeshYScale yScale = MeshYScale.Create(MeshYScaleMode.LinearPk, ui, ui.PK, ui.PKEnd);
+			long uiSpan = ui.PKEnd - ui.PK;
+			Assert.True(uiSpan > 10000L);
+
+			int i = 0;
+			int checkedN = 0;
+			while (i < mesh.Circulations.Count && checkedN < 4)
+			{
+				Circulation c = mesh.Circulations[i];
+				Assert.True(MeshCantonGeometry.IsVisibleOnView(c.Asimilation, ui), c.Id + " visible");
+
+				// Muestrear el trayecto completo en PK de asimilación y proyectar.
+				long minDisp = long.MaxValue;
+				long maxDisp = long.MinValue;
+				int ok = 0;
+				int fail = 0;
+				int s = 0;
+				while (s <= 20)
+				{
+					double u = s / 20.0;
+					long asimPk = c.Asimilation.PKByTime(
+						TimeSpan.FromSeconds(u * c.Asimilation.TotalTime.TotalSeconds));
+					long dispPk;
+					if (ui.TryMapRoutePkFrom(c.Asimilation.View, asimPk, out dispPk))
+					{
+						ok++;
+						if (dispPk < minDisp)
+						{
+							minDisp = dispPk;
+						}
+
+						if (dispPk > maxDisp)
+						{
+							maxDisp = dispPk;
+						}
+					}
+					else
+					{
+						fail++;
+					}
+
+					s++;
+				}
+
+				Assert.True(fail == 0, c.Id + " fallos de mapeo=" + fail + " sigAsim="
+					+ c.Asimilation.View.PathSignature() + " sigUi=" + ui.PathSignature()
+					+ " same=" + ui.IsSamePath(c.Asimilation.View)
+					+ " rev=" + ui.IsReversePath(c.Asimilation.View));
+
+				long covered = maxDisp - minDisp;
+				// Debe cubrir al menos el 85 % de la vista (extremos en estaciones).
+				Assert.True(
+					covered * 100 >= uiSpan * 85,
+					c.Id + " cobertura PK display " + minDisp + ".." + maxDisp
+					+ " (" + covered + " m) vs vista " + ui.PK + ".." + ui.PKEnd
+					+ " (" + uiSpan + " m). same=" + ui.IsSamePath(c.Asimilation.View)
+					+ " rev=" + ui.IsReversePath(c.Asimilation.View)
+					+ " asimSig=" + c.Asimilation.View.PathSignature()
+					+ " uiSig=" + ui.PathSignature());
+
+				// Control points del builder deben existir y cubrir buen rango Y.
+				List<Diamond.Controls.Rendering.MeshTrainPathBuilder.Point> pts =
+					Diamond.Controls.Rendering.MeshTrainPathBuilder.CollectControlPoints(
+						c, ui, ui.PK, ui.PKEnd,
+						c.Departure.TotalSeconds - 60, c.Arrival.TotalSeconds + 60,
+						40, 36, 800, 600, yScale, 96, false, out _, out _);
+				Assert.True(pts.Count >= 8, c.Id + " puntos=" + pts.Count);
+				double minY = pts[0].Y;
+				double maxY = pts[0].Y;
+				int p = 1;
+				while (p < pts.Count)
+				{
+					if (pts[p].Y < minY)
+					{
+						minY = pts[p].Y;
+					}
+
+					if (pts[p].Y > maxY)
+					{
+						maxY = pts[p].Y;
+					}
+
+					p++;
+				}
+
+				// plotH=600: un trayecto casi completo debe ocupar buen tramo vertical.
+				Assert.True(
+					maxY - minY >= 400.0,
+					c.Id + " rango Y demasiado corto: " + minY.ToString("F1") + ".." + maxY.ToString("F1"));
+
+				checkedN++;
+				i++;
+			}
+
+			Assert.True(checkedN >= 2);
 		}
 
 		/// <summary>Misma construcción que DemoMeshService.BuildDemoViews para T3+T2.</summary>

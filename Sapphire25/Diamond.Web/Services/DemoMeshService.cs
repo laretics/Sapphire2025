@@ -20,6 +20,7 @@ namespace Diamond.Web.Services
 		public const string SfmT3DemandScript = """
 			include toposfm227
 			plan "SFM T3 laborables"
+			notes "Malla de pruebas del programa Diamond"
 			train default "SFM diésel" accel 0.9 brake 0.8 vmax 100
 			# Cadencia ~40 min; ida y vuelta; cruce en Petra
 			require both ways every 40 min PMI -> MAN 06:00-22:00 using default as R-T3
@@ -36,6 +37,7 @@ namespace Diamond.Web.Services
 		public const string SfmPalmaSaPoblaDemandScript = """
 			include toposfm227
 			plan "SFM Palma-Sa Pobla"
+			notes "Corredor multi-eje Palma – Sa Pobla"
 			train default "SFM diésel" accel 0.9 brake 0.8 vmax 100
 			require both ways every 60 min PMI -> SPB 06:00-21:00 using default as R-SPB
 			  days lab

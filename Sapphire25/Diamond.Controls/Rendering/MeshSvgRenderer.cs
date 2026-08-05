@@ -138,15 +138,20 @@ namespace Diamond.Controls.Rendering
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<rect x=\"0\" y=\"0\" width=\"{width}\" height=\"{height}\" fill=\"{palette.Background}\"/>");
 
-			// Defs reutilizables (reloj actual, clip)
-			string clipId = "plotClip";
+			// IDs únicos por render: si coexisten malla en pantalla + impresión en el DOM,
+			// url(#plotClip) resolvería al primer id del documento (clip pequeño de pantalla)
+			// y las trazas de impresión quedarían recortadas a ~mitad superior/izquierda.
+			string svgUid = Guid.NewGuid().ToString("N");
+			string clipId = "plotClip_" + svgUid;
+			string nowGradId = "meshNowGrad_" + svgUid;
 			sb.Append("<defs>");
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<clipPath id=\"{clipId}\"><rect x=\"{plotLeft}\" y=\"{plotTop}\" width=\"{plotW}\" height=\"{plotH}\"/></clipPath>");
 			if (!palette.IsPaper)
 			{
-				sb.Append(
-					"<linearGradient id=\"meshNowGrad\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">"
+				sb.Append("<linearGradient id=\"");
+				sb.Append(nowGradId);
+				sb.Append("\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">"
 					+ "<stop offset=\"0%\" stop-color=\"#67e8f9\" stop-opacity=\"0.15\"/>"
 					+ "<stop offset=\"50%\" stop-color=\"#22d3ee\" stop-opacity=\"0.95\"/>"
 					+ "<stop offset=\"100%\" stop-color=\"#67e8f9\" stop-opacity=\"0.15\"/>"
@@ -220,12 +225,15 @@ namespace Diamond.Controls.Rendering
 				DrawOccupations(sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH, yScale);
 			}
 
-			// Circulaciones + números (si el detalle lo pide)
+			// Circulaciones (trazas dentro del clip). Los números se dibujan fuera del clip
+			// para poder anclarlos también a la barra de horas.
 			int drawn = 0;
+			List<NumberLabel> trainNumberLabels = new List<NumberLabel>();
 			if (options.ShowTrainPaths || options.ShowTrainNumbers)
 			{
 				drawn = DrawCirculations(
-					sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH, yScale, options);
+					sb, mesh, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH, yScale, options,
+					trainNumberLabels);
 			}
 
 			// Conflictos: intersección roja + icono de aviso (encima de trazas)
@@ -237,7 +245,9 @@ namespace Diamond.Controls.Rendering
 			// Línea de hora actual (dentro del clip del plot)
 			if (options.ShowNowLine && options.NowTime.HasValue)
 			{
-				DrawNowLine(sb, options.NowTime.Value, t0, t1, plotLeft, plotTop, plotW, plotH, drawChrome: false);
+				DrawNowLine(
+					sb, options.NowTime.Value, t0, t1, plotLeft, plotTop, plotW, plotH,
+					drawChrome: false, nowGradId: nowGradId);
 			}
 
 			sb.Append("</g>");
@@ -251,6 +261,12 @@ namespace Diamond.Controls.Rendering
 			// —— Regla de tiempo (fija abajo; contenido según tiempo visible) ——
 			DrawTimeRuler(sb, t0, t1, plotLeft, plotTop, plotW, plotH, height, palette);
 
+			// Números de tren (rotado a continuación del trazo, o en la barra de horas).
+			if (options.ShowTrainNumbers && trainNumberLabels.Count > 0)
+			{
+				AppendTrainNumberLabels(sb, trainNumberLabels, palette);
+			}
+
 			// Marcos plot encima del clip
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<rect x=\"{plotLeft}\" y=\"{plotTop}\" width=\"{plotW}\" height=\"{plotH}\" fill=\"none\" stroke=\"{palette.PlotBorder}\" stroke-width=\"1.2\"/>");
@@ -258,7 +274,9 @@ namespace Diamond.Controls.Rendering
 			// Cabecera/badge del reloj actual (fuera del clip, encima del marco)
 			if (options.ShowNowLine && options.NowTime.HasValue && !palette.IsPaper)
 			{
-				DrawNowLine(sb, options.NowTime.Value, t0, t1, plotLeft, plotTop, plotW, plotH, drawChrome: true);
+				DrawNowLine(
+					sb, options.NowTime.Value, t0, t1, plotLeft, plotTop, plotW, plotH,
+					drawChrome: true, nowGradId: nowGradId);
 			}
 
 			// Leyendas
@@ -360,7 +378,8 @@ namespace Diamond.Controls.Rendering
 			double plotTop,
 			double plotW,
 			double plotH,
-			bool drawChrome)
+			bool drawChrome,
+			string nowGradId)
 		{
 			double nowSec = now.TotalSeconds;
 			if (nowSec < t0 || nowSec > t1 || t1 <= t0)
@@ -373,6 +392,7 @@ namespace Diamond.Controls.Rendering
 			string y0s = plotTop.ToString("0.##", CultureInfo.InvariantCulture);
 			string y1s = (plotTop + plotH).ToString("0.##", CultureInfo.InvariantCulture);
 			string clock = FormatClockWithSeconds(now);
+			string gradRef = string.IsNullOrEmpty(nowGradId) ? "meshNowGrad" : nowGradId;
 
 			if (!drawChrome)
 			{
@@ -382,7 +402,7 @@ namespace Diamond.Controls.Rendering
 				sb.Append(CultureInfo.InvariantCulture,
 					$"<line x1=\"{xs}\" y1=\"{y0s}\" x2=\"{xs}\" y2=\"{y1s}\" stroke=\"#22d3ee\" stroke-width=\"3.5\" stroke-opacity=\"0.28\"/>");
 				sb.Append(CultureInfo.InvariantCulture,
-					$"<line x1=\"{xs}\" y1=\"{y0s}\" x2=\"{xs}\" y2=\"{y1s}\" stroke=\"url(#meshNowGrad)\" stroke-width=\"1.6\" stroke-dasharray=\"7 5\" stroke-linecap=\"round\"/>");
+					$"<line x1=\"{xs}\" y1=\"{y0s}\" x2=\"{xs}\" y2=\"{y1s}\" stroke=\"url(#{gradRef})\" stroke-width=\"1.6\" stroke-dasharray=\"7 5\" stroke-linecap=\"round\"/>");
 				// Marca inferior en forma de chevron
 				double cy = plotTop + plotH - 2;
 				sb.Append(CultureInfo.InvariantCulture,
@@ -704,13 +724,11 @@ namespace Diamond.Controls.Rendering
 			double plotW,
 			double plotH,
 			MeshYScale yScale,
-			MeshSvgDrawOptions options)
+			MeshSvgDrawOptions options,
+			List<NumberLabel> labelsOut)
 		{
 			// Un color por asimilación (mismo perfil de marcha → mismo color).
 			Dictionary<Asimilation, string> colorByAsim = BuildAsimilationColorMap(mesh);
-
-			// Etiquetas de número en una pasada posterior (encima de las trazas).
-			List<NumberLabel> labels = new List<NumberLabel>();
 
 			// Circulación seleccionada: se dibuja al final (encima del resto).
 			string? selectedPath = null;
@@ -754,17 +772,27 @@ namespace Diamond.Controls.Rendering
 					color = palette.MapTrainColor(color);
 				}
 
-				double labelX;
-				double labelY;
-				bool wantLabel = options.ShowTrainNumbers;
-				// Completo: spline Catmull-Rom → Bezier. Interactivo (pan/zoom): polilínea.
-				string pathD = MeshTrainPathBuilder.BuildSvgPath(
+				bool wantLabel = options.ShowTrainNumbers && c.HasServiceNumber;
+				// Puntos de control una sola vez: path + colocación del número.
+				List<MeshTrainPathBuilder.Point> points = MeshTrainPathBuilder.CollectControlPoints(
 					c, view, pkMin, pkMax, t0, t1, plotLeft, plotTop, plotW, plotH, yScale,
 					options.MaxPolylineSamples,
-					wantLabel,
-					out labelX, out labelY,
-					useSpline: options.UseSplinePaths);
-				if (pathD.Length > 0 || !double.IsNaN(labelX))
+					wantLabel: false,
+					out _, out _);
+
+				string pathD = points.Count > 0
+					? MeshTrainPathBuilder.ToSvgPath(points, options.UseSplinePaths)
+					: string.Empty;
+
+				List<MeshTrainPathBuilder.TrainLabelPlacement> placements =
+					new List<MeshTrainPathBuilder.TrainLabelPlacement>();
+				if (wantLabel && points.Count > 0)
+				{
+					placements = MeshTrainPathBuilder.ComputeLabelPlacements(
+						points, plotLeft, plotTop, plotW, plotH, c.ServiceNumber);
+				}
+
+				if (pathD.Length > 0 || placements.Count > 0)
 				{
 					string numberText = c.HasServiceNumber
 						? c.ServiceNumber
@@ -795,18 +823,32 @@ namespace Diamond.Controls.Rendering
 
 						drawn++;
 					}
-					else if (!options.ShowTrainPaths && wantLabel && !double.IsNaN(labelX))
+					else if (!options.ShowTrainPaths && wantLabel && placements.Count > 0)
 					{
 						// Solo etiquetas: cuenta como visible para el título.
 						drawn++;
 					}
 
-					if (wantLabel
-						&& c.HasServiceNumber
-						&& !double.IsNaN(labelX))
+					if (wantLabel && placements.Count > 0)
 					{
 						string labelColor = selected ? options.Palette.SelectionLabel : color;
-						labels.Add(new NumberLabel(labelX, labelY, numberText, labelColor));
+						int pi = 0;
+						while (pi < placements.Count)
+						{
+							MeshTrainPathBuilder.TrainLabelPlacement placement = placements[pi];
+							if (placement.IsValid)
+							{
+								labelsOut.Add(new NumberLabel(
+									placement.X,
+									placement.Y,
+									numberText,
+									labelColor,
+									placement.AngleDeg,
+									placement.Band));
+							}
+
+							pi++;
+						}
 					}
 				}
 
@@ -827,17 +869,12 @@ namespace Diamond.Controls.Rendering
 				sb.Append("</path>");
 			}
 
-			if (options.ShowTrainNumbers)
-			{
-				AppendTrainNumberLabels(sb, labels, options.Palette);
-			}
-
 			return drawn;
 		}
 
 		/// <summary>
-		/// Dibuja números de tren con culling espacial barato (rejilla ~40 px) para no
-		/// saturar el SVG cuando hay muchas circulaciones en la ventana.
+		/// Dibuja números de tren con culling espacial barato para no saturar el SVG.
+		/// Reglas superior/inferior: colisión solo en X (por banda). Plot: celda 2D.
 		/// </summary>
 		private static void AppendTrainNumberLabels(StringBuilder sb, List<NumberLabel> labels, MeshSvgPalette palette)
 		{
@@ -852,18 +889,47 @@ namespace Diamond.Controls.Rendering
 			while (li < labels.Count)
 			{
 				NumberLabel lab = labels[li];
-				int cellX = (int)Math.Floor(lab.X / TrainNumberCellPx);
-				int cellY = (int)Math.Floor(lab.Y / TrainNumberCellPx);
-				long key = ((long)cellX << 32) ^ (uint)cellY;
+				long key;
+				if (lab.Band == MeshTrainPathBuilder.TrainLabelBand.TopRuler
+					|| lab.Band == MeshTrainPathBuilder.TrainLabelBand.BottomRuler)
+				{
+					// Reglas: colisión solo en X; prefijo de banda para no mezclar superior/inferior.
+					int cellX = (int)Math.Floor(lab.X / (TrainNumberCellPx * 0.85));
+					long bandTag = lab.Band == MeshTrainPathBuilder.TrainLabelBand.TopRuler
+						? 1L << 60
+						: 2L << 60;
+					key = bandTag ^ (uint)cellX;
+				}
+				else
+				{
+					int cellX = (int)Math.Floor(lab.X / TrainNumberCellPx);
+					int cellY = (int)Math.Floor(lab.Y / TrainNumberCellPx);
+					key = ((long)cellX << 32) ^ (uint)cellY;
+				}
+
 				if (!occupiedCells.Add(key))
 				{
 					li++;
 					continue;
 				}
 
-				// Halo ligero (stroke 2) en lugar de 3: suficiente legibilidad, menos coste de paint.
-				sb.Append(CultureInfo.InvariantCulture,
-					$"<text x=\"{lab.X.ToString("0.#", CultureInfo.InvariantCulture)}\" y=\"{lab.Y.ToString("0.#", CultureInfo.InvariantCulture)}\" fill=\"{lab.Color}\" stroke=\"{palette.LabelHalo}\" stroke-width=\"2\" paint-order=\"stroke fill\" font-size=\"11\" font-weight=\"700\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\" dominant-baseline=\"middle\">{Escape(lab.Text)}</text>");
+				string xStr = lab.X.ToString("0.#", CultureInfo.InvariantCulture);
+				string yStr = lab.Y.ToString("0.#", CultureInfo.InvariantCulture);
+				string fontSize = MeshTrainPathBuilder.TrainNumberFontSize.ToString("0.#", CultureInfo.InvariantCulture);
+
+				// Halo + rotación según pendiente del trazo en el extremo.
+				if (Math.Abs(lab.AngleDeg) < 0.5)
+				{
+					sb.Append(CultureInfo.InvariantCulture,
+						$"<text x=\"{xStr}\" y=\"{yStr}\" fill=\"{lab.Color}\" stroke=\"{palette.LabelHalo}\" stroke-width=\"2\" paint-order=\"stroke fill\" font-size=\"{fontSize}\" font-weight=\"700\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\" dominant-baseline=\"middle\">{Escape(lab.Text)}</text>");
+				}
+				else
+				{
+					string ang = lab.AngleDeg.ToString("0.##", CultureInfo.InvariantCulture);
+					sb.Append(CultureInfo.InvariantCulture,
+						$"<text x=\"{xStr}\" y=\"{yStr}\" fill=\"{lab.Color}\" stroke=\"{palette.LabelHalo}\" stroke-width=\"2\" paint-order=\"stroke fill\" font-size=\"{fontSize}\" font-weight=\"700\" font-family=\"Segoe UI,sans-serif\" text-anchor=\"middle\" dominant-baseline=\"middle\" transform=\"rotate({ang} {xStr} {yStr})\">{Escape(lab.Text)}</text>");
+				}
+
 				li++;
 			}
 		}
@@ -1278,13 +1344,23 @@ namespace Diamond.Controls.Rendering
 			private readonly double mvarY;
 			private readonly string mvarText;
 			private readonly string mvarColor;
+			private readonly double mvarAngleDeg;
+			private readonly MeshTrainPathBuilder.TrainLabelBand mvarBand;
 
-			public NumberLabel(double x, double y, string text, string color)
+			public NumberLabel(
+				double x,
+				double y,
+				string text,
+				string color,
+				double angleDeg,
+				MeshTrainPathBuilder.TrainLabelBand band)
 			{
 				mvarX = x;
 				mvarY = y;
 				mvarText = text;
 				mvarColor = color;
+				mvarAngleDeg = angleDeg;
+				mvarBand = band;
 			}
 
 			public double X
@@ -1305,6 +1381,16 @@ namespace Diamond.Controls.Rendering
 			public string Color
 			{
 				get { return mvarColor; }
+			}
+
+			public double AngleDeg
+			{
+				get { return mvarAngleDeg; }
+			}
+
+			public MeshTrainPathBuilder.TrainLabelBand Band
+			{
+				get { return mvarBand; }
 			}
 		}
 

@@ -15,6 +15,7 @@ namespace Diamond.Timed
 		private readonly List<TrainSpecs> mcolFleet;
 		private readonly List<string> mcolErrors;
 		private string mvarPlanName;
+		private string mvarNotes;
 		private string mvarIncludedTopoPath;
 
 		public DemandCompileResult()
@@ -26,6 +27,7 @@ namespace Diamond.Timed
 			mcolFleet = new List<TrainSpecs>();
 			mcolErrors = new List<string>();
 			mvarPlanName = string.Empty;
+			mvarNotes = string.Empty;
 			mvarIncludedTopoPath = string.Empty;
 		}
 
@@ -33,6 +35,15 @@ namespace Diamond.Timed
 		{
 			get { return mvarPlanName; }
 			internal set { mvarPlanName = value ?? string.Empty; }
+		}
+
+		/// <summary>
+		/// Notas del plan desde la directiva <c>notes</c> del script (texto libre).
+		/// </summary>
+		public string Notes
+		{
+			get { return mvarNotes; }
+			internal set { mvarNotes = value ?? string.Empty; }
 		}
 
 		/// <summary>

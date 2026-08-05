@@ -1,0 +1,26 @@
+﻿using Diamond.Topo;
+using Diamond.Timed;
+using System;
+using System.Linq;
+using System.Collections.Generic;
+
+var topo = TopoXmlSerializer.Load(@"Diamond.Tests\Samples\Onice\toposfm227.xml");
+SfmDemoInfrastructure.Apply(topo);
+var t3 = topo.FindAxisById("T3")!;
+var t2 = topo.FindAxisById("T2")!;
+var palma = t3.Stations.First(s => s.Station.Avr=="PMI" || s.Station.Id=="01");
+var enT3 = t3.Stations.First(s => s.Station.Name.Contains("Enlla", StringComparison.OrdinalIgnoreCase));
+var enT2 = t2.Stations.First(s => s.Station.Name.Contains("Enlla", StringComparison.OrdinalIgnoreCase));
+var spb = t2.Stations.First(s => s.Station.Avr=="SPB");
+var segs = new List<(Axis,long,long)> { (t3, palma.PK, enT3.PK), (t2, enT2.PK, spb.PK) };
+var concat = RouteView.Concat("T3+T2", "x", segs);
+Station? p = topo.Stations.First(s => s.Avr=="PMI" || s.Id=="01");
+Station? s = topo.Stations.First(s => s.Avr=="SPB");
+RouteView? found;
+StationOnRoute? o,d;
+RouteView.TryFindPath(topo, p, s, out found, out o, out d);
+Console.WriteLine("CONCAT: " + concat.PathSignature());
+Console.WriteLine("FIND:   " + found!.PathSignature());
+Console.WriteLine("same=" + concat.IsSamePath(found));
+Console.WriteLine("rev=" + concat.IsReversePath(found));
+Console.WriteLine("concat len=" + concat.Length + " find len=" + found.Length);

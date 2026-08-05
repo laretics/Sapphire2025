@@ -16,6 +16,7 @@ namespace Diamond.Timed
 		private string mvarId;
 		private string mvarName;
 		private string mvarComment;
+		private string mvarNotes;
 		private TopoLayout? mvarTopo;
 		private TopoStorage? mvarTopoStorage;
 		private string mvarScriptBaseDirectory;
@@ -31,6 +32,7 @@ namespace Diamond.Timed
 			mvarId = string.Empty;
 			mvarName = string.Empty;
 			mvarComment = string.Empty;
+			mvarNotes = string.Empty;
 			mvarTopo = null;
 			mvarTopoStorage = null;
 			mvarScriptBaseDirectory = string.Empty;
@@ -84,6 +86,15 @@ namespace Diamond.Timed
 		{
 			get { return mvarComment; }
 			set { mvarComment = value ?? string.Empty; }
+		}
+
+		/// <summary>
+		/// Notas del plan (directiva <c>notes</c> del mini-DSL). Usadas p. ej. en el cajetín de impresión.
+		/// </summary>
+		public string Notes
+		{
+			get { return mvarNotes; }
+			set { mvarNotes = value ?? string.Empty; }
 		}
 
 		/// <summary>
@@ -259,10 +270,13 @@ namespace Diamond.Timed
 			mvarDemandScript = script ?? string.Empty;
 			DemandCompileResult result = DemandScriptParser.Parse(mvarDemandScript);
 
-			if (result.PlanName.Length > 0 && mvarName.Length == 0)
+			// Cabecera del script: plan y notes son fuente de verdad al compilar.
+			if (result.PlanName.Length > 0)
 			{
 				mvarName = result.PlanName;
 			}
+
+			mvarNotes = result.Notes;
 
 			mcolDemand.Clear();
 			mcolDeletes.Clear();

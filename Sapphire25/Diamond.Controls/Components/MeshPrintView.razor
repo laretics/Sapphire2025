@@ -5,8 +5,8 @@
 @inject IJSRuntime Js
 
 @*
-  Vista previa de impresión de malla: una sola hoja A3 apaisada
-  (dibujo + cajetín DIN inferior), tema papel. window.print + CSS @media print.
+  Impresión de malla: hoja apaisada A3 o A4.
+  El SVG se genera en coordenadas lógicas fijas y se escala al 100 % de la página.
 *@
 @if (mvarOpen)
 {
@@ -15,15 +15,25 @@
 			<div class="diamond-mesh-print-toolbar no-print">
 				<span class="diamond-mesh-print-toolbar-title">
 					Imprimir malla
-					<span class="text-muted"> · A3 apaisado · cajetín DIN en la misma hoja</span>
+					<span class="text-muted"> · escala a página completa · cajetín DIN</span>
 				</span>
 				<span class="diamond-mesh-print-toolbar-actions">
+					<label class="diamond-mesh-print-paper-label" title="Formato de papel (apaisado)">
+						<span class="text-muted me-1">Papel</span>
+						<select class="form-select form-select-sm diamond-mesh-print-paper-select"
+								value="@PaperSelectValue"
+								@onchange="OnPaperChanged">
+							<option value="A3">A3 apaisado</option>
+							<option value="A4">A4 apaisado</option>
+						</select>
+					</label>
 					<button type="button" class="btn btn-sm btn-primary" @onclick="PrintAsync" title="Abrir diálogo de impresión">Imprimir…</button>
 					<button type="button" class="btn btn-sm btn-outline-light" @onclick="Close" title="Cerrar">Cerrar</button>
 				</span>
 			</div>
 			<div class="diamond-mesh-print-pages">
-				<div class="diamond-mesh-print-page diamond-mesh-print-sheet">
+				<div class="diamond-mesh-print-page diamond-mesh-print-sheet @PaperCssClass"
+					 style="@PreviewPageStyle">
 					<div class="diamond-mesh-print-drawing">
 						@((MarkupString)mvarMeshSvg)
 					</div>
@@ -38,6 +48,15 @@
 	private bool mvarOpen;
 	private string mvarTitleBlockHtml = string.Empty;
 	private string mvarMeshSvg = string.Empty;
+	private MeshPrintPaperSize mvarPaper = MeshPrintPaperSize.A3Landscape;
+
+	/// <summary>Estado del último Open (para re-render al cambiar papel no hace falta).</summary>
+	private TimeSpan mvarTimeStart;
+	private TimeSpan mvarTimeEnd;
+	private long mvarPkMin;
+	private long mvarPkMax;
+	private MeshSvgDrawOptions mvarScreenOptions;
+	private MeshYScaleMode mvarYScaleMode;
 
 	[Parameter]
 	public Mesh? Mesh { get; set; }
@@ -54,6 +73,36 @@
 	[Parameter]
 	public string? Notes { get; set; }
 
+	private string PaperSelectValue
+	{
+		get
+		{
+			return mvarPaper == MeshPrintPaperSize.A4Landscape ? "A4" : "A3";
+		}
+	}
+
+	private string PaperCssClass
+	{
+		get
+		{
+			return mvarPaper == MeshPrintPaperSize.A4Landscape
+				? "diamond-mesh-print-paper-a4"
+				: "diamond-mesh-print-paper-a3";
+		}
+	}
+
+	/// <summary>Proporción de vista previa según papel (misma ratio que mm reales).</summary>
+	private string PreviewPageStyle
+	{
+		get
+		{
+			double w = MeshPrintDocument.PageWidthMm(mvarPaper);
+			double h = MeshPrintDocument.PageHeightMm(mvarPaper);
+			return "aspect-ratio: " + w.ToString(System.Globalization.CultureInfo.InvariantCulture)
+				+ " / " + h.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";";
+		}
+	}
+
 	/// <summary>Abre la vista previa con la ventana y capas actuales del diagrama.</summary>
 	public void Open(
 		TimeSpan timeStart,
@@ -68,48 +117,14 @@
 			return;
 		}
 
-		int visible = MeshPrintDocument.CountVisibleCirculations(Mesh, View, timeStart, timeEnd);
-		List<string> layers = new List<string>();
-		if (screenOptions.ShowTrainPaths) { layers.Add("trazas"); }
-		if (screenOptions.ShowTrainNumbers) { layers.Add("números"); }
-		if (screenOptions.ShowConflicts) { layers.Add("conflictos"); }
-		if (screenOptions.ShowSpeedStrip) { layers.Add("V"); }
-		if (screenOptions.ShowTrackStrip) { layers.Add("#"); }
-		// Cantones omitidos a propósito en papel (tóner).
+		mvarTimeStart = timeStart;
+		mvarTimeEnd = timeEnd;
+		mvarPkMin = pkMin;
+		mvarPkMax = pkMax;
+		mvarScreenOptions = screenOptions;
+		mvarYScaleMode = yScaleMode;
 
-		MeshPrintDocument.CoverInfo cover = new MeshPrintDocument.CoverInfo
-		{
-			PlanName = PlanName,
-			ViewId = View.Id,
-			ViewName = View.Name,
-			PathSignature = View.PathSignature(),
-			PlanningDay = PlanningDay,
-			TimeStart = timeStart,
-			TimeEnd = timeEnd,
-			PkMin = pkMin,
-			PkMax = pkMax,
-			CirculationCount = Mesh.Circulations.Count,
-			VisibleCirculationCount = visible,
-			AsimilationCount = Mesh.Asimilations.Count,
-			WarningCount = Mesh.Warnings.Count,
-			ErrorCount = Mesh.Errors.Count,
-			YScaleLabel = yScaleMode == MeshYScaleMode.SteppedSingular
-				? "Escalonada (singulares)"
-				: "PK lineal",
-			LayersSummary = layers.Count > 0 ? string.Join(", ", layers) : "—",
-			PrintedAt = DateTime.Now,
-			Notes = Notes ?? string.Empty
-		};
-
-		mvarTitleBlockHtml = MeshPrintDocument.BuildTitleBlockHtml(cover);
-		mvarMeshSvg = MeshPrintDocument.BuildMeshSvg(
-			Mesh,
-			View,
-			timeStart,
-			timeEnd,
-			pkMin,
-			pkMax,
-			screenOptions);
+		RebuildDocument();
 		mvarOpen = true;
 		StateHasChanged();
 	}
@@ -121,11 +136,73 @@
 		mvarMeshSvg = string.Empty;
 	}
 
+	private void OnPaperChanged(ChangeEventArgs e)
+	{
+		string v = e.Value?.ToString() ?? "A3";
+		mvarPaper = string.Equals(v, "A4", StringComparison.OrdinalIgnoreCase)
+			? MeshPrintPaperSize.A4Landscape
+			: MeshPrintPaperSize.A3Landscape;
+		// El SVG lógico no cambia; solo la proporción de la hoja en preview/print.
+		StateHasChanged();
+	}
+
+	private void RebuildDocument()
+	{
+		if (Mesh is null || View is null)
+		{
+			return;
+		}
+
+		int visible = MeshPrintDocument.CountVisibleCirculations(Mesh, View, mvarTimeStart, mvarTimeEnd);
+		List<string> layers = new List<string>();
+		if (mvarScreenOptions.ShowTrainPaths) { layers.Add("trazas"); }
+		if (mvarScreenOptions.ShowTrainNumbers) { layers.Add("números"); }
+		if (mvarScreenOptions.ShowConflicts) { layers.Add("conflictos"); }
+		if (mvarScreenOptions.ShowSpeedStrip) { layers.Add("V"); }
+		if (mvarScreenOptions.ShowTrackStrip) { layers.Add("#"); }
+
+		MeshPrintDocument.CoverInfo cover = new MeshPrintDocument.CoverInfo
+		{
+			PlanName = PlanName,
+			ViewId = View.Id,
+			ViewName = View.Name,
+			PathSignature = View.PathSignature(),
+			PlanningDay = PlanningDay,
+			TimeStart = mvarTimeStart,
+			TimeEnd = mvarTimeEnd,
+			PkMin = mvarPkMin,
+			PkMax = mvarPkMax,
+			CirculationCount = Mesh.Circulations.Count,
+			VisibleCirculationCount = visible,
+			AsimilationCount = Mesh.Asimilations.Count,
+			WarningCount = Mesh.Warnings.Count,
+			ErrorCount = Mesh.Errors.Count,
+			YScaleLabel = mvarYScaleMode == MeshYScaleMode.SteppedSingular
+				? "Escalonada (singulares)"
+				: "PK lineal",
+			LayersSummary = layers.Count > 0 ? string.Join(", ", layers) : "—",
+			PrintedAt = DateTime.Now,
+			Notes = Notes ?? string.Empty
+		};
+
+		mvarTitleBlockHtml = MeshPrintDocument.BuildTitleBlockHtml(cover);
+		// Coordenadas lógicas fijas: el CSS escala al papel A3 o A4.
+		mvarMeshSvg = MeshPrintDocument.BuildMeshSvg(
+			Mesh,
+			View,
+			mvarTimeStart,
+			mvarTimeEnd,
+			mvarPkMin,
+			mvarPkMax,
+			mvarScreenOptions);
+	}
+
 	private async Task PrintAsync()
 	{
 		try
 		{
-			await Js.InvokeVoidAsync("diamondMeshPrint.print");
+			string paperArg = mvarPaper == MeshPrintPaperSize.A4Landscape ? "A4" : "A3";
+			await Js.InvokeVoidAsync("diamondMeshPrint.print", paperArg);
 		}
 		catch (Exception)
 		{

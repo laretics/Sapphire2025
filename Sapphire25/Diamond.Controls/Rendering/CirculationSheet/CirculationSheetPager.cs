@@ -7,7 +7,41 @@ namespace Diamond.Controls.Rendering
 	/// </summary>
 	public static class CirculationSheetPager
 	{
+		/// <summary>
+		/// Techo por página: deja margen bajo MinRowH≈13 px en A4 (≈50 filas caben;
+		/// 36 deja filas legibles ~17 px y evita recortes al imprimir).
+		/// </summary>
 		public const int DefaultMaxFrontiersPerPage = 36;
+
+		/// <summary>
+		/// Máximo de filas que caben en una página A4 con la geometría del renderer
+		/// (altura mínima de fila). El paginador no debería superar este valor.
+		/// </summary>
+		public static int MaxFrontiersFittingPage
+		{
+			get
+			{
+				// Debe coincidir con CirculationSheetSvgRenderer (márgenes + cabeceras + MinRowH).
+				const double pageH = 841.89;
+				const double marginT = 20;
+				const double marginB = 34;
+				const double headerBand = 22;
+				const double subHeader = 15;
+				const double colHeader = 17;
+				const double footerPad = 16;
+				const double minRowH = 13;
+				double bodyTop = marginT + headerBand + subHeader + colHeader;
+				double bodyBottom = pageH - marginB - footerPad;
+				double avail = bodyBottom - bodyTop;
+				int n = (int)Math.Floor(avail / minRowH);
+				if (n < 8)
+				{
+					n = 8;
+				}
+
+				return n;
+			}
+		}
 
 		/// <summary>
 		/// Calcula el número de páginas necesarias para <paramref name="frontierCount"/> filas
@@ -20,10 +54,7 @@ namespace Diamond.Controls.Rendering
 				return 1;
 			}
 
-			if (maxPerPage < 1)
-			{
-				maxPerPage = 1;
-			}
+			maxPerPage = ClampMaxPerPage(maxPerPage);
 
 			// Empezar en 1 e ir añadiendo páginas hasta media ≤ max.
 			int pages = 1;
@@ -33,6 +64,22 @@ namespace Diamond.Controls.Rendering
 			}
 
 			return pages;
+		}
+
+		private static int ClampMaxPerPage(int maxPerPage)
+		{
+			if (maxPerPage < 1)
+			{
+				maxPerPage = 1;
+			}
+
+			int fit = MaxFrontiersFittingPage;
+			if (maxPerPage > fit)
+			{
+				maxPerPage = fit;
+			}
+
+			return maxPerPage;
 		}
 
 		/// <summary>
@@ -46,6 +93,8 @@ namespace Diamond.Controls.Rendering
 			{
 				frontiers = Array.Empty<CirculationSheetFrontier>();
 			}
+
+			maxPerPage = ClampMaxPerPage(maxPerPage);
 
 			int n = frontiers.Count;
 			int pageCount = ComputePageCount(n, maxPerPage);

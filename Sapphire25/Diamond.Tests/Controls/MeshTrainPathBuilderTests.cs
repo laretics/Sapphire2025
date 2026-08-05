@@ -507,6 +507,124 @@ namespace Diamond.Tests.Controls
 			return mesh.Circulations[0];
 		}
 
+		[Fact]
+		public void ComputeLabelPlacements_ShortSegment_TwoPlotLabelsRotated()
+		{
+			// Trazo corto en el centro del plot: número al inicio y al fin, en el plot.
+			double plotLeft = 40;
+			double plotTop = 36;
+			double plotW = 800;
+			double plotH = 600;
+			List<MeshTrainPathBuilder.Point> pts = new List<MeshTrainPathBuilder.Point>
+			{
+				new MeshTrainPathBuilder.Point(200, 300),
+				new MeshTrainPathBuilder.Point(280, 260),
+				new MeshTrainPathBuilder.Point(360, 220)
+			};
+
+			List<MeshTrainPathBuilder.TrainLabelPlacement> places =
+				MeshTrainPathBuilder.ComputeLabelPlacements(pts, plotLeft, plotTop, plotW, plotH, "4902");
+
+			Assert.Equal(2, places.Count);
+			Assert.All(places, p => Assert.Equal(MeshTrainPathBuilder.TrainLabelBand.Plot, p.Band));
+			// El del final queda a continuación del último tramo (pendiente negativa en Y).
+			MeshTrainPathBuilder.TrainLabelPlacement atEnd = places[1];
+			Assert.True(atEnd.X > 360.0, "final a continuación en X");
+			Assert.True(atEnd.Y < 220.0, "final sigue la pendiente hacia arriba");
+			Assert.InRange(atEnd.AngleDeg, -80.0, -5.0);
+		}
+
+		[Fact]
+		public void ComputeLabelPlacements_FullHeight_TopAndBottomRulers()
+		{
+			// Ascendente: inicio abajo → regla inferior; fin arriba → regla superior.
+			// X de cada número = intersección del trazo con esa regla.
+			double plotLeft = 40;
+			double plotTop = 36;
+			double plotW = 800;
+			double plotH = 600;
+			List<MeshTrainPathBuilder.Point> pts = new List<MeshTrainPathBuilder.Point>
+			{
+				new MeshTrainPathBuilder.Point(120, plotTop + plotH - 4),
+				new MeshTrainPathBuilder.Point(200, plotTop + plotH * 0.5),
+				new MeshTrainPathBuilder.Point(280, plotTop + 4)
+			};
+
+			List<MeshTrainPathBuilder.TrainLabelPlacement> places =
+				MeshTrainPathBuilder.ComputeLabelPlacements(pts, plotLeft, plotTop, plotW, plotH, "4907");
+
+			Assert.Equal(2, places.Count);
+			Assert.Equal(MeshTrainPathBuilder.TrainLabelBand.BottomRuler, places[0].Band);
+			Assert.Equal(MeshTrainPathBuilder.TrainLabelBand.TopRuler, places[1].Band);
+			Assert.InRange(places[0].X, 115.0, 125.0);
+			Assert.InRange(places[1].X, 275.0, 285.0);
+			Assert.True(places[0].Y > plotTop + plotH);
+			Assert.True(places[1].Y < plotTop);
+			// Rotados (no 0° forzado): pendiente del trazo.
+			Assert.True(Math.Abs(places[0].AngleDeg) > 1.0 || Math.Abs(places[1].AngleDeg) > 1.0);
+		}
+
+		[Fact]
+		public void ComputeLabelPlacements_Descending_TopStart_BottomEnd()
+		{
+			// Descendente: inicio arriba → regla superior; fin abajo → regla inferior.
+			double plotLeft = 40;
+			double plotTop = 36;
+			double plotW = 800;
+			double plotH = 600;
+			List<MeshTrainPathBuilder.Point> pts = new List<MeshTrainPathBuilder.Point>
+			{
+				new MeshTrainPathBuilder.Point(150, plotTop + 3),
+				new MeshTrainPathBuilder.Point(220, plotTop + plotH * 0.5),
+				new MeshTrainPathBuilder.Point(300, plotTop + plotH - 3)
+			};
+
+			List<MeshTrainPathBuilder.TrainLabelPlacement> places =
+				MeshTrainPathBuilder.ComputeLabelPlacements(pts, plotLeft, plotTop, plotW, plotH, "4908");
+
+			Assert.Equal(2, places.Count);
+			Assert.Equal(MeshTrainPathBuilder.TrainLabelBand.TopRuler, places[0].Band);
+			Assert.Equal(MeshTrainPathBuilder.TrainLabelBand.BottomRuler, places[1].Band);
+			Assert.InRange(places[0].X, 145.0, 155.0);
+			Assert.InRange(places[1].X, 295.0, 305.0);
+		}
+
+		[Fact]
+		public void ComputeLabelPlacements_EndOnYAxis_OmitsThatLabel()
+		{
+			// Inicio en el eje Y (borde izquierdo): no se imprime; el fin sí (en plot).
+			double plotLeft = 40;
+			double plotTop = 36;
+			double plotW = 800;
+			double plotH = 600;
+			List<MeshTrainPathBuilder.Point> pts = new List<MeshTrainPathBuilder.Point>
+			{
+				new MeshTrainPathBuilder.Point(plotLeft + 2, 300),
+				new MeshTrainPathBuilder.Point(120, 280),
+				new MeshTrainPathBuilder.Point(220, 250)
+			};
+
+			List<MeshTrainPathBuilder.TrainLabelPlacement> places =
+				MeshTrainPathBuilder.ComputeLabelPlacements(pts, plotLeft, plotTop, plotW, plotH, "4910");
+
+			Assert.Single(places);
+			Assert.Equal(MeshTrainPathBuilder.TrainLabelBand.Plot, places[0].Band);
+			Assert.True(places[0].X > 200.0);
+		}
+
+		[Fact]
+		public void ReadableAngleDeg_FlipsUpsideDownAngles()
+		{
+			// Izquierda-arriba: atan2(-1,-1) ≈ -135° → +45° legible.
+			double deg = MeshTrainPathBuilder.ReadableAngleDeg(-1.0, -1.0);
+			Assert.InRange(deg, -90.0, 90.0);
+			Assert.InRange(deg, 40.0, 50.0);
+
+			// Derecha-abajo: sin flip.
+			double deg2 = MeshTrainPathBuilder.ReadableAngleDeg(1.0, 1.0);
+			Assert.InRange(deg2, 40.0, 50.0);
+		}
+
 		private static Station MakeStation(string id, string avr)
 		{
 			Station s = new Station(id);
