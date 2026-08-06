@@ -119,6 +119,116 @@ namespace Diamond.Timed
 		}
 
 		/// <summary>
+		/// Etiqueta de cabecera de ficha / libro itinerario:
+		/// Laborables (LMXJV), Fines de semana (SD), Festivos (si se modela como tal),
+		/// nombre de un solo día, o letras L,M,X,J,V,S,D separadas por comas.
+		/// </summary>
+		public string FormatCirculationLabel()
+		{
+			return FormatCirculationLabel(mvarDays);
+		}
+
+		public static string FormatCirculationLabel(ServiceDay days)
+		{
+			if (days == ServiceDay.None)
+			{
+				return string.Empty;
+			}
+
+			if (days == ServiceDay.All)
+			{
+				return "Diario";
+			}
+
+			if (days == ServiceDay.Laborables)
+			{
+				return "Laborables";
+			}
+
+			// SD (sáb+dom) en el modelo actual = Festivos del enum; el usuario pide
+			// "Fines de semana" para SD y "Festivos" para SDF (sin bit F en el enum,
+			// tratamos Sat|Sun como fines de semana).
+			if (days == ServiceDay.Festivos)
+			{
+				return "Fines de semana";
+			}
+
+			// Un solo día → nombre completo en minúsculas.
+			ServiceDay[] order =
+			{
+				ServiceDay.Monday,
+				ServiceDay.Tuesday,
+				ServiceDay.Wednesday,
+				ServiceDay.Thursday,
+				ServiceDay.Friday,
+				ServiceDay.Saturday,
+				ServiceDay.Sunday
+			};
+			string[] fullNames =
+			{
+				"lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"
+			};
+			string[] letters = { "L", "M", "X", "J", "V", "S", "D" };
+
+			int count = 0;
+			int last = -1;
+			int i = 0;
+			while (i < order.Length)
+			{
+				if ((days & order[i]) != ServiceDay.None)
+				{
+					count++;
+					last = i;
+				}
+
+				i++;
+			}
+
+			if (count == 0)
+			{
+				return string.Empty;
+			}
+
+			if (count == 1 && last >= 0)
+			{
+				return fullNames[last];
+			}
+
+			// Varios días (no lab ni SD): letras separadas por comas.
+			StringBuilder sb = new StringBuilder();
+			i = 0;
+			while (i < order.Length)
+			{
+				if ((days & order[i]) != ServiceDay.None)
+				{
+					if (sb.Length > 0)
+					{
+						sb.Append(", ");
+					}
+
+					sb.Append(letters[i]);
+				}
+
+				i++;
+			}
+
+			return sb.ToString();
+		}
+
+		/// <summary>Une máscaras de días (p. ej. presencia del tren en varios días del plan).</summary>
+		public static ServiceDays Union(ServiceDays? a, ServiceDay dayFlag)
+		{
+			ServiceDay mask = a is null ? ServiceDay.None : a.Days;
+			mask |= dayFlag;
+			return new ServiceDays(mask == ServiceDay.None ? ServiceDay.All : mask);
+		}
+
+		public static ServiceDays FromDayOfWeekMask(DayOfWeek day)
+		{
+			return new ServiceDays(FromDayOfWeek(day));
+		}
+
+		/// <summary>
 		/// Parsea tokens de días: lab, fes, all, mon/lun, mon-fri, lun-vie, etc.
 		/// </summary>
 		public static bool TryParse(System.Collections.Generic.IReadOnlyList<string> tokens, int startIndex, out ServiceDays days, out int consumed, out string? error)

@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using Diamond.Topo;
 
 namespace Diamond.Timed
@@ -7,9 +9,21 @@ namespace Diamond.Timed
 	/// <summary>
 	/// Almacén de topología usado por un plan de malla: ruta del XML de Diamond y layout cargado.
 	/// Se obtiene normalmente vía la directiva <c>include</c> del mini-DSL.
+	/// En WASM no hay disco: se puede registrar topología en un catálogo en memoria.
 	/// </summary>
 	public sealed class TopoStorage
 	{
+		/// <summary>
+		/// Catálogo en memoria (nombre lógico → layout), p. ej. "toposfm227.xml".
+		/// Claves sin y con extensión .xml.
+		/// </summary>
+		private static readonly Dictionary<string, TopoLayout> scolMemoryLayouts =
+			new Dictionary<string, TopoLayout>(StringComparer.OrdinalIgnoreCase);
+
+		/// <summary>XML original por clave (para reexportar / subir al servidor).</summary>
+		private static readonly Dictionary<string, string> scolMemoryXml =
+			new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
 		private readonly string mvarPath;
 		private readonly string mvarResolvedPath;
 		private readonly TopoLayout mvarLayout;
@@ -24,6 +38,114 @@ namespace Diamond.Timed
 			mvarPath = path ?? string.Empty;
 			mvarResolvedPath = resolvedPath ?? string.Empty;
 			mvarLayout = layout;
+		}
+
+		/// <summary>
+		/// Registra un layout en memoria para que <c>include nombre</c> lo resuelva sin File.Exists.
+		/// </summary>
+		public static void RegisterInMemory(string logicalName, TopoLayout layout, string? xmlSource = null)
+		{
+			if (layout is null)
+			{
+				throw new ArgumentNullException(nameof(layout));
+			}
+
+			string key = EnsureXmlExtension(logicalName);
+			if (key.Length == 0)
+			{
+				throw new ArgumentException("Nombre lógico de topología vacío.", nameof(logicalName));
+			}
+
+			string bare = System.IO.Path.GetFileNameWithoutExtension(key);
+			string fileOnly = System.IO.Path.GetFileName(key);
+			scolMemoryLayouts[key] = layout;
+			scolMemoryLayouts[fileOnly] = layout;
+			if (bare.Length > 0)
+			{
+				scolMemoryLayouts[bare] = layout;
+			}
+
+			if (!string.IsNullOrEmpty(xmlSource))
+			{
+				scolMemoryXml[key] = xmlSource;
+				scolMemoryXml[fileOnly] = xmlSource;
+				if (bare.Length > 0)
+				{
+					scolMemoryXml[bare] = xmlSource;
+				}
+			}
+		}
+
+		/// <summary>Carga XML desde texto y lo registra en memoria bajo <paramref name="logicalName"/>.</summary>
+		public static TopoStorage LoadFromXmlText(string logicalName, string xmlText)
+		{
+			if (string.IsNullOrWhiteSpace(xmlText))
+			{
+				throw new ArgumentException("XML de topología vacío.", nameof(xmlText));
+			}
+
+			using MemoryStream stream = new MemoryStream(Encoding.UTF8.GetBytes(xmlText));
+			TopoLayout layout = TopoXmlSerializer.Load(stream);
+			string key = EnsureXmlExtension(logicalName);
+			if (key.Length == 0)
+			{
+				key = "topo.xml";
+			}
+
+			RegisterInMemory(key, layout, xmlText);
+			return new TopoStorage(key, "memory:" + key, layout);
+		}
+
+		/// <summary>True si hay al menos una topología en el catálogo en memoria.</summary>
+		public static bool HasMemoryCatalog
+		{
+			get { return scolMemoryLayouts.Count > 0; }
+		}
+
+		/// <summary>Obtiene el XML en memoria si se registró con origen textual.</summary>
+		public static string? TryGetMemoryXml(string logicalName)
+		{
+			string key = EnsureXmlExtension(logicalName);
+			if (key.Length > 0 && scolMemoryXml.TryGetValue(key, out string? xml))
+			{
+				return xml;
+			}
+
+			string fileOnly = System.IO.Path.GetFileName(key);
+			if (fileOnly.Length > 0 && scolMemoryXml.TryGetValue(fileOnly, out xml))
+			{
+				return xml;
+			}
+
+			string bare = System.IO.Path.GetFileNameWithoutExtension(key);
+			if (bare.Length > 0 && scolMemoryXml.TryGetValue(bare, out xml))
+			{
+				return xml;
+			}
+
+			return null;
+		}
+
+		private static bool TryGetFromMemory(string logical, out TopoStorage? storage)
+		{
+			storage = null;
+			string key = EnsureXmlExtension(logical);
+			string fileOnly = System.IO.Path.GetFileName(key);
+			string bare = System.IO.Path.GetFileNameWithoutExtension(key);
+
+			TopoLayout? layout = null;
+			if (scolMemoryLayouts.TryGetValue(key, out layout)
+				|| scolMemoryLayouts.TryGetValue(fileOnly, out layout)
+				|| (bare.Length > 0 && scolMemoryLayouts.TryGetValue(bare, out layout)))
+			{
+				if (layout is not null)
+				{
+					storage = new TopoStorage(key, "memory:" + fileOnly, layout);
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		/// <summary>
@@ -89,6 +211,14 @@ namespace Diamond.Timed
 			}
 
 			string logical = EnsureXmlExtension(path);
+
+			// 1) Catálogo en memoria (WASM / host que precargó el XML).
+			if (TryGetFromMemory(logical, out storage) && storage is not null)
+			{
+				return true;
+			}
+
+			// 2) Disco (Diamond.Web server, tests, herramientas).
 			string resolved;
 			try
 			{
@@ -96,13 +226,16 @@ namespace Diamond.Timed
 			}
 			catch (Exception ex)
 			{
-				error = "ruta de topología no válida '" + logical + "': " + ex.Message;
+				// En browser Path.GetFullPath puede fallar; si hay memoria, ya se intentó.
+				error = "ruta de topología no válida '" + logical + "': " + ex.Message
+					+ " (y no hay copia en memoria; use Cargar topo o precargue samples).";
 				return false;
 			}
 
 			if (!File.Exists(resolved))
 			{
-				error = "no se encontró el XML de topología '" + resolved + "'.";
+				error = "no se encontró el XML de topología '" + resolved
+					+ "'. En el navegador cargue el topo (botón Topo…) o deje Samples/Onice en wwwroot.";
 				return false;
 			}
 
@@ -110,6 +243,8 @@ namespace Diamond.Timed
 			{
 				TopoLayout layout = TopoXmlSerializer.Load(resolved);
 				storage = new TopoStorage(logical, resolved, layout);
+				// Cache para includes posteriores sin re-leer disco.
+				RegisterInMemory(logical, layout);
 				return true;
 			}
 			catch (Exception ex)

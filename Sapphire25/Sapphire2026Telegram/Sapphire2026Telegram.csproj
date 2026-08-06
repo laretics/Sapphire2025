@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>dotnet-Sapphire2026Telegram-1c43edd2-031f-4894-b482-76228196aed8</UserSecretsId>
+    <Configurations>Debug;Release;Zafiro</Configurations>
   </PropertyGroup>
 
   <ItemGroup>

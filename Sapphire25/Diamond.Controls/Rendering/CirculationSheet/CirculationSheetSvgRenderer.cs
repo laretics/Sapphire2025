@@ -4,34 +4,54 @@ using System.Text;
 namespace Diamond.Controls.Rendering
 {
 	/// <summary>
-	/// Ficha de marcha SVG (A4, B/N). Columnas desfasadas: VMx y tiempo concedido
-	/// entre PKs; vía doble/única con celdas fusionadas.
+	/// Libro itinerario SVG: hoja A4 apaisada con dos mitades (páginas de libro)
+	/// lado a lado. Filas repartidas de forma equilibrada y estiradas a toda la
+	/// altura útil de cada mitad. Cabeceras y pies a la misma cota en ambas.
 	/// </summary>
 	public static class CirculationSheetSvgRenderer
 	{
-		public const double PageWidth = 595.28;
-		public const double PageHeight = 841.89;
+		/// <summary>Ancho de la hoja física A4 apaisada (pt).</summary>
+		public const double SheetWidth = 841.89;
 
-		private const double MarginL = 26;
-		private const double MarginR = 34;
-		private const double MarginT = 20;
-		private const double MarginB = 34;
+		/// <summary>Alto de la hoja física A4 apaisada (pt).</summary>
+		public const double SheetHeight = 595.28;
+
+		/// <summary>Compat: ancho de una mitad (página de libro).</summary>
+		public static double PageWidth
+		{
+			get { return (SheetWidth - SheetOuterMargin * 2 - PanelGutter) * 0.5; }
+		}
+
+		/// <summary>Compat: alto de una mitad (= alto de hoja útil).</summary>
+		public static double PageHeight
+		{
+			get { return SheetHeight - SheetOuterMargin * 2; }
+		}
+
+		private const double SheetOuterMargin = 10;
+		private const double PanelGutter = 12;
+
+		// Márgenes internos de cada mitad (página de libro).
+		private const double PanelPadL = 8;
+		private const double PanelPadR = 10;
+		private const double PanelPadT = 8;
+		private const double PanelPadB = 16; // pie
 
 		// Vía | St Km | VMx | Dependencia | Com | Hora | Conc. | Cruz
-		private const double ColVia = 40;
-		private const double ColStKm = 36;
-		private const double ColVmx = 30;
-		private const double ColDep = 200;
-		private const double ColCom = 28;
-		private const double ColHora = 42;
-		private const double ColConc = 34;
-		private const double ColCruz = 50;
+		// Ancho total ~390 pt para caber en media A4 apaisada.
+		private const double ColVia = 30;
+		private const double ColStKm = 32;
+		private const double ColVmx = 26;
+		private const double ColDep = 168;
+		private const double ColCom = 24;
+		private const double ColHora = 38;
+		private const double ColConc = 30;
+		private const double ColCruz = 40;
 
-		private const double HeaderBandH = 22;
-		private const double SubHeaderH = 15;
-		private const double ColHeaderH = 17;
-		private const double MinRowH = 13;
-		private const double MaxRowH = 17;
+		private const double HeaderBandH = 18;
+		private const double SubHeaderH = 13;
+		private const double ColHeaderH = 15;
+		private const double MinRowH = 11;
 
 		private static double TableWidth
 		{
@@ -41,128 +61,51 @@ namespace Diamond.Controls.Rendering
 			}
 		}
 
-		public static string RenderPage(CirculationSheetDocument document, CirculationSheetPage page)
+		/// <summary>
+		/// Alto útil del cuerpo de filas en una mitad (misma geometría que el dibujo).
+		/// </summary>
+		public static double AvailableBodyHeight
 		{
-			if (document is null)
+			get
 			{
-				throw new ArgumentNullException(nameof(document));
+				double panelH = PageHeight;
+				double bodyTop = PanelPadT + HeaderBandH + SubHeaderH + ColHeaderH;
+				double bodyBottom = panelH - PanelPadB;
+				double avail = bodyBottom - bodyTop;
+				return avail < MinRowH ? MinRowH : avail;
 			}
-
-			if (page is null)
-			{
-				throw new ArgumentNullException(nameof(page));
-			}
-
-			IReadOnlyList<CirculationSheetFrontier> rows = page.Frontiers;
-			StringBuilder sb = new StringBuilder(24 * 1024);
-			// A4 vertical (portrait). preserveAspectRatio evita recortes raros al escalar en pantalla.
-			sb.Append(CultureInfo.InvariantCulture,
-				$"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{F(PageWidth)}\" height=\"{F(PageHeight)}\" viewBox=\"0 0 {F(PageWidth)} {F(PageHeight)}\" preserveAspectRatio=\"xMidYMin meet\" class=\"diamond-circ-sheet-svg\">");
-
-			// Papel (sin color)
-			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"0\" y=\"0\" width=\"{F(PageWidth)}\" height=\"{F(PageHeight)}\" fill=\"#ffffff\"/>");
-
-			double tableLeft = MarginL;
-			double tableW = TableWidth;
-			double tableRight = tableLeft + tableW;
-
-			double y = MarginT;
-
-			// Cabecera negra
-			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{F(tableLeft)}\" y=\"{F(y)}\" width=\"{F(tableW)}\" height=\"{F(HeaderBandH)}\" fill=\"#000\"/>");
-			string titleLeft = string.IsNullOrEmpty(document.TrainTitle)
-				? document.TrainNumber + ".-"
-				: document.TrainNumber + ".- " + document.TrainTitle.ToUpperInvariant();
-			sb.Append(Text(tableLeft + 6, y + HeaderBandH * 0.72, titleLeft, 12, "700", "#fff", "start"));
-			string tipo = string.IsNullOrEmpty(document.MaterialType) ? string.Empty : "Tipo: " + document.MaterialType;
-			sb.Append(Text(tableRight - 6, y + HeaderBandH * 0.72, tipo, 11, "600", "#fff", "end"));
-			y += HeaderBandH;
-
-			// Subcabecera
-			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{F(tableLeft)}\" y=\"{F(y)}\" width=\"{F(tableW)}\" height=\"{F(SubHeaderH)}\" fill=\"#eee\" stroke=\"#000\" stroke-width=\"0.8\"/>");
-			sb.Append(Text(tableLeft + 6, y + SubHeaderH * 0.72, document.LocationLine, 8, "600", "#000", "start"));
-			sb.Append(Text(tableRight - 6, y + SubHeaderH * 0.72, document.MarchId, 7.5, "500", "#000", "end"));
-			y += SubHeaderH;
-
-			// Cabecera columnas
-			double colHeaderY = y;
-			DrawColumnHeaders(sb, tableLeft, colHeaderY, ColHeaderH);
-			y += ColHeaderH;
-			double bodyTop = y;
-
-			// Alto útil del cuerpo: no superar el pie de página (evita que el SVG
-			// “crezca” de facto y el navegador parta la hoja en una 2.ª página en blanco).
-			double bodyBottom = PageHeight - MarginB - 16;
-			double availBody = bodyBottom - bodyTop;
-			if (availBody < MinRowH)
-			{
-				availBody = MinRowH;
-			}
-
-			int n = Math.Max(1, rows.Count);
-			// Si hay demasiadas filas para MinRowH, reducir altura de fila (nunca desbordar).
-			double rowH = availBody / n;
-			if (rowH > MaxRowH)
-			{
-				rowH = MaxRowH;
-			}
-
-			if (rowH < MinRowH && n * MinRowH <= availBody + 0.5)
-			{
-				rowH = MinRowH;
-			}
-
-			// Cuerpo siempre dentro del papel.
-			if (n * rowH > availBody)
-			{
-				rowH = availBody / n;
-			}
-
-			double bodyH = rowH * Math.Max(rows.Count, 1);
-
-			// Fondo columna VMx (gris claro, negrita)
-			double vmxX = tableLeft + ColVia + ColStKm;
-			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{F(vmxX)}\" y=\"{F(bodyTop)}\" width=\"{F(ColVmx)}\" height=\"{F(bodyH)}\" fill=\"#e8e8e8\"/>");
-
-			// Marco exterior
-			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{F(tableLeft)}\" y=\"{F(colHeaderY)}\" width=\"{F(tableW)}\" height=\"{F(ColHeaderH + bodyH)}\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.15\"/>");
-
-			if (rows.Count == 0)
-			{
-				sb.Append(Text(tableLeft + tableW * 0.5, bodyTop + 20, "(sin fronteras)", 10, "400", "#000", "middle"));
-			}
-			else
-			{
-				DrawBody(sb, tableLeft, bodyTop, rowH, rows);
-			}
-
-			// Verticales de columna (altura total tabla)
-			DrawVerticals(sb, tableLeft, colHeaderY, ColHeaderH + bodyH);
-
-			// Pie
-			double footerY = PageHeight - MarginB + 2;
-			double triX = tableLeft + 6;
-			sb.Append(CultureInfo.InvariantCulture,
-				$"<polygon points=\"{F(triX)},{F(footerY)} {F(triX + 9)},{F(footerY)} {F(triX + 4.5)},{F(footerY - 9)}\" fill=\"#000\"/>");
-			sb.Append(Text(tableLeft + 24, footerY - 1, document.EditionLabel, 7, "400", "#000", "start"));
-			string pageLabel = "Pág " + page.PageNumber.ToString(CultureInfo.InvariantCulture)
-				+ " de " + page.PageCount.ToString(CultureInfo.InvariantCulture);
-			sb.Append(Text(tableRight, footerY - 1, pageLabel, 8, "600", "#000", "end"));
-
-			double sideX = tableRight + 12;
-			double sideY = bodyTop + bodyH * 0.5;
-			sb.Append(CultureInfo.InvariantCulture,
-				$"<text x=\"{F(sideX)}\" y=\"{F(sideY)}\" fill=\"#000\" font-size=\"7.5\" font-weight=\"600\" font-family=\"Arial,Helvetica,sans-serif\" text-anchor=\"middle\" transform=\"rotate(90 {F(sideX)},{F(sideY)})\">DIRECCIÓN DE SECCIÓN</text>");
-
-			sb.Append("</svg>");
-			return sb.ToString();
 		}
 
+		/// <summary>
+		/// Máximo de filas por mitad con altura mínima legible.
+		/// </summary>
+		public static int MaxRowsPerBookPage
+		{
+			get
+			{
+				int n = (int)Math.Floor(AvailableBodyHeight / MinRowH);
+				if (n < 8)
+				{
+					n = 8;
+				}
+
+				return n;
+			}
+		}
+
+		/// <summary>
+		/// Una página de libro sola (compat). Genera una hoja apaisada con la mitad
+		/// izquierda ocupada y la derecha en blanco.
+		/// </summary>
+		public static string RenderPage(CirculationSheetDocument document, CirculationSheetPage page)
+		{
+			return RenderSheet(document, page, right: null);
+		}
+
+		/// <summary>
+		/// Renderiza todas las hojas físicas A4 apaisadas de una ficha de un solo tren
+		/// (2 mitades por hoja).
+		/// </summary>
 		public static IReadOnlyList<string> RenderAllPages(CirculationSheetDocument document)
 		{
 			if (document is null)
@@ -170,21 +113,458 @@ namespace Diamond.Controls.Rendering
 				throw new ArgumentNullException(nameof(document));
 			}
 
-			List<string> list = new List<string>(document.Pages.Count);
+			IReadOnlyList<CirculationSheetPage> book = document.Pages;
+			List<string> sheets = new List<string>((book.Count + 1) / 2);
 			int i = 0;
-			while (i < document.Pages.Count)
+			while (i < book.Count)
 			{
-				list.Add(RenderPage(document, document.Pages[i]));
+				CirculationSheetPage left = book[i];
+				CirculationSheetPage? right = i + 1 < book.Count ? book[i + 1] : null;
+				sheets.Add(RenderSheet(document, left, right));
+				i += 2;
+			}
+
+			if (sheets.Count == 0)
+			{
+				sheets.Add(RenderSheet(document, new CirculationSheetPage(0, 1, Array.Empty<CirculationSheetFrontier>()), null));
+			}
+
+			return sheets;
+		}
+
+		/// <summary>
+		/// Renderiza el libro itinerario completo (portada + índice + trenes)
+		/// empaquetando semipáginas de 2 en 2 en hojas A4 apaisadas.
+		/// </summary>
+		public static IReadOnlyList<string> RenderAllBookSheets(ItineraryBookDocument book)
+		{
+			if (book is null)
+			{
+				throw new ArgumentNullException(nameof(book));
+			}
+
+			IReadOnlyList<ItineraryBookHalfPage> halves = book.HalfPages;
+			List<string> sheets = new List<string>((halves.Count + 1) / 2);
+			int i = 0;
+			while (i < halves.Count)
+			{
+				ItineraryBookHalfPage left = halves[i];
+				ItineraryBookHalfPage? right = i + 1 < halves.Count ? halves[i + 1] : null;
+				sheets.Add(RenderBookSheet(left, right));
+				i += 2;
+			}
+
+			if (sheets.Count == 0)
+			{
+				// No debería ocurrir; portada mínima.
+				ItineraryBookHalfPage cover = ItineraryBookHalfPage.Cover(
+					1, 1, book.PlanName, book.Notes, book.DayLabel, book.EditionLabel, 0, 0);
+				sheets.Add(RenderBookSheet(cover, null));
+			}
+
+			return sheets;
+		}
+
+		/// <summary>
+		/// Hoja física A4 apaisada: mitad izquierda + mitad derecha (opcional).
+		/// </summary>
+		public static string RenderSheet(
+			CirculationSheetDocument document,
+			CirculationSheetPage left,
+			CirculationSheetPage? right)
+		{
+			if (document is null)
+			{
+				throw new ArgumentNullException(nameof(document));
+			}
+
+			if (left is null)
+			{
+				throw new ArgumentNullException(nameof(left));
+			}
+
+			StringBuilder sb = BeginSheetSvg();
+			double panelW = PageWidth;
+			double panelH = PageHeight;
+			double y0 = SheetOuterMargin;
+			double leftX = SheetOuterMargin;
+			double rightX = SheetOuterMargin + panelW + PanelGutter;
+
+			DrawTrainTablePanel(sb, document, left, leftX, y0, panelW, panelH, null, null);
+
+			if (right is not null)
+			{
+				DrawTrainTablePanel(sb, document, right, rightX, y0, panelW, panelH, null, null);
+			}
+
+			DrawHalfSeparator(sb, leftX, y0, panelW, panelH);
+			sb.Append("</svg>");
+			return sb.ToString();
+		}
+
+		/// <summary>Hoja A4 apaisada a partir de dos semipáginas del libro completo.</summary>
+		public static string RenderBookSheet(ItineraryBookHalfPage left, ItineraryBookHalfPage? right)
+		{
+			if (left is null)
+			{
+				throw new ArgumentNullException(nameof(left));
+			}
+
+			StringBuilder sb = BeginSheetSvg();
+			double panelW = PageWidth;
+			double panelH = PageHeight;
+			double y0 = SheetOuterMargin;
+			double leftX = SheetOuterMargin;
+			double rightX = SheetOuterMargin + panelW + PanelGutter;
+
+			DrawHalfPage(sb, left, leftX, y0, panelW, panelH);
+			if (right is not null)
+			{
+				DrawHalfPage(sb, right, rightX, y0, panelW, panelH);
+			}
+
+			DrawHalfSeparator(sb, leftX, y0, panelW, panelH);
+			sb.Append("</svg>");
+			return sb.ToString();
+		}
+
+		private static StringBuilder BeginSheetSvg()
+		{
+			StringBuilder sb = new StringBuilder(48 * 1024);
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{F(SheetWidth)}\" height=\"{F(SheetHeight)}\" viewBox=\"0 0 {F(SheetWidth)} {F(SheetHeight)}\" preserveAspectRatio=\"xMidYMid meet\" class=\"diamond-circ-sheet-svg\">");
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<rect x=\"0\" y=\"0\" width=\"{F(SheetWidth)}\" height=\"{F(SheetHeight)}\" fill=\"#ffffff\"/>");
+			return sb;
+		}
+
+		private static void DrawHalfSeparator(StringBuilder sb, double leftX, double y0, double panelW, double panelH)
+		{
+			double midX = leftX + panelW + PanelGutter * 0.5;
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<line x1=\"{F(midX)}\" y1=\"{F(y0 + 4)}\" x2=\"{F(midX)}\" y2=\"{F(y0 + panelH - 4)}\" stroke=\"#ccc\" stroke-width=\"0.6\" stroke-dasharray=\"3 2\"/>");
+		}
+
+		private static void DrawHalfPage(
+			StringBuilder sb,
+			ItineraryBookHalfPage half,
+			double panelX,
+			double panelY,
+			double panelW,
+			double panelH)
+		{
+			if (half.Kind == ItineraryBookHalfKind.Cover)
+			{
+				DrawCoverPanel(sb, half, panelX, panelY, panelW, panelH);
+				return;
+			}
+
+			if (half.Kind == ItineraryBookHalfKind.Index)
+			{
+				DrawIndexPanel(sb, half, panelX, panelY, panelW, panelH);
+				return;
+			}
+
+			if (half.TrainDocument is not null && half.TrainPage is not null)
+			{
+				DrawTrainTablePanel(
+					sb,
+					half.TrainDocument,
+					half.TrainPage,
+					panelX,
+					panelY,
+					panelW,
+					panelH,
+					half.PageNumber,
+					half.PageCount);
+			}
+		}
+
+		/// <summary>Portada del libro (una semipágina).</summary>
+		private static void DrawCoverPanel(
+			StringBuilder sb,
+			ItineraryBookHalfPage half,
+			double panelX,
+			double panelY,
+			double panelW,
+			double panelH)
+		{
+			double contentLeft = panelX + PanelPadL;
+			double tableW = Math.Min(TableWidth, panelW - PanelPadL - PanelPadR);
+			double tableRight = contentLeft + tableW;
+			double y = panelY + PanelPadT;
+
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<rect x=\"{F(contentLeft)}\" y=\"{F(y)}\" width=\"{F(tableW)}\" height=\"{F(HeaderBandH)}\" fill=\"#000\"/>");
+			sb.Append(Text(contentLeft + 5, y + HeaderBandH * 0.72, "LIBRO ITINERARIO", 10, "700", "#fff", "start"));
+			sb.Append(Text(tableRight - 5, y + HeaderBandH * 0.72, "Diamond", 9, "600", "#fff", "end"));
+			y += HeaderBandH + 18;
+
+			sb.Append(Text(contentLeft + 6, y, Truncate(half.PlanName, 48), 16, "700", "#000", "start"));
+			y += 28;
+
+			if (!string.IsNullOrEmpty(half.DayLabel))
+			{
+				sb.Append(Text(contentLeft + 6, y, "Día: " + half.DayLabel, 11, "600", "#000", "start"));
+				y += 18;
+			}
+
+			sb.Append(Text(contentLeft + 6, y, "Trenes: " + half.TrainCount.ToString(CultureInfo.InvariantCulture)
+				+ "  ·  Grupos / recorridos: " + half.GroupCount.ToString(CultureInfo.InvariantCulture), 10, "500", "#000", "start"));
+			y += 18;
+
+			sb.Append(Text(contentLeft + 6, y, "Semipáginas: " + half.PageCount.ToString(CultureInfo.InvariantCulture)
+				+ "  ·  Hojas A4: " + CirculationSheetPager.ComputeSheetCount(half.PageCount)
+					.ToString(CultureInfo.InvariantCulture), 10, "500", "#000", "start"));
+			y += 22;
+
+			if (!string.IsNullOrEmpty(half.Notes))
+			{
+				sb.Append(Text(contentLeft + 6, y, "Notas", 9, "700", "#000", "start"));
+				y += 14;
+				// Notas multilínea simple.
+				string notes = half.Notes;
+				int maxChars = 58;
+				int pos = 0;
+				int lines = 0;
+				while (pos < notes.Length && lines < 8)
+				{
+					int take = Math.Min(maxChars, notes.Length - pos);
+					// Cortar en espacio si se puede.
+					if (pos + take < notes.Length)
+					{
+						int sp = notes.LastIndexOf(' ', pos + take - 1, take);
+						if (sp > pos)
+						{
+							take = sp - pos;
+						}
+					}
+
+					if (take < 1)
+					{
+						take = 1;
+					}
+
+					string line = notes.Substring(pos, take).Trim();
+					sb.Append(Text(contentLeft + 6, y, line, 9, "400", "#000", "start"));
+					y += 13;
+					pos += take;
+					while (pos < notes.Length && notes[pos] == ' ')
+					{
+						pos++;
+					}
+
+					lines++;
+				}
+			}
+
+			DrawPanelFooter(sb, contentLeft, tableRight, panelY, panelH, half.EditionLabel, half.PageNumber, half.PageCount);
+		}
+
+		/// <summary>Índice de trenes (una semipágina).</summary>
+		private static void DrawIndexPanel(
+			StringBuilder sb,
+			ItineraryBookHalfPage half,
+			double panelX,
+			double panelY,
+			double panelW,
+			double panelH)
+		{
+			double contentLeft = panelX + PanelPadL;
+			double tableW = Math.Min(TableWidth, panelW - PanelPadL - PanelPadR);
+			double tableRight = contentLeft + tableW;
+			double y = panelY + PanelPadT;
+
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<rect x=\"{F(contentLeft)}\" y=\"{F(y)}\" width=\"{F(tableW)}\" height=\"{F(HeaderBandH)}\" fill=\"#000\"/>");
+			string title = half.IndexParts > 1
+				? "ÍNDICE · " + half.IndexPart.ToString(CultureInfo.InvariantCulture)
+					+ "/" + half.IndexParts.ToString(CultureInfo.InvariantCulture)
+				: "ÍNDICE";
+			sb.Append(Text(contentLeft + 5, y + HeaderBandH * 0.72, title, 10, "700", "#fff", "start"));
+			y += HeaderBandH + 6;
+
+			// Cabecera columnas índice
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<rect x=\"{F(contentLeft)}\" y=\"{F(y)}\" width=\"{F(tableW)}\" height=\"{F(ColHeaderH)}\" fill=\"#ddd\"/>");
+			sb.Append(Text(contentLeft + 6, y + ColHeaderH * 0.72, "Tren", 7, "700", "#000", "start"));
+			sb.Append(Text(contentLeft + 58, y + ColHeaderH * 0.72, "Salida", 7, "700", "#000", "start"));
+			sb.Append(Text(contentLeft + 100, y + ColHeaderH * 0.72, "Relación", 7, "700", "#000", "start"));
+			sb.Append(Text(tableRight - 6, y + ColHeaderH * 0.72, "Pág", 7, "700", "#000", "end"));
+			y += ColHeaderH + 4;
+
+			double footerY = panelY + panelH - 4;
+			double bodyBottom = panelY + panelH - PanelPadB;
+			int n = Math.Max(1, half.IndexLines.Count);
+			double rowH = (bodyBottom - y) / n;
+			if (rowH < 11)
+			{
+				rowH = 11;
+			}
+
+			if (rowH > 16)
+			{
+				rowH = 16;
+			}
+
+			int i = 0;
+			while (i < half.IndexLines.Count)
+			{
+				ItineraryIndexEntry line = half.IndexLines[i];
+				double cy = y + rowH * 0.5 + 2.5;
+				if (line.IsGroupHeader)
+				{
+					sb.Append(CultureInfo.InvariantCulture,
+						$"<rect x=\"{F(contentLeft)}\" y=\"{F(y)}\" width=\"{F(tableW)}\" height=\"{F(rowH)}\" fill=\"#eee\"/>");
+					sb.Append(Text(contentLeft + 6, cy, Truncate(line.GroupTitle, 52), 7.5, "700", "#000", "start"));
+				}
+				else
+				{
+					sb.Append(Text(contentLeft + 6, cy, Truncate(line.TrainNumber, 10), 8, "700", "#000", "start"));
+					string dep = CirculationSheetDocument.FormatSheetTime(line.Departure);
+					sb.Append(Text(contentLeft + 58, cy, dep, 7.5, "500", "#000", "start"));
+					sb.Append(Text(contentLeft + 100, cy, Truncate(line.Relation, 36), 7.5, "400", "#000", "start"));
+					sb.Append(Text(tableRight - 6, cy, line.PageStart.ToString(CultureInfo.InvariantCulture), 8, "600", "#000", "end"));
+				}
+
+				// Línea sutil
+				sb.Append(CultureInfo.InvariantCulture,
+					$"<line x1=\"{F(contentLeft)}\" y1=\"{F(y + rowH)}\" x2=\"{F(tableRight)}\" y2=\"{F(y + rowH)}\" stroke=\"#ccc\" stroke-width=\"0.35\"/>");
+				y += rowH;
 				i++;
 			}
 
-			return list;
+			DrawPanelFooter(sb, contentLeft, tableRight, panelY, panelH, "Índice", half.PageNumber, half.PageCount);
 		}
 
-		private static void DrawColumnHeaders(StringBuilder sb, double left, double y, double h)
+		private static void DrawPanelFooter(
+			StringBuilder sb,
+			double contentLeft,
+			double tableRight,
+			double panelY,
+			double panelH,
+			string editionLabel,
+			int pageNumber,
+			int pageCount)
+		{
+			double footerY = panelY + panelH - 4;
+			double triX = contentLeft + 4;
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<polygon points=\"{F(triX)},{F(footerY)} {F(triX + 8)},{F(footerY)} {F(triX + 4)},{F(footerY - 8)}\" fill=\"#000\"/>");
+			sb.Append(Text(contentLeft + 18, footerY - 1, Truncate(editionLabel ?? string.Empty, 36), 6.5, "400", "#000", "start"));
+			string pageLabel = "Pág " + pageNumber.ToString(CultureInfo.InvariantCulture)
+				+ " de " + pageCount.ToString(CultureInfo.InvariantCulture);
+			sb.Append(Text(tableRight, footerY - 1, pageLabel, 7.5, "600", "#000", "end"));
+		}
+
+		/// <summary>
+		/// Dibuja una tabla de marcha (mitad) en el rectángulo [panelX, panelY, panelW, panelH].
+		/// Cabecera y pie a cotas fijas; cuerpo de filas estirado a todo el alto útil.
+		/// Si <paramref name="bookPageNumber"/> se indica, el pie usa la paginación del libro.
+		/// </summary>
+		private static void DrawTrainTablePanel(
+			StringBuilder sb,
+			CirculationSheetDocument document,
+			CirculationSheetPage page,
+			double panelX,
+			double panelY,
+			double panelW,
+			double panelH,
+			int? bookPageNumber,
+			int? bookPageCount)
+		{
+			IReadOnlyList<CirculationSheetFrontier> rows = page.Frontiers;
+
+			double contentLeft = panelX + PanelPadL;
+			double tableW = TableWidth;
+			// Si la tabla no cabe, se alinea a la izquierda del pad; el resto es margen derecho.
+			if (tableW > panelW - PanelPadL - PanelPadR)
+			{
+				tableW = panelW - PanelPadL - PanelPadR;
+			}
+
+			double tableRight = contentLeft + tableW;
+			double y = panelY + PanelPadT;
+
+			// —— Cabecera negra (misma altura en todas las mitades) ——
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<rect x=\"{F(contentLeft)}\" y=\"{F(y)}\" width=\"{F(tableW)}\" height=\"{F(HeaderBandH)}\" fill=\"#000\"/>");
+			// Número de servicio (plantilla) · días … Tipo material (sin Id técnico ni demanda).
+			string titleLeft = string.IsNullOrEmpty(document.TrainNumber)
+				? "—"
+				: document.TrainNumber + ".-";
+			if (!string.IsNullOrEmpty(document.ServiceDaysLabel))
+			{
+				titleLeft = titleLeft + "  " + document.ServiceDaysLabel;
+			}
+
+			sb.Append(Text(contentLeft + 5, y + HeaderBandH * 0.72, Truncate(titleLeft, 48), 10, "700", "#fff", "start"));
+			string tipo = string.IsNullOrEmpty(document.MaterialType) ? string.Empty : "Tipo: " + document.MaterialType;
+			sb.Append(Text(tableRight - 5, y + HeaderBandH * 0.72, tipo, 9, "600", "#fff", "end"));
+			y += HeaderBandH;
+
+			// —— Subcabecera ——
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<rect x=\"{F(contentLeft)}\" y=\"{F(y)}\" width=\"{F(tableW)}\" height=\"{F(SubHeaderH)}\" fill=\"#eee\" stroke=\"#000\" stroke-width=\"0.7\"/>");
+			sb.Append(Text(contentLeft + 5, y + SubHeaderH * 0.72, Truncate(document.LocationLine, 52), 7, "600", "#000", "start"));
+			// MarchId (técnico) omitido a propósito.
+			y += SubHeaderH;
+
+			// —— Cabecera columnas ——
+			double colHeaderY = y;
+			DrawColumnHeaders(sb, contentLeft, colHeaderY, ColHeaderH, tableW);
+			y += ColHeaderH;
+			double bodyTop = y;
+
+			// Pie a cota fija respecto al panel → mismo Y en ambas mitades.
+			double bodyBottom = panelY + panelH - PanelPadB;
+			double availBody = bodyBottom - bodyTop;
+			if (availBody < MinRowH)
+			{
+				availBody = MinRowH;
+			}
+
+			int n = Math.Max(1, rows.Count);
+			// Estirar filas a todo el alto útil (reparto uniforme).
+			double rowH = availBody / n;
+			if (rowH < MinRowH && n * MinRowH > availBody)
+			{
+				// Demasiadas filas: comprimir por debajo de MinRowH para no desbordar.
+				rowH = availBody / n;
+			}
+
+			double bodyH = rowH * Math.Max(rows.Count, 1);
+
+			// Fondo VMx
+			double vmxX = contentLeft + ColVia + ColStKm;
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<rect x=\"{F(vmxX)}\" y=\"{F(bodyTop)}\" width=\"{F(ColVmx)}\" height=\"{F(bodyH)}\" fill=\"#e8e8e8\"/>");
+
+			// Marco tabla
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<rect x=\"{F(contentLeft)}\" y=\"{F(colHeaderY)}\" width=\"{F(tableW)}\" height=\"{F(ColHeaderH + bodyH)}\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.05\"/>");
+
+			if (rows.Count == 0)
+			{
+				sb.Append(Text(contentLeft + tableW * 0.5, bodyTop + 16, "(sin fronteras)", 9, "400", "#000", "middle"));
+			}
+			else
+			{
+				DrawBody(sb, contentLeft, bodyTop, rowH, rows);
+			}
+
+			DrawVerticals(sb, contentLeft, colHeaderY, ColHeaderH + bodyH);
+
+			// Pie (paginación del tren o del libro completo)
+			int pNum = bookPageNumber ?? page.PageNumber;
+			int pCnt = bookPageCount ?? page.PageCount;
+			DrawPanelFooter(sb, contentLeft, tableRight, panelY, panelH, document.EditionLabel, pNum, pCnt);
+		}
+
+		private static void DrawColumnHeaders(StringBuilder sb, double left, double y, double h, double tableW)
 		{
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{F(left)}\" y=\"{F(y)}\" width=\"{F(TableWidth)}\" height=\"{F(h)}\" fill=\"#ddd\"/>");
+				$"<rect x=\"{F(left)}\" y=\"{F(y)}\" width=\"{F(tableW)}\" height=\"{F(h)}\" fill=\"#ddd\"/>");
 			double x = left;
 			HeaderCell(sb, x, y, h, ColVia, "Vía");
 			x += ColVia;
@@ -206,8 +586,8 @@ namespace Diamond.Controls.Rendering
 		private static void HeaderCell(StringBuilder sb, double x, double y, double h, double w, string label)
 		{
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<line x1=\"{F(x)}\" y1=\"{F(y)}\" x2=\"{F(x)}\" y2=\"{F(y + h)}\" stroke=\"#000\" stroke-width=\"0.55\"/>");
-			sb.Append(Text(x + w * 0.5, y + h * 0.7, label, 7, "700", "#000", "middle"));
+				$"<line x1=\"{F(x)}\" y1=\"{F(y)}\" x2=\"{F(x)}\" y2=\"{F(y + h)}\" stroke=\"#000\" stroke-width=\"0.5\"/>");
+			sb.Append(Text(x + w * 0.5, y + h * 0.7, label, 6.5, "700", "#000", "middle"));
 		}
 
 		private static void DrawVerticals(StringBuilder sb, double left, double y, double h)
@@ -227,7 +607,7 @@ namespace Diamond.Controls.Rendering
 			int i = 0;
 			while (i < xs.Length)
 			{
-				double sw = (i == 0 || i == xs.Length - 1) ? 1.1 : 0.55;
+				double sw = (i == 0 || i == xs.Length - 1) ? 1.0 : 0.5;
 				sb.Append(CultureInfo.InvariantCulture,
 					$"<line x1=\"{F(xs[i])}\" y1=\"{F(y)}\" x2=\"{F(xs[i])}\" y2=\"{F(y + h)}\" stroke=\"#000\" stroke-width=\"{F(sw)}\"/>");
 				i++;
@@ -242,13 +622,9 @@ namespace Diamond.Controls.Rendering
 			IReadOnlyList<CirculationSheetFrontier> rows)
 		{
 			int n = rows.Count;
-			// Y de cada línea de PK (centros de fila alineados con St Km / Dependencia / Com / Hora)
-			// Fila i ocupa [bodyTop + i*rowH, bodyTop + (i+1)*rowH]; el PK se dibuja en el centro.
 
-			// —— 1) Columna Vía: runs fusionados por tipo de vía del tramo saliente ——
 			DrawMergedViaColumn(sb, tableLeft, bodyTop, rowH, rows);
 
-			// —— 2) Filas de punto (St Km, Dependencia, Com, Hora) + líneas horizontales selectivas ——
 			int i = 0;
 			while (i < n)
 			{
@@ -257,80 +633,57 @@ namespace Diamond.Controls.Rendering
 				double y1 = y0 + rowH;
 				double cy = y0 + rowH * 0.5;
 
-				// Línea horizontal en columnas de punto (no en Vía/VMx/Conc. fusionadas)
-				DrawPointRowHorizontal(sb, tableLeft, y1, rows, i);
+				DrawPointRowHorizontal(sb, tableLeft, y1);
 
-				// St Km
 				double stX = tableLeft + ColVia;
-				sb.Append(Text(stX + ColStKm - 3, cy + 3, row.StationKm, 8, "600", "#000", "end"));
+				sb.Append(Text(stX + ColStKm - 3, cy + 2.5, row.StationKm, 7.5, "600", "#000", "end"));
 
-				// Dependencia
 				double depX = tableLeft + ColVia + ColStKm + ColVmx;
 				DrawDependency(sb, depX, y0, rowH, row);
 
-				// Com
 				double comX = depX + ColDep;
 				DrawCom(sb, comX, cy, row);
 
-				// Hora
 				double horaX = comX + ColCom;
 				string hora = FormatRowClock(row);
-				sb.Append(Text(horaX + ColHora * 0.5, cy + 3, hora, 8.5, "700", "#000", "middle"));
+				sb.Append(Text(horaX + ColHora * 0.5, cy + 2.5, hora, 8, "700", "#000", "middle"));
 
-				// Cruz (sin líneas de división horizontales; solo números de tren)
 				double cruzX = horaX + ColHora + ColConc;
 				if (!string.IsNullOrEmpty(row.CrossingTrains))
 				{
-					sb.Append(Text(cruzX + ColCruz * 0.5, cy + 3, Truncate(row.CrossingTrains, 10), 7, "600", "#000", "middle"));
+					sb.Append(Text(cruzX + ColCruz * 0.5, cy + 2.5, Truncate(row.CrossingTrains, 10), 6.5, "600", "#000", "middle"));
 				}
 
 				i++;
 			}
 
-			// —— 3) VMx desfasado (entre PKs), fusionado si la limitación no cambia ——
 			DrawOffsetVmx(sb, tableLeft + ColVia + ColStKm, bodyTop, rowH, rows);
 
-			// —— 4) Tiempo concedido desfasado ——
 			double concX = tableLeft + ColVia + ColStKm + ColVmx + ColDep + ColCom + ColHora;
 			DrawOffsetGranted(sb, concX, bodyTop, rowH, rows);
 
-			// Línea superior e inferior del cuerpo en todo el ancho
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<line x1=\"{F(tableLeft)}\" y1=\"{F(bodyTop)}\" x2=\"{F(tableLeft + TableWidth)}\" y2=\"{F(bodyTop)}\" stroke=\"#000\" stroke-width=\"0.7\"/>");
+				$"<line x1=\"{F(tableLeft)}\" y1=\"{F(bodyTop)}\" x2=\"{F(tableLeft + TableWidth)}\" y2=\"{F(bodyTop)}\" stroke=\"#000\" stroke-width=\"0.65\"/>");
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<line x1=\"{F(tableLeft)}\" y1=\"{F(bodyTop + n * rowH)}\" x2=\"{F(tableLeft + TableWidth)}\" y2=\"{F(bodyTop + n * rowH)}\" stroke=\"#000\" stroke-width=\"0.7\"/>");
+				$"<line x1=\"{F(tableLeft)}\" y1=\"{F(bodyTop + n * rowH)}\" x2=\"{F(tableLeft + TableWidth)}\" y2=\"{F(bodyTop + n * rowH)}\" stroke=\"#000\" stroke-width=\"0.65\"/>");
 		}
 
-		private static void DrawPointRowHorizontal(
-			StringBuilder sb,
-			double tableLeft,
-			double y,
-			IReadOnlyList<CirculationSheetFrontier> rows,
-			int rowIndex)
+		private static void DrawPointRowHorizontal(StringBuilder sb, double tableLeft, double y)
 		{
-			// No dibujar la línea inferior de la última en las columnas de tramo si no hay más.
-			// Siempre dibujamos StKm–Hora; Vía/VMx/Conc. se gestionan en sus merges.
 			double x0 = tableLeft + ColVia;
-			double x1 = tableLeft + ColVia + ColStKm; // fin StKm
-			double x2 = x1 + ColVmx; // fin VMx — no trazar aquí (desfase)
-			double x3 = x2 + ColDep;
-			double x4 = x3 + ColCom;
-			double x5 = x4 + ColHora;
-			double x6 = x5 + ColConc; // no trazar Conc aquí
-			double x7 = x6 + ColCruz; // Cruz: sin rayas
+			double x1 = x0 + ColStKm;
+			double x2 = x1 + ColVmx;
+			double x5 = x2 + ColDep + ColCom + ColHora;
 
-			// St Km
 			sb.Append(HLine(x0, x1, y));
-			// Dependencia + Com + Hora (no Conc. ni Cruz: Conc. desfasada; Cruz sin divisiones)
 			sb.Append(HLine(x2, x5, y));
-			// x6–x7 = Cruz: sin líneas horizontales a propósito
 		}
 
 		private static string HLine(double x0, double x1, double y)
 		{
 			return string.Format(
 				CultureInfo.InvariantCulture,
-				"<line x1=\"{0}\" y1=\"{1}\" x2=\"{2}\" y2=\"{1}\" stroke=\"#000\" stroke-width=\"0.45\"/>",
+				"<line x1=\"{0}\" y1=\"{1}\" x2=\"{2}\" y2=\"{1}\" stroke=\"#000\" stroke-width=\"0.4\"/>",
 				F(x0), F(y), F(x1));
 		}
 
@@ -347,8 +700,6 @@ namespace Diamond.Controls.Rendering
 				return;
 			}
 
-			// Runs de tramos salientes con el mismo tipo de vía.
-			// El bloque visual cubre desde la fila del PK inicial hasta la del PK final del run.
 			int i = 0;
 			while (i < n - 1)
 			{
@@ -359,21 +710,19 @@ namespace Diamond.Controls.Rendering
 					j++;
 				}
 
-				// Tramos i .. j-1 → filas i .. j inclusive
 				double y0 = bodyTop + i * rowH;
 				double y1 = bodyTop + (j + 1) * rowH;
 				string label = isDouble ? "Doble" : "Única";
 				double cx = tableLeft + ColVia * 0.5;
 				double cy = (y0 + y1) * 0.5;
 				sb.Append(CultureInfo.InvariantCulture,
-					$"<text x=\"{F(cx)}\" y=\"{F(cy)}\" fill=\"#000\" font-size=\"8\" font-weight=\"700\" font-family=\"Arial,Helvetica,sans-serif\" text-anchor=\"middle\" transform=\"rotate(-90 {F(cx)},{F(cy)})\">{XmlEscape(label)}</text>");
+					$"<text x=\"{F(cx)}\" y=\"{F(cy)}\" fill=\"#000\" font-size=\"7.5\" font-weight=\"700\" font-family=\"Arial,Helvetica,sans-serif\" text-anchor=\"middle\" transform=\"rotate(-90 {F(cx)},{F(cy)})\">{XmlEscape(label)}</text>");
 
-				// Separación solo si cambia el tipo en la frontera j (altura del PK j)
 				if (j < n - 1)
 				{
 					double sepY = bodyTop + (j + 0.5) * rowH;
 					sb.Append(CultureInfo.InvariantCulture,
-						$"<line x1=\"{F(tableLeft)}\" y1=\"{F(sepY)}\" x2=\"{F(tableLeft + ColVia)}\" y2=\"{F(sepY)}\" stroke=\"#000\" stroke-width=\"0.9\"/>");
+						$"<line x1=\"{F(tableLeft)}\" y1=\"{F(sepY)}\" x2=\"{F(tableLeft + ColVia)}\" y2=\"{F(sepY)}\" stroke=\"#000\" stroke-width=\"0.85\"/>");
 				}
 
 				i = j;
@@ -393,7 +742,6 @@ namespace Diamond.Controls.Rendering
 				return;
 			}
 
-			// Texto VMx centrado en cada run de tramos con la misma limitación (desfasado entre PKs).
 			int i = 0;
 			while (i < n - 1)
 			{
@@ -404,20 +752,18 @@ namespace Diamond.Controls.Rendering
 					j++;
 				}
 
-				// Entre el PK i y el PK j
 				double yStart = bodyTop + (i + 0.5) * rowH;
 				double yEnd = bodyTop + (j + 0.5) * rowH;
 				double cy = (yStart + yEnd) * 0.5;
 				if (vmax.HasValue)
 				{
-					sb.Append(Text(colX + ColVmx * 0.5, cy + 3,
-						vmax.Value.ToString(CultureInfo.InvariantCulture), 9, "700", "#000", "middle"));
+					sb.Append(Text(colX + ColVmx * 0.5, cy + 2.5,
+						vmax.Value.ToString(CultureInfo.InvariantCulture), 8.5, "700", "#000", "middle"));
 				}
 
 				i = j;
 			}
 
-			// División a la altura del PK solo donde cambia la limitación saliente.
 			int k = 1;
 			while (k < n - 1)
 			{
@@ -427,7 +773,7 @@ namespace Diamond.Controls.Rendering
 				{
 					double lineY = bodyTop + (k + 0.5) * rowH;
 					sb.Append(CultureInfo.InvariantCulture,
-						$"<line x1=\"{F(colX)}\" y1=\"{F(lineY)}\" x2=\"{F(colX + ColVmx)}\" y2=\"{F(lineY)}\" stroke=\"#000\" stroke-width=\"0.85\"/>");
+						$"<line x1=\"{F(colX)}\" y1=\"{F(lineY)}\" x2=\"{F(colX + ColVmx)}\" y2=\"{F(lineY)}\" stroke=\"#000\" stroke-width=\"0.8\"/>");
 				}
 
 				k++;
@@ -445,26 +791,24 @@ namespace Diamond.Controls.Rendering
 			int i = 0;
 			while (i < n - 1)
 			{
-				// Entre PK i e i+1
 				double y0 = bodyTop + (i + 0.5) * rowH;
 				double y1 = bodyTop + (i + 1.5) * rowH;
 				double cy = (y0 + y1) * 0.5;
 				string g = CirculationSheetDocument.FormatGrantedMinutes(rows[i].GrantedToNext);
 				if (g.Length > 0)
 				{
-					sb.Append(Text(colX + ColConc * 0.5, cy + 3, g, 8, "600", "#000", "middle"));
+					sb.Append(Text(colX + ColConc * 0.5, cy + 2.5, g, 7.5, "600", "#000", "middle"));
 				}
 
 				i++;
 			}
 
-			// Divisiones a la altura de cada PK intermedio (siempre, cada tramo es independiente)
 			int k = 1;
 			while (k < n - 1)
 			{
 				double lineY = bodyTop + (k + 0.5) * rowH;
 				sb.Append(CultureInfo.InvariantCulture,
-					$"<line x1=\"{F(colX)}\" y1=\"{F(lineY)}\" x2=\"{F(colX + ColConc)}\" y2=\"{F(lineY)}\" stroke=\"#000\" stroke-width=\"0.45\"/>");
+					$"<line x1=\"{F(colX)}\" y1=\"{F(lineY)}\" x2=\"{F(colX + ColConc)}\" y2=\"{F(lineY)}\" stroke=\"#000\" stroke-width=\"0.4\"/>");
 				k++;
 			}
 		}
@@ -491,40 +835,86 @@ namespace Diamond.Controls.Rendering
 			double rowH,
 			CirculationSheetFrontier row)
 		{
-			double textY = y0 + rowH * 0.5 + 3;
-			string name = Truncate(row.DependencyName, 36);
-			const double fontSize = 8.0;
+			double textY = y0 + rowH * 0.5 + 2.5;
+			string name = Truncate(row.DependencyName, 34);
+			const double fontSize = 7.5;
 
-			if (row.MarkKind == CirculationSheetMarkKind.PrincipalStation)
+			// Blanco sobre negro solo si el tren para aquí (origen, destino o parada comercial),
+			// no por ser estación principal de la red (p. ej. Son Rullán sin parada no se resalta;
+			// Lloseta apeadero con parada sí).
+			bool trainStopsHere = (row.IsOrigin || row.IsDestination || row.IsCommercialStop)
+				&& row.MarkKind != CirculationSheetMarkKind.SpeedLimitChange;
+
+			if (trainStopsHere)
 			{
-				// Blanco sobre negro: el rectángulo negro solo envuelve el texto, no toda la casilla.
-				double textW = EstimateTextWidth(name, fontSize);
-				double padX = 3.0;
-				double padY = 1.2;
+				// Blanco sobre negro: rectángulo que cubre todo el nombre (Arial bold caps).
+				double textW = EstimateTextWidth(name, fontSize, bold: true);
+				double padX = 3.5;
+				double padY = 1.4;
 				double rh = fontSize + 2.0 * padY;
 				double rw = textW + 2.0 * padX;
-				double rx = x + 5.0;
+				// No invadir la columna Com.
+				double maxW = ColDep - 8.0;
+				if (rw > maxW)
+				{
+					rw = maxW;
+				}
+
+				double rx = x + 4.0;
 				double ry = y0 + (rowH - rh) * 0.5;
+				if (ry < y0 + 0.5)
+				{
+					ry = y0 + 0.5;
+				}
+
 				sb.Append(CultureInfo.InvariantCulture,
 					$"<rect x=\"{F(rx)}\" y=\"{F(ry)}\" width=\"{F(rw)}\" height=\"{F(rh)}\" fill=\"#000\"/>");
 				sb.Append(Text(rx + padX, textY, name, fontSize, "700", "#fff", "start"));
 			}
 			else
 			{
-				// Negro sobre blanco (apeadero o PK de limitación)
-				sb.Append(Text(x + 6, textY, name, 7.5, "400", "#000", "start"));
+				sb.Append(Text(x + 5, textY, name, 7, "400", "#000", "start"));
 			}
 		}
 
-		/// <summary>Ancho aproximado de texto en mayúsculas (Arial ~0.56 em).</summary>
-		private static double EstimateTextWidth(string text, double fontSize)
+		/// <summary>
+		/// Ancho aproximado Arial: negrita/mayúsculas más anchas que el factor 0.56 antiguo
+		/// (dejaba el rectángulo negro corto en PALMA, MANACOR, PETRA…).
+		/// </summary>
+		public static double EstimateTextWidth(string text, double fontSize, bool bold = false)
 		{
 			if (string.IsNullOrEmpty(text))
 			{
 				return fontSize;
 			}
 
-			return text.Length * fontSize * 0.56;
+			double em = bold ? 0.66 : 0.58;
+			double sum = 0.0;
+			int i = 0;
+			while (i < text.Length)
+			{
+				char c = text[i];
+				double f = em;
+				if (c == 'I' || c == 'i' || c == 'l' || c == '1' || c == '.' || c == ' ')
+				{
+					f = bold ? 0.38 : 0.32;
+				}
+				else if (c == 'M' || c == 'W' || c == 'm' || c == 'w' || c == '@')
+				{
+					f = bold ? 0.88 : 0.78;
+				}
+				else if (c == 'Á' || c == 'É' || c == 'Í' || c == 'Ó' || c == 'Ú' || c == 'Ñ'
+					|| c == 'á' || c == 'é' || c == 'í' || c == 'ó' || c == 'ú' || c == 'ñ')
+				{
+					f = bold ? 0.72 : 0.62;
+				}
+
+				sum += f;
+				i++;
+			}
+
+			// Holgura fija para anti-aliasing / métricas del motor SVG.
+			return sum * fontSize + (bold ? 2.5 : 1.0);
 		}
 
 		private static void DrawCom(StringBuilder sb, double comX, double cy, CirculationSheetFrontier row)
@@ -538,11 +928,11 @@ namespace Diamond.Controls.Rendering
 			if (circle)
 			{
 				sb.Append(CultureInfo.InvariantCulture,
-					$"<circle cx=\"{F(comX + ColCom * 0.5)}\" cy=\"{F(cy)}\" r=\"2.6\" fill=\"#000\"/>");
+					$"<circle cx=\"{F(comX + ColCom * 0.5)}\" cy=\"{F(cy)}\" r=\"2.4\" fill=\"#000\"/>");
 			}
 			else if (text.Length > 0)
 			{
-				sb.Append(Text(comX + ColCom * 0.5, cy + 3, text, 8, "600", "#000", "middle"));
+				sb.Append(Text(comX + ColCom * 0.5, cy + 2.5, text, 7.5, "600", "#000", "middle"));
 			}
 		}
 
@@ -560,11 +950,9 @@ namespace Diamond.Controls.Rendering
 
 			if (row.IsCommercialStop)
 			{
-				// Hora de salida comercial
 				return CirculationSheetDocument.FormatSheetTime(row.Departure ?? row.Arrival);
 			}
 
-			// Paso / frontera de V
 			return CirculationSheetDocument.FormatSheetTime(row.Departure ?? row.Arrival);
 		}
 

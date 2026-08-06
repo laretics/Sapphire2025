@@ -62,23 +62,30 @@
 			@if (SelectedCirculation is not null)
 			{
 				<span class="badge bg-warning text-dark border" title="Circulación seleccionada (clic en vacío para deseleccionar)">
-					@(SelectedCirculation.HasServiceNumber ? SelectedCirculation.ServiceNumber : SelectedCirculation.Id)
+					@(SelectedCirculation.HasServiceNumber ? SelectedCirculation.ServiceNumber : "—")
 					· @FormatClock(SelectedCirculation.Departure)
 				</span>
 				<button type="button"
 						class="btn btn-sm btn-warning"
-						title="Abrir ficha de marcha del tren seleccionado"
+						title="Ficha de marcha del tren seleccionado"
 						@onclick="OpenCirculationSheet">
 					Ficha
 				</button>
 				<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearSelection" title="Quitar selección">×</button>
 			}
 			<button type="button"
+					class="btn btn-sm btn-outline-info"
+					title="Libro itinerario de toda la malla (portada, índice y todos los trenes)"
+					disabled="@(Mesh is null || Mesh.Circulations.Count == 0)"
+					@onclick="OpenItineraryBook">
+				Libro
+			</button>
+			<button type="button"
 					class="btn btn-sm btn-outline-light"
-					title="Imprimir la ventana actual (A3 apaisado, tema papel)"
+					title="Imprimir la ventana actual de malla (A3 apaisado, tema papel)"
 					disabled="@(Mesh is null || View is null)"
 					@onclick="OpenPrintPreview">
-				Imprimir
+				Imprimir malla
 			</button>
 			<span class="badge bg-dark text-light border">
 				@FormatClock(mvarViewT0)–@FormatClock(mvarViewT1)
@@ -143,10 +150,16 @@
 		</div>
 	}
 
-	@if (mvarShowSheet && SelectedCirculation is not null)
+	@if (mvarShowSheet)
 	{
-		<CirculationSheetView Circulation="SelectedCirculation"
+		<CirculationSheetView FullBook="mvarSheetFullBook"
+							  Circulation="mvarSheetFullBook ? null : SelectedCirculation"
 							  Mesh="Mesh"
+							  PlanName="@PlanName"
+							  Notes="@PrintNotes"
+							  PlanningDay="PlanningDay"
+							  DemandPlan="DemandPlan"
+							  ExploitationPlan="ExploitationPlan"
 							  MaxFrontiersPerPage="MaxFrontiersPerPage"
 							  OnClose="CloseCirculationSheet" />
 	}
@@ -221,6 +234,14 @@
 	[Parameter]
 	public string? PrintNotes { get; set; }
 
+	/// <summary>Plan de demanda (días de circulación en fichas / libro).</summary>
+	[Parameter]
+	public Plan? DemandPlan { get; set; }
+
+	/// <summary>Plan de explotación multi-día cargado (.dmesh).</summary>
+	[Parameter]
+	public ExploitationPlan? ExploitationPlan { get; set; }
+
 	/// <summary>Ancho lógico del SVG del plot (sin columnas de estaciones).</summary>
 	private int PlotSvgWidth
 	{
@@ -278,6 +299,8 @@
 	private CancellationTokenSource? mvarFullRenderCts;
 	private string? mvarLastSelectedTechnicalId;
 	private bool mvarShowSheet;
+	/// <summary>True = libro completo de la malla; false = ficha del tren seleccionado.</summary>
+	private bool mvarSheetFullBook;
 
 	private bool mvarShowOccupations = true;
 	private bool mvarShowTrainPaths = true;
@@ -399,14 +422,28 @@
 			mvarDotNetRef ??= DotNetObjectReference.Create(this);
 			try
 			{
-				if (!string.IsNullOrEmpty(mvarPlotHost.Id))
+				// ElementReference.Id puede lanzar si el ref aún no está cableado.
+				string hostId;
+				try
 				{
-					await Js.InvokeVoidAsync("diamondMeshViewport.attach", mvarPlotHost, mvarDotNetRef);
-					mvarWheelAttached = true;
+					hostId = mvarPlotHost.Id;
 				}
+				catch (InvalidOperationException)
+				{
+					return;
+				}
+
+				if (string.IsNullOrEmpty(hostId))
+				{
+					return;
+				}
+
+				await Js.InvokeVoidAsync("diamondMeshViewport.attach", mvarPlotHost, mvarDotNetRef);
+				mvarWheelAttached = true;
 			}
 			catch (Exception)
 			{
+				// Script mesh-viewport no cargado, ElementReference no listo o circuito ocupado.
 			}
 		}
 	}
@@ -851,6 +888,7 @@
 	private async Task ClearSelection()
 	{
 		mvarShowSheet = false;
+		mvarSheetFullBook = false;
 		await SetSelectedCirculationAsync(null, refresh: true);
 	}
 
@@ -861,6 +899,18 @@
 			return;
 		}
 
+		mvarSheetFullBook = false;
+		mvarShowSheet = true;
+	}
+
+	private void OpenItineraryBook()
+	{
+		if (Mesh is null || Mesh.Circulations.Count == 0)
+		{
+			return;
+		}
+
+		mvarSheetFullBook = true;
 		mvarShowSheet = true;
 	}
 
@@ -899,6 +949,7 @@
 	private void CloseCirculationSheet()
 	{
 		mvarShowSheet = false;
+		mvarSheetFullBook = false;
 	}
 
 	private bool MeshContains(Circulation circulation)

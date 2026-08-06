@@ -1,51 +1,27 @@
 namespace Diamond.Controls.Rendering
 {
 	/// <summary>
-	/// Paginación de fronteras de la ficha de marcha.
-	/// Si el número de filas supera el máximo por página, se reparte de forma equitativa
-	/// en <c>ceil(n/max)</c> páginas de modo que la media por página sea ≤ máximo.
+	/// Paginación del libro itinerario: reparte fronteras en páginas de libro
+	/// (mitades) de forma equilibrada, sin superar el máximo por mitad.
+	/// Cada 2 páginas de libro forman una hoja A4 apaisada en el renderer.
 	/// </summary>
 	public static class CirculationSheetPager
 	{
 		/// <summary>
-		/// Techo por página: deja margen bajo MinRowH≈13 px en A4 (≈50 filas caben;
-		/// 36 deja filas legibles ~17 px y evita recortes al imprimir).
+		/// Techo por mitad de libro: filas legibles al estirar en A4 apaisado.
 		/// </summary>
-		public const int DefaultMaxFrontiersPerPage = 36;
+		public const int DefaultMaxFrontiersPerPage = 30;
 
 		/// <summary>
-		/// Máximo de filas que caben en una página A4 con la geometría del renderer
-		/// (altura mínima de fila). El paginador no debería superar este valor.
+		/// Máximo de filas que caben en una mitad con altura mínima de fila.
 		/// </summary>
 		public static int MaxFrontiersFittingPage
 		{
-			get
-			{
-				// Debe coincidir con CirculationSheetSvgRenderer (márgenes + cabeceras + MinRowH).
-				const double pageH = 841.89;
-				const double marginT = 20;
-				const double marginB = 34;
-				const double headerBand = 22;
-				const double subHeader = 15;
-				const double colHeader = 17;
-				const double footerPad = 16;
-				const double minRowH = 13;
-				double bodyTop = marginT + headerBand + subHeader + colHeader;
-				double bodyBottom = pageH - marginB - footerPad;
-				double avail = bodyBottom - bodyTop;
-				int n = (int)Math.Floor(avail / minRowH);
-				if (n < 8)
-				{
-					n = 8;
-				}
-
-				return n;
-			}
+			get { return CirculationSheetSvgRenderer.MaxRowsPerBookPage; }
 		}
 
 		/// <summary>
-		/// Calcula el número de páginas necesarias para <paramref name="frontierCount"/> filas
-		/// sin superar <paramref name="maxPerPage"/> de media (ni de techo por página).
+		/// Número de páginas de libro (mitades) necesarias.
 		/// </summary>
 		public static int ComputePageCount(int frontierCount, int maxPerPage)
 		{
@@ -56,7 +32,6 @@ namespace Diamond.Controls.Rendering
 
 			maxPerPage = ClampMaxPerPage(maxPerPage);
 
-			// Empezar en 1 e ir añadiendo páginas hasta media ≤ max.
 			int pages = 1;
 			while ((double)frontierCount / pages > maxPerPage)
 			{
@@ -64,6 +39,17 @@ namespace Diamond.Controls.Rendering
 			}
 
 			return pages;
+		}
+
+		/// <summary>Número de hojas físicas A4 apaisadas (2 mitades por hoja).</summary>
+		public static int ComputeSheetCount(int bookPageCount)
+		{
+			if (bookPageCount <= 0)
+			{
+				return 1;
+			}
+
+			return (bookPageCount + 1) / 2;
 		}
 
 		private static int ClampMaxPerPage(int maxPerPage)
@@ -83,7 +69,8 @@ namespace Diamond.Controls.Rendering
 		}
 
 		/// <summary>
-		/// Reparte las fronteras en páginas de tamaños lo más iguales posible.
+		/// Reparte las fronteras en páginas de libro de tamaños lo más iguales posible
+		/// (misma cantidad de filas ±1), para estirar cada tabla a la misma altura de hoja.
 		/// </summary>
 		public static IReadOnlyList<CirculationSheetPage> Paginate(
 			IReadOnlyList<CirculationSheetFrontier> frontiers,

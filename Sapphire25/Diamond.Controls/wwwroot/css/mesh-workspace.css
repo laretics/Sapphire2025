@@ -1,0 +1,433 @@
+/* —— Workspace IDE malla + script —— */
+
+/*
+ * Altura: 100% del contenedor (embeber en Zafiro/Sapphire).
+ * El host (Diamond.Web a pantalla completa o .engineer-diamond-host) debe
+ * darle altura real; no usar 100vh aquí o sobresale del main-content.
+ */
+.mesh-workspace {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	width: 100%;
+	min-height: 0;
+	overflow: hidden;
+	background: #0b0f14;
+	color: #e2e8f0;
+	font-size: 0.875rem;
+}
+
+/* Solo cuando el host es la ventana entera (Diamond.Web /mesh). */
+.mesh-workspace.mesh-workspace-viewport {
+	height: 100vh;
+	min-height: 100vh;
+}
+
+.mesh-menubar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.35rem 0.5rem;
+	padding: 0.35rem 0.65rem;
+	background: linear-gradient(180deg, #141b24 0%, #0f1419 100%);
+	border-bottom: 1px solid #1e293b;
+	flex-shrink: 0;
+}
+
+.mesh-menubar .brand {
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	color: #7dd3fc;
+	margin-right: 0.5rem;
+	font-size: 0.92rem;
+}
+
+.mesh-file-label {
+	color: #94a3b8;
+	font-size: 0.8rem;
+	max-width: 220px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.mesh-file-label.dirty::after {
+	content: " •";
+	color: #fbbf24;
+	font-weight: 700;
+}
+
+.mesh-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.35rem 0.55rem;
+	padding: 0.3rem 0.65rem;
+	background: #0f1419;
+	border-bottom: 1px solid #1e293b;
+	flex-shrink: 0;
+}
+
+.mesh-toolbar .sep {
+	width: 1px;
+	height: 1.4rem;
+	background: #334155;
+	margin: 0 0.15rem;
+}
+
+.mesh-toolbar .lbl {
+	color: #64748b;
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.mesh-statusline {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.25rem 0.65rem;
+	background: #0c1218;
+	border-bottom: 1px solid #1e293b;
+	flex-shrink: 0;
+	min-height: 1.85rem;
+}
+
+.mesh-statusline .msg {
+	color: #94a3b8;
+	font-size: 0.78rem;
+	flex: 1;
+	min-width: 120px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.mesh-statusline .msg.err {
+	color: #fca5a5;
+}
+
+.mesh-statusline .msg.ok {
+	color: #86efac;
+}
+
+.mesh-split {
+	flex: 1;
+	min-height: 0;
+	display: grid;
+	grid-template-columns: minmax(300px, 1.35fr) 6px minmax(280px, 1fr);
+	overflow: hidden;
+}
+
+body.mesh-split-dragging {
+	cursor: col-resize !important;
+	user-select: none !important;
+}
+
+.mesh-gutter {
+	background: #1e293b;
+	cursor: col-resize;
+	position: relative;
+	z-index: 2;
+}
+
+.mesh-gutter:hover,
+.mesh-gutter:active {
+	background: #38bdf8;
+}
+
+.mesh-panel {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.mesh-panel-mesh {
+	background: #0b0f14;
+}
+
+.mesh-panel-script {
+	background: #0f1419;
+	border-left: 1px solid #1e293b;
+}
+
+.mesh-panel-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.3rem 0.5rem;
+	border-bottom: 1px solid #1e293b;
+	flex-shrink: 0;
+	background: #121820;
+}
+
+.mesh-panel-head .title {
+	font-weight: 600;
+	color: #cbd5e1;
+	font-size: 0.82rem;
+}
+
+.mesh-layer-toolbar {
+	padding: 0.2rem 0.5rem 0.35rem;
+	border-bottom: 1px solid #1e293b;
+	background: #0e141c;
+	flex-shrink: 0;
+	gap: 0.3rem;
+}
+
+.mesh-layer-toolbar .mesh-layer-label {
+	color: #64748b;
+	font-size: 0.68rem;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	margin-right: 0.15rem;
+}
+
+.mesh-layer-toolbar .btn {
+	font-size: 0.72rem;
+	padding: 0.12rem 0.45rem;
+	border-radius: 0.3rem;
+}
+
+.mesh-layer-toolbar .btn-info {
+	background: #0e7490;
+	border-color: #22d3ee;
+	color: #ecfeff;
+}
+
+.mesh-layer-toolbar .btn-outline-secondary {
+	color: #94a3b8;
+	border-color: #334155;
+}
+
+.mesh-panel-body {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.mesh-svg-host {
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+	touch-action: none;
+	overscroll-behavior: none;
+	cursor: grab;
+	user-select: none;
+	background: #0a0e13;
+}
+
+.mesh-svg-host.mesh-dragging {
+	cursor: grabbing;
+}
+
+.mesh-svg-canvas {
+	display: block;
+	width: 100%;
+	height: 100%;
+	max-height: none;
+}
+
+.mesh-side-tabs {
+	display: flex;
+	gap: 0.15rem;
+	padding: 0.2rem 0.4rem;
+	border-bottom: 1px solid #1e293b;
+	flex-shrink: 0;
+	background: #0f1419;
+}
+
+.mesh-side-tabs button {
+	border: 0;
+	background: transparent;
+	color: #64748b;
+	font-size: 0.72rem;
+	padding: 0.2rem 0.45rem;
+	border-radius: 0.25rem;
+	cursor: pointer;
+}
+
+.mesh-side-tabs button.active {
+	background: #1e293b;
+	color: #e2e8f0;
+}
+
+.mesh-side-tabs button.has-alert {
+	color: #fbbf24;
+}
+
+.mesh-side-tabs button.has-error {
+	color: #f87171;
+}
+
+.mesh-inspect {
+	max-height: 28%;
+	min-height: 0;
+	overflow: auto;
+	border-top: 1px solid #1e293b;
+	padding: 0.4rem 0.55rem;
+	background: #0c1218;
+	font-size: 0.75rem;
+	flex-shrink: 0;
+}
+
+.mesh-inspect ul {
+	margin: 0;
+	padding-left: 1.1rem;
+}
+
+.mesh-inspect li {
+	margin-bottom: 0.15rem;
+	color: #cbd5e1;
+}
+
+.mesh-inspect.empty {
+	color: #64748b;
+	font-style: italic;
+}
+
+.diamond-script-editor {
+	flex: 1 1 auto;
+	min-height: 0;
+	height: 100%;
+	position: relative;
+	overflow: hidden;
+	background: #0f1419;
+	/* Host BlazorMonaco: rellenar el panel aunque el hijo no traiga altura. */
+	display: flex;
+	flex-direction: column;
+}
+
+.diamond-script-editor.has-markers {
+	box-shadow: inset 0 0 0 1px #ef4444aa;
+}
+
+/* Placeholder mientras el circuito/Monaco arrancan (evita el “input HTML” vacío). */
+.diamond-editor-placeholder {
+	flex: 1 1 auto;
+	min-height: 120px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #0f1419;
+	color: #64748b;
+	font-size: 0.85rem;
+	font-family: Segoe UI, system-ui, sans-serif;
+	user-select: none;
+}
+
+/* BlazorMonaco monta #diamond-demand-editor; debe ocupar todo el flex. */
+.diamond-script-editor > div,
+#diamond-demand-editor {
+	flex: 1 1 auto;
+	width: 100% !important;
+	height: 100% !important;
+	min-height: 120px;
+	position: relative;
+	background: #0f1419;
+}
+
+.diamond-script-editor .monaco-editor,
+.diamond-script-editor .overflow-guard {
+	width: 100% !important;
+	height: 100% !important;
+}
+
+/*
+ * Monaco usa un <textarea class="inputarea"> oculto para teclado.
+ * Si el editor no ha terminado de maquetar, ese textarea se ve como un cuadro HTML.
+ */
+.diamond-script-editor textarea.inputarea {
+	position: absolute !important;
+	width: 1px !important;
+	height: 1px !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	border: 0 !important;
+	opacity: 0 !important;
+	overflow: hidden !important;
+	resize: none !important;
+	outline: none !important;
+	background: transparent !important;
+	color: transparent !important;
+	caret-color: transparent !important;
+	z-index: -1 !important;
+}
+
+.mesh-editor-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+	align-items: center;
+	padding: 0.35rem 0.5rem;
+	border-top: 1px solid #1e293b;
+	background: #121820;
+	flex-shrink: 0;
+}
+
+.mesh-diag-list {
+	max-height: 7rem;
+	overflow: auto;
+	padding: 0.3rem 0.5rem;
+	border-top: 1px solid #1e293b;
+	background: #1a1010;
+	font-size: 0.75rem;
+	flex-shrink: 0;
+}
+
+.mesh-diag-list a {
+	color: #7dd3fc;
+	cursor: pointer;
+	text-decoration: none;
+}
+
+.mesh-badge-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem;
+	align-items: center;
+}
+
+.mesh-zoom-toolbar .btn {
+	min-width: 1.85rem;
+	padding: 0.15rem 0.35rem;
+	font-size: 0.75rem;
+}
+
+/* Botones menú archivo más compactos */
+.mesh-menubar .btn {
+	font-size: 0.78rem;
+	padding: 0.2rem 0.5rem;
+}
+
+.mesh-placeholder {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #64748b;
+	padding: 1rem;
+	text-align: center;
+}
+
+@media (max-width: 900px) {
+	.mesh-split {
+		grid-template-columns: 1fr;
+		grid-template-rows: minmax(200px, 1fr) 6px minmax(220px, 1fr);
+	}
+
+	.mesh-gutter {
+		cursor: row-resize;
+	}
+
+	.mesh-panel-script {
+		border-left: 0;
+		border-top: 1px solid #1e293b;
+	}
+}

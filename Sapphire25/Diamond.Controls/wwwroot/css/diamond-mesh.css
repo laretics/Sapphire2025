@@ -173,7 +173,8 @@
 .diamond-circ-sheet-dialog {
 	display: flex;
 	flex-direction: column;
-	width: min(920px, 100%);
+	/* A4 apaisado: más ancho para previsualizar las dos mitades */
+	width: min(1100px, 100%);
 	max-height: 100%;
 	background: #1a1f27;
 	border: 1px solid #334155;
@@ -239,13 +240,13 @@
 }
 
 .diamond-circ-sheet-page {
-	/* A4 portrait: el line-height:0 recortaba el SVG a media página en algunos motores */
+	/* A4 landscape: 2 mitades (páginas de libro) por hoja física */
 	background: #ffffff;
 	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
 	line-height: normal;
-	width: min(100%, 720px);
-	/* 210:297 = A4 vertical */
-	aspect-ratio: 210 / 297;
+	width: min(100%, 980px);
+	/* 297:210 = A4 horizontal */
+	aspect-ratio: 297 / 210;
 	overflow: hidden;
 	flex-shrink: 0;
 }
@@ -254,8 +255,7 @@
 	display: block;
 	width: 100%;
 	height: 100%;
-	/* Forzar proporción vertical aunque el contenedor sea ancho */
-	aspect-ratio: 210 / 297;
+	aspect-ratio: 297 / 210;
 	max-width: 100%;
 }
 

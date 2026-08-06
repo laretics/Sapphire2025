@@ -1,0 +1,32 @@
+/*
+ * Rellenar el main-content de NexusFlow sin el padding gris de 20px
+ * (ese padding + height:100vh del planificador dejaba bandas blancas).
+ * Estilos con ::deep / :has para no depender solo del scope del .razor.css.
+ */
+
+.engineer-diamond-host {
+	flex: 1 1 auto;
+	min-height: 0;
+	height: 100%;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	background: #0b0f14;
+}
+
+/* El ErrorBoundary de Blazor no rellena; forzar al hijo. */
+.engineer-diamond-host ::deep > * {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.engineer-diamond-host ::deep .mesh-workspace {
+	flex: 1 1 auto;
+	min-height: 0;
+	height: 100% !important;
+	width: 100%;
+}

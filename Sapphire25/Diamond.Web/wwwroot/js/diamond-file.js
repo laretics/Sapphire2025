@@ -178,6 +178,114 @@
 				}
 			}
 			return downloadText(name, content);
+		},
+
+		/**
+		 * Abre un archivo binario (p. ej. malla .dmesh). Devuelve { name, base64 }.
+		 */
+		openBinary: async function (acceptExtensions) {
+			var accept = acceptExtensions || ".dmesh";
+			if (supportsFsa()) {
+				try {
+					var handles = await window.showOpenFilePicker({
+						multiple: false,
+						types: [{
+							description: "Malla Diamond planificada",
+							accept: {
+								"application/octet-stream": [".dmesh"]
+							}
+						}],
+						excludeAcceptAllOption: false
+					});
+					if (!handles || !handles.length) {
+						return null;
+					}
+					var file = await handles[0].getFile();
+					var buf = await file.arrayBuffer();
+					return { name: file.name || "malla.dmesh", base64: arrayBufferToBase64(buf) };
+				} catch (e) {
+					if (e && (e.name === "AbortError" || e.name === "NotAllowedError")) {
+						return null;
+					}
+				}
+			}
+			return await pickBinaryFallback(accept);
+		},
+
+		/**
+		 * Descarga bytes (Uint8Array o array de números) como archivo binario.
+		 */
+		saveBinary: async function (bytes, suggestedName) {
+			var name = suggestedName || "malla.dmesh";
+			if (!/\.dmesh$/i.test(name)) {
+				name = name + ".dmesh";
+			}
+			var u8;
+			if (bytes instanceof Uint8Array) {
+				u8 = bytes;
+			} else if (Array.isArray(bytes)) {
+				u8 = new Uint8Array(bytes);
+			} else if (bytes && bytes.buffer) {
+				u8 = new Uint8Array(bytes.buffer, bytes.byteOffset || 0, bytes.byteLength || bytes.length);
+			} else {
+				return null;
+			}
+			var blob = new Blob([u8], { type: "application/octet-stream" });
+			var url = URL.createObjectURL(blob);
+			var a = document.createElement("a");
+			a.href = url;
+			a.download = name;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+			return { name: name, saved: true, method: "download" };
 		}
 	};
+
+	function arrayBufferToBase64(buffer) {
+		var bytes = new Uint8Array(buffer);
+		var binary = "";
+		var chunk = 0x8000;
+		var i = 0;
+		while (i < bytes.length) {
+			var sub = bytes.subarray(i, Math.min(i + chunk, bytes.length));
+			binary += String.fromCharCode.apply(null, sub);
+			i += chunk;
+		}
+		return btoa(binary);
+	}
+
+	function pickBinaryFallback(accept) {
+		return new Promise(function (resolve) {
+			var input = document.createElement("input");
+			input.type = "file";
+			input.accept = accept || ".dmesh";
+			input.style.display = "none";
+			document.body.appendChild(input);
+			input.addEventListener("change", function () {
+				var file = input.files && input.files[0];
+				if (!file) {
+					document.body.removeChild(input);
+					resolve(null);
+					return;
+				}
+				var reader = new FileReader();
+				reader.onload = function () {
+					document.body.removeChild(input);
+					var buf = reader.result;
+					resolve({
+						name: file.name,
+						base64: arrayBufferToBase64(buf)
+					});
+				};
+				reader.onerror = function () {
+					document.body.removeChild(input);
+					resolve(null);
+				};
+				reader.readAsArrayBuffer(file);
+			}, { once: true });
+			input.click();
+		});
+	}
 })();

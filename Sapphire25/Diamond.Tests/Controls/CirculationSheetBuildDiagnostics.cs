@@ -66,16 +66,18 @@ namespace Diamond.Tests.Controls
 			}
 			Assert.True(hasMan, "Manacor missing from frontiers");
 
-			// Row height fit: page 1 body must not exceed available height with MinRowH
+			// Mitades de libro: caben con MinRowH en A4 apaisado.
 			int n0 = doc.Pages[0].Frontiers.Count;
-			const double pageH = 841.89;
-			const double marginT = 20;
-			const double marginB = 34;
-			const double header = 22 + 15 + 17;
-			double avail = pageH - marginT - marginB - 16 - header;
-			double bodyMin = n0 * 13.0;
-			System.Console.WriteLine("page0 rows=" + n0 + " bodyMinH=" + bodyMin + " avail=" + avail);
-			Assert.True(bodyMin <= avail + 1.0, "page0 content taller than page: " + bodyMin + " > " + avail);
+			double avail = CirculationSheetSvgRenderer.AvailableBodyHeight;
+			double bodyMin = n0 * 11.0;
+			System.Console.WriteLine("page0 rows=" + n0 + " bodyMinH=" + bodyMin + " avail=" + avail
+				+ " sheets=" + CirculationSheetPager.ComputeSheetCount(doc.Pages.Count));
+			Assert.True(bodyMin <= avail + 1.0, "page0 content taller than half-page: " + bodyMin + " > " + avail);
+
+			// 2 mitades → 1 hoja física A4 apaisada con ambas tablas.
+			IReadOnlyList<string> sheets = CirculationSheetSvgRenderer.RenderAllPages(doc);
+			Assert.Equal(CirculationSheetPager.ComputeSheetCount(doc.Pages.Count), sheets.Count);
+			Assert.Contains("viewBox=\"0 0 841.89 595.28\"", sheets[0], StringComparison.Ordinal);
 		}
 	}
 }

@@ -4,36 +4,60 @@
 @inject IJSRuntime Js
 
 @*
-  Visor de ficha de marcha (SVG multipágina).
-  Pensado para pantalla y para window.print (una página A4 por SVG).
+  Visor del libro itinerario / ficha de un tren.
+  Hojas A4 apaisadas (2 semipáginas por hoja).
 *@
-@if (mvarDocument is not null)
+@if (mvarReady)
 {
 	<div class="diamond-circ-sheet-overlay" @onclick="OnOverlayClick">
 		<div class="diamond-circ-sheet-dialog" @onclick:stopPropagation="true">
 			<div class="diamond-circ-sheet-toolbar no-print">
 				<span class="diamond-circ-sheet-toolbar-title">
-					Ficha · @(mvarDocument.TrainNumber)
-					@if (!string.IsNullOrEmpty(mvarDocument.TrainTitle))
+					@if (mvarFullBook)
 					{
-						<span> · @mvarDocument.TrainTitle</span>
+						<span>Libro itinerario</span>
+						@if (!string.IsNullOrEmpty(mvarTitleExtra))
+						{
+							<span> · @mvarTitleExtra</span>
+						}
+						<span class="text-muted"> · @mvarHalfPageCount semipág. · @mcolPageSvg.Count hoja(s) A4</span>
 					}
-					<span class="text-muted"> · @mvarDocument.Pages.Count pág.</span>
+					else
+					{
+						<span>Ficha · @mvarTitleExtra</span>
+						<span class="text-muted"> · @mvarHalfPageCount mitad(es) · @mcolPageSvg.Count hoja(s) A4</span>
+					}
 				</span>
 				<span class="diamond-circ-sheet-toolbar-actions">
-					<label class="diamond-circ-sheet-max-label" title="Máximo de fronteras (filas) por página">
-						Máx/pág
+					<label class="diamond-circ-sheet-max-label" title="Máximo de filas por semipágina (mitad de A4)">
+						Máx/mitad
 						<input type="number"
 							   min="8"
-							   max="80"
+							   max="60"
 							   class="form-control form-control-sm diamond-circ-sheet-max-input"
 							   value="@mvarMaxPerPage"
 							   @onchange="OnMaxPerPageChanged" />
 					</label>
-					<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="PrintAsync" title="Imprimir ficha">Imprimir</button>
+					<button type="button"
+							class="btn btn-sm btn-outline-secondary"
+							@onclick="PrintAsync"
+							title="Imprimir todas las hojas (o Guardar como PDF en el diálogo del navegador)">
+						Imprimir
+					</button>
+					<button type="button"
+							class="btn btn-sm btn-outline-secondary"
+							disabled="@(mcolPageSvg.Count == 0 || mvarBusyPdf)"
+							@onclick="ExportPdfAsync"
+							title="Exportar el documento completo a PDF (PdfSharp + Svg.Skia)">
+						@(mvarBusyPdf ? "PDF…" : "PDF")
+					</button>
 					<button type="button" class="btn btn-sm btn-outline-light" @onclick="Close" title="Cerrar">Cerrar</button>
 				</span>
 			</div>
+			@if (!string.IsNullOrEmpty(mvarError))
+			{
+				<div class="p-3 text-danger">@mvarError</div>
+			}
 			<div class="diamond-circ-sheet-pages" @ref="mvarPrintRoot">
 				@for (int i = 0; i < mcolPageSvg.Count; i++)
 				{
@@ -47,17 +71,43 @@
 }
 
 @code {
-	private CirculationSheetDocument? mvarDocument;
 	private List<string> mcolPageSvg = new List<string>();
 	private int mvarMaxPerPage = CirculationSheetPager.DefaultMaxFrontiersPerPage;
 	private ElementReference mvarPrintRoot;
+	private bool mvarReady;
+	private bool mvarFullBook;
+	private string mvarTitleExtra = string.Empty;
+	private int mvarHalfPageCount;
+	private string? mvarError;
+	private bool mvarBusyPdf;
+
+	/// <summary>Si true, libro de toda la malla; si false, ficha del tren seleccionado.</summary>
+	[Parameter]
+	public bool FullBook { get; set; }
 
 	[Parameter]
 	public Circulation? Circulation { get; set; }
 
-	/// <summary>Malla para calcular cruces con otros trenes (columna Cruz).</summary>
+	/// <summary>Malla (obligatoria en libro; opcional en ficha para cruces).</summary>
 	[Parameter]
 	public Mesh? Mesh { get; set; }
+
+	[Parameter]
+	public string PlanName { get; set; } = string.Empty;
+
+	[Parameter]
+	public string? Notes { get; set; }
+
+	[Parameter]
+	public DayOfWeek? PlanningDay { get; set; }
+
+	/// <summary>Plan de demanda (días de circulación por requisito).</summary>
+	[Parameter]
+	public Plan? DemandPlan { get; set; }
+
+	/// <summary>Plan de explotación multi-día (unión de días en que aparece cada tren).</summary>
+	[Parameter]
+	public ExploitationPlan? ExploitationPlan { get; set; }
 
 	[Parameter]
 	public int MaxFrontiersPerPage { get; set; } = CirculationSheetPager.DefaultMaxFrontiersPerPage;
@@ -81,31 +131,75 @@
 	private void Rebuild()
 	{
 		mcolPageSvg.Clear();
-		mvarDocument = null;
-		if (Circulation is null)
-		{
-			return;
-		}
+		mvarReady = false;
+		mvarError = null;
+		mvarFullBook = FullBook;
+		mvarTitleExtra = string.Empty;
+		mvarHalfPageCount = 0;
 
 		try
 		{
-			mvarDocument = CirculationSheetDocument.Build(Circulation, Mesh, mvarMaxPerPage);
-			IReadOnlyList<string> pages = CirculationSheetSvgRenderer.RenderAllPages(mvarDocument);
-			int i = 0;
-			while (i < pages.Count)
+			if (FullBook)
 			{
-				mcolPageSvg.Add(pages[i]);
-				i++;
+				if (Mesh is null || Mesh.Circulations.Count == 0)
+				{
+					mvarError = "No hay malla o no contiene circulaciones.";
+					mvarReady = true;
+					return;
+				}
+
+				ItineraryBookDocument book = ItineraryBookDocument.Build(
+					Mesh,
+					PlanName,
+					Notes,
+					PlanningDay,
+					mvarMaxPerPage,
+					editionLabel: null,
+					demandPlan: DemandPlan,
+					exploitation: ExploitationPlan);
+				mvarTitleExtra = book.PlanName;
+				mvarHalfPageCount = book.TotalHalfPages;
+				IReadOnlyList<string> sheets = CirculationSheetSvgRenderer.RenderAllBookSheets(book);
+				int i = 0;
+				while (i < sheets.Count)
+				{
+					mcolPageSvg.Add(sheets[i]);
+					i++;
+				}
 			}
+			else
+			{
+				if (Circulation is null)
+				{
+					return;
+				}
+
+				ServiceDays? days = ItineraryBookDocument.ResolveServiceDays(
+					Circulation, DemandPlan, ExploitationPlan, Mesh?.PlanningDay ?? PlanningDay);
+				CirculationSheetDocument doc = CirculationSheetDocument.Build(
+					Circulation, Mesh, mvarMaxPerPage, editionLabel: null, serviceDays: days);
+				mvarTitleExtra = string.IsNullOrEmpty(doc.TrainNumber) ? "—" : doc.TrainNumber;
+				mvarHalfPageCount = doc.Pages.Count;
+				IReadOnlyList<string> pages = CirculationSheetSvgRenderer.RenderAllPages(doc);
+				int i = 0;
+				while (i < pages.Count)
+				{
+					mcolPageSvg.Add(pages[i]);
+					i++;
+				}
+			}
+
+			mvarReady = true;
 		}
 		catch (Exception ex)
 		{
-			mvarDocument = null;
+			mvarError = "Error al generar: " + ex.Message;
+			mvarReady = true;
 			mcolPageSvg.Clear();
 			mcolPageSvg.Add(
-				"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"595\" height=\"200\" viewBox=\"0 0 595 200\">"
-				+ "<text x=\"20\" y=\"40\" fill=\"#b91c1c\" font-size=\"12\" font-family=\"sans-serif\">Error al generar ficha: "
-				+ System.Security.SecurityElement.Escape(ex.Message)
+				"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"841\" height=\"200\" viewBox=\"0 0 841 200\">"
+				+ "<text x=\"20\" y=\"40\" fill=\"#b91c1c\" font-size=\"12\" font-family=\"sans-serif\">"
+				+ System.Security.SecurityElement.Escape(mvarError)
 				+ "</text></svg>");
 		}
 	}
@@ -124,7 +218,6 @@
 				n = 8;
 			}
 
-			// No superar lo que cabe en A4 con filas legibles (evita recorte al imprimir).
 			int fit = CirculationSheetPager.MaxFrontiersFittingPage;
 			if (n > fit)
 			{
@@ -138,18 +231,16 @@
 
 	private async Task PrintAsync()
 	{
-		// Pasar los SVG ya generados: la impresión no depende del DOM en pantalla
-		// (el overlay puede estar recortado por overflow de la malla / layout).
+		// Leer hojas del DOM del diálogo (todas las páginas; evita límite SignalR).
 		try
 		{
-			await Js.InvokeVoidAsync("diamondCircSheet.print", mcolPageSvg.ToArray());
+			await Js.InvokeVoidAsync("diamondCircSheet.printFromRoot", mvarPrintRoot);
 		}
 		catch
 		{
 			try
 			{
-				// Fallback: el JS intentará leer del DOM si no recibe páginas.
-				await Js.InvokeVoidAsync("diamondCircSheet.print");
+				await Js.InvokeVoidAsync("diamondCircSheet.print", mcolPageSvg.ToArray());
 			}
 			catch
 			{
@@ -162,6 +253,69 @@
 				}
 			}
 		}
+	}
+
+	private async Task ExportPdfAsync()
+	{
+		if (mcolPageSvg.Count == 0 || mvarBusyPdf)
+		{
+			return;
+		}
+
+		mvarBusyPdf = true;
+		mvarError = null;
+		try
+		{
+			byte[] pdf = await Task.Run(() =>
+				CirculationSheetPdfExporter.ExportSvgSheetsToPdf(mcolPageSvg));
+			string b64 = Convert.ToBase64String(pdf);
+			string name = mvarFullBook
+				? "libro-itinerario.pdf"
+				: "ficha-" + SanitizeFileName(mvarTitleExtra) + ".pdf";
+			await Js.InvokeVoidAsync("diamondCircSheet.downloadPdf", b64, name);
+		}
+		catch (Exception ex)
+		{
+			mvarError = "Error al exportar PDF: " + ex.Message;
+		}
+		finally
+		{
+			mvarBusyPdf = false;
+		}
+	}
+
+	private static string SanitizeFileName(string raw)
+	{
+		if (string.IsNullOrWhiteSpace(raw))
+		{
+			return "documento";
+		}
+
+		char[] bad = Path.GetInvalidFileNameChars();
+		System.Text.StringBuilder sb = new System.Text.StringBuilder(raw.Length);
+		int i = 0;
+		while (i < raw.Length)
+		{
+			char c = raw[i];
+			bool ok = true;
+			int b = 0;
+			while (b < bad.Length)
+			{
+				if (c == bad[b])
+				{
+					ok = false;
+					break;
+				}
+
+				b++;
+			}
+
+			sb.Append(ok ? c : '-');
+			i++;
+		}
+
+		string s = sb.ToString().Trim();
+		return s.Length == 0 ? "documento" : s;
 	}
 
 	private async Task Close()

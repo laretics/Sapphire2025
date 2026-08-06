@@ -1,0 +1,82 @@
+@page "/engineer/timenet"
+@using Diamond.Controls.Components
+@using Microsoft.AspNetCore.Authorization
+@using TimeNet2026.ScriptCompiling
+@using Sapphire2025.Storage
+@inject TimeNetClient mvarTimeNet
+@attribute [Authorize]
+@* Planificador Diamond dentro del layout Zafiro (sidebar + navegación). *@
+
+<PageTitle>Planes de Explotación · Diamond</PageTitle>
+
+<link rel="stylesheet" href="_content/Diamond.Controls/css/diamond-mesh.css" />
+<link rel="stylesheet" href="_content/Diamond.Controls/css/mesh-workspace.css" />
+
+@if (!string.IsNullOrEmpty(mvarUploadNotice))
+{
+	<div class="alert @(mvarUploadOk ? "alert-success" : "alert-warning") alert-dismissible fade show m-2" role="alert">
+		@mvarUploadNotice
+		<button type="button" class="btn-close" @onclick="() => mvarUploadNotice = null"></button>
+	</div>
+}
+
+<div class="engineer-diamond-host">
+	<ErrorBoundary>
+		<ChildContent>
+			<MeshPlannerWorkspace HomeHref="/submenu/engineer"
+								  FillViewport="false"
+								  UploadTopoAsync="OnUploadTopoAsync" />
+		</ChildContent>
+		<ErrorContent Context="ex">
+			<div class="alert alert-danger m-3">
+				<strong>Error en el planificador Diamond</strong>
+				<pre class="small mb-0 mt-2" style="white-space: pre-wrap;">@(string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().FullName : ex.Message)</pre>
+			</div>
+		</ErrorContent>
+	</ErrorBoundary>
+</div>
+
+@code {
+	private string? mvarUploadNotice;
+	private bool mvarUploadOk;
+
+	/// <summary>
+	/// Reutiliza el endpoint TimeNet ya existente (layout Onice / Diamond &lt;layout&gt;).
+	/// También accesible desde Admin → Explotación (TimeNet) → Upload.
+	/// </summary>
+	private async Task OnUploadTopoAsync((string Xml, string FileName) payload)
+	{
+		mvarUploadNotice = null;
+		try
+		{
+			string fileName = string.IsNullOrWhiteSpace(payload.FileName) ? "topo.xml" : payload.FileName;
+			if (!fileName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+			{
+				fileName += ".xml";
+			}
+
+			CompileResult? result = await mvarTimeNet.UploadXML(payload.Xml, fileName);
+			if (result is null)
+			{
+				mvarUploadOk = false;
+				mvarUploadNotice = "No se pudo contactar con el servidor TimeNet (¿API en marcha?).";
+				return;
+			}
+
+			mvarUploadOk = result.Success;
+			mvarUploadNotice = string.IsNullOrWhiteSpace(result.Message)
+				? (result.Success ? "Topología instalada en Zafiro." : "El servidor rechazó la topología.")
+				: result.Message;
+		}
+		catch (Exception ex)
+		{
+			mvarUploadOk = false;
+			string msg = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message;
+			mvarUploadNotice = "Error al subir topología: " + msg;
+			if (ex.InnerException is not null && !string.IsNullOrWhiteSpace(ex.InnerException.Message))
+			{
+				mvarUploadNotice += " → " + ex.InnerException.Message;
+			}
+		}
+	}
+}

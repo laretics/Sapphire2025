@@ -19,6 +19,7 @@ namespace Diamond.Controls.Rendering
 		private readonly string mvarLocationLine;
 		private readonly string mvarMarchId;
 		private readonly string mvarEditionLabel;
+		private readonly string mvarServiceDaysLabel;
 		private readonly IReadOnlyList<CirculationSheetFrontier> mcolFrontiers;
 		private readonly IReadOnlyList<CirculationSheetPage> mcolPages;
 		private readonly int mvarMaxFrontiersPerPage;
@@ -32,6 +33,7 @@ namespace Diamond.Controls.Rendering
 			string locationLine,
 			string marchId,
 			string editionLabel,
+			string serviceDaysLabel,
 			IReadOnlyList<CirculationSheetFrontier> frontiers,
 			IReadOnlyList<CirculationSheetPage> pages,
 			int maxFrontiersPerPage)
@@ -44,6 +46,7 @@ namespace Diamond.Controls.Rendering
 			mvarLocationLine = locationLine;
 			mvarMarchId = marchId;
 			mvarEditionLabel = editionLabel;
+			mvarServiceDaysLabel = serviceDaysLabel ?? string.Empty;
 			mcolFrontiers = frontiers;
 			mcolPages = pages;
 			mvarMaxFrontiersPerPage = maxFrontiersPerPage;
@@ -89,6 +92,14 @@ namespace Diamond.Controls.Rendering
 			get { return mvarEditionLabel; }
 		}
 
+		/// <summary>
+		/// Días de circulación para la cabecera (Laborables, Fines de semana, lunes, L, M, X…).
+		/// </summary>
+		public string ServiceDaysLabel
+		{
+			get { return mvarServiceDaysLabel; }
+		}
+
 		public IReadOnlyList<CirculationSheetFrontier> Frontiers
 		{
 			get { return mcolFrontiers; }
@@ -107,20 +118,25 @@ namespace Diamond.Controls.Rendering
 		public static CirculationSheetDocument Build(
 			Circulation circulation,
 			int maxFrontiersPerPage = CirculationSheetPager.DefaultMaxFrontiersPerPage,
-			string? editionLabel = null)
+			string? editionLabel = null,
+			ServiceDays? serviceDays = null)
 		{
-			return Build(circulation, mesh: null, maxFrontiersPerPage, editionLabel);
+			return Build(circulation, mesh: null, maxFrontiersPerPage, editionLabel, serviceDays);
 		}
 
 		/// <param name="mesh">
 		/// Malla opcional para rellenar la columna de cruces (trenes en sentido opuesto
 		/// con los que se cruza en el camino).
 		/// </param>
+		/// <param name="serviceDays">
+		/// Días de circulación del tren (demanda o unión multi-día del plan de explotación).
+		/// </param>
 		public static CirculationSheetDocument Build(
 			Circulation circulation,
 			Mesh? mesh,
 			int maxFrontiersPerPage = CirculationSheetPager.DefaultMaxFrontiersPerPage,
-			string? editionLabel = null)
+			string? editionLabel = null,
+			ServiceDays? serviceDays = null)
 		{
 			if (circulation is null)
 			{
@@ -136,21 +152,32 @@ namespace Diamond.Controls.Rendering
 			string originName = FormatStationName(asim.Origin.Station);
 			string destName = FormatStationName(asim.Destination.Station);
 
+			// Solo número de servicio de plantilla (4923…); no Id técnico ni DemandId/asim.
 			string trainNumber = circulation.HasServiceNumber
 				? circulation.ServiceNumber
-				: circulation.Id;
-			string trainTitle = string.IsNullOrWhiteSpace(circulation.DemandId)
-				? string.Empty
-				: circulation.DemandId.Trim();
+				: string.Empty;
+			string trainTitle = string.Empty;
 			string relation = originName + " a " + destName;
 			string material = asim.Specs is not null
 				? (string.IsNullOrEmpty(asim.Specs.Id) ? asim.Specs.Name : asim.Specs.Id)
 				: string.Empty;
 			string locationLine = "Loc. " + (string.IsNullOrEmpty(view.Id) ? "—" : view.Id)
 				+ ".- " + relation.ToUpperInvariant();
-			string marchId = circulation.TechnicalId;
+			// No exponer Id técnico de planificación (C12-R-T3…).
+			string marchId = string.Empty;
 			string edition = editionLabel
 				?? ("DIAMOND · " + DateTime.Now.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture));
+
+			// Días: parámetro → día de la malla filtrada (un solo día).
+			string daysLabel = string.Empty;
+			if (serviceDays is not null)
+			{
+				daysLabel = serviceDays.FormatCirculationLabel();
+			}
+			else if (mesh is not null && mesh.PlanningDay.HasValue)
+			{
+				daysLabel = ServiceDays.FromDayOfWeekMask(mesh.PlanningDay.Value).FormatCirculationLabel();
+			}
 
 			List<CirculationSheetFrontier> frontiers = BuildFrontiers(
 				circulation, asim, view, originPk, destPk, increasing);
@@ -170,6 +197,7 @@ namespace Diamond.Controls.Rendering
 				locationLine,
 				marchId,
 				edition,
+				daysLabel,
 				frontiers,
 				pages,
 				maxFrontiersPerPage);
@@ -226,11 +254,13 @@ namespace Diamond.Controls.Rendering
 					continue;
 				}
 
-				string num = other.HasServiceNumber ? other.ServiceNumber : other.Id;
-				if (string.IsNullOrWhiteSpace(num))
+				// Solo números de servicio asignados (plantilla); no Ids técnicos.
+				if (!other.HasServiceNumber)
 				{
 					continue;
 				}
+
+				string num = other.ServiceNumber;
 
 				// Evitar duplicados en la misma casilla.
 				List<string> bag = bags[nearest];

@@ -1,0 +1,2701 @@
+﻿@implements IAsyncDisposable
+@inject IJSRuntime Js
+@inject NavigationManager Nav
+@using System.Globalization
+@using System.IO
+@using System.Net.Http
+@using Diamond.Project
+@using Diamond.Timed
+@using Diamond.Topo
+@using Diamond.Controls.Services
+@using Microsoft.AspNetCore.Components
+@using Microsoft.JSInterop
+@using MeshRouteView = Diamond.Topo.RouteView
+@using ProjectModel = Diamond.Project.Project
+
+<div class="mesh-workspace @(FillViewport ? "mesh-workspace-viewport" : null)">
+	@* —— Menú archivo —— *@
+	<div class="mesh-menubar">
+		<span class="brand">Diamond</span>
+		<div class="btn-group btn-group-sm" role="group" aria-label="Archivo">
+			<button type="button" class="btn btn-outline-light" @onclick="FileNewAsync" title="Nuevo script (Ctrl+N)">Nuevo</button>
+			<button type="button" class="btn btn-outline-light" @onclick="FileOpenAsync" title="Abrir script desde disco">Abrir…</button>
+			<button type="button" class="btn btn-outline-light" @onclick="FileSaveAsync" title="Guardar" disabled="@(!mvarDirty)">Guardar</button>
+			<button type="button" class="btn btn-outline-light" @onclick="FileSaveAsAsync" title="Guardar como…">Guardar como…</button>
+		</div>
+		<div class="btn-group btn-group-sm ms-1" role="group" aria-label="Topología">
+			<button type="button" class="btn btn-outline-info" @onclick="LoadTopoFileAsync" title="Cargar XML de topología (include) en esta sesión">Topo…</button>
+			@if (UploadTopoAsync.HasDelegate)
+			{
+				<button type="button"
+						class="btn btn-outline-success"
+						disabled="@(string.IsNullOrEmpty(mvarTopoXmlText) || mvarUploadingTopo)"
+						@onclick="UploadTopoToServerAsync"
+						title="Subir el XML de topología actual a Zafiro (servidor TimeNet)">
+					@(mvarUploadingTopo ? "Subiendo…" : "Subir topo")
+				</button>
+			}
+		</div>
+		<span class="mesh-file-label @(mvarDirty ? "dirty" : null)" title="@mvarFileName">@FileDisplayName</span>
+		@if (!string.IsNullOrEmpty(mvarTopoLabel))
+		{
+			<span class="mesh-file-label" title="Topología activa">Topo: @mvarTopoLabel</span>
+		}
+		<span class="ms-auto"></span>
+		<a class="btn btn-sm btn-outline-secondary" href="_content/Diamond.Controls/docs/diamond-plan-language.html" target="_blank" rel="noopener">Manual DSL</a>
+		@if (!string.IsNullOrEmpty(HomeHref))
+		{
+			<a class="btn btn-sm btn-outline-secondary" href="@HomeHref">Inicio</a>
+		}
+	</div>
+
+	@* —— Barra de planificación —— *@
+	<div class="mesh-toolbar">
+		<span class="lbl">View</span>
+		@if (mcolViews.Count > 0)
+		{
+			<div class="btn-group btn-group-sm" role="group">
+				@foreach (MeshRouteView candidate in mcolViews)
+				{
+					<button type="button" class="btn @ViewButtonClass(candidate)" @onclick="() => SelectView(candidate)" title="@candidate.PathSignature()">
+						@candidate.Id
+					</button>
+				}
+			</div>
+		}
+
+		<span class="sep"></span>
+		<span class="lbl">Día</span>
+		<div class="btn-group btn-group-sm" role="group">
+			@foreach (DayOfWeek day in mcolWeekDays)
+			{
+				<button type="button" class="btn @DayButtonClass(day)" @onclick="() => SelectDay(day)">@DayLabel(day)</button>
+			}
+		</div>
+
+		<span class="sep"></span>
+		<button type="button" class="btn btn-sm btn-primary" @onclick="ApplyScript" title="Compilar script y planificar malla">Aplicar</button>
+		<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="RebuildAsync" title="Regenerar malla">Regenerar</button>
+		<button type="button" class="btn btn-sm btn-success" @onclick="CompileProject" disabled="@(mvarMesh is null)" title="Generar Project">Compilar</button>
+		<button type="button"
+				class="btn btn-sm btn-outline-light"
+				disabled="@(mvarPlan is null && mvarMesh is null)"
+				@onclick="SaveMeshBinaryAsync"
+				title="Guardar plan de explotación (.dmesh): todos los días + vigencia">
+			Exportar plan
+		</button>
+		<button type="button"
+				class="btn btn-sm btn-outline-light"
+				@onclick="OpenMeshBinaryAsync"
+				title="Abrir plan de explotación (.dmesh); el día del selector es un filtro">
+			Abrir plan
+		</button>
+		<label class="small text-secondary ms-1" title="Inicio de vigencia del plan de explotación (.dmesh)">
+			Vigencia
+			<input type="date"
+				   class="form-control form-control-sm d-inline-block"
+				   style="width: 9.5rem;"
+				   value="@ValidityStartInputValue"
+				   @onchange="OnValidityStartChanged" />
+		</label>
+
+		<span class="sep"></span>
+		<div class="btn-group btn-group-sm">
+			<button type="button" class="btn btn-outline-warning" @onclick="ImportRauta" title="Inferir script desde rauta">Rauta</button>
+			<button type="button" class="btn btn-outline-secondary" @onclick="UseManualScript">T3</button>
+			<button type="button" class="btn btn-outline-secondary" @onclick="UsePalmaSpbScript">SPB</button>
+		</div>
+	</div>
+
+	@* —— Línea de estado —— *@
+	<div class="mesh-statusline">
+		@if (mvarMesh is not null && mvarView is not null)
+		{
+			<div class="mesh-badge-row">
+				<span class="badge bg-info text-dark">@mvarView.Id</span>
+				<span class="badge bg-primary">@DayLabel(mvarSelectedDay)</span>
+				@if (mvarMeshStale)
+				{
+					<span class="badge bg-secondary">Malla desactualizada</span>
+				}
+				else
+				{
+					<span class="badge @(mvarMesh.Success ? "bg-success" : "bg-danger")">@(mvarMesh.Success ? "OK" : "Errores")</span>
+				}
+				<span class="badge bg-secondary">@mvarMesh.Circulations.Count circ.</span>
+				<span class="badge bg-secondary">@mvarMesh.Asimilations.Count asim.</span>
+				@if (mvarSelectedCirculation is not null)
+				{
+					<span class="badge bg-warning text-dark" title="@mvarSelectedCirculation.TechnicalId">
+						Sel. @(mvarSelectedCirculation.HasServiceNumber ? mvarSelectedCirculation.ServiceNumber : mvarSelectedCirculation.Id)
+					</span>
+				}
+				@if (!mvarMeshStale && mvarMesh.Warnings.Count > 0)
+				{
+					<span class="badge bg-warning text-dark">@mvarMesh.Warnings.Count warn</span>
+				}
+				@if (!mvarMeshStale && mvarMesh.Errors.Count > 0)
+				{
+					<span class="badge bg-danger">@mvarMesh.Errors.Count err</span>
+				}
+				@if (mvarProject is not null)
+				{
+					<span class="badge bg-success">Project @mvarProject.Circulations.Count trenes</span>
+				}
+			</div>
+		}
+		<span class="msg @(StatusCssClass)">@StatusText</span>
+	</div>
+
+	@* —— Split: malla | editor —— *@
+	<div class="mesh-split" @ref="mvarSplitRoot">
+		@* Panel malla *@
+		<div class="mesh-panel mesh-panel-mesh">
+			<div class="mesh-panel-head">
+				<span class="title">Malla</span>
+				@if (mvarView is not null)
+				{
+					<span class="badge bg-dark text-light border small">@mvarView.PathSignature()</span>
+				}
+			</div>
+
+			<div class="mesh-panel-body">
+				@* Control reutilizable: StationRuler + plot (Diamond.Controls) *@
+				<MeshDiagram Mesh="mvarMesh"
+							 View="mvarView"
+							 Width="1400"
+							 Height="900"
+							 ShowLayerToolbar="true"
+							 ShowZoomToolbar="true"
+							 PlanName="@PrintPlanNameForMesh"
+							 PlanningDay="mvarSelectedDay"
+							 PrintNotes="@PrintNotesForMesh"
+							 DemandPlan="mvarPlan"
+							 ExploitationPlan="mvarExploitationPlan"
+							 @bind-SelectedCirculation="mvarSelectedCirculation" />
+
+				@* Inspector inferior de la malla *@
+				<div class="mesh-side-tabs">
+					<button type="button" class="@InspectTabClass(InspectTab.Warnings)" @onclick="() => mvarInspectTab = InspectTab.Warnings">
+						Warnings @(CurrentMeshWarningCount > 0 ? $"({CurrentMeshWarningCount})" : "")
+					</button>
+					<button type="button" class="@InspectTabClass(InspectTab.Errors)" @onclick="() => mvarInspectTab = InspectTab.Errors">
+						Errores @(CurrentMeshErrorCount > 0 ? $"({CurrentMeshErrorCount})" : "")
+					</button>
+					<button type="button" class="@InspectTabClass(InspectTab.Project)" @onclick="() => mvarInspectTab = InspectTab.Project">
+						Project @(mvarProject is not null ? $"({mvarProject.Circulations.Count})" : "")
+					</button>
+					<button type="button" class="@InspectTabClass(InspectTab.Notes)" @onclick="() => mvarInspectTab = InspectTab.Notes">
+						Notas @(mcolInverseNotes.Count > 0 ? $"({mcolInverseNotes.Count})" : "")
+					</button>
+				</div>
+				<div class="mesh-inspect">
+					@if (mvarInspectTab == InspectTab.Warnings)
+					{
+						@if (mvarMeshStale)
+						{
+							<div class="empty">Malla desactualizada: aplica el script de nuevo para ver warnings actuales.</div>
+						}
+						else if (mvarMesh is null || mvarMesh.Warnings.Count == 0)
+						{
+							<div class="empty">Sin warnings.</div>
+						}
+						else
+						{
+							<ul>
+								@foreach (string w in mvarMesh.Warnings)
+								{
+									<li>@w</li>
+								}
+							</ul>
+						}
+					}
+					else if (mvarInspectTab == InspectTab.Errors)
+					{
+						@if (mvarMeshStale)
+						{
+							<div class="empty">Malla desactualizada: los errores de la planificación anterior ya no aplican. Corrige el script y pulsa Aplicar.</div>
+						}
+						else if (mvarMesh is null || mvarMesh.Errors.Count == 0)
+						{
+							<div class="empty">Sin errores de malla.</div>
+						}
+						else
+						{
+							<ul>
+								@foreach (string e in mvarMesh.Errors)
+								{
+									<li class="text-danger">@e</li>
+								}
+							</ul>
+						}
+					}
+					else if (mvarInspectTab == InspectTab.Project)
+					{
+						@if (mvarProject is null)
+						{
+							<div class="empty">Pulsa <strong>Compilar</strong> para generar el Project.</div>
+						}
+						else
+						{
+							<div class="mb-1">
+								<strong>@mvarProject.Name</strong>
+								<span class="text-muted"> · @mvarProject.Id</span>
+								@if (mvarProject.PlanningDay.HasValue)
+								{
+									<span> · @DayLabel(mvarProject.PlanningDay.Value)</span>
+								}
+							</div>
+							<ul>
+								@foreach (Diamond.Project.Asimilation a in mvarProject.Asimilations)
+								{
+									<li>
+										<code>@a.Id</code> @a.Origin.DisplayCode→@a.Destination.DisplayCode
+										· @a.Circulations.Count trenes · @FormatDuration(a.TotalTime)
+									</li>
+								}
+							</ul>
+							<details class="mt-1">
+								<summary>Circulaciones (40 de @mvarProject.Circulations.Count)</summary>
+								<ul class="font-monospace">
+									@foreach (Diamond.Project.Circulation c in mvarProject.Circulations.Take(40))
+									{
+										<li>
+											@(c.HasServiceNumber ? c.ServiceNumber : c.Id)
+											@c.Origin.DisplayCode→@c.Destination.DisplayCode
+											@FormatClock(c.Departure)–@FormatClock(c.Arrival)
+										</li>
+									}
+								</ul>
+							</details>
+						}
+					}
+					else
+					{
+						@if (mcolInverseNotes.Count == 0)
+						{
+							<div class="empty">Sin notas de importación.</div>
+						}
+						else
+						{
+							<ul>
+								@foreach (string n in mcolInverseNotes)
+								{
+									<li>@n</li>
+								}
+							</ul>
+						}
+					}
+				</div>
+			</div>
+		</div>
+
+		<div class="mesh-gutter" @ref="mvarSplitGutter" title="Arrastrar para redimensionar"></div>
+
+		@* Panel script *@
+		<div class="mesh-panel mesh-panel-script">
+			<div class="mesh-panel-head">
+				<span class="title">Script</span>
+				<span class="text-muted small">diamond-demand</span>
+				@if (mvarDirty)
+				{
+					<span class="badge bg-warning text-dark">sin guardar</span>
+				}
+			</div>
+			<div class="mesh-panel-body">
+				<div class="diamond-script-editor @(mcolCompileErrors.Count > 0 ? "has-markers" : "")">
+					@if (mvarMountEditor)
+					{
+						<StandaloneCodeEditor @ref="mvarScriptEditor"
+											  Id="diamond-demand-editor"
+											  ConstructionOptions="EditorConstructionOptions"
+											  OnDidInit="OnScriptEditorInit"
+											  OnDidChangeModelContent="OnScriptEditorChanged" />
+					}
+					else
+					{
+						<div class="diamond-editor-placeholder">Cargando editor…</div>
+					}
+				</div>
+
+				@if (mvarError is not null || mcolCompileErrors.Count > 0)
+				{
+					<div class="mesh-diag-list">
+						@if (mvarError is not null)
+						{
+							<div class="text-danger mb-1">@mvarError</div>
+						}
+						@foreach (ScriptDiagnostic d in mcolCompileErrors)
+						{
+							<div>
+								@if (d.Line > 0)
+								{
+									<a @onclick="() => GoToDiagnostic(d)" @onclick:preventDefault>línea @d.Line</a>
+									<span>: </span>
+								}
+								@d.Message
+							</div>
+						}
+					</div>
+				}
+
+				<div class="mesh-editor-actions">
+					<button type="button" class="btn btn-sm btn-primary" @onclick="ApplyScript">Aplicar script y planificar</button>
+					<button type="button" class="btn btn-sm btn-outline-light" @onclick="FileSaveAsync">Guardar</button>
+					@if (mvarError is not null || mcolCompileErrors.Count > 0)
+					{
+						<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearErrorPanel">Limpiar errores</button>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+@code {
+	/// <summary>Enlace opcional «Inicio» (p. ej. /submenu/engineer en Sapphire).</summary>
+	[Parameter]
+	public string? HomeHref { get; set; } = "/";
+
+	/// <summary>
+	/// Si true, el workspace usa 100vh (host a pantalla completa, p. ej. Diamond.Web).
+	/// Si false (defecto), rellena el contenedor padre (Zafiro main-content).
+	/// </summary>
+	[Parameter]
+	public bool FillViewport { get; set; }
+
+	/// <summary>
+	/// Host (p. ej. Sapphire) implementa la subida al servidor.
+	/// Argumentos: (xmlText, fileName) → mensaje de resultado o null si cancelado.
+	/// </summary>
+	[Parameter]
+	public EventCallback<(string Xml, string FileName)> UploadTopoAsync { get; set; }
+
+	/// <summary>
+	/// Rutas relativas al BaseUri de la app para precargar samples (WASM wwwroot).
+	/// Por defecto: Samples/Onice/toposfm227.xml y rautasfm227.xml.
+	/// </summary>
+	[Parameter]
+	public IReadOnlyList<string>? SampleTopoUrls { get; set; }
+
+	private enum ZoomAxisMode
+	{
+		Both,
+		Time,
+		Space
+	}
+
+	private enum InspectTab
+	{
+		Warnings,
+		Errors,
+		Project,
+		Notes
+	}
+
+	private static readonly DayOfWeek[] mcolWeekDays =
+	{
+		DayOfWeek.Monday,
+		DayOfWeek.Tuesday,
+		DayOfWeek.Wednesday,
+		DayOfWeek.Thursday,
+		DayOfWeek.Friday,
+		DayOfWeek.Saturday,
+		DayOfWeek.Sunday
+	};
+
+	private const double MinTimeSpanHours = 0.5;
+	private const double MaxTimeSpanHours = 24.0;
+	private const long MinPkSpan = 2000L;
+	private const double ZoomStep = 1.25;
+
+	private ElementReference mvarHost;
+	private ElementReference mvarSplitRoot;
+	private ElementReference mvarSplitGutter;
+	private DotNetObjectReference<MeshPlannerWorkspace>? mvarDotNetRef;
+	private bool mvarWheelAttached;
+	private bool mvarSplitAttached;
+
+	private Diamond.Timed.Mesh? mvarMesh;
+	private string? mvarTopoXmlText;
+	private string mvarTopoLabel = string.Empty;
+	private bool mvarUploadingTopo;
+
+	/// <summary>Plan de explotación cargado (.dmesh multi-día); el día del UI es un filtro.</summary>
+	private ExploitationPlan? mvarExploitationPlan;
+	private DateOnly? mvarValidityStart = DateOnly.FromDateTime(DateTime.Today);
+	private Diamond.Timed.Circulation? mvarSelectedCirculation;
+	private ProjectModel? mvarProject;
+	private MeshRouteView? mvarView;
+	private List<MeshRouteView> mcolViews = new List<MeshRouteView>();
+	private Plan? mvarPlan;
+	private string mvarSvgContent = string.Empty;
+	private string mvarScript = string.Empty;
+	private string? mvarError;
+	private string? mvarStatus;
+	private List<string> mcolInverseNotes = new List<string>();
+	private InspectTab mvarInspectTab = InspectTab.Warnings;
+	/// <summary>
+	/// True si la malla en pantalla no corresponde al último intento de planificación
+	/// (p. ej. el script falló y se conservó el dibujo anterior). No se muestran sus errores como actuales.
+	/// </summary>
+	private bool mvarMeshStale;
+
+	private StandaloneCodeEditor? mvarScriptEditor;
+	private bool mvarMonacoLanguageReady;
+	private bool mvarJsReady;
+
+	/// <summary>Monta el editor solo cuando Monaco y el circuito están listos.</summary>
+	private bool mvarMountEditor;
+
+	/// <summary>True tras dispose: no más interop (evita tumbar el circuit).</summary>
+	private bool mvarDisposed;
+
+	private CancellationTokenSource? mvarLayoutCts;
+
+	// —— Capas visuales de la malla ——
+	private bool mvarShowOccupations = true;
+	private bool mvarShowTrainPaths = true;
+	private bool mvarShowTrainNumbers = true;
+	private bool mvarShowConflicts = true;
+	private bool mvarShowSpeedStrip = true;
+	private bool mvarShowTrackStrip = true;
+	private bool mvarShowNowLine = true;
+	private TimeSpan mvarClockNow = DateTime.Now.TimeOfDay;
+	private System.Threading.Timer? mvarNowTimer;
+	private bool mvarMarkersDirty;
+	private List<ScriptDiagnostic> mcolCompileErrors = new List<ScriptDiagnostic>();
+
+	// Archivo local
+	private string mvarFileName = "sin título.ddm";
+	private bool mvarFileHasHandle;
+	private bool mvarDirty;
+	private string mvarBaselineScript = string.Empty;
+
+	private sealed class ScriptDiagnostic
+	{
+		private int mvarLine;
+		private string mvarMessage = string.Empty;
+		private string mvarSeverity = "error";
+
+		public int Line
+		{
+			get { return mvarLine; }
+			set { mvarLine = value; }
+		}
+
+		public string Message
+		{
+			get { return mvarMessage; }
+			set { mvarMessage = value ?? string.Empty; }
+		}
+
+		public string Severity
+		{
+			get { return mvarSeverity; }
+			set { mvarSeverity = value ?? "error"; }
+		}
+	}
+
+	/// <summary>DTO de interop con diamond-file.js (propiedades camelCase para deserializar JSON).</summary>
+	private sealed class LocalFileResult
+	{
+		private string? mvarName;
+		private string? mvarContent;
+		private bool mvarHasHandle;
+		private bool mvarSaved;
+		private string? mvarMethod;
+
+		public string? name
+		{
+			get { return mvarName; }
+			set { mvarName = value; }
+		}
+
+		public string? content
+		{
+			get { return mvarContent; }
+			set { mvarContent = value; }
+		}
+
+		public bool hasHandle
+		{
+			get { return mvarHasHandle; }
+			set { mvarHasHandle = value; }
+		}
+
+		public bool saved
+		{
+			get { return mvarSaved; }
+			set { mvarSaved = value; }
+		}
+
+		public string? method
+		{
+			get { return mvarMethod; }
+			set { mvarMethod = value; }
+		}
+	}
+
+	private DayOfWeek mvarSelectedDay = DayOfWeek.Monday;
+	private string mvarSelectedViewId = DemoMeshService.DefaultViewId;
+
+	private int mvarSvgWidth = 1400;
+	private int mvarSvgHeight = 900;
+
+	private TimeSpan mvarViewT0;
+	private TimeSpan mvarViewT1;
+	private long mvarViewPkMin;
+	private long mvarViewPkMax;
+	private long mvarAxisPkMin;
+	private long mvarAxisPkMax;
+
+	private bool mvarDragging;
+	private double mvarLastPointerX;
+	private double mvarLastPointerY;
+	private ZoomAxisMode mvarZoomMode = ZoomAxisMode.Both;
+
+	/// <summary>Throttle de regeneración SVG durante pan (~30 fps).</summary>
+	private long mvarLastInteractiveRenderTicks;
+
+	/// <summary>True mientras el último render fue el modo ligero (sin números/ocupaciones).</summary>
+	private bool mvarSvgIsInteractive;
+
+	private CancellationTokenSource? mvarFullRenderCts;
+
+	private string PageTitleText =>
+		(mvarDirty ? "• " : string.Empty) + mvarFileName + " — Diamond";
+
+	private string FileDisplayName =>
+		mvarDirty ? mvarFileName + " *" : mvarFileName;
+
+	/// <summary>
+	/// Notas del cajetín DIN: preferir <c>notes</c> del script; si no, nombre del plan.
+	/// </summary>
+	private string PrintNotesForMesh
+	{
+		get
+		{
+			if (mvarPlan is not null && !string.IsNullOrWhiteSpace(mvarPlan.Notes))
+			{
+				return mvarPlan.Notes.Trim();
+			}
+
+			if (mvarPlan is not null && !string.IsNullOrWhiteSpace(mvarPlan.Name))
+			{
+				return mvarPlan.Name.Trim();
+			}
+
+			return string.Empty;
+		}
+	}
+
+	/// <summary>Título del cajetín: nombre del plan del script (<c>plan "…"</c>).</summary>
+	private string PrintPlanNameForMesh
+	{
+		get
+		{
+			if (mvarPlan is not null && !string.IsNullOrWhiteSpace(mvarPlan.Name))
+			{
+				return mvarPlan.Name.Trim();
+			}
+
+			if (!string.IsNullOrWhiteSpace(mvarFileName)
+				&& !string.Equals(mvarFileName, "sin título", StringComparison.OrdinalIgnoreCase)
+				&& !string.Equals(mvarFileName, "sin titulo", StringComparison.OrdinalIgnoreCase))
+			{
+				return Path.GetFileNameWithoutExtension(mvarFileName);
+			}
+
+			return "Plan";
+		}
+	}
+
+	private string StatusText
+	{
+		get
+		{
+			if (mvarError is not null)
+			{
+				return mvarError;
+			}
+
+			if (mvarStatus is not null)
+			{
+				return mvarStatus;
+			}
+
+			if (mcolCompileErrors.Count > 0)
+			{
+				return mcolCompileErrors.Count.ToString(CultureInfo.InvariantCulture) + " error(es) de script.";
+			}
+
+			return "Listo.";
+		}
+	}
+
+	private string StatusCssClass
+	{
+		get
+		{
+			if (mvarError is not null || mcolCompileErrors.Count > 0)
+			{
+				return "err";
+			}
+
+			if (mvarStatus is not null && mvarStatus.Contains("compilado", StringComparison.OrdinalIgnoreCase))
+			{
+				return "ok";
+			}
+
+			return string.Empty;
+		}
+	}
+
+	private string InspectTabClass(InspectTab tab)
+	{
+		bool active = mvarInspectTab == tab;
+		string extra = string.Empty;
+		if (!mvarMeshStale && tab == InspectTab.Errors && mvarMesh is not null && mvarMesh.Errors.Count > 0)
+		{
+			extra = " has-error";
+		}
+		else if (!mvarMeshStale && tab == InspectTab.Warnings && mvarMesh is not null && mvarMesh.Warnings.Count > 0)
+		{
+			extra = " has-alert";
+		}
+
+		return (active ? "active" : string.Empty) + extra;
+	}
+
+	private int CurrentMeshErrorCount =>
+		(!mvarMeshStale && mvarMesh is not null) ? mvarMesh.Errors.Count : 0;
+
+	private int CurrentMeshWarningCount =>
+		(!mvarMeshStale && mvarMesh is not null) ? mvarMesh.Warnings.Count : 0;
+
+	protected override async Task OnInitializedAsync()
+	{
+		if (string.IsNullOrWhiteSpace(mvarScript))
+		{
+			mvarScript = DemoMeshService.SfmT3DemandScript;
+		}
+
+		mvarBaselineScript = mvarScript;
+		mvarFileName = "sfm-t3-lab.ddm";
+		mvarDirty = false;
+
+		try
+		{
+			await EnsureTopoAvailableAsync();
+		}
+		catch (Exception ex)
+		{
+			mvarError = FormatException("Al preparar topología", ex);
+		}
+
+		if (DemoMeshService.HasUsableTopo())
+		{
+			RebuildCore();
+		}
+		else
+		{
+			mvarStatus = "Sin topología. Use «Topo…» para cargar un XML o deje Samples/Onice en wwwroot.";
+			mvarError = "No hay topología cargada. En Blazor WASM el disco no está disponible: "
+				+ "cargue toposfm227.xml con «Topo…» o verifique wwwroot/Samples/Onice/.";
+		}
+	}
+
+	/// <summary>
+	/// Disco (server) o HTTP (wwwroot) o catálogo en memoria.
+	/// </summary>
+	private async Task EnsureTopoAvailableAsync()
+	{
+		if (DemoMeshService.HasUsableTopo())
+		{
+			if (string.IsNullOrEmpty(mvarTopoLabel) && DemoMeshService.TryResolveSamplePath(DemoMeshService.DefaultTopoFileName, out string? p) && p is not null)
+			{
+				mvarTopoLabel = Path.GetFileName(p);
+			}
+
+			return;
+		}
+
+		// WASM / host: descargar samples publicados en wwwroot.
+		IReadOnlyList<string> urls = SampleTopoUrls
+			?? new[]
+			{
+				"Samples/Onice/" + DemoMeshService.DefaultTopoFileName,
+				"Samples/Onice/" + DemoMeshService.DefaultRautaFileName
+			};
+
+		using HttpClient http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+		foreach (string relative in urls)
+		{
+			if (string.IsNullOrWhiteSpace(relative))
+			{
+				continue;
+			}
+
+			string name = Path.GetFileName(relative.Replace('\\', '/'));
+			if (!name.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+			{
+				continue;
+			}
+
+			// Solo registrar topología (layout); rauta se usa aparte en ImportRauta.
+			bool isTopo = name.Contains("topo", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(name, DemoMeshService.DefaultTopoFileName, StringComparison.OrdinalIgnoreCase);
+			if (!isTopo)
+			{
+				continue;
+			}
+
+			try
+			{
+				string xml = await http.GetStringAsync(relative.TrimStart('/'));
+				if (string.IsNullOrWhiteSpace(xml))
+				{
+					continue;
+				}
+
+				DemoMeshService.RegisterTopoXml(name, xml);
+				mvarTopoXmlText = xml;
+				mvarTopoLabel = name;
+				mvarStatus = "Topología demo cargada desde " + relative + ".";
+				return;
+			}
+			catch (Exception ex)
+			{
+				// Probar siguiente URL; el último error se anota si no hay ninguna.
+				mvarError = FormatException("HTTP " + relative, ex);
+			}
+		}
+	}
+
+	private static string FormatException(string context, Exception ex)
+	{
+		// Evita diálogos "Mensaje vacío": incluye tipo + inners.
+		List<string> parts = new List<string>();
+		parts.Add(context + ":");
+		Exception? cur = ex;
+		int depth = 0;
+		while (cur is not null && depth < 5)
+		{
+			string msg = string.IsNullOrWhiteSpace(cur.Message) ? "(sin mensaje)" : cur.Message.Trim();
+			parts.Add("[" + cur.GetType().Name + "] " + msg);
+			cur = cur.InnerException;
+			depth++;
+		}
+
+		return string.Join(" → ", parts);
+	}
+
+	/// <summary>
+	/// Excepciones de interop/circuito que no deben tumbar la página.
+	/// Nota: JSDisconnectedException hereda de InvalidOperationException.
+	/// </summary>
+	private static bool IsBenignInteropException(Exception ex)
+	{
+		if (ex is JSException
+			|| ex is ObjectDisposedException
+			|| ex is TaskCanceledException
+			|| ex is OperationCanceledException)
+		{
+			return true;
+		}
+
+		// Solo las InvalidOperation típicas de interop/dispose, no cualquier IOE.
+		if (ex is InvalidOperationException)
+		{
+			string m = ex.Message ?? string.Empty;
+			return m.Contains("JavaScript interop", StringComparison.OrdinalIgnoreCase)
+				|| m.Contains("JS interop", StringComparison.OrdinalIgnoreCase)
+				|| m.Contains("circuit has disconnected", StringComparison.OrdinalIgnoreCase)
+				|| m.Contains("ElementReference", StringComparison.OrdinalIgnoreCase)
+				|| m.Contains("prerender", StringComparison.OrdinalIgnoreCase)
+				|| m.Length == 0; // VS a veces muestra IOE vacía en WASM
+		}
+
+		return false;
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (mvarDisposed)
+		{
+			return;
+		}
+
+		if (firstRender)
+		{
+			mvarJsReady = true;
+			try
+			{
+				await ProbeDiamondScriptsAsync();
+				await WaitForMonacoReadyAsync();
+			}
+			catch (Exception ex) when (IsBenignInteropException(ex))
+			{
+				mvarStatus = FormatException("Interop JS (arranque)", ex);
+			}
+
+			if (mvarDisposed)
+			{
+				return;
+			}
+
+			if (!mvarMountEditor)
+			{
+				// Montar editor aunque Monaco vaya justos: el usuario ve el panel;
+				// si falla el lenguaje, el editor sigue usable en modo texto.
+				if (!mvarMonacoLanguageReady)
+				{
+					mvarStatus = (mvarStatus ?? string.Empty)
+						+ " Monaco no listo aún; recargue con Ctrl+F5 si el editor falla.";
+				}
+
+				mvarMountEditor = true;
+				await InvokeAsync(StateHasChanged);
+				return;
+			}
+		}
+
+		if (mvarJsReady && !mvarSplitAttached)
+		{
+			try
+			{
+				await Js.InvokeAsync<bool>("diamondSplit.attach", mvarSplitRoot, mvarSplitGutter);
+				mvarSplitAttached = true;
+				if (mvarScriptEditor is not null)
+				{
+					await RelayoutMonacoAsync();
+				}
+			}
+			catch (Exception ex) when (IsBenignInteropException(ex))
+			{
+				mvarStatus = "Split de paneles no disponible (JS). " + FormatException("diamondSplit", ex);
+			}
+		}
+
+		if (mvarJsReady && mvarMarkersDirty && mvarScriptEditor is not null)
+		{
+			await FlushMarkersToEditorAsync();
+		}
+
+		// La rueda del plot la gestiona MeshDiagram (Diamond.Controls).
+	}
+
+	/// <summary>Comprueba que los scripts de Diamond estén en window (evita Invoke a undefined).</summary>
+	private async Task ProbeDiamondScriptsAsync()
+	{
+		try
+		{
+			DiamondReadyProbe? probe = await Js.InvokeAsync<DiamondReadyProbe?>("diamondReady.check");
+			if (probe is null)
+			{
+				mvarStatus = "Scripts Diamond no respondieron (diamondReady). ¿404 en _content/Diamond.Controls/js/?";
+				return;
+			}
+
+			List<string> missing = new List<string>();
+			if (!probe.diamondMonaco) missing.Add("diamondMonaco");
+			if (!probe.diamondSplit) missing.Add("diamondSplit");
+			if (!probe.diamondFile) missing.Add("diamondFile");
+			if (!probe.meshViewport) missing.Add("meshViewport");
+			if (!probe.monaco) missing.Add("monaco");
+
+			if (missing.Count > 0)
+			{
+				mvarStatus = "JS incompleto: falta " + string.Join(", ", missing)
+					+ ". Recargue Ctrl+F5; en Red compruebe _content/Diamond.Controls/js/ y BlazorMonaco.";
+			}
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+			mvarStatus = FormatException(
+				"No se pudo comprobar diamondReady (¿scripts Diamond/Monaco cargados en index.html?)",
+				ex);
+		}
+	}
+
+	private sealed class DiamondReadyProbe
+	{
+		public bool monaco { get; set; }
+		public bool require { get; set; }
+		public bool diamondMonaco { get; set; }
+		public bool diamondSplit { get; set; }
+		public bool diamondFile { get; set; }
+		public bool meshViewport { get; set; }
+	}
+
+	private async Task WaitForMonacoReadyAsync()
+	{
+		int attempt = 0;
+		while (!mvarDisposed && attempt < 60)
+		{
+			await EnsureMonacoLanguageAsync();
+			if (mvarMonacoLanguageReady)
+			{
+				return;
+			}
+
+			attempt++;
+			try
+			{
+				await Task.Delay(50);
+			}
+			catch (TaskCanceledException)
+			{
+				return;
+			}
+		}
+	}
+
+	private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
+	{
+		return new StandaloneEditorConstructionOptions
+		{
+			AutomaticLayout = true,
+			Language = "diamond-demand",
+			Theme = "diamond-dark",
+			Value = string.IsNullOrEmpty(mvarScript) ? DemoMeshService.SfmT3DemandScript : mvarScript,
+			Minimap = new EditorMinimapOptions { Enabled = false },
+			FontSize = 13,
+			LineNumbers = "on",
+			WordWrap = "on",
+			ScrollBeyondLastLine = false,
+			RenderLineHighlight = "line",
+			TabSize = 2,
+			InsertSpaces = true
+		};
+	}
+
+	private async Task EnsureMonacoLanguageAsync()
+	{
+		if (mvarMonacoLanguageReady || !mvarJsReady || mvarDisposed)
+		{
+			return;
+		}
+
+		try
+		{
+			bool ok = await Js.InvokeAsync<bool>("diamondMonaco.ensureLanguageAsync");
+			if (ok)
+			{
+				mvarMonacoLanguageReady = true;
+				return;
+			}
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
+
+		if (mvarMonacoLanguageReady || mvarDisposed)
+		{
+			return;
+		}
+
+		try
+		{
+			bool ok = await Js.InvokeAsync<bool>("diamondMonaco.ensure");
+			if (ok)
+			{
+				mvarMonacoLanguageReady = true;
+			}
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
+	}
+
+	private async Task RelayoutMonacoAsync()
+	{
+		if (!mvarJsReady || mvarDisposed)
+		{
+			return;
+		}
+
+		try
+		{
+			if (mvarScriptEditor is not null)
+			{
+				await mvarScriptEditor.Layout();
+			}
+
+			await Js.InvokeAsync<bool>("diamondMonaco.layout", "diamond-demand-editor");
+			await Js.InvokeAsync<bool>("diamondMonaco.watchLayout", "diamond-demand-editor");
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
+	}
+
+	private async Task OnScriptEditorInit()
+	{
+		if (mvarDisposed)
+		{
+			return;
+		}
+
+		await EnsureMonacoLanguageAsync();
+		if (mvarDisposed)
+		{
+			return;
+		}
+
+		try
+		{
+			await Js.InvokeAsync<bool>("diamondMonaco.applyToEditor", "diamond-demand-editor");
+			await Global.SetTheme(Js, "diamond-dark");
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
+
+		if (mvarScriptEditor is null || mvarDisposed)
+		{
+			return;
+		}
+
+		try
+		{
+			await mvarScriptEditor.UpdateOptions(new EditorUpdateOptions
+			{
+				AutomaticLayout = true
+			});
+
+			if (!string.IsNullOrEmpty(mvarScript))
+			{
+				await mvarScriptEditor.SetValue(mvarScript);
+			}
+
+			await mvarScriptEditor.Layout();
+			await RelayoutMonacoAsync();
+			ScheduleDeferredLayouts();
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
+
+		if (mcolCompileErrors.Count > 0 || mvarMarkersDirty)
+		{
+			await FlushMarkersToEditorAsync();
+		}
+	}
+
+	private void ScheduleDeferredLayouts()
+	{
+		mvarLayoutCts?.Cancel();
+		mvarLayoutCts?.Dispose();
+		CancellationTokenSource cts = new CancellationTokenSource();
+		mvarLayoutCts = cts;
+		_ = RunDeferredLayoutsAsync(cts.Token);
+	}
+
+	private async Task RunDeferredLayoutsAsync(CancellationToken token)
+	{
+		try
+		{
+			int[] delaysMs = new[] { 50, 150, 400 };
+			int i = 0;
+			while (i < delaysMs.Length)
+			{
+				try
+				{
+					await Task.Delay(delaysMs[i], token);
+				}
+				catch (TaskCanceledException)
+				{
+					return;
+				}
+
+				if (token.IsCancellationRequested || mvarDisposed)
+				{
+					return;
+				}
+
+				await InvokeAsync(async () =>
+				{
+					if (!token.IsCancellationRequested && !mvarDisposed)
+					{
+						await RelayoutMonacoAsync();
+					}
+				});
+				i++;
+			}
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
+	}
+
+	private async Task OnScriptEditorChanged(ModelContentChangedEvent e)
+	{
+		if (mvarScriptEditor is null || mvarDisposed)
+		{
+			return;
+		}
+
+		try
+		{
+			mvarScript = await mvarScriptEditor.GetValue() ?? string.Empty;
+			mvarDirty = !string.Equals(mvarScript, mvarBaselineScript, StringComparison.Ordinal);
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
+	}
+
+	private async Task SyncScriptFromEditorAsync()
+	{
+		if (mvarScriptEditor is null || mvarDisposed)
+		{
+			return;
+		}
+
+		try
+		{
+			mvarScript = await mvarScriptEditor.GetValue() ?? string.Empty;
+			mvarDirty = !string.Equals(mvarScript, mvarBaselineScript, StringComparison.Ordinal);
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
+	}
+
+	private async Task PushScriptToEditorAsync()
+	{
+		if (mvarScriptEditor is null || mvarDisposed)
+		{
+			return;
+		}
+
+		try
+		{
+			await mvarScriptEditor.SetValue(mvarScript ?? string.Empty);
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
+	}
+
+	private void MarkClean()
+	{
+		mvarBaselineScript = mvarScript ?? string.Empty;
+		mvarDirty = false;
+	}
+
+	private async Task<bool> ConfirmDiscardIfDirtyAsync(string action)
+	{
+		if (!mvarDirty)
+		{
+			return true;
+		}
+
+		try
+		{
+			return await Js.InvokeAsync<bool>(
+				"confirm",
+				"Hay cambios sin guardar en «" + mvarFileName + "».\n¿" + action + " de todos modos?");
+		}
+		catch
+		{
+			return true;
+		}
+	}
+
+	private async Task FileNewAsync()
+	{
+		if (!await ConfirmDiscardIfDirtyAsync("Crear un script nuevo"))
+		{
+			return;
+		}
+
+		await SyncScriptFromEditorAsync();
+		mvarScript = "plan \"nuevo\"\n# Escribe requisitos aquí\n";
+		mvarFileName = "sin titulo.ddm";
+		mvarFileHasHandle = false;
+		mcolInverseNotes.Clear();
+		mvarProject = null;
+		try
+		{
+			await Js.InvokeAsync<bool>("diamondFile.clear");
+		}
+		catch (JSException)
+		{
+		}
+
+		mvarBaselineScript = string.Empty;
+		mvarDirty = true;
+		await PushScriptToEditorAsync();
+		mvarStatus = "Nuevo script.";
+		mvarError = null;
+		mcolCompileErrors.Clear();
+	}
+
+	private async Task FileOpenAsync()
+	{
+		if (!await ConfirmDiscardIfDirtyAsync("Abrir otro archivo"))
+		{
+			return;
+		}
+
+		try
+		{
+			LocalFileResult? result = await Js.InvokeAsync<LocalFileResult?>("diamondFile.open");
+			if (result is null || result.content is null)
+			{
+				mvarStatus = "Apertura cancelada.";
+				return;
+			}
+
+			mvarFileName = string.IsNullOrEmpty(result.name) ? "script.ddm" : result.name;
+			mvarFileHasHandle = result.hasHandle;
+			mvarScript = result.content;
+			mcolInverseNotes.Clear();
+			mvarProject = null;
+			MarkClean();
+			await PushScriptToEditorAsync();
+			await RebuildAsync();
+			mvarStatus = "Abierto: " + mvarFileName + ".";
+		}
+		catch (JSException ex)
+		{
+			mvarError = FormatException("No se pudo abrir el script", ex);
+		}
+	}
+
+	/// <summary>Carga un XML de topología Onice/Diamond en memoria para el <c>include</c> del script.</summary>
+	private async Task LoadTopoFileAsync()
+	{
+		try
+		{
+			LocalFileResult? result = await Js.InvokeAsync<LocalFileResult?>(
+				"diamondFile.openText",
+				".xml,application/xml,text/xml",
+				"Topología Diamond / Onice");
+			if (result is null || string.IsNullOrEmpty(result.content))
+			{
+				mvarStatus = "Carga de topología cancelada.";
+				return;
+			}
+
+			string name = string.IsNullOrEmpty(result.name) ? DemoMeshService.DefaultTopoFileName : result.name;
+			DemoMeshService.RegisterTopoXml(name, result.content);
+			// Alias del include demo (scripts que dicen include toposfm227).
+			DemoMeshService.RegisterTopoXml(DemoMeshService.DefaultTopoIncludeName, result.content);
+			mvarTopoXmlText = result.content;
+			mvarTopoLabel = name;
+			mvarError = null;
+			mvarStatus = "Topología cargada: " + name + ". Recompilando…";
+			await RebuildAsync();
+			if (mvarError is null)
+			{
+				mvarStatus = "Topología activa: " + name + ".";
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarError = FormatException("Cargar topología", ex);
+		}
+	}
+
+	private async Task UploadTopoToServerAsync()
+	{
+		if (!UploadTopoAsync.HasDelegate)
+		{
+			return;
+		}
+
+		string? xml = mvarTopoXmlText
+			?? TopoStorage.TryGetMemoryXml(DemoMeshService.DefaultTopoIncludeName)
+			?? TopoStorage.TryGetMemoryXml(DemoMeshService.DefaultTopoFileName);
+		if (string.IsNullOrWhiteSpace(xml))
+		{
+			mvarError = "No hay XML de topología en memoria para subir. Use «Topo…» primero.";
+			return;
+		}
+
+		string fileName = string.IsNullOrEmpty(mvarTopoLabel) ? DemoMeshService.DefaultTopoFileName : mvarTopoLabel;
+		mvarUploadingTopo = true;
+		try
+		{
+			await UploadTopoAsync.InvokeAsync((xml, fileName));
+			mvarStatus = "Solicitud de subida de topología enviada (" + fileName + ").";
+		}
+		catch (Exception ex)
+		{
+			mvarError = FormatException("Subir topología a Zafiro", ex);
+		}
+		finally
+		{
+			mvarUploadingTopo = false;
+		}
+	}
+
+	private async Task FileSaveAsync()
+	{
+		await SyncScriptFromEditorAsync();
+		try
+		{
+			LocalFileResult? result = await Js.InvokeAsync<LocalFileResult?>(
+				"diamondFile.save",
+				mvarScript,
+				mvarFileName);
+			if (result is null)
+			{
+				mvarStatus = "Guardado cancelado.";
+				return;
+			}
+
+			ApplySaveResult(result);
+		}
+		catch (JSException ex)
+		{
+			mvarError = "No se pudo guardar: " + ex.Message;
+		}
+	}
+
+	private async Task FileSaveAsAsync()
+	{
+		await SyncScriptFromEditorAsync();
+		try
+		{
+			LocalFileResult? result = await Js.InvokeAsync<LocalFileResult?>(
+				"diamondFile.saveAs",
+				mvarScript,
+				mvarFileName);
+			if (result is null)
+			{
+				mvarStatus = "Guardar como cancelado.";
+				return;
+			}
+
+			ApplySaveResult(result);
+		}
+		catch (JSException ex)
+		{
+			mvarError = "No se pudo guardar: " + ex.Message;
+		}
+	}
+
+	private void ApplySaveResult(LocalFileResult result)
+	{
+		if (!string.IsNullOrEmpty(result.name))
+		{
+			mvarFileName = result.name!;
+		}
+
+		mvarFileHasHandle = result.hasHandle;
+		MarkClean();
+		mvarStatus = string.Equals(result.method, "download", StringComparison.Ordinal)
+			? "Descargado: " + mvarFileName + "."
+			: "Guardado: " + mvarFileName + ".";
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		mvarDisposed = true;
+
+		mvarNowTimer?.Dispose();
+		mvarNowTimer = null;
+
+		mvarLayoutCts?.Cancel();
+		mvarLayoutCts?.Dispose();
+		mvarLayoutCts = null;
+
+		mvarFullRenderCts?.Cancel();
+		mvarFullRenderCts?.Dispose();
+		mvarFullRenderCts = null;
+
+		if (mvarWheelAttached)
+		{
+			try
+			{
+				if (!string.IsNullOrEmpty(mvarHost.Id))
+				{
+					await Js.InvokeVoidAsync("diamondMeshViewport.detach", mvarHost);
+				}
+			}
+			catch (Exception ex) when (IsBenignInteropException(ex))
+			{
+			}
+			catch
+			{
+			}
+
+			mvarWheelAttached = false;
+		}
+
+		try
+		{
+			mvarDotNetRef?.Dispose();
+		}
+		catch
+		{
+		}
+
+		mvarDotNetRef = null;
+		await Task.CompletedTask;
+	}
+
+	[JSInvokable]
+	public Task OnWheelFromJs(double deltaY, double svgX, double svgY)
+	{
+		if (mvarDisposed)
+		{
+			return Task.CompletedTask;
+		}
+
+		try
+		{
+			double factor = deltaY < 0 ? ZoomStep : 1.0 / ZoomStep;
+			ZoomAtScreen(svgX, svgY, factor, interactive: true);
+			ScheduleFullRenderAfterIdle();
+			return InvokeAsync(StateHasChanged);
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+			return Task.CompletedTask;
+		}
+	}
+
+	private string ValidityStartInputValue
+	{
+		get
+		{
+			DateOnly? d = mvarExploitationPlan?.ValidityStart ?? mvarValidityStart;
+			return d.HasValue ? d.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : string.Empty;
+		}
+	}
+
+	private void OnValidityStartChanged(ChangeEventArgs e)
+	{
+		string? raw = e.Value?.ToString();
+		if (string.IsNullOrWhiteSpace(raw))
+		{
+			mvarValidityStart = null;
+			if (mvarExploitationPlan is not null)
+			{
+				mvarExploitationPlan.ValidityStart = null;
+			}
+
+			return;
+		}
+
+		if (DateOnly.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly d))
+		{
+			mvarValidityStart = d;
+			if (mvarExploitationPlan is not null)
+			{
+				mvarExploitationPlan.ValidityStart = d;
+			}
+		}
+	}
+
+	private async Task SaveMeshBinaryAsync()
+	{
+		try
+		{
+			ExploitationPlan plan;
+			TopoLayout? topo = mvarPlan?.Topo;
+
+			if (mvarPlan is not null)
+			{
+				// Plan de explotación: resolver los 7 días (el día del UI no limita el archivo).
+				mvarStatus = "Planificando los 7 días…";
+				StateHasChanged();
+				plan = await Task.Run(() => ExploitationPlan.BuildFromPlan(
+					mvarPlan,
+					mvarValidityStart,
+					mvarPlan.Name.Length > 0 ? mvarPlan.Name : Path.GetFileNameWithoutExtension(mvarFileName),
+					mvarScript));
+			}
+			else if (mvarExploitationPlan is not null)
+			{
+				plan = mvarExploitationPlan;
+				plan.ValidityStart = mvarValidityStart ?? plan.ValidityStart;
+			}
+			else if (mvarMesh is not null)
+			{
+				plan = new ExploitationPlan();
+				plan.PlanName = Path.GetFileNameWithoutExtension(mvarFileName);
+				plan.SourceScript = mvarScript;
+				plan.ValidityStart = mvarValidityStart;
+				plan.SetMesh(mvarSelectedDay, mvarMesh);
+			}
+			else
+			{
+				mvarStatus = "No hay plan ni malla para exportar.";
+				return;
+			}
+
+			await using MemoryStream ms = new MemoryStream();
+			MeshBinarySerializer.Save(plan, ms, topo);
+			byte[] bytes = ms.ToArray();
+
+			string suggested = Path.GetFileNameWithoutExtension(mvarFileName);
+			if (string.IsNullOrEmpty(suggested))
+			{
+				suggested = "plan-explotacion";
+			}
+
+			suggested += MeshBinarySerializer.FileExtension;
+			await Js.InvokeAsync<object?>("diamondFile.saveBinary", bytes, suggested);
+
+			mvarExploitationPlan = plan;
+			mvarValidityStart = plan.ValidityStart;
+			mvarStatus = "Plan de explotación exportado: " + suggested
+				+ " · " + plan.Days.Count.ToString(CultureInfo.InvariantCulture) + " día(s)"
+				+ " · " + plan.TotalCirculationCount.ToString(CultureInfo.InvariantCulture) + " circ. total"
+				+ (plan.ValidityStart.HasValue
+					? " · vigencia " + plan.ValidityStart.Value.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
+					: string.Empty)
+				+ ".";
+			mvarError = null;
+		}
+		catch (Exception ex)
+		{
+			mvarError = "Error al exportar plan: " + ex.Message;
+		}
+	}
+
+	private async Task OpenMeshBinaryAsync()
+	{
+		try
+		{
+			BinaryFileResult? file = await Js.InvokeAsync<BinaryFileResult?>("diamondFile.openBinary", ".dmesh");
+			if (file is null || string.IsNullOrEmpty(file.base64))
+			{
+				mvarStatus = "Apertura de plan cancelada.";
+				return;
+			}
+
+			TopoLayout? topo = mvarPlan?.Topo;
+			if (topo is null)
+			{
+				try
+				{
+					topo = DemoMeshService.LoadTopoWithInfrastructure();
+				}
+				catch (Exception ex)
+				{
+					mvarError = "Se necesita topología para abrir el plan: " + ex.Message;
+					return;
+				}
+			}
+
+			byte[] bytes = Convert.FromBase64String(file.base64);
+			await using MemoryStream ms = new MemoryStream(bytes);
+			MeshBinarySerializer.LoadResult loaded = MeshBinarySerializer.Load(ms, topo);
+
+			mvarExploitationPlan = loaded.Plan;
+			mvarValidityStart = loaded.Plan.ValidityStart;
+			mvarMeshStale = false;
+			mvarProject = null;
+			mvarSelectedCirculation = null;
+
+			// Filtro de día: el seleccionado si existe en el plan; si no, el primero disponible.
+			DayOfWeek day = mvarSelectedDay;
+			if (!loaded.Plan.HasDay(day))
+			{
+				foreach (DayOfWeek d in loaded.Plan.Days)
+				{
+					day = d;
+					break;
+				}
+			}
+
+			mvarSelectedDay = day;
+			ApplyExploitationDayFilter(day);
+
+			string vig = loaded.ValidityStart.HasValue
+				? " · vigencia " + loaded.ValidityStart.Value.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
+				: string.Empty;
+			mvarStatus = "Plan de explotación: " + (file.name ?? "plan.dmesh")
+				+ " · " + loaded.Plan.Days.Count.ToString(CultureInfo.InvariantCulture) + " día(s)"
+				+ " · filtro " + DayLabel(day)
+				+ " · " + (mvarMesh?.Circulations.Count ?? 0).ToString(CultureInfo.InvariantCulture) + " circ. hoy"
+				+ vig
+				+ (loaded.Notes.Count > 0 ? " · " + loaded.Notes[0] : string.Empty);
+			mvarError = null;
+			StateHasChanged();
+		}
+		catch (Exception ex)
+		{
+			mvarError = "Error al abrir plan: " + ex.Message;
+		}
+	}
+
+	/// <summary>Aplica el filtro de día sobre el plan de explotación cargado.</summary>
+	private void ApplyExploitationDayFilter(DayOfWeek day)
+	{
+		if (mvarExploitationPlan is null)
+		{
+			return;
+		}
+
+		Mesh? dayMesh = mvarExploitationPlan.GetMesh(day);
+		mvarMesh = dayMesh;
+		mvarSelectedCirculation = null;
+		mvarMeshStale = false;
+
+		if (mvarMesh is not null && mvarMesh.Asimilations.Count > 0)
+		{
+			mvarView = mvarMesh.Asimilations[0].View;
+		}
+		else if (mvarPlan?.Topo is not null)
+		{
+			IReadOnlyList<MeshRouteView> views = DemoMeshService.BuildDemoViews(mvarPlan.Topo);
+			mvarView = views.Count > 0 ? views[0] : mvarView;
+		}
+
+		mvarStatus = "Filtro " + DayLabel(day)
+			+ (mvarMesh is null
+				? " · sin malla ese día en el plan."
+				: " · " + mvarMesh.Circulations.Count.ToString(CultureInfo.InvariantCulture) + " circ."
+					+ (mvarExploitationPlan.ValidityStart.HasValue
+						? " · vigencia " + mvarExploitationPlan.ValidityStart.Value.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
+						: string.Empty));
+		StateHasChanged();
+	}
+
+	private sealed class BinaryFileResult
+	{
+		public string? name { get; set; }
+		public string? base64 { get; set; }
+	}
+
+	private void CompileProject()
+	{
+		if (mvarMesh is null)
+		{
+			mvarStatus = "No hay malla planificada: aplica el script antes de compilar.";
+			return;
+		}
+
+		try
+		{
+			if (mvarPlan is not null)
+			{
+				mvarProject = ProjectCompiler.Compile(mvarPlan, mvarMesh);
+			}
+			else
+			{
+				mvarProject = ProjectCompiler.Compile(
+					mvarMesh,
+					new CompileOptions
+					{
+						Name = Path.GetFileNameWithoutExtension(mvarFileName),
+						SourceScript = mvarScript,
+						PlanningDay = mvarSelectedDay
+					});
+			}
+
+			mvarInspectTab = InspectTab.Project;
+			mvarStatus = "Proyecto compilado: "
+				+ mvarProject.Circulations.Count.ToString(CultureInfo.InvariantCulture)
+				+ " circulaciones, "
+				+ mvarProject.Asimilations.Count.ToString(CultureInfo.InvariantCulture)
+				+ " asimilaciones ("
+				+ mvarProject.Id
+				+ ").";
+		}
+		catch (Exception ex)
+		{
+			mvarProject = null;
+			mvarError = "Error al compilar el proyecto: " + ex.Message;
+		}
+	}
+
+	private void RebuildCore()
+	{
+		// Limpiar siempre el estado de error del intento anterior (script + banner).
+		mvarError = null;
+		mvarStatus = null;
+		mvarProject = null;
+		mcolCompileErrors = new List<ScriptDiagnostic>();
+		mvarMarkersDirty = true;
+
+		if (string.IsNullOrWhiteSpace(mvarScript))
+		{
+			mvarScript = DemoMeshService.SfmT3DemandScript;
+		}
+
+		try
+		{
+			// Topología y cabecera (plan / notes) desde el script.
+			Plan plan = new Plan();
+			// Disco si existe; vacío en WASM (el include usa catálogo en memoria).
+			plan.ScriptBaseDirectory = DemoMeshService.GetScriptBaseDirectory();
+			plan.EnsureDefaultTrainSpecs();
+			plan.DemandScript = mvarScript;
+
+			DemandCompileResult compiled = plan.CompileDemand();
+			if (!compiled.Success)
+			{
+				mcolCompileErrors = BuildDiagnosticsFromCompile(compiled);
+				mvarError = "El script no compila (" + mcolCompileErrors.Count.ToString(CultureInfo.InvariantCulture)
+					+ " error(es)). El dibujo anterior se conserva pero ya no es la malla actual.";
+				// La malla en pantalla queda desactualizada: no mostrar sus errores/warnings como vigentes.
+				mvarMeshStale = mvarMesh is not null;
+				mvarProject = null;
+				return;
+			}
+
+			if (plan.Topo is null)
+			{
+				// Compat: scripts sin include siguen usando el sample demo.
+				plan.Topo = DemoMeshService.LoadTopoWithInfrastructure();
+				compiled = plan.CompileDemand(mvarScript);
+				if (!compiled.Success)
+				{
+					mcolCompileErrors = BuildDiagnosticsFromCompile(compiled);
+					mvarError = "El script no compila tras cargar topología por defecto ("
+						+ mcolCompileErrors.Count.ToString(CultureInfo.InvariantCulture) + " error(es)).";
+					mvarMeshStale = mvarMesh is not null;
+					mvarProject = null;
+					return;
+				}
+			}
+			else
+			{
+				// Infraestructura demo (cantones SFM) sobre la topo del include.
+				SfmDemoInfrastructure.Apply(plan.Topo);
+			}
+
+			// Si el script no trae plan "…", usar nombre de archivo o demo.
+			if (string.IsNullOrWhiteSpace(plan.Name))
+			{
+				string fromFile = Path.GetFileNameWithoutExtension(mvarFileName);
+				if (!string.IsNullOrWhiteSpace(fromFile)
+					&& !string.Equals(fromFile, "sin título", StringComparison.OrdinalIgnoreCase)
+					&& !string.Equals(fromFile, "sin titulo", StringComparison.OrdinalIgnoreCase))
+				{
+					plan.Name = fromFile;
+				}
+				else
+				{
+					plan.Name = "SFM demo";
+				}
+			}
+
+			TopoLayout topo = plan.Topo;
+			IReadOnlyList<MeshRouteView> views = DemoMeshService.BuildDemoViews(topo);
+			mcolViews = new List<MeshRouteView>(views);
+
+			mcolCompileErrors = new List<ScriptDiagnostic>();
+
+			Diamond.Timed.Mesh mesh = new MeshPlanner(plan).Solve(mvarSelectedDay);
+			mvarPlan = plan;
+			mvarMesh = mesh;
+			mvarSelectedCirculation = null;
+			mvarMeshStale = false;
+
+			// Preferir la vista de catálogo que mejor cubre las asimilaciones de la malla
+			// (p. ej. PMI–SPB → T3+T2; solo T3 → T3). Si la vista elegida es un mal
+			// encaje (trenes T3 en T3+T2: solo se ve Palma–Enllaç), se cambia.
+			mvarView = PreferViewForMesh(mesh, mcolViews, mvarSelectedViewId);
+			if (mvarView is not null)
+			{
+				mvarSelectedViewId = mvarView.Id;
+			}
+
+			InitAxisBounds();
+			ResetViewWindow();
+			RefreshSvg();
+
+			if (!mesh.Success)
+			{
+				mvarError = "Malla generada con "
+					+ mesh.Errors.Count.ToString(CultureInfo.InvariantCulture)
+					+ " error(es) de planificación.";
+				mvarInspectTab = InspectTab.Errors;
+			}
+			else
+			{
+				// Planificación limpia: no dejar colgado el banner ni la pestaña de errores previos.
+				mvarError = null;
+				if (mvarInspectTab == InspectTab.Errors)
+				{
+					mvarInspectTab = InspectTab.Warnings;
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			string detail = FormatException("Planificar malla", ex);
+			mvarError = detail;
+			mcolCompileErrors = new List<ScriptDiagnostic>
+			{
+				new ScriptDiagnostic { Line = 0, Message = detail, Severity = "error" }
+			};
+			// Fallo de infraestructura: la malla anterior deja de considerarse actual.
+			mvarMeshStale = mvarMesh is not null;
+		}
+	}
+
+	private async Task RebuildAsync()
+	{
+		// Vaciar marcadores Monaco del intento anterior antes de aplicar los nuevos (o ninguno).
+		if (mvarJsReady)
+		{
+			try
+			{
+				await Js.InvokeAsync<bool>("diamondMonaco.clearMarkers");
+			}
+			catch (JSException)
+			{
+			}
+		}
+
+		RebuildCore();
+		if (mvarJsReady)
+		{
+			await FlushMarkersToEditorAsync();
+		}
+	}
+
+	private async Task ApplyScript()
+	{
+		await SyncScriptFromEditorAsync();
+		await RebuildAsync();
+		if (mvarError is null && mcolCompileErrors.Count == 0)
+		{
+			mvarStatus = "Script aplicado · " + DayLabel(mvarSelectedDay) + " · view " + mvarSelectedViewId + ".";
+		}
+	}
+
+	private async Task UseManualScript()
+	{
+		if (!await ConfirmDiscardIfDirtyAsync("Cargar plantilla T3"))
+		{
+			return;
+		}
+
+		mvarScript = DemoMeshService.SfmT3DemandScript;
+		mvarFileName = "sfm-t3-lab.ddm";
+		mvarFileHasHandle = false;
+		mcolInverseNotes.Clear();
+		mvarSelectedDay = DayOfWeek.Monday;
+		mvarSelectedViewId = DemoMeshService.DefaultViewId;
+		try { await Js.InvokeAsync<bool>("diamondFile.clear"); } catch (JSException) { }
+		MarkClean();
+		await PushScriptToEditorAsync();
+		await RebuildAsync();
+		if (mvarError is null)
+		{
+			mvarStatus = "Plantilla T3 cargada.";
+		}
+	}
+
+	private async Task UsePalmaSpbScript()
+	{
+		if (!await ConfirmDiscardIfDirtyAsync("Cargar plantilla Palma–SPB"))
+		{
+			return;
+		}
+
+		mvarScript = DemoMeshService.SfmPalmaSaPoblaDemandScript;
+		mvarFileName = "sfm-palma-spb.ddm";
+		mvarFileHasHandle = false;
+		mcolInverseNotes.Clear();
+		mvarSelectedDay = DayOfWeek.Monday;
+		mvarSelectedViewId = DemoMeshService.PalmaSaPoblaViewId;
+		try { await Js.InvokeAsync<bool>("diamondFile.clear"); } catch (JSException) { }
+		MarkClean();
+		await PushScriptToEditorAsync();
+		await RebuildAsync();
+		if (mvarError is null)
+		{
+			mvarStatus = "Plantilla Palma–Sa Pobla cargada.";
+		}
+	}
+
+	private async Task ImportRauta()
+	{
+		if (!await ConfirmDiscardIfDirtyAsync("Importar rauta (sustituye el script)"))
+		{
+			return;
+		}
+
+		try
+		{
+			mvarError = null;
+			mcolCompileErrors = new List<ScriptDiagnostic>();
+			DemandInverseCompiler.InverseCompileResult inv = DemoMeshService.ImportRautaToScript();
+			mvarScript = inv.Script;
+			mvarFileName = "rauta-import.ddm";
+			mvarFileHasHandle = false;
+			mcolInverseNotes = new List<string>(inv.Notes);
+			if (inv.Warnings.Count > 0)
+			{
+				mcolInverseNotes.AddRange(inv.Warnings.Select(w => "⚠ " + w));
+			}
+
+			mvarSelectedDay = DayOfWeek.Monday;
+			if (ScriptLooksLikePalmaSaPobla(mvarScript))
+			{
+				mvarSelectedViewId = DemoMeshService.PalmaSaPoblaViewId;
+			}
+
+			try { await Js.InvokeAsync<bool>("diamondFile.clear"); } catch (JSException) { }
+			MarkClean();
+			mvarDirty = true;
+			mvarBaselineScript = string.Empty;
+			await PushScriptToEditorAsync();
+			await RebuildAsync();
+			mvarInspectTab = InspectTab.Notes;
+			if (mvarError is null && mcolCompileErrors.Count == 0)
+			{
+				mvarStatus = "Rauta importada → " + inv.RequirementCount + " requisitos.";
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarError = "Importación rauta: " + ex.Message;
+		}
+	}
+
+	private async Task ClearErrorPanel()
+	{
+		mvarError = null;
+		mcolCompileErrors = new List<ScriptDiagnostic>();
+		mvarMarkersDirty = true;
+		if (mvarJsReady)
+		{
+			try
+			{
+				await Js.InvokeAsync<bool>("diamondMonaco.clearMarkers");
+			}
+			catch (JSException)
+			{
+			}
+
+			await FlushMarkersToEditorAsync();
+		}
+	}
+
+	private async Task GoToDiagnostic(ScriptDiagnostic diagnostic)
+	{
+		if (diagnostic.Line <= 0 || mvarScriptEditor is null)
+		{
+			return;
+		}
+
+		try
+		{
+			await mvarScriptEditor.SetPosition(new Position
+			{
+				LineNumber = diagnostic.Line,
+				Column = 1
+			}, "diamond-goto");
+			await mvarScriptEditor.RevealLineInCenter(diagnostic.Line);
+			await mvarScriptEditor.Focus();
+		}
+		catch (JSException)
+		{
+		}
+	}
+
+	private static List<ScriptDiagnostic> BuildDiagnosticsFromCompile(DemandCompileResult compiled)
+	{
+		List<ScriptDiagnostic> list = new List<ScriptDiagnostic>();
+		int i = 0;
+		while (i < compiled.Errors.Count)
+		{
+			string raw = compiled.Errors[i];
+			int line = 0;
+			string message = raw;
+
+			if (raw.StartsWith("line ", StringComparison.OrdinalIgnoreCase))
+			{
+				int colon = raw.IndexOf(':');
+				if (colon > 5)
+				{
+					string numPart = raw.Substring(5, colon - 5).Trim();
+					int parsed;
+					if (int.TryParse(numPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed))
+					{
+						line = parsed;
+						message = raw.Substring(colon + 1).Trim();
+					}
+				}
+			}
+
+			list.Add(new ScriptDiagnostic
+			{
+				Line = line,
+				Message = message,
+				Severity = "error"
+			});
+			i++;
+		}
+
+		return list;
+	}
+
+	private async Task FlushMarkersToEditorAsync()
+	{
+		if (!mvarJsReady || mvarDisposed)
+		{
+			mvarMarkersDirty = true;
+			return;
+		}
+
+		try
+		{
+			if (mcolCompileErrors.Count == 0)
+			{
+				await Js.InvokeAsync<bool>("diamondMonaco.clearMarkers");
+				mvarMarkersDirty = false;
+				return;
+			}
+
+			List<object> markers = new List<object>();
+			int i = 0;
+			while (i < mcolCompileErrors.Count)
+			{
+				ScriptDiagnostic d = mcolCompileErrors[i];
+				markers.Add(new
+				{
+					line = d.Line > 0 ? d.Line : 1,
+					message = d.Message,
+					severity = d.Severity
+				});
+				i++;
+			}
+
+			bool ok = await Js.InvokeAsync<bool>("diamondMonaco.setMarkers", markers);
+			mvarMarkersDirty = !ok;
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+			mvarMarkersDirty = true;
+		}
+	}
+
+	private static bool ScriptLooksLikePalmaSaPobla(string script)
+	{
+		if (string.IsNullOrEmpty(script))
+		{
+			return false;
+		}
+
+		bool hasPmi = script.IndexOf("PMI", StringComparison.OrdinalIgnoreCase) >= 0;
+		bool hasSpb = script.IndexOf("SPB", StringComparison.OrdinalIgnoreCase) >= 0
+			|| script.IndexOf("Sa Pobla", StringComparison.OrdinalIgnoreCase) >= 0;
+		bool multiHint = script.IndexOf("multi-eje", StringComparison.OrdinalIgnoreCase) >= 0
+			|| script.IndexOf("T3+T2", StringComparison.OrdinalIgnoreCase) >= 0
+			|| script.IndexOf("T3:", StringComparison.OrdinalIgnoreCase) >= 0;
+		return hasPmi && hasSpb && (multiHint || script.IndexOf("PMI -> SPB", StringComparison.OrdinalIgnoreCase) >= 0);
+	}
+
+	private async Task SelectDay(DayOfWeek day)
+	{
+		mvarSelectedDay = day;
+
+		// Plan de explotación cargado: el día es solo filtro (no replanificar).
+		if (mvarExploitationPlan is not null)
+		{
+			ApplyExploitationDayFilter(day);
+			return;
+		}
+
+		if (mvarPlan is null)
+		{
+			await RebuildAsync();
+			return;
+		}
+
+		try
+		{
+			mvarError = null;
+			mcolCompileErrors = new List<ScriptDiagnostic>();
+			mvarMesh = DemoMeshService.SolveForDay(mvarPlan, day);
+			mvarSelectedCirculation = null;
+			mvarMeshStale = false;
+			mvarProject = null;
+			RefreshSvg();
+			mvarStatus = "Malla para " + DayLabel(day) + ".";
+			if (mvarMesh is not null && !mvarMesh.Success)
+			{
+				mvarError = "Malla con " + mvarMesh.Errors.Count.ToString(CultureInfo.InvariantCulture) + " error(es).";
+				mvarInspectTab = InspectTab.Errors;
+			}
+			else if (mvarInspectTab == InspectTab.Errors)
+			{
+				mvarInspectTab = InspectTab.Warnings;
+			}
+
+			if (mvarJsReady)
+			{
+				try { await Js.InvokeAsync<bool>("diamondMonaco.clearMarkers"); }
+				catch (JSException) { }
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarError = ex.Message;
+			mvarMeshStale = mvarMesh is not null;
+		}
+
+		await Task.CompletedTask;
+	}
+
+	private void SelectView(MeshRouteView candidate)
+	{
+		if (candidate is null)
+		{
+			return;
+		}
+
+		mvarSelectedViewId = candidate.Id;
+		mvarView = candidate;
+		InitAxisBounds();
+		ResetViewWindow();
+		RefreshSvg();
+		string note = string.Empty;
+		if (mvarMesh is not null && ScoreViewCoverage(mvarMesh, candidate) < 0.85)
+		{
+			note = " · (la malla solo cubre parte de esta vista; traza = tramo común)";
+		}
+
+		mvarStatus = "Vista: " + candidate.Id + " · " + candidate.Name + "." + note;
+	}
+
+	/// <summary>
+	/// Elige la vista de catálogo que mejor proyecta las asimilaciones de la malla.
+	/// Conserva la selección del usuario si su cobertura es casi óptima.
+	/// </summary>
+	private static MeshRouteView? PreferViewForMesh(
+		Diamond.Timed.Mesh mesh,
+		IReadOnlyList<MeshRouteView> views,
+		string preferredId)
+	{
+		if (views is null || views.Count == 0)
+		{
+			return null;
+		}
+
+		MeshRouteView? preferred = DemoMeshService.FindViewById(views, preferredId);
+		if (mesh is null || mesh.Asimilations.Count == 0)
+		{
+			return preferred ?? views[0];
+		}
+
+		// Añadir vistas planificadas multi-eje al catálogo si no hay equivalente.
+		List<MeshRouteView> catalog = new List<MeshRouteView>(views);
+		int ai = 0;
+		while (ai < mesh.Asimilations.Count)
+		{
+			MeshRouteView planned = mesh.Asimilations[ai].View;
+			bool found = false;
+			int vi = 0;
+			while (vi < catalog.Count)
+			{
+				if (catalog[vi].IsSameOrReversePath(planned))
+				{
+					found = true;
+					break;
+				}
+
+				vi++;
+			}
+
+			if (!found)
+			{
+				catalog.Add(planned);
+			}
+
+			ai++;
+		}
+
+		MeshRouteView? best = null;
+		double bestScore = -1.0;
+		int i = 0;
+		while (i < catalog.Count)
+		{
+			double score = ScoreViewCoverage(mesh, catalog[i]);
+			if (score > bestScore)
+			{
+				bestScore = score;
+				best = catalog[i];
+			}
+
+			i++;
+		}
+
+		if (preferred is not null)
+		{
+			double prefScore = ScoreViewCoverage(mesh, preferred);
+			// Mantener la vista del usuario si cubre al menos el 85 % del mejor score.
+			if (prefScore >= bestScore * 0.85 && prefScore > 0.05)
+			{
+				return preferred;
+			}
+		}
+
+		return best ?? preferred ?? views[0];
+	}
+
+	/// <summary>
+	/// 0..1: fracción de asimilaciones bien proyectables (mismo corredor = 1;
+	/// solape físico = ~0.5; nada = 0).
+	/// </summary>
+	private static double ScoreViewCoverage(Diamond.Timed.Mesh mesh, MeshRouteView view)
+	{
+		if (mesh is null || view is null || mesh.Asimilations.Count == 0)
+		{
+			return 0.0;
+		}
+
+		double sum = 0.0;
+		int n = 0;
+		int i = 0;
+		while (i < mesh.Asimilations.Count)
+		{
+			Diamond.Motion.Asimilation asim = mesh.Asimilations[i];
+			if (view.IsSameOrReversePath(asim.View))
+			{
+				sum += 1.0;
+			}
+			else if (view.OverlapsPhysically(asim.View))
+			{
+				// Tramo común (T3 en T3+T2): cobertura parcial.
+				sum += 0.45;
+			}
+
+			n++;
+			i++;
+		}
+
+		return n > 0 ? sum / n : 0.0;
+	}
+
+	private string ViewButtonClass(MeshRouteView candidate)
+	{
+		return string.Equals(mvarSelectedViewId, candidate.Id, StringComparison.Ordinal)
+			? "btn-info"
+			: "btn-outline-light";
+	}
+
+	private void InitAxisBounds()
+	{
+		if (mvarView is null)
+		{
+			return;
+		}
+
+		mvarAxisPkMin = Math.Min(mvarView.PK, mvarView.PKEnd);
+		mvarAxisPkMax = Math.Max(mvarView.PK, mvarView.PKEnd);
+	}
+
+	private void ResetViewWindow()
+	{
+		mvarViewT0 = TimeSpan.FromHours(6);
+		mvarViewT1 = TimeSpan.FromHours(14);
+		mvarViewPkMin = mvarAxisPkMin;
+		mvarViewPkMax = mvarAxisPkMax;
+	}
+
+	/// <summary>
+	/// El dibujo lo hace <see cref="MeshDiagram"/> (Diamond.Controls).
+	/// Se conserva el método para no romper llamadas de planificación (no-op de UI).
+	/// </summary>
+	private void RefreshSvg(bool interactive = false)
+	{
+		// MeshDiagram se actualiza por parámetros Mesh/View en el render de Blazor.
+	}
+
+	private MeshSvgDrawOptions BuildDrawOptions(bool interactive)
+	{
+		if (mvarShowNowLine)
+		{
+			mvarClockNow = DateTime.Now.TimeOfDay;
+		}
+
+		MeshSvgDrawOptions options = MeshSvgDrawOptions.Create(
+			showCantonOccupations: mvarShowOccupations,
+			showTrainPaths: mvarShowTrainPaths,
+			showTrainNumbers: mvarShowTrainNumbers,
+			showConflicts: mvarShowConflicts,
+			showSpeedStrip: mvarShowSpeedStrip,
+			showTrackStrip: mvarShowTrackStrip,
+			showNowLine: mvarShowNowLine,
+			nowTime: mvarShowNowLine ? mvarClockNow : null,
+			maxPolylineSamples: interactive ? 16 : 48);
+
+		if (interactive)
+		{
+			return options.ForInteractiveLod();
+		}
+
+		return options;
+	}
+
+	private string LayerButtonClass(bool enabled)
+	{
+		return enabled ? "btn-info" : "btn-outline-secondary";
+	}
+
+	private void ToggleOccupations()
+	{
+		mvarShowOccupations = !mvarShowOccupations;
+		RefreshSvg();
+	}
+
+	private void ToggleTrainPaths()
+	{
+		mvarShowTrainPaths = !mvarShowTrainPaths;
+		RefreshSvg();
+	}
+
+	private void ToggleTrainNumbers()
+	{
+		mvarShowTrainNumbers = !mvarShowTrainNumbers;
+		RefreshSvg();
+	}
+
+	private void ToggleConflicts()
+	{
+		mvarShowConflicts = !mvarShowConflicts;
+		RefreshSvg();
+	}
+
+	private void ToggleSpeedStrip()
+	{
+		mvarShowSpeedStrip = !mvarShowSpeedStrip;
+		RefreshSvg();
+	}
+
+	private void ToggleTrackStrip()
+	{
+		mvarShowTrackStrip = !mvarShowTrackStrip;
+		RefreshSvg();
+	}
+
+	private void ToggleNowLine()
+	{
+		mvarShowNowLine = !mvarShowNowLine;
+		if (mvarShowNowLine)
+		{
+			mvarClockNow = DateTime.Now.TimeOfDay;
+		}
+
+		RefreshSvg();
+	}
+
+	private static string FormatClockWithSeconds(TimeSpan ts)
+	{
+		int h = (int)ts.TotalHours;
+		if (h < 0)
+		{
+			h = 0;
+		}
+
+		int m = ts.Minutes;
+		if (m < 0)
+		{
+			m = 0;
+		}
+
+		int s = ts.Seconds;
+		if (s < 0)
+		{
+			s = 0;
+		}
+
+		return h.ToString("00", CultureInfo.InvariantCulture)
+			+ ":" + m.ToString("00", CultureInfo.InvariantCulture)
+			+ ":" + s.ToString("00", CultureInfo.InvariantCulture);
+	}
+
+	/// <summary>
+	/// Tras pan/zoom con rueda: render completo cuando deja de haber eventos (~120 ms).
+	/// </summary>
+	private void ScheduleFullRenderAfterIdle()
+	{
+		mvarFullRenderCts?.Cancel();
+		mvarFullRenderCts?.Dispose();
+		CancellationTokenSource cts = new CancellationTokenSource();
+		mvarFullRenderCts = cts;
+		CancellationToken token = cts.Token;
+		_ = RestoreFullSvgAfterDelayAsync(token);
+	}
+
+	private async Task RestoreFullSvgAfterDelayAsync(CancellationToken token)
+	{
+		try
+		{
+			await Task.Delay(120, token);
+			if (token.IsCancellationRequested || mvarDisposed || !mvarSvgIsInteractive)
+			{
+				return;
+			}
+
+			await InvokeAsync(() =>
+			{
+				if (!token.IsCancellationRequested && !mvarDisposed && mvarSvgIsInteractive)
+				{
+					RefreshSvg(interactive: false);
+					StateHasChanged();
+				}
+			});
+		}
+		catch (Exception ex) when (IsBenignInteropException(ex))
+		{
+		}
+	}
+
+	private void ResetView()
+	{
+		ResetViewWindow();
+		RefreshSvg(interactive: false);
+	}
+
+	private void SetZoomMode(ZoomAxisMode mode)
+	{
+		mvarZoomMode = mode;
+	}
+
+	private string ZoomModeButtonClass(ZoomAxisMode mode)
+	{
+		return mvarZoomMode == mode ? "btn-light" : "btn-outline-light";
+	}
+
+	private string DayButtonClass(DayOfWeek day)
+	{
+		return mvarSelectedDay == day ? "btn-info" : "btn-outline-light";
+	}
+
+	private static string DayLabel(DayOfWeek day)
+	{
+		return ServiceDays.FormatDayOfWeek(day);
+	}
+
+	private void ZoomIn()
+	{
+		ZoomAtPlotCenter(ZoomStep);
+	}
+
+	private void ZoomOut()
+	{
+		ZoomAtPlotCenter(1.0 / ZoomStep);
+	}
+
+	private void ZoomAtPlotCenter(double factor)
+	{
+		double cx = MeshSvgLayout.PlotLeft + MeshSvgLayout.PlotWidth(mvarSvgWidth) * 0.5;
+		double cy = MeshSvgLayout.PlotTop + MeshSvgLayout.PlotHeight(mvarSvgHeight) * 0.5;
+		ZoomAtScreen(cx, cy, factor, interactive: false);
+	}
+
+	private void NudgeTime(double direction)
+	{
+		double span = (mvarViewT1 - mvarViewT0).TotalSeconds;
+		double delta = direction * span * 0.15;
+		mvarViewT0 += TimeSpan.FromSeconds(delta);
+		mvarViewT1 += TimeSpan.FromSeconds(delta);
+		RefreshSvg(interactive: false);
+	}
+
+	private void NudgePk(double direction)
+	{
+		double span = mvarViewPkMax - mvarViewPkMin;
+		long delta = (long)(direction * span * 0.15);
+		mvarViewPkMin += delta;
+		mvarViewPkMax += delta;
+		RefreshSvg(interactive: false);
+	}
+
+	private void OnPointerDown(PointerEventArgs e)
+	{
+		if (e.Button != 0)
+		{
+			return;
+		}
+
+		mvarDragging = true;
+		mvarLastPointerX = e.ClientX;
+		mvarLastPointerY = e.ClientY;
+		mvarFullRenderCts?.Cancel();
+	}
+
+	private void OnPointerMove(PointerEventArgs e)
+	{
+		if (!mvarDragging)
+		{
+			return;
+		}
+
+		double dx = e.ClientX - mvarLastPointerX;
+		double dy = e.ClientY - mvarLastPointerY;
+		mvarLastPointerX = e.ClientX;
+		mvarLastPointerY = e.ClientY;
+
+		double plotW = MeshSvgLayout.PlotWidth(mvarSvgWidth);
+		double plotH = MeshSvgLayout.PlotHeight(mvarSvgHeight);
+		double timeSpan = (mvarViewT1 - mvarViewT0).TotalSeconds;
+		double pkSpan = mvarViewPkMax - mvarViewPkMin;
+
+		mvarViewT0 += TimeSpan.FromSeconds(-dx / plotW * timeSpan);
+		mvarViewT1 += TimeSpan.FromSeconds(-dx / plotW * timeSpan);
+		mvarViewPkMin += (long)Math.Round(dy / plotH * pkSpan);
+		mvarViewPkMax += (long)Math.Round(dy / plotH * pkSpan);
+
+		// Throttle: no regenerar el SVG en cada evento de puntero.
+		long now = System.Environment.TickCount64;
+		if (now - mvarLastInteractiveRenderTicks < 33)
+		{
+			return;
+		}
+
+		mvarLastInteractiveRenderTicks = now;
+		RefreshSvg(interactive: true);
+	}
+
+	private void OnPointerUp(PointerEventArgs e)
+	{
+		if (!mvarDragging)
+		{
+			return;
+		}
+
+		mvarDragging = false;
+		// Calidad completa al soltar: números, ocupaciones y más muestras.
+		RefreshSvg(interactive: false);
+	}
+
+	private void ZoomAtScreen(double screenX, double screenY, double factor, bool interactive)
+	{
+		if (!MeshSvgLayout.IsInsidePlot(screenX, screenY, mvarSvgWidth, mvarSvgHeight))
+		{
+			screenX = MeshSvgLayout.PlotLeft + MeshSvgLayout.PlotWidth(mvarSvgWidth) * 0.5;
+			screenY = MeshSvgLayout.PlotTop + MeshSvgLayout.PlotHeight(mvarSvgHeight) * 0.5;
+		}
+
+		double anchorTime = MeshSvgLayout.TimeAtX(screenX, mvarViewT0, mvarViewT1, mvarSvgWidth);
+		double anchorPk = MeshSvgLayout.PkAtY(screenY, mvarViewPkMin, mvarViewPkMax, mvarSvgHeight);
+		double uTime = (screenX - MeshSvgLayout.PlotLeft) / MeshSvgLayout.PlotWidth(mvarSvgWidth);
+		double uPkFromTop = (screenY - MeshSvgLayout.PlotTop) / MeshSvgLayout.PlotHeight(mvarSvgHeight);
+
+		bool zoomTime = mvarZoomMode == ZoomAxisMode.Both || mvarZoomMode == ZoomAxisMode.Time;
+		bool zoomSpace = mvarZoomMode == ZoomAxisMode.Both || mvarZoomMode == ZoomAxisMode.Space;
+
+		if (zoomTime)
+		{
+			double timeSpan = (mvarViewT1 - mvarViewT0).TotalSeconds / factor;
+			if (timeSpan < MinTimeSpanHours * 3600.0)
+			{
+				timeSpan = MinTimeSpanHours * 3600.0;
+			}
+
+			if (timeSpan > MaxTimeSpanHours * 3600.0)
+			{
+				timeSpan = MaxTimeSpanHours * 3600.0;
+			}
+
+			mvarViewT0 = TimeSpan.FromSeconds(anchorTime - uTime * timeSpan);
+			mvarViewT1 = TimeSpan.FromSeconds(anchorTime + (1.0 - uTime) * timeSpan);
+		}
+
+		if (zoomSpace)
+		{
+			double pkSpan = (mvarViewPkMax - mvarViewPkMin) / factor;
+			if (pkSpan < MinPkSpan)
+			{
+				pkSpan = MinPkSpan;
+			}
+
+			double maxPkSpan = Math.Max(MinPkSpan, mvarAxisPkMax - mvarAxisPkMin);
+			if (pkSpan > maxPkSpan)
+			{
+				pkSpan = maxPkSpan;
+			}
+
+			double pkMax = anchorPk + uPkFromTop * pkSpan;
+			double pkMin = pkMax - pkSpan;
+			mvarViewPkMin = (long)Math.Round(pkMin);
+			mvarViewPkMax = (long)Math.Round(pkMax);
+		}
+
+		if (interactive)
+		{
+			long now = System.Environment.TickCount64;
+			if (now - mvarLastInteractiveRenderTicks < 33 && mvarSvgIsInteractive)
+			{
+				return;
+			}
+
+			mvarLastInteractiveRenderTicks = now;
+		}
+
+		RefreshSvg(interactive);
+	}
+
+	private void ClampView()
+	{
+		if (mvarViewT1 <= mvarViewT0)
+		{
+			mvarViewT1 = mvarViewT0 + TimeSpan.FromHours(1);
+		}
+
+		double span = (mvarViewT1 - mvarViewT0).TotalSeconds;
+		if (span < MinTimeSpanHours * 3600.0)
+		{
+			double mid = (mvarViewT0.TotalSeconds + mvarViewT1.TotalSeconds) * 0.5;
+			mvarViewT0 = TimeSpan.FromSeconds(mid - MinTimeSpanHours * 1800.0);
+			mvarViewT1 = TimeSpan.FromSeconds(mid + MinTimeSpanHours * 1800.0);
+		}
+
+		if (mvarViewPkMax <= mvarViewPkMin)
+		{
+			mvarViewPkMax = mvarViewPkMin + MinPkSpan;
+		}
+
+		if (mvarViewPkMax - mvarViewPkMin < MinPkSpan)
+		{
+			long mid = (mvarViewPkMin + mvarViewPkMax) / 2;
+			mvarViewPkMin = mid - MinPkSpan / 2;
+			mvarViewPkMax = mvarViewPkMin + MinPkSpan;
+		}
+	}
+
+	private static string FormatDuration(TimeSpan ts)
+	{
+		int totalMinutes = (int)Math.Round(ts.TotalMinutes);
+		if (totalMinutes < 60)
+		{
+			return totalMinutes.ToString(CultureInfo.InvariantCulture) + " min";
+		}
+
+		int h = totalMinutes / 60;
+		int m = totalMinutes % 60;
+		return h.ToString(CultureInfo.InvariantCulture)
+			+ " h "
+			+ m.ToString(CultureInfo.InvariantCulture)
+			+ " min";
+	}
+
+	private static string FormatClock(TimeSpan ts)
+	{
+		int h = (int)ts.TotalHours;
+		if (h < 0)
+		{
+			h = ((h % 24) + 24) % 24;
+		}
+
+		return h.ToString("00", CultureInfo.InvariantCulture) + ":"
+			+ Math.Abs(ts.Minutes).ToString("00", CultureInfo.InvariantCulture);
+	}
+
+	private static string FormatPkShort(long pk)
+	{
+		long abs = Math.Abs(pk);
+		return (abs / 1000L).ToString(CultureInfo.InvariantCulture) + "+"
+			+ (abs % 1000L).ToString("D3", CultureInfo.InvariantCulture);
+	}
+}
+

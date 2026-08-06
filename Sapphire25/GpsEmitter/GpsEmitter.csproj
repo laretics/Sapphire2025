@@ -7,6 +7,7 @@
     <RootNamespace>GpsEmitter</RootNamespace>
     <AssemblyName>GpsEmitter</AssemblyName>
     <OutputType>Exe</OutputType>
+    <Configurations>Debug;Release;Zafiro</Configurations>
   </PropertyGroup>
 
   <!-- Perfil de publicación: un solo .exe autónomo para el PC del tren -->

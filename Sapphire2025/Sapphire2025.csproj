@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
-    <Configurations>Debug;Release;TimeNet</Configurations>
+    <Configurations>Debug;Release;TimeNet;Zafiro</Configurations>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,6 +29,14 @@
     <ProjectReference Include="..\Sapphire25\Sapphire2026Clients\Sapphire2026Clients.csproj" />
     <ProjectReference Include="..\Sapphire25\TimeNet2026\TimeNet2026.csproj" />
     <ProjectReference Include="..\Sapphire25\TimeNetComponents\TimeNetComponents.csproj" />
+    <!-- Planificador Diamond (mallas, libro itinerario, .dmesh firmado) -->
+    <ProjectReference Include="..\Sapphire25\Diamond\Diamond.csproj" />
+    <ProjectReference Include="..\Sapphire25\Diamond.Controls\Diamond.Controls.csproj" />
+  </ItemGroup>
+
+  <!-- Topos de ejemplo del planificador (File.Exists en WASM vía BaseDirectory) -->
+  <ItemGroup>
+    <Content Include="Samples\Onice\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

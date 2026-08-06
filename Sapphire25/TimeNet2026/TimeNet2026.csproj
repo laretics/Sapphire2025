@@ -4,7 +4,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Configurations>Debug;Release;TimeNet</Configurations>
+    <Configurations>Debug;Release;TimeNet;Zafiro</Configurations>
   </PropertyGroup>
 
   <ItemGroup>

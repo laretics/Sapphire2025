@@ -176,6 +176,45 @@ code {
     --sidebar-width-collapsed: 80px;
 }
 
+/*
+ * Planificador Diamond en Engineer: el shell Zafiro (.main-content) trae
+ * padding:20px y fondo gris; el workspace pedía 100vh → bandas alrededor.
+ * Con :has() anulamos el padding y damos altura real al host.
+ */
+.main-content:has(.engineer-diamond-host) {
+    padding: 0 !important;
+    overflow: hidden;
+    height: 100vh;
+    max-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #0b0f14;
+}
+
+.main-content:has(.engineer-diamond-host) > .mobile-topbar {
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.main-content:has(.engineer-diamond-host) > .container-fluid {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    max-width: none;
+    padding: 0 !important;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (max-width: 991.98px) {
+    .main-content:has(.engineer-diamond-host) {
+        /* topbar móvil ocupa sitio */
+        height: 100vh;
+    }
+}
+
+
 /* Utilidades responsive globales */
 .table-scroll-x {
     width: 100%;

@@ -794,10 +794,9 @@ namespace Diamond.Controls.Rendering
 
 				if (pathD.Length > 0 || placements.Count > 0)
 				{
-					string numberText = c.HasServiceNumber
-						? c.ServiceNumber
-						: c.Id;
-					string tip = numberText
+					// Solo número de plantilla (4923…); no Id técnico de planificación.
+					string numberText = c.HasServiceNumber ? c.ServiceNumber : string.Empty;
+					string tip = (numberText.Length > 0 ? numberText : "Tren")
 						+ " · salida " + FormatClock(c.Departure)
 						+ " · ll. " + FormatClock(c.Arrival);
 

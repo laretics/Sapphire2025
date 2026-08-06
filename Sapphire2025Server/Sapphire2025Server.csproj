@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>AnyCPU;x64</Platforms>
-    <Configurations>Debug;Release;TimeNet</Configurations>
+    <Configurations>Debug;Release;TimeNet;Zafiro</Configurations>
   </PropertyGroup>
 
   <ItemGroup>

@@ -48,6 +48,34 @@ namespace Diamond.Timed
 		}
 
 		/// <summary>
+		/// Reconstrucción desde artefacto binario: conserva <paramref name="technicalId"/>
+		/// aunque el número de servicio sea distinto.
+		/// </summary>
+		internal static Circulation CreateForDeserialization(
+			string technicalId,
+			string demandId,
+			Asimilation asimilation,
+			TrainSpecs specs,
+			TimeSpan departure,
+			string? color,
+			string? serviceNumber)
+		{
+			Circulation c = new Circulation(
+				string.IsNullOrEmpty(technicalId) ? "C" : technicalId,
+				demandId,
+				asimilation,
+				specs,
+				departure,
+				color);
+			if (!string.IsNullOrWhiteSpace(serviceNumber))
+			{
+				c.AssignServiceNumber(serviceNumber.Trim());
+			}
+
+			return c;
+		}
+
+		/// <summary>
 		/// Identificador de circulación (tras numerar, coincide con <see cref="ServiceNumber"/>).
 		/// </summary>
 		public string Id
