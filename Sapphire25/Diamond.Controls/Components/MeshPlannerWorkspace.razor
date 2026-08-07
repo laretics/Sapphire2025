@@ -307,7 +307,7 @@
 					@if (mvarMountEditor)
 					{
 						<StandaloneCodeEditor @ref="mvarScriptEditor"
-											  Id="diamond-demand-editor"
+											  Id="@ScriptEditorId"
 											  ConstructionOptions="EditorConstructionOptions"
 											  OnDidInit="OnScriptEditorInit"
 											  OnDidChangeModelContent="OnScriptEditorChanged" />
@@ -447,6 +447,15 @@
 
 	/// <summary>Monta el editor solo cuando Monaco y el circuito están listos.</summary>
 	private bool mvarMountEditor;
+
+	/// <summary>
+	/// True solo tras <see cref="OnScriptEditorInit"/> cuando BlazorMonaco ya registró
+	/// el editor JS. Antes de esto, <c>StandaloneCodeEditor.Layout()</c> lanza
+	/// "Couldn't find the editor with id: diamond-demand-editor".
+	/// </summary>
+	private bool mvarEditorReady;
+
+	private const string ScriptEditorId = "diamond-demand-editor";
 
 	/// <summary>True tras dispose: no más interop (evita tumbar el circuit).</summary>
 	private bool mvarDisposed;
@@ -814,7 +823,17 @@
 				|| m.Contains("circuit has disconnected", StringComparison.OrdinalIgnoreCase)
 				|| m.Contains("ElementReference", StringComparison.OrdinalIgnoreCase)
 				|| m.Contains("prerender", StringComparison.OrdinalIgnoreCase)
+				|| m.Contains("Couldn't find the editor", StringComparison.OrdinalIgnoreCase)
+				|| m.Contains("editors.length", StringComparison.OrdinalIgnoreCase)
 				|| m.Length == 0; // VS a veces muestra IOE vacía en WASM
+		}
+
+		// Blazor WASM a veces envuelve el throw string de jsInterop en Exception genérica.
+		string full = ex.Message ?? string.Empty;
+		if (full.Contains("Couldn't find the editor", StringComparison.OrdinalIgnoreCase)
+			|| full.Contains("editors.length", StringComparison.OrdinalIgnoreCase))
+		{
+			return true;
 		}
 
 		return false;
@@ -867,10 +886,8 @@
 			{
 				await Js.InvokeAsync<bool>("diamondSplit.attach", mvarSplitRoot, mvarSplitGutter);
 				mvarSplitAttached = true;
-				if (mvarScriptEditor is not null)
-				{
-					await RelayoutMonacoAsync();
-				}
+				// No layout aquí: el editor BlazorMonaco aún puede no estar en el registro
+				// (editors.length === 0). OnScriptEditorInit / deferred layouts lo harán.
 			}
 			catch (Exception ex) when (IsBenignInteropException(ex))
 			{
@@ -878,7 +895,7 @@
 			}
 		}
 
-		if (mvarJsReady && mvarMarkersDirty && mvarScriptEditor is not null)
+		if (mvarJsReady && mvarEditorReady && mvarMarkersDirty && mvarScriptEditor is not null)
 		{
 			await FlushMarkersToEditorAsync();
 		}
@@ -1009,22 +1026,29 @@
 		}
 	}
 
+	/// <summary>
+	/// Layout seguro: nunca llama a <c>StandaloneCodeEditor.Layout()</c> (BlazorMonaco
+	/// lanza si el id no está en <c>window.blazorMonaco.editors</c>). Solo usa
+	/// <c>diamondMonaco.layout</c>, que consulta el registro en modo silent.
+	/// </summary>
 	private async Task RelayoutMonacoAsync()
 	{
-		if (!mvarJsReady || mvarDisposed)
+		if (!mvarJsReady || mvarDisposed || !mvarEditorReady)
 		{
 			return;
 		}
 
 		try
 		{
-			if (mvarScriptEditor is not null)
+			// Comprobar en JS que el holder existe; si no, no forzar.
+			bool ready = await Js.InvokeAsync<bool>("diamondMonaco.isEditorReady", ScriptEditorId);
+			if (!ready)
 			{
-				await mvarScriptEditor.Layout();
+				return;
 			}
 
-			await Js.InvokeAsync<bool>("diamondMonaco.layout", "diamond-demand-editor");
-			await Js.InvokeAsync<bool>("diamondMonaco.watchLayout", "diamond-demand-editor");
+			await Js.InvokeAsync<bool>("diamondMonaco.layout", ScriptEditorId);
+			await Js.InvokeAsync<bool>("diamondMonaco.watchLayout", ScriptEditorId);
 		}
 		catch (Exception ex) when (IsBenignInteropException(ex))
 		{
@@ -1038,6 +1062,9 @@
 			return;
 		}
 
+		// OnDidInit de BlazorMonaco se dispara cuando el editor YA está en el registro JS.
+		mvarEditorReady = true;
+
 		await EnsureMonacoLanguageAsync();
 		if (mvarDisposed)
 		{
@@ -1046,7 +1073,7 @@
 
 		try
 		{
-			await Js.InvokeAsync<bool>("diamondMonaco.applyToEditor", "diamond-demand-editor");
+			await Js.InvokeAsync<bool>("diamondMonaco.applyToEditor", ScriptEditorId);
 			await Global.SetTheme(Js, "diamond-dark");
 		}
 		catch (Exception ex) when (IsBenignInteropException(ex))
@@ -1062,6 +1089,7 @@
 		{
 			await mvarScriptEditor.UpdateOptions(new EditorUpdateOptions
 			{
+				// AutomaticLayout cubre redimensionados del host; no hace falta Layout() ruidoso.
 				AutomaticLayout = true
 			});
 
@@ -1070,7 +1098,7 @@
 				await mvarScriptEditor.SetValue(mvarScript);
 			}
 
-			await mvarScriptEditor.Layout();
+			// Solo layout silencioso de Diamond (nunca blazorMonaco.editor.layout).
 			await RelayoutMonacoAsync();
 			ScheduleDeferredLayouts();
 		}
@@ -1110,14 +1138,14 @@
 					return;
 				}
 
-				if (token.IsCancellationRequested || mvarDisposed)
+				if (token.IsCancellationRequested || mvarDisposed || !mvarEditorReady)
 				{
 					return;
 				}
 
 				await InvokeAsync(async () =>
 				{
-					if (!token.IsCancellationRequested && !mvarDisposed)
+					if (!token.IsCancellationRequested && !mvarDisposed && mvarEditorReady)
 					{
 						await RelayoutMonacoAsync();
 					}
@@ -1397,6 +1425,7 @@
 	public async ValueTask DisposeAsync()
 	{
 		mvarDisposed = true;
+		mvarEditorReady = false;
 
 		mvarNowTimer?.Dispose();
 		mvarNowTimer = null;

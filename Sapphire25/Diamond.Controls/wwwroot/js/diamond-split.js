@@ -4,10 +4,21 @@
 (function () {
 	"use strict";
 
+	var EDITOR_ID = "diamond-demand-editor";
+
 	function notifyMonacoLayout() {
 		try {
-			if (window.diamondMonaco && typeof window.diamondMonaco.layout === "function") {
-				window.diamondMonaco.layout("diamond-demand-editor");
+			if (!window.diamondMonaco) {
+				return;
+			}
+			// No forzar layout si BlazorMonaco aún no registró el editor
+			// (evita carrera con el primer render del split).
+			if (typeof window.diamondMonaco.isEditorReady === "function"
+				&& !window.diamondMonaco.isEditorReady(EDITOR_ID)) {
+				return;
+			}
+			if (typeof window.diamondMonaco.layout === "function") {
+				window.diamondMonaco.layout(EDITOR_ID);
 			}
 		} catch (e) {
 			// ignore

@@ -378,23 +378,57 @@
 	}
 
 	/**
-	 * Fuerza layout del editor BlazorMonaco (id del host, p. ej. diamond-demand-editor).
-	 * Importante: NO tocar host.style.height (provoca bucle con ResizeObserver y tumba el circuito).
+	 * True si BlazorMonaco ya registró el editor (evita layout() ruidoso del paquete).
+	 * Nunca llama a getEditorHolder en modo throwing.
+	 */
+	function isEditorReady(editorId) {
+		if (!editorId) {
+			return false;
+		}
+		try {
+			if (window.blazorMonaco && window.blazorMonaco.editor
+				&& typeof window.blazorMonaco.editor.getEditor === "function") {
+				// silent=true: no lanza "Couldn't find the editor..."
+				return !!window.blazorMonaco.editor.getEditor(editorId, true);
+			}
+		} catch (e) {
+			// ignore
+		}
+		try {
+			if (window.blazorMonaco && Array.isArray(window.blazorMonaco.editors)) {
+				var list = window.blazorMonaco.editors;
+				var i;
+				for (i = 0; i < list.length; i++) {
+					if (list[i] && list[i].id === editorId && list[i].editor) {
+						return true;
+					}
+				}
+			}
+		} catch (e2) {
+			// ignore
+		}
+		return false;
+	}
+
+	/**
+	 * Fuerza layout del editor sin pasar por blazorMonaco.editor.layout()
+	 * (esa API lanza si el editor aún no está en el registro).
+	 * Importante: NO tocar host.style.height (bucle ResizeObserver).
 	 */
 	function layoutEditor(editorId) {
 		var laid = false;
 
-		// 1) Registro de BlazorMonaco (API real del paquete)
+		// 1) Instancia registrada en BlazorMonaco (silent)
 		try {
 			if (window.blazorMonaco && window.blazorMonaco.editor && editorId) {
 				var held = window.blazorMonaco.editor.getEditor(editorId, true);
-				if (held) {
+				if (held && typeof held.layout === "function") {
 					held.layout();
 					laid = true;
 				}
 			}
 		} catch (e0) {
-			// ignore
+			// ignore — nunca re-lanzar
 		}
 
 		if (laid || typeof monaco === "undefined" || !monaco.editor) {
@@ -420,8 +454,10 @@
 				if (host && dom && !host.contains(dom) && dom !== host) {
 					continue;
 				}
-				ed.layout();
-				laid = true;
+				if (ed && typeof ed.layout === "function") {
+					ed.layout();
+					laid = true;
+				}
 			} catch (e2) {
 				// ignore
 			}
@@ -433,16 +469,21 @@
 	/**
 	 * Observa el contenedor del editor y llama layout cuando cambia de tamaño
 	 * (split, aparición de panel de errores, etc.). Debounce + sin reentrada.
+	 * No hace nada útil hasta que el editor exista; reintenta al montar.
 	 */
 	function watchLayout(editorId) {
 		var host = editorId ? document.getElementById(editorId) : null;
 		if (!host || typeof ResizeObserver === "undefined") {
-			layoutEditor(editorId);
+			if (isEditorReady(editorId)) {
+				layoutEditor(editorId);
+			}
 			return false;
 		}
 
 		if (host._diamondMonacoRo) {
-			layoutEditor(editorId);
+			if (isEditorReady(editorId)) {
+				layoutEditor(editorId);
+			}
 			return true;
 		}
 
@@ -456,6 +497,9 @@
 			pending = setTimeout(function () {
 				pending = null;
 				if (running) {
+					return;
+				}
+				if (!isEditorReady(editorId)) {
 					return;
 				}
 				running = true;
@@ -476,15 +520,18 @@
 		host._diamondMonacoRo = ro;
 
 		// Intentos tras montaje (layout flex a veces llega en frames posteriores).
-		layoutEditor(editorId);
+		// Solo si el editor ya está registrado: si no, el RO lo hará al primer resize.
+		function tryLater() {
+			if (isEditorReady(editorId)) {
+				layoutEditor(editorId);
+			}
+		}
+		tryLater();
 		requestAnimationFrame(function () {
-			layoutEditor(editorId);
-			setTimeout(function () {
-				layoutEditor(editorId);
-			}, 80);
-			setTimeout(function () {
-				layoutEditor(editorId);
-			}, 250);
+			tryLater();
+			setTimeout(tryLater, 80);
+			setTimeout(tryLater, 250);
+			setTimeout(tryLater, 600);
 		});
 		return true;
 	}
@@ -497,6 +544,7 @@
 		},
 		ensureLanguageAsync: ensureLanguageAsync,
 		applyToEditor: applyToEditorAsync,
+		isEditorReady: isEditorReady,
 		layout: layoutEditor,
 		watchLayout: watchLayout,
 		setMarkers: setMarkers,
