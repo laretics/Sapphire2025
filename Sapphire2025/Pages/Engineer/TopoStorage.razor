@@ -231,6 +231,11 @@
 						disabled="@(mvarBusy || mvarSelectedPlan is null || mvarSelectedPlan is { IsActive: true })">
 					<i class="bi bi-check2-circle"></i> Activar
 				</button>
+				<button type="button" class="btn btn-warning btn-sm" @onclick="OpenPublishFromPlanAsync"
+						disabled="@(mvarBusy || mvarSelectedPlan is null || mvarSelectedPlan is { IsActive: false })"
+						title="Compilar y publicar para Tourmaline">
+					<i class="bi bi-broadcast"></i> Publicar
+				</button>
 				<div class="form-check form-switch ms-2 mb-0">
 					<input class="form-check-input" type="checkbox" id="chkInactivePlan" @bind="mvarShowInactivePlans" @bind:after="ReloadPlansAsync" />
 					<label class="form-check-label small" for="chkInactivePlan">Incluir inactivos</label>
@@ -345,6 +350,124 @@
 			</div>
 		</TabPage>
 
+		<TabPage Text="Publicados" Key="published">
+			<div class="topo-toolbar mb-3 flex-wrap">
+				<button type="button" class="btn btn-primary btn-sm" @onclick="ReloadPublishedAsync" disabled="@mvarBusy">
+					<i class="bi bi-arrow-clockwise"></i> Actualizar
+				</button>
+				<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="DownloadSelectedPublishedAsync"
+						disabled="@(mvarBusy || mvarSelectedPublished is null)">
+					<i class="bi bi-download"></i> Exportar JSON
+				</button>
+				<button type="button" class="btn btn-outline-warning btn-sm" @onclick="UnpublishSelectedAsync"
+						disabled="@(mvarBusy || mvarSelectedPublished is null || mvarSelectedPublished is { IsActive: false })">
+					<i class="bi bi-pause-circle"></i> Retirar
+				</button>
+				<button type="button" class="btn btn-outline-info btn-sm" @onclick="RepublishSelectedAsync"
+						disabled="@(mvarBusy || mvarSelectedPublished is null || mvarSelectedPublished is { IsActive: true })">
+					<i class="bi bi-play-circle"></i> Reactivar
+				</button>
+				<div class="form-check form-switch ms-2 mb-0">
+					<input class="form-check-input" type="checkbox" id="chkInactivePub" @bind="mvarShowInactivePublished" @bind:after="ReloadPublishedAsync" />
+					<label class="form-check-label small" for="chkInactivePub">Incluir retirados</label>
+				</div>
+			</div>
+			<div class="row g-3">
+				<div class="col-12 col-lg-4">
+					<div class="topo-panel">
+						<div class="topo-panel-header">
+							<h2>Publicaciones</h2>
+							<span class="badge text-bg-primary topo-badge-soft">@mcolPublished.Count</span>
+						</div>
+						<div class="topo-list">
+							@if (mvarBusy && mcolPublished.Count == 0)
+							{
+								<div class="topo-empty-state"><div class="spinner-border text-primary mb-2"></div><div>Cargando…</div></div>
+							}
+							else if (mcolPublished.Count == 0)
+							{
+								<div class="topo-empty-state">
+									<div class="mb-2"><i class="bi bi-broadcast fs-3"></i></div>
+									<div>No hay planes publicados. En <strong>Planes</strong>, seleccione uno y pulse <strong>Publicar</strong>.</div>
+								</div>
+							}
+							else
+							{
+								@foreach (DiamondPublishedPlanHeaderModel item in mcolPublished)
+								{
+									bool selected = mvarSelectedPublished is not null && mvarSelectedPublished.Id == item.Id;
+									<div class="topo-item @(selected ? "active" : null)" @onclick="() => SelectPublished(item)" @key="item.Id">
+										<div class="d-flex justify-content-between align-items-start gap-2">
+											<p class="topo-item-title">@item.Name</p>
+											@if (!item.IsActive)
+											{
+												<span class="badge text-bg-secondary topo-badge-soft">Retirado</span>
+											}
+											else if (IsCurrentForToday(item))
+											{
+												<span class="badge text-bg-success topo-badge-soft">Vigente hoy</span>
+											}
+										</div>
+										<div class="topo-item-meta">
+											<span><i class="bi bi-geo"></i> @(string.IsNullOrWhiteSpace(item.TopoName) ? ShortGuid(item.TopoId) : item.TopoName)</span>
+											<span><i class="bi bi-train-front"></i> @item.CirculationCount circ.</span>
+										</div>
+										<div class="topo-item-meta mt-1">
+											<span>@item.ValidFrom.ToString("d")@(item.ValidTo.HasValue ? " → " + item.ValidTo.Value.ToString("d") : " → ∞")</span>
+											<span class="text-muted">@item.CompiledUtc.ToLocalTime().ToString("g")</span>
+										</div>
+									</div>
+								}
+							}
+						</div>
+					</div>
+				</div>
+				<div class="col-12 col-lg-8">
+					<div class="topo-panel">
+						<div class="topo-panel-header">
+							<h2>Detalle publicación</h2>
+						</div>
+						<div class="topo-detail">
+							@if (mvarSelectedPublished is null)
+							{
+								<div class="topo-empty-state">
+									<div class="mb-2"><i class="bi bi-file-earmark-check fs-3"></i></div>
+									<div>Seleccione una publicación para ver metadatos y notas de compilación.</div>
+								</div>
+							}
+							else
+							{
+								<dl class="topo-kv">
+									<dt>Nombre</dt><dd>@mvarSelectedPublished.Name</dd>
+									<dt>Id</dt><dd><code>@mvarSelectedPublished.Id</code></dd>
+									<dt>Topología</dt><dd>@mvarSelectedPublished.TopoName <span class="text-muted small">(@ShortGuid(mvarSelectedPublished.TopoId))</span></dd>
+									<dt>Vigencia</dt>
+									<dd>
+										@mvarSelectedPublished.ValidFrom.ToString("d")
+										@(mvarSelectedPublished.ValidTo.HasValue ? " — " + mvarSelectedPublished.ValidTo.Value.ToString("d") : " — sin fin")
+									</dd>
+									<dt>Compilado</dt><dd>@mvarSelectedPublished.CompiledUtc.ToLocalTime().ToString("G")</dd>
+									<dt>Formato</dt><dd><span class="badge text-bg-light border">@mvarSelectedPublished.Format</span> · @FormatBytes(mvarSelectedPublished.ByteLength)</dd>
+									<dt>Circulaciones</dt><dd>@mvarSelectedPublished.CirculationCount (asimilaciones: @mvarSelectedPublished.AsimilationCount)</dd>
+									<dt>Content hash</dt><dd class="topo-hash">@mvarSelectedPublished.ContentHash</dd>
+									<dt>Topo content</dt><dd class="topo-hash">@mvarSelectedPublished.TopoContentHash</dd>
+									@if (mvarSelectedPublished.SourcePlanId.HasValue)
+									{
+										<dt>Plan autoría</dt><dd><code>@mvarSelectedPublished.SourcePlanId</code></dd>
+									}
+								</dl>
+								@if (!string.IsNullOrWhiteSpace(mvarSelectedPublished.Notes))
+								{
+									<strong class="small text-uppercase text-secondary">Notas de compilación</strong>
+									<pre class="topo-script-view mt-2">@mvarSelectedPublished.Notes</pre>
+								}
+							}
+						</div>
+					</div>
+				</div>
+			</div>
+		</TabPage>
+
 		<TabPage Text="Turnos de personal" Key="shifts" Enabled="false">
 			<div class="topo-empty-state py-5">
 				<div class="mb-2"><i class="bi bi-people fs-2 text-muted"></i></div>
@@ -355,6 +478,45 @@
 	</TabControl>
 </div>
 
+@if (mvarShowPublishModal)
+{
+	<div class="modal fade show d-block" tabindex="-1" style="background:rgba(15,23,42,.55);">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title">Publicar plan para explotación</h5>
+					<button type="button" class="btn-close" @onclick="ClosePublishModal"></button>
+				</div>
+				<div class="modal-body">
+					<p class="small text-muted">Se compilará el script (todos los días) y se guardará un paquete JSON inmutable para Tourmaline.</p>
+					<div class="mb-2">
+						<label class="form-label">Nombre</label>
+						<input class="form-control" @bind="mvarPublishName" />
+					</div>
+					<div class="mb-2">
+						<label class="form-label">Vigencia desde</label>
+						<input type="date" class="form-control" @bind="mvarPublishValidFrom" />
+					</div>
+					<div class="mb-2">
+						<label class="form-label">Vigencia hasta (opcional)</label>
+						<input type="date" class="form-control" @bind="mvarPublishValidTo" />
+					</div>
+					<div class="mb-2">
+						<label class="form-label">Notas</label>
+						<textarea class="form-control" rows="2" @bind="mvarPublishNotes"></textarea>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" @onclick="ClosePublishModal">Cancelar</button>
+					<button type="button" class="btn btn-warning" disabled="@mvarBusy" @onclick="ConfirmPublishAsync">
+						@(mvarBusy ? "Publicando…" : "Compilar y publicar")
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
 <ModalDialog @ref="mvarDeleteModal" OnClose="OnDeleteModalClose" />
 
 @code {
@@ -363,6 +525,7 @@
 	private readonly List<DiamondTopoHeaderModel> mcolTopos = new List<DiamondTopoHeaderModel>();
 	private readonly List<DiamondTopoHeaderModel> mcolActiveToposForPlans = new List<DiamondTopoHeaderModel>();
 	private readonly List<DiamondPlanHeaderModel> mcolPlans = new List<DiamondPlanHeaderModel>();
+	private readonly List<DiamondPublishedPlanHeaderModel> mcolPublished = new List<DiamondPublishedPlanHeaderModel>();
 	private readonly List<LegendItem> mcolLegend = new List<LegendItem>();
 	private readonly string[] mcolPalette =
 	{
@@ -372,6 +535,7 @@
 
 	private DiamondTopoHeaderModel? mvarSelectedTopo;
 	private DiamondPlanHeaderModel? mvarSelectedPlan;
+	private DiamondPublishedPlanHeaderModel? mvarSelectedPublished;
 	private TopoLayout? mvarLayout;
 	private string? mvarMapSvg;
 	private string? mvarLayoutError;
@@ -382,15 +546,25 @@
 	private bool mvarLoadingPlan;
 	private bool mvarShowInactiveTopos;
 	private bool mvarShowInactivePlans;
+	private bool mvarShowInactivePublished;
 	private Guid mvarUploadPlanTopoId = Guid.Empty;
 	private ModalDialog? mvarDeleteModal;
 	private DeleteTargetKind mvarDeleteKind = DeleteTargetKind.None;
 	private Guid mvarPendingDeleteId = Guid.Empty;
 
+	private bool mvarShowPublishModal;
+	private Guid? mvarPublishSourcePlanId;
+	private string mvarPublishName = string.Empty;
+	private DateTime mvarPublishValidFrom = DateTime.Today;
+	private DateTime? mvarPublishValidTo;
+	private string mvarPublishNotes = string.Empty;
+	private Guid mvarPublishTopoId = Guid.Empty;
+
 	protected override async Task OnInitializedAsync()
 	{
 		await ReloadToposAsync();
 		await ReloadPlansAsync();
+		await ReloadPublishedAsync();
 	}
 
 	private async Task ReloadToposAsync()
@@ -891,6 +1065,237 @@
 		}
 
 		mvarNav.NavigateTo("/engineer/timenet?planId=" + plan.Id.ToString("D"));
+	}
+
+	// —— Publicados ——
+
+	private async Task ReloadPublishedAsync()
+	{
+		mvarBusy = true;
+		try
+		{
+			IReadOnlyList<DiamondPublishedPlanHeaderModel> list =
+				await mvarDiamond.ListPublishedPlansAsync(!mvarShowInactivePublished);
+			mcolPublished.Clear();
+			int i = 0;
+			while (i < list.Count)
+			{
+				mcolPublished.Add(list[i]);
+				i++;
+			}
+
+			if (mvarSelectedPublished is not null)
+			{
+				DiamondPublishedPlanHeaderModel? still = null;
+				int j = 0;
+				while (j < mcolPublished.Count)
+				{
+					if (mcolPublished[j].Id == mvarSelectedPublished.Id)
+					{
+						still = mcolPublished[j];
+						break;
+					}
+					j++;
+				}
+
+				mvarSelectedPublished = still;
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "No se pudieron cargar publicaciones: " + Friendly(ex);
+			mcolPublished.Clear();
+			mvarSelectedPublished = null;
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private void SelectPublished(DiamondPublishedPlanHeaderModel item)
+	{
+		mvarSelectedPublished = item;
+	}
+
+	private static bool IsCurrentForToday(DiamondPublishedPlanHeaderModel item)
+	{
+		if (!item.IsActive)
+		{
+			return false;
+		}
+
+		DateTime today = DateTime.Today;
+		if (item.ValidFrom.Date > today)
+		{
+			return false;
+		}
+
+		if (item.ValidTo.HasValue && item.ValidTo.Value.Date < today)
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	private Task OpenPublishFromPlanAsync()
+	{
+		if (mvarSelectedPlan is null)
+		{
+			return Task.CompletedTask;
+		}
+
+		mvarPublishSourcePlanId = mvarSelectedPlan.Id;
+		mvarPublishTopoId = mvarSelectedPlan.TopoId;
+		mvarPublishName = mvarSelectedPlan.Name;
+		mvarPublishValidFrom = DateTime.Today;
+		mvarPublishValidTo = null;
+		mvarPublishNotes = string.Empty;
+		mvarShowPublishModal = true;
+		return Task.CompletedTask;
+	}
+
+	private void ClosePublishModal()
+	{
+		mvarShowPublishModal = false;
+	}
+
+	private async Task ConfirmPublishAsync()
+	{
+		if (!mvarPublishSourcePlanId.HasValue || Guid.Empty.Equals(mvarPublishTopoId))
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Falta plan o topología para publicar.";
+			return;
+		}
+
+		mvarBusy = true;
+		try
+		{
+			DiamondPublishPlanRequest req = new DiamondPublishPlanRequest
+			{
+				SourcePlanId = mvarPublishSourcePlanId,
+				TopoId = mvarPublishTopoId,
+				Name = mvarPublishName,
+				ValidFrom = mvarPublishValidFrom,
+				ValidTo = mvarPublishValidTo,
+				Notes = mvarPublishNotes
+			};
+			DiamondPublishPlanResult? result = await mvarDiamond.PublishPlanAsync(req);
+			if (result is null)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "Sin respuesta al publicar.";
+				return;
+			}
+
+			mvarNoticeOk = result.Success;
+			mvarNotice = result.Message;
+			if (result.Success)
+			{
+				mvarShowPublishModal = false;
+				await ReloadPublishedAsync();
+				if (result.Header is not null)
+				{
+					mvarSelectedPublished = result.Header;
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al publicar: " + Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task DownloadSelectedPublishedAsync()
+	{
+		if (mvarSelectedPublished is null)
+		{
+			return;
+		}
+
+		mvarBusy = true;
+		try
+		{
+			byte[]? payload = await mvarDiamond.DownloadPublishedContentAsync(mvarSelectedPublished.Id);
+			if (payload is null || payload.Length == 0)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "No se pudo descargar el paquete.";
+				return;
+			}
+
+			string fileName = SanitizeFileName(mvarSelectedPublished.Name) + ".dpub.json";
+			await mvarJs.InvokeVoidAsync("downloadBytesFile", Convert.ToBase64String(payload), fileName, "application/json");
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al exportar: " + Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task UnpublishSelectedAsync()
+	{
+		if (mvarSelectedPublished is null)
+		{
+			return;
+		}
+
+		mvarBusy = true;
+		try
+		{
+			DiamondPublishPlanResult? result = await mvarDiamond.UnpublishPlanAsync(mvarSelectedPublished.Id);
+			mvarNoticeOk = result is not null && result.Success;
+			mvarNotice = result?.Message ?? "No se pudo retirar.";
+			await ReloadPublishedAsync();
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error: " + Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task RepublishSelectedAsync()
+	{
+		if (mvarSelectedPublished is null)
+		{
+			return;
+		}
+
+		mvarBusy = true;
+		try
+		{
+			DiamondPublishPlanResult? result = await mvarDiamond.RepublishPlanAsync(mvarSelectedPublished.Id);
+			mvarNoticeOk = result is not null && result.Success;
+			mvarNotice = result?.Message ?? "No se pudo reactivar.";
+			await ReloadPublishedAsync();
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error: " + Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
 	}
 
 	private static async Task<byte[]> MaterializeXmlAsync(byte[] payload, string format)

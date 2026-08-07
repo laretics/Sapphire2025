@@ -231,5 +231,91 @@ namespace Sapphire2025.Storage
 			HttpResponseMessage response = await sendPostRequest("activateplan", json);
 			return await response.Content.ReadFromJsonAsync<DiamondPlanSaveResult>();
 		}
+
+		// ── Publicados ────────────────────────────────────────────────────
+
+		public async Task<IReadOnlyList<DiamondPublishedPlanHeaderModel>> ListPublishedPlansAsync(
+			bool activeOnly = true)
+		{
+			string request = composeCommand(
+				"publishedplans",
+				new requestParam("activeOnly", activeOnly ? "true" : "false"));
+			HttpResponseMessage response = await sendGetRequest(request);
+			List<DiamondPublishedPlanHeaderModel>? list =
+				await response.Content.ReadFromJsonAsync<List<DiamondPublishedPlanHeaderModel>>();
+			if (list is null)
+			{
+				return Array.Empty<DiamondPublishedPlanHeaderModel>();
+			}
+
+			return list;
+		}
+
+		public async Task<DiamondPublishedPlanHeaderModel?> GetPublishedCurrentAsync(DateTime? date = null)
+		{
+			string request = date.HasValue
+				? composeCommand(
+					"publishedcurrent",
+					new requestParam("date", date.Value.ToString("o")))
+				: composeCommand("publishedcurrent");
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				return await response.Content.ReadFromJsonAsync<DiamondPublishedPlanHeaderModel>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<DiamondPublishedPlanHeaderModel?> GetPublishedPlanAsync(Guid id)
+		{
+			string request = composeCommand("publishedplan", new requestParam("id", id.ToString()));
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				return await response.Content.ReadFromJsonAsync<DiamondPublishedPlanHeaderModel>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<byte[]?> DownloadPublishedContentAsync(Guid id)
+		{
+			string request = composeCommand("publishedcontent", new requestParam("id", id.ToString()));
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				return await response.Content.ReadAsByteArrayAsync();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<DiamondPublishPlanResult?> PublishPlanAsync(DiamondPublishPlanRequest body)
+		{
+			string json = System.Text.Json.JsonSerializer.Serialize(body);
+			HttpResponseMessage response = await sendPostRequest("publishplan", json);
+			return await response.Content.ReadFromJsonAsync<DiamondPublishPlanResult>();
+		}
+
+		public async Task<DiamondPublishPlanResult?> UnpublishPlanAsync(Guid id)
+		{
+			string json = System.Text.Json.JsonSerializer.Serialize(id);
+			HttpResponseMessage response = await sendPostRequest("unpublishplan", json);
+			return await response.Content.ReadFromJsonAsync<DiamondPublishPlanResult>();
+		}
+
+		public async Task<DiamondPublishPlanResult?> RepublishPlanAsync(Guid id)
+		{
+			string json = System.Text.Json.JsonSerializer.Serialize(id);
+			HttpResponseMessage response = await sendPostRequest("republishplan", json);
+			return await response.Content.ReadFromJsonAsync<DiamondPublishPlanResult>();
+		}
 	}
 }

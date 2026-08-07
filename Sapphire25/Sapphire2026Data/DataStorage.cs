@@ -91,6 +91,26 @@ namespace Sapphire2026.Data
 					.HasForeignKey(e => e.TopoId)
 					.OnDelete(DeleteBehavior.Restrict);
 			});
+
+			modelBuilder.Entity<DiamondPublishedPlanDocument>(entity =>
+			{
+				entity.ToTable("DiamondPublishedPlans");
+				entity.HasIndex(e => e.ContentHash);
+				entity.HasIndex(e => e.TopoId);
+				entity.HasIndex(e => e.IsActive);
+				entity.HasIndex(e => e.ValidFrom);
+				entity.HasIndex(e => e.SourcePlanId);
+				entity.Property(e => e.Payload).HasColumnType("mediumblob");
+				entity.Property(e => e.Notes).HasColumnType("longtext");
+				entity.HasOne(e => e.Topo)
+					.WithMany()
+					.HasForeignKey(e => e.TopoId)
+					.OnDelete(DeleteBehavior.Restrict);
+				entity.HasOne(e => e.SourcePlan)
+					.WithMany()
+					.HasForeignKey(e => e.SourcePlanId)
+					.OnDelete(DeleteBehavior.SetNull);
+			});
 		}
 		internal DbSet<DBHeader> Headers { get; set; }
 		DbSet<DBHeader> ITimeNetContextStorage.Headers => Headers;
@@ -284,6 +304,7 @@ namespace Sapphire2026.Data
 		#region Diamond
 		public DbSet<DiamondTopoDocument> DiamondTopos { get; set; }
 		public DbSet<DiamondPlanDocument> DiamondPlans { get; set; }
+		public DbSet<DiamondPublishedPlanDocument> DiamondPublishedPlans { get; set; }
 		#endregion
 		#region Maquinistros
 		public DbSet<WorkShiftTemplateCollection> WorkShiftTemplateCollections { get; set; }

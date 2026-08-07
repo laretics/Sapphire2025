@@ -79,4 +79,31 @@ namespace Diamond.Controls.Services
 
 		public string? TopoName { get; set; }
 	}
+
+	/// <summary>Petición de publicación compilada (Tourmaline).</summary>
+	public sealed class MeshStorePublishArgs
+	{
+		public Guid? SourcePlanId { get; set; }
+
+		public Guid TopoId { get; set; }
+
+		public string SourceScript { get; set; } = string.Empty;
+
+		public string Name { get; set; } = string.Empty;
+
+		public DateTime ValidFrom { get; set; }
+
+		public DateTime? ValidTo { get; set; }
+
+		public string Notes { get; set; } = string.Empty;
+	}
+
+	public sealed class MeshStorePublishResult
+	{
+		public bool Success { get; set; }
+
+		public string Message { get; set; } = string.Empty;
+
+		public Guid? PublishedId { get; set; }
+	}
 }

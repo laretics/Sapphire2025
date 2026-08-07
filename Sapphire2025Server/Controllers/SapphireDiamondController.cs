@@ -358,6 +358,121 @@ namespace Sapphire2025Server.Controllers
 			}
 		}
 
+		// ── Planes publicados (compilados para Tourmaline) ─────────────────
+
+		[HttpGet("publishedplans")]
+		public async Task<IEnumerable<DiamondPublishedPlanHeaderModel>> ListPublishedPlans(
+			[FromQuery] bool activeOnly = true)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
+				return await store.ListHeadersAsync(activeOnly);
+			}
+		}
+
+		/// <summary>Plan activo vigente para la fecha (por defecto hoy UTC).</summary>
+		[HttpGet("publishedcurrent")]
+		public async Task<ActionResult<DiamondPublishedPlanHeaderModel>> GetPublishedCurrent(
+			[FromQuery] DateTime? date = null)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
+				DiamondPublishedPlanHeaderModel? header = await store.GetCurrentAsync(date ?? DateTime.UtcNow);
+				if (header is null)
+				{
+					return NotFound();
+				}
+
+				return header;
+			}
+		}
+
+		[HttpGet("publishedplan")]
+		public async Task<ActionResult<DiamondPublishedPlanHeaderModel>> GetPublishedPlan([FromQuery] Guid id)
+		{
+			if (Guid.Empty.Equals(id))
+			{
+				return BadRequest("Id vacío.");
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
+				DiamondPublishedPlanHeaderModel? header = await store.GetHeaderAsync(id);
+				if (header is null)
+				{
+					return NotFound();
+				}
+
+				return header;
+			}
+		}
+
+		[HttpGet("publishedcontent")]
+		public async Task<IActionResult> DownloadPublishedContent([FromQuery] Guid id)
+		{
+			if (Guid.Empty.Equals(id))
+			{
+				return BadRequest("Id vacío.");
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
+				DiamondPublishedPlanDocument? doc = await store.GetDocumentAsync(id);
+				if (doc is null)
+				{
+					return NotFound();
+				}
+
+				string fileName = doc.Name + ".dpub.json";
+				return File(doc.Payload, "application/json", fileName);
+			}
+		}
+
+		/// <summary>Compila script+topo y almacena publicación inmutable.</summary>
+		[HttpPost("publishplan")]
+		public async Task<DiamondPublishPlanResult> PublishPlan([FromBody] DiamondPublishPlanRequest request)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
+				return await store.PublishAsync(request);
+			}
+		}
+
+		[HttpPost("unpublishplan")]
+		public async Task<DiamondPublishPlanResult> UnpublishPlan([FromBody] Guid id)
+		{
+			if (Guid.Empty.Equals(id))
+			{
+				return new DiamondPublishPlanResult { Success = false, Message = "Id vacío." };
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
+				return await store.SetActiveAsync(id, false);
+			}
+		}
+
+		[HttpPost("republishplan")]
+		public async Task<DiamondPublishPlanResult> RepublishPlan([FromBody] Guid id)
+		{
+			if (Guid.Empty.Equals(id))
+			{
+				return new DiamondPublishPlanResult { Success = false, Message = "Id vacío." };
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
+				return await store.SetActiveAsync(id, true);
+			}
+		}
+
 		private static byte[] Gunzip(byte[] gzipped)
 		{
 			using (MemoryStream input = new MemoryStream(gzipped, writable: false))

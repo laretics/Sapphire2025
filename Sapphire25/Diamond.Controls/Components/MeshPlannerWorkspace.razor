@@ -26,6 +26,12 @@
 					@(mvarSavingStore ? "Guardando…" : "Guardar")
 				</button>
 				<button type="button" class="btn btn-outline-light" @onclick="StoreSaveAsDialogAsync" title="Guardar como nuevo plan en el almacén">Guardar como…</button>
+				@if (PublishStorePlanAsync is not null)
+				{
+					<button type="button" class="btn btn-warning" @onclick="StorePublishDialogAsync" title="Compilar y publicar para Tourmaline" disabled="@mvarPublishingStore">
+						@(mvarPublishingStore ? "Publicando…" : "Publicar")
+					</button>
+				}
 			</div>
 			<div class="dropdown ms-1">
 				<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Utilidades de fichero local">
@@ -113,6 +119,50 @@
 							}
 						</ul>
 					}
+				</div>
+			</div>
+		</div>
+	}
+
+	@* —— Modal: publicar a explotación —— *@
+	@if (mvarShowStorePublish)
+	{
+		<div class="mesh-store-modal-backdrop" @onclick="CloseStorePublish">
+			<div class="mesh-store-modal" @onclick:stopPropagation="true">
+				<div class="mesh-store-modal-header">
+					<strong>Publicar plan (Tourmaline)</strong>
+					<button type="button" class="btn btn-sm btn-outline-light" @onclick="CloseStorePublish">✕</button>
+				</div>
+				<div class="mesh-store-modal-body">
+					<p class="small text-secondary mb-2">Compila el script actual (7 días) y crea una publicación inmutable en el almacén.</p>
+					<div class="mb-2">
+						<label class="form-label small text-secondary mb-1">Nombre</label>
+						<input class="form-control form-control-sm" @bind="mvarPublishName" />
+					</div>
+					<div class="mb-2">
+						<label class="form-label small text-secondary mb-1">Topología del almacén</label>
+						<select class="form-select form-select-sm" @bind="mvarPublishTopoId">
+							<option value="@Guid.Empty">— elegir —</option>
+							@foreach (MeshStoreTopoRef t in mcolStoreTopos)
+							{
+								<option value="@t.Id">@t.Name</option>
+							}
+						</select>
+					</div>
+					<div class="mb-2">
+						<label class="form-label small text-secondary mb-1">Vigencia desde</label>
+						<input type="date" class="form-control form-control-sm" @bind="mvarPublishValidFrom" />
+					</div>
+					<div class="mb-3">
+						<label class="form-label small text-secondary mb-1">Vigencia hasta (opcional)</label>
+						<input type="date" class="form-control form-control-sm" @bind="mvarPublishValidToNullable" />
+					</div>
+					<div class="d-flex justify-content-end gap-2">
+						<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CloseStorePublish">Cancelar</button>
+						<button type="button" class="btn btn-sm btn-warning" disabled="@(mvarPublishingStore || mvarPublishTopoId == Guid.Empty)" @onclick="StorePublishConfirmAsync">
+							@(mvarPublishingStore ? "Publicando…" : "Compilar y publicar")
+						</button>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -518,6 +568,10 @@
 	[Parameter]
 	public Guid? InitialStorePlanId { get; set; }
 
+	/// <summary>Publica el script actual como plan compilado (opcional).</summary>
+	[Parameter]
+	public Func<MeshStorePublishArgs, Task<MeshStorePublishResult?>>? PublishStorePlanAsync { get; set; }
+
 	private bool StoreEnabled
 	{
 		get
@@ -641,11 +695,35 @@
 	private bool mvarForceSaveAsNew;
 	private bool mvarStoreListLoading;
 	private bool mvarSavingStore;
+	private bool mvarPublishingStore;
+	private bool mvarShowStorePublish;
 	private string mvarSaveAsName = string.Empty;
 	private Guid mvarSaveAsTopoId = Guid.Empty;
+	private string mvarPublishName = string.Empty;
+	private Guid mvarPublishTopoId = Guid.Empty;
+	private DateTime mvarPublishValidFrom = DateTime.Today;
+	private DateTime mvarPublishValidTo = DateTime.Today;
+	private bool mvarPublishHasValidTo;
 	private readonly List<MeshStorePlanRef> mcolStorePlans = new List<MeshStorePlanRef>();
 	private readonly List<MeshStoreTopoRef> mcolStoreTopos = new List<MeshStoreTopoRef>();
 	private bool mvarInitialPlanLoaded;
+
+	private DateTime? mvarPublishValidToNullable
+	{
+		get { return mvarPublishHasValidTo ? mvarPublishValidTo : null; }
+		set
+		{
+			if (value.HasValue)
+			{
+				mvarPublishHasValidTo = true;
+				mvarPublishValidTo = value.Value;
+			}
+			else
+			{
+				mvarPublishHasValidTo = false;
+			}
+		}
+	}
 
 	private sealed class ScriptDiagnostic
 	{
@@ -1816,6 +1894,101 @@
 		catch (Exception ex)
 		{
 			mvarError = FormatException("Listar topologías del almacén", ex);
+		}
+	}
+
+	private async Task StorePublishDialogAsync()
+	{
+		if (PublishStorePlanAsync is null)
+		{
+			return;
+		}
+
+		await SyncScriptFromEditorAsync();
+		if (string.IsNullOrWhiteSpace(mvarScript))
+		{
+			mvarError = "No hay script para publicar.";
+			return;
+		}
+
+		mvarPublishName = Path.GetFileNameWithoutExtension(mvarFileName);
+		if (string.IsNullOrWhiteSpace(mvarPublishName)
+			|| string.Equals(mvarPublishName, "sin titulo", StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(mvarPublishName, "sin título", StringComparison.OrdinalIgnoreCase))
+		{
+			mvarPublishName = "plan publicado";
+		}
+
+		mvarPublishTopoId = mvarStoreTopoId;
+		mvarPublishValidFrom = DateTime.Today;
+		mvarPublishHasValidTo = false;
+		await EnsureStoreToposLoadedAsync();
+		if (mvarPublishTopoId == Guid.Empty && mcolStoreTopos.Count > 0)
+		{
+			mvarPublishTopoId = mcolStoreTopos[0].Id;
+		}
+
+		if (mcolStoreTopos.Count == 0)
+		{
+			mvarError = "No hay topologías en el almacén. Suba una antes de publicar.";
+			return;
+		}
+
+		mvarShowStorePublish = true;
+	}
+
+	private void CloseStorePublish()
+	{
+		mvarShowStorePublish = false;
+	}
+
+	private async Task StorePublishConfirmAsync()
+	{
+		if (PublishStorePlanAsync is null || mvarPublishTopoId == Guid.Empty)
+		{
+			return;
+		}
+
+		await SyncScriptFromEditorAsync();
+		mvarPublishingStore = true;
+		try
+		{
+			MeshStorePublishArgs args = new MeshStorePublishArgs
+			{
+				SourcePlanId = mvarStorePlanId,
+				TopoId = mvarPublishTopoId,
+				SourceScript = mvarScript ?? string.Empty,
+				Name = mvarPublishName.Trim(),
+				ValidFrom = mvarPublishValidFrom.Date,
+				ValidTo = mvarPublishHasValidTo ? mvarPublishValidTo.Date : null,
+				Notes = string.Empty
+			};
+			MeshStorePublishResult? result = await PublishStorePlanAsync(args);
+			if (result is null)
+			{
+				mvarError = "Sin respuesta al publicar.";
+				return;
+			}
+
+			if (!result.Success)
+			{
+				mvarError = result.Message;
+				return;
+			}
+
+			mvarShowStorePublish = false;
+			mvarError = null;
+			mvarStatus = string.IsNullOrWhiteSpace(result.Message)
+				? "Plan publicado en el almacén."
+				: result.Message;
+		}
+		catch (Exception ex)
+		{
+			mvarError = FormatException("Publicar plan", ex);
+		}
+		finally
+		{
+			mvarPublishingStore = false;
 		}
 	}
 

@@ -57,6 +57,7 @@
 									  LoadStorePlanAsync="LoadStorePlanAsync"
 									  SaveStorePlanAsync="SaveStorePlanAsync"
 									  ListStoreToposAsync="ListStoreToposAsync"
+									  PublishStorePlanAsync="PublishStorePlanAsync"
 									  InitialStorePlanId="mvarInitialPlanId" />
 			</ChildContent>
 			<ErrorContent Context="ex">
@@ -250,6 +251,51 @@
 		}
 
 		return salida;
+	}
+
+	private async Task<MeshStorePublishResult?> PublishStorePlanAsync(MeshStorePublishArgs args)
+	{
+		// Si el plan de autoría no está guardado, guardarlo antes ayuda a la trazabilidad.
+		if ((!args.SourcePlanId.HasValue || Guid.Empty.Equals(args.SourcePlanId.Value))
+			&& !Guid.Empty.Equals(args.TopoId)
+			&& !string.IsNullOrWhiteSpace(args.SourceScript))
+		{
+			DiamondPlanSaveRequest save = new DiamondPlanSaveRequest
+			{
+				TopoId = args.TopoId,
+				SourceScript = args.SourceScript,
+				Name = args.Name,
+				SourceFileName = args.Name + ".ddm"
+			};
+			DiamondPlanSaveResult? saved = await mvarDiamond.SavePlanAsync(save);
+			if (saved is not null && saved.Success && saved.Header is not null)
+			{
+				args.SourcePlanId = saved.Header.Id;
+			}
+		}
+
+		DiamondPublishPlanRequest req = new DiamondPublishPlanRequest
+		{
+			SourcePlanId = args.SourcePlanId,
+			SourceScript = args.SourceScript,
+			TopoId = args.TopoId,
+			Name = args.Name,
+			ValidFrom = args.ValidFrom,
+			ValidTo = args.ValidTo,
+			Notes = args.Notes
+		};
+		DiamondPublishPlanResult? result = await mvarDiamond.PublishPlanAsync(req);
+		if (result is null)
+		{
+			return null;
+		}
+
+		return new MeshStorePublishResult
+		{
+			Success = result.Success,
+			Message = result.Message,
+			PublishedId = result.Header?.Id
+		};
 	}
 
 	/// <summary>
