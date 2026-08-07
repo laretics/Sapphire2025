@@ -149,13 +149,17 @@ namespace Diamond.Timed
 					usedSeriesBases.Add(classicBase);
 				}
 
+				// Impares = avance de PK de red (PMI→SPB, PMI→MAN…);
+				// pares = sentido opuesto (SPB→PMI…).
+				// No usar Asimilation.Sense: en multi-eje cada OD tiene PK de ruta 0 en origen
+				// y Sense siempre Increasing (todos saldrían impares).
 				List<Circulation> ascending = new List<Circulation>();
 				List<Circulation> descending = new List<Circulation>();
 				int t = 0;
 				while (t < trains.Count)
 				{
 					Circulation c = trains[t];
-					if (c.Asimilation.Sense == CirculationSense.IncreasingPk)
+					if (IsNetworkAscendingForNumbering(c))
 					{
 						ascending.Add(c);
 					}
@@ -261,6 +265,36 @@ namespace Diamond.Timed
 
 				return result;
 			});
+		}
+
+		/// <summary>
+		/// Sentido de numeración SFM (impar): avanza en PK de eje de red.
+		/// Mono-eje: coincide con <see cref="CirculationSense.IncreasingPk"/>.
+		/// Multi-eje: usa <see cref="RouteView.IsNetworkPkAscending"/> (progreso neto de tramos).
+		/// </summary>
+		public static bool IsNetworkAscendingForNumbering(Circulation circulation)
+		{
+			if (circulation is null)
+			{
+				throw new ArgumentNullException(nameof(circulation));
+			}
+
+			Asimilation asim = circulation.Asimilation;
+			RouteView view = asim.View;
+			if (view.Legs.Count <= 1)
+			{
+				// Vista de un solo eje: PK de ruta ≡ PK de eje; Sense es fiable.
+				return asim.Sense == CirculationSense.IncreasingPk;
+			}
+
+			long net = view.NetAxisPkProgress;
+			if (net != 0L)
+			{
+				return net > 0L;
+			}
+
+			// Degenerado: caer al Sense local.
+			return asim.Sense == CirculationSense.IncreasingPk;
 		}
 
 		public static string CorridorKey(Circulation circulation)

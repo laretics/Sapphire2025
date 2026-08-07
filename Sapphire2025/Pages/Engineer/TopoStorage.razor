@@ -1,0 +1,899 @@
+@page "/engineer/topostorage"
+@using System.Globalization
+@using System.IO.Compression
+@using System.Text
+@using System.Text.Encodings.Web
+@using Diamond.Topo
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Sapphire2025.Layout.Generic
+@using Sapphire2025.Storage
+@using Sapphire2025Models.Diamond
+@inject DiamondClient mvarDiamond
+@inject IJSRuntime mvarJs
+@attribute [Authorize]
+
+<PageTitle>Topologías · Almacén Diamond</PageTitle>
+
+<div class="container-fluid topo-storage-page @(mvarBusy ? "topo-busy" : null)">
+	<div class="topo-hero d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+		<div>
+			<h1>Almacén de topologías</h1>
+			<p>Documentos geográficos Diamond versionados en Sapphire · listar, inspeccionar, subir y exportar.</p>
+		</div>
+		<div class="topo-toolbar">
+			<button type="button" class="btn btn-light btn-sm" @onclick="ReloadAsync" title="Actualizar listado" disabled="@mvarBusy">
+				<i class="bi bi-arrow-clockwise"></i> Actualizar
+			</button>
+			<label class="btn btn-success btn-sm mb-0" title="Subir XML de topología">
+				<i class="bi bi-upload"></i> Subir
+				<InputFile OnChange="OnUploadAsync" accept=".xml,.gz,application/xml,text/xml" style="display:none;" disabled="@mvarBusy" />
+			</label>
+			<button type="button" class="btn btn-outline-light btn-sm" @onclick="DownloadSelectedAsync"
+					disabled="@(mvarBusy || mvarSelected is null)" title="Descargar el documento seleccionado">
+				<i class="bi bi-download"></i> Exportar
+			</button>
+			<button type="button" class="btn btn-outline-warning btn-sm" @onclick="ConfirmDeleteAsync"
+					disabled="@(mvarBusy || mvarSelected is null || (mvarSelected is not null && !mvarSelected.IsActive))"
+					title="Desactivar topología (baja lógica)">
+				<i class="bi bi-trash"></i> Eliminar
+			</button>
+			<button type="button" class="btn btn-outline-info btn-sm" @onclick="ActivateSelectedAsync"
+					disabled="@(mvarBusy || mvarSelected is null || (mvarSelected is not null && mvarSelected.IsActive))"
+					title="Reactivar topología">
+				<i class="bi bi-check2-circle"></i> Activar
+			</button>
+			<div class="form-check form-switch text-white ms-lg-2 mb-0">
+				<input class="form-check-input" type="checkbox" id="chkInactive" @bind="mvarShowInactive" @bind:after="ReloadAsync" />
+				<label class="form-check-label" for="chkInactive">Incluir inactivas</label>
+			</div>
+		</div>
+	</div>
+
+	@if (!string.IsNullOrEmpty(mvarNotice))
+	{
+		<div class="alert @(mvarNoticeOk ? "alert-success" : "alert-warning") alert-dismissible fade show" role="alert">
+			@mvarNotice
+			<button type="button" class="btn-close" @onclick="() => mvarNotice = null"></button>
+		</div>
+	}
+
+	<div class="row g-3">
+		<div class="col-12 col-lg-4">
+			<div class="topo-panel">
+				<div class="topo-panel-header">
+					<h2>Topologías</h2>
+					<span class="badge text-bg-primary topo-badge-soft">@mcolHeaders.Count</span>
+				</div>
+				<div class="topo-list">
+					@if (mvarBusy && mcolHeaders.Count == 0)
+					{
+						<div class="topo-empty-state">
+							<div class="spinner-border text-primary mb-2" role="status"></div>
+							<div>Cargando almacén…</div>
+						</div>
+					}
+					else if (mcolHeaders.Count == 0)
+					{
+						<div class="topo-empty-state">
+							<div class="mb-2"><i class="bi bi-geo-alt fs-3"></i></div>
+							<div>No hay topologías en el almacén.</div>
+							<div class="small mt-1">Use <strong>Subir</strong> para publicar un XML Diamond.</div>
+						</div>
+					}
+					else
+					{
+						@foreach (DiamondTopoHeaderModel item in mcolHeaders)
+						{
+							bool selected = mvarSelected is not null && mvarSelected.Id == item.Id;
+							<div class="topo-item @(selected ? "active" : null)" @onclick="() => SelectAsync(item)" @key="item.Id">
+								<div class="d-flex justify-content-between align-items-start gap-2">
+									<p class="topo-item-title">@item.Name</p>
+									@if (!item.IsActive)
+									{
+										<span class="badge text-bg-secondary topo-badge-soft">Inactiva</span>
+									}
+								</div>
+								<div class="topo-item-meta">
+									<span><i class="bi bi-diagram-3"></i> @item.AxisCount ejes</span>
+									<span><i class="bi bi-building"></i> @item.StationCount est.</span>
+									<span><i class="bi bi-hdd"></i> @FormatBytes(item.ByteLength)</span>
+									@if (!string.IsNullOrWhiteSpace(item.Author))
+									{
+										<span><i class="bi bi-person"></i> @item.Author</span>
+									}
+								</div>
+								<div class="topo-item-meta mt-1">
+									<code title="@item.Id">@ShortGuid(item.Id)</code>
+									<span class="text-muted">@item.CreatedUtc.ToLocalTime().ToString("g")</span>
+								</div>
+							</div>
+						}
+					}
+				</div>
+			</div>
+		</div>
+
+		<div class="col-12 col-lg-8">
+			<div class="topo-panel">
+				<div class="topo-panel-header">
+					<h2>Detalle</h2>
+					@if (mvarSelected is not null)
+					{
+						<span class="badge @(mvarSelected.IsActive ? "text-bg-success" : "text-bg-secondary") topo-badge-soft">
+							@(mvarSelected.IsActive ? "Activa" : "Inactiva")
+						</span>
+					}
+				</div>
+				<div class="topo-detail">
+					@if (mvarSelected is null)
+					{
+						<div class="topo-empty-state">
+							<div class="mb-2"><i class="bi bi-map fs-3"></i></div>
+							<div>Seleccione una topología del listado para ver su ficha y el mapa de ejes.</div>
+						</div>
+					}
+					else
+					{
+						<dl class="topo-kv">
+							<dt>Nombre</dt>
+							<dd>@mvarSelected.Name</dd>
+							<dt>Id</dt>
+							<dd><code>@mvarSelected.Id</code></dd>
+							<dt>Layout Id</dt>
+							<dd>@(string.IsNullOrWhiteSpace(mvarSelected.LayoutId) ? "—" : mvarSelected.LayoutId)</dd>
+							<dt>Autor</dt>
+							<dd>@(string.IsNullOrWhiteSpace(mvarSelected.Author) ? "—" : mvarSelected.Author)</dd>
+							<dt>Fichero</dt>
+							<dd>@(string.IsNullOrWhiteSpace(mvarSelected.SourceFileName) ? "—" : mvarSelected.SourceFileName)</dd>
+							<dt>Formato</dt>
+							<dd><span class="badge text-bg-light border">@mvarSelected.Format</span> · @FormatBytes(mvarSelected.ByteLength)</dd>
+							<dt>Content hash</dt>
+							<dd class="topo-hash" title="@mvarSelected.ContentHash">@mvarSelected.ContentHash</dd>
+							<dt>Huella estructural</dt>
+							<dd class="topo-hash" title="@mvarSelected.StructuralHash">@mvarSelected.StructuralHash</dd>
+							<dt>Vigencia</dt>
+							<dd>@(mvarSelected.ValidFrom.HasValue ? mvarSelected.ValidFrom.Value.ToLocalTime().ToString("d") : "—")</dd>
+							<dt>Alta</dt>
+							<dd>@mvarSelected.CreatedUtc.ToLocalTime().ToString("G")</dd>
+							@if (!string.IsNullOrWhiteSpace(mvarSelected.Notes))
+							{
+								<dt>Notas</dt>
+								<dd>@mvarSelected.Notes</dd>
+							}
+						</dl>
+
+						@if (mvarLoadingLayout)
+						{
+							<div class="text-center text-muted py-4">
+								<div class="spinner-border spinner-border-sm me-2" role="status"></div>
+								Cargando geometría…
+							</div>
+						}
+						else if (!string.IsNullOrEmpty(mvarLayoutError))
+						{
+							<div class="alert alert-danger py-2">@mvarLayoutError</div>
+						}
+						else if (mvarLayout is not null)
+						{
+							<div class="d-flex justify-content-between align-items-center mb-2">
+								<strong class="small text-uppercase text-secondary">Mapa de red</strong>
+								<span class="small text-muted">@mvarLayout.Axes.Count ejes · @mvarLayout.Stations.Count estaciones</span>
+							</div>
+							<div class="topo-map-wrap">
+								@if (string.IsNullOrEmpty(mvarMapSvg))
+								{
+									<div class="topo-map-empty">No hay vértices geográficos dibujables en esta topología.</div>
+								}
+								else
+								{
+									@((MarkupString)mvarMapSvg)
+								}
+							</div>
+							@if (mcolLegend.Count > 0)
+							{
+								<div class="topo-legend">
+									@foreach (LegendItem leg in mcolLegend)
+									{
+										<span class="topo-legend-item">
+											<span class="topo-legend-swatch" style="background:@leg.Color"></span>
+											@leg.Label
+										</span>
+									}
+								</div>
+							}
+
+							@if (mvarLayout.Axes.Count > 0)
+							{
+								<div class="table-responsive mt-3">
+									<table class="table table-sm table-hover align-middle topo-axes-table mb-0">
+										<thead>
+											<tr>
+												<th>Eje</th>
+												<th>Nombre</th>
+												<th class="text-end">Vértices</th>
+												<th class="text-end">Est.</th>
+												<th class="text-end">Vmax</th>
+											</tr>
+										</thead>
+										<tbody>
+											@foreach (Axis axis in mvarLayout.Axes)
+											{
+												<tr>
+													<td><code>@axis.Id</code></td>
+													<td>@(string.IsNullOrWhiteSpace(axis.Name) ? "—" : axis.Name)</td>
+													<td class="text-end">@axis.Vertices.Count</td>
+													<td class="text-end">@axis.Stations.Count</td>
+													<td class="text-end">@(axis.Vmax > 0 ? axis.Vmax.ToString() : "—")</td>
+												</tr>
+											}
+										</tbody>
+									</table>
+								</div>
+							}
+						}
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<ModalDialog @ref="mvarDeleteModal" OnClose="OnDeleteModalClose" />
+
+@code {
+	private readonly List<DiamondTopoHeaderModel> mcolHeaders = new List<DiamondTopoHeaderModel>();
+	private readonly List<LegendItem> mcolLegend = new List<LegendItem>();
+	private readonly string[] mcolPalette =
+	{
+		"#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#f472b6",
+		"#22d3ee", "#fb7185", "#4ade80", "#c084fc", "#facc15"
+	};
+
+	private DiamondTopoHeaderModel? mvarSelected;
+	private TopoLayout? mvarLayout;
+	private string? mvarMapSvg;
+	private string? mvarLayoutError;
+	private string? mvarNotice;
+	private bool mvarNoticeOk;
+	private bool mvarBusy;
+	private bool mvarLoadingLayout;
+	private bool mvarShowInactive;
+	private ModalDialog? mvarDeleteModal;
+	private Guid mvarPendingDeleteId = Guid.Empty;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await ReloadAsync();
+	}
+
+	private async Task ReloadAsync()
+	{
+		mvarBusy = true;
+		mvarNotice = null;
+		try
+		{
+			IReadOnlyList<DiamondTopoHeaderModel> list = await mvarDiamond.ListToposAsync(!mvarShowInactive);
+			mcolHeaders.Clear();
+			int i = 0;
+			while (i < list.Count)
+			{
+				mcolHeaders.Add(list[i]);
+				i++;
+			}
+
+			if (mvarSelected is not null)
+			{
+				DiamondTopoHeaderModel? still = null;
+				int j = 0;
+				while (j < mcolHeaders.Count)
+				{
+					if (mcolHeaders[j].Id == mvarSelected.Id)
+					{
+						still = mcolHeaders[j];
+						break;
+					}
+					j++;
+				}
+
+				if (still is null)
+				{
+					ClearSelection();
+				}
+				else
+				{
+					mvarSelected = still;
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "No se pudo cargar el almacén: " + Friendly(ex);
+			mcolHeaders.Clear();
+			ClearSelection();
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task SelectAsync(DiamondTopoHeaderModel item)
+	{
+		if (mvarSelected is not null && mvarSelected.Id == item.Id && mvarLayout is not null)
+		{
+			return;
+		}
+
+		mvarSelected = item;
+		mvarLayout = null;
+		mvarMapSvg = null;
+		mvarLayoutError = null;
+		mcolLegend.Clear();
+		mvarLoadingLayout = true;
+		StateHasChanged();
+
+		try
+		{
+			byte[]? payload = await mvarDiamond.DownloadTopoContentAsync(item.Id);
+			if (payload is null || payload.Length == 0)
+			{
+				mvarLayoutError = "No se pudo descargar el documento de la topología.";
+				return;
+			}
+
+			byte[] xmlBytes = await MaterializeXmlAsync(payload, item.Format);
+			using (MemoryStream stream = new MemoryStream(xmlBytes, writable: false))
+			{
+				mvarLayout = TopoXmlSerializer.Load(stream);
+			}
+
+			mvarMapSvg = BuildMapSvg(mvarLayout, mcolLegend);
+		}
+		catch (Exception ex)
+		{
+			mvarLayoutError = "Error al interpretar la topología: " + Friendly(ex);
+			mvarLayout = null;
+			mvarMapSvg = null;
+		}
+		finally
+		{
+			mvarLoadingLayout = false;
+		}
+	}
+
+	private async Task OnUploadAsync(InputFileChangeEventArgs e)
+	{
+		IBrowserFile? file = e.File;
+		if (file is null)
+		{
+			return;
+		}
+
+		mvarBusy = true;
+		mvarNotice = null;
+		try
+		{
+			const long max = 8L * 1024L * 1024L;
+			await using Stream stream = file.OpenReadStream(max);
+			using MemoryStream ms = new MemoryStream();
+			await stream.CopyToAsync(ms);
+			byte[] bytes = ms.ToArray();
+
+			DiamondTopoUploadResult? result = await mvarDiamond.UploadTopoAsync(bytes, file.Name);
+			if (result is null)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "Sin respuesta del servidor al subir la topología.";
+				return;
+			}
+
+			mvarNoticeOk = result.Success;
+			mvarNotice = string.IsNullOrWhiteSpace(result.Message)
+				? (result.Success ? "Topología almacenada." : "El servidor rechazó la topología.")
+				: result.Message;
+
+			if (result.Success)
+			{
+				await ReloadAsync();
+				if (result.Header is not null)
+				{
+					DiamondTopoHeaderModel? match = null;
+					int i = 0;
+					while (i < mcolHeaders.Count)
+					{
+						if (mcolHeaders[i].Id == result.Header.Id)
+						{
+							match = mcolHeaders[i];
+							break;
+						}
+						i++;
+					}
+
+					if (match is not null)
+					{
+						await SelectAsync(match);
+					}
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al subir: " + Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task DownloadSelectedAsync()
+	{
+		if (mvarSelected is null)
+		{
+			return;
+		}
+
+		mvarBusy = true;
+		try
+		{
+			byte[]? payload = await mvarDiamond.DownloadTopoContentAsync(mvarSelected.Id);
+			if (payload is null || payload.Length == 0)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "No se pudo descargar el documento.";
+				return;
+			}
+
+			string fileName = string.IsNullOrWhiteSpace(mvarSelected.SourceFileName)
+				? SanitizeFileName(mvarSelected.Name) + ".xml"
+				: mvarSelected.SourceFileName;
+			string mime = string.Equals(mvarSelected.Format, "xml-gz", StringComparison.OrdinalIgnoreCase)
+				? "application/gzip"
+				: "application/xml";
+			string b64 = Convert.ToBase64String(payload);
+			await mvarJs.InvokeVoidAsync("downloadBytesFile", b64, fileName, mime);
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al exportar: " + Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task ConfirmDeleteAsync()
+	{
+		if (mvarSelected is null || mvarDeleteModal is null)
+		{
+			return;
+		}
+
+		mvarPendingDeleteId = mvarSelected.Id;
+		await mvarDeleteModal.show(
+			"Desactivar topología",
+			string.Format(
+				"¿Desactivar la topología «{0}»? El documento permanece en base de datos (baja lógica) por si hay mallas enlazadas.",
+				mvarSelected.Name),
+			"Desactivar",
+			"Cancelar");
+	}
+
+	private async Task OnDeleteModalClose(bool confirmed)
+	{
+		if (!confirmed || Guid.Empty.Equals(mvarPendingDeleteId))
+		{
+			mvarPendingDeleteId = Guid.Empty;
+			return;
+		}
+
+		Guid id = mvarPendingDeleteId;
+		mvarPendingDeleteId = Guid.Empty;
+		mvarBusy = true;
+		try
+		{
+			DiamondTopoUploadResult? result = await mvarDiamond.DeleteTopoAsync(id);
+			mvarNoticeOk = result is not null && result.Success;
+			mvarNotice = result?.Message ?? "No se pudo desactivar la topología.";
+			await ReloadAsync();
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al desactivar: " + Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task ActivateSelectedAsync()
+	{
+		if (mvarSelected is null)
+		{
+			return;
+		}
+
+		mvarBusy = true;
+		try
+		{
+			DiamondTopoUploadResult? result = await mvarDiamond.ActivateTopoAsync(mvarSelected.Id);
+			mvarNoticeOk = result is not null && result.Success;
+			mvarNotice = result?.Message ?? "No se pudo activar la topología.";
+			Guid id = mvarSelected.Id;
+			await ReloadAsync();
+			DiamondTopoHeaderModel? match = null;
+			int i = 0;
+			while (i < mcolHeaders.Count)
+			{
+				if (mcolHeaders[i].Id == id)
+				{
+					match = mcolHeaders[i];
+					break;
+				}
+				i++;
+			}
+			if (match is not null)
+			{
+				await SelectAsync(match);
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al activar: " + Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private void ClearSelection()
+	{
+		mvarSelected = null;
+		mvarLayout = null;
+		mvarMapSvg = null;
+		mvarLayoutError = null;
+		mcolLegend.Clear();
+	}
+
+	private static async Task<byte[]> MaterializeXmlAsync(byte[] payload, string format)
+	{
+		if (string.Equals(format, "xml-gz", StringComparison.OrdinalIgnoreCase)
+			|| LooksLikeGzip(payload))
+		{
+			using MemoryStream input = new MemoryStream(payload, writable: false);
+			using GZipStream gzip = new GZipStream(input, CompressionMode.Decompress);
+			using MemoryStream output = new MemoryStream();
+			await gzip.CopyToAsync(output);
+			return output.ToArray();
+		}
+
+		return payload;
+	}
+
+	private static bool LooksLikeGzip(byte[] payload)
+	{
+		return payload.Length >= 2 && payload[0] == 0x1f && payload[1] == 0x8b;
+	}
+
+	private string BuildMapSvg(TopoLayout layout, List<LegendItem> legend)
+	{
+		legend.Clear();
+		const double width = 960;
+		const double height = 560;
+		const double pad = 28;
+
+		List<GeoSample> samples = new List<GeoSample>();
+		int ai = 0;
+		while (ai < layout.Axes.Count)
+		{
+			Axis axis = layout.Axes[ai];
+			int vi = 0;
+			while (vi < axis.Vertices.Count)
+			{
+				AxisVertex v = axis.Vertices[vi];
+				if (IsFinite(v.Latitude) && IsFinite(v.Longitude))
+				{
+					samples.Add(new GeoSample(v.Latitude, v.Longitude));
+				}
+				vi++;
+			}
+			ai++;
+		}
+
+		if (samples.Count < 2)
+		{
+			return string.Empty;
+		}
+
+		double minLat = samples[0].Lat;
+		double maxLat = samples[0].Lat;
+		double minLon = samples[0].Lon;
+		double maxLon = samples[0].Lon;
+		int si = 1;
+		while (si < samples.Count)
+		{
+			GeoSample s = samples[si];
+			if (s.Lat < minLat) minLat = s.Lat;
+			if (s.Lat > maxLat) maxLat = s.Lat;
+			if (s.Lon < minLon) minLon = s.Lon;
+			if (s.Lon > maxLon) maxLon = s.Lon;
+			si++;
+		}
+
+		double dLat = maxLat - minLat;
+		double dLon = maxLon - minLon;
+		if (dLat < 1e-8) dLat = 0.01;
+		if (dLon < 1e-8) dLon = 0.01;
+		// Mantener aspecto aproximado en metros (Mallorca ~ lat 39.5).
+		double midLat = (minLat + maxLat) * 0.5;
+		double metersPerDegLon = 111320.0 * Math.Cos(midLat * Math.PI / 180.0);
+		if (metersPerDegLon < 1.0) metersPerDegLon = 1.0;
+		double metersPerDegLat = 111320.0;
+		double spanX = dLon * metersPerDegLon;
+		double spanY = dLat * metersPerDegLat;
+		double drawW = width - 2 * pad;
+		double drawH = height - 2 * pad;
+		double scale = Math.Min(drawW / spanX, drawH / spanY);
+		double usedW = spanX * scale;
+		double usedH = spanY * scale;
+		double ox = pad + (drawW - usedW) * 0.5;
+		double oy = pad + (drawH - usedH) * 0.5;
+
+		StringBuilder sb = new StringBuilder(8192);
+		sb.Append("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ");
+		sb.Append(width.ToString(CultureInfo.InvariantCulture));
+		sb.Append(' ');
+		sb.Append(height.ToString(CultureInfo.InvariantCulture));
+		sb.Append("\" preserveAspectRatio=\"xMidYMid meet\" role=\"img\" aria-label=\"Mapa de topología\">");
+		sb.Append("<defs>");
+		sb.Append("<pattern id=\"topoGrid\" width=\"24\" height=\"24\" patternUnits=\"userSpaceOnUse\">");
+		sb.Append("<path d=\"M24 0H0V24\" fill=\"none\" stroke=\"rgba(148,163,184,0.12)\" stroke-width=\"1\"/>");
+		sb.Append("</pattern>");
+		sb.Append("<filter id=\"glow\" x=\"-20%\" y=\"-20%\" width=\"140%\" height=\"140%\">");
+		sb.Append("<feGaussianBlur stdDeviation=\"1.2\" result=\"b\"/>");
+		sb.Append("<feMerge><feMergeNode in=\"b\"/><feMergeNode in=\"SourceGraphic\"/></feMerge>");
+		sb.Append("</filter>");
+		sb.Append("</defs>");
+		sb.Append("<rect width=\"100%\" height=\"100%\" fill=\"#0b1220\"/>");
+		sb.Append("<rect width=\"100%\" height=\"100%\" fill=\"url(#topoGrid)\"/>");
+
+		int axisIndex = 0;
+		while (axisIndex < layout.Axes.Count)
+		{
+			Axis axis = layout.Axes[axisIndex];
+			string color = ResolveAxisColor(axis, axisIndex);
+			string label = string.IsNullOrWhiteSpace(axis.Name)
+				? (string.IsNullOrWhiteSpace(axis.Id) ? "Eje " + (axisIndex + 1).ToString() : axis.Id)
+				: axis.Name;
+			legend.Add(new LegendItem(label, color));
+
+			StringBuilder poly = new StringBuilder();
+			int first = 1;
+			int v = 0;
+			while (v < axis.Vertices.Count)
+			{
+				AxisVertex vertex = axis.Vertices[v];
+				if (IsFinite(vertex.Latitude) && IsFinite(vertex.Longitude))
+				{
+					double x = ox + (vertex.Longitude - minLon) * metersPerDegLon * scale;
+					double y = oy + (maxLat - vertex.Latitude) * metersPerDegLat * scale;
+					if (first == 1)
+					{
+						poly.Append(x.ToString("0.###", CultureInfo.InvariantCulture));
+						poly.Append(',');
+						poly.Append(y.ToString("0.###", CultureInfo.InvariantCulture));
+						first = 0;
+					}
+					else
+					{
+						poly.Append(' ');
+						poly.Append(x.ToString("0.###", CultureInfo.InvariantCulture));
+						poly.Append(',');
+						poly.Append(y.ToString("0.###", CultureInfo.InvariantCulture));
+					}
+				}
+				v++;
+			}
+
+			if (poly.Length > 0)
+			{
+				sb.Append("<polyline fill=\"none\" stroke=\"");
+				sb.Append(HtmlEncoder.Default.Encode(color));
+				sb.Append("\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" filter=\"url(#glow)\" points=\"");
+				sb.Append(poly);
+				sb.Append("\"/>");
+			}
+
+			axisIndex++;
+		}
+
+		// Estaciones
+		HashSet<string> drawn = new HashSet<string>(StringComparer.Ordinal);
+		int st = 0;
+		while (st < layout.Stations.Count)
+		{
+			Station station = layout.Stations[st];
+			if (!station.Latitude.HasValue || !station.Longitude.HasValue)
+			{
+				st++;
+				continue;
+			}
+
+			double lat = station.Latitude.Value;
+			double lon = station.Longitude.Value;
+			if (!IsFinite(lat) || !IsFinite(lon))
+			{
+				st++;
+				continue;
+			}
+
+			string key = station.Id;
+			if (key.Length == 0)
+			{
+				key = lat.ToString("F5", CultureInfo.InvariantCulture) + "," + lon.ToString("F5", CultureInfo.InvariantCulture);
+			}
+			if (!drawn.Add(key))
+			{
+				st++;
+				continue;
+			}
+
+			double sx = ox + (lon - minLon) * metersPerDegLon * scale;
+			double sy = oy + (maxLat - lat) * metersPerDegLat * scale;
+			sb.Append("<circle cx=\"");
+			sb.Append(sx.ToString("0.###", CultureInfo.InvariantCulture));
+			sb.Append("\" cy=\"");
+			sb.Append(sy.ToString("0.###", CultureInfo.InvariantCulture));
+			sb.Append("\" r=\"3.8\" fill=\"#f8fafc\" stroke=\"#0ea5e9\" stroke-width=\"1.4\"/>");
+
+			string text = !string.IsNullOrWhiteSpace(station.Avr)
+				? station.Avr
+				: (!string.IsNullOrWhiteSpace(station.Name) ? station.Name : station.Id);
+			if (!string.IsNullOrWhiteSpace(text))
+			{
+				sb.Append("<text x=\"");
+				sb.Append((sx + 6).ToString("0.###", CultureInfo.InvariantCulture));
+				sb.Append("\" y=\"");
+				sb.Append((sy - 6).ToString("0.###", CultureInfo.InvariantCulture));
+				sb.Append("\" fill=\"#e2e8f0\" font-size=\"10\" font-family=\"Segoe UI, system-ui, sans-serif\">");
+				sb.Append(HtmlEncoder.Default.Encode(text));
+				sb.Append("</text>");
+			}
+
+			st++;
+		}
+
+		sb.Append("</svg>");
+		return sb.ToString();
+	}
+
+	private string ResolveAxisColor(Axis axis, int index)
+	{
+		if (!string.IsNullOrWhiteSpace(axis.Color) && LooksLikeCssColor(axis.Color))
+		{
+			return axis.Color.Trim();
+		}
+
+		if (!string.IsNullOrWhiteSpace(axis.DarkColor) && LooksLikeCssColor(axis.DarkColor))
+		{
+			return axis.DarkColor.Trim();
+		}
+
+		return mcolPalette[index % mcolPalette.Length];
+	}
+
+	private static bool LooksLikeCssColor(string value)
+	{
+		string v = value.Trim();
+		if (v.StartsWith('#') && (v.Length == 4 || v.Length == 7 || v.Length == 9))
+		{
+			return true;
+		}
+
+		if (v.StartsWith("rgb", StringComparison.OrdinalIgnoreCase))
+		{
+			return true;
+		}
+
+		return false;
+	}
+
+	private static bool IsFinite(double value)
+	{
+		return !double.IsNaN(value) && !double.IsInfinity(value);
+	}
+
+	private static string FormatBytes(int bytes)
+	{
+		if (bytes < 1024)
+		{
+			return bytes.ToString() + " B";
+		}
+
+		double kb = bytes / 1024.0;
+		if (kb < 1024)
+		{
+			return kb.ToString("0.#", CultureInfo.InvariantCulture) + " KB";
+		}
+
+		return (kb / 1024.0).ToString("0.##", CultureInfo.InvariantCulture) + " MB";
+	}
+
+	private static string ShortGuid(Guid id)
+	{
+		string s = id.ToString("N");
+		return s.Substring(0, 8) + "…";
+	}
+
+	private static string SanitizeFileName(string name)
+	{
+		if (string.IsNullOrWhiteSpace(name))
+		{
+			return "topo";
+		}
+
+		char[] invalid = Path.GetInvalidFileNameChars();
+		StringBuilder sb = new StringBuilder(name.Length);
+		int i = 0;
+		while (i < name.Length)
+		{
+			char c = name[i];
+			if (Array.IndexOf(invalid, c) >= 0)
+			{
+				sb.Append('_');
+			}
+			else
+			{
+				sb.Append(c);
+			}
+			i++;
+		}
+
+		string result = sb.ToString().Trim();
+		return result.Length == 0 ? "topo" : result;
+	}
+
+	private static string Friendly(Exception ex)
+	{
+		string msg = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message;
+		if (ex.InnerException is not null && !string.IsNullOrWhiteSpace(ex.InnerException.Message))
+		{
+			msg += " → " + ex.InnerException.Message;
+		}
+
+		return msg;
+	}
+
+	private sealed class LegendItem
+	{
+		public LegendItem(string label, string color)
+		{
+			Label = label;
+			Color = color;
+		}
+
+		public string Label { get; }
+		public string Color { get; }
+	}
+
+	private readonly struct GeoSample
+	{
+		public GeoSample(double lat, double lon)
+		{
+			Lat = lat;
+			Lon = lon;
+		}
+
+		public double Lat { get; }
+		public double Lon { get; }
+	}
+}

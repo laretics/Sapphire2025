@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using TimeNet2026Data;
 using Sapphire2026Data.Models;
 using Sapphire2026Data.Models.GMAO;
+using Sapphire2026.Data.Models.Diamond;
 
 namespace Sapphire2026.Data
 {
@@ -65,6 +66,17 @@ namespace Sapphire2026.Data
 			modelBuilder.Entity<DBSchedule>().ToTable("TNSchedules");
 			modelBuilder.Entity<DBStation>().ToTable("TNStations");
 			modelBuilder.Entity<DBTopoStorage>().ToTable("TNTopoStorages");
+
+			// Diamond: topologías como documento versionado (blob + huellas).
+			modelBuilder.Entity<DiamondTopoDocument>(entity =>
+			{
+				entity.ToTable("DiamondTopos");
+				entity.HasIndex(e => e.ContentHash).IsUnique();
+				entity.HasIndex(e => e.StructuralHash);
+				entity.HasIndex(e => e.IsActive);
+				entity.Property(e => e.Payload).HasColumnType("mediumblob");
+				entity.Property(e => e.Notes).HasColumnType("longtext");
+			});
 		}
 		internal DbSet<DBHeader> Headers { get; set; }
 		DbSet<DBHeader> ITimeNetContextStorage.Headers => Headers;
@@ -254,6 +266,9 @@ namespace Sapphire2026.Data
 		public DbSet<WorkCatalog> WorksCatalog { get; set; }
 		public DbSet<WorkOrder> WorkOrders { get; set; }
 		public DbSet<Odometry> Odometer{ get; set; }
+		#endregion
+		#region Diamond
+		public DbSet<DiamondTopoDocument> DiamondTopos { get; set; }
 		#endregion
 		#region Maquinistros
 		public DbSet<WorkShiftTemplateCollection> WorkShiftTemplateCollections { get; set; }

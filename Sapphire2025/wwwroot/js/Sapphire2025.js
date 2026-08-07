@@ -40,6 +40,26 @@ window.downloadTextFile = function (content, filename, mimeType) {
     URL.revokeObjectURL(url);
 };
 
+// Descarga de bytes (base64) como archivo binario (XML, gzip, etc.).
+window.downloadBytesFile = function (base64, filename, mimeType) {
+    const type = mimeType || "application/octet-stream";
+    const binary = atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename || "download.bin";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
 //Rutina para pegar contenido del portapapeles en un elemento HTML.
 window.clipboardInterop = {
     registerPasteListener: function (elemento, refDotNet) {

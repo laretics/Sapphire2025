@@ -89,6 +89,38 @@ namespace Diamond.Topo
 		}
 
 		/// <summary>
+		/// Suma de (AxisToPk − AxisFromPk) de todos los tramos en el sentido de la vista.
+		/// En caminos multi-eje cada OD construye su propia vista con PK de ruta 0 en el origen
+		/// (Sense local siempre Increasing); esta métrica distingue ida y vuelta física
+		/// (p. ej. PMI→SPB &gt; 0, SPB→PMI &lt; 0 en SFM).
+		/// </summary>
+		public long NetAxisPkProgress
+		{
+			get
+			{
+				long sum = 0L;
+				int index = 0;
+				while (index < mcolLegs.Count)
+				{
+					RouteLeg leg = mcolLegs[index];
+					sum += leg.AxisToPk - leg.AxisFromPk;
+					index++;
+				}
+
+				return sum;
+			}
+		}
+
+		/// <summary>
+		/// True si el avance de la vista aumenta el PK de eje de red (sentido “impar” SFM).
+		/// Si el progreso neto es 0 (caso degenerado), se considera true.
+		/// </summary>
+		public bool IsNetworkPkAscending
+		{
+			get { return NetAxisPkProgress >= 0L; }
+		}
+
+		/// <summary>
 		/// Vmax representativo (máximo de los ejes de los tramos).
 		/// </summary>
 		public int Vmax

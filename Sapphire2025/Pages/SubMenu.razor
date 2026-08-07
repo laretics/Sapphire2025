@@ -138,17 +138,6 @@
                 <SMWorkDaySheet />
                 <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
                     @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
-                    <img src="img/TimeNet.png" class="card-img-top" alt="Time Net BrainTrain" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Planes de Explotación</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Mallas horarias de tracción
-                        </p>
-                        <a href="/engineer/timenet" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span>
                     <img src="img/certificacion.jpg" class="card-img-top" alt="Disponibilidad" style="object-fit: cover; height: 180px;">
                     <div class="card-body">
                         <h5 class="card-title fw-bold text-dark mb-2 custom-title">Contrato SFM Erion</h5>
@@ -159,6 +148,57 @@
                     </div>
                 </div>
                 <SMDriversWorkSheet Agents="@mcolAgentsViews"/>
+            </div>
+        </div>
+    }
+    else if (Page.Equals("diamond"))
+    {
+        <div class="container py-4">
+            <p class="lead text-secondary text-center mb-4">
+                Gestión de horarios y explotación
+            </p>
+            <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
+                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
+                    <img src="img/SplitFlap.png" class="card-img-top" alt="Horarios" style="object-fit: cover; height: 180px;">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Explotación (Legacy)</h5>
+                        <p class="card-text text-muted custom-comment">
+                            Horarios, Planes de Explotación.
+                        </p>
+                        <a href="/admin/manageworkshifts" class="btn btn-outline-primary w-100">Abrir</a>
+                    </div>
+                </div>
+                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
+                    <img src="img/EdicionTimeNet.png" class="card-img-top" alt="Horarios" style="object-fit: cover; height: 180px;">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Explotación (TimeNet)</h5>
+                        <p class="card-text text-muted custom-comment">
+                            Horarios, Planes de Explotación.
+                        </p>
+                        <a href="/admin/managetimenet" class="btn btn-outline-primary w-100">Abrir</a>
+                    </div>
+                </div>
+                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
+                    <img src="img/MajorcaMap.png" class="card-img-top" alt="Almacén" style="object-fit: cover; height: 180px;">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Topologías</h5>
+                        <p class="card-text text-muted custom-comment">
+                            Almacén de datos geográficos
+                        </p>
+                        <a href="/engineer/topostorage" class="btn btn-outline-primary w-100">Abrir</a>
+                    </div>
+                </div>
+                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
+                    @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
+                    <img src="img/TimeNet.png" class="card-img-top" alt="Time Net BrainTrain" style="object-fit: cover; height: 180px;">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Planes de Explotación</h5>
+                        <p class="card-text text-muted custom-comment">
+                            Mallas horarias de tracción
+                        </p>
+                        <a href="/engineer/timenet" class="btn btn-outline-primary w-100">Abrir</a>
+                    </div>
+                </div>
             </div>
         </div>
     }
@@ -210,26 +250,6 @@
                             Revisión de actividad
                         </p>
                         <a href="/admin/sapphirelog" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    <img src="img/SplitFlap.png" class="card-img-top" alt="Horarios" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Explotación (Legacy)</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Horarios, Planes de Explotación.
-                        </p>
-                        <a href="/admin/manageworkshifts" class="btn btn-outline-primary w-100">Abrir</a>
-                    </div>
-                </div>
-                <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    <img src="img/EdicionTimeNet.png" class="card-img-top" alt="Horarios" style="object-fit: cover; height: 180px;">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Explotación (TimeNet)</h5>
-                        <p class="card-text text-muted custom-comment">
-                            Horarios, Planes de Explotación.
-                        </p>
-                        <a href="/admin/managetimenet" class="btn btn-outline-primary w-100">Abrir</a>
                     </div>
                 </div>
                 <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">

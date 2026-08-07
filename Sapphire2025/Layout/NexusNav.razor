@@ -70,9 +70,14 @@
                     Image="RoleDetective"
                     Tooltip="Opciones para Análisis de Información"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Engineer}" />
-
     <NexusNavOption Selected="@(9 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(9))"
+                    Link="submenu/diamond" Caption="Diamond"
+                    Image="Map"
+                    Tooltip="Generación de mallas horarias"
+                    Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Engineer}" />
+    <NexusNavOption Selected="@(10 == SelectedNavItem)"
+                    OnClick="@(()=>SelectNavItem(10))"
                     Link="submenu/anonymous" Caption="Movimiento"
                     Image="RoleTrainDriver"
                     Tooltip="Maquinistas y personal de trenes"

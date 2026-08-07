@@ -283,7 +283,8 @@ namespace Diamond.Timed
 		}
 
 		/// <summary>
-		/// Ordena sentidos de forma que IncreasingPk (impares) quede en el índice 0.
+		/// Ordena sentidos de forma que el avance de PK de red (impares) quede en el índice 0.
+		/// En multi-eje no basta <see cref="CirculationSense"/> (ambos OD suelen ser Increasing).
 		/// </summary>
 		private static void SortPreparedAscendingFirst(List<PreparedDirection> prepared)
 		{
@@ -292,7 +293,7 @@ namespace Diamond.Timed
 				return;
 			}
 
-			if (prepared[0].Asimilation.Sense == CirculationSense.IncreasingPk)
+			if (IsPreparedNetworkAscending(prepared[0]))
 			{
 				return;
 			}
@@ -300,7 +301,7 @@ namespace Diamond.Timed
 			int i = 1;
 			while (i < prepared.Count)
 			{
-				if (prepared[i].Asimilation.Sense == CirculationSense.IncreasingPk)
+				if (IsPreparedNetworkAscending(prepared[i]))
 				{
 					PreparedDirection tmp = prepared[0];
 					prepared[0] = prepared[i];
@@ -310,6 +311,23 @@ namespace Diamond.Timed
 
 				i++;
 			}
+		}
+
+		private static bool IsPreparedNetworkAscending(PreparedDirection prep)
+		{
+			RouteView view = prep.View;
+			if (view.Legs.Count <= 1)
+			{
+				return prep.Asimilation.Sense == CirculationSense.IncreasingPk;
+			}
+
+			long net = view.NetAxisPkProgress;
+			if (net != 0L)
+			{
+				return net > 0L;
+			}
+
+			return prep.Asimilation.Sense == CirculationSense.IncreasingPk;
 		}
 
 		private static string Tag(string dayTag, string message)

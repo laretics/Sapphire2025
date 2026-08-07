@@ -185,6 +185,65 @@ namespace Diamond.Tests.Timed
 		}
 
 		[Fact]
+		public void PalmaSpb_MultiAxis_OddTowardSpb_EvenTowardPmi()
+		{
+			// Corredor multi-eje: cada OD tiene Sense=Increasing en su vista propia;
+			// la numeración debe usar progreso de PK de eje (PMI→SPB impar, SPB→PMI par).
+			TopoLayout topo = TopoXmlSerializer.Load(SamplePaths.TopoSfm227);
+			SfmDemoInfrastructure.Apply(topo);
+
+			string script = """
+				include toposfm227
+				plan "SFM Palma-Sa Pobla"
+				require both ways every 60 min PMI -> SPB 06:00-12:00 as R-SPB
+				  days lab
+				  stops 30s
+				""";
+
+			Plan plan = new Plan();
+			plan.ScriptBaseDirectory = Path.GetDirectoryName(SamplePaths.TopoSfm227) ?? string.Empty;
+			plan.EnsureDefaultTrainSpecs();
+			DemandCompileResult compiled = plan.CompileDemand(script);
+			Assert.True(compiled.Success, string.Join("; ", compiled.Errors));
+
+			Mesh mesh = new MeshPlanner(plan).Solve(DayOfWeek.Monday);
+			Assert.True(mesh.Circulations.Count >= 2);
+
+			List<Circulation> toSpb = mesh.Circulations
+				.Where(c => string.Equals(c.Asimilation.Origin.Station.Avr, "PMI", StringComparison.OrdinalIgnoreCase)
+					&& string.Equals(c.Asimilation.Destination.Station.Avr, "SPB", StringComparison.OrdinalIgnoreCase))
+				.ToList();
+			List<Circulation> toPmi = mesh.Circulations
+				.Where(c => string.Equals(c.Asimilation.Origin.Station.Avr, "SPB", StringComparison.OrdinalIgnoreCase)
+					&& string.Equals(c.Asimilation.Destination.Station.Avr, "PMI", StringComparison.OrdinalIgnoreCase))
+				.ToList();
+
+			Assert.NotEmpty(toSpb);
+			Assert.NotEmpty(toPmi);
+
+			// Multi-eje: Sense local suele ser Increasing en ambos; la red sí discrimina.
+			Assert.All(toSpb, c => Assert.True(TrainNumbering.IsNetworkAscendingForNumbering(c)));
+			Assert.All(toPmi, c => Assert.False(TrainNumbering.IsNetworkAscendingForNumbering(c)));
+
+			Assert.All(toSpb, c =>
+			{
+				Assert.True(c.HasServiceNumber);
+				int n = int.Parse(c.ServiceNumber, CultureInfo.InvariantCulture);
+				Assert.Equal(1, n % 2);
+			});
+			Assert.All(toPmi, c =>
+			{
+				Assert.True(c.HasServiceNumber);
+				int n = int.Parse(c.ServiceNumber, CultureInfo.InvariantCulture);
+				Assert.Equal(0, n % 2);
+			});
+
+			// Serie 47xx conocida PMI–SPB
+			Assert.All(toSpb.Concat(toPmi), c =>
+				Assert.Equal(47, int.Parse(c.ServiceNumber, CultureInfo.InvariantCulture) / 100));
+		}
+
+		[Fact]
 		public void PlanningErrors_CiteServiceNumbers()
 		{
 			// Vía única, both ways sin desfase: debe generar conflictos duros con números de tren.
