@@ -67,7 +67,7 @@ namespace Sapphire2026.Data
 			modelBuilder.Entity<DBStation>().ToTable("TNStations");
 			modelBuilder.Entity<DBTopoStorage>().ToTable("TNTopoStorages");
 
-			// Diamond: topologías como documento versionado (blob + huellas).
+			// Diamond: topologías y planes de explotación (documentos versionados).
 			modelBuilder.Entity<DiamondTopoDocument>(entity =>
 			{
 				entity.ToTable("DiamondTopos");
@@ -76,6 +76,20 @@ namespace Sapphire2026.Data
 				entity.HasIndex(e => e.IsActive);
 				entity.Property(e => e.Payload).HasColumnType("mediumblob");
 				entity.Property(e => e.Notes).HasColumnType("longtext");
+			});
+
+			modelBuilder.Entity<DiamondPlanDocument>(entity =>
+			{
+				entity.ToTable("DiamondPlans");
+				entity.HasIndex(e => e.ContentHash);
+				entity.HasIndex(e => e.TopoId);
+				entity.HasIndex(e => e.IsActive);
+				entity.Property(e => e.SourceScript).HasColumnType("longtext");
+				entity.Property(e => e.Notes).HasColumnType("longtext");
+				entity.HasOne(e => e.Topo)
+					.WithMany()
+					.HasForeignKey(e => e.TopoId)
+					.OnDelete(DeleteBehavior.Restrict);
 			});
 		}
 		internal DbSet<DBHeader> Headers { get; set; }
@@ -269,6 +283,7 @@ namespace Sapphire2026.Data
 		#endregion
 		#region Diamond
 		public DbSet<DiamondTopoDocument> DiamondTopos { get; set; }
+		public DbSet<DiamondPlanDocument> DiamondPlans { get; set; }
 		#endregion
 		#region Maquinistros
 		public DbSet<WorkShiftTemplateCollection> WorkShiftTemplateCollections { get; set; }

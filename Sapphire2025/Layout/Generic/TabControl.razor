@@ -7,7 +7,9 @@
         {
             <li class="nav-item" role="presentation">
                 <button type="button"
-                class="nav-link @(tabPage == ActivePage ? "active" : "")"
+                class="nav-link @(tabPage == ActivePage ? "active" : "") @(tabPage.Enabled ? "" : "disabled")"
+                disabled="@(!tabPage.Enabled)"
+                title="@(tabPage.Enabled ? null : "Próximamente")"
                 @onclick="() => ActivatePage(tabPage)"
                 style="display: flex; align-items: center; gap: 0.5rem;">
                     @if (tabPage.Icon != null)
@@ -28,6 +30,8 @@ else
         {
             <button type="button"
             class="btn @GetButtonClass(tabPage)"
+            disabled="@(!tabPage.Enabled)"
+            title="@(tabPage.Enabled ? null : "Próximamente")"
             @onclick=@(() => ActivatePage(tabPage))>
                 @if (tabPage.Icon != null)
                 {
@@ -82,16 +86,16 @@ else
     {
         if(string.IsNullOrWhiteSpace(mvarSavedKey))
         {
-            if (ActivePage is null && Pages.Count > 0)
-                ActivePage = Pages[0];            
+            if (ActivePage is null || !ActivePage.Enabled)
+                ActivePage = Pages.FirstOrDefault(p => p.Enabled) ?? (Pages.Count > 0 ? Pages[0] : null);
         }
         else
         {
-            TabPage? auxPage = Pages.FirstOrDefault(p => p.Key == mvarSavedKey || p.Text == mvarSavedKey);
+            TabPage? auxPage = Pages.FirstOrDefault(p => (p.Key == mvarSavedKey || p.Text == mvarSavedKey) && p.Enabled);
             if (null != auxPage)
                 ActivePage = auxPage;
-            else if (null == ActivePage && Pages.Count > 0)
-                ActivePage = Pages[0];
+            else if (null == ActivePage || !ActivePage.Enabled)
+                ActivePage = Pages.FirstOrDefault(p => p.Enabled) ?? (Pages.Count > 0 ? Pages[0] : null);
         }
 
     }
@@ -99,6 +103,9 @@ else
 
     async Task ActivatePage(TabPage page)
     {
+        if (!page.Enabled)
+            return;
+
         ActivePage = page;
         mvarSavedKey = auxGetPageKey(page);
 
@@ -108,6 +115,8 @@ else
 
     string GetButtonClass(TabPage page)
     {
+        if (!page.Enabled)
+            return "btn-outline-secondary";
         return page == ActivePage ? "btn-primary" : "btn-secondary";
     }
 

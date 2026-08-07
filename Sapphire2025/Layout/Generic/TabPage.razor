@@ -18,6 +18,10 @@
     [Parameter]
     public RenderFragment? Icon { get; set; }
 
+    /// <summary>Si false, la solapa se muestra pero no se puede activar (p. ej. turnos próximamente).</summary>
+    [Parameter]
+    public bool Enabled { get; set; } = true;
+
     protected override void OnInitialized()
     {
         if (null == Parent)

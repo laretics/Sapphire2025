@@ -17,7 +17,9 @@
 				diamondMonaco: !!(window.diamondMonaco && typeof window.diamondMonaco.ensureLanguageAsync === "function"),
 				diamondSplit: !!(window.diamondSplit && typeof window.diamondSplit.attach === "function"),
 				diamondFile: !!(window.diamondFile && typeof window.diamondFile.open === "function"),
-				meshViewport: !!(window.diamondMeshViewport && typeof window.diamondMeshViewport.attach === "function")
+				meshViewport: !!(window.diamondMeshViewport
+					&& typeof window.diamondMeshViewport.attach === "function"
+					&& typeof window.diamondMeshViewport.clientToSvg === "function")
 			};
 		},
 		/** Texto plano para interop WASM (evita Dictionary&lt;string,object&gt; frágil). */

@@ -57,6 +57,78 @@
 	font-weight: 700;
 }
 
+/* —— Modal almacén de planes —— */
+.mesh-store-modal-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 2000;
+	background: rgba(2, 6, 23, 0.72);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+}
+
+.mesh-store-modal {
+	width: min(32rem, 100%);
+	max-height: min(70vh, 36rem);
+	display: flex;
+	flex-direction: column;
+	background: #0f172a;
+	border: 1px solid #334155;
+	border-radius: 0.75rem;
+	box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+	overflow: hidden;
+}
+
+.mesh-store-modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.65rem 0.85rem;
+	border-bottom: 1px solid #1e293b;
+	background: #111827;
+}
+
+.mesh-store-modal-body {
+	padding: 0.85rem;
+	overflow: auto;
+	min-height: 0;
+}
+
+.mesh-store-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+}
+
+.mesh-store-list-item {
+	width: 100%;
+	text-align: left;
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	padding: 0.55rem 0.7rem;
+	border-radius: 0.5rem;
+	border: 1px solid #1e293b;
+	background: #111827;
+	color: #e2e8f0;
+	cursor: pointer;
+}
+
+.mesh-store-list-item:hover {
+	border-color: #38bdf8;
+	background: #0c4a6e33;
+}
+
+.mesh-menubar .dropdown-menu {
+	font-size: 0.85rem;
+}
+
 .mesh-toolbar {
 	display: flex;
 	flex-wrap: wrap;

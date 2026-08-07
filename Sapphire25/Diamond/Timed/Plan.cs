@@ -20,6 +20,7 @@ namespace Diamond.Timed
 		private TopoLayout? mvarTopo;
 		private TopoStorage? mvarTopoStorage;
 		private string mvarScriptBaseDirectory;
+		private ITopoIncludeResolver? mvarIncludeResolver;
 		private readonly List<TrainSpecs> mcolTrainSpecs;
 		private readonly List<DemandRequirement> mcolDemand;
 		private readonly List<DemandDeleteOp> mcolDeletes;
@@ -36,6 +37,7 @@ namespace Diamond.Timed
 			mvarTopo = null;
 			mvarTopoStorage = null;
 			mvarScriptBaseDirectory = string.Empty;
+			mvarIncludeResolver = null;
 			mcolTrainSpecs = new List<TrainSpecs>();
 			mcolDemand = new List<DemandRequirement>();
 			mcolDeletes = new List<DemandDeleteOp>();
@@ -132,6 +134,16 @@ namespace Diamond.Timed
 		{
 			get { return mvarScriptBaseDirectory; }
 			set { mvarScriptBaseDirectory = value ?? string.Empty; }
+		}
+
+		/// <summary>
+		/// Resolvedor de <c>include</c> de este plan (almacén Zafiro, tests…).
+		/// Si es null, se usa <see cref="TopoStorage.DefaultIncludeResolver"/> y luego el disco.
+		/// </summary>
+		public ITopoIncludeResolver? IncludeResolver
+		{
+			get { return mvarIncludeResolver; }
+			set { mvarIncludeResolver = value; }
 		}
 
 		/// <summary>
@@ -384,9 +396,12 @@ namespace Diamond.Timed
 		private void ApplyIncludedTopo(DemandCompileResult result)
 		{
 			string? baseDir = mvarScriptBaseDirectory.Length > 0 ? mvarScriptBaseDirectory : null;
+			// Preferir el resolvedor del plan; si no, el del host (Zafiro); si no, solo memoria+disco.
+			ITopoIncludeResolver? resolver = mvarIncludeResolver ?? TopoStorage.DefaultIncludeResolver;
 			TopoStorage? storage;
 			string? error;
-			if (!TopoStorage.TryLoadFromXml(result.IncludedTopoPath, baseDir, out storage, out error) || storage is null)
+			if (!TopoStorage.TryLoadFromXml(result.IncludedTopoPath, baseDir, resolver, out storage, out error)
+				|| storage is null)
 			{
 				result.AddError(error ?? "no se pudo cargar la topología del include.");
 				return;

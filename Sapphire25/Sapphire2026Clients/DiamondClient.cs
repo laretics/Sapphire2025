@@ -132,5 +132,104 @@ namespace Sapphire2025.Storage
 			HttpResponseMessage response = await sendPostRequest("activatetopo", json);
 			return await response.Content.ReadFromJsonAsync<DiamondTopoUploadResult>();
 		}
+
+		// ── Planes de explotación ───────────────────────────────────────────
+
+		public async Task<IReadOnlyList<DiamondPlanHeaderModel>> ListPlansAsync(
+			bool activeOnly = true,
+			Guid? topoId = null)
+		{
+			List<requestParam> args = new List<requestParam>
+			{
+				new requestParam("activeOnly", activeOnly ? "true" : "false")
+			};
+			if (topoId.HasValue && !Guid.Empty.Equals(topoId.Value))
+			{
+				args.Add(new requestParam("topoId", topoId.Value.ToString()));
+			}
+
+			string request = composeCommand("plans", args.ToArray());
+			HttpResponseMessage response = await sendGetRequest(request);
+			List<DiamondPlanHeaderModel>? list =
+				await response.Content.ReadFromJsonAsync<List<DiamondPlanHeaderModel>>();
+			if (list is null)
+			{
+				return Array.Empty<DiamondPlanHeaderModel>();
+			}
+
+			return list;
+		}
+
+		public async Task<DiamondPlanHeaderModel?> GetPlanAsync(Guid id)
+		{
+			string request = composeCommand("plan", new requestParam("id", id.ToString()));
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				return await response.Content.ReadFromJsonAsync<DiamondPlanHeaderModel>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<DiamondPlanSaveResult?> SavePlanAsync(DiamondPlanSaveRequest body)
+		{
+			string json = System.Text.Json.JsonSerializer.Serialize(body);
+			HttpResponseMessage response = await sendPostRequest("saveplan", json);
+			return await response.Content.ReadFromJsonAsync<DiamondPlanSaveResult>();
+		}
+
+		public async Task<DiamondPlanSaveResult?> UploadPlanAsync(
+			Stream content,
+			string fileName,
+			Guid topoId,
+			string? notes = null,
+			DateTime? validFrom = null)
+		{
+			using MultipartFormDataContent form = new MultipartFormDataContent();
+			StreamContent fileContent = new StreamContent(content);
+			fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+			form.Add(fileContent, "file", fileName);
+			form.Add(new StringContent(topoId.ToString()), "topoId");
+			if (!string.IsNullOrEmpty(notes))
+			{
+				form.Add(new StringContent(notes), "notes");
+			}
+
+			if (validFrom.HasValue)
+			{
+				form.Add(new StringContent(validFrom.Value.ToString("o")), "validFrom");
+			}
+
+			HttpResponseMessage response = await sendPostRequest("uploadplan", form);
+			return await response.Content.ReadFromJsonAsync<DiamondPlanSaveResult>();
+		}
+
+		public async Task<DiamondPlanSaveResult?> UploadPlanAsync(
+			byte[] content,
+			string fileName,
+			Guid topoId,
+			string? notes = null,
+			DateTime? validFrom = null)
+		{
+			using MemoryStream stream = new MemoryStream(content, writable: false);
+			return await UploadPlanAsync(stream, fileName, topoId, notes, validFrom);
+		}
+
+		public async Task<DiamondPlanSaveResult?> DeletePlanAsync(Guid id)
+		{
+			string json = System.Text.Json.JsonSerializer.Serialize(id);
+			HttpResponseMessage response = await sendPostRequest("deleteplan", json);
+			return await response.Content.ReadFromJsonAsync<DiamondPlanSaveResult>();
+		}
+
+		public async Task<DiamondPlanSaveResult?> ActivatePlanAsync(Guid id)
+		{
+			string json = System.Text.Json.JsonSerializer.Serialize(id);
+			HttpResponseMessage response = await sendPostRequest("activateplan", json);
+			return await response.Content.ReadFromJsonAsync<DiamondPlanSaveResult>();
+		}
 	}
 }

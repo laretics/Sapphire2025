@@ -47,11 +47,15 @@ namespace Sapphire2026.Data.Diamond
 				.OrderByDescending(x => x.CreatedUtc)
 				.ToListAsync(cancellationToken);
 
+			Dictionary<Guid, int> planCounts = await LoadActivePlanCountsAsync(cancellationToken);
+
 			List<DiamondTopoHeaderModel> salida = new List<DiamondTopoHeaderModel>(rows.Count);
 			int i = 0;
 			while (i < rows.Count)
 			{
-				salida.Add(ToHeader(rows[i]));
+				int plans = 0;
+				planCounts.TryGetValue(rows[i].Id, out plans);
+				salida.Add(ToHeader(rows[i], plans));
 				i++;
 			}
 
@@ -70,7 +74,8 @@ namespace Sapphire2026.Data.Diamond
 				return null;
 			}
 
-			return ToHeader(row);
+			int plans = await CountActivePlansAsync(id, cancellationToken);
+			return ToHeader(row, plans);
 		}
 
 		public async Task<DiamondTopoHeaderModel?> GetHeaderByContentHashAsync(
@@ -91,7 +96,8 @@ namespace Sapphire2026.Data.Diamond
 				return null;
 			}
 
-			return ToHeader(row);
+			int plans = await CountActivePlansAsync(row.Id, cancellationToken);
+			return ToHeader(row, plans);
 		}
 
 		public async Task<DiamondTopoDocument?> GetDocumentAsync(
@@ -154,7 +160,8 @@ namespace Sapphire2026.Data.Diamond
 				result.Message = string.Format(
 					"Ya existe una topología con el mismo contenido (hash {0}).",
 					contentHash);
-				result.Header = ToHeader(existing);
+				int existingPlans = await CountActivePlansAsync(existing.Id, cancellationToken);
+				result.Header = ToHeader(existing, existingPlans);
 				return result;
 			}
 
@@ -187,28 +194,86 @@ namespace Sapphire2026.Data.Diamond
 				"Topología '{0}' almacenada ({1} bytes).",
 				doc.Name,
 				doc.ByteLength);
-			result.Header = ToHeader(doc);
+			result.Header = ToHeader(doc, 0);
 			return result;
 		}
 
-		public async Task<bool> SetActiveAsync(
+		/// <summary>
+		/// Activa o desactiva. La desactivación se rechaza si hay planes activos que la referencian.
+		/// </summary>
+		public async Task<DiamondTopoUploadResult> SetActiveAsync(
 			Guid id,
 			bool isActive,
 			CancellationToken cancellationToken = default)
 		{
+			DiamondTopoUploadResult result = new DiamondTopoUploadResult();
 			DiamondTopoDocument? row = await mvarContext.DiamondTopos
 				.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 			if (row is null)
 			{
-				return false;
+				result.Success = false;
+				result.Message = "Topología no encontrada.";
+				return result;
+			}
+
+			int plans = await CountActivePlansAsync(id, cancellationToken);
+			if (!isActive && plans > 0)
+			{
+				result.Success = false;
+				result.Message = string.Format(
+					"No se puede desactivar: hay {0} plan(es) de explotación activos que usan esta topología. Desactive o reasigne esos planes primero.",
+					plans);
+				result.Header = ToHeader(row, plans);
+				return result;
 			}
 
 			row.IsActive = isActive;
 			await mvarContext.SaveChangesAsync(cancellationToken);
-			return true;
+			result.Success = true;
+			result.Message = isActive ? "Topología activada." : "Topología desactivada.";
+			result.Header = ToHeader(row, plans);
+			return result;
 		}
 
-		public static DiamondTopoHeaderModel ToHeader(DiamondTopoDocument doc)
+		public async Task<int> CountActivePlansAsync(
+			Guid topoId,
+			CancellationToken cancellationToken = default)
+		{
+			return await mvarContext.DiamondPlans
+				.AsNoTracking()
+				.CountAsync(x => x.TopoId == topoId && x.IsActive, cancellationToken);
+		}
+
+		private async Task<Dictionary<Guid, int>> LoadActivePlanCountsAsync(
+			CancellationToken cancellationToken)
+		{
+			Dictionary<Guid, int> map = new Dictionary<Guid, int>();
+			List<Guid> topoIds = await mvarContext.DiamondPlans
+				.AsNoTracking()
+				.Where(x => x.IsActive)
+				.Select(x => x.TopoId)
+				.ToListAsync(cancellationToken);
+
+			int i = 0;
+			while (i < topoIds.Count)
+			{
+				Guid tid = topoIds[i];
+				if (map.ContainsKey(tid))
+				{
+					map[tid] = map[tid] + 1;
+				}
+				else
+				{
+					map[tid] = 1;
+				}
+
+				i++;
+			}
+
+			return map;
+		}
+
+		public static DiamondTopoHeaderModel ToHeader(DiamondTopoDocument doc, int referencingPlanCount)
 		{
 			return new DiamondTopoHeaderModel
 			{
@@ -226,7 +291,8 @@ namespace Sapphire2026.Data.Diamond
 				Notes = doc.Notes,
 				IsActive = doc.IsActive,
 				ValidFrom = doc.ValidFrom,
-				CreatedUtc = doc.CreatedUtc
+				CreatedUtc = doc.CreatedUtc,
+				ReferencingPlanCount = referencingPlanCount
 			};
 		}
 	}

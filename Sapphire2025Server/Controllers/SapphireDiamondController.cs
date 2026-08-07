@@ -206,33 +206,19 @@ namespace Sapphire2025Server.Controllers
 			}
 		}
 
-		/// <summary>Baja lógica (IsActive = false). No borra el blob.</summary>
+		/// <summary>Baja lógica (IsActive = false). Rechazada si hay planes activos.</summary>
 		[HttpPost("deletetopo")]
 		public async Task<DiamondTopoUploadResult> DeleteTopo([FromBody] Guid id)
 		{
-			DiamondTopoUploadResult result = new DiamondTopoUploadResult();
 			if (Guid.Empty.Equals(id))
 			{
-				result.Success = false;
-				result.Message = "Id vacío.";
-				return result;
+				return new DiamondTopoUploadResult { Success = false, Message = "Id vacío." };
 			}
 
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
 				DiamondTopoStore store = new DiamondTopoStore(almacen);
-				bool ok = await store.SetActiveAsync(id, false);
-				if (!ok)
-				{
-					result.Success = false;
-					result.Message = "Topología no encontrada.";
-					return result;
-				}
-
-				result.Success = true;
-				result.Message = "Topología desactivada.";
-				result.Header = await store.GetHeaderAsync(id);
-				return result;
+				return await store.SetActiveAsync(id, false);
 			}
 		}
 
@@ -240,29 +226,135 @@ namespace Sapphire2025Server.Controllers
 		[HttpPost("activatetopo")]
 		public async Task<DiamondTopoUploadResult> ActivateTopo([FromBody] Guid id)
 		{
-			DiamondTopoUploadResult result = new DiamondTopoUploadResult();
 			if (Guid.Empty.Equals(id))
 			{
-				result.Success = false;
-				result.Message = "Id vacío.";
-				return result;
+				return new DiamondTopoUploadResult { Success = false, Message = "Id vacío." };
 			}
 
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{
 				DiamondTopoStore store = new DiamondTopoStore(almacen);
-				bool ok = await store.SetActiveAsync(id, true);
-				if (!ok)
+				return await store.SetActiveAsync(id, true);
+			}
+		}
+
+		// ── Planes de explotación (scripts Diamond) ──────────────────────────
+
+		[HttpGet("plans")]
+		public async Task<IEnumerable<DiamondPlanHeaderModel>> ListPlans(
+			[FromQuery] bool activeOnly = true,
+			[FromQuery] Guid? topoId = null)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPlanStore store = new DiamondPlanStore(almacen);
+				return await store.ListHeadersAsync(activeOnly, topoId);
+			}
+		}
+
+		[HttpGet("plan")]
+		public async Task<ActionResult<DiamondPlanHeaderModel>> GetPlan([FromQuery] Guid id)
+		{
+			if (Guid.Empty.Equals(id))
+			{
+				return BadRequest("Id vacío.");
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPlanStore store = new DiamondPlanStore(almacen);
+				DiamondPlanHeaderModel? header = await store.GetAsync(id, includeScript: true);
+				if (header is null)
 				{
-					result.Success = false;
-					result.Message = "Topología no encontrada.";
-					return result;
+					return NotFound();
 				}
 
-				result.Success = true;
-				result.Message = "Topología activada.";
-				result.Header = await store.GetHeaderAsync(id);
+				return header;
+			}
+		}
+
+		[HttpPost("saveplan")]
+		public async Task<DiamondPlanSaveResult> SavePlan([FromBody] DiamondPlanSaveRequest request)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPlanStore store = new DiamondPlanStore(almacen);
+				return await store.SaveAsync(request);
+			}
+		}
+
+		/// <summary>Sube un .ddm / texto de script (multipart: file + topoId + notes).</summary>
+		[HttpPost("uploadplan")]
+		public async Task<DiamondPlanSaveResult> UploadPlan(
+			[FromForm] IFormFile? file,
+			[FromForm] Guid topoId,
+			[FromForm] string? notes,
+			[FromForm] DateTime? validFrom)
+		{
+			DiamondPlanSaveResult result = new DiamondPlanSaveResult();
+			if (file is null || file.Length == 0)
+			{
+				result.Success = false;
+				result.Message = "No se ha recibido ningún archivo de plan.";
 				return result;
+			}
+
+			if (Guid.Empty.Equals(topoId))
+			{
+				result.Success = false;
+				result.Message = "Debe indicar topoId (topología del almacén).";
+				return result;
+			}
+
+			string script;
+			using (StreamReader reader = new StreamReader(file.OpenReadStream()))
+			{
+				script = await reader.ReadToEndAsync();
+			}
+
+			DiamondPlanSaveRequest request = new DiamondPlanSaveRequest
+			{
+				TopoId = topoId,
+				SourceScript = script,
+				SourceFileName = file.FileName,
+				Notes = notes,
+				ValidFrom = validFrom
+			};
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPlanStore store = new DiamondPlanStore(almacen);
+				return await store.SaveAsync(request);
+			}
+		}
+
+		[HttpPost("deleteplan")]
+		public async Task<DiamondPlanSaveResult> DeletePlan([FromBody] Guid id)
+		{
+			if (Guid.Empty.Equals(id))
+			{
+				return new DiamondPlanSaveResult { Success = false, Message = "Id vacío." };
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPlanStore store = new DiamondPlanStore(almacen);
+				return await store.SetActiveAsync(id, false);
+			}
+		}
+
+		[HttpPost("activateplan")]
+		public async Task<DiamondPlanSaveResult> ActivatePlan([FromBody] Guid id)
+		{
+			if (Guid.Empty.Equals(id))
+			{
+				return new DiamondPlanSaveResult { Success = false, Message = "Id vacío." };
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPlanStore store = new DiamondPlanStore(almacen);
+				return await store.SetActiveAsync(id, true);
 			}
 		}
 

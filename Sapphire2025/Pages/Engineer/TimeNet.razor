@@ -1,11 +1,14 @@
 @page "/engineer/timenet"
 @using Diamond.Controls.Components
+@using Diamond.Controls.Services
+@using Diamond.Timed
 @using Microsoft.AspNetCore.Authorization
-@using TimeNet2026.ScriptCompiling
 @using Sapphire2025.Storage
-@inject TimeNetClient mvarTimeNet
+@using Sapphire2025Models.Diamond
+@inject DiamondClient mvarDiamond
+@inject NavigationManager mvarNav
 @attribute [Authorize]
-@* Planificador Diamond dentro del layout Zafiro (sidebar + navegación). *@
+@* Planificador Diamond: include + planes del almacén Zafiro. *@
 
 <PageTitle>Planes de Explotación · Diamond</PageTitle>
 
@@ -20,29 +23,237 @@
 	</div>
 }
 
+@if (!string.IsNullOrEmpty(mvarCatalogStatus))
+{
+	<div class="alert alert-info alert-dismissible fade show m-2 py-2" role="alert">
+		<strong>Include / topología</strong> — @mvarCatalogStatus
+		@if (mvarCatalog is not null && mvarCatalog.DisplayNames.Count > 0)
+		{
+			<span class="ms-1 text-muted small">
+				Ej.: <code>include @FirstIncludeHint()</code>
+			</span>
+		}
+		<button type="button" class="btn-close" @onclick="() => mvarCatalogStatus = null"></button>
+	</div>
+}
+
 <div class="engineer-diamond-host">
-	<ErrorBoundary>
-		<ChildContent>
-			<MeshPlannerWorkspace HomeHref="/submenu/engineer"
-								  FillViewport="false"
-								  UploadTopoAsync="OnUploadTopoAsync" />
-		</ChildContent>
-		<ErrorContent Context="ex">
-			<div class="alert alert-danger m-3">
-				<strong>Error en el planificador Diamond</strong>
-				<pre class="small mb-0 mt-2" style="white-space: pre-wrap;">@(string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().FullName : ex.Message)</pre>
-			</div>
-		</ErrorContent>
-	</ErrorBoundary>
+	@if (!mvarCatalogReady)
+	{
+		<div class="d-flex align-items-center gap-2 m-3 text-secondary">
+			<div class="spinner-border spinner-border-sm" role="status"></div>
+			<span>Cargando topologías del almacén Zafiro…</span>
+		</div>
+	}
+	else
+	{
+		<ErrorBoundary>
+			<ChildContent>
+				<MeshPlannerWorkspace HomeHref="/submenu/engineer"
+									  FillViewport="false"
+									  TopoIncludeResolver="mvarCatalog?.Resolver"
+									  UploadTopoAsync="OnUploadTopoAsync"
+									  ListStorePlansAsync="ListStorePlansAsync"
+									  LoadStorePlanAsync="LoadStorePlanAsync"
+									  SaveStorePlanAsync="SaveStorePlanAsync"
+									  ListStoreToposAsync="ListStoreToposAsync"
+									  InitialStorePlanId="mvarInitialPlanId" />
+			</ChildContent>
+			<ErrorContent Context="ex">
+				<div class="alert alert-danger m-3">
+					<strong>Error en el planificador Diamond</strong>
+					<pre class="small mb-0 mt-2" style="white-space: pre-wrap;">@(string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().FullName : ex.Message)</pre>
+				</div>
+			</ErrorContent>
+		</ErrorBoundary>
+	}
 </div>
 
 @code {
+	private DiamondStoreTopoCatalog? mvarCatalog;
+	private bool mvarCatalogReady;
+	private string? mvarCatalogStatus;
 	private string? mvarUploadNotice;
 	private bool mvarUploadOk;
+	private Guid? mvarInitialPlanId;
+
+	protected override async Task OnInitializedAsync()
+	{
+		// Deep-link: /engineer/timenet?planId={guid}
+		mvarInitialPlanId = TryParsePlanIdFromUri(mvarNav.Uri);
+
+		mvarCatalog = new DiamondStoreTopoCatalog(mvarDiamond);
+		try
+		{
+			await mvarCatalog.RefreshAsync(activeOnly: true);
+			mvarCatalogStatus = mvarCatalog.Status;
+		}
+		catch (Exception ex)
+		{
+			mvarCatalogStatus = "Almacén Diamond no disponible: " + ex.Message
+				+ " (include seguirá intentando memoria de sesión y disco/samples).";
+		}
+		finally
+		{
+			mvarCatalogReady = true;
+		}
+	}
+
+	private static Guid? TryParsePlanIdFromUri(string uriString)
+	{
+		if (string.IsNullOrWhiteSpace(uriString))
+		{
+			return null;
+		}
+
+		Uri uri = new Uri(uriString, UriKind.RelativeOrAbsolute);
+		string query = uri.IsAbsoluteUri ? uri.Query : string.Empty;
+		if (query.Length == 0 && uriString.Contains('?', StringComparison.Ordinal))
+		{
+			int q = uriString.IndexOf('?');
+			query = uriString.Substring(q);
+		}
+
+		if (query.StartsWith('?'))
+		{
+			query = query.Substring(1);
+		}
+
+		string[] parts = query.Split('&', StringSplitOptions.RemoveEmptyEntries);
+		int i = 0;
+		while (i < parts.Length)
+		{
+			string part = parts[i];
+			int eq = part.IndexOf('=');
+			if (eq > 0)
+			{
+				string key = Uri.UnescapeDataString(part.Substring(0, eq));
+				if (string.Equals(key, "planId", StringComparison.OrdinalIgnoreCase))
+				{
+					string raw = Uri.UnescapeDataString(part.Substring(eq + 1));
+					if (Guid.TryParse(raw, out Guid planId) && !Guid.Empty.Equals(planId))
+					{
+						return planId;
+					}
+				}
+			}
+
+			i++;
+		}
+
+		return null;
+	}
+
+	private string FirstIncludeHint()
+	{
+		if (mvarCatalog is null || mvarCatalog.DisplayNames.Count == 0)
+		{
+			return "toposfm227";
+		}
+
+		string name = mvarCatalog.DisplayNames[0];
+		if (name.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+		{
+			return name.Substring(0, name.Length - 4);
+		}
+
+		return name;
+	}
+
+	private async Task<IReadOnlyList<MeshStorePlanRef>> ListStorePlansAsync()
+	{
+		IReadOnlyList<DiamondPlanHeaderModel> list = await mvarDiamond.ListPlansAsync(activeOnly: true);
+		List<MeshStorePlanRef> salida = new List<MeshStorePlanRef>(list.Count);
+		int i = 0;
+		while (i < list.Count)
+		{
+			DiamondPlanHeaderModel p = list[i];
+			salida.Add(new MeshStorePlanRef
+			{
+				Id = p.Id,
+				Name = p.Name,
+				TopoId = p.TopoId,
+				TopoName = p.TopoName,
+				SourceFileName = p.SourceFileName,
+				UpdatedUtc = p.UpdatedUtc,
+				IsActive = p.IsActive
+			});
+			i++;
+		}
+
+		return salida;
+	}
+
+	private async Task<MeshStorePlanDocument?> LoadStorePlanAsync(Guid id)
+	{
+		DiamondPlanHeaderModel? p = await mvarDiamond.GetPlanAsync(id);
+		if (p is null)
+		{
+			return null;
+		}
+
+		return new MeshStorePlanDocument
+		{
+			Id = p.Id,
+			Name = p.Name,
+			TopoId = p.TopoId,
+			TopoName = p.TopoName,
+			SourceScript = p.SourceScript ?? string.Empty,
+			SourceFileName = p.SourceFileName
+		};
+	}
+
+	private async Task<MeshStorePlanSaveResult?> SaveStorePlanAsync(MeshStorePlanSaveArgs args)
+	{
+		DiamondPlanSaveRequest request = new DiamondPlanSaveRequest
+		{
+			Id = args.Id,
+			TopoId = args.TopoId,
+			SourceScript = args.SourceScript,
+			Name = args.Name,
+			SourceFileName = args.SourceFileName,
+			Notes = args.Notes
+		};
+		DiamondPlanSaveResult? result = await mvarDiamond.SavePlanAsync(request);
+		if (result is null)
+		{
+			return null;
+		}
+
+		MeshStorePlanSaveResult mapped = new MeshStorePlanSaveResult
+		{
+			Success = result.Success,
+			Message = result.Message,
+			Id = result.Header?.Id,
+			Name = result.Header?.Name,
+			TopoId = result.Header?.TopoId,
+			TopoName = result.Header?.TopoName
+		};
+		return mapped;
+	}
+
+	private async Task<IReadOnlyList<MeshStoreTopoRef>> ListStoreToposAsync()
+	{
+		IReadOnlyList<DiamondTopoHeaderModel> list = await mvarDiamond.ListToposAsync(activeOnly: true);
+		List<MeshStoreTopoRef> salida = new List<MeshStoreTopoRef>(list.Count);
+		int i = 0;
+		while (i < list.Count)
+		{
+			DiamondTopoHeaderModel t = list[i];
+			salida.Add(new MeshStoreTopoRef
+			{
+				Id = t.Id,
+				Name = t.Name,
+				SourceFileName = t.SourceFileName
+			});
+			i++;
+		}
+
+		return salida;
+	}
 
 	/// <summary>
-	/// Reutiliza el endpoint TimeNet ya existente (layout Onice / Diamond &lt;layout&gt;).
-	/// También accesible desde Admin → Explotación (TimeNet) → Upload.
+	/// Sube la topología al almacén Diamond de Zafiro y la registra en el resolvedor de include.
 	/// </summary>
 	private async Task OnUploadTopoAsync((string Xml, string FileName) payload)
 	{
@@ -50,29 +261,41 @@
 		try
 		{
 			string fileName = string.IsNullOrWhiteSpace(payload.FileName) ? "topo.xml" : payload.FileName;
-			if (!fileName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+			if (!fileName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)
+				&& !fileName.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
 			{
 				fileName += ".xml";
 			}
 
-			CompileResult? result = await mvarTimeNet.UploadXML(payload.Xml, fileName);
+			byte[] bytes = System.Text.Encoding.UTF8.GetBytes(payload.Xml);
+			DiamondTopoUploadResult? result = await mvarDiamond.UploadTopoAsync(bytes, fileName);
 			if (result is null)
 			{
 				mvarUploadOk = false;
-				mvarUploadNotice = "No se pudo contactar con el servidor TimeNet (¿API en marcha?).";
+				mvarUploadNotice = "No se pudo contactar con el almacén Diamond (¿API en marcha y desplegada?).";
 				return;
 			}
 
 			mvarUploadOk = result.Success;
 			mvarUploadNotice = string.IsNullOrWhiteSpace(result.Message)
-				? (result.Success ? "Topología instalada en Zafiro." : "El servidor rechazó la topología.")
+				? (result.Success ? "Topología instalada en el almacén Diamond." : "El servidor rechazó la topología.")
 				: result.Message;
+
+			if (result.Success && result.Header is not null && mvarCatalog is not null)
+			{
+				mvarCatalog.RegisterUploaded(result.Header, payload.Xml);
+				mvarCatalogStatus = mvarCatalog.Status
+					+ " · Registrada para include: "
+					+ (string.IsNullOrWhiteSpace(result.Header.SourceFileName)
+						? result.Header.Name
+						: result.Header.SourceFileName);
+			}
 		}
 		catch (Exception ex)
 		{
 			mvarUploadOk = false;
 			string msg = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message;
-			mvarUploadNotice = "Error al subir topología: " + msg;
+			mvarUploadNotice = "Error al subir topología al almacén Diamond: " + msg;
 			if (ex.InnerException is not null && !string.IsNullOrWhiteSpace(ex.InnerException.Message))
 			{
 				mvarUploadNotice += " → " + ex.InnerException.Message;

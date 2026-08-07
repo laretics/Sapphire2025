@@ -36,5 +36,17 @@ namespace Sapphire2025Models.Diamond
 		public DateTime? ValidFrom { get; set; }
 
 		public DateTime CreatedUtc { get; set; }
+
+		/// <summary>
+		/// Número de planes de explotación (activos) que referencian esta topología.
+		/// Si &gt; 0 no se puede desactivar ni alterar el documento.
+		/// </summary>
+		public int ReferencingPlanCount { get; set; }
+
+		/// <summary>True si hay planes que impiden borrar/modificar la topología.</summary>
+		public bool IsLockedByPlans
+		{
+			get { return ReferencingPlanCount > 0; }
+		}
 	}
 }

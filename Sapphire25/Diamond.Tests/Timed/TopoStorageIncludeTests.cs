@@ -5,6 +5,12 @@ namespace Diamond.Tests.Timed
 {
 	public class TopoStorageIncludeTests
 	{
+		public TopoStorageIncludeTests()
+		{
+			TopoStorage.ClearMemoryCatalog();
+			TopoStorage.SetDefaultIncludeResolver(null);
+		}
+
 		[Fact]
 		public void Parse_Include_CapturesTopoPath()
 		{

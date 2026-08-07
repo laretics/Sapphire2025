@@ -9,7 +9,10 @@ namespace Diamond.Timed
 	/// <summary>
 	/// Almacén de topología usado por un plan de malla: ruta del XML de Diamond y layout cargado.
 	/// Se obtiene normalmente vía la directiva <c>include</c> del mini-DSL.
-	/// En WASM no hay disco: se puede registrar topología en un catálogo en memoria.
+	/// Resolución de <c>include</c>:
+	/// (1) catálogo en memoria de sesión,
+	/// (2) <see cref="ITopoIncludeResolver"/> del host (p. ej. Zafiro),
+	/// (3) fichero en disco respecto a <c>baseDirectory</c>.
 	/// </summary>
 	public sealed class TopoStorage
 	{
@@ -23,6 +26,11 @@ namespace Diamond.Timed
 		/// <summary>XML original por clave (para reexportar / subir al servidor).</summary>
 		private static readonly Dictionary<string, string> scolMemoryXml =
 			new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+		/// <summary>
+		/// Resolvedor de host por defecto (Zafiro, tests). Null = solo memoria + disco.
+		/// </summary>
+		private static ITopoIncludeResolver? svarDefaultIncludeResolver;
 
 		private readonly string mvarPath;
 		private readonly string mvarResolvedPath;
@@ -100,6 +108,33 @@ namespace Diamond.Timed
 		public static bool HasMemoryCatalog
 		{
 			get { return scolMemoryLayouts.Count > 0; }
+		}
+
+		/// <summary>
+		/// Resolvedor de host activo (almacén Zafiro, etc.). Se consulta tras el catálogo en memoria.
+		/// </summary>
+		public static ITopoIncludeResolver? DefaultIncludeResolver
+		{
+			get { return svarDefaultIncludeResolver; }
+		}
+
+		/// <summary>
+		/// Registra el resolvedor de almacén del host (p. ej. topologías Diamond en Sapphire).
+		/// Pasar null para volver al comportamiento solo memoria + disco.
+		/// </summary>
+		public static void SetDefaultIncludeResolver(ITopoIncludeResolver? resolver)
+		{
+			svarDefaultIncludeResolver = resolver;
+		}
+
+		/// <summary>
+		/// Vacía el catálogo en memoria de sesión (tests / reinicio de host).
+		/// No altera el <see cref="DefaultIncludeResolver"/>.
+		/// </summary>
+		public static void ClearMemoryCatalog()
+		{
+			scolMemoryLayouts.Clear();
+			scolMemoryXml.Clear();
 		}
 
 		/// <summary>Obtiene el XML en memoria si se registró con origen textual.</summary>
@@ -194,10 +229,27 @@ namespace Diamond.Timed
 
 		/// <summary>
 		/// Intenta cargar el XML de topología. No lanza: devuelve el error en <paramref name="error"/>.
+		/// Orden: memoria de sesión → <see cref="DefaultIncludeResolver"/> → disco.
 		/// </summary>
 		public static bool TryLoadFromXml(
 			string path,
 			string? baseDirectory,
+			out TopoStorage? storage,
+			out string? error)
+		{
+			return TryLoadFromXml(path, baseDirectory, svarDefaultIncludeResolver, out storage, out error);
+		}
+
+		/// <summary>
+		/// Sobrecarga con resolvedor de almacén explícito (Zafiro, tests).
+		/// Si <paramref name="includeResolver"/> es null, no se consulta ningún almacén de host
+		/// (solo memoria de sesión y disco).
+		/// Orden: memoria → <paramref name="includeResolver"/> → disco.
+		/// </summary>
+		public static bool TryLoadFromXml(
+			string path,
+			string? baseDirectory,
+			ITopoIncludeResolver? includeResolver,
 			out TopoStorage? storage,
 			out string? error)
 		{
@@ -212,13 +264,36 @@ namespace Diamond.Timed
 
 			string logical = EnsureXmlExtension(path);
 
-			// 1) Catálogo en memoria (WASM / host que precargó el XML).
+			// 1) Catálogo en memoria (WASM / host que precargó el XML en esta sesión).
 			if (TryGetFromMemory(logical, out storage) && storage is not null)
 			{
 				return true;
 			}
 
-			// 2) Disco (Diamond.Web server, tests, herramientas).
+			// 2) Almacén del host (Zafiro / catálogo remoto precargado).
+			if (includeResolver is not null)
+			{
+				TopoStorage? fromStore;
+				string? storeError;
+				if (includeResolver.TryResolve(logical, out fromStore, out storeError) && fromStore is not null)
+				{
+					storage = fromStore;
+					// Cache en memoria para includes posteriores sin reconsultar el almacén.
+					string? xml = TryGetMemoryXml(logical);
+					RegisterInMemory(logical, fromStore.Layout, xml);
+					return true;
+				}
+
+				// Si el resolvedor devuelve error “duro” (p. ej. nombre ambiguo), no caer a disco.
+				if (!string.IsNullOrEmpty(storeError)
+					&& storeError.StartsWith("fatal:", StringComparison.OrdinalIgnoreCase))
+				{
+					error = storeError.Substring("fatal:".Length).TrimStart();
+					return false;
+				}
+			}
+
+			// 3) Disco (Diamond.Web server, tests, herramientas de escritorio).
 			string resolved;
 			try
 			{
@@ -226,16 +301,15 @@ namespace Diamond.Timed
 			}
 			catch (Exception ex)
 			{
-				// En browser Path.GetFullPath puede fallar; si hay memoria, ya se intentó.
-				error = "ruta de topología no válida '" + logical + "': " + ex.Message
-					+ " (y no hay copia en memoria; use Cargar topo o precargue samples).";
+				error = BuildNotFoundError(logical, includeResolver,
+					"ruta de topología no válida '" + logical + "': " + ex.Message);
 				return false;
 			}
 
 			if (!File.Exists(resolved))
 			{
-				error = "no se encontró el XML de topología '" + resolved
-					+ "'. En el navegador cargue el topo (botón Topo…) o deje Samples/Onice en wwwroot.";
+				error = BuildNotFoundError(logical, includeResolver,
+					"no se encontró el XML de topología '" + resolved + "'.");
 				return false;
 			}
 
@@ -243,7 +317,6 @@ namespace Diamond.Timed
 			{
 				TopoLayout layout = TopoXmlSerializer.Load(resolved);
 				storage = new TopoStorage(logical, resolved, layout);
-				// Cache para includes posteriores sin re-leer disco.
 				RegisterInMemory(logical, layout);
 				return true;
 			}
@@ -252,6 +325,26 @@ namespace Diamond.Timed
 				error = "error al cargar topología '" + resolved + "': " + ex.Message;
 				return false;
 			}
+		}
+
+		private static string BuildNotFoundError(
+			string logical,
+			ITopoIncludeResolver? includeResolver,
+			string prefix)
+		{
+			string hint = string.Empty;
+			if (includeResolver is not null)
+			{
+				string? available = includeResolver.FormatAvailableHint();
+				if (!string.IsNullOrWhiteSpace(available))
+				{
+					hint = " Almacén: " + available;
+				}
+			}
+
+			return prefix
+				+ " Use include con un nombre del almacén, cargue el topo (botón Topo…) o un path en disco."
+				+ hint;
 		}
 
 		/// <summary>
