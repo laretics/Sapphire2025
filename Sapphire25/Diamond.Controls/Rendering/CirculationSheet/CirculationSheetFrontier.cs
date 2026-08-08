@@ -17,7 +17,7 @@ namespace Diamond.Controls.Rendering
 
 	/// <summary>
 	/// Una frontera de la ficha: punto de PK (estación, apeadero o cambio de V).
-	/// Los datos de tramo (VMx, vía, tiempo concedido) describen el segmento hacia la
+	/// Los datos de tramo (Max, vía, tiempo concedido) describen el segmento hacia la
 	/// siguiente frontera (columnas desfasadas en el dibujo).
 	/// </summary>
 	public sealed class CirculationSheetFrontier
@@ -37,6 +37,8 @@ namespace Diamond.Controls.Rendering
 		private readonly TimeSpan? mvarGrantedToNext;
 		/// <summary>Números de trenes con los que se cruza cerca de este PK.</summary>
 		private readonly string mvarCrossingTrains;
+		/// <summary>Id del eje físico (p. ej. T3, T2) al que pertenece este PK.</summary>
+		private readonly string mvarAxisId;
 
 		public CirculationSheetFrontier(
 			long routePk,
@@ -52,7 +54,8 @@ namespace Diamond.Controls.Rendering
 			int? outgoingTrackCount,
 			int? outgoingVmaxKmh,
 			TimeSpan? grantedToNext,
-			string? crossingTrains = null)
+			string? crossingTrains = null,
+			string? axisId = null)
 		{
 			mvarRoutePk = routePk;
 			mvarStationKm = stationKm ?? string.Empty;
@@ -68,6 +71,7 @@ namespace Diamond.Controls.Rendering
 			mvarOutgoingVmaxKmh = outgoingVmaxKmh;
 			mvarGrantedToNext = grantedToNext;
 			mvarCrossingTrains = crossingTrains ?? string.Empty;
+			mvarAxisId = axisId ?? string.Empty;
 		}
 
 		public CirculationSheetFrontier WithCrossingTrains(string? crossingTrains)
@@ -86,7 +90,8 @@ namespace Diamond.Controls.Rendering
 				mvarOutgoingTrackCount,
 				mvarOutgoingVmaxKmh,
 				mvarGrantedToNext,
-				crossingTrains);
+				crossingTrains,
+				mvarAxisId);
 		}
 
 		public long RoutePk
@@ -97,6 +102,12 @@ namespace Diamond.Controls.Rendering
 		public string StationKm
 		{
 			get { return mvarStationKm; }
+		}
+
+		/// <summary>Id del eje físico de este punto (vacío si no se resolvió).</summary>
+		public string AxisId
+		{
+			get { return mvarAxisId; }
 		}
 
 		public string DependencyName

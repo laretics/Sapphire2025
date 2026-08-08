@@ -20,8 +20,12 @@ namespace Diamond.Controls.Rendering
 
 		/// <summary>
 		/// Genera un PDF con una página por cada SVG de hoja física.
+		/// Si <paramref name="emission"/> no es null, firma el PDF con el certificado X.509 local
+		/// y rellena hash/CMS en la emisión.
 		/// </summary>
-		public static byte[] ExportSvgSheetsToPdf(IReadOnlyList<string> svgSheets)
+		public static byte[] ExportSvgSheetsToPdf(
+			IReadOnlyList<string> svgSheets,
+			CirculationEmissionInfo? emission = null)
 		{
 			if (svgSheets is null || svgSheets.Count == 0)
 			{
@@ -29,8 +33,12 @@ namespace Diamond.Controls.Rendering
 			}
 
 			using PdfDocument document = new PdfDocument();
-			document.Info.Title = "Libro itinerario";
-			document.Info.Creator = "Diamond";
+			document.Info.Title = "Documento de circulación (controlado)";
+			document.Info.Creator = "Zafiro / Diamond";
+			document.Info.Subject = "Documento de circulación · uso controlado · no copiar sin autorización";
+			document.Info.Keywords = emission is null
+				? "circulation;controlled"
+				: "circulation;controlled;signed;seal=" + emission.SealCode;
 
 			int i = 0;
 			while (i < svgSheets.Count)
@@ -124,7 +132,13 @@ namespace Diamond.Controls.Rendering
 
 			using MemoryStream outStream = new MemoryStream();
 			document.Save(outStream, false);
-			return outStream.ToArray();
+			byte[] raw = outStream.ToArray();
+			if (emission is not null)
+			{
+				return CirculationSheetPdfSigner.SignPdf(raw, emission);
+			}
+
+			return raw;
 		}
 
 		private static string EnsureSvgXmlns(string svg)

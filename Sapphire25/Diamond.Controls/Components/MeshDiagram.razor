@@ -161,7 +161,9 @@
 							  DemandPlan="DemandPlan"
 							  ExploitationPlan="ExploitationPlan"
 							  MaxFrontiersPerPage="MaxFrontiersPerPage"
-							  OnClose="CloseCirculationSheet" />
+							  OnClose="CloseCirculationSheet"
+							  OnOfficialEmission="OnOfficialEmission"
+							  OnVerifySealRemote="OnVerifySealRemote" />
 	}
 
 	<MeshPrintView @ref="mvarPrintView"
@@ -237,6 +239,14 @@
 	/// <summary>Plan de demanda (días de circulación en fichas / libro).</summary>
 	[Parameter]
 	public Plan? DemandPlan { get; set; }
+
+	/// <summary>Registro de emisión oficial (impresión/PDF) hacia el host Zafiro.</summary>
+	[Parameter]
+	public EventCallback<CirculationEmissionInfo> OnOfficialEmission { get; set; }
+
+	/// <summary>Verificación remota de sello (API almacén / log).</summary>
+	[Parameter]
+	public EventCallback<string> OnVerifySealRemote { get; set; }
 
 	/// <summary>Plan de explotación multi-día cargado (.dmesh).</summary>
 	[Parameter]

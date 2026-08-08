@@ -4,9 +4,12 @@
 @using System.Globalization
 @using System.IO
 @using System.Net.Http
+@using System.Net.Http.Json
+@using System.Text.Json
 @using Diamond.Project
 @using Diamond.Timed
 @using Diamond.Topo
+@using Diamond.Controls.Rendering
 @using Diamond.Controls.Services
 @using Microsoft.AspNetCore.Components
 @using Microsoft.JSInterop
@@ -326,6 +329,8 @@
 							 PrintNotes="@PrintNotesForMesh"
 							 DemandPlan="mvarPlan"
 							 ExploitationPlan="mvarExploitationPlan"
+							 OnOfficialEmission="HandleCirculationEmissionAsync"
+							 OnVerifySealRemote="HandleCirculationVerifyRemoteAsync"
 							 @bind-SelectedCirculation="mvarSelectedCirculation" />
 
 				@* Inspector inferior de la malla *@
@@ -571,6 +576,20 @@
 	/// <summary>Publica el script actual como plan compilado (opcional).</summary>
 	[Parameter]
 	public Func<MeshStorePublishArgs, Task<MeshStorePublishResult?>>? PublishStorePlanAsync { get; set; }
+
+	/// <summary>
+	/// Host Zafiro: registra actividad de sesión (log) al imprimir/exportar/verificar
+	/// documentación de circulación. Firma sugerida: (eventTypeByte, detail).
+	/// </summary>
+	[Parameter]
+	public Func<byte, string, Task>? LogSessionActivityAsync { get; set; }
+
+	/// <summary>
+	/// Host Zafiro: registra la emisión en el almacén (API). Si es null se intenta
+	/// POST a api/SapphireDiamond/circulation/emission cuando hay BaseUri.
+	/// </summary>
+	[Parameter]
+	public Func<CirculationEmissionInfo, Task>? RegisterCirculationEmissionAsync { get; set; }
 
 	private bool StoreEnabled
 	{
@@ -3459,5 +3478,118 @@
 		return (abs / 1000L).ToString(CultureInfo.InvariantCulture) + "+"
 			+ (abs % 1000L).ToString("D3", CultureInfo.InvariantCulture);
 	}
+
+	/// <summary>
+	/// Emisión oficial de doc. de circulación: log de sesión + API almacén (si hay).
+	/// Event types (Common.sessionEventType): 80 libro print, 81 ficha print, 82 libro pdf, 83 ficha pdf.
+	/// </summary>
+	private async Task HandleCirculationEmissionAsync(CirculationEmissionInfo emission)
+	{
+		if (emission is null)
+		{
+			return;
+		}
+
+		byte eventType = 0;
+		if (string.Equals(emission.DocumentKind, "libro", StringComparison.OrdinalIgnoreCase))
+		{
+			eventType = string.Equals(emission.Channel, "pdf", StringComparison.OrdinalIgnoreCase)
+				? (byte)82
+				: (byte)80;
+		}
+		else
+		{
+			eventType = string.Equals(emission.Channel, "pdf", StringComparison.OrdinalIgnoreCase)
+				? (byte)83
+				: (byte)81;
+		}
+
+		string detail = emission.DocumentKind + "|" + emission.Channel
+			+ "|SEL " + emission.SealCode
+			+ "|" + emission.PlanOrTrain
+			+ "|sheets=" + emission.SheetCount.ToString(CultureInfo.InvariantCulture);
+
+		if (LogSessionActivityAsync is not null)
+		{
+			try
+			{
+				await LogSessionActivityAsync(eventType, detail);
+			}
+			catch
+			{
+			}
+		}
+
+		if (RegisterCirculationEmissionAsync is not null)
+		{
+			try
+			{
+				await RegisterCirculationEmissionAsync(emission);
+				return;
+			}
+			catch
+			{
+			}
+		}
+
+		// Fallback: POST al API Diamond del host (Zafiro reverse-proxy / same origin).
+		try
+		{
+			using HttpClient http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+			var body = new
+			{
+				emissionId = emission.EmissionId,
+				documentKind = emission.DocumentKind,
+				channel = emission.Channel,
+				sealCode = emission.SealCode,
+				payload = emission.Payload,
+				planOrTrain = emission.PlanOrTrain,
+				editionLabel = emission.EditionLabel,
+				dayLabel = emission.DayLabel,
+				sheetCount = emission.SheetCount,
+				certThumbprint = emission.CertThumbprint,
+				pdfContentHash = emission.PdfContentHash,
+				pdfCmsSignatureBase64 = emission.PdfCmsSignatureBase64,
+				qrText = emission.QrText
+			};
+			await http.PostAsJsonAsync("api/SapphireDiamond/circulation/emission", body);
+		}
+		catch
+		{
+			// Sin API: el registro local JSONL ya se escribió en CirculationSheetView.
+		}
+	}
+
+	private async Task HandleCirculationVerifyRemoteAsync(string sealOrQr)
+	{
+		if (string.IsNullOrWhiteSpace(sealOrQr))
+		{
+			return;
+		}
+
+		if (LogSessionActivityAsync is not null)
+		{
+			try
+			{
+				// circulationSealVerified = 84
+				await LogSessionActivityAsync(84, "verify|" + sealOrQr.Trim());
+			}
+			catch
+			{
+			}
+		}
+
+		try
+		{
+			using HttpClient http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
+			await http.PostAsJsonAsync(
+				"api/SapphireDiamond/circulation/verify",
+				new { sealOrQr = sealOrQr.Trim() });
+		}
+		catch
+		{
+		}
+	}
 }
+
 

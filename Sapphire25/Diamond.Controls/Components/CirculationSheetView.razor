@@ -6,6 +6,7 @@
 @*
   Visor del libro itinerario / ficha de un tren.
   Hojas A4 apaisadas (2 semipáginas por hoja).
+  Emisión controlada: sello SEL, QR, firma X.509 en PDF, registro y log Zafiro.
 *@
 @if (mvarReady)
 {
@@ -39,24 +40,59 @@
 							   @onchange="OnMaxPerPageChanged" />
 					</label>
 					<button type="button"
+							class="btn btn-sm btn-outline-warning"
+							@onclick="ToggleVerifyPanel"
+							title="Verificar sello SEL o texto del QR">
+						Verificar sello
+					</button>
+					<button type="button"
 							class="btn btn-sm btn-outline-secondary"
 							@onclick="PrintAsync"
-							title="Imprimir todas las hojas (o Guardar como PDF en el diálogo del navegador)">
+							title="Imprimir (registra emisión oficial)">
 						Imprimir
 					</button>
 					<button type="button"
 							class="btn btn-sm btn-outline-secondary"
 							disabled="@(mcolPageSvg.Count == 0 || mvarBusyPdf)"
 							@onclick="ExportPdfAsync"
-							title="Exportar el documento completo a PDF (PdfSharp + Svg.Skia)">
-						@(mvarBusyPdf ? "PDF…" : "PDF")
+							title="PDF firmado X.509 (certificado local) + registro de emisión">
+						@(mvarBusyPdf ? "PDF…" : "PDF firmado")
 					</button>
 					<button type="button" class="btn btn-sm btn-outline-light" @onclick="Close" title="Cerrar">Cerrar</button>
 				</span>
 			</div>
+			@if (mvarShowVerify)
+			{
+				<div class="diamond-circ-verify no-print p-2 border-bottom">
+					<div class="d-flex flex-wrap gap-2 align-items-center">
+						<input type="text"
+							   class="form-control form-control-sm"
+							   style="min-width:16rem;max-width:28rem"
+							   placeholder="SEL a1b2… o pega ZAFSEL:v1:…"
+							   @bind="mvarVerifyInput"
+							   @bind:event="oninput" />
+						<button type="button" class="btn btn-sm btn-primary" @onclick="VerifySealAsync">Comprobar</button>
+						@if (!string.IsNullOrEmpty(mvarVerifyMessage))
+						{
+							<span class="@(mvarVerifyOk ? "text-success" : "text-danger") small">@mvarVerifyMessage</span>
+						}
+					</div>
+					<div class="text-muted small mt-1">
+						Cert. local: <code>@mvarCertThumbShort</code>
+						@if (!string.IsNullOrEmpty(mvarLastSeal))
+						{
+							<span> · Última emisión: <code>SEL @mvarLastSeal</code></span>
+						}
+					</div>
+				</div>
+			}
 			@if (!string.IsNullOrEmpty(mvarError))
 			{
 				<div class="p-3 text-danger">@mvarError</div>
+			}
+			@if (!string.IsNullOrEmpty(mvarInfo))
+			{
+				<div class="p-2 text-success small no-print">@mvarInfo</div>
 			}
 			<div class="diamond-circ-sheet-pages" @ref="mvarPrintRoot">
 				@for (int i = 0; i < mcolPageSvg.Count; i++)
@@ -79,7 +115,16 @@
 	private string mvarTitleExtra = string.Empty;
 	private int mvarHalfPageCount;
 	private string? mvarError;
+	private string? mvarInfo;
 	private bool mvarBusyPdf;
+	private bool mvarShowVerify;
+	private string mvarVerifyInput = string.Empty;
+	private string mvarVerifyMessage = string.Empty;
+	private bool mvarVerifyOk;
+	private string mvarLastSeal = string.Empty;
+	private string mvarCertThumbShort = "—";
+	private string mvarEditionLabel = string.Empty;
+	private string mvarDayLabel = string.Empty;
 
 	/// <summary>Si true, libro de toda la malla; si false, ficha del tren seleccionado.</summary>
 	[Parameter]
@@ -115,6 +160,19 @@
 	[Parameter]
 	public EventCallback OnClose { get; set; }
 
+	/// <summary>
+	/// El host (Zafiro) registra la emisión en BD y en el log de sesión.
+	/// Si no hay delegate, solo se escribe el registro local JSONL.
+	/// </summary>
+	[Parameter]
+	public EventCallback<CirculationEmissionInfo> OnOfficialEmission { get; set; }
+
+	/// <summary>
+	/// Verificación remota (API almacén). Si no hay delegate, solo registro local + cripto.
+	/// </summary>
+	[Parameter]
+	public EventCallback<string> OnVerifySealRemote { get; set; }
+
 	[Parameter]
 	public bool CloseOnOverlayClick { get; set; } = true;
 
@@ -125,6 +183,16 @@
 			mvarMaxPerPage = MaxFrontiersPerPage;
 		}
 
+		try
+		{
+			string thumb = CirculationSheetCertificate.GetThumbprint();
+			mvarCertThumbShort = thumb.Length > 10 ? thumb.Substring(0, 10) + "…" : thumb;
+		}
+		catch
+		{
+			mvarCertThumbShort = "(sin cert)";
+		}
+
 		Rebuild();
 	}
 
@@ -133,9 +201,12 @@
 		mcolPageSvg.Clear();
 		mvarReady = false;
 		mvarError = null;
+		mvarInfo = null;
 		mvarFullBook = FullBook;
 		mvarTitleExtra = string.Empty;
 		mvarHalfPageCount = 0;
+		mvarEditionLabel = string.Empty;
+		mvarDayLabel = string.Empty;
 
 		try
 		{
@@ -159,6 +230,8 @@
 					exploitation: ExploitationPlan);
 				mvarTitleExtra = book.PlanName;
 				mvarHalfPageCount = book.TotalHalfPages;
+				mvarEditionLabel = book.EditionLabel;
+				mvarDayLabel = book.DayLabel;
 				IReadOnlyList<string> sheets = CirculationSheetSvgRenderer.RenderAllBookSheets(book);
 				int i = 0;
 				while (i < sheets.Count)
@@ -180,6 +253,8 @@
 					Circulation, Mesh, mvarMaxPerPage, editionLabel: null, serviceDays: days);
 				mvarTitleExtra = string.IsNullOrEmpty(doc.TrainNumber) ? "—" : doc.TrainNumber;
 				mvarHalfPageCount = doc.Pages.Count;
+				mvarEditionLabel = doc.EditionLabel;
+				mvarDayLabel = doc.ServiceDaysLabel;
 				IReadOnlyList<string> pages = CirculationSheetSvgRenderer.RenderAllPages(doc);
 				int i = 0;
 				while (i < pages.Count)
@@ -229,9 +304,78 @@
 		}
 	}
 
+	private void ToggleVerifyPanel()
+	{
+		mvarShowVerify = !mvarShowVerify;
+		mvarVerifyMessage = string.Empty;
+	}
+
+	private async Task VerifySealAsync()
+	{
+		mvarVerifyMessage = string.Empty;
+		CirculationSealVerifyResult local = CirculationEmissionRegistry.Verify(mvarVerifyInput);
+		mvarVerifyOk = local.Ok;
+		mvarVerifyMessage = local.Message;
+
+		if (OnVerifySealRemote.HasDelegate && !string.IsNullOrWhiteSpace(mvarVerifyInput))
+		{
+			try
+			{
+				await OnVerifySealRemote.InvokeAsync(mvarVerifyInput.Trim());
+			}
+			catch
+			{
+			}
+		}
+
+		// Log de verificación vía host de emisión (detalle en OnOfficialEmission no aplica);
+		// el host puede escuchar OnVerifySealRemote y hacer LogActivity(circulationSealVerified).
+	}
+
+	private CirculationEmissionInfo BuildEmission(string channel)
+	{
+		string kind = mvarFullBook ? "libro" : "ficha";
+		string planOrTrain = mvarFullBook ? mvarTitleExtra : mvarTitleExtra;
+		return CirculationSheetAuthenticity.CreateEmission(
+			kind,
+			channel,
+			planOrTrain,
+			mvarEditionLabel,
+			mvarDayLabel,
+			mcolPageSvg.Count,
+			Notes);
+	}
+
+	private async Task RegisterEmissionAsync(CirculationEmissionInfo emission)
+	{
+		mvarLastSeal = emission.SealCode;
+		try
+		{
+			CirculationEmissionRegistry.Append(emission);
+		}
+		catch
+		{
+		}
+
+		if (OnOfficialEmission.HasDelegate)
+		{
+			try
+			{
+				await OnOfficialEmission.InvokeAsync(emission);
+			}
+			catch (Exception ex)
+			{
+				mvarInfo = "Emisión local OK; aviso al host: " + ex.Message;
+			}
+		}
+	}
+
 	private async Task PrintAsync()
 	{
-		// Leer hojas del DOM del diálogo (todas las páginas; evita límite SignalR).
+		CirculationEmissionInfo emission = BuildEmission("print");
+		await RegisterEmissionAsync(emission);
+		mvarInfo = "Emisión registrada · " + CirculationSheetAuthenticity.FormatSealLabel(emission.SealCode);
+
 		try
 		{
 			await Js.InvokeVoidAsync("diamondCircSheet.printFromRoot", mvarPrintRoot);
@@ -264,15 +408,24 @@
 
 		mvarBusyPdf = true;
 		mvarError = null;
+		mvarInfo = null;
 		try
 		{
+			CirculationEmissionInfo emission = BuildEmission("pdf");
 			byte[] pdf = await Task.Run(() =>
-				CirculationSheetPdfExporter.ExportSvgSheetsToPdf(mcolPageSvg));
+				CirculationSheetPdfExporter.ExportSvgSheetsToPdf(mcolPageSvg, emission));
+			await RegisterEmissionAsync(emission);
+
 			string b64 = Convert.ToBase64String(pdf);
 			string name = mvarFullBook
-				? "libro-itinerario.pdf"
-				: "ficha-" + SanitizeFileName(mvarTitleExtra) + ".pdf";
+				? "libro-itinerario-firmado.pdf"
+				: "ficha-" + SanitizeFileName(mvarTitleExtra) + "-firmado.pdf";
 			await Js.InvokeVoidAsync("diamondCircSheet.downloadPdf", b64, name);
+			mvarInfo = "PDF firmado · "
+				+ CirculationSheetAuthenticity.FormatSealLabel(emission.SealCode)
+				+ " · cert " + (emission.CertThumbprint.Length > 8
+					? emission.CertThumbprint.Substring(0, 8) + "…"
+					: emission.CertThumbprint);
 		}
 		catch (Exception ex)
 		{

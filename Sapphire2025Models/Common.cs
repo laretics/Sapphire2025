@@ -266,7 +266,14 @@ namespace Sapphire2025Models
 			scheduleViewOpened = 70,    //Apertura de la vista de cuadrante
 			scheduleDayViewed = 71,     //Consulta de un día del cuadrante propio (o simulado)
 			scheduleShiftQueried = 72,  //Consulta de quién realiza un turno
-			scheduleSwapRequested = 73  //Solicitud de cambio de turno
+			scheduleSwapRequested = 73, //Solicitud de cambio de turno
+
+			// Documentación de circulación (Diamond / libro itinerario)
+			circulationBookPrinted = 80,       //Impresión de libro itinerario
+			circulationSheetPrinted = 81,      //Impresión de ficha de un tren
+			circulationBookExportedPdf = 82,   //Exportación PDF de libro
+			circulationSheetExportedPdf = 83,  //Exportación PDF de ficha
+			circulationSealVerified = 84       //Verificación de sello SEL en UI
 		}
 
 		/// <summary>
@@ -310,6 +317,11 @@ namespace Sapphire2025Models
 				sessionEventType.scheduleDayViewed => "Consulta día de cuadrante",
 				sessionEventType.scheduleShiftQueried => "Consulta de turno ajeno",
 				sessionEventType.scheduleSwapRequested => "Solicitud de cambio de turno",
+				sessionEventType.circulationBookPrinted => "Impresión libro itinerario",
+				sessionEventType.circulationSheetPrinted => "Impresión ficha de circulación",
+				sessionEventType.circulationBookExportedPdf => "PDF libro itinerario",
+				sessionEventType.circulationSheetExportedPdf => "PDF ficha de circulación",
+				sessionEventType.circulationSealVerified => "Verificación sello de circulación",
 				_ => "¿?"
 			};
 		}

@@ -17,6 +17,7 @@ namespace Diamond.Controls.Rendering
 		private readonly string mvarRelation;
 		private readonly string mvarMaterialType;
 		private readonly string mvarLocationLine;
+		private readonly string mvarRouteLine;
 		private readonly string mvarMarchId;
 		private readonly string mvarEditionLabel;
 		private readonly string mvarServiceDaysLabel;
@@ -31,6 +32,7 @@ namespace Diamond.Controls.Rendering
 			string relation,
 			string materialType,
 			string locationLine,
+			string routeLine,
 			string marchId,
 			string editionLabel,
 			string serviceDaysLabel,
@@ -44,6 +46,7 @@ namespace Diamond.Controls.Rendering
 			mvarRelation = relation;
 			mvarMaterialType = materialType;
 			mvarLocationLine = locationLine;
+			mvarRouteLine = routeLine ?? string.Empty;
 			mvarMarchId = marchId;
 			mvarEditionLabel = editionLabel;
 			mvarServiceDaysLabel = serviceDaysLabel ?? string.Empty;
@@ -72,14 +75,31 @@ namespace Diamond.Controls.Rendering
 			get { return mvarRelation; }
 		}
 
+		/// <summary>
+		/// Etiqueta de cabecera derecha: techo de velocidad del material (p. ej. "Tipo 100").
+		/// En todas las hojas de la marcha.
+		/// </summary>
 		public string MaterialType
 		{
 			get { return mvarMaterialType; }
 		}
 
+		/// <summary>
+		/// Línea Loc. (locomotora / material): nombre, aceleración y deceleración.
+		/// Solo 1.ª hoja.
+		/// </summary>
 		public string LocationLine
 		{
 			get { return mvarLocationLine; }
+		}
+
+		/// <summary>
+		/// Línea de ruta (antiguo contenido de Loc. con vista y relación OD).
+		/// Solo 1.ª hoja, debajo de la locomotora.
+		/// </summary>
+		public string RouteLine
+		{
+			get { return mvarRouteLine; }
 		}
 
 		public string MarchId
@@ -158,15 +178,15 @@ namespace Diamond.Controls.Rendering
 				: string.Empty;
 			string trainTitle = string.Empty;
 			string relation = originName + " a " + destName;
-			string material = asim.Specs is not null
-				? (string.IsNullOrEmpty(asim.Specs.Id) ? asim.Specs.Name : asim.Specs.Id)
-				: string.Empty;
-			string locationLine = "Loc. " + (string.IsNullOrEmpty(view.Id) ? "—" : view.Id)
-				+ ".- " + relation.ToUpperInvariant();
+			// Loc. = locomotora/material (nombre, a, b). Ruta = antigua línea Loc. (vista + OD).
+			// Tipo = techo de velocidad del material en todas las hojas ("Tipo 100").
+			string locationLine = FormatLocomotiveLine(asim.Specs);
+			string routeLine = FormatRouteLine(view, relation);
+			string material = FormatMaterialTypeLabel(asim.Specs);
 			// No exponer Id técnico de planificación (C12-R-T3…).
 			string marchId = string.Empty;
 			string edition = editionLabel
-				?? ("DIAMOND · " + DateTime.Now.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture));
+				?? ("Zafiro · " + DateTime.Now.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture));
 
 			// Días: parámetro → día de la malla filtrada (un solo día).
 			string daysLabel = string.Empty;
@@ -195,12 +215,75 @@ namespace Diamond.Controls.Rendering
 				relation,
 				material,
 				locationLine,
+				routeLine,
 				marchId,
 				edition,
 				daysLabel,
 				frontiers,
 				pages,
 				maxFrontiersPerPage);
+		}
+
+		/// <summary>
+		/// Loc. (locomotora): nombre del material + aceleración y freno redondeados.
+		/// </summary>
+		public static string FormatLocomotiveLine(TrainSpecs? specs)
+		{
+			if (specs is null)
+			{
+				return "Loc. —";
+			}
+
+			string name = !string.IsNullOrWhiteSpace(specs.Name)
+				? specs.Name.Trim()
+				: (specs.Id ?? string.Empty).Trim();
+			if (name.Length == 0)
+			{
+				name = "—";
+			}
+
+			string a = RoundKinematic(specs.Acceleration);
+			string b = RoundKinematic(specs.ServiceBrake);
+			return "Loc. " + name + "  a " + a + "  b " + b;
+		}
+
+		/// <summary>
+		/// Ruta: mismos datos que el antiguo Loc. (id de vista / ejes + relación OD),
+		/// en mayúsculas y compacto para lectura.
+		/// </summary>
+		public static string FormatRouteLine(RouteView view, string relation)
+		{
+			string viewId = view is null || string.IsNullOrWhiteSpace(view.Id)
+				? "—"
+				: view.Id.Trim();
+			string rel = string.IsNullOrWhiteSpace(relation)
+				? "—"
+				: relation.Trim().ToUpperInvariant();
+			return viewId + ".- " + rel;
+		}
+
+		/// <summary>Cabecera derecha: "Tipo 100" con vmax del material redondeado a entero.</summary>
+		public static string FormatMaterialTypeLabel(TrainSpecs? specs)
+		{
+			if (specs is null || specs.MaxSpeedKmh <= 0.0)
+			{
+				return string.Empty;
+			}
+
+			int vmax = (int)Math.Round(specs.MaxSpeedKmh, MidpointRounding.AwayFromZero);
+			if (vmax < 1)
+			{
+				return string.Empty;
+			}
+
+			return "Tipo " + vmax.ToString(CultureInfo.InvariantCulture);
+		}
+
+		private static string RoundKinematic(double metersPerSecondSquared)
+		{
+			// Una cifra decimal basta para legibilidad en ficha (0.85 → 0.9, 0.8 → 0.8).
+			double r = Math.Round(metersPerSecondSquared, 1, MidpointRounding.AwayFromZero);
+			return r.ToString("0.0", CultureInfo.InvariantCulture);
 		}
 
 		/// <summary>
@@ -501,6 +584,26 @@ namespace Diamond.Controls.Rendering
 				StationOnRoute? st;
 				stationByPk.TryGetValue(pk, out st);
 
+				// Eje físico y PK de eje (columna PK, nombre en cambios de V, divisiones).
+				// En vistas multi-eje y trenes descendentes el PK de ruta crece con el
+				// recorrido, pero en ficha debe mostrarse el PK del eje (igual en impares
+				// y pares).
+				string axisId = string.Empty;
+				long displayPk = pk;
+				if (view.TryMapRouteToAxis(pk, out Axis? axis, out long axisPk) && axis is not null)
+				{
+					axisId = axis.Id ?? string.Empty;
+					displayPk = axisPk;
+				}
+				else if (st is not null)
+				{
+					displayPk = st.AxisPk;
+					if (st.Leg is not null && st.Leg.Axis is not null)
+					{
+						axisId = st.Leg.Axis.Id ?? string.Empty;
+					}
+				}
+
 				CirculationSheetMarkKind kind;
 				string depName;
 				if (st is not null)
@@ -513,9 +616,9 @@ namespace Diamond.Controls.Rendering
 				}
 				else
 				{
-					// Frontera de V en plena vía.
+					// Frontera de V en plena vía: mismo PK de eje que la columna PK.
 					kind = CirculationSheetMarkKind.SpeedLimitChange;
-					depName = "PK " + FormatStationKm(pk);
+					depName = "PK " + FormatStationKm(displayPk);
 				}
 
 				bool commercial = commercialPk.Contains(pk) && st is not null;
@@ -593,7 +696,7 @@ namespace Diamond.Controls.Rendering
 
 				rows.Add(new CirculationSheetFrontier(
 					routePk: pk,
-					stationKm: FormatStationKm(pk),
+					stationKm: FormatStationKm(displayPk),
 					dependencyName: depName,
 					markKind: kind,
 					isOrigin: isOrigin,
@@ -604,7 +707,8 @@ namespace Diamond.Controls.Rendering
 					departure: dep,
 					outgoingTrackCount: outTracks,
 					outgoingVmaxKmh: outVmax,
-					grantedToNext: granted));
+					grantedToNext: granted,
+					axisId: axisId));
 
 				i++;
 			}
@@ -819,9 +923,28 @@ namespace Diamond.Controls.Rendering
 			return km.ToString("0.0", CultureInfo.InvariantCulture);
 		}
 
-		/// <summary>Hora de ficha: H.mm o H.mm½.</summary>
+		/// <summary>
+		/// Hora de ficha: HH.mm (hora a dos dígitos) y, si hay media, sufijo ½.
+		/// En el dibujo de la columna Hora el ½ se pinta aparte y más pequeño.
+		/// </summary>
 		public static string FormatSheetTime(TimeSpan? ts)
 		{
+			string main = FormatSheetTime(ts, out string half);
+			if (half.Length == 0)
+			{
+				return main;
+			}
+
+			return main + half;
+		}
+
+		/// <summary>
+		/// Hora de ficha partida: cuerpo HH.mm (justificable a la izquierda) y
+		/// <paramref name="halfSuffix"/> = "½" si 15–44 s de segundo, vacío si no.
+		/// </summary>
+		public static string FormatSheetTime(TimeSpan? ts, out string halfSuffix)
+		{
+			halfSuffix = string.Empty;
 			if (!ts.HasValue)
 			{
 				return string.Empty;
@@ -845,17 +968,21 @@ namespace Diamond.Controls.Rendering
 					h++;
 				}
 
-				return h.ToString(CultureInfo.InvariantCulture)
-					+ "." + m.ToString("D2", CultureInfo.InvariantCulture);
+				return FormatHourMinute(h, m);
 			}
 
 			if (sec >= 15)
 			{
-				return h.ToString(CultureInfo.InvariantCulture)
-					+ "." + m.ToString("D2", CultureInfo.InvariantCulture) + "½";
+				halfSuffix = "½";
+				return FormatHourMinute(h, m);
 			}
 
-			return h.ToString(CultureInfo.InvariantCulture)
+			return FormatHourMinute(h, m);
+		}
+
+		private static string FormatHourMinute(int h, int m)
+		{
+			return h.ToString("D2", CultureInfo.InvariantCulture)
 				+ "." + m.ToString("D2", CultureInfo.InvariantCulture);
 		}
 

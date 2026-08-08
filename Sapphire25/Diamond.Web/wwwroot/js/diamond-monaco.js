@@ -8,12 +8,43 @@
 	var registered = false;
 	var registering = null;
 
+	/** Diagnóstico para Blazor (evita Invoke a símbolos inexistentes). */
+	window.diamondReady = {
+		check: function () {
+			return {
+				monaco: typeof monaco !== "undefined",
+				require: typeof require === "function",
+				diamondMonaco: !!(window.diamondMonaco && typeof window.diamondMonaco.ensureLanguageAsync === "function"),
+				diamondSplit: !!(window.diamondSplit && typeof window.diamondSplit.attach === "function"),
+				diamondFile: !!(window.diamondFile && typeof window.diamondFile.open === "function"),
+				meshViewport: !!(window.diamondMeshViewport
+					&& typeof window.diamondMeshViewport.attach === "function"
+					&& typeof window.diamondMeshViewport.clientToSvg === "function")
+			};
+		},
+		/** Texto plano para interop WASM (evita Dictionary&lt;string,object&gt; frágil). */
+		summary: function () {
+			var c = window.diamondReady.check();
+			var keys = Object.keys(c);
+			var parts = [];
+			var i;
+			for (i = 0; i < keys.length; i++) {
+				parts.push(keys[i] + "=" + c[keys[i]]);
+			}
+			return parts.join(", ");
+		}
+	};
+
 	function defineTheme() {
 		monaco.editor.defineTheme("diamond-dark", {
 			base: "vs-dark",
 			inherit: true,
 			rules: [
 				{ token: "comment", foreground: "64748b", fontStyle: "italic" },
+				// Metadatos de proyecto (plan, train, notes, single track, vmax…): naranja.
+				{ token: "meta", foreground: "fb923c" },
+				{ token: "keyword.meta", foreground: "fb923c" },
+				// Directivas de demanda (require, stops, days…).
 				{ token: "keyword", foreground: "c4b5fd" },
 				{ token: "string", foreground: "86efac" },
 				{ token: "number", foreground: "fbbf24" },
@@ -68,8 +99,23 @@
 		var reStringBad = /\"([^\"\\]|\\.)*$/;
 		var reStringOpen = /\"/;
 		var reArrow = /->/;
+		// Metadatos de proyecto / cabecera (naranja): frases multi-palabra primero.
+		var reMetaPhrase = new RegExp(
+			"\\b(?:single\\s+tracks?|via\\s+simple|v[ií]a\\s+simple|single\\s+v[ií]a)\\b"
+		);
+		var reMetaKeyword = new RegExp(
+			"\\b(?:notes|note|notas|nota|plan|include|incluir|topo|" +
+			"train|tren|fleet|trainspecs|name|nombre|" +
+			"accel|acceleration|brake|freno|vmax|maxspeed|" +
+			"single|tracks?|vias|v[ií]as|limit|limite|l[ií]mite|speed)\\b"
+		);
+		// Directivas de demanda / malla (violeta).
 		var reKeyword = new RegExp(
-			"\\b(?:plan|require|req|delete|del|asim|asimilacion|asimilation|numbers|number|nums|num|serie|series|numeracion|all|any|overlap|journey|both|ways|using|as|from|to|days|on|stops|skip|dwell|cross|at|color|colour|with|con|region|every|min|mins|minutes|per|hour|hours)\\b"
+			"\\b(?:require|req|delete|del|asim|asimilacion|asimilation|" +
+			"numbers|number|nums|num|serie|series|numeracion|" +
+			"all|any|overlap|journey|both|ways|using|as|from|to|" +
+			"days|on|stops|skip|dwell|cross|at|color|colour|with|con|region|" +
+			"every|min|mins|minutes|per|hour|hours)\\b"
 		);
 		var reHexColor = /#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/;
 		// Patrones de numeración con # en medio o al final: 49##, P##MTX, P##MAN (antes que comentario)
@@ -107,6 +153,9 @@
 					[reStringBad, "string.invalid"],
 					[reStringOpen, "string", "@string"],
 					[reArrow, "operator"],
+					// Metadatos (naranja) antes que keywords de demanda
+					[reMetaPhrase, "meta"],
+					[reMetaKeyword, "meta"],
 					[reKeyword, "keyword"],
 					[reDay, "type"],
 					[reDayRange, "type"],
@@ -353,23 +402,57 @@
 	}
 
 	/**
-	 * Fuerza layout del editor BlazorMonaco (id del host, p. ej. diamond-demand-editor).
-	 * Importante: NO tocar host.style.height (provoca bucle con ResizeObserver y tumba el circuito).
+	 * True si BlazorMonaco ya registró el editor (evita layout() ruidoso del paquete).
+	 * Nunca llama a getEditorHolder en modo throwing.
+	 */
+	function isEditorReady(editorId) {
+		if (!editorId) {
+			return false;
+		}
+		try {
+			if (window.blazorMonaco && window.blazorMonaco.editor
+				&& typeof window.blazorMonaco.editor.getEditor === "function") {
+				// silent=true: no lanza "Couldn't find the editor..."
+				return !!window.blazorMonaco.editor.getEditor(editorId, true);
+			}
+		} catch (e) {
+			// ignore
+		}
+		try {
+			if (window.blazorMonaco && Array.isArray(window.blazorMonaco.editors)) {
+				var list = window.blazorMonaco.editors;
+				var i;
+				for (i = 0; i < list.length; i++) {
+					if (list[i] && list[i].id === editorId && list[i].editor) {
+						return true;
+					}
+				}
+			}
+		} catch (e2) {
+			// ignore
+		}
+		return false;
+	}
+
+	/**
+	 * Fuerza layout del editor sin pasar por blazorMonaco.editor.layout()
+	 * (esa API lanza si el editor aún no está en el registro).
+	 * Importante: NO tocar host.style.height (bucle ResizeObserver).
 	 */
 	function layoutEditor(editorId) {
 		var laid = false;
 
-		// 1) Registro de BlazorMonaco (API real del paquete)
+		// 1) Instancia registrada en BlazorMonaco (silent)
 		try {
 			if (window.blazorMonaco && window.blazorMonaco.editor && editorId) {
 				var held = window.blazorMonaco.editor.getEditor(editorId, true);
-				if (held) {
+				if (held && typeof held.layout === "function") {
 					held.layout();
 					laid = true;
 				}
 			}
 		} catch (e0) {
-			// ignore
+			// ignore — nunca re-lanzar
 		}
 
 		if (laid || typeof monaco === "undefined" || !monaco.editor) {
@@ -395,8 +478,10 @@
 				if (host && dom && !host.contains(dom) && dom !== host) {
 					continue;
 				}
-				ed.layout();
-				laid = true;
+				if (ed && typeof ed.layout === "function") {
+					ed.layout();
+					laid = true;
+				}
 			} catch (e2) {
 				// ignore
 			}
@@ -408,16 +493,21 @@
 	/**
 	 * Observa el contenedor del editor y llama layout cuando cambia de tamaño
 	 * (split, aparición de panel de errores, etc.). Debounce + sin reentrada.
+	 * No hace nada útil hasta que el editor exista; reintenta al montar.
 	 */
 	function watchLayout(editorId) {
 		var host = editorId ? document.getElementById(editorId) : null;
 		if (!host || typeof ResizeObserver === "undefined") {
-			layoutEditor(editorId);
+			if (isEditorReady(editorId)) {
+				layoutEditor(editorId);
+			}
 			return false;
 		}
 
 		if (host._diamondMonacoRo) {
-			layoutEditor(editorId);
+			if (isEditorReady(editorId)) {
+				layoutEditor(editorId);
+			}
 			return true;
 		}
 
@@ -431,6 +521,9 @@
 			pending = setTimeout(function () {
 				pending = null;
 				if (running) {
+					return;
+				}
+				if (!isEditorReady(editorId)) {
 					return;
 				}
 				running = true;
@@ -451,15 +544,18 @@
 		host._diamondMonacoRo = ro;
 
 		// Intentos tras montaje (layout flex a veces llega en frames posteriores).
-		layoutEditor(editorId);
+		// Solo si el editor ya está registrado: si no, el RO lo hará al primer resize.
+		function tryLater() {
+			if (isEditorReady(editorId)) {
+				layoutEditor(editorId);
+			}
+		}
+		tryLater();
 		requestAnimationFrame(function () {
-			layoutEditor(editorId);
-			setTimeout(function () {
-				layoutEditor(editorId);
-			}, 80);
-			setTimeout(function () {
-				layoutEditor(editorId);
-			}, 250);
+			tryLater();
+			setTimeout(tryLater, 80);
+			setTimeout(tryLater, 250);
+			setTimeout(tryLater, 600);
 		});
 		return true;
 	}
@@ -472,6 +568,7 @@
 		},
 		ensureLanguageAsync: ensureLanguageAsync,
 		applyToEditor: applyToEditorAsync,
+		isEditorReady: isEditorReady,
 		layout: layoutEditor,
 		watchLayout: watchLayout,
 		setMarkers: setMarkers,
