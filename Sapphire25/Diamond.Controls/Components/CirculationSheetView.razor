@@ -354,7 +354,7 @@
 						EditionLabel = mvarEditionLabel,
 						DayLabel = mvarDayLabel,
 						SheetCount = mcolPageSvg.Count,
-						QrText = CirculationSheetQr.BuildQrPayload(mvarDocumentSeal, mvarDocumentPayload)
+						QrText = CirculationSheetQr.BuildQrPayload(mvarDocumentSeal)
 					});
 				}
 				catch
@@ -461,7 +461,7 @@
 				DayLabel = mvarDayLabel,
 				SheetCount = mcolPageSvg.Count,
 				CertThumbprint = thumb,
-				QrText = CirculationSheetQr.BuildQrPayload(mvarDocumentSeal, mvarDocumentPayload)
+				QrText = CirculationSheetQr.BuildQrPayload(mvarDocumentSeal)
 			};
 		}
 

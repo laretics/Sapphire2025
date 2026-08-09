@@ -6,24 +6,31 @@ namespace Diamond.Controls.Rendering
 {
 	/// <summary>
 	/// Genera un QR en SVG (módulos vectoriales) para el sello de circulación.
-	/// Contenido: <c>ZAFSEL:v1:{seal}:{payload}</c> verificable offline o en UI.
+	/// Contenido: <c>ZAFSEL:v1:{seal}</c> (solo sello; el payload canónico vive en el registro / UI).
 	/// </summary>
 	public static class CirculationSheetQr
 	{
 		public const string QrPrefix = "ZAFSEL:v1:";
 
-		/// <summary>Texto embebido en el QR.</summary>
-		public static string BuildQrPayload(string sealCode, string authenticityPayload)
+		/// <summary>
+		/// Texto embebido en el QR: prefijo + sello de 12 hex.
+		/// <paramref name="authenticityPayload"/> se ignora (compat. con llamadas antiguas).
+		/// </summary>
+		public static string BuildQrPayload(string sealCode, string? authenticityPayload = null)
 		{
 			string seal = (sealCode ?? string.Empty).Trim();
-			string pay = (authenticityPayload ?? string.Empty).Trim();
-			// Compactar espacios en payload para QR más denso.
-			pay = pay.Replace(" ", string.Empty);
-			return QrPrefix + seal + ":" + pay;
+			if (seal.StartsWith(CirculationSheetAuthenticity.SealPrefix, StringComparison.OrdinalIgnoreCase))
+			{
+				seal = seal.Substring(CirculationSheetAuthenticity.SealPrefix.Length).Trim();
+			}
+
+			return QrPrefix + seal;
 		}
 
 		/// <summary>
 		/// Intenta parsear un QR o texto pegado.
+		/// Acepta <c>ZAFSEL:v1:{seal}</c>, legado <c>ZAFSEL:v1:{seal}:{payload}</c>,
+		/// <c>SEL …</c> o hex de 12.
 		/// </summary>
 		public static bool TryParseQrPayload(string? text, out string sealCode, out string authenticityPayload)
 		{
@@ -37,16 +44,28 @@ namespace Diamond.Controls.Rendering
 			string t = text.Trim();
 			if (t.StartsWith(QrPrefix, StringComparison.OrdinalIgnoreCase))
 			{
-				t = t.Substring(QrPrefix.Length);
-				int colon = t.IndexOf(':');
-				if (colon <= 0 || colon >= t.Length - 1)
+				t = t.Substring(QrPrefix.Length).Trim();
+				if (t.Length == 0)
 				{
 					return false;
 				}
 
-				sealCode = t.Substring(0, colon).Trim();
-				authenticityPayload = t.Substring(colon + 1).Trim();
-				return sealCode.Length > 0 && authenticityPayload.Length > 0;
+				// Legado: seal:payload → solo sello; payload opcional a la derecha.
+				int colon = t.IndexOf(':');
+				if (colon > 0)
+				{
+					sealCode = t.Substring(0, colon).Trim();
+					if (colon < t.Length - 1)
+					{
+						authenticityPayload = t.Substring(colon + 1).Trim();
+					}
+				}
+				else
+				{
+					sealCode = t;
+				}
+
+				return sealCode.Length > 0;
 			}
 
 			// Solo sello (sin payload): la UI pedirá reconstruir o buscar en registro.

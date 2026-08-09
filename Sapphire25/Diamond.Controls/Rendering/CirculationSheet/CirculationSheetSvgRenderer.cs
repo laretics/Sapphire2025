@@ -54,9 +54,9 @@ namespace Diamond.Controls.Rendering
 		/// <summary>Texto Loc.+ruta (solo 1.ª hoja); la franja real es <see cref="HeaderQrBandH"/>.</summary>
 		private const double SubHeaderH = SubHeaderLineH * 2;
 		/// <summary>
-		/// QR bajo «Tipo»: 33 % mayor que el antiguo de 52 pt (~69,3 pt).
+		/// QR bajo «Tipo»: base 52×4/3 pt (~69,3) menos 20 % ≈ 55,5 pt.
 		/// </summary>
-		private const double HeaderQrSize = 52.0 * 4.0 / 3.0;
+		private const double HeaderQrSize = 52.0 * 4.0 / 3.0 * 0.8;
 		/// <summary>
 		/// Franja bajo la banda oscura: QR a la derecha (todas las hojas) y Loc./ruta a la izquierda (1.ª).
 		/// </summary>
@@ -362,7 +362,7 @@ namespace Diamond.Controls.Rendering
 
 		/// <summary>
 		/// QR a la derecha, justo bajo «Tipo …» (solo 1.ª hoja de la marcha).
-		/// Tamaño = antiguo 52 pt + 33 %. Usa el payload de documento (mismo que el SEL).
+		/// Contenido = solo sello (<c>ZAFSEL:v1:{seal}</c>); ~20 % más pequeño que la franja anterior.
 		/// </summary>
 		private static void DrawHeaderQr(
 			StringBuilder sb,
@@ -378,9 +378,8 @@ namespace Diamond.Controls.Rendering
 
 			try
 			{
-				string qrText = CirculationSheetQr.BuildQrPayload(
-					sealCode,
-					string.IsNullOrEmpty(documentPayload) ? sealCode : documentPayload);
+				// Solo sello: el payload canónico no va en el QR (más legible).
+				string qrText = CirculationSheetQr.BuildQrPayload(sealCode);
 				const double qrPad = 2.5;
 				double qx = tableRight - HeaderQrSize - qrPad;
 				double qy = yBelowHeader + (HeaderQrBandH - HeaderQrSize) * 0.5;
