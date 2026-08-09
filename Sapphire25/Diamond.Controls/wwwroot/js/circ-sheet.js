@@ -55,8 +55,76 @@ window.diamondCircSheet = {
     setTimeout(function () {
       URL.revokeObjectURL(url);
     }, 5000);
+  },
+
+  /**
+   * Rasteriza SVGs a PNG (Base64) en el navegador — no requiere SkiaSharp nativo.
+   * @param {string[]|string} svgPages
+   * @param {number} [dpi=144]
+   * @returns {Promise<string[]>} data-URL o base64 PNG por página
+   */
+  rasterizeSvgs: function (svgPages, dpi) {
+    var pages = normalizePages(svgPages);
+    if (!pages || pages.length === 0) {
+      pages = collectPagesFromDom();
+    }
+    var d = dpi && dpi > 72 ? dpi : 144;
+    var pxW = Math.round(297 / 25.4 * d);
+    var pxH = Math.round(210 / 25.4 * d);
+    var jobs = [];
+    var i = 0;
+    while (i < pages.length) {
+      jobs.push(svgStringToPngBase64(pages[i], pxW, pxH));
+      i++;
+    }
+    return Promise.all(jobs);
   }
 };
+
+/**
+ * @param {string} svgString
+ * @param {number} pxW
+ * @param {number} pxH
+ * @returns {Promise<string>} base64 PNG (sin prefijo data:)
+ */
+function svgStringToPngBase64(svgString, pxW, pxH) {
+  return new Promise(function (resolve, reject) {
+    try {
+      var svg = svgString;
+      if (svg.indexOf("xmlns=") < 0) {
+        svg = svg.replace(/<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+      }
+      var blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+      var url = URL.createObjectURL(blob);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var canvas = document.createElement("canvas");
+          canvas.width = pxW;
+          canvas.height = pxH;
+          var ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, pxW, pxH);
+          ctx.drawImage(img, 0, 0, pxW, pxH);
+          URL.revokeObjectURL(url);
+          var dataUrl = canvas.toDataURL("image/png");
+          var comma = dataUrl.indexOf(",");
+          resolve(comma >= 0 ? dataUrl.substring(comma + 1) : dataUrl);
+        } catch (e2) {
+          URL.revokeObjectURL(url);
+          reject(e2);
+        }
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error("No se pudo cargar el SVG en Image."));
+      };
+      img.src = url;
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
 
 function printPages(pages) {
   if (!pages || pages.length === 0) {

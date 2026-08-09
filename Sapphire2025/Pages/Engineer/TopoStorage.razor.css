@@ -75,6 +75,18 @@
 	letter-spacing: 0.04em;
 }
 
+.topo-storage-page .topo-pub-table thead th {
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #64748b;
+	white-space: nowrap;
+}
+
+.topo-storage-page .topo-pub-table tbody tr.table-primary {
+	--bs-table-bg: #e0f2fe;
+}
+
 .topo-storage-page .topo-list {
 	overflow: auto;
 	flex: 1 1 auto;

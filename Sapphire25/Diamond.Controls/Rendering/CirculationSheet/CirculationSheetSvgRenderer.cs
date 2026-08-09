@@ -49,10 +49,18 @@ namespace Diamond.Controls.Rendering
 		private const double ColCruz = 40;
 
 		private const double HeaderBandH = 18;
-		/// <summary>Alto de una línea de subcabecera (Loc. / ruta) en la 1.ª hoja.</summary>
+		/// <summary>Alto de una línea de texto Loc. / ruta en la franja bajo Tipo.</summary>
 		private const double SubHeaderLineH = 11;
-		/// <summary>Subcabecera de 1.ª hoja: Loc. (locomotora) + ruta debajo.</summary>
+		/// <summary>Texto Loc.+ruta (solo 1.ª hoja); la franja real es <see cref="HeaderQrBandH"/>.</summary>
 		private const double SubHeaderH = SubHeaderLineH * 2;
+		/// <summary>
+		/// QR bajo «Tipo»: 33 % mayor que el antiguo de 52 pt (~69,3 pt).
+		/// </summary>
+		private const double HeaderQrSize = 52.0 * 4.0 / 3.0;
+		/// <summary>
+		/// Franja bajo la banda oscura: QR a la derecha (todas las hojas) y Loc./ruta a la izquierda (1.ª).
+		/// </summary>
+		private const double HeaderQrBandH = HeaderQrSize + 3.0;
 		private const double ColHeaderH = 15;
 		private const double MinRowH = 11;
 
@@ -83,9 +91,8 @@ namespace Diamond.Controls.Rendering
 		}
 
 		/// <summary>
-		/// Alto útil del cuerpo de filas. En hojas de continuación (sin Loc./ruta)
-		/// se gana el alto de la subcabecera. El Tipo (vmax) va en la banda de cabecera
-		/// en todas las hojas y no cambia el reparto.
+		/// Alto útil del cuerpo. La 1.ª hoja reserva franja Loc./ruta + QR bajo Tipo;
+		/// las de continuación solo banda de número/Tipo (máximo cuerpo de tabla).
 		/// </summary>
 		public static double AvailableBodyHeightForTrainPage(bool firstPageOfTrain)
 		{
@@ -93,7 +100,7 @@ namespace Diamond.Controls.Rendering
 			double reserved = PanelPadT + HeaderBandH + ColHeaderH;
 			if (firstPageOfTrain)
 			{
-				reserved += SubHeaderH;
+				reserved += HeaderQrBandH;
 			}
 
 			double avail = panelH - PanelPadB - reserved;
@@ -140,25 +147,52 @@ namespace Diamond.Controls.Rendering
 		/// </summary>
 		public static IReadOnlyList<string> RenderAllPages(CirculationSheetDocument document)
 		{
+			return RenderAllPages(document, out _, out _);
+		}
+
+		/// <summary>
+		/// Igual que <see cref="RenderAllPages(CirculationSheetDocument)"/> y devuelve
+		/// el sello/payload de documento (el mismo en todas las hojas).
+		/// </summary>
+		public static IReadOnlyList<string> RenderAllPages(
+			CirculationSheetDocument document,
+			out string documentSeal,
+			out string documentPayload)
+		{
 			if (document is null)
 			{
 				throw new ArgumentNullException(nameof(document));
 			}
 
 			IReadOnlyList<CirculationSheetPage> book = document.Pages;
+			int sheetCount = CirculationSheetPager.ComputeSheetCount(Math.Max(1, book.Count));
+			documentPayload = CirculationSheetAuthenticity.BuildDocumentPayload(
+				"ficha",
+				document.TrainNumber,
+				document.EditionLabel,
+				document.ServiceDaysLabel,
+				sheetCount,
+				document.Relation);
+			documentSeal = CirculationSheetAuthenticity.ComputeSealCode(documentPayload);
+
 			List<string> sheets = new List<string>((book.Count + 1) / 2);
 			int i = 0;
 			while (i < book.Count)
 			{
 				CirculationSheetPage left = book[i];
 				CirculationSheetPage? right = i + 1 < book.Count ? book[i + 1] : null;
-				sheets.Add(RenderSheet(document, left, right));
+				sheets.Add(RenderSheet(document, left, right, documentSeal, documentPayload));
 				i += 2;
 			}
 
 			if (sheets.Count == 0)
 			{
-				sheets.Add(RenderSheet(document, new CirculationSheetPage(0, 1, Array.Empty<CirculationSheetFrontier>()), null));
+				sheets.Add(RenderSheet(
+					document,
+					new CirculationSheetPage(0, 1, Array.Empty<CirculationSheetFrontier>()),
+					null,
+					documentSeal,
+					documentPayload));
 			}
 
 			return sheets;
@@ -170,28 +204,48 @@ namespace Diamond.Controls.Rendering
 		/// </summary>
 		public static IReadOnlyList<string> RenderAllBookSheets(ItineraryBookDocument book)
 		{
+			return RenderAllBookSheets(book, out _, out _);
+		}
+
+		/// <summary>
+		/// Igual que <see cref="RenderAllBookSheets(ItineraryBookDocument)"/> con sello de documento.
+		/// </summary>
+		public static IReadOnlyList<string> RenderAllBookSheets(
+			ItineraryBookDocument book,
+			out string documentSeal,
+			out string documentPayload)
+		{
 			if (book is null)
 			{
 				throw new ArgumentNullException(nameof(book));
 			}
 
 			IReadOnlyList<ItineraryBookHalfPage> halves = book.HalfPages;
+			int sheetCount = CirculationSheetPager.ComputeSheetCount(Math.Max(1, halves.Count));
+			documentPayload = CirculationSheetAuthenticity.BuildDocumentPayload(
+				"libro",
+				book.PlanName,
+				book.EditionLabel,
+				book.DayLabel,
+				sheetCount,
+				book.Notes);
+			documentSeal = CirculationSheetAuthenticity.ComputeSealCode(documentPayload);
+
 			List<string> sheets = new List<string>((halves.Count + 1) / 2);
 			int i = 0;
 			while (i < halves.Count)
 			{
 				ItineraryBookHalfPage left = halves[i];
 				ItineraryBookHalfPage? right = i + 1 < halves.Count ? halves[i + 1] : null;
-				sheets.Add(RenderBookSheet(left, right));
+				sheets.Add(RenderBookSheet(left, right, documentSeal, documentPayload));
 				i += 2;
 			}
 
 			if (sheets.Count == 0)
 			{
-				// No debería ocurrir; portada mínima.
 				ItineraryBookHalfPage cover = ItineraryBookHalfPage.Cover(
 					1, 1, book.PlanName, book.Notes, book.DayLabel, book.EditionLabel, 0, 0);
-				sheets.Add(RenderBookSheet(cover, null));
+				sheets.Add(RenderBookSheet(cover, null, documentSeal, documentPayload));
 			}
 
 			return sheets;
@@ -205,6 +259,24 @@ namespace Diamond.Controls.Rendering
 			CirculationSheetPage left,
 			CirculationSheetPage? right)
 		{
+			string payload = CirculationSheetAuthenticity.BuildDocumentPayload(
+				"ficha",
+				document.TrainNumber,
+				document.EditionLabel,
+				document.ServiceDaysLabel,
+				Math.Max(1, document.Pages.Count),
+				document.Relation);
+			string seal = CirculationSheetAuthenticity.ComputeSealCode(payload);
+			return RenderSheet(document, left, right, seal, payload);
+		}
+
+		public static string RenderSheet(
+			CirculationSheetDocument document,
+			CirculationSheetPage left,
+			CirculationSheetPage? right,
+			string documentSeal,
+			string documentPayload)
+		{
 			if (document is null)
 			{
 				throw new ArgumentNullException(nameof(document));
@@ -222,39 +294,38 @@ namespace Diamond.Controls.Rendering
 			double leftX = SheetOuterMargin;
 			double rightX = SheetOuterMargin + panelW + PanelGutter;
 
-			// Sello de autenticidad de la hoja (metadatos de la circulación).
-			string seal = BuildDocumentSeal(
-				"ficha",
-				document.TrainNumber,
-				document.EditionLabel,
-				document.ServiceDaysLabel,
-				left.PageNumber,
-				left.PageCount,
-				document.Relation);
-
-			DrawTrainTablePanel(sb, document, left, leftX, y0, panelW, panelH, null, null, seal);
+			// Mismo sello de documento en todas las mitades (verificable al copiar SEL).
+			DrawTrainTablePanel(
+				sb, document, left, leftX, y0, panelW, panelH, null, null, documentSeal, documentPayload);
 
 			if (right is not null)
 			{
-				string sealR = BuildDocumentSeal(
-					"ficha",
-					document.TrainNumber,
-					document.EditionLabel,
-					document.ServiceDaysLabel,
-					right.PageNumber,
-					right.PageCount,
-					document.Relation);
-				DrawTrainTablePanel(sb, document, right, rightX, y0, panelW, panelH, null, null, sealR);
+				DrawTrainTablePanel(
+					sb, document, right, rightX, y0, panelW, panelH, null, null, documentSeal, documentPayload);
 			}
 
 			DrawHalfSeparator(sb, leftX, y0, panelW, panelH);
-			DrawSheetWatermark(sb, document.EditionLabel, seal);
 			sb.Append("</svg>");
 			return sb.ToString();
 		}
 
 		/// <summary>Hoja A4 apaisada a partir de dos semipáginas del libro completo.</summary>
 		public static string RenderBookSheet(ItineraryBookHalfPage left, ItineraryBookHalfPage? right)
+		{
+			string plan = left is null ? string.Empty : left.PlanName;
+			string edition = left is null ? string.Empty : left.EditionLabel;
+			string day = left is null ? string.Empty : left.DayLabel;
+			string payload = CirculationSheetAuthenticity.BuildDocumentPayload(
+				"libro", plan, edition, day, 1, null);
+			string seal = CirculationSheetAuthenticity.ComputeSealCode(payload);
+			return RenderBookSheet(left!, right, seal, payload);
+		}
+
+		public static string RenderBookSheet(
+			ItineraryBookHalfPage left,
+			ItineraryBookHalfPage? right,
+			string documentSeal,
+			string documentPayload)
 		{
 			if (left is null)
 			{
@@ -268,52 +339,15 @@ namespace Diamond.Controls.Rendering
 			double leftX = SheetOuterMargin;
 			double rightX = SheetOuterMargin + panelW + PanelGutter;
 
-			string seal = BuildDocumentSeal(
-				left.Kind.ToString(),
-				string.IsNullOrEmpty(left.PlanName)
-					? (left.TrainDocument is not null ? left.TrainDocument.TrainNumber : string.Empty)
-					: left.PlanName,
-				left.EditionLabel,
-				left.DayLabel,
-				left.PageNumber,
-				left.PageCount,
-				null);
-
-			DrawHalfPage(sb, left, leftX, y0, panelW, panelH, seal);
+			DrawHalfPage(sb, left, leftX, y0, panelW, panelH, documentSeal, documentPayload);
 			if (right is not null)
 			{
-				string sealR = BuildDocumentSeal(
-					right.Kind.ToString(),
-					string.IsNullOrEmpty(right.PlanName)
-						? (right.TrainDocument is not null ? right.TrainDocument.TrainNumber : string.Empty)
-						: right.PlanName,
-					right.EditionLabel,
-					right.DayLabel,
-					right.PageNumber,
-					right.PageCount,
-					null);
-				DrawHalfPage(sb, right, rightX, y0, panelW, panelH, sealR);
+				DrawHalfPage(sb, right, rightX, y0, panelW, panelH, documentSeal, documentPayload);
 			}
 
 			DrawHalfSeparator(sb, leftX, y0, panelW, panelH);
-			// Marca de agua de hoja (sello de la mitad izquierda = emisión de la hoja física).
-			DrawSheetWatermark(sb, left.EditionLabel, seal);
 			sb.Append("</svg>");
 			return sb.ToString();
-		}
-
-		private static string BuildDocumentSeal(
-			string kind,
-			string planOrTrain,
-			string edition,
-			string day,
-			int pageNumber,
-			int pageCount,
-			string? extra)
-		{
-			string payload = CirculationSheetAuthenticity.BuildPayload(
-				kind, planOrTrain, edition, day, pageNumber, pageCount, extra);
-			return CirculationSheetAuthenticity.ComputeSealCode(payload);
 		}
 
 		private static StringBuilder BeginSheetSvg()
@@ -327,49 +361,58 @@ namespace Diamond.Controls.Rendering
 		}
 
 		/// <summary>
-		/// Marca de agua diagonal + QR de autenticidad (esquina inferior derecha).
+		/// QR a la derecha, justo bajo «Tipo …» (solo 1.ª hoja de la marcha).
+		/// Tamaño = antiguo 52 pt + 33 %. Usa el payload de documento (mismo que el SEL).
 		/// </summary>
-		private static void DrawSheetWatermark(StringBuilder sb, string? editionLabel, string sealCode)
+		private static void DrawHeaderQr(
+			StringBuilder sb,
+			double tableRight,
+			double yBelowHeader,
+			string sealCode,
+			string documentPayload)
 		{
-			string line1 = CirculationSheetAuthenticity.DefaultWatermarkText;
-			string line2 = CirculationSheetAuthenticity.FormatSealLabel(sealCode);
-			if (!string.IsNullOrWhiteSpace(editionLabel))
+			if (string.IsNullOrEmpty(sealCode))
 			{
-				line2 = line2 + " · " + Truncate(editionLabel.Trim(), 28);
+				return;
 			}
 
-			double cx = SheetWidth * 0.5;
-			double cy = SheetHeight * 0.5;
-			// Grupo rotado ~-28°; opacidad baja para no impedir lectura.
-			sb.Append(CultureInfo.InvariantCulture,
-				$"<g opacity=\"0.11\" transform=\"rotate(-28 {F(cx)} {F(cy)})\" pointer-events=\"none\">");
-			sb.Append(Text(cx, cy - 6, line1, 22, "700", "#000", "middle"));
-			sb.Append(Text(cx, cy + 16, line2, 12, "600", "#000", "middle"));
-			sb.Append("</g>");
-
-			// QR de verificación (payload + sello) — legible al escanear.
 			try
 			{
-				// Payload de página no está aquí; el sello de hoja basta con el código corto
-				// y el registro. Para QR rico usamos sello + edición.
-				string payloadHint = CirculationSheetAuthenticity.BuildPayload(
-					"sheet",
-					editionLabel ?? "-",
-					editionLabel ?? "-",
-					"-",
-					0,
-					1,
-					sealCode);
-				string qrText = CirculationSheetQr.BuildQrPayload(sealCode, payloadHint);
-				const double qrSize = 52;
-				double qx = SheetWidth - SheetOuterMargin - qrSize - 4;
-				double qy = SheetHeight - SheetOuterMargin - qrSize - 10;
-				CirculationSheetQr.AppendQrSvg(sb, qx, qy, qrSize, qrText);
+				string qrText = CirculationSheetQr.BuildQrPayload(
+					sealCode,
+					string.IsNullOrEmpty(documentPayload) ? sealCode : documentPayload);
+				const double qrPad = 2.5;
+				double qx = tableRight - HeaderQrSize - qrPad;
+				double qy = yBelowHeader + (HeaderQrBandH - HeaderQrSize) * 0.5;
+				if (qy < yBelowHeader + 0.5)
+				{
+					qy = yBelowHeader + 0.5;
+				}
+
+				CirculationSheetQr.AppendQrSvg(sb, qx, qy, HeaderQrSize, qrText);
 			}
 			catch
 			{
 				// QR opcional: no tumbar el dibujo si falla el generador.
 			}
+		}
+
+		/// <summary>Ancho máximo de texto Loc./ruta dejando hueco al QR bajo Tipo.</summary>
+		private static int SubHeaderTextMaxChars(double tableW)
+		{
+			double qrReserve = HeaderQrSize + 12.0;
+			int n = (int)((tableW - qrReserve) / 3.9);
+			if (n < 24)
+			{
+				n = 24;
+			}
+
+			if (n > 48)
+			{
+				n = 48;
+			}
+
+			return n;
 		}
 
 		private static void DrawHalfSeparator(StringBuilder sb, double leftX, double y0, double panelW, double panelH)
@@ -386,7 +429,8 @@ namespace Diamond.Controls.Rendering
 			double panelY,
 			double panelW,
 			double panelH,
-			string sealCode)
+			string sealCode,
+			string documentPayload)
 		{
 			if (half.Kind == ItineraryBookHalfKind.Cover)
 			{
@@ -412,7 +456,8 @@ namespace Diamond.Controls.Rendering
 					panelH,
 					half.PageNumber,
 					half.PageCount,
-					sealCode);
+					sealCode,
+					documentPayload);
 			}
 		}
 
@@ -618,7 +663,8 @@ namespace Diamond.Controls.Rendering
 			double panelH,
 			int? bookPageNumber,
 			int? bookPageCount,
-			string? sealCode = null)
+			string? sealCode = null,
+			string? documentPayload = null)
 		{
 			IReadOnlyList<CirculationSheetFrontier> rows = page.Frontiers;
 
@@ -649,40 +695,55 @@ namespace Diamond.Controls.Rendering
 				titleLeft = titleLeft + "  " + document.ServiceDaysLabel;
 			}
 
-			sb.Append(Text(contentLeft + 5, y + HeaderBandH * 0.72, Truncate(titleLeft, 48), 10, "700", "#fff", "start"));
-			// Tipo = techo del material (p. ej. "Tipo 100") en todas las hojas de la marcha.
+			// 1.ª hoja: Tipo centrado sobre el QR. Continuación: Tipo al borde derecho.
+			const double qrPad = 2.5;
+			sb.Append(Text(contentLeft + 5, y + HeaderBandH * 0.72, Truncate(titleLeft, firstPageOfTrain ? 42 : 48), 10, "700", "#fff", "start"));
 			if (!string.IsNullOrEmpty(document.MaterialType))
 			{
-				sb.Append(Text(tableRight - 5, y + HeaderBandH * 0.72, document.MaterialType, 9, "600", "#fff", "end"));
+				if (firstPageOfTrain)
+				{
+					double tipoCx = tableRight - qrPad - HeaderQrSize * 0.5;
+					sb.Append(Text(tipoCx, y + HeaderBandH * 0.72, document.MaterialType, 9, "600", "#fff", "middle"));
+				}
+				else
+				{
+					sb.Append(Text(tableRight - 5, y + HeaderBandH * 0.72, document.MaterialType, 9, "600", "#fff", "end"));
+				}
 			}
 
 			y += HeaderBandH;
 
-			// —— Subcabecera 1.ª hoja: Loc. (locomotora) + ruta (antiguo Loc.) ——
+			// —— Solo 1.ª hoja: Loc./ruta (izq.) + QR bajo Tipo (dcha.). Continuación: sin franja. ——
 			if (firstPageOfTrain)
 			{
+				double yBelowHeader = y;
 				sb.Append(CultureInfo.InvariantCulture,
-					$"<rect x=\"{F(contentLeft)}\" y=\"{F(y)}\" width=\"{F(tableW)}\" height=\"{F(SubHeaderH)}\" fill=\"#eee\" stroke=\"#000\" stroke-width=\"0.7\"/>");
-				// Línea 1: Loc. nombre · a · b
+					$"<rect x=\"{F(contentLeft)}\" y=\"{F(y)}\" width=\"{F(tableW)}\" height=\"{F(HeaderQrBandH)}\" fill=\"#f5f5f5\" stroke=\"#000\" stroke-width=\"0.5\"/>");
+				int maxChars = SubHeaderTextMaxChars(tableW);
 				sb.Append(Text(
 					contentLeft + 5,
-					y + SubHeaderLineH * 0.72,
-					Truncate(document.LocationLine, 58),
+					y + SubHeaderLineH * 0.85,
+					Truncate(document.LocationLine, maxChars),
 					7,
 					"600",
 					"#000",
 					"start"));
-				// Línea 2: vista/ejes + relación OD
 				sb.Append(Text(
 					contentLeft + 5,
-					y + SubHeaderLineH + SubHeaderLineH * 0.72,
-					Truncate(document.RouteLine, 58),
+					y + SubHeaderLineH * 1.85,
+					Truncate(document.RouteLine, maxChars),
 					7,
 					"400",
 					"#000",
 					"start"));
-				// MarchId (técnico) omitido a propósito.
-				y += SubHeaderH;
+
+				DrawHeaderQr(
+					sb,
+					tableRight,
+					yBelowHeader,
+					sealCode ?? string.Empty,
+					documentPayload ?? string.Empty);
+				y += HeaderQrBandH;
 			}
 
 			// —— Cabecera columnas ——

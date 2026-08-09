@@ -356,6 +356,15 @@
 						return Task.CompletedTask;
 					}
 
+					// Con la ficha/libro abiertos no re-renderizar cada segundo:
+					// el re-render del padre re-entraba en CirculationSheetView y
+					// regeneraba todos los SVG (UI congelada, Cerrar sin respuesta).
+					if (mvarShowSheet)
+					{
+						mvarClockNow = DateTime.Now.TimeOfDay;
+						return Task.CompletedTask;
+					}
+
 					mvarClockNow = DateTime.Now.TimeOfDay;
 					if (mvarShowNowLine && Mesh is not null && !mvarPanning)
 					{
@@ -384,7 +393,8 @@
 			return;
 		}
 
-		if (SelectedCirculation is null)
+		// Cerrar ficha si se pierde la selección; el libro itinerario no depende de un tren.
+		if (SelectedCirculation is null && !mvarSheetFullBook)
 		{
 			mvarShowSheet = false;
 		}

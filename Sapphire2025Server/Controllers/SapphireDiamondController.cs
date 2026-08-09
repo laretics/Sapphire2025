@@ -474,6 +474,86 @@ namespace Sapphire2025Server.Controllers
 			}
 		}
 
+		/// <summary>Actualiza metadatos de un plan compilado (CRUD, sin recompilar).</summary>
+		[HttpPost("updatepublishedplan")]
+		public async Task<DiamondPublishPlanResult> UpdatePublishedPlan(
+			[FromBody] DiamondPublishedPlanUpdateRequest request)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
+				return await store.UpdateAsync(request);
+			}
+		}
+
+		/// <summary>Borra del histórico un plan compilado (debe estar fuera de producción).</summary>
+		[HttpPost("deletepublishedplan")]
+		public async Task<DiamondPublishPlanResult> DeletePublishedPlan([FromBody] Guid id)
+		{
+			if (Guid.Empty.Equals(id))
+			{
+				return new DiamondPublishPlanResult { Success = false, Message = "Id vacío." };
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
+				return await store.DeleteAsync(id);
+			}
+		}
+
+		// ── Dispositivos externos (trenes, SIU, enclavamientos…) ───────────
+
+		/// <summary>
+		/// Planes en producción para una topología, vigentes o próximos desde <paramref name="fromDate"/>.
+		/// </summary>
+		[HttpGet("device/production-plans")]
+		public async Task<ActionResult<IEnumerable<DiamondPublishedPlanHeaderModel>>> ListDeviceProductionPlans(
+			[FromQuery] Guid topoId,
+			[FromQuery] DateTime? fromDate = null)
+		{
+			if (Guid.Empty.Equals(topoId))
+			{
+				return BadRequest("topoId vacío.");
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
+				IReadOnlyList<DiamondPublishedPlanHeaderModel> list =
+					await store.ListForTopoAsync(topoId, fromDate ?? DateTime.UtcNow, inProductionOnly: true);
+				return Ok(list);
+			}
+		}
+
+		/// <summary>
+		/// Paquete dispositivo: metadatos de topo (hash para caché) + planes en producción
+		/// a partir de la fecha. El contenido de la topo se obtiene con topocontent?id=.
+		/// </summary>
+		[HttpGet("device/topo-package")]
+		public async Task<ActionResult<DiamondDeviceTopoPackageModel>> GetDeviceTopoPackage(
+			[FromQuery] Guid topoId,
+			[FromQuery] DateTime? fromDate = null)
+		{
+			if (Guid.Empty.Equals(topoId))
+			{
+				return BadRequest("topoId vacío.");
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
+				DiamondDeviceTopoPackageModel? pkg =
+					await store.BuildDevicePackageAsync(topoId, fromDate ?? DateTime.UtcNow);
+				if (pkg is null)
+				{
+					return NotFound();
+				}
+
+				return pkg;
+			}
+		}
+
 		/// <summary>Registra una emisión oficial de documentación de circulación.</summary>
 		[HttpPost("circulation/emission")]
 		public async Task<CirculationEmissionRegisterResult> RegisterCirculationEmission(

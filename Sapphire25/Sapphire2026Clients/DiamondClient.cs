@@ -317,5 +317,67 @@ namespace Sapphire2025.Storage
 			HttpResponseMessage response = await sendPostRequest("republishplan", json);
 			return await response.Content.ReadFromJsonAsync<DiamondPublishPlanResult>();
 		}
+
+		public async Task<DiamondPublishPlanResult?> UpdatePublishedPlanAsync(
+			DiamondPublishedPlanUpdateRequest body)
+		{
+			string json = System.Text.Json.JsonSerializer.Serialize(body);
+			HttpResponseMessage response = await sendPostRequest("updatepublishedplan", json);
+			return await response.Content.ReadFromJsonAsync<DiamondPublishPlanResult>();
+		}
+
+		public async Task<DiamondPublishPlanResult?> DeletePublishedPlanAsync(Guid id)
+		{
+			string json = System.Text.Json.JsonSerializer.Serialize(id);
+			HttpResponseMessage response = await sendPostRequest("deletepublishedplan", json);
+			return await response.Content.ReadFromJsonAsync<DiamondPublishPlanResult>();
+		}
+
+		/// <summary>Planes en producción para una topología (API dispositivos / UI).</summary>
+		public async Task<IReadOnlyList<DiamondPublishedPlanHeaderModel>> ListDeviceProductionPlansAsync(
+			Guid topoId,
+			DateTime? fromDate = null)
+		{
+			string request = fromDate.HasValue
+				? composeCommand(
+					"device/production-plans",
+					new requestParam("topoId", topoId.ToString()),
+					new requestParam("fromDate", fromDate.Value.ToString("o")))
+				: composeCommand(
+					"device/production-plans",
+					new requestParam("topoId", topoId.ToString()));
+			HttpResponseMessage response = await sendGetRequest(request);
+			List<DiamondPublishedPlanHeaderModel>? list =
+				await response.Content.ReadFromJsonAsync<List<DiamondPublishedPlanHeaderModel>>();
+			if (list is null)
+			{
+				return Array.Empty<DiamondPublishedPlanHeaderModel>();
+			}
+
+			return list;
+		}
+
+		public async Task<DiamondDeviceTopoPackageModel?> GetDeviceTopoPackageAsync(
+			Guid topoId,
+			DateTime? fromDate = null)
+		{
+			string request = fromDate.HasValue
+				? composeCommand(
+					"device/topo-package",
+					new requestParam("topoId", topoId.ToString()),
+					new requestParam("fromDate", fromDate.Value.ToString("o")))
+				: composeCommand(
+					"device/topo-package",
+					new requestParam("topoId", topoId.ToString()));
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				return await response.Content.ReadFromJsonAsync<DiamondDeviceTopoPackageModel>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
 	}
 }

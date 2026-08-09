@@ -161,13 +161,16 @@
 .diamond-circ-sheet-overlay {
 	position: fixed;
 	inset: 0;
-	z-index: 10050;
+	/* Por encima de monacos/toolbars del host Zafiro; debe recibir clics. */
+	z-index: 20050;
 	background: rgba(2, 6, 12, 0.72);
 	display: flex;
 	align-items: stretch;
 	justify-content: center;
 	padding: 0.75rem;
 	box-sizing: border-box;
+	pointer-events: auto;
+	isolation: isolate;
 }
 
 .diamond-circ-sheet-dialog {
@@ -181,6 +184,9 @@
 	border-radius: 0.4rem;
 	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 	overflow: hidden;
+	pointer-events: auto;
+	position: relative;
+	z-index: 1;
 }
 
 .diamond-circ-sheet-toolbar {
@@ -193,6 +199,9 @@
 	background: #0f1419;
 	border-bottom: 1px solid #1e293b;
 	flex-shrink: 0;
+	position: relative;
+	z-index: 2;
+	pointer-events: auto;
 }
 
 .diamond-circ-sheet-toolbar-title {
