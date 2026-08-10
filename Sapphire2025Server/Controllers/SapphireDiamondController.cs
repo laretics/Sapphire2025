@@ -7,6 +7,7 @@ using Sapphire2025Models.Diamond;
 using Sapphire2025Server.Comunications;
 using Sapphire2026.Data;
 using Sapphire2026.Data.Diamond;
+using Sapphire2026.Data.Models;
 using Sapphire2026.Data.Models.Diamond;
 
 namespace Sapphire2025Server.Controllers
@@ -471,6 +472,243 @@ namespace Sapphire2025Server.Controllers
 				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
 				return await store.SetActiveAsync(id, true);
 			}
+		}
+
+		/// <summary>Actualiza metadatos de un plan compilado (CRUD, sin recompilar).</summary>
+		[HttpPost("updatepublishedplan")]
+		public async Task<DiamondPublishPlanResult> UpdatePublishedPlan(
+			[FromBody] DiamondPublishedPlanUpdateRequest request)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
+				return await store.UpdateAsync(request);
+			}
+		}
+
+		/// <summary>Borra del histórico un plan compilado (debe estar fuera de producción).</summary>
+		[HttpPost("deletepublishedplan")]
+		public async Task<DiamondPublishPlanResult> DeletePublishedPlan([FromBody] Guid id)
+		{
+			if (Guid.Empty.Equals(id))
+			{
+				return new DiamondPublishPlanResult { Success = false, Message = "Id vacío." };
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
+				return await store.DeleteAsync(id);
+			}
+		}
+
+		// ── Dispositivos externos (trenes, SIU, enclavamientos…) ───────────
+
+		/// <summary>
+		/// Planes en producción para una topología, vigentes o próximos desde <paramref name="fromDate"/>.
+		/// </summary>
+		[HttpGet("device/production-plans")]
+		public async Task<ActionResult<IEnumerable<DiamondPublishedPlanHeaderModel>>> ListDeviceProductionPlans(
+			[FromQuery] Guid topoId,
+			[FromQuery] DateTime? fromDate = null)
+		{
+			if (Guid.Empty.Equals(topoId))
+			{
+				return BadRequest("topoId vacío.");
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
+				IReadOnlyList<DiamondPublishedPlanHeaderModel> list =
+					await store.ListForTopoAsync(topoId, fromDate ?? DateTime.UtcNow, inProductionOnly: true);
+				return Ok(list);
+			}
+		}
+
+		/// <summary>
+		/// Paquete dispositivo: metadatos de topo (hash para caché) + planes en producción
+		/// a partir de la fecha. El contenido de la topo se obtiene con topocontent?id=.
+		/// </summary>
+		[HttpGet("device/topo-package")]
+		public async Task<ActionResult<DiamondDeviceTopoPackageModel>> GetDeviceTopoPackage(
+			[FromQuery] Guid topoId,
+			[FromQuery] DateTime? fromDate = null)
+		{
+			if (Guid.Empty.Equals(topoId))
+			{
+				return BadRequest("topoId vacío.");
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondPublishedPlanStore store = new DiamondPublishedPlanStore(almacen);
+				DiamondDeviceTopoPackageModel? pkg =
+					await store.BuildDevicePackageAsync(topoId, fromDate ?? DateTime.UtcNow);
+				if (pkg is null)
+				{
+					return NotFound();
+				}
+
+				return pkg;
+			}
+		}
+
+		/// <summary>Registra una emisión oficial de documentación de circulación.</summary>
+		[HttpPost("circulation/emission")]
+		public async Task<CirculationEmissionRegisterResult> RegisterCirculationEmission(
+			[FromBody] CirculationEmissionRegisterRequest? request)
+		{
+			CirculationEmissionRegisterResult result = new CirculationEmissionRegisterResult();
+			if (request is null || string.IsNullOrWhiteSpace(request.SealCode))
+			{
+				result.Success = false;
+				result.Message = "Petición incompleta (falta sello).";
+				return result;
+			}
+
+			string userId = string.Empty;
+			if (!Guid.Empty.Equals(request.SessionToken))
+			{
+				User? actor = await retrieveSessionUser(request.SessionToken);
+				if (actor is not null)
+				{
+					userId = actor.Id ?? string.Empty;
+				}
+			}
+
+			string host = clientHostPoint() ?? string.Empty;
+			DiamondCirculationEmission entity = new DiamondCirculationEmission
+			{
+				Id = request.EmissionId == Guid.Empty ? Guid.NewGuid() : request.EmissionId,
+				EmittedAtUtc = DateTime.UtcNow,
+				UserId = userId,
+				DocumentKind = Trunc(request.DocumentKind, 16),
+				Channel = Trunc(request.Channel, 16),
+				SealCode = Trunc(request.SealCode.Replace("SEL", string.Empty, StringComparison.OrdinalIgnoreCase).Trim(), 32),
+				Payload = Trunc(request.Payload, 1024),
+				PlanOrTrain = Trunc(request.PlanOrTrain, 200),
+				EditionLabel = Trunc(request.EditionLabel, 200),
+				DayLabel = Trunc(request.DayLabel, 120),
+				SheetCount = request.SheetCount,
+				CertThumbprint = Trunc(request.CertThumbprint, 64),
+				PdfContentHash = Trunc(request.PdfContentHash, 64),
+				PdfCmsSignatureBase64 = request.PdfCmsSignatureBase64 ?? string.Empty,
+				QrText = Trunc(request.QrText, 512),
+				HostPoint = Trunc(host, 255)
+			};
+
+			try
+			{
+				using (DataStorage almacen = new DataStorage(mvarConfig))
+				{
+					DiamondCirculationEmissionStore store = new DiamondCirculationEmissionStore(almacen);
+					await store.AddAsync(entity);
+				}
+
+				result.Success = true;
+				result.EmissionId = entity.Id;
+				result.Message = "Emisión registrada.";
+			}
+			catch (Exception ex)
+			{
+				result.Success = false;
+				result.Message = "Error al registrar emisión: " + ex.Message;
+			}
+
+			return result;
+		}
+
+		/// <summary>Verifica un sello SEL o texto QR en el registro de emisiones.</summary>
+		[HttpPost("circulation/verify")]
+		public async Task<CirculationSealVerifyResponse> VerifyCirculationSeal(
+			[FromBody] CirculationSealVerifyRequest? request)
+		{
+			CirculationSealVerifyResponse response = new CirculationSealVerifyResponse();
+			if (request is null || string.IsNullOrWhiteSpace(request.SealOrQr))
+			{
+				response.Ok = false;
+				response.Message = "Indica un sello o el texto del QR.";
+				return response;
+			}
+
+			string seal = request.SealOrQr.Trim();
+			// Extraer SEL de QR ZAFSEL:v1:{seal}:{payload}
+			if (seal.StartsWith("ZAFSEL:v1:", StringComparison.OrdinalIgnoreCase))
+			{
+				string rest = seal.Substring("ZAFSEL:v1:".Length);
+				int colon = rest.IndexOf(':');
+				seal = colon > 0 ? rest.Substring(0, colon) : rest;
+			}
+
+			if (seal.StartsWith("SEL", StringComparison.OrdinalIgnoreCase))
+			{
+				seal = seal.Substring(3).Trim();
+			}
+
+			response.SealCode = seal;
+			try
+			{
+				using (DataStorage almacen = new DataStorage(mvarConfig))
+				{
+					DiamondCirculationEmissionStore store = new DiamondCirculationEmissionStore(almacen);
+					DiamondCirculationEmission? found = await store.FindBySealAsync(seal);
+					if (found is null)
+					{
+						response.Ok = false;
+						response.FoundInRegistry = false;
+						response.Message = "Sello no encontrado en el registro de emisiones.";
+						return response;
+					}
+
+					response.Ok = true;
+					response.FoundInRegistry = true;
+					response.Message = "Sello registrado: "
+						+ found.DocumentKind + " · " + found.Channel
+						+ " · " + found.PlanOrTrain
+						+ " · " + found.EmittedAtUtc.ToString("u");
+					response.Emission = ToModel(found);
+					return response;
+				}
+			}
+			catch (Exception ex)
+			{
+				response.Ok = false;
+				response.Message = "Error de verificación: " + ex.Message;
+				return response;
+			}
+		}
+
+		private static CirculationEmissionModel ToModel(DiamondCirculationEmission e)
+		{
+			return new CirculationEmissionModel
+			{
+				Id = e.Id,
+				EmittedAtUtc = e.EmittedAtUtc,
+				UserId = e.UserId,
+				DocumentKind = e.DocumentKind,
+				Channel = e.Channel,
+				SealCode = e.SealCode,
+				Payload = e.Payload,
+				PlanOrTrain = e.PlanOrTrain,
+				EditionLabel = e.EditionLabel,
+				DayLabel = e.DayLabel,
+				SheetCount = e.SheetCount,
+				CertThumbprint = e.CertThumbprint,
+				PdfContentHash = e.PdfContentHash,
+				QrText = e.QrText,
+				HostPoint = e.HostPoint
+			};
+		}
+
+		private static string Trunc(string? s, int max)
+		{
+			if (string.IsNullOrEmpty(s))
+			{
+				return string.Empty;
+			}
+
+			return s.Length <= max ? s : s.Substring(0, max);
 		}
 
 		private static byte[] Gunzip(byte[] gzipped)

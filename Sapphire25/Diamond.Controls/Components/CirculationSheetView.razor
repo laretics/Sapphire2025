@@ -6,6 +6,7 @@
 @*
   Visor del libro itinerario / ficha de un tren.
   Hojas A4 apaisadas (2 semipáginas por hoja).
+  Emisión controlada: sello SEL, QR, firma X.509 en PDF, registro y log Zafiro.
 *@
 @if (mvarReady)
 {
@@ -39,24 +40,66 @@
 							   @onchange="OnMaxPerPageChanged" />
 					</label>
 					<button type="button"
+							class="btn btn-sm btn-outline-warning"
+							@onclick="ToggleVerifyPanel"
+							@onclick:stopPropagation="true"
+							title="Verificar sello SEL o texto del QR">
+						Verificar sello
+					</button>
+					<button type="button"
 							class="btn btn-sm btn-outline-secondary"
 							@onclick="PrintAsync"
-							title="Imprimir todas las hojas (o Guardar como PDF en el diálogo del navegador)">
+							@onclick:stopPropagation="true"
+							title="Imprimir (registra emisión oficial)">
 						Imprimir
 					</button>
 					<button type="button"
 							class="btn btn-sm btn-outline-secondary"
 							disabled="@(mcolPageSvg.Count == 0 || mvarBusyPdf)"
 							@onclick="ExportPdfAsync"
-							title="Exportar el documento completo a PDF (PdfSharp + Svg.Skia)">
-						@(mvarBusyPdf ? "PDF…" : "PDF")
+							@onclick:stopPropagation="true"
+							title="PDF firmado X.509 (certificado local) + registro de emisión">
+						@(mvarBusyPdf ? "PDF…" : "PDF firmado")
 					</button>
-					<button type="button" class="btn btn-sm btn-outline-light" @onclick="Close" title="Cerrar">Cerrar</button>
+					<button type="button"
+							class="btn btn-sm btn-outline-light"
+							@onclick="CloseAsync"
+							@onclick:stopPropagation="true"
+							title="Cerrar">Cerrar</button>
 				</span>
 			</div>
+			@if (mvarShowVerify)
+			{
+				<div class="diamond-circ-verify no-print p-2 border-bottom">
+					<div class="d-flex flex-wrap gap-2 align-items-center">
+						<input type="text"
+							   class="form-control form-control-sm"
+							   style="min-width:16rem;max-width:28rem"
+							   placeholder="SEL a1b2… o pega ZAFSEL:v1:…"
+							   @bind="mvarVerifyInput"
+							   @bind:event="oninput" />
+						<button type="button" class="btn btn-sm btn-primary" @onclick="VerifySealAsync">Comprobar</button>
+						@if (!string.IsNullOrEmpty(mvarVerifyMessage))
+						{
+							<span class="@(mvarVerifyOk ? "text-success" : "text-danger") small">@mvarVerifyMessage</span>
+						}
+					</div>
+					<div class="text-muted small mt-1">
+						Cert. local: <code>@mvarCertThumbShort</code>
+						@if (!string.IsNullOrEmpty(mvarLastSeal))
+						{
+							<span> · Última emisión: <code>SEL @mvarLastSeal</code></span>
+						}
+					</div>
+				</div>
+			}
 			@if (!string.IsNullOrEmpty(mvarError))
 			{
 				<div class="p-3 text-danger">@mvarError</div>
+			}
+			@if (!string.IsNullOrEmpty(mvarInfo))
+			{
+				<div class="p-2 text-success small no-print">@mvarInfo</div>
 			}
 			<div class="diamond-circ-sheet-pages" @ref="mvarPrintRoot">
 				@for (int i = 0; i < mcolPageSvg.Count; i++)
@@ -79,7 +122,22 @@
 	private string mvarTitleExtra = string.Empty;
 	private int mvarHalfPageCount;
 	private string? mvarError;
+	private string? mvarInfo;
 	private bool mvarBusyPdf;
+	private bool mvarShowVerify;
+	private string mvarVerifyInput = string.Empty;
+	private string mvarVerifyMessage = string.Empty;
+	private bool mvarVerifyOk;
+	private string mvarLastSeal = string.Empty;
+	private string mvarCertThumbShort = "—";
+	private string mvarEditionLabel = string.Empty;
+	private string mvarDayLabel = string.Empty;
+	/// <summary>Clave de la última generación: evita Rebuild en cada re-render del padre (p. ej. reloj 1 Hz).</summary>
+	private string mvarRebuildKey = string.Empty;
+	private bool mvarCertResolved;
+	/// <summary>Sello SEL del documento en pantalla (mismo en todas las hojas).</summary>
+	private string mvarDocumentSeal = string.Empty;
+	private string mvarDocumentPayload = string.Empty;
 
 	/// <summary>Si true, libro de toda la malla; si false, ficha del tren seleccionado.</summary>
 	[Parameter]
@@ -115,6 +173,19 @@
 	[Parameter]
 	public EventCallback OnClose { get; set; }
 
+	/// <summary>
+	/// El host (Zafiro) registra la emisión en BD y en el log de sesión.
+	/// Si no hay delegate, solo se escribe el registro local JSONL.
+	/// </summary>
+	[Parameter]
+	public EventCallback<CirculationEmissionInfo> OnOfficialEmission { get; set; }
+
+	/// <summary>
+	/// Verificación remota (API almacén). Si no hay delegate, solo registro local + cripto.
+	/// </summary>
+	[Parameter]
+	public EventCallback<string> OnVerifySealRemote { get; set; }
+
 	[Parameter]
 	public bool CloseOnOverlayClick { get; set; } = true;
 
@@ -125,7 +196,74 @@
 			mvarMaxPerPage = MaxFrontiersPerPage;
 		}
 
-		Rebuild();
+		if (!mvarCertResolved)
+		{
+			try
+			{
+				string thumb = CirculationSheetCertificate.GetThumbprint();
+				mvarCertThumbShort = thumb.Length > 10 ? thumb.Substring(0, 10) + "…" : thumb;
+			}
+			catch
+			{
+				mvarCertThumbShort = "(sin cert)";
+			}
+
+			mvarCertResolved = true;
+		}
+
+		// El padre (MeshDiagram) se re-renderiza cada segundo por el reloj «Ahora».
+		// Solo regenerar SVG si cambian datos de la ficha/libro, no en cada tick.
+		string key = BuildRebuildKey();
+		if (!mvarReady || !string.Equals(key, mvarRebuildKey, StringComparison.Ordinal))
+		{
+			mvarRebuildKey = key;
+			Rebuild();
+		}
+	}
+
+	private string BuildRebuildKey()
+	{
+		System.Text.StringBuilder sb = new System.Text.StringBuilder(128);
+		sb.Append(FullBook ? 'B' : 'F');
+		sb.Append('|');
+		sb.Append(mvarMaxPerPage.ToString(System.Globalization.CultureInfo.InvariantCulture));
+		sb.Append('|');
+		sb.Append(PlanName ?? string.Empty);
+		sb.Append('|');
+		sb.Append(Notes ?? string.Empty);
+		sb.Append('|');
+		sb.Append(PlanningDay.HasValue ? ((int)PlanningDay.Value).ToString(System.Globalization.CultureInfo.InvariantCulture) : "-");
+		sb.Append('|');
+		if (Circulation is not null)
+		{
+			sb.Append(Circulation.TechnicalId ?? string.Empty);
+			sb.Append('@');
+			sb.Append(Circulation.Departure.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture));
+		}
+		else
+		{
+			sb.Append('-');
+		}
+
+		sb.Append('|');
+		if (Mesh is not null)
+		{
+			sb.Append(Mesh.Circulations.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+			sb.Append('#');
+			// Identidad estable de la malla sin GetHashCode de instancia.
+			sb.Append(System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Mesh)
+				.ToString(System.Globalization.CultureInfo.InvariantCulture));
+		}
+		else
+		{
+			sb.Append('-');
+		}
+
+		sb.Append('|');
+		sb.Append(DemandPlan is null ? "0" : "1");
+		sb.Append('|');
+		sb.Append(ExploitationPlan is null ? "0" : "1");
+		return sb.ToString();
 	}
 
 	private void Rebuild()
@@ -133,9 +271,12 @@
 		mcolPageSvg.Clear();
 		mvarReady = false;
 		mvarError = null;
+		// No borrar mvarInfo / panel verificar: Rebuild no debe resetear la UI de controles.
 		mvarFullBook = FullBook;
 		mvarTitleExtra = string.Empty;
 		mvarHalfPageCount = 0;
+		mvarEditionLabel = string.Empty;
+		mvarDayLabel = string.Empty;
 
 		try
 		{
@@ -159,7 +300,10 @@
 					exploitation: ExploitationPlan);
 				mvarTitleExtra = book.PlanName;
 				mvarHalfPageCount = book.TotalHalfPages;
-				IReadOnlyList<string> sheets = CirculationSheetSvgRenderer.RenderAllBookSheets(book);
+				mvarEditionLabel = book.EditionLabel;
+				mvarDayLabel = book.DayLabel;
+				IReadOnlyList<string> sheets = CirculationSheetSvgRenderer.RenderAllBookSheets(
+					book, out mvarDocumentSeal, out mvarDocumentPayload);
 				int i = 0;
 				while (i < sheets.Count)
 				{
@@ -171,6 +315,8 @@
 			{
 				if (Circulation is null)
 				{
+					mvarError = "No hay circulación seleccionada.";
+					mvarReady = true;
 					return;
 				}
 
@@ -180,12 +326,39 @@
 					Circulation, Mesh, mvarMaxPerPage, editionLabel: null, serviceDays: days);
 				mvarTitleExtra = string.IsNullOrEmpty(doc.TrainNumber) ? "—" : doc.TrainNumber;
 				mvarHalfPageCount = doc.Pages.Count;
-				IReadOnlyList<string> pages = CirculationSheetSvgRenderer.RenderAllPages(doc);
+				mvarEditionLabel = doc.EditionLabel;
+				mvarDayLabel = doc.ServiceDaysLabel;
+				IReadOnlyList<string> pages = CirculationSheetSvgRenderer.RenderAllPages(
+					doc, out mvarDocumentSeal, out mvarDocumentPayload);
 				int i = 0;
 				while (i < pages.Count)
 				{
 					mcolPageSvg.Add(pages[i]);
 					i++;
+				}
+			}
+
+			// Registrar vista en el registro local para que el SEL impreso sea verificable al pegar.
+			if (!string.IsNullOrEmpty(mvarDocumentSeal))
+			{
+				mvarLastSeal = mvarDocumentSeal;
+				try
+				{
+					CirculationEmissionRegistry.Append(new CirculationEmissionInfo
+					{
+						DocumentKind = mvarFullBook ? "libro" : "ficha",
+						Channel = "view",
+						SealCode = mvarDocumentSeal,
+						Payload = mvarDocumentPayload,
+						PlanOrTrain = mvarTitleExtra,
+						EditionLabel = mvarEditionLabel,
+						DayLabel = mvarDayLabel,
+						SheetCount = mcolPageSvg.Count,
+						QrText = CirculationSheetQr.BuildQrPayload(mvarDocumentSeal, mvarDocumentPayload)
+					});
+				}
+				catch
+				{
 				}
 			}
 
@@ -225,13 +398,114 @@
 			}
 
 			mvarMaxPerPage = n;
+			mvarRebuildKey = BuildRebuildKey();
 			Rebuild();
+		}
+	}
+
+	private void ToggleVerifyPanel()
+	{
+		mvarShowVerify = !mvarShowVerify;
+		mvarVerifyMessage = string.Empty;
+	}
+
+	private async Task VerifySealAsync()
+	{
+		mvarVerifyMessage = string.Empty;
+		CirculationSealVerifyResult local = CirculationEmissionRegistry.Verify(
+			mvarVerifyInput,
+			payloadHint: mvarDocumentPayload,
+			knownDocumentSeal: mvarDocumentSeal,
+			knownDocumentPayload: mvarDocumentPayload);
+		mvarVerifyOk = local.Ok;
+		mvarVerifyMessage = local.Message;
+		if (local.Ok && !string.IsNullOrEmpty(local.SealCode))
+		{
+			mvarLastSeal = local.SealCode;
+		}
+
+		if (OnVerifySealRemote.HasDelegate && !string.IsNullOrWhiteSpace(mvarVerifyInput))
+		{
+			try
+			{
+				await OnVerifySealRemote.InvokeAsync(mvarVerifyInput.Trim());
+			}
+			catch
+			{
+			}
+		}
+	}
+
+	private CirculationEmissionInfo BuildEmission(string channel)
+	{
+		// Reutilizar el sello del documento en pantalla (mismo que pie/QR), no uno nuevo.
+		if (!string.IsNullOrEmpty(mvarDocumentSeal) && !string.IsNullOrEmpty(mvarDocumentPayload))
+		{
+			string thumb = string.Empty;
+			try
+			{
+				thumb = CirculationSheetCertificate.GetThumbprint();
+			}
+			catch
+			{
+			}
+
+			return new CirculationEmissionInfo
+			{
+				DocumentKind = mvarFullBook ? "libro" : "ficha",
+				Channel = channel,
+				SealCode = mvarDocumentSeal,
+				Payload = mvarDocumentPayload,
+				PlanOrTrain = mvarTitleExtra,
+				EditionLabel = mvarEditionLabel,
+				DayLabel = mvarDayLabel,
+				SheetCount = mcolPageSvg.Count,
+				CertThumbprint = thumb,
+				QrText = CirculationSheetQr.BuildQrPayload(mvarDocumentSeal, mvarDocumentPayload)
+			};
+		}
+
+		string kind = mvarFullBook ? "libro" : "ficha";
+		return CirculationSheetAuthenticity.CreateEmission(
+			kind,
+			channel,
+			mvarTitleExtra,
+			mvarEditionLabel,
+			mvarDayLabel,
+			mcolPageSvg.Count,
+			Notes);
+	}
+
+	private async Task RegisterEmissionAsync(CirculationEmissionInfo emission)
+	{
+		mvarLastSeal = emission.SealCode;
+		try
+		{
+			CirculationEmissionRegistry.Append(emission);
+		}
+		catch
+		{
+		}
+
+		if (OnOfficialEmission.HasDelegate)
+		{
+			try
+			{
+				await OnOfficialEmission.InvokeAsync(emission);
+			}
+			catch (Exception ex)
+			{
+				mvarInfo = "Emisión local OK; aviso al host: " + ex.Message;
+			}
 		}
 	}
 
 	private async Task PrintAsync()
 	{
-		// Leer hojas del DOM del diálogo (todas las páginas; evita límite SignalR).
+		CirculationEmissionInfo emission = BuildEmission("print");
+		await RegisterEmissionAsync(emission);
+		mvarInfo = "Emisión registrada · " + CirculationSheetAuthenticity.FormatSealLabel(emission.SealCode);
+
 		try
 		{
 			await Js.InvokeVoidAsync("diamondCircSheet.printFromRoot", mvarPrintRoot);
@@ -264,19 +538,44 @@
 
 		mvarBusyPdf = true;
 		mvarError = null;
+		mvarInfo = null;
 		try
 		{
-			byte[] pdf = await Task.Run(() =>
-				CirculationSheetPdfExporter.ExportSvgSheetsToPdf(mcolPageSvg));
+			CirculationEmissionInfo emission = BuildEmission("pdf");
+
+			// El PDF se monta en el proceso .NET del circuito Blazor:
+			// · WASM (Sapphire2025): en el navegador → NUNCA Skia nativo (no hay libSkiaSharp).
+			// · Interactive Server: en el .exe host → Skia solo si el host trae nativos.
+			// La UI siempre rasteriza SVG→PNG en el canvas del browser y PdfSharp embebe PNG
+			// (sin tocar SkiaSharp). Así se evita DllNotFoundException: libSkiaSharp.
+			string[] pngs = await Js.InvokeAsync<string[]>(
+				"diamondCircSheet.rasterizeSvgs", mcolPageSvg.ToArray());
+			if (pngs is null || pngs.Length == 0)
+			{
+				throw new InvalidOperationException(
+					"El navegador no devolvió páginas PNG. ¿Está cargado circ-sheet.js? (recarga forzada).");
+			}
+
+			byte[] pdf = CirculationSheetPdfExporter.ExportPngBase64PagesToPdf(pngs, emission);
+
+			await RegisterEmissionAsync(emission);
+
 			string b64 = Convert.ToBase64String(pdf);
 			string name = mvarFullBook
-				? "libro-itinerario.pdf"
-				: "ficha-" + SanitizeFileName(mvarTitleExtra) + ".pdf";
+				? "libro-itinerario-firmado.pdf"
+				: "ficha-" + SanitizeFileName(mvarTitleExtra) + "-firmado.pdf";
 			await Js.InvokeVoidAsync("diamondCircSheet.downloadPdf", b64, name);
+			string sealInfo = CirculationSheetAuthenticity.FormatSealLabel(emission.SealCode);
+			string certInfo = emission.CertThumbprint.Length > 8
+				? emission.CertThumbprint.Substring(0, 8) + "…"
+				: (string.IsNullOrEmpty(emission.CertThumbprint) ? "sin cert (WASM)" : emission.CertThumbprint);
+			mvarInfo = "PDF exportado (canvas del navegador, sin Skia) · "
+				+ sealInfo + " · " + certInfo;
 		}
 		catch (Exception ex)
 		{
-			mvarError = "Error al exportar PDF: " + ex.Message;
+			mvarError = "Error al exportar PDF: " + ex.Message
+				+ " Recarga forzada (Ctrl+F5) para actualizar circ-sheet.js.";
 		}
 		finally
 		{
@@ -318,7 +617,7 @@
 		return s.Length == 0 ? "documento" : s;
 	}
 
-	private async Task Close()
+	private async Task CloseAsync()
 	{
 		if (OnClose.HasDelegate)
 		{
@@ -330,7 +629,7 @@
 	{
 		if (CloseOnOverlayClick)
 		{
-			await Close();
+			await CloseAsync();
 		}
 	}
 }

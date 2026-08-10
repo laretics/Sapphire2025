@@ -8,9 +8,9 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public static string SapphireSoftwareVersion => "26.8.8";
+		public static string SapphireSoftwareVersion => "26.8.10";
 		public static bool MajorVersion => true; //Muestra el aviso de actualización sólo cuando este flag es true.
-		public static string LastChangesText => "Planificador Diamond|Correcciones menores";
+		public static string LastChangesText => "Libros Itinerario";
 
 		public static readonly Guid TelegramToken = new Guid("3a7f9c2e-8b4d-4f1a-9e6c-7d2b5a8f3e1c"); //Token de sesión sólo para operaciones desde Telegram.
 
@@ -266,7 +266,14 @@ namespace Sapphire2025Models
 			scheduleViewOpened = 70,    //Apertura de la vista de cuadrante
 			scheduleDayViewed = 71,     //Consulta de un día del cuadrante propio (o simulado)
 			scheduleShiftQueried = 72,  //Consulta de quién realiza un turno
-			scheduleSwapRequested = 73  //Solicitud de cambio de turno
+			scheduleSwapRequested = 73, //Solicitud de cambio de turno
+
+			// Documentación de circulación (Diamond / libro itinerario)
+			circulationBookPrinted = 80,       //Impresión de libro itinerario
+			circulationSheetPrinted = 81,      //Impresión de ficha de un tren
+			circulationBookExportedPdf = 82,   //Exportación PDF de libro
+			circulationSheetExportedPdf = 83,  //Exportación PDF de ficha
+			circulationSealVerified = 84       //Verificación de sello SEL en UI
 		}
 
 		/// <summary>
@@ -310,6 +317,11 @@ namespace Sapphire2025Models
 				sessionEventType.scheduleDayViewed => "Consulta día de cuadrante",
 				sessionEventType.scheduleShiftQueried => "Consulta de turno ajeno",
 				sessionEventType.scheduleSwapRequested => "Solicitud de cambio de turno",
+				sessionEventType.circulationBookPrinted => "Impresión libro itinerario",
+				sessionEventType.circulationSheetPrinted => "Impresión ficha de circulación",
+				sessionEventType.circulationBookExportedPdf => "PDF libro itinerario",
+				sessionEventType.circulationSheetExportedPdf => "PDF ficha de circulación",
+				sessionEventType.circulationSealVerified => "Verificación sello de circulación",
 				_ => "¿?"
 			};
 		}

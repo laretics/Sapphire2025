@@ -881,7 +881,12 @@ namespace Sapphire2025Server.Controllers
 			return eventType == Common.sessionEventType.scheduleViewOpened
 				|| eventType == Common.sessionEventType.scheduleDayViewed
 				|| eventType == Common.sessionEventType.scheduleShiftQueried
-				|| eventType == Common.sessionEventType.scheduleSwapRequested;
+				|| eventType == Common.sessionEventType.scheduleSwapRequested
+				|| eventType == Common.sessionEventType.circulationBookPrinted
+				|| eventType == Common.sessionEventType.circulationSheetPrinted
+				|| eventType == Common.sessionEventType.circulationBookExportedPdf
+				|| eventType == Common.sessionEventType.circulationSheetExportedPdf
+				|| eventType == Common.sessionEventType.circulationSealVerified;
 		}
 
 		/// <summary>

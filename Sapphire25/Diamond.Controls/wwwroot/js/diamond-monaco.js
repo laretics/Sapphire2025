@@ -41,6 +41,10 @@
 			inherit: true,
 			rules: [
 				{ token: "comment", foreground: "64748b", fontStyle: "italic" },
+				// Metadatos de proyecto (plan, train, notes, single track, vmax…): naranja.
+				{ token: "meta", foreground: "fb923c" },
+				{ token: "keyword.meta", foreground: "fb923c" },
+				// Directivas de demanda (require, stops, days…).
 				{ token: "keyword", foreground: "c4b5fd" },
 				{ token: "string", foreground: "86efac" },
 				{ token: "number", foreground: "fbbf24" },
@@ -95,8 +99,23 @@
 		var reStringBad = /\"([^\"\\]|\\.)*$/;
 		var reStringOpen = /\"/;
 		var reArrow = /->/;
+		// Metadatos de proyecto / cabecera (naranja): frases multi-palabra primero.
+		var reMetaPhrase = new RegExp(
+			"\\b(?:single\\s+tracks?|via\\s+simple|v[ií]a\\s+simple|single\\s+v[ií]a)\\b"
+		);
+		var reMetaKeyword = new RegExp(
+			"\\b(?:notes|note|notas|nota|plan|include|incluir|topo|" +
+			"train|tren|fleet|trainspecs|name|nombre|" +
+			"accel|acceleration|brake|freno|vmax|maxspeed|" +
+			"single|tracks?|vias|v[ií]as|limit|limite|l[ií]mite|speed)\\b"
+		);
+		// Directivas de demanda / malla (violeta).
 		var reKeyword = new RegExp(
-			"\\b(?:plan|require|req|delete|del|asim|asimilacion|asimilation|numbers|number|nums|num|serie|series|numeracion|all|any|overlap|journey|both|ways|using|as|from|to|days|on|stops|skip|dwell|cross|at|color|colour|with|con|region|every|min|mins|minutes|per|hour|hours)\\b"
+			"\\b(?:require|req|delete|del|asim|asimilacion|asimilation|" +
+			"numbers|number|nums|num|serie|series|numeracion|" +
+			"all|any|overlap|journey|both|ways|using|as|from|to|" +
+			"days|on|stops|skip|dwell|cross|at|color|colour|with|con|region|" +
+			"every|min|mins|minutes|per|hour|hours)\\b"
 		);
 		var reHexColor = /#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/;
 		// Patrones de numeración con # en medio o al final: 49##, P##MTX, P##MAN (antes que comentario)
@@ -134,6 +153,9 @@
 					[reStringBad, "string.invalid"],
 					[reStringOpen, "string", "@string"],
 					[reArrow, "operator"],
+					// Metadatos (naranja) antes que keywords de demanda
+					[reMetaPhrase, "meta"],
+					[reMetaKeyword, "meta"],
 					[reKeyword, "keyword"],
 					[reDay, "type"],
 					[reDayRange, "type"],

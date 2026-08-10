@@ -91,6 +91,15 @@ namespace Sapphire2026.Data
 					.HasForeignKey(e => e.SourcePlanId)
 					.OnDelete(DeleteBehavior.SetNull);
 			});
+
+			modelBuilder.Entity<DiamondCirculationEmission>(entity =>
+			{
+				entity.ToTable("DiamondCirculationEmissions");
+				entity.HasIndex(e => e.SealCode);
+				entity.HasIndex(e => e.EmittedAtUtc);
+				entity.HasIndex(e => e.UserId);
+				entity.Property(e => e.PdfCmsSignatureBase64).HasColumnType("longtext");
+			});
 		}
 
 		#region "Registro"
@@ -253,6 +262,7 @@ namespace Sapphire2026.Data
 		public DbSet<DiamondTopoDocument> DiamondTopos { get; set; }
 		public DbSet<DiamondPlanDocument> DiamondPlans { get; set; }
 		public DbSet<DiamondPublishedPlanDocument> DiamondPublishedPlans { get; set; }
+		public DbSet<DiamondCirculationEmission> DiamondCirculationEmissions { get; set; }
 		#endregion
 		#region Maquinistros
 		public DbSet<WorkShiftTemplateCollection> WorkShiftTemplateCollections { get; set; }

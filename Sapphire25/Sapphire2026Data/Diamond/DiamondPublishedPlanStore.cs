@@ -195,6 +195,12 @@ namespace Sapphire2026.Data.Diamond
 				return result;
 			}
 
+			// Misma infraestructura que MeshPlannerWorkspace / DemoMeshService:
+			// cantones en estaciones principales y doble vía Palma–Enllaç en T3.
+			// Sin esto, la malla ve un único cantón de vía única y genera miles de
+			// "errores duros" que el planificador UI no muestra (allí sí se aplica).
+			SfmDemoInfrastructure.Apply(layout);
+
 			string logical = !string.IsNullOrWhiteSpace(topoDoc.SourceFileName)
 				? TopoStorage.EnsureXmlExtension(topoDoc.SourceFileName)
 				: TopoStorage.EnsureXmlExtension(topoDoc.Name);
@@ -233,6 +239,12 @@ namespace Sapphire2026.Data.Diamond
 					return result;
 				}
 			}
+			else if (!ReferenceEquals(plan.Topo, layout))
+			{
+				// El include resolvió otra instancia (disco / almacén): aplicar la misma
+				// infraestructura para que la publicación coincida con el planificador.
+				SfmDemoInfrastructure.Apply(plan.Topo);
+			}
 
 			if (string.IsNullOrWhiteSpace(name))
 			{
@@ -268,7 +280,24 @@ namespace Sapphire2026.Data.Diamond
 			}
 
 			string contentHash = Convert.ToHexString(SHA256.HashData(payload));
-			DateTime validFrom = (request.ValidFrom ?? DateTime.UtcNow).Date;
+
+			// Vigencia: petición → metadatos del plan de autoría → hoy UTC.
+			DateTime validFrom = DateTime.UtcNow.Date;
+			if (request.ValidFrom.HasValue)
+			{
+				validFrom = request.ValidFrom.Value.Date;
+			}
+			else if (sourcePlanId.HasValue)
+			{
+				DiamondPlanDocument? srcMeta = await mvarContext.DiamondPlans
+					.AsNoTracking()
+					.FirstOrDefaultAsync(x => x.Id == sourcePlanId.Value, cancellationToken);
+				if (srcMeta is not null && srcMeta.ValidFrom.HasValue)
+				{
+					validFrom = srcMeta.ValidFrom.Value.Date;
+				}
+			}
+
 			DateTime? validTo = request.ValidTo.HasValue ? request.ValidTo.Value.Date : null;
 			if (validTo.HasValue && validTo.Value < validFrom)
 			{
@@ -293,6 +322,8 @@ namespace Sapphire2026.Data.Diamond
 				notesJoined = notesJoined.Substring(0, 8000) + "…";
 			}
 
+			bool inProduction = request.InProduction;
+
 			DiamondPublishedPlanDocument doc = new DiamondPublishedPlanDocument
 			{
 				Id = Guid.NewGuid(),
@@ -313,7 +344,7 @@ namespace Sapphire2026.Data.Diamond
 				CirculationCount = circCount,
 				AsimilationCount = asimCount,
 				Notes = notesJoined,
-				IsActive = true,
+				IsActive = inProduction,
 				CreatedUtc = DateTime.UtcNow
 			};
 
@@ -326,12 +357,27 @@ namespace Sapphire2026.Data.Diamond
 				.FirstAsync(x => x.Id == doc.Id, cancellationToken);
 
 			result.Success = true;
+			string hardSummary = string.Empty;
+			int noteIndex = 0;
+			while (noteIndex < package.Notes.Count)
+			{
+				string note = package.Notes[noteIndex];
+				if (note.IndexOf("error(es) duros", StringComparison.OrdinalIgnoreCase) >= 0)
+				{
+					hardSummary = " · " + note.TrimEnd('.');
+					break;
+				}
+
+				noteIndex++;
+			}
+
 			result.Message = string.Format(
-				"Publicado «{0}» · {1} circulaciones · vigencia desde {2:d}{3}.",
+				"Publicado «{0}» · {1} circulaciones · vigencia desde {2:d}{3}{4}.",
 				doc.Name,
 				doc.CirculationCount,
 				doc.ValidFrom,
-				doc.ValidTo.HasValue ? " hasta " + doc.ValidTo.Value.ToString("d") : string.Empty);
+				doc.ValidTo.HasValue ? " hasta " + doc.ValidTo.Value.ToString("d") : string.Empty,
+				hardSummary);
 			result.Header = ToHeader(doc);
 			return result;
 		}
@@ -354,8 +400,179 @@ namespace Sapphire2026.Data.Diamond
 			row.IsActive = isActive;
 			await mvarContext.SaveChangesAsync(cancellationToken);
 			result.Success = true;
-			result.Message = isActive ? "Publicación reactivada." : "Publicación retirada de explotación.";
+			result.Message = isActive
+				? "Publicación puesta en producción."
+				: "Publicación retirada de producción.";
 			result.Header = await GetHeaderAsync(id, cancellationToken);
+			return result;
+		}
+
+		/// <summary>Actualiza metadatos CRUD sin recompilar el payload.</summary>
+		public async Task<DiamondPublishPlanResult> UpdateAsync(
+			DiamondPublishedPlanUpdateRequest request,
+			CancellationToken cancellationToken = default)
+		{
+			DiamondPublishPlanResult result = new DiamondPublishPlanResult();
+			if (request is null || Guid.Empty.Equals(request.Id))
+			{
+				result.Success = false;
+				result.Message = "Id de publicación vacío.";
+				return result;
+			}
+
+			DiamondPublishedPlanDocument? row = await mvarContext.DiamondPublishedPlans
+				.FirstOrDefaultAsync(x => x.Id == request.Id, cancellationToken);
+			if (row is null)
+			{
+				result.Success = false;
+				result.Message = "Publicación no encontrada.";
+				return result;
+			}
+
+			if (!string.IsNullOrWhiteSpace(request.Name))
+			{
+				row.Name = request.Name.Trim();
+			}
+
+			if (request.ValidFrom.HasValue)
+			{
+				row.ValidFrom = request.ValidFrom.Value.Date;
+			}
+
+			if (request.ValidTo.HasValue)
+			{
+				// Fecha sentinela muy lejana = limpiar fin
+				row.ValidTo = request.ValidTo.Value.Date;
+			}
+
+			// Permitir borrar ValidTo enviando DateTime.MinValue como convención
+			// (UI envía null para no tocar; para borrar usamos un flag en Notes no —
+			// mejor: si ValidTo se envía como default(DateTime) no. La UI enviará
+			// clearValidTo por separado si hace falta. Por ahora solo set si HasValue.
+
+			if (request.InProduction.HasValue)
+			{
+				row.IsActive = request.InProduction.Value;
+			}
+
+			if (request.Notes is not null)
+			{
+				row.Notes = request.Notes.Length > 8000
+					? request.Notes.Substring(0, 8000) + "…"
+					: request.Notes;
+			}
+
+			if (row.ValidTo.HasValue && row.ValidTo.Value < row.ValidFrom)
+			{
+				result.Success = false;
+				result.Message = "ValidTo no puede ser anterior a ValidFrom.";
+				return result;
+			}
+
+			await mvarContext.SaveChangesAsync(cancellationToken);
+			result.Success = true;
+			result.Message = "Publicación actualizada.";
+			result.Header = await GetHeaderAsync(request.Id, cancellationToken);
+			return result;
+		}
+
+		/// <summary>
+		/// Planes en producción asociados a una topología, cuya vigencia no ha
+		/// terminado antes de <paramref name="fromDate"/> (actuales y próximos).
+		/// </summary>
+		public async Task<IReadOnlyList<DiamondPublishedPlanHeaderModel>> ListForTopoAsync(
+			Guid topoId,
+			DateTime fromDate,
+			bool inProductionOnly = true,
+			CancellationToken cancellationToken = default)
+		{
+			DateTime day = fromDate.Date;
+			IQueryable<DiamondPublishedPlanDocument> query = mvarContext.DiamondPublishedPlans
+				.AsNoTracking()
+				.Include(x => x.Topo)
+				.Where(x => x.TopoId == topoId
+					&& (x.ValidTo == null || x.ValidTo >= day));
+
+			if (inProductionOnly)
+			{
+				query = query.Where(x => x.IsActive);
+			}
+
+			List<DiamondPublishedPlanDocument> rows = await query
+				.OrderBy(x => x.ValidFrom)
+				.ThenByDescending(x => x.CompiledUtc)
+				.ToListAsync(cancellationToken);
+
+			List<DiamondPublishedPlanHeaderModel> salida = new List<DiamondPublishedPlanHeaderModel>(rows.Count);
+			int i = 0;
+			while (i < rows.Count)
+			{
+				salida.Add(ToHeader(rows[i]));
+				i++;
+			}
+
+			return salida;
+		}
+
+		/// <summary>
+		/// Paquete dispositivo: metadatos de topo + planes en producción vigentes/próximos.
+		/// </summary>
+		public async Task<DiamondDeviceTopoPackageModel?> BuildDevicePackageAsync(
+			Guid topoId,
+			DateTime? fromDate = null,
+			CancellationToken cancellationToken = default)
+		{
+			DiamondTopoDocument? topo = await mvarContext.DiamondTopos
+				.AsNoTracking()
+				.FirstOrDefaultAsync(x => x.Id == topoId, cancellationToken);
+			if (topo is null)
+			{
+				return null;
+			}
+
+			DateTime day = (fromDate ?? DateTime.UtcNow).Date;
+			IReadOnlyList<DiamondPublishedPlanHeaderModel> plans =
+				await ListForTopoAsync(topoId, day, inProductionOnly: true, cancellationToken);
+
+			return new DiamondDeviceTopoPackageModel
+			{
+				TopoId = topo.Id,
+				TopoName = topo.Name,
+				TopoContentHash = topo.ContentHash,
+				TopoStructuralHash = topo.StructuralHash,
+				TopoFormat = topo.Format,
+				TopoByteLength = topo.ByteLength,
+				GeneratedUtc = DateTime.UtcNow,
+				FromDate = day,
+				ProductionPlans = new List<DiamondPublishedPlanHeaderModel>(plans)
+			};
+		}
+
+		public async Task<DiamondPublishPlanResult> DeleteAsync(
+			Guid id,
+			CancellationToken cancellationToken = default)
+		{
+			DiamondPublishPlanResult result = new DiamondPublishPlanResult();
+			DiamondPublishedPlanDocument? row = await mvarContext.DiamondPublishedPlans
+				.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+			if (row is null)
+			{
+				result.Success = false;
+				result.Message = "Publicación no encontrada.";
+				return result;
+			}
+
+			if (row.IsActive)
+			{
+				result.Success = false;
+				result.Message = "No se puede borrar un plan en producción. Retírelo primero.";
+				return result;
+			}
+
+			mvarContext.DiamondPublishedPlans.Remove(row);
+			await mvarContext.SaveChangesAsync(cancellationToken);
+			result.Success = true;
+			result.Message = "Publicación eliminada del histórico.";
 			return result;
 		}
 

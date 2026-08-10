@@ -104,6 +104,8 @@ namespace Diamond.Project
 			};
 
 			int hardErrors = 0;
+			List<string> sampleHardErrors = new List<string>();
+			const int maxSampleHardErrors = 8;
 			int di = 0;
 			while (di < days.Length)
 			{
@@ -121,6 +123,14 @@ namespace Diamond.Project
 						+ ": "
 						+ mesh.Errors.Count.ToString(CultureInfo.InvariantCulture)
 						+ " error(es) de malla.");
+
+					// Muestras para diagnosticar (p. ej. cantones ausentes, refs, conflictos).
+					int ei = 0;
+					while (ei < mesh.Errors.Count && sampleHardErrors.Count < maxSampleHardErrors)
+					{
+						sampleHardErrors.Add(mesh.Errors[ei]);
+						ei++;
+					}
 				}
 
 				int wi = 0;
@@ -143,6 +153,13 @@ namespace Diamond.Project
 						+ hardErrors.ToString(CultureInfo.InvariantCulture)
 						+ " error(es) duros de malla (publicado igualmente)."
 					: "."));
+
+			int si = 0;
+			while (si < sampleHardErrors.Count)
+			{
+				package.Notes.Add("ejemplo: " + sampleHardErrors[si]);
+				si++;
+			}
 
 			return package;
 		}

@@ -161,7 +161,9 @@
 							  DemandPlan="DemandPlan"
 							  ExploitationPlan="ExploitationPlan"
 							  MaxFrontiersPerPage="MaxFrontiersPerPage"
-							  OnClose="CloseCirculationSheet" />
+							  OnClose="CloseCirculationSheet"
+							  OnOfficialEmission="OnOfficialEmission"
+							  OnVerifySealRemote="OnVerifySealRemote" />
 	}
 
 	<MeshPrintView @ref="mvarPrintView"
@@ -237,6 +239,14 @@
 	/// <summary>Plan de demanda (días de circulación en fichas / libro).</summary>
 	[Parameter]
 	public Plan? DemandPlan { get; set; }
+
+	/// <summary>Registro de emisión oficial (impresión/PDF) hacia el host Zafiro.</summary>
+	[Parameter]
+	public EventCallback<CirculationEmissionInfo> OnOfficialEmission { get; set; }
+
+	/// <summary>Verificación remota de sello (API almacén / log).</summary>
+	[Parameter]
+	public EventCallback<string> OnVerifySealRemote { get; set; }
 
 	/// <summary>Plan de explotación multi-día cargado (.dmesh).</summary>
 	[Parameter]
@@ -346,6 +356,15 @@
 						return Task.CompletedTask;
 					}
 
+					// Con la ficha/libro abiertos no re-renderizar cada segundo:
+					// el re-render del padre re-entraba en CirculationSheetView y
+					// regeneraba todos los SVG (UI congelada, Cerrar sin respuesta).
+					if (mvarShowSheet)
+					{
+						mvarClockNow = DateTime.Now.TimeOfDay;
+						return Task.CompletedTask;
+					}
+
 					mvarClockNow = DateTime.Now.TimeOfDay;
 					if (mvarShowNowLine && Mesh is not null && !mvarPanning)
 					{
@@ -374,7 +393,8 @@
 			return;
 		}
 
-		if (SelectedCirculation is null)
+		// Cerrar ficha si se pierde la selección; el libro itinerario no depende de un tren.
+		if (SelectedCirculation is null && !mvarSheetFullBook)
 		{
 			mvarShowSheet = false;
 		}
