@@ -1,7 +1,5 @@
-﻿@* PassengerInfoPanel.razor *@
+@* PassengerInfoPanel.razor *@
 @using Tourmaline26.Components.Layout.Passenger.Modules
-@using TimeNet2026.Timed
-@using TimeNet2026.Topo
 @inject TourmalineService mvarTourmaline
 <div @onclick="OnScreenClick">
     @if (mvarTourmaline.SessionConfig.MainSwitches.TFTEnabled)
@@ -31,20 +29,20 @@
     [CascadingParameter]
     public Action? UpdateView{ get; set; }
 
-    private Circulation? CurrentCirculation 
+    private Diamond.Project.Circulation? CurrentCirculation
     {
         get
         {
-            if (null != mvarTourmaline.SessionConfig.TNEnvironment &&
-            null != mvarTourmaline.SessionConfig.TNEnvironment.Circulation)
-                return mvarTourmaline.SessionConfig.TNEnvironment.Circulation;
+            if (null != mvarTourmaline.SessionConfig.Cabin &&
+            null != mvarTourmaline.SessionConfig.Cabin.Circulation)
+                return mvarTourmaline.SessionConfig.Cabin.Circulation;
 
             return null;
         }
     }
     private TimeSpan CurrentDelay
     {
-        get => null == mvarTourmaline.SessionConfig.TNEnvironment ? new TimeSpan(0) : mvarTourmaline.SessionConfig.TNEnvironment.CurrentDelay;
+        get => null == mvarTourmaline.SessionConfig.Cabin ? new TimeSpan(0) : mvarTourmaline.SessionConfig.Cabin.CurrentDelay;
     }
 
     protected override void OnInitialized()

@@ -6,7 +6,6 @@
 @using Tourmaline26.Components.Controls.Aeneas
 @using Tourmaline26.Components.Controls.Generical.SideMenu
 @using Tourmaline26.Components.Controls.Passenger
-@using Tourmaline26.Components.Controls.TimeNet
 @inject ILogger<DriverInfotaiment> Logger
 @inject Sapphire2025.Storage.IntStorageService InternalStorage
 <div class="tesla-root @(NightMode?" night":"")">
@@ -35,10 +34,6 @@
                     else if (AeneasPanelVisible)
                     {
                         <AeneasLog />
-                    }
-                    else if (TimeNetPanelVisible)
-                    {
-                        <TimeNetFloatingView />
                     }
                 </div>
                 @if (mvarTourmaline.SystemConfig.ToniCruz != "right")
@@ -90,7 +85,7 @@
         CCTV = 2,
         Microphone = 3,
         View3d = 4,
-        TimeNet = 7,
+        Mesh = 7,
         Clipboard = 8,
         UserSession = 9
     }
@@ -109,7 +104,7 @@
         buttonData.Add("View3D", view3D);
         buttonData.Add("Spc0", null);
         buttonData.Add("Spc1", null);
-        buttonData.Add("TimeNet", new TeslaButton("Bezier", null, true, null,false,true));
+        buttonData.Add("Mesh", new TeslaButton("Bezier", null, true, null,false,true));
         buttonData.Add("DamageClipboard", new TeslaButton("Clipboard", null, true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged()),false,true));
         buttonData.Add("Login", new TeslaButton("KeyOff", "Key", false, EventCallback.Factory.Create(this, () => OnLoginRequest()), false, true));
         if (mvarTourmaline.SystemConfig.ToniCruz == "left")
@@ -136,7 +131,7 @@
         {
             auxButtonSelect("Main Menu",false);
             auxButtonSelect("DamageClipboard", false);
-            auxButtonSelect("TimeNet", false);
+            auxButtonSelect("Mesh", false);
             auxButtonSelect("Microphone", false);
         }
         // Anuncios a viajeros: panel flotante exclusivo (como CCTV).
@@ -144,17 +139,17 @@
         {
             auxButtonSelect("Main Menu", false);
             auxButtonSelect("DamageClipboard", false);
-            auxButtonSelect("TimeNet", false);
+            auxButtonSelect("Mesh", false);
             auxButtonSelect("Cameras", false);
         }
         //No se puede abrir la sección de partes de avería si está seleccionado el menú principal.
         if(auxButtonSelected("Main Menu"))
         {
             auxButtonSelect("DamageClipboard",false);
-            auxButtonSelect("TimeNet", false);
+            auxButtonSelect("Mesh", false);
         }
         if (auxButtonSelected("DamageClipboard"))
-            auxButtonSelect("TimeNet", false);
+            auxButtonSelect("Mesh", false);
 
         SyncMicrophoneAnnouncementIndicator();
         StateHasChanged();
@@ -183,10 +178,6 @@
     private bool AeneasPanelVisible
     {        
         get => auxButtonSelected("DamageClipboard") && ZeroSpeed;
-    }
-    private bool TimeNetPanelVisible
-    {
-        get => auxButtonSelected("TimeNet") && ZeroSpeed;
     }
     private bool RightPanelVisible
     {

@@ -72,5 +72,8 @@
             return string.Format("\"{0}\" ({1},{2})", coachId, auxNum, auxSide);
         }
     }
-    private string CurrentTime => (null == mvarTourmaline.SessionConfig.TNEnvironment) ? "" : mvarTourmaline.SessionConfig.TNEnvironment.Now.ToString("HH:mm");
+    private string CurrentTime =>
+        null == mvarTourmaline.SessionConfig.Cabin
+            ? DateTime.Now.ToString("HH:mm")
+            : mvarTourmaline.SessionConfig.Cabin.ClockNow.ToString("HH:mm");
 }

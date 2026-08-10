@@ -24,7 +24,6 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\Sapphire2025Models\Sapphire2025Models.csproj" />
-	  <ProjectReference Include="..\TimeNetComponents\TimeNetComponents.csproj" />
 	  <ProjectReference Include="..\Diamond\Diamond.csproj" />
-	</ItemGroup>	
+	</ItemGroup>
 </Project>

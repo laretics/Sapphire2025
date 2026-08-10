@@ -32,56 +32,83 @@ namespace Tourmaline26.Services.TourmalineExperience
 		}
 
 		/// <summary>
-		/// Inicia la simulación.
+		/// True si hay URL de Experience configurada.
 		/// </summary>
-		/// <returns>La operación se completó correctamente</returns>
+		public bool IsConfigured => !string.IsNullOrWhiteSpace(mvarUrl);
+
+		/// <summary>
+		/// Inicia la simulación. No lanza: si Experience no responde, devuelve false.
+		/// </summary>
 		public async Task<bool> Launch(LaunchRequest request)
 		{
-		try
+			if (!IsConfigured)
+			{
+				mvarLogger.LogDebug("Tourmaline Experience no configurado; Launch omitido.");
+				return false;
+			}
+
+			try
 			{
 				using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 				string json = JsonSerializer.Serialize(request);
 				using StringContent content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 				string auxWholeUrl = mvarUrl + "/launch";
 				mvarLogger.LogDebug("Requesting to {0}", auxWholeUrl);
-				HttpResponseMessage? auxResponse = await mvarHttpClient.PostAsync(auxWholeUrl,content, cts.Token);
+				HttpResponseMessage auxResponse = await mvarHttpClient.PostAsync(auxWholeUrl, content, cts.Token);
 				auxResponse.EnsureSuccessStatusCode();
 				return true;
 			}
 			catch (TaskCanceledException)
 			{
-				mvarLogger.LogError("Tourmaline Experience Timeout");
-				throw new TimeoutException("Timeout while trying to launch simulation process");
+				mvarLogger.LogWarning("Tourmaline Experience: timeout en Launch (simulador no disponible).");
+				return false;
+			}
+			catch (HttpRequestException ex)
+			{
+				mvarLogger.LogWarning(ex, "Tourmaline Experience: sin conexión en Launch.");
+				return false;
 			}
 			catch (Exception ex)
 			{
-				mvarLogger.LogError("Tourmaline Experience Error: {0}", ex.Message);
-				throw;
+				mvarLogger.LogWarning(ex, "Tourmaline Experience: error en Launch.");
+				return false;
 			}
 		}
-	
+
 		/// <summary>
-		/// Detiene la simulación y mata todos los procesos similares.
+		/// Detiene la simulación. No lanza: timeout o red caída → false (el HMI sigue).
 		/// </summary>
-		/// <returns>La operación se completó correctamente</returns>
 		public async Task<bool> Stop()
 		{
+			if (!IsConfigured)
+			{
+				return false;
+			}
+
 			try
 			{
 				using CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-				HttpResponseMessage? auxResponse = await mvarHttpClient.PostAsync(mvarUrl + "/stop",content:null, cts.Token);
+				HttpResponseMessage auxResponse = await mvarHttpClient.PostAsync(
+					mvarUrl + "/stop",
+					content: null,
+					cts.Token);
 				auxResponse.EnsureSuccessStatusCode();
 				return true;
 			}
 			catch (TaskCanceledException)
 			{
-				mvarLogger.LogError("Tourmaline Experience Timeout");
-				throw new TimeoutException("Timeout while trying to stop simulation process");
+				mvarLogger.LogWarning("Tourmaline Experience: timeout en Stop (simulador no disponible).");
+				return false;
+			}
+			catch (HttpRequestException ex)
+			{
+				mvarLogger.LogWarning(ex, "Tourmaline Experience: sin conexión en Stop.");
+				return false;
 			}
 			catch (Exception ex)
 			{
-				mvarLogger.LogError("Tourmaline Experience Error: {0}", ex.Message);
-				throw;
+				mvarLogger.LogWarning(ex, "Tourmaline Experience: error en Stop.");
+				return false;
 			}
 		}
 

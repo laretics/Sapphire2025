@@ -1,13 +1,13 @@
-﻿@using TimeNet2026.Timed
+@using ProjectCirculation = Diamond.Project.Circulation
 @using Sapphire2025Models
-@if(null!=Circulation)
+@if (null != Circulation)
 {
-    @if(NightMode)
+    @if (NightMode)
     {
         <button class="btn btn-gradient"
                 style="--btn-bg:@BackColor; color:@ForeColor;"
                 @onclick="@OnClick">
-            @Circulation.name
+            @DisplayName
         </button>
     }
     else
@@ -15,18 +15,18 @@
         <button class="btn btn-gradient"
                 style="--btn-bg:@ForeColor; color:@BackColor;"
                 @onclick="@OnClick">
-            @Circulation.name
+            @DisplayName
         </button>
     }
-    @Utils.autoInterval(Circulation.departure, true, false)
+    @Utils.autoInterval(Circulation.Departure, true, false)
 }
 @code {
     [Parameter]
-    public Circulation? Circulation{ get; set; }
+    public ProjectCirculation? Circulation { get; set; }
     [CascadingParameter]
-    public bool NightMode{ get; set; }
+    public bool NightMode { get; set; }
     [Parameter]
-    public EventCallback<Circulation> OnCirculationSelected{ get; set; }
+    public EventCallback<ProjectCirculation> OnCirculationSelected { get; set; }
 
     private async Task OnClick()
     {
@@ -34,24 +34,23 @@
             await OnCirculationSelected.InvokeAsync(Circulation);
     }
 
+    private string DisplayName
+    {
+        get
+        {
+            if (null == Circulation)
+                return string.Empty;
+            return Circulation.HasServiceNumber ? Circulation.ServiceNumber : Circulation.Id;
+        }
+    }
+
     private string BackColor
     {
         get
         {
-            if (null != Circulation)
-            {
-                if (null != Circulation.Parent)
-                {
-                    if (null != Circulation.Parent.asimilation)
-                        return Circulation.Parent.asimilation.BackColor;
-                    else
-                        return Circulation.Parent.color[0];
-                }
-                else
-                    return Circulation.color[0];
-            }
-            else
-                return "white";
+            if (null != Circulation && Circulation.HasColor)
+                return Circulation.Color;
+            return "white";
         }
     }
 
@@ -59,21 +58,9 @@
     {
         get
         {
-            if (null != Circulation)
-            {
-                if (null != Circulation.Parent)
-                {
-                    if (null != Circulation.Parent.asimilation)
-                        return Circulation.Parent.asimilation.ForeColor;
-                    else
-                        return Circulation.Parent.color[1];
-                }
-                else
-                    return Circulation.color[1];
-            }
-            else
-                return "black";
+            if (null != Circulation && Circulation.HasColor)
+                return "white";
+            return "black";
         }
     }
-
 }

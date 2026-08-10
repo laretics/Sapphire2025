@@ -1,6 +1,7 @@
-@using TimeNet2026.Topo
-@using TimeNet2026.Timed
-@using TimeNet2026.Production
+@using Diamond.Cabin
+@using ProjectCirculation = Diamond.Project.Circulation
+@using ProjectStationInfo = Diamond.Project.StationInfo
+@using ProjectTimedCall = Diamond.Project.TimedCall
 <div class="route-box @(OverlayOnVideo ? "route-box--overlay" : null)">
     <div class="route-title">Pròximes aturades</div>
     <table class="route-table">
@@ -15,7 +16,8 @@
                             <td>
                                 <span class="stop-dot"></span>
                             </td>
-                            @if (mcolItinerary[index].Station?.ShortName == mcolItinerary[index].Station?.ShortName.ToUpper())
+                            @if (!string.IsNullOrEmpty(mcolItinerary[index].Station?.Avr)
+                                 && mcolItinerary[index].Station!.Avr == mcolItinerary[index].Station.Avr.ToUpperInvariant())
                             {
                                 <td class="stop-name-high">@mcolItinerary[index].Station?.Name</td>
                             }
@@ -47,20 +49,17 @@
     [Parameter]
     public bool ShowEstimatedTimes { get; set; }
 
-    /// <summary>
-    /// Tipografía clara con sombra para legibilidad sobre vídeo de fondo.
-    /// </summary>
     [Parameter]
     public bool OverlayOnVideo { get; set; }
 
     private RowContent[] mcolItinerary = Array.Empty<RowContent>();
 
-    private Circulation? Circulation
+    private ProjectCirculation? Circulation
     {
         get
         {
-            if (null != Session && null != Session.TNEnvironment && null != Session.TNEnvironment.Circulation)
-                return Session.TNEnvironment.Circulation;
+            if (null != Session && null != Session.Cabin)
+                return Session.Cabin.Circulation;
             return null;
         }
     }
@@ -71,64 +70,57 @@
         auxRecalculateDestinations();
     }
 
-    /// <summary>
-    /// Paradas con menos de este tiempo en malla se tratan como técnicas (p. ej. Son Rullán)
-    /// y no se anuncian en la lista de próximas estaciones.
-    /// </summary>
-    private static readonly TimeSpan MinCommercialStop = TimeSpan.FromSeconds(10);
-
     private void auxRecalculateDestinations()
     {
         mcolItinerary = Array.Empty<RowContent>();
-        if (null == Session || null == Session.TNEnvironment || null == Circulation)
+        if (null == Session || null == Session.Cabin || null == Circulation)
             return;
 
-        TimeNetEnvironment enviro = Session.TNEnvironment;
+        CabinEnvironment cabin = Session.Cabin;
+        TimeSpan delay = cabin.CurrentDelay.Ticks > 0 ? cabin.CurrentDelay : TimeSpan.Zero;
+        Dictionary<string, TimeSpan> scheduledByStationId =
+            CabinItinerary.ScheduledArrivalsWithDelay(Circulation, delay);
 
-        // Asimilación completa del servicio (horarios teóricos desde el origen del tren).
-        Asimilation? fullRoute = enviro.Asimilation ?? Circulation.Parent?.asimilation;
-        // Tramo residual desde el PK actual (solo estaciones aún por hacer).
-        Asimilation? remaining = enviro.RouteAsimilation;
+        IReadOnlyList<ProjectTimedCall> remaining =
+            CabinItinerary.RemainingCommercialCalls(Circulation, cabin.PK, includeCurrentStation: false);
 
-        if (null == fullRoute?.Origin || null == remaining?.Origin)
-            return;
-
-        TimeSpan delay = enviro.CurrentDelay.Ticks > 0 ? enviro.CurrentDelay : TimeSpan.Zero;
-
-        // Horas de paso/llegada teóricas por estación, calculadas sobre la ruta COMPLETA.
-        Dictionary<string, TimeSpan> scheduledByStationId = BuildScheduledArrivals(fullRoute, Circulation.departure, delay);
-
-        var auxItinerary = new List<RowContent>();
-
-        // Primera del residual = próxima estación del SubAsimilation (su stopTime no queda en Origin;
-        // se consulta en la malla completa).
-        if (IsCommercialStop(fullRoute, remaining.Origin, fullRoute.Destination))
-            AddIfScheduled(auxItinerary, remaining.Origin, scheduledByStationId);
-
-        foreach (AsimilationStep paso in remaining.Steps)
+        List<RowContent> auxItinerary = new List<RowContent>();
+        int i = 0;
+        while (i < remaining.Count)
         {
-            if (IsCommercialStop(paso, remaining.Destination))
-                AddIfScheduled(auxItinerary, paso.destination, scheduledByStationId);
+            ProjectTimedCall call = remaining[i];
+            TimeSpan arrival = TimeSpan.Zero;
+            if (call.Station.Id.Length > 0
+                && scheduledByStationId.TryGetValue(call.Station.Id, out TimeSpan scheduled))
+            {
+                arrival = scheduled;
+            }
+
+            auxItinerary.Add(new RowContent
+            {
+                Station = call.Station,
+                Arrival = arrival
+            });
+            i++;
         }
 
         if (auxItinerary.Count == 0)
             return;
 
-        // Truncado para el número de filas del panel.
         if (auxItinerary.Count <= Rows)
         {
             mcolItinerary = auxItinerary.ToArray();
             return;
         }
 
-        var result = new List<RowContent>(Rows);
+        List<RowContent> result = new List<RowContent>(Rows);
         result.Add(auxItinerary[0]);
 
         if (Rows >= 3)
         {
             int middleCount = Rows - 2;
-            for (int i = 1; i <= middleCount && i < auxItinerary.Count - 1; i++)
-                result.Add(auxItinerary[i]);
+            for (int j = 1; j <= middleCount && j < auxItinerary.Count - 1; j++)
+                result.Add(auxItinerary[j]);
 
             result.Add(new RowContent { Separator = true });
             result.Add(auxItinerary[^1]);
@@ -141,94 +133,9 @@
         mcolItinerary = result.ToArray();
     }
 
-    /// <summary>
-    /// Construye la hora de llegada/paso a cada parada a partir del horario de origen
-    /// del tren + tiempos de trayecto/parada de la asimilación completa + retraso.
-    /// </summary>
-    private static Dictionary<string, TimeSpan> BuildScheduledArrivals(
-        Asimilation fullRoute,
-        TimeSpan tripDeparture,
-        TimeSpan delay)
-    {
-        var map = new Dictionary<string, TimeSpan>(StringComparer.Ordinal);
-
-        void Put(Station? station, TimeSpan when)
-        {
-            if (null == station || string.IsNullOrEmpty(station.Id))
-                return;
-            map[station.Id] = when;
-        }
-
-        // Origen del servicio: hora de salida del tren (no se reutiliza a ciegas en el residual).
-        Put(fullRoute.Origin, tripDeparture + delay);
-
-        TimeSpan cumul = tripDeparture + delay;
-        foreach (AsimilationStep paso in fullRoute.Steps)
-        {
-            cumul += paso.tripTime;
-
-            // Misma regla de “parada comercial” que la tabla residual.
-            // El tiempo de parada técnica (&lt; 10 s) se suma al acumulado igualmente
-            // para no desfasar el reloj de las siguientes estaciones.
-            if (IsCommercialStop(paso, fullRoute.Destination))
-                Put(paso.destination, cumul);
-
-            cumul += paso.stopTime;
-        }
-
-        return map;
-    }
-
-    /// <summary>
-    /// Parada comercial: destino final o tiempo de parada en malla ≥ 10 s.
-    /// Las técnicas (p. ej. Son Rullán) quedan fuera del anuncio al viajero.
-    /// </summary>
-    private static bool IsCommercialStop(AsimilationStep paso, Station? finalDestination)
-    {
-        if (null == paso.destination)
-            return false;
-        if (finalDestination is not null && paso.destination == finalDestination)
-            return true;
-        return paso.stopTime >= MinCommercialStop;
-    }
-
-    private static bool IsCommercialStop(Asimilation fullRoute, Station? station, Station? finalDestination)
-    {
-        if (null == station)
-            return false;
-        if (finalDestination is not null && station == finalDestination)
-            return true;
-        // Origen del servicio: siempre es punto de itinerario (salida).
-        if (fullRoute.Origin is not null && station == fullRoute.Origin)
-            return true;
-        return fullRoute.stationStopTime(station) >= MinCommercialStop;
-    }
-
-    private static void AddIfScheduled(
-        List<RowContent> list,
-        Station? station,
-        Dictionary<string, TimeSpan> scheduledByStationId)
-    {
-        if (null == station)
-            return;
-
-        TimeSpan arrival = TimeSpan.Zero;
-        if (!string.IsNullOrEmpty(station.Id)
-            && scheduledByStationId.TryGetValue(station.Id, out TimeSpan scheduled))
-        {
-            arrival = scheduled;
-        }
-
-        list.Add(new RowContent
-        {
-            Station = station,
-            Arrival = arrival
-        });
-    }
-
     private struct RowContent
     {
-        public Station? Station { get; set; }
+        public ProjectStationInfo? Station { get; set; }
         public TimeSpan Arrival { get; set; }
         public bool Separator { get; set; }
         public bool Pointer { get; set; }

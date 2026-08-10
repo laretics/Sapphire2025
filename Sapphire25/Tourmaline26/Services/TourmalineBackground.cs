@@ -1,6 +1,5 @@
-﻿using TimeNet2026.Production;
-using TimeNet2026.Timed;
-using TimeNet2026.Topo;
+using Diamond.Cabin;
+using Diamond.Project;
 using Tourmaline26.Logic;
 using Tourmaline26.Services.Armandito;
 using Tourmaline26.Services.TourmalineExperience;
@@ -235,16 +234,17 @@ namespace Tourmaline26.Services
                         auxLastPassengerLanguageChange = DateTime.Now.AddSeconds(20);
                     }
 
-                    if (null != mvarTourmaline.SessionConfig.TNEnvironment)
+                    if (null != mvarTourmaline.SessionConfig.Cabin)
                     {
                         mvarLogger.LogDebug("Setting clock");
-                        mvarTourmaline.SessionConfig.TNEnvironment.Now = DateTime.Now; //Actualizamos la hora actual
+                        CabinEnvironment cabin = mvarTourmaline.SessionConfig.Cabin;
+                        cabin.ClockNow = DateTime.Now;
                         if (mvarLastDate.Day != DateTime.Today.Day)
                         {
                             mvarLogger.LogDebug("Today is changed");
-                            mvarTourmaline.SessionConfig.TNEnvironment.SetWeekDate(); //Actualiza el día de la semana actual
+                            cabin.RefreshDayProject();
                             mvarLastDate = DateTime.Today;
-                        }                        
+                        }
                     }
                     CalculateTelemetry();
                     UpdateDemoSpeed();
@@ -355,40 +355,24 @@ namespace Tourmaline26.Services
         //Activamos la localización del tren (si es posible)
         private async Task<bool> PoolLinearLocation()
         {
+            await Task.CompletedTask;
             if (null == mvarTourmaline.SessionConfig.CurrentGPSData)
                 return false;
-            if(null == mvarTourmaline.SessionConfig.TNEnvironment)
+            if (null == mvarTourmaline.SessionConfig.Cabin)
                 return false;
-            TimeNetEnvironment auxEnvironment = mvarTourmaline.SessionConfig.TNEnvironment;
-            if (null == auxEnvironment.TopoStorage)
+            CabinEnvironment cabin = mvarTourmaline.SessionConfig.Cabin;
+            if (null == cabin.Topo)
                 return false;
 
-            // Si hay misión, el GPS→PK se restringe a los ejes de la asimilación.
-            mvarTourmaline.SessionConfig.LinearLocation.Asimilation = auxEnvironment.Asimilation
-                ?? auxEnvironment.Circulation?.Parent?.asimilation;
-
-            if(null==auxEnvironment.Circulation)
+            GPSData gps = mvarTourmaline.SessionConfig.CurrentGPSData;
+            // MissionAxes se actualizan al asignar Circulation en CabinEnvironment.
+            if (cabin.LinearLocation.TryLocateBySatellite(
+                cabin.Topo,
+                gps.Latitude,
+                gps.Longitude))
             {
-                //Localización por ejes cercanos.
-                //Buscamos el eje en el que estamos y obtenemos cualquiera de las asimilaciones.
-                if (mvarTourmaline.SessionConfig.LinearLocation.TryLocateBySatellite(mvarTourmaline.SessionConfig.CurrentGPSData.GeoLocation, auxEnvironment.TopoStorage))
-                {
-                    auxEnvironment.PK = mvarTourmaline.SessionConfig.LinearLocation.PKRef;
-                    if(null==auxEnvironment.Asimilation)
-                    {
-                        auxEnvironment.SetAsimilationByAxis();
-                    }
-                    return true;
-                }
-            }
-            else
-            {
-                if( mvarTourmaline.SessionConfig.LinearLocation.TryLocateBySatellite(mvarTourmaline.SessionConfig.CurrentGPSData.GeoLocation, auxEnvironment.TopoStorage))
-                {
-                    auxEnvironment.PK = mvarTourmaline.SessionConfig.LinearLocation.PKRef;
-                    auxEnvironment.Axis = mvarTourmaline.SessionConfig.LinearLocation.Axis;
-                    return true;
-                }
+                cabin.ApplyLinearLocation();
+                return true;
             }
             return false;
         }
@@ -451,12 +435,13 @@ namespace Tourmaline26.Services
         private async Task<bool> PoolArmandito()
         {
             if(mvarTourmaline.SessionConfig.MainSwitches.ArmanditoEnabled && 
-                null!= mvarTourmaline.SessionConfig.TNEnvironment &&
-                null!= mvarTourmaline.SessionConfig.TNEnvironment.Circulation)
+                null!= mvarTourmaline.SessionConfig.Cabin &&
+                null!= mvarTourmaline.SessionConfig.Cabin.Circulation)
             {
                 try
                 {
-                    string auxServiceId = mvarTourmaline.SessionConfig.TNEnvironment.Circulation.name;
+                    Circulation cir = mvarTourmaline.SessionConfig.Cabin.Circulation;
+                    string auxServiceId = cir.HasServiceNumber ? cir.ServiceNumber : cir.Id;
                     mvarTourmaline.SessionConfig.EarthMessages = await mvarArmandito.GetMessagesAsync(auxServiceId);
                 }
                 catch (Exception ex)
@@ -475,13 +460,13 @@ namespace Tourmaline26.Services
         {
             if(mvarTourmaline.SessionConfig.MainSwitches.TeleindicatorsEnabled && mvarTourmaline.SessionConfig.MainSwitches.PASEnabled)
             {
-                TimeNetEnvironment? auxTn = mvarTourmaline.SessionConfig.TNEnvironment;
+                CabinEnvironment? auxTn = mvarTourmaline.SessionConfig.Cabin;
                 if(null!=auxTn)
                 {
                     if (null != auxTn.Circulation && null!= auxTn.CurrentStation)
                     {
-                        if (null != auxTn.Circulation.Parent && null != auxTn.Circulation.Parent.asimilation && null != auxTn.Circulation.Parent.asimilation.Destination)
-                            await LedPanelsStation(auxTn.CurrentStation.Name, auxTn.Circulation.Parent.asimilation.Destination.Name);
+                        if (null != auxTn.Asimilation)
+                            await LedPanelsStation(auxTn.CurrentStation.Name, auxTn.Asimilation.Destination.Name);
                     }
                     else
                         await LedPanelsShowInfo(auxTn.Circulation);
@@ -543,18 +528,21 @@ namespace Tourmaline26.Services
                 if (null == auxCirc)
                     await mvarLedService.Print(false, " ", false);
                 else
-                    await mvarLedService.Print(false, auxCirc.name, false);
+                {
+                    string label = auxCirc.HasServiceNumber ? auxCirc.ServiceNumber : auxCirc.Id;
+                    await mvarLedService.Print(false, label, false);
+                }
             }
         }
         private async Task LedPanelsShowDestination()
         {
-            TimeNetEnvironment? enviro = mvarTourmaline.SessionConfig.TNEnvironment;
+            CabinEnvironment? enviro = mvarTourmaline.SessionConfig.Cabin;
             if (null != enviro &&
                 null != enviro.Asimilation && 
                 mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route)
             {
                 Asimilation asimila = enviro.Asimilation;
-                if (null != asimila && null!=asimila.Destination)
+                if (null != asimila)
                 {
                     string auxMensaje = $"Tren amb destinació {asimila.Destination.Name}";
                     await mvarLedService.Print(true,auxMensaje,true);
@@ -667,8 +655,8 @@ namespace Tourmaline26.Services
             }
 
             // Sin misión / topología no hay eje de referencia para corrección PK.
-            TimeNetEnvironment? env = session.TNEnvironment;
-            if (null == env?.TopoStorage || null == env.Circulation)
+            CabinEnvironment? env = session.Cabin;
+            if (null == env?.Topo || null == env.Circulation)
             {
                 ApplyMvbOnlyExperienceSpeed(session, "MVB-noTopo");
                 return;
@@ -722,8 +710,8 @@ namespace Tourmaline26.Services
         private async Task ExperienceSpeedSyncAsync()
         {
             SessionConfiguration session = mvarTourmaline.SessionConfig;
-            TimeNetEnvironment? env = session.TNEnvironment;
-            if (null == env?.TopoStorage)
+            CabinEnvironment? env = session.Cabin;
+            if (null == env?.Topo)
                 return;
 
             try
@@ -737,12 +725,14 @@ namespace Tourmaline26.Services
                         return;
                 }
 
-                Asimilation? asim = env.Asimilation ?? env.Circulation?.Parent?.asimilation;
+                Asimilation? asim = env.Asimilation;
                 LinearLocation simLoc = session.SimulatedLinearLocation;
-                simLoc.Asimilation = asim;
+                simLoc.MissionAxes = env.LinearLocation.MissionAxes;
 
-                GeoLocation simGeo = new(telemetry!.Latitude, telemetry.Longitude);
-                if (!simLoc.TryLocateBySatellite(simGeo, env.TopoStorage))
+                if (!simLoc.TryLocateBySatellite(
+                    env.Topo,
+                    telemetry!.Latitude,
+                    telemetry.Longitude))
                 {
                     mvarLogger.LogDebug(
                         "TE sync: no se pudo localizar el tren simulado en la topología ({Lat},{Lon})",
@@ -757,7 +747,9 @@ namespace Tourmaline26.Services
                     return;
 
                 // Sentido de la marcha a lo largo del PK: asimilación si hay, si no el del GPS real.
-                bool ascending = asim?.isAscendent ?? env.PKIncreasing;
+                bool ascending = asim is not null
+                    ? asim.Sense == Diamond.Motion.CirculationSense.IncreasingPk
+                    : env.PKIncreasing;
 
                 // Desfase en el sentido de la circulación: + = simulado por detrás del real.
                 long lagMeters = ascending
@@ -834,14 +826,14 @@ namespace Tourmaline26.Services
         /// <item><b>DemoMode:</b> flanco velocidad 0 → &gt; 0 (sin exigir lazo de puertas).</item>
         /// <item><b>Servicio real:</b> flanco ZeroSpeed MVB con lazo de puertas cerrado.</item>
         /// </list>
-        /// Así <see cref="TimeNetEnvironment.CurrentStation"/> puede volver a null
+        /// Así <see cref="CabinEnvironment.CurrentStation"/> puede volver a null
         /// y el panel de viajero entra en NextStopsList / Cruise.
         /// </summary>
         private void UpdateStationLeaveFromMvb()
         {
             SessionConfiguration session = mvarTourmaline.SessionConfig;
 
-            if (null == session.TNEnvironment)
+            if (null == session.Cabin)
             {
                 mvarPrevMvbZeroSpeed = null;
                 return;
@@ -853,7 +845,7 @@ namespace Tourmaline26.Services
                 bool zeroSpeed = session.CurrentSpeed <= 0;
                 if (mvarPrevMvbZeroSpeed == true && !zeroSpeed)
                 {
-                    session.TNEnvironment.LeaveCurrentStation();
+                    session.Cabin.LeaveCurrentStation();
                     mvarLogger.LogDebug(
                         "LeaveCurrentStation (DemoMode): arranque tras velocidad cero");
                 }
@@ -875,7 +867,7 @@ namespace Tourmaline26.Services
             // Flanco: estaba a velocidad cero y deja de estarlo, con lazo de puertas cerrado.
             if (mvarPrevMvbZeroSpeed == true && !mvbZeroSpeed && doorsLoopClosed)
             {
-                session.TNEnvironment.LeaveCurrentStation();
+                session.Cabin.LeaveCurrentStation();
                 mvarLogger.LogDebug(
                     "LeaveCurrentStation: lazo de puertas cerrado y pérdida de velocidad cero");
             }

@@ -1,9 +1,7 @@
-﻿@using Tourmaline26.Components.Images
+@using Tourmaline26.Components.Images
 @using Tourmaline26.Components.Layout.Passenger.Modules
 @using Tourmaline26.Components.Controls
 @using Tourmaline26.Components.Controls.Passenger
-@using TimeNet2026.Topo
-@using TimeNet2026.Timed
 @using Tourmaline26.Services.OpenMeteo
 @inject TourmalineService mvarTourmaline
 <div class="panel-root">
@@ -24,19 +22,19 @@
         {
             <div class="panel-header" style="height:@(HeaderSize)vh;">
                 @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route &&
-                null != Circulation && null != Circulation.Parent && null != Circulation.Parent.asimilation)
+                null != Circulation && null != Circulation.Asimilation)
                 {
                     <span class="train-number">
                         <ColorIcon Name="Train"
-                                   Color="@Circulation.Parent.asimilation.color[0]"
+                                   Color="@(Circulation.HasColor ? Circulation.Color : "#336699")"
                                    Size="72"
                                    Glow="false"
-                                   GlowColor="@Circulation.Parent.asimilation.color[1]" />
-                        @Circulation.name destinació
+                                   GlowColor="#88aacc" />
+                        @DisplayServiceName destinació
                     </span>
                     <span class="panel-time">@CurrentTime</span>
                     <div class="destination">
-                        @Circulation.Parent.asimilation.Destination?.Name
+                        @Circulation.Asimilation.Destination.Name
                     </div>
                 }
                 else if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Disabled)
@@ -173,19 +171,19 @@
     {
         get
         {
-            if(null!=mvarTourmaline.SessionConfig.TNEnvironment)
-                return mvarTourmaline.SessionConfig.TNEnvironment.CurrentDelay;
+            if(null!=mvarTourmaline.SessionConfig.Cabin)
+                return mvarTourmaline.SessionConfig.Cabin.CurrentDelay;
 
             return new TimeSpan(0);
         }
     }
 
-    private Circulation? Circulation
+    private Diamond.Project.Circulation? Circulation
     {
         get
         {
-            if(null!=mvarTourmaline.SessionConfig.TNEnvironment)
-                return mvarTourmaline.SessionConfig.TNEnvironment.Circulation;
+            if(null!=mvarTourmaline.SessionConfig.Cabin)
+                return mvarTourmaline.SessionConfig.Cabin.Circulation;
 
             return null;
         }
@@ -197,32 +195,34 @@
         InformationMode is Enums.PassengerInformationMode.Cruise
             or Enums.PassengerInformationMode.NextStopsList;
 
-    private string CurrentTime => mvarTourmaline.SessionConfig.TNEnvironment?.Now.ToString("HH:mm") ?? "";
+    private string CurrentTime => mvarTourmaline.SessionConfig.Cabin?.ClockNow.ToString("HH:mm") ?? DateTime.Now.ToString("HH:mm");
     private int Lines => (null==Device)?7:Device.Lines;
     private int HeaderSize => (null == Device) ? 100 : Device.HeaderSize;
+
+    private string DisplayServiceName =>
+        Circulation is null
+            ? string.Empty
+            : (Circulation.HasServiceNumber ? Circulation.ServiceNumber : Circulation.Id);
 
     /// <summary>Estación de llegada / parada actual (modo Arriv).</summary>
     private string NextStationName =>
         mvarTourmaline.SessionConfig.PreviewArrivalStation?.Name
-        ?? mvarTourmaline.SessionConfig.TNEnvironment?.CurrentStation?.Name
-        ?? Circulation?.Parent?.asimilation?.Destination?.Name
+        ?? mvarTourmaline.SessionConfig.Cabin?.CurrentStation?.Name
+        ?? Circulation?.Asimilation.Destination.Name
         ?? "—";
 
     /// <summary>Destino final del trayecto (modo End / bienvenida).</summary>
     private string FinalStationName =>
-        mvarTourmaline.SessionConfig.TNEnvironment?.CurrentStation?.Name
-        ?? DestinationName
-        ?? string.Empty;
+        DestinationName;
 
     private string DestinationName =>
-        mvarTourmaline.SessionConfig.TNEnvironment?.Asimilation?.Destination?.Name
-        ?? Circulation?.Parent?.asimilation?.Destination?.Name
+        mvarTourmaline.SessionConfig.Cabin?.Asimilation?.Destination.Name
+        ?? Circulation?.Asimilation.Destination.Name
         ?? "—";
 
     private string OriginStationName =>
-        mvarTourmaline.SessionConfig.TNEnvironment?.CurrentStation?.Name
-        ?? mvarTourmaline.SessionConfig.TNEnvironment?.Asimilation?.Origin?.Name
-        ?? Circulation?.Parent?.asimilation?.Origin?.Name
+        mvarTourmaline.SessionConfig.Cabin?.Asimilation?.Origin.Name
+        ?? Circulation?.Asimilation.Origin.Name
         ?? string.Empty;
 
     private string TrainServiceName
@@ -231,7 +231,7 @@
         {
             if (null == Circulation)
                 return string.Empty;
-            string name = Circulation.name?.Trim() ?? string.Empty;
+            string name = DisplayServiceName.Trim();
             return string.IsNullOrEmpty(name) ? string.Empty : $"Tren {name}";
         }
     }
