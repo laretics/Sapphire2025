@@ -1,4 +1,3 @@
-﻿@using TimeNetComponents.TreeView
 @using Tourmaline26.Components.Controls.Floatings
 @using Tourmaline26.Services.LocalDataModel
 @using Sapphire2025Models
@@ -10,7 +9,7 @@
     <div class="alert alert-warning" role="alert">
         <strong>Arranque en modo degradado.</strong>
         <p class="mb-1">@TourmalineService.SessionConfig.InitError</p>
-        <p class="mb-0">Si la base local se regeneró vacía, descarga de nuevo los datos de Zafiro y TimeNet (Ónice).</p>
+        <p class="mb-0">Si la base local se regeneró vacía, descarga de nuevo Zafiro y sincroniza Diamond.</p>
     </div>
 }
 <Switch Label="Dummy Keyboard" Value="@TourmalineService.SessionConfig.ServiceMode.ServiceKeyboard"
@@ -49,26 +48,33 @@ else
                     <td>@(Utils.autoDate(mvarLocalSystem.LastAeneasSync))</td>
                 </tr>
             }
-            @if (mvarLocalSystem.LastTimeNetSync > DateTime.MinValue)
+            @if (mvarLocalSystem.LastDiamondSync > DateTime.MinValue)
             {
                 <tr>
-                    <td>Descarga TimeNet(Ónice)</td>
-                    <td>@(Utils.autoDate(mvarLocalSystem.LastTimeNetSync))</td>
+                    <td>Sinc. Diamond</td>
+                    <td>@(Utils.autoDate(mvarLocalSystem.LastDiamondSync))</td>
                 </tr>
-                @if (mvarLocalSystem.LastTopoSync > DateTime.MinValue)
-                {
-                    <tr>
-                        <td>Ult. Sinc. Topology</td>
-                        <td>@(Utils.autoDate(mvarLocalSystem.LastTopoSync))</td>
-                    </tr>
-                }
-                @if (mvarLocalSystem.LastRautaSync > DateTime.MinValue)
-                {
-                    <tr>
-                        <td>Ult. Sinc. Rauta</td>
-                        <td>@(Utils.autoDate(mvarLocalSystem.LastRautaSync))</td>
-                    </tr>
-                }
+            }
+            @if (mvarLocalSystem.LastTopoSync > DateTime.MinValue)
+            {
+                <tr>
+                    <td>Ult. Sinc. Topología</td>
+                    <td>@(Utils.autoDate(mvarLocalSystem.LastTopoSync))</td>
+                </tr>
+            }
+            @if (mvarLocalSystem.LastPlanSync > DateTime.MinValue)
+            {
+                <tr>
+                    <td>Ult. Sinc. Plan publicado</td>
+                    <td>@(Utils.autoDate(mvarLocalSystem.LastPlanSync))</td>
+                </tr>
+            }
+            @if (!Guid.Empty.Equals(mvarLocalSystem.CurrentTopoId))
+            {
+                <tr>
+                    <td>TopoId</td>
+                    <td>@mvarLocalSystem.CurrentTopoId</td>
+                </tr>
             }
         </tbody>
     </table>

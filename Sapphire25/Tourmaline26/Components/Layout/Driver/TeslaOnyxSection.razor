@@ -1,64 +1,98 @@
-﻿@using TimeNetComponents.Controls.TimeNetControl
-@using Tourmaline26.Components.Controls
-@using TimeNetComponents.Controls
+@using Diamond.Controls
+@using Diamond.Cabin
+@using ProjectCirculation = Diamond.Project.Circulation
 @inject TourmalineService Tourmaline
-<TeslaLeftSectionIndicators/>
-@if(null!=mvarControlEnvironment && 
-null!=mvarControlEnvironment.Environment && 
-mvarControlEnvironment.Environment.IsViewComplete)
-{
-    <TimeNetControl Environment="mvarControlEnvironment"
-                    Style="mvarTimenetStyle" />
-}
-<div class="d-flex flex-column justify-content-end h-100">
-    @if(SpeedometerVisible)
-    {
-        <Speedometer/>
-    }    
-</div>
-@code {
-    private TimeNetControlEnvironment mvarControlEnvironment = new TimeNetControlEnvironment(100, 100);
-    private TimeNetControlStyle mvarTimenetStyle = new TimeNetControlStyle();
 
-    private SessionConfiguration mvarConfig = new();   
+@* Contenedor oficial de la malla de cabina (CabinMeshView). *@
+<div class="tesla-onyx-section">
+    <div class="tesla-onyx-stack">
+        @* Capa malla: rellena todo el panel izquierdo; z-index bajo. *@
+        <div class="tesla-onyx-mesh-layer">
+            <CabinMeshView Topo="@(cabin?.Topo)"
+                           DayProject="@(cabin?.DayProject)"
+                           ActiveCirculation="@(cabin?.Circulation)"
+                           RoutePk="@(cabin?.PK ?? 0)"
+                           LocationAxis="@(cabin?.LinearLocation.Axis)"
+                           ClockNow="@(cabin?.ClockNow ?? DateTime.Now)"
+                           NightMode="@NightMode"
+                           ActiveTrainVmaxKmh="@ActiveTrainVmax"
+                           CirculationPicked="OnCirculationPicked" />
+        </div>
+
+        @* Indicadores MVB por encima de la malla. *@
+        <div class="tesla-onyx-indicators-layer">
+            <TeslaLeftSectionIndicators />
+        </div>
+
+        @* Velocímetro por encima de la malla. *@
+        <div class="tesla-onyx-speedo-layer">
+            @if (SpeedometerVisible)
+            {
+                <Speedometer />
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    public bool NightMode { get; set; }
+
+    private SessionConfiguration mvarConfig = new();
+
+    private CabinEnvironment? cabin => Tourmaline.SessionConfig.Cabin;
+
+    /// <summary>
+    /// Vmax del material en misión (km/h). 100 = diésel SFM por defecto; 0 sin tren.
+    /// </summary>
+    private int ActiveTrainVmax
+    {
+        get
+        {
+            if (cabin?.Circulation is null)
+                return 0;
+            // Cuando haya catálogo de flota en cabina, mapear FleetId → Vmax.
+            return 100;
+        }
+    }
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
         mvarConfig = Tourmaline.SessionConfig;
         Tourmaline.HMIUpdateRequested += auxHMIRefresh;
-        mvarControlEnvironment.Environment = Tourmaline.SessionConfig.TNEnvironment;       
     }
+
     public void Dispose()
     {
         Tourmaline.HMIUpdateRequested -= auxHMIRefresh;
     }
+
     private void auxHMIRefresh(object? sender, EventArgs e)
     {
         InvokeAsync(StateHasChanged);
     }
 
+    private async Task OnCirculationPicked(ProjectCirculation cir)
+    {
+        await Tourmaline.DoCirculationSelect(cir);
+        Tourmaline.RaiseHMIUpdate();
+        Tourmaline.RaisePassengerUpdate();
+    }
 
-    /// <summary>
-    /// Velocímetro de cabina: velocidad del tren (MVB / demo), nunca GPS.
-    /// Visible en Demo siempre; con MVB solo con marcha adelante o atrás (no neutro).
-    /// </summary>
     private bool SpeedometerVisible
     {
         get
         {
-            // Modo demostración: siempre visible (usa SimulatedSpeed / MVB dummy).
             if (mvarConfig.ServiceMode.DemoMode)
                 return true;
 
-            // Sin fuente MVB (real o dummy) no hay velocidad de tren para la aguja.
             if (null == mvarConfig.CurrentMVBData)
                 return false;
             if (!mvarConfig.ServiceMode.MVBEnabled && !mvarConfig.ServiceMode.MVBDummy)
                 return false;
 
-            // Solo marcha adelante o atrás; en neutro (y resto) se oculta.
             return mvarConfig.SpeedometerDriveSelected;
         }
     }
 }
-

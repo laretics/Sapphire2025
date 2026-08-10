@@ -35,7 +35,6 @@ builder.Services.AddScoped<IntStorageService>();
 builder.Services.AddScoped<AuthenticationClient>();
 builder.Services.AddScoped<AeneasClient>();
 builder.Services.AddScoped<ExpertClient>();
-builder.Services.AddScoped<TimeNetClient>();
 builder.Services.AddScoped<DiamondClient>();
 builder.Services.AddScoped<SessionService>();
 

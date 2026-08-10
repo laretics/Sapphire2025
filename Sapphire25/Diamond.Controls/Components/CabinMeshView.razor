@@ -1,0 +1,238 @@
+@namespace Diamond.Controls
+@using Diamond.Controls.Rendering.CabinMesh
+@using Diamond.Motion
+@using Microsoft.AspNetCore.Components.Web
+@using ProjectCirculation = Diamond.Project.Circulation
+@using ProjectModel = Diamond.Project.Project
+@using MeshRouteView = Diamond.Topo.RouteView
+@using TopoLayout = Diamond.Topo.TopoLayout
+@using TopoAxis = Diamond.Topo.Axis
+@using TopoStation = Diamond.Topo.Station
+@using RouteViewResolver = Diamond.Topo.RouteViewResolver
+
+@*
+  Malla de cabina (contenido de TeslaOnyxSection u otro host de cabina):
+  - Espacio: 2 km atrás + 4 km adelante
+  - Tiempo: 1 h (media hora anterior … media hora siguiente; “ahora” al centro)
+  - Fondo transparente + fade vertical; selección de tren por pulsación
+*@
+<div class="cabin-mesh-host @(NightMode ? "cabin-mesh-host--night" : "cabin-mesh-host--day")"
+	 @ref="mvarHost"
+	 @onclick="OnHostClick">
+	@if (!string.IsNullOrEmpty(mvarSvg))
+	{
+		@((MarkupString)mvarSvg)
+	}
+</div>
+
+@code {
+	private ElementReference mvarHost;
+	private string mvarSvg = string.Empty;
+	private IReadOnlyList<CabinMeshSvgBuilder.HitSegment> mcolHits =
+		Array.Empty<CabinMeshSvgBuilder.HitSegment>();
+	private double mvarWidth = 400;
+	private double mvarHeight = 600;
+	private int mvarRenderStamp;
+
+	/// <summary>Topología Diamond cargada en cabina.</summary>
+	[Parameter]
+	public Diamond.Topo.TopoLayout? Topo { get; set; }
+
+	/// <summary>Proyecto del día (circulaciones programadas).</summary>
+	[Parameter]
+	public ProjectModel? DayProject { get; set; }
+
+	/// <summary>Circulación activa (misión). Null = solo eje cercano + trenes visibles.</summary>
+	[Parameter]
+	public ProjectCirculation? ActiveCirculation { get; set; }
+
+	/// <summary>PK de ruta actual del tren (o del eje de referencia sin misión).</summary>
+	[Parameter]
+	public long RoutePk { get; set; }
+
+	/// <summary>Eje físico de localización GPS (sin misión o para mapear PK).</summary>
+	[Parameter]
+	public TopoAxis? LocationAxis { get; set; }
+
+	/// <summary>Reloj de cabina (día civil + hora).</summary>
+	[Parameter]
+	public DateTime ClockNow { get; set; } = DateTime.Now;
+
+	[Parameter]
+	public bool NightMode { get; set; }
+
+	/// <summary>Ancho del área de dibujo (px). 0 = medir contenedor.</summary>
+	[Parameter]
+	public double Width { get; set; }
+
+	/// <summary>Alto del área de dibujo (px). 0 = medir contenedor.</summary>
+	[Parameter]
+	public double Height { get; set; }
+
+	/// <summary>Pulsación sobre una traza → candidata a circulación activa.</summary>
+	[Parameter]
+	public EventCallback<ProjectCirculation> CirculationPicked { get; set; }
+
+	/// <summary>
+	/// Velocidad máxima del tren activo (km/h). Limitaciones ≥ este valor no se dibujan.
+	/// 0 = sin filtro (p. ej. sin tren seleccionado).
+	/// </summary>
+	[Parameter]
+	public int ActiveTrainVmaxKmh { get; set; }
+
+	protected override void OnParametersSet()
+	{
+		Rebuild();
+	}
+
+	private void Rebuild()
+	{
+		if (Width > 20)
+		{
+			mvarWidth = Width;
+		}
+
+		if (Height > 20)
+		{
+			mvarHeight = Height;
+		}
+
+		MeshRouteView? view = ResolveView();
+		long routePk = ResolveRoutePk(view);
+		bool increasing = ResolveIncreasing(view);
+
+		CabinMeshLayout layout = new CabinMeshLayout(
+			mvarWidth,
+			mvarHeight,
+			routePk,
+			increasing,
+			ClockNow.TimeOfDay);
+
+		CabinMeshPalette palette = CabinMeshPalette.ForNightMode(NightMode);
+		// Solo circulaciones de esta vista/eje (filtro también en el builder).
+		IReadOnlyList<ProjectCirculation>? cirs = DayProject?.Circulations;
+
+		int trainVmax = ActiveTrainVmaxKmh;
+		if (trainVmax <= 0 && ActiveCirculation is not null)
+		{
+			// Fallback SFM diésel típico si el host no indica Vmax.
+			trainVmax = 100;
+		}
+
+		CabinMeshSvgBuilder.Result result = CabinMeshSvgBuilder.Build(
+			layout,
+			palette,
+			view,
+			cirs,
+			ActiveCirculation,
+			NightMode,
+			trainVmax);
+
+		mvarSvg = result.SvgMarkup;
+		mcolHits = result.Hits;
+		mvarRenderStamp++;
+	}
+
+	private MeshRouteView? ResolveView()
+	{
+		if (Topo is null)
+		{
+			return null;
+		}
+
+		if (ActiveCirculation is not null)
+		{
+			string viewId = ActiveCirculation.Asimilation.ViewId;
+			MeshRouteView? fromAsim = RouteViewResolver.TryFromViewId(Topo, viewId);
+			if (fromAsim is not null)
+			{
+				return fromAsim;
+			}
+
+			// PathSignature a veces codifica ejes; si no, TryFindPath origen-destino.
+			TopoStation? from = Topo.FindStationById(ActiveCirculation.Origin.Id);
+			TopoStation? to = Topo.FindStationById(ActiveCirculation.Destination.Id);
+			if (from is not null && to is not null
+				&& MeshRouteView.TryFindPath(Topo, from, to, out MeshRouteView? path, out _, out _)
+				&& path is not null)
+			{
+				return path;
+			}
+		}
+
+		// Sin misión: eje de localización o el primero.
+		MeshRouteView? fromLoc = RouteViewResolver.TryFromAxis(LocationAxis);
+		if (fromLoc is not null)
+		{
+			return fromLoc;
+		}
+
+		return RouteViewResolver.TryFirstAxis(Topo);
+	}
+
+	private long ResolveRoutePk(MeshRouteView? view)
+	{
+		if (view is null)
+		{
+			return RoutePk;
+		}
+
+		// Si tenemos eje físico + PK de eje (GPS), proyectar a PK de ruta.
+		if (LocationAxis is not null && RoutePk >= 0)
+		{
+			// RoutePk del host puede ser ya de ruta (con misión) o de eje (sin misión mono-eje).
+			if (view.Legs.Count == 1
+				&& string.Equals(view.Legs[0].Axis.Id, LocationAxis.Id, StringComparison.Ordinal))
+			{
+				// Vista mono-eje: PK de ruta ≈ PK de eje.
+				return RoutePk;
+			}
+
+			if (view.TryMapAxisToRoute(LocationAxis, RoutePk, out long mapped))
+			{
+				return mapped;
+			}
+		}
+
+		if (ActiveCirculation is not null && ActiveCirculation.Calls.Count > 0)
+		{
+			// Sin localización: anclar al origen de la circulación o al primer call.
+			if (RoutePk >= 0)
+			{
+				return RoutePk;
+			}
+
+			return ActiveCirculation.Calls[0].Pk;
+		}
+
+		// Centro del eje.
+		return (view.PK + view.PKEnd) / 2;
+	}
+
+	private bool ResolveIncreasing(MeshRouteView? view)
+	{
+		if (ActiveCirculation is not null)
+		{
+			return ActiveCirculation.Asimilation.Sense == CirculationSense.IncreasingPk;
+		}
+
+		return true;
+	}
+
+	private async Task OnHostClick(MouseEventArgs e)
+	{
+		if (mcolHits.Count == 0 || !CirculationPicked.HasDelegate)
+		{
+			return;
+		}
+
+		// Coordenadas relativas al SVG (offsetX/Y respecto al host).
+		double x = e.OffsetX;
+		double y = e.OffsetY;
+		ProjectCirculation? hit = CabinMeshSvgBuilder.HitTest(mcolHits, x, y, maxDistPx: 16.0);
+		if (hit is not null)
+		{
+			await CirculationPicked.InvokeAsync(hit);
+		}
+	}
+}

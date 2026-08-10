@@ -25,7 +25,6 @@ IHost? host = Host.CreateDefaultBuilder(args)
 	services.AddSingleton<AuthenticationClient>();
 	services.AddSingleton<AeneasClient>();
 	services.AddSingleton<ExpertClient>();
-	services.AddSingleton<TimeNetClient>();
 })
 .Build();
 

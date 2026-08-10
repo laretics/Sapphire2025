@@ -1,9 +1,9 @@
-﻿@using Tourmaline26.Components.Images
+@using Tourmaline26.Components.Images
 @using Tourmaline26.Logic
 <div class="floating-destination-panel @panelClass">
-    @if(null!=Environment && null!=Environment.TNEnvironment)
+    @if(null!=Environment && null!=Environment.Cabin)
     {
-        @if(null==Environment.TNEnvironment.Circulation)
+        @if(null==Environment.Cabin.Circulation)
         {
             <ColorIcon Name="Search" Size="32"/>
             <span class="fs-4">
@@ -14,13 +14,13 @@
             else
             {
                 <button class="btn btn-outline-dark border-0" onclick="@onSearchCirculation">Destino</button>
-            }     
+            }
             </span>
         }
         else
         {
-            <span class="fs-2">@Environment.TNEnvironment.Circulation.name</span>
-            <span class="fs-5">  @Environment.TNEnvironment.Circulation.TourmalineString</span>
+            <span class="fs-2">@ServiceLabel</span>
+            <span class="fs-5">  @RouteLabel</span>
         }
     }
 </div>
@@ -42,5 +42,27 @@
     private async Task onSearchCirculation()
     {
         await OnBeginSearchCirculation.InvokeAsync();
+    }
+
+    private string ServiceLabel
+    {
+        get
+        {
+            Diamond.Project.Circulation? cir = Environment?.Cabin?.Circulation;
+            if (cir is null)
+                return string.Empty;
+            return cir.HasServiceNumber ? cir.ServiceNumber : cir.Id;
+        }
+    }
+
+    private string RouteLabel
+    {
+        get
+        {
+            Diamond.Project.Circulation? cir = Environment?.Cabin?.Circulation;
+            if (cir is null)
+                return string.Empty;
+            return cir.Origin.DisplayCode + " → " + cir.Destination.DisplayCode;
+        }
     }
 }

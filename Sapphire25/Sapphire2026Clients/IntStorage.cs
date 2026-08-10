@@ -337,39 +337,71 @@ namespace Sapphire2025.Storage
 		public async Task ResetValue(string key, bool session)
         {
             string auxStorageId = internalRequestString(session, "removeItem");
-            if (null == mvarJsRuntime)
+            if (null == mvarJsRuntime || !await TryJsVoidAsync(auxStorageId, key))
                 mcolSessionValues.Remove(key);
-            else
-                await mvarJsRuntime.InvokeVoidAsync(auxStorageId, key);
         }
 		public async Task SetStringValue(string key, string? value, bool session)
         {            
             string auxStorageId = internalRequestString(session, "setItem");
-            if(null==mvarJsRuntime)
+            if (null == mvarJsRuntime || !await TryJsVoidAsync(auxStorageId, key, value))
             {
-                if (!mcolSessionValues.ContainsKey(key))
-                    mcolSessionValues.Add(key, "");
-                System.Diagnostics.Debug.Assert(mcolSessionValues.ContainsKey(key));
                 if (null == value)
                     mcolSessionValues.Remove(key);
                 else
-                    mcolSessionValues[key]= value;
+                    mcolSessionValues[key] = value;
             }
-            else
-    			await mvarJsRuntime.InvokeVoidAsync(auxStorageId, key, value);
         }
         public async Task<string?> GetStringValue(string key, bool session)
         {
 			string auxStorageId = internalRequestString(session, "getItem");
-            if(null==mvarJsRuntime)
+            if (null != mvarJsRuntime)
             {
-                if(mcolSessionValues.ContainsKey(key))
-                    return mcolSessionValues[key];
-                return null;
+                try
+                {
+                    return await mvarJsRuntime.InvokeAsync<string>(auxStorageId, key);
+                }
+                catch (InvalidOperationException)
+                {
+                    // Prerender / scope sin circuito: memoria local.
+                }
+                catch (JSException)
+                {
+                }
+                catch (JSDisconnectedException)
+                {
+                }
             }
-            else
-    			return await mvarJsRuntime.InvokeAsync<string>(auxStorageId, key);
+
+            if (mcolSessionValues.ContainsKey(key))
+                return mcolSessionValues[key];
+            return null;
         }
+
+		/// <summary>
+		/// JS interop seguro: false si no hay runtime, prerender estático o circuito desconectado.
+		/// </summary>
+		private async Task<bool> TryJsVoidAsync(string identifier, params object?[] args)
+		{
+			if (null == mvarJsRuntime)
+				return false;
+			try
+			{
+				await mvarJsRuntime.InvokeVoidAsync(identifier, args);
+				return true;
+			}
+			catch (InvalidOperationException)
+			{
+				return false;
+			}
+			catch (JSException)
+			{
+				return false;
+			}
+			catch (JSDisconnectedException)
+			{
+				return false;
+			}
+		}
         public async Task SetIntValue(string key, int value, bool session)
         {
             await SetStringValue(key, string.Format("{0}", value),session);

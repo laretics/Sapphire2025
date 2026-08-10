@@ -11,8 +11,7 @@
     <PackageReference Include="Blazor.Bootstrap" Version="3.4.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Sapphire25\TimeNet2026\TimeNet2026.csproj" />
+  <ItemGroup>    
   </ItemGroup>
 
 </Project>

@@ -8,7 +8,7 @@
     <!--
       SDK-style projects glob **/* under the project directory.
       Without these excludes, Sapphire25.csproj swallows sources from nested
-      projects (Tourmaline26, TimeNet*, Sapphire2026*, …). That produces thousands
+      projects (Tourmaline26, Sapphire2026*, Diamond*, …). That produces thousands
       of design-time errors and breaks IntelliSense on those files when the IDE
       associates them with this project instead of their real .csproj.
     -->
@@ -16,6 +16,10 @@
       ;AppSettingsEditor\**
       ;BenchmarkSuite1\**
       ;BenchmarkDotNet.Artifacts\**
+      ;Diamond\**
+      ;Diamond.Controls\**
+      ;Diamond.Tests\**
+      ;Diamond.Web\**
       ;FreeTrainSimulator.Common\**
       ;FreeTrainSimulator.Graphics\**
       ;FreeTrainSimulator.Models.Imported\**
@@ -29,11 +33,6 @@
       ;Sapphire2026Telegram\**
       ;Sapphire26BotSoulTest\**
       ;SimulatorSerializator\**
-      ;TimeNet2026\**
-      ;TimeNet2026Data\**
-      ;TimeNetComponents\**
-      ;TimeNetWeb\**
-      ;TimeNetWebServer\**
       ;Tourmaline26\**
     </DefaultItemExcludes>
   </PropertyGroup>

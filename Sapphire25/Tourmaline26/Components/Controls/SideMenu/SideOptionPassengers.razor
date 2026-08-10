@@ -1,7 +1,11 @@
-@using TimeNet2026.Timed
-@using TimeNet2026.Topo
 @using Tourmaline26.Components.Controls.Generical
 @using Tourmaline26.Logic
+@using Diamond.Cabin
+@using ProjectAsimilation = Diamond.Project.Asimilation
+@using ProjectCall = Diamond.Project.Call
+@using ProjectCirculation = Diamond.Project.Circulation
+@using ProjectStationInfo = Diamond.Project.StationInfo
+@using ProjectTimedCall = Diamond.Project.TimedCall
 @inject TourmalineService TourmalineService
 
 <div class="pas-panel">
@@ -148,7 +152,7 @@
                 @if (!HasLoadedRoute)
                 {
                     <div class="pas-preview-hint">
-                        Carga una circulación / asimilación en TimeNet para habilitar la prueba.
+                        Carga una circulación (misión Diamond) para habilitar la prueba.
                     </div>
                 }
                 else
@@ -174,15 +178,14 @@
 
     private bool HasLoadedRoute => LoadedAsimilation is not null;
 
-    private Asimilation? LoadedAsimilation =>
-        Session.TNEnvironment?.Asimilation
-        ?? Session.TNEnvironment?.Circulation?.Parent?.asimilation
-        ?? Session.TNEnvironment?.ViewAsimilation;
+    private ProjectAsimilation? LoadedAsimilation =>
+        Session.Cabin?.Asimilation
+        ?? Session.Cabin?.Circulation?.Asimilation;
 
     private string LoadedRouteName =>
-        LoadedAsimilation?.Name
-        ?? Session.TNEnvironment?.Circulation?.name
-        ?? "—";
+        LoadedAsimilation is null
+            ? "—"
+            : (LoadedAsimilation.Origin.DisplayCode + "→" + LoadedAsimilation.Destination.DisplayCode);
 
     private int CommercialStopCount => CollectCommercialStops(LoadedAsimilation, intermediateOnly: true).Count;
 
@@ -286,16 +289,16 @@
 
     private void PreviewRandomArrival()
     {
-        Asimilation? asim = LoadedAsimilation;
-        if (asim is null)
+        ProjectCirculation? cir = Session.Cabin?.Circulation;
+        if (cir is null)
         {
-            SetPreviewFeedback("No hay ruta cargada. Selecciona una circulación en TimeNet.", error: true);
+            SetPreviewFeedback("No hay ruta cargada. Selecciona una circulación (misión).", error: true);
             return;
         }
 
-        List<Station> candidates = CollectCommercialStops(asim, intermediateOnly: true);
+        List<ProjectStationInfo> candidates = CollectCommercialStops(cir, intermediateOnly: true);
         if (candidates.Count == 0)
-            candidates = CollectCommercialStops(asim, intermediateOnly: false);
+            candidates = CollectCommercialStops(cir, intermediateOnly: false);
 
         if (candidates.Count == 0)
         {
@@ -303,7 +306,7 @@
             return;
         }
 
-        Station pick = candidates[Random.Shared.Next(candidates.Count)];
+        ProjectStationInfo pick = candidates[Random.Shared.Next(candidates.Count)];
 
         Session.PreviewArrivalStation = pick;
         Session.InformationLevel = Enums.InformationLevel.Route;
@@ -334,40 +337,60 @@
         mvarPreviewIsError = error;
     }
 
-    /// <summary>
-    /// Paradas comerciales de la asimilación (stopTime ≥ 10 s o destino final).
-    /// Con <paramref name="intermediateOnly"/> se excluyen origen y destino
-    /// para forzar un anuncio de llegada intermedia.
-    /// </summary>
-    private static List<Station> CollectCommercialStops(Asimilation? asim, bool intermediateOnly)
+    private static List<ProjectStationInfo> CollectCommercialStops(ProjectAsimilation? asim, bool intermediateOnly)
     {
-        var list = new List<Station>();
         if (asim is null)
-            return list;
+            return new List<ProjectStationInfo>();
 
-        TimeSpan minStop = TimeSpan.FromSeconds(10);
-
-        foreach (AsimilationStep step in asim.Steps)
+        List<ProjectStationInfo> list = new List<ProjectStationInfo>();
+        int i = 0;
+        while (i < asim.Calls.Count)
         {
-            Station? st = step.destination;
-            if (st is null)
-                continue;
-
-            bool isFinal = asim.Destination is not null && st == asim.Destination;
-            bool commercial = isFinal || step.stopTime >= minStop;
+            ProjectCall call = asim.Calls[i];
+            bool commercial = call.IsOrigin || call.IsDestination || call.CommercialStop
+                || call.Dwell >= CabinItinerary.MinCommercialDwell;
             if (!commercial)
-                continue;
-
-            if (intermediateOnly)
             {
-                if (asim.Origin is not null && st == asim.Origin)
-                    continue;
-                if (isFinal)
-                    continue;
+                i++;
+                continue;
             }
 
-            if (!list.Contains(st))
-                list.Add(st);
+            if (intermediateOnly && (call.IsOrigin || call.IsDestination))
+            {
+                i++;
+                continue;
+            }
+
+            if (!list.Any(s => s.Id == call.Station.Id))
+                list.Add(call.Station);
+            i++;
+        }
+
+        return list;
+    }
+
+    private static List<ProjectStationInfo> CollectCommercialStops(ProjectCirculation cir, bool intermediateOnly)
+    {
+        List<ProjectStationInfo> list = new List<ProjectStationInfo>();
+        int i = 0;
+        while (i < cir.Calls.Count)
+        {
+            ProjectTimedCall call = cir.Calls[i];
+            if (!CabinItinerary.IsCommercial(call))
+            {
+                i++;
+                continue;
+            }
+
+            if (intermediateOnly && (call.IsOrigin || call.IsDestination))
+            {
+                i++;
+                continue;
+            }
+
+            if (!list.Any(s => s.Id == call.Station.Id))
+                list.Add(call.Station);
+            i++;
         }
 
         return list;

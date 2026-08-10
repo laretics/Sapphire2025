@@ -1,12 +1,11 @@
-﻿@using Tourmaline26.Components.Controls.Generical
-@using TimeNet2026.Timed
+@using Tourmaline26.Components.Controls.Generical
 @using Tourmaline26.Logic
-@using TimeNetComponents.Controls.TimeNetControl.Atoms
+@using ProjectCirculation = Diamond.Project.Circulation
 <div class="floating-destination-menu @panelClass">
-    @if(byAll.Count()>0)
+    @if (byAll.Count() > 0)
     {
         <ul>
-            @foreach(Circulation cir in byAll)
+            @foreach (ProjectCirculation cir in byAll)
             {
                 <li>
                     <FloatDestinationMenuCirculation Circulation="@cir" OnCirculationSelected="HandleCirculationSelected" />
@@ -27,7 +26,7 @@
                             @if (byName.Count < 11)
                             {
                                 <ul>
-                                    @foreach (Circulation cir in byName)
+                                    @foreach (ProjectCirculation cir in byName)
                                     {
                                         <li>
                                             <FloatDestinationMenuCirculation Circulation="@cir" OnCirculationSelected="HandleCirculationSelected" />
@@ -49,7 +48,7 @@
                             @if (byTime.Count < 11)
                             {
                                 <ul>
-                                    @foreach (Circulation cir in byTime)
+                                    @foreach (ProjectCirculation cir in byTime)
                                     {
                                         <li>
                                             <FloatDestinationMenuCirculation Circulation="@cir" OnCirculationSelected="HandleCirculationSelected" />
@@ -71,10 +70,10 @@
                             @if (byDestination.Count < 11)
                             {
                                 <ul>
-                                    @foreach (Circulation cir in byDestination)
+                                    @foreach (ProjectCirculation cir in byDestination)
                                     {
                                         <li>
-                                            <FloatDestinationMenuCirculation Circulation="@cir" OnCirculationSelected="HandleCirculationSelected"/>
+                                            <FloatDestinationMenuCirculation Circulation="@cir" OnCirculationSelected="HandleCirculationSelected" />
                                         </li>
                                     }
                                 </ul>
@@ -84,44 +83,35 @@
                 </li>
             }
         </ul>
-        }
-
-    
+    }
 </div>
 
 @code {
     [CascadingParameter]
     public bool NightMode { get; set; }
     [CascadingParameter]
-    public string? SearchString{ get; set; }
+    public string? SearchString { get; set; }
     [CascadingParameter]
-    public SessionConfiguration? Environment{ get; set; }
+    public SessionConfiguration? Environment { get; set; }
     [Parameter]
-    public EventCallback<Circulation> OnCirculationSelected{ get; set; }
+    public EventCallback<ProjectCirculation> OnCirculationSelected { get; set; }
 
-    private string mvarSearchString = string.Empty;
-
-    private Task HandleCirculationSelected(Circulation cir)
+    private Task HandleCirculationSelected(ProjectCirculation cir)
         => OnCirculationSelected.InvokeAsync(cir);
 
-    private Plan? mvarPlan;
     private string panelClass
     {
         get => string.Format("floating-panel {0}", NightMode ? "night" : "day");
     }
-    private HashSet<Circulation> byName = new HashSet<Circulation>();
-    private HashSet<Circulation> byTime = new HashSet<Circulation>();
-    private HashSet<Circulation> byDestination = new HashSet<Circulation>();
-    private IEnumerable<Circulation> byAll = new List<Circulation>();
+
+    private List<ProjectCirculation> byName = new List<ProjectCirculation>();
+    private List<ProjectCirculation> byTime = new List<ProjectCirculation>();
+    private List<ProjectCirculation> byDestination = new List<ProjectCirculation>();
+    private IEnumerable<ProjectCirculation> byAll = Array.Empty<ProjectCirculation>();
+
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
-        if(null!=Environment && null!=Environment.TNEnvironment)
-        {
-            mvarPlan = Environment.TNEnvironment.Plan;
-            if (null != mvarPlan)
-                mvarPlan.CurrentDay = Environment.TNEnvironment.Weekday; //Para buscar sólo los trenes de hoy.
-        }        
         DoSearch();
         StateHasChanged();
     }
@@ -131,49 +121,21 @@
         byName.Clear();
         byTime.Clear();
         byDestination.Clear();
-        mvarSearchString = string.Empty;
-        if(null!=SearchString)
-        {
-            mvarSearchString = SearchString.Replace(' ',',');
-            mvarSearchString = mvarSearchString.Replace('-', ',');
-            mvarSearchString = mvarSearchString.Replace('.', ',');
-            string[] tokens = mvarSearchString.Trim().ToUpper().Split(',');
-            foreach (string token in tokens)
-                DoSearchAtom(token);
-        }        
-        var allItems = byName.Concat(byTime).Concat(byDestination);
-        byAll = allItems
-            .GroupBy(x => x)
-            .Where(g => g.Count() >= 2)
-            .Select(g => g.Key)
-            .ToList();
-    }
+        byAll = Array.Empty<ProjectCirculation>();
 
-    private void DoSearchAtom(string rhs)
-    {
-        bool porHora = false;
-        bool porDestino = false;
+        if (null == Environment?.Cabin)
+            return;
 
-        if(null!=mvarPlan)
-        {
-            TimeSpan auxHora = new TimeSpan(0);
-            porHora = TimeSpan.TryParse(rhs, out auxHora);
-            foreach (CirculationBlock bloque in mvarPlan.CirculationBlocksByDay)
-            {
-                porDestino = false;
-                if(null!=bloque.asimilation && null!=bloque.asimilation.Destination)
-                    porDestino = bloque.asimilation.Destination.Name.ToUpper().Contains(rhs);
+        Environment.Cabin.SearchBuckets(
+            SearchString,
+            out IReadOnlyList<ProjectCirculation> names,
+            out IReadOnlyList<ProjectCirculation> times,
+            out IReadOnlyList<ProjectCirculation> dests,
+            out IReadOnlyList<ProjectCirculation> multi);
 
-                foreach(Circulation cir in bloque.Circulations)
-                {
-                    if (cir.name.Contains(rhs))
-                        byName.Add(cir);
-                    if (porHora && Math.Abs((cir.departure - auxHora).TotalMinutes)<=20)
-                        byTime.Add(cir);
-                    if (porDestino)
-                        byDestination.Add(cir);
-                }
-            }
-        }
+        byName.AddRange(names);
+        byTime.AddRange(times);
+        byDestination.AddRange(dests);
+        byAll = multi;
     }
 }

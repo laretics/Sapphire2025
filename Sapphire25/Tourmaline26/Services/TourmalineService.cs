@@ -1,513 +1,505 @@
-﻿using BlazorBootstrap;
+using BlazorBootstrap;
+using Diamond.Cabin;
+using Diamond.Project;
 using Microsoft.EntityFrameworkCore;
-using Org.BouncyCastle.Crypto.Operators;
 using Sapphire2025.Storage;
 using Sapphire2025Models.Authentication;
 using Sapphire2026.Data.Models;
-using System.Runtime.ConstrainedExecution;
-using System.Threading.Tasks;
-using TimeNet2026.Production;
-using TimeNet2026.Storage;
-using TimeNet2026.Timed;
-using TimeNet2026.Topo;
-using TimeNet2026Data.DBStorage;
 using Tourmaline26.Logic;
+using Tourmaline26.Services.CabinCache;
 using Tourmaline26.Services.LocalDataModel;
 using Tourmaline26.Services.TourmalineExperience;
-using static System.Net.Mime.MediaTypeNames;
+
 namespace Tourmaline26.Services
 {
-    /// <summary>
-    /// Este es el procesador principal del sistema de información al viajero.
-    /// Gestiona el modo, la ruta, la comunicación con MVB, etc.    
-    /// </summary>
-    public class TourmalineService
-    {
-        private SessionConfiguration mvarSessionConfig; //Contenedor de la configuración de la sesión actual.
-        public SystemConfiguration SystemConfig { get; private set; } //Configuración del sistema (desde archivo de config)
-        public DeviceCollection Devices { get; private set; } = new DeviceCollection();
-        private ILogger<TourmalineService> mvarLogger;
-        private IServiceProvider mvarServiceProvider;
-        private IConfiguration mvarConfiguration;
-        private LEDDisplayService mvarLedDisplayService;
-        private TourmalineExperienceService mvarTourmalineExperienceService;
-        //Almacén local TimeNet para poder "jugar" con la estructura en modo local sin sobrecargar las comunicaciones.
-        public OnyxStorage TimeNetStorage { get; set; }
+	/// <summary>
+	/// Procesador principal del sistema de información al viajero.
+	/// </summary>
+	public class TourmalineService
+	{
+		private SessionConfiguration mvarSessionConfig;
+		public SystemConfiguration SystemConfig { get; private set; }
+		public DeviceCollection Devices { get; private set; } = new DeviceCollection();
+		private ILogger<TourmalineService> mvarLogger;
+		private IServiceProvider mvarServiceProvider;
+		private IConfiguration mvarConfiguration;
+		private LEDDisplayService mvarLedDisplayService;
+		private TourmalineExperienceService mvarTourmalineExperienceService;
+		private DiamondLocalCache mvarDiamondCache;
 
-        public event EventHandler? PassengerUpdateRequested;
-        public event EventHandler? HMIUpdateRequested;             
+		/// <summary>Guid de topología configurado en appsettings (Diamond:TopoId).</summary>
+		public Guid ConfiguredTopoId { get; private set; }
 
-        public void RaiseHMIUpdate() => HMIUpdateRequested?.Invoke(this, EventArgs.Empty);
-        public void RaisePassengerUpdate() => PassengerUpdateRequested?.Invoke(this, EventArgs.Empty);
-        public TourmalineService(IConfiguration config,
-        IServiceProvider serviceProvider,
-        ILogger<TourmalineService> logger,
-        LEDDisplayService ledDisplayService, 
-        TourmalineExperienceService tourmalineExperience
-        )
-        {
+		public event EventHandler? PassengerUpdateRequested;
+		public event EventHandler? HMIUpdateRequested;
+
+		public void RaiseHMIUpdate() => HMIUpdateRequested?.Invoke(this, EventArgs.Empty);
+		public void RaisePassengerUpdate() => PassengerUpdateRequested?.Invoke(this, EventArgs.Empty);
+
+		public TourmalineService(
+			IConfiguration config,
+			IServiceProvider serviceProvider,
+			ILogger<TourmalineService> logger,
+			LEDDisplayService ledDisplayService,
+			TourmalineExperienceService tourmalineExperience,
+			DiamondLocalCache diamondCache)
+		{
 			mvarSessionConfig = new SessionConfiguration();
 			SystemConfig = new SystemConfiguration();
-            TimeNetStorage = new OnyxStorage();
-            mvarConfiguration = config;
-            mvarLogger = logger;               
-            mvarServiceProvider = serviceProvider;            
-            mvarLedDisplayService = ledDisplayService;
-            mvarTourmalineExperienceService = tourmalineExperience;
-        }
+			mvarConfiguration = config;
+			mvarLogger = logger;
+			mvarServiceProvider = serviceProvider;
+			mvarLedDisplayService = ledDisplayService;
+			mvarTourmalineExperienceService = tourmalineExperience;
+			mvarDiamondCache = diamondCache;
+			mvarSessionConfig.Cabin = new CabinEnvironment();
+		}
+
 		private async Task InitConfig(IConfiguration config)
-		{           			
-			SystemConfiguration? auxConfig = config.GetSection("SystemConfiguration").Get<SystemConfiguration>();            
+		{
+			SystemConfiguration? auxConfig = config.GetSection("SystemConfiguration").Get<SystemConfiguration>();
 			if (null != auxConfig)
 				SystemConfig = auxConfig;
 
-            // Las cámaras suelen estar en la raíz del appsettings ("Cameras"), no dentro de SystemConfiguration.
-            if (SystemConfig.Cameras is null || SystemConfig.Cameras.Count == 0)
-            {
-                List<CameraInfo>? rootCameras = config.GetSection("Cameras").Get<List<CameraInfo>>();
-                if (rootCameras is { Count: > 0 })
-                    SystemConfig.Cameras = rootCameras;
-            }
-
-            mvarLogger.LogInformation(
-                "Cámaras cargadas: {Count}",
-                SystemConfig.Cameras?.Count ?? 0);
-
-            IConfigurationSection debugStartupSession = config.GetSection("debugStartSession");
-            if (debugStartupSession.Exists())
-                debugStartupSession.Bind(mvarSessionConfig);
-            await auxInitDevices(config);
-        }
-        private async Task auxInitDevices(IConfiguration config)
-        {
-            IConfigurationSection section = config.GetSection("Devices");
-            int deviceCount = 0;
-            foreach (IConfigurationSection deviceSection in section.GetChildren())
-            {
-                DeviceMapped nuevo = new DeviceMapped();
-                nuevo.SetParameters(
-                    deviceSection["Address"],
-                    deviceSection["Type"],
-                    deviceSection["Coach"],
-                    deviceSection["Side"],
-                    deviceSection["HeaderSize"],
-                    deviceSection["Lines"],
-                    deviceSection["PublicId"]);
-                Devices.Add(nuevo);
-
-                mvarLogger.LogInformation(
-                    "Dispositivo detectado: Address={Address}, Type={Type}, Coach={Coach}, Side={Side}, HeaderSize={HeaderSize}, Lines={Lines}, PublicId={PublicId}",
-                    deviceSection["Address"],
-                    deviceSection["Type"],
-                    deviceSection["Coach"],
-                    deviceSection["Side"],
-                    deviceSection["HeaderSize"],
-                    deviceSection["Lines"],
-                    deviceSection["PublicId"]
-                );
-                deviceCount++;
-            }
-            mvarLogger.LogInformation("Total de dispositivos detectados: {DeviceCount}", deviceCount);
-            mvarLedDisplayService.Init(Devices);
-            await mvarLedDisplayService.Print(true,$"Tourmaline {SystemConfig.Version}",false,Alignment.Center);
-            //El envío de BMP a paneles sigue sin funcionar. Hay que estudiarlo con calma.
-            //await mvarLedDisplayService.Draw(true, "Tren81");
-            await mvarLedDisplayService.Print(false, "SFM", false);
-
-            //await mvarLedDisplayService.ClearAsync();
-            //await mvarLedDisplayService.PushAsync("Tourmaline 2026");
-            //await PushLEDPanels("Tourmaline 2026. Iniciando estructura del programa " + DateTime.Now.ToString(),true,Alignment.None);
-            //await PushBitmapLEDPanels("bmp//Tren81.bmp");
-        }
-        public SessionConfiguration SessionConfig
-        {
-            get => mvarSessionConfig;
-        }
-        /// <summary>
-        /// Carga los valores de configuración desde la base de datos.
-        /// </summary>
-        /// <returns></returns>
-        public async Task InitData()
-        {
-            await InitConfig(mvarConfiguration);
-            await EnsureLocalDatabaseSchema(); //Recrea la BD si el esquema está desfasado respecto al modelo EF.
-            await InitializeLocalRegister(); //Inicia el registro en la base de datos.
-            await InitializeTimeNet(); //Carga los datos de TimeNet en el almacenamiento local.
-        }
-
-        public async Task<bool> EnsureInitialized()
-        {
-            if(!mvarSessionConfig.Initialized)
-            {
-                mvarLogger.LogInformation("Iniciando sistema de información al viajero Tourmaline...");
-                try
-                {
-                    await InitData();
-                    mvarSessionConfig.InitError = string.Empty;
-                    mvarLogger.LogInformation("Sistema de información al viajero Tourmaline iniciado correctamente.");
-                }
-                catch (Exception ex)
-                {
-                    // Nunca dejamos el HMI bloqueado en "Iniciando sistema": la BD local se puede
-                    // volver a descargar desde el menú de configuración (Ónice / Sapphire).
-                    mvarSessionConfig.InitError = ex.Message;
-                    mvarLogger.LogError(ex, "Error durante la inicialización. Se abre el HMI en modo degradado para permitir reconfiguración.");
-                    if (null == mvarSessionConfig.TNEnvironment)
-                        mvarSessionConfig.TNEnvironment = new TimeNetEnvironment(TimeNetStorage, Guid.Empty, Guid.Empty);
-                }
-                finally
-                {
-                    mvarSessionConfig.Initialized = true;
-                }
-            }
-            return mvarSessionConfig.Initialized;
-        }
-
-        /// <summary>
-        /// Garantiza que tourmaline.db existe y es compatible con el modelo EF actual.
-        /// EnsureCreated no migra esquemas: si el modelo ha ganado columnas (p. ej. LastPlatformAssign)
-        /// y la BD es antigua, se regenera vacía (los datos se vuelven a bajar de Zafiro/TimeNet).
-        /// </summary>
-        private async Task EnsureLocalDatabaseSchema()
-        {
-            using (IServiceScope scope = mvarServiceProvider.CreateScope())
-            {
-                TourmalineContext db = scope.ServiceProvider.GetRequiredService<TourmalineContext>();
-                await db.Database.EnsureCreatedAsync();
-                try
-                {
-                    // Sonda de compatibilidad: consulta mínima sobre la entidad más propensa a crecer.
-                    _ = await db.Trains.AsNoTracking().FirstOrDefaultAsync();
-                    _ = await db.LocalSystem.AsNoTracking().FirstOrDefaultAsync();
-                }
-                catch (Exception ex) when (IsSqliteSchemaMismatch(ex))
-                {
-                    mvarLogger.LogWarning(ex,
-                        "Esquema de tourmaline.db incompatible con el modelo actual. Regenerando base de datos local vacía (habrá que re-descargar datos).");
-                    await db.Database.EnsureDeletedAsync();
-                    await db.Database.EnsureCreatedAsync();
-                }
-            }
-        }
-
-        private static bool IsSqliteSchemaMismatch(Exception ex)
-        {
-            for (Exception? current = ex; null != current; current = current.InnerException)
-            {
-                if (current is Microsoft.Data.Sqlite.SqliteException sqlite)
-                {
-                    // Error 1 = SQLITE_ERROR (no such column / no such table, etc.)
-                    string message = sqlite.Message;
-                    if (message.Contains("no such column", StringComparison.OrdinalIgnoreCase)
-                        || message.Contains("no such table", StringComparison.OrdinalIgnoreCase)
-                        || sqlite.SqliteErrorCode == 1)
-                        return true;
-                }
-            }
-            return false;
-        }
-
-        public async Task InitializeTimeNet()
-        {
-            using (IServiceScope scope = mvarServiceProvider.CreateScope())
-            {
-                TourmalineContext db = scope.ServiceProvider.GetRequiredService<TourmalineContext>();
-                await db.Database.EnsureCreatedAsync(); //Asegura que la base de datos local está creada.
-                await TimeNetStorage.DeserializeMemory(db);
-				DBLocalSystem? localSystem = await db.LocalSystem.FirstOrDefaultAsync();
-				Guid auxTopoStorageId = Guid.Empty;
-				Guid auxRautaId = Guid.Empty;
-				if (null != localSystem)
-				{
-					auxTopoStorageId = localSystem.CurrentTopoStorage;
-					auxRautaId = localSystem.CurrentRauta;
-				}
-                mvarSessionConfig.TNEnvironment = new TimeNetEnvironment(TimeNetStorage, auxTopoStorageId, auxRautaId);
-
+			if (SystemConfig.Cameras is null || SystemConfig.Cameras.Count == 0)
+			{
+				List<CameraInfo>? rootCameras = config.GetSection("Cameras").Get<List<CameraInfo>>();
+				if (rootCameras is { Count: > 0 })
+					SystemConfig.Cameras = rootCameras;
 			}
-        }
 
-		/// <summary>
-		/// Inicia el registro actual del tren en la base de datos local.
-		/// </summary>
-		/// <returns></returns>
-		public async Task InitializeLocalRegister()
-        {
-            using (IServiceScope scope = mvarServiceProvider.CreateScope())
-            {
-                TourmalineContext db = scope.ServiceProvider.GetRequiredService<TourmalineContext>();
-                await db.Database.EnsureCreatedAsync(); //Asegura que la base de datos local está creada.
-                Train? auxTrain = await db.Trains.FirstOrDefaultAsync(t => t.Name.Contains(SystemConfig.Name));
-                DBLocalSystem? auxLocalSystem = await db.LocalSystem.FirstOrDefaultAsync();
-                if (null != auxTrain)
-                {
-                    if (null == auxLocalSystem)
-                    {
-                        auxLocalSystem = new DBLocalSystem
-                        {
-                            LastSapphireDownload = DateTime.Now,
-                            LastAeneasSync = DateTime.MinValue,
-                            LastTopoSync = DateTime.MinValue,
-                            LastRautaSync = DateTime.MinValue,
-                            LastTimeNetSync = DateTime.MinValue,
-                            LastPlanSync = DateTime.MinValue,
-                            CurrentPlan = string.Empty,
-                            CurrentRauta = Guid.Empty,
-                            CurrentTopoStorage = Guid.Empty
-                        };
-                        db.LocalSystem.Add(auxLocalSystem);
-                    }
-                    auxLocalSystem.TrainName = SystemConfig.Name;
-                    auxLocalSystem.TrainId = auxTrain.Guid;
-                    await db.SaveChangesAsync();
-                    SystemConfig.TrainId = auxLocalSystem.TrainId;
-                    SystemConfig.Name = auxLocalSystem.TrainName;
-                }
-            }
-        }
+			mvarLogger.LogInformation(
+				"Cámaras cargadas: {Count}",
+				SystemConfig.Cameras?.Count ?? 0);
 
+			string? topoIdText = config["Diamond:TopoId"];
+			if (Guid.TryParse(topoIdText, out Guid topoId))
+				ConfiguredTopoId = topoId;
+			else
+				ConfiguredTopoId = Guid.Empty;
 
+			IConfigurationSection debugStartupSession = config.GetSection("debugStartSession");
+			if (debugStartupSession.Exists())
+				debugStartupSession.Bind(mvarSessionConfig);
+			await auxInitDevices(config);
+		}
 
-		/// <summary>
-		/// El sistema acaba de obtener los datos de TimeNet
-		/// </summary>
-		public async Task DoTimeNetSync()
+		private async Task auxInitDevices(IConfiguration config)
+		{
+			IConfigurationSection section = config.GetSection("Devices");
+			int deviceCount = 0;
+			foreach (IConfigurationSection deviceSection in section.GetChildren())
+			{
+				DeviceMapped nuevo = new DeviceMapped();
+				nuevo.SetParameters(
+					deviceSection["Address"],
+					deviceSection["Type"],
+					deviceSection["Coach"],
+					deviceSection["Side"],
+					deviceSection["HeaderSize"],
+					deviceSection["Lines"],
+					deviceSection["PublicId"]);
+				Devices.Add(nuevo);
+
+				mvarLogger.LogInformation(
+					"Dispositivo detectado: Address={Address}, Type={Type}, Coach={Coach}, Side={Side}, HeaderSize={HeaderSize}, Lines={Lines}, PublicId={PublicId}",
+					deviceSection["Address"],
+					deviceSection["Type"],
+					deviceSection["Coach"],
+					deviceSection["Side"],
+					deviceSection["HeaderSize"],
+					deviceSection["Lines"],
+					deviceSection["PublicId"]);
+				deviceCount++;
+			}
+			mvarLogger.LogInformation("Total de dispositivos detectados: {DeviceCount}", deviceCount);
+			mvarLedDisplayService.Init(Devices);
+			await mvarLedDisplayService.Print(true, $"Tourmaline {SystemConfig.Version}", false, Alignment.Center);
+			await mvarLedDisplayService.Print(false, "SFM", false);
+		}
+
+		public SessionConfiguration SessionConfig
+		{
+			get => mvarSessionConfig;
+		}
+
+		public async Task InitData()
+		{
+			await InitConfig(mvarConfiguration);
+			await EnsureLocalDatabaseSchema();
+			await InitializeLocalRegister();
+			await InitializeDiamond();
+		}
+
+		public async Task<bool> EnsureInitialized()
+		{
+			if (!mvarSessionConfig.Initialized)
+			{
+				mvarLogger.LogInformation("Iniciando sistema de información al viajero Tourmaline...");
+				try
+				{
+					await InitData();
+					mvarSessionConfig.InitError = string.Empty;
+					mvarLogger.LogInformation("Sistema de información al viajero Tourmaline iniciado correctamente.");
+				}
+				catch (Exception ex)
+				{
+					mvarSessionConfig.InitError = ex.Message;
+					mvarLogger.LogError(ex, "Error durante la inicialización. HMI en modo degradado.");
+					if (null == mvarSessionConfig.Cabin)
+						mvarSessionConfig.Cabin = new CabinEnvironment();
+				}
+				finally
+				{
+					mvarSessionConfig.Initialized = true;
+				}
+			}
+			return mvarSessionConfig.Initialized;
+		}
+
+		private async Task EnsureLocalDatabaseSchema()
 		{
 			using (IServiceScope scope = mvarServiceProvider.CreateScope())
 			{
 				TourmalineContext db = scope.ServiceProvider.GetRequiredService<TourmalineContext>();
-				DBLocalSystem? localSystem = await db.LocalSystem.FirstOrDefaultAsync();
-				if (null != localSystem)
+				await db.Database.EnsureCreatedAsync();
+				try
 				{
-					localSystem.LastTimeNetSync = DateTime.Now;
-					await db.SaveChangesAsync();
+					_ = await db.Trains.AsNoTracking().FirstOrDefaultAsync();
+					_ = await db.LocalSystem.AsNoTracking().FirstOrDefaultAsync();
+					_ = await db.DiamondTopos.AsNoTracking().FirstOrDefaultAsync();
+					_ = await db.DiamondPublishedPlans.AsNoTracking().FirstOrDefaultAsync();
+				}
+				catch (Exception ex) when (IsSqliteSchemaMismatch(ex))
+				{
+					mvarLogger.LogWarning(ex,
+						"Esquema de tourmaline.db incompatible. Regenerando base de datos local vacía.");
+					await db.Database.EnsureDeletedAsync();
+					await db.Database.EnsureCreatedAsync();
 				}
 			}
 		}
-		/// <summary>
-		/// El sistema acaba de seleccionar una topología para trabajar.
-		/// </summary>
-		public async Task DoTopologySelect(Guid topoId)
-        {
-            using (IServiceScope scope = mvarServiceProvider.CreateScope())
-            {
-                TourmalineContext db = scope.ServiceProvider.GetRequiredService<TourmalineContext>();
-                DBLocalSystem? localSystem = await db.LocalSystem.FirstOrDefaultAsync();
-                if (null != localSystem)
-                {
-                    localSystem.LastTopoSync = DateTime.Now;
-                    localSystem.LastRautaSync = DateTime.Now;
-                    localSystem.LastPlanSync = DateTime.Now;
-                    localSystem.CurrentTopoStorage = topoId;
-                    localSystem.CurrentRauta = Guid.Empty; //Al cambiar de topología, se pierde la sección rauta seleccionada.
-                    localSystem.CurrentPlan = string.Empty; //Al cambiar de rauta se pierde la selección de plan.
-                    await db.SaveChangesAsync();
-                }
-            }
-        }
-        /// <summary>
-        /// El sistema acaba de seleccionar un rauta para trabajar.
-        /// </summary>
-        public async Task DoRautatieSelect(Guid rautaId)
-        {
-            using (IServiceScope scope = mvarServiceProvider.CreateScope())
-            {
-                TourmalineContext db = scope.ServiceProvider.GetRequiredService<TourmalineContext>();
-                DBLocalSystem? localSystem = await db.LocalSystem.FirstOrDefaultAsync();
-                if (null != localSystem)
-                {
-                    localSystem.LastRautaSync = DateTime.Now;
-                    localSystem.CurrentRauta = rautaId;
-                    localSystem.LastPlanSync = DateTime.Now;
-					localSystem.CurrentPlan = string.Empty; //Al cambiar de rauta se pierde la selección de plan.
-					await db.SaveChangesAsync();
-                }
-            }
-        }
 
-        /// <summary>
-        /// El sistema acaba de seleccionar un plan de explotación
-        /// </summary>
-        /// <param name="planId"></param>
-        public async Task DoPlanSelect(string planName)
-        {
+		private static bool IsSqliteSchemaMismatch(Exception ex)
+		{
+			for (Exception? current = ex; null != current; current = current.InnerException)
+			{
+				if (current is Microsoft.Data.Sqlite.SqliteException sqlite)
+				{
+					string message = sqlite.Message;
+					if (message.Contains("no such column", StringComparison.OrdinalIgnoreCase)
+						|| message.Contains("no such table", StringComparison.OrdinalIgnoreCase)
+						|| sqlite.SqliteErrorCode == 1)
+						return true;
+				}
+			}
+			return false;
+		}
+
+		/// <summary>
+		/// Carga topo + plan publicado vigente desde la caché local.
+		/// </summary>
+		public async Task InitializeDiamond()
+		{
+			if (null == mvarSessionConfig.Cabin)
+				mvarSessionConfig.Cabin = new CabinEnvironment();
+
+			Guid topoId = ConfiguredTopoId;
 			using (IServiceScope scope = mvarServiceProvider.CreateScope())
 			{
 				TourmalineContext db = scope.ServiceProvider.GetRequiredService<TourmalineContext>();
 				DBLocalSystem? localSystem = await db.LocalSystem.FirstOrDefaultAsync();
-				if (null != localSystem)
+				if (Guid.Empty.Equals(topoId) && localSystem is not null
+					&& !Guid.Empty.Equals(localSystem.CurrentTopoId))
 				{
-					localSystem.LastPlanSync = DateTime.Now;
-					localSystem.CurrentPlan = planName; //Al cambiar de rauta se pierde la selección de plan.
+					topoId = localSystem.CurrentTopoId;
+				}
+			}
+
+			if (Guid.Empty.Equals(topoId))
+			{
+				mvarLogger.LogWarning("Diamond:TopoId no configurado; sin topología local.");
+				return;
+			}
+
+			bool loaded = await mvarDiamondCache.LoadIntoEnvironmentAsync(
+				mvarSessionConfig.Cabin,
+				topoId,
+				DateTime.Now);
+			if (loaded)
+			{
+				mvarLogger.LogInformation(
+					"Diamond cargado: topo {Topo}, plan «{Plan}», día {Day}, trenes {Count}",
+					topoId,
+					mvarSessionConfig.Cabin.PublishedPlanName,
+					mvarSessionConfig.Cabin.DayProject?.PlanningDay,
+					mvarSessionConfig.Cabin.DayProject?.Circulations.Count ?? 0);
+			}
+			else
+			{
+				mvarLogger.LogWarning(
+					"No hay caché Diamond para topo {Topo}. Sincroniza desde el menú Diamond.",
+					topoId);
+			}
+		}
+
+		public async Task InitializeLocalRegister()
+		{
+			using (IServiceScope scope = mvarServiceProvider.CreateScope())
+			{
+				TourmalineContext db = scope.ServiceProvider.GetRequiredService<TourmalineContext>();
+				await db.Database.EnsureCreatedAsync();
+				Train? auxTrain = await db.Trains.FirstOrDefaultAsync(t => t.Name.Contains(SystemConfig.Name));
+				DBLocalSystem? auxLocalSystem = await db.LocalSystem.FirstOrDefaultAsync();
+				if (null != auxTrain)
+				{
+					if (null == auxLocalSystem)
+					{
+						auxLocalSystem = new DBLocalSystem
+						{
+							LastSapphireDownload = DateTime.Now,
+							LastAeneasSync = DateTime.MinValue,
+							LastTopoSync = DateTime.MinValue,
+							LastDiamondSync = DateTime.MinValue,
+							LastPlanSync = DateTime.MinValue,
+							CurrentPublishedPlanId = Guid.Empty,
+							CurrentTopoId = ConfiguredTopoId
+						};
+						db.LocalSystem.Add(auxLocalSystem);
+					}
+					auxLocalSystem.TrainName = SystemConfig.Name;
+					auxLocalSystem.TrainId = auxTrain.Guid;
+					if (Guid.Empty.Equals(auxLocalSystem.CurrentTopoId)
+						&& !Guid.Empty.Equals(ConfiguredTopoId))
+					{
+						auxLocalSystem.CurrentTopoId = ConfiguredTopoId;
+					}
 					await db.SaveChangesAsync();
+					SystemConfig.TrainId = auxLocalSystem.TrainId;
+					SystemConfig.Name = auxLocalSystem.TrainName;
 				}
 			}
 		}
 
-        public async Task DoCirculationSelect(Circulation rhs)
-        {
-            if (null != SessionConfig && null != SessionConfig.TNEnvironment)
-            {
-                SessionConfig.TNEnvironment.Circulation = rhs;
-                UpdatePassengerInformationMode();
+		/// <summary>
+		/// Sincroniza con el servidor Sapphire (topo por hash + planes publicados futuros).
+		/// <paramref name="client"/> debe ser el <see cref="DiamondClient"/> del circuito Blazor
+		/// (inyectado en el componente), no uno resuelto desde el proveedor raíz: ese scope
+		/// no tiene IJSRuntime interactivo y falla al leer la sesión de localStorage.
+		/// </summary>
+		public async Task<DiamondSyncResult> SyncDiamondAsync(DiamondClient client)
+		{
+			if (client is null)
+			{
+				throw new ArgumentNullException(nameof(client));
+			}
 
-                if (null != rhs.Parent && null != rhs.Parent.asimilation)
-                {
-                    Console.WriteLine(rhs.Parent.asimilation.Name);
-                    await RecallTourmalineExperience(rhs.Parent.asimilation);
-                }                    
-            }
-        }
+			Guid topoId = ConfiguredTopoId;
+			if (Guid.Empty.Equals(topoId))
+			{
+				return new DiamondSyncResult
+				{
+					Success = false,
+					Message = "Configure Diamond:TopoId en appsettings.json"
+				};
+			}
 
-        /// <summary>
-        /// Actualiza <see cref="SessionConfiguration.InformationMode"/> según la fase del viaje:
-        /// sin circulación → Default;
-        /// en estación de origen (aún no se ha salido) → BeginOfTrip;
-        /// en destino final → EndOfTrip;
-        /// en otra estación → NextStopInfo;
-        /// sin estación actual → NextStopsList (&lt;60 km/h) o Cruise (≥60).
-        /// En modo de servicio sin DemoMode no se sobreescribe (el radio del menú lateral manda);
-        /// con DemoMode la conmutación es automática. Siempre se vuelve a Default al anular la circulación.
-        /// </summary>
-        public void UpdatePassengerInformationMode()
-        {
-            SessionConfiguration session = mvarSessionConfig;
-            TimeNetEnvironment? enviro = session.TNEnvironment;
-            Circulation? circulation = enviro?.Circulation;
+			DiamondSyncResult result = await mvarDiamondCache.SyncFromServerAsync(client, topoId);
+			if (result.Success)
+			{
+				await InitializeDiamond();
+			}
 
-            if (null == circulation)
-            {
-                session.PreviewArrivalStation = null;
-                if (session.InformationMode != Enums.PassengerInformationMode.Default)
-                    session.InformationMode = Enums.PassengerInformationMode.Default;
-                return;
-            }
+			return result;
+		}
 
-            // En modo de servicio el radio del menú manda, salvo DemoMode (conmutación automática).
-            if (session.ServiceMode.Main && !session.ServiceMode.DemoMode)
-                return;
+		public async Task DoCirculationSelect(Circulation rhs)
+		{
+			if (null == SessionConfig.Cabin)
+				return;
 
-            // La conmutación automática deja de forzar la previsualización de llegada.
-            session.PreviewArrivalStation = null;
+			// La misión Diamond se aplica siempre; Experience es opcional.
+			SessionConfig.Cabin.Circulation = rhs;
+			UpdatePassengerInformationMode();
 
-            Enums.PassengerInformationMode next;
-            Station? currentStation = enviro!.CurrentStation;
-            Asimilation? asim = enviro.Asimilation ?? circulation.Parent?.asimilation;
+			if (null != rhs.Asimilation)
+			{
+				mvarLogger.LogInformation("Circulación {Id} → asim {Asim}", rhs.Id, rhs.Asimilation.Id);
+				try
+				{
+					await RecallTourmalineExperience(rhs.Asimilation);
+				}
+				catch (Exception ex)
+				{
+					// Nunca tumbar el circuito Blazor por el simulador 3D.
+					mvarLogger.LogWarning(ex, "Tourmaline Experience no disponible al seleccionar circulación.");
+				}
+			}
+		}
 
-            if (null == currentStation)
-            {
-                // Umbral 60 km/h: por debajo lista de paradas; a partir de 60, crucero.
-                next = session.CurrentSpeed < 60
-                    ? Enums.PassengerInformationMode.NextStopsList
-                    : Enums.PassengerInformationMode.Cruise;
-            }
-            else
-            {
-                Station? lastStation = asim?.Destination;
-                Station? originStation = asim?.Origin;
+		public void UpdatePassengerInformationMode()
+		{
+			SessionConfiguration session = mvarSessionConfig;
+			CabinEnvironment? cabin = session.Cabin;
+			Circulation? circulation = cabin?.Circulation;
 
-                bool sameStation(Station a, Station b) =>
-                    string.Equals(a.Id, b.Id, StringComparison.Ordinal);
+			if (null == circulation)
+			{
+				session.PreviewArrivalStation = null;
+				if (session.InformationMode != Enums.PassengerInformationMode.Default)
+					session.InformationMode = Enums.PassengerInformationMode.Default;
+				return;
+			}
 
-                if (null != lastStation && sameStation(currentStation, lastStation))
-                {
-                    // Destino final del trayecto.
-                    next = Enums.PassengerInformationMode.EndOfTrip;
-                }
-                else if (null != originStation && sameStation(currentStation, originStation))
-                {
-                    // Todavía en origen (antes de LeaveCurrentStation al arrancar).
-                    next = Enums.PassengerInformationMode.BeginOfTrip;
-                }
-                else if (null != asim && asim.stationStopTime(currentStation) < TimeSpan.FromSeconds(10))
-                {
-                    // Parada técnica en malla (< 10 s, p. ej. Son Rullán): no anunciar al viajero.
-                    next = session.CurrentSpeed < 60
-                        ? Enums.PassengerInformationMode.NextStopsList
-                        : Enums.PassengerInformationMode.Cruise;
-                }
-                else
-                {
-                    // Parada intermedia comercial: anuncio de llegada / próxima estación.
-                    next = Enums.PassengerInformationMode.NextStopInfo;
-                }
-            }
+			if (session.ServiceMode.Main && !session.ServiceMode.DemoMode)
+				return;
 
-            if (session.InformationMode != next)
-                session.InformationMode = next;
-        }
+			session.PreviewArrivalStation = null;
 
-        /// <summary>
-        /// Al seleccionar la asimilación cargará el itinerario en TourmalineExperience
-        /// </summary>
-        /// <param name="asimilation">Referencia a la asimilación seleccionada</param>
-        /// <returns></returns>
-        private async Task RecallTourmalineExperience(Asimilation asimilation)
-        {
-            mvarLogger.LogInformation($"Starting TourmalineExperience for asimilation {asimilation.Name}");
-            //Detengo cualquier simulación en marcha.
-            await mvarTourmalineExperienceService.Stop();
+			Enums.PassengerInformationMode next;
+			StationInfo? currentStation = cabin!.CurrentStation;
+			Asimilation? asim = cabin.Asimilation;
 
-            LaunchRequest request = new LaunchRequest();
-            request.Climate = 0; //Ajustaremos el clima con los valores reales durante la ejecución
-            request.Consist = "Triple81"; //A cambiar cuando tengamos otro tipo de tren
-            request.Now = DateTime.Now.ToString("HH:mm");
-            request.RoutePath = asimilation.id;
-            request.Route = "SFM"; //A cambiar si algún día hay otro escenario
-            switch(DateTime.Now.Month)
-            {
-                case 3:
-                case 4:
-                case 5:
-                        request.Season = 0; break;
-                case 6:
-                case 7:
-                case 8:
-                        request.Season = 1; break;
-                default:
-                    request.Season = 2; break;
-            }
-            //Inicio TourmalineExperience con los datos actuales.
-            await mvarTourmalineExperienceService.Launch(request);
-        }
+			if (null == currentStation)
+			{
+				next = session.CurrentSpeed < 60
+					? Enums.PassengerInformationMode.NextStopsList
+					: Enums.PassengerInformationMode.Cruise;
+			}
+			else
+			{
+				StationInfo? lastStation = asim?.Destination;
+				StationInfo? originStation = asim?.Origin;
 
-        /// <summary>
-        /// Una vez finalizado el trayecto, pasa al modo de espera.
-        /// </summary>
-        /// <returns></returns>
-        public async Task RecallEndTourmalineExperience()
-        {
-            mvarLogger.LogInformation("Ending TourmalineExperience");
-            //Detengo cualquier simulación en marcha.
-            await mvarTourmalineExperienceService.Stop();
-        }
+				bool sameStation(StationInfo a, StationInfo b) =>
+					string.Equals(a.Id, b.Id, StringComparison.Ordinal);
 
-        /// <summary>
-        /// Carga la colección de usuarios del tren desde la base de datos.
-        /// </summary>
-        /// <returns></returns>
-        public async Task RetrieveUsers()
-        {
-            SessionConfig.ColUsers = new Dictionary<Guid, UserModelBase>();
-            using (IServiceScope scope = mvarServiceProvider.CreateScope())
-            {
-                TourmalineContext db = scope.ServiceProvider.GetRequiredService<TourmalineContext>();
-                IEnumerable<User> usuarios = await db.Users.ToListAsync();
-                foreach (User usuario in usuarios)
-                {
-                    UserModelBase nuevo = new UserModelBase();
-                    nuevo.guid = usuario.guid;
-                    nuevo.CF = usuario.CF;
-                    nuevo.Name = usuario.UserName;
-                    nuevo.CredentialKey = 0;
-                    SessionConfig.ColUsers.Add(nuevo.guid, nuevo);
-                }
-            }
-        }
+				if (null != lastStation && sameStation(currentStation, lastStation))
+				{
+					next = Enums.PassengerInformationMode.EndOfTrip;
+				}
+				else if (null != originStation && sameStation(currentStation, originStation))
+				{
+					next = Enums.PassengerInformationMode.BeginOfTrip;
+				}
+				else
+				{
+					// Parada intermedia: si el dwell de la call actual es técnico, tratar como en ruta.
+					TimedCall? atStop = null;
+					int i = 0;
+					while (i < circulation.Calls.Count)
+					{
+						if (string.Equals(circulation.Calls[i].Station.Id, currentStation.Id, StringComparison.Ordinal))
+						{
+							atStop = circulation.Calls[i];
+							break;
+						}
+						i++;
+					}
 
-        #region Authentication
+					if (atStop is not null
+						&& !atStop.IsDestination
+						&& !CabinItinerary.IsCommercial(atStop))
+					{
+						next = session.CurrentSpeed < 60
+							? Enums.PassengerInformationMode.NextStopsList
+							: Enums.PassengerInformationMode.Cruise;
+					}
+					else
+					{
+						next = Enums.PassengerInformationMode.NextStopInfo;
+					}
+				}
+			}
 
-        public async Task<SessionModel?> UserLogin(string username, string pwd)
+			if (session.InformationMode != next)
+				session.InformationMode = next;
+		}
+
+		private async Task RecallTourmalineExperience(Asimilation asimilation)
+		{
+			if (!mvarTourmalineExperienceService.IsConfigured)
+			{
+				mvarLogger.LogDebug("Experience no configurado; misión sin simulador 3D.");
+				return;
+			}
+
+			mvarLogger.LogInformation("Starting TourmalineExperience for asimilation {Name}", asimilation.Id);
+			// Stop puede fallar si no hay proceso: no es error de misión.
+			await mvarTourmalineExperienceService.Stop();
+
+			LaunchRequest request = new LaunchRequest();
+			request.Climate = 0;
+			request.Consist = "Triple81";
+			request.Now = DateTime.Now.ToString("HH:mm");
+			// Paths hardcodeados SFM (T11/T12/T21/T22/T31/T32) según vista y sentido.
+			request.RoutePath = ExperienceRoutePathMap.Resolve(asimilation);
+			request.Route = "SFM";
+			mvarLogger.LogInformation(
+				"Experience RoutePath={Path} (view={View}, sense={Sense}, {Origin}→{Dest})",
+				request.RoutePath,
+				asimilation.ViewId,
+				asimilation.Sense,
+				asimilation.Origin.DisplayCode,
+				asimilation.Destination.DisplayCode);
+			switch (DateTime.Now.Month)
+			{
+				case 3:
+				case 4:
+				case 5:
+					request.Season = 0; break;
+				case 6:
+				case 7:
+				case 8:
+					request.Season = 1; break;
+				default:
+					request.Season = 2; break;
+			}
+
+			bool launched = await mvarTourmalineExperienceService.Launch(request);
+			if (!launched)
+			{
+				mvarLogger.LogWarning(
+					"No se pudo lanzar Tourmaline Experience para {Route}. La circulación Diamond queda seleccionada.",
+					request.RoutePath);
+			}
+		}
+
+		public async Task RecallEndTourmalineExperience()
+		{
+			mvarLogger.LogInformation("Ending TourmalineExperience");
+			try
+			{
+				await mvarTourmalineExperienceService.Stop();
+			}
+			catch (Exception ex)
+			{
+				mvarLogger.LogWarning(ex, "Error al detener Tourmaline Experience (se ignora).");
+			}
+		}
+
+		public async Task RetrieveUsers()
+		{
+			SessionConfig.ColUsers = new Dictionary<Guid, UserModelBase>();
+			using (IServiceScope scope = mvarServiceProvider.CreateScope())
+			{
+				TourmalineContext db = scope.ServiceProvider.GetRequiredService<TourmalineContext>();
+				IEnumerable<User> usuarios = await db.Users.ToListAsync();
+				foreach (User usuario in usuarios)
+				{
+					UserModelBase nuevo = new UserModelBase();
+					nuevo.guid = usuario.guid;
+					nuevo.CF = usuario.CF;
+					nuevo.Name = usuario.UserName;
+					nuevo.CredentialKey = 0;
+					SessionConfig.ColUsers.Add(nuevo.guid, nuevo);
+				}
+			}
+		}
+
+		#region Authentication
+
+		public async Task<SessionModel?> UserLogin(string username, string pwd)
 		{
 			UserLoginModel modelo = new UserLoginModel();
 			SessionModel? sesion = null;
@@ -528,7 +520,6 @@ namespace Tourmaline26.Services
 			}
 			if (null != sesion)
 			{
-				//Actualizo los roles que tiene el usuario que acaba de abrir sesión.
 				foreach (Sapphire2025Models.Common.UserRole rol in sesion.Roles)
 				{
 					mvarLogger.LogInformation("Usuario {User} tiene rol {Role}", username, rol.ToString());
@@ -538,9 +529,9 @@ namespace Tourmaline26.Services
 			SessionConfig.Session = sesion;
 			return SessionConfig.Session;
 		}
+
 		public async Task UserLogout()
 		{
-			//Hay una sesión abierta. Queremos salir de la sesión
 			if (null != SessionConfig.Session)
 			{
 				mvarLogger.LogInformation("Cierre de sesión de {User}",
@@ -559,15 +550,13 @@ namespace Tourmaline26.Services
 					}
 				}
 			}
-			SessionConfig.Session = null; //En cualquier caso, cierro la sesión abierta.
+			SessionConfig.Session = null;
 		}
+
 		#endregion Authentication
 
 		#region Zafiro
 
-		/// <summary>
-		/// El sistema acaba de sincronizar con los datos de Aeneas
-		/// </summary>
 		public async Task DoAeneasSync()
 		{
 			using (IServiceScope scope = mvarServiceProvider.CreateScope())
@@ -582,9 +571,6 @@ namespace Tourmaline26.Services
 			}
 		}
 
-		/// <summary>
-		/// El sistema acaba de sincronizar con los datos de Aeneas
-		/// </summary>
 		public async Task DoSapphireDownload()
 		{
 			using (IServiceScope scope = mvarServiceProvider.CreateScope())
@@ -598,6 +584,7 @@ namespace Tourmaline26.Services
 				}
 			}
 		}
+
 		#endregion Zafiro
 	}
 }

@@ -1,0 +1,178 @@
+@using Microsoft.EntityFrameworkCore
+@using Sapphire2025.Storage
+@using Sapphire2025Models.Diamond
+@using Tourmaline26.Services.CabinCache
+@using Tourmaline26.Services.LocalDataModel
+@inject TourmalineService TourmalineService
+@inject DiamondLocalCache DiamondCache
+@inject DiamondClient DiamondClient
+
+<h2>Diamond</h2>
+
+@if (!string.IsNullOrEmpty(mvarStatus))
+{
+    <p class="@(mvarStatusError ? "text-danger" : "text-success")">@mvarStatus</p>
+}
+
+<ul>
+    <li>TopoId (appsettings): <code>@TourmalineService.ConfiguredTopoId</code></li>
+    @if (mvarTopoMeta is not null)
+    {
+        <li>Topo en caché: @mvarTopoMeta.Name</li>
+        <li>ContentHash: <code>@mvarTopoMeta.ContentHash</code></li>
+        <li>Descargada: @mvarTopoMeta.DownloadedUtc.ToLocalTime()</li>
+    }
+    else
+    {
+        <li>Sin topología en caché local</li>
+    }
+    @if (cabin is not null)
+    {
+        <li>Plan del día: @(string.IsNullOrEmpty(cabin.PublishedPlanName) ? "—" : cabin.PublishedPlanName)</li>
+        <li>Día: @(cabin.DayProject?.PlanningDay?.ToString() ?? "—")</li>
+        <li>Circulaciones hoy: @(cabin.DayProject?.Circulations.Count ?? 0)</li>
+        <li>Misión: @(cabin.Circulation is null ? "ninguna" : (cabin.Circulation.HasServiceNumber ? cabin.Circulation.ServiceNumber : cabin.Circulation.Id))</li>
+    }
+</ul>
+
+@if (mvarBusy)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" aria-modal="true" role="dialog">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-center">
+                <div class="modal-body">
+                    <div class="spinner-border text-primary mb-3" style="width: 4rem; height: 4rem;" role="status">
+                        <span class="visually-hidden">Sincronizando...</span>
+                    </div>
+                    <h4 class="mb-2">Sincronizando Diamond</h4>
+                    <p>Topo (si hay hash nuevo) y planes publicados desde hoy.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else if (TourmalineService.SessionConfig.ServiceMode.Main)
+{
+    <button class="btn btn-primary" @onclick="SyncAsync">Sincronizar con servidor</button>
+    <button class="btn btn-outline-secondary ms-2" @onclick="ReloadLocalAsync">Recargar caché local</button>
+}
+
+@if (mcolPlans.Count > 0)
+{
+    <h3 class="mt-3">Planes publicados en caché</h3>
+    <table class="table table-striped table-bordered mt-2">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Vigencia</th>
+                <th>Trenes*</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (DBDiamondPublishedPlanCache plan in mcolPlans)
+            {
+                <tr>
+                    <td>@plan.Name</td>
+                    <td>
+                        @plan.ValidFrom.ToString("yyyy-MM-dd")
+                        @if (plan.ValidTo.HasValue)
+                        {
+                            <text> → @plan.ValidTo.Value.ToString("yyyy-MM-dd")</text>
+                        }
+                    </td>
+                    <td>@plan.CirculationCount</td>
+                    <td>
+                        @if (cabin is not null && cabin.PublishedPlanId == plan.PlanId)
+                        {
+                            <span>Activo</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <p class="text-muted small">* Recuento del paquete; el día civil elige el Project correspondiente offline.</p>
+}
+
+@code {
+    private bool mvarBusy;
+    private string mvarStatus = string.Empty;
+    private bool mvarStatusError;
+    private DBDiamondTopoCache? mvarTopoMeta;
+    private List<DBDiamondPublishedPlanCache> mcolPlans = new List<DBDiamondPublishedPlanCache>();
+
+    private Diamond.Cabin.CabinEnvironment? cabin => TourmalineService.SessionConfig.Cabin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await TourmalineService.EnsureInitialized();
+        await RefreshMetaAsync();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task RefreshMetaAsync()
+    {
+        Guid topoId = TourmalineService.ConfiguredTopoId;
+        if (!Guid.Empty.Equals(topoId))
+        {
+            mvarTopoMeta = await DiamondCache.GetTopoMetaAsync(topoId);
+            mcolPlans = (await DiamondCache.ListCachedPlansAsync(topoId)).ToList();
+        }
+        else
+        {
+            mvarTopoMeta = null;
+            mcolPlans = new List<DBDiamondPublishedPlanCache>();
+        }
+    }
+
+    private async Task SyncAsync()
+    {
+        mvarBusy = true;
+        mvarStatus = string.Empty;
+        StateHasChanged();
+        try
+        {
+            // DiamondClient del circuito (scoped), no un scope raíz: IntStorage usa JS interop.
+            DiamondSyncResult result = await TourmalineService.SyncDiamondAsync(DiamondClient);
+            mvarStatus = result.Message;
+            mvarStatusError = !result.Success;
+            await RefreshMetaAsync();
+            TourmalineService.RaiseHMIUpdate();
+        }
+        catch (Exception ex)
+        {
+            mvarStatus = ex.Message;
+            mvarStatusError = true;
+        }
+        finally
+        {
+            mvarBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ReloadLocalAsync()
+    {
+        mvarBusy = true;
+        StateHasChanged();
+        try
+        {
+            await TourmalineService.InitializeDiamond();
+            mvarStatus = "Caché local recargada.";
+            mvarStatusError = false;
+            await RefreshMetaAsync();
+            TourmalineService.RaiseHMIUpdate();
+        }
+        catch (Exception ex)
+        {
+            mvarStatus = ex.Message;
+            mvarStatusError = true;
+        }
+        finally
+        {
+            mvarBusy = false;
+            StateHasChanged();
+        }
+    }
+}

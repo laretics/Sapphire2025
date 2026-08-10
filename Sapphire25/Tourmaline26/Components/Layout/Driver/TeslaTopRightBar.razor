@@ -1,6 +1,4 @@
-﻿@using Tourmaline26.Components.Images
-@using System.Net.Http;
-@using TimeNetComponents.Controls
+@using Tourmaline26.Components.Images
 @using Tourmaline26.Services.OpenMeteo
 <div class="tesla-top-right-bar">
     @if(null!=mvarConfig)
@@ -11,7 +9,7 @@
             <span>
                 <img src="@OpenMeteoClient.GetWeatherIconUrl(mvarConfig.CurrentWeather.WeatherCode)" style="width:36px;height:auto;" />
             </span>
-        }        
+        }
         @if(mvarConfig.GPSEnabled ||mvarConfig.ServiceMode.GPSDummy)
         {
             if (mvarConfig.GPSOK)
@@ -26,7 +24,7 @@
             {
                 <ColorIcon Name="NoLocation" Size="24" ></ColorIcon>
             }
-        }        
+        }
         @if(mvarConfig.InternetEnabled)
         {
             @if (mvarConfig.InternetOK)
@@ -37,14 +35,14 @@
             {
                 <ColorIcon Name="NoInternet" Size="24" ></ColorIcon>
             }
-        }        
-        @if(null!=mvarConfig.TNEnvironment)
+        }
+        @if(null!=mvarConfig.Cabin)
         {
-            <WeekDayShow Day="mvarConfig.TNEnvironment.Weekday"/>    
-            <span class="clock">@mvarConfig.TNEnvironment.Now.ToString("HH:mm:ss")</span>
-        }                
+            <span class="weekday">@mvarConfig.Cabin.ClockNow.ToString("ddd")</span>
+            <span class="clock">@mvarConfig.Cabin.ClockNow.ToString("HH:mm:ss")</span>
+        }
     }
-    
+
 </div>
 
 @code {
