@@ -6,8 +6,8 @@ namespace Tourmaline26.Logic
 	/// </summary>
 	public class SystemConfiguration
 	{
-		public string Version  => "V1.8 (Beta)"; //Versión de este programa.
-		public DateTime Release => new DateTime(2026,8,3);
+		public string Version  => "V1.9 (Beta)"; //Versión de este programa.
+		public DateTime Release => new DateTime(2026,8,13);
 		public Guid TrainId { get; set; } //Guid de este material móvil según Zafiro.
         public string Name { get; set; } = "Tren";
 		public DateTime LastRelease { get; set; } //Fecha de la última instalación de hardware.
@@ -18,6 +18,7 @@ namespace Tourmaline26.Logic
 		public string TExperienceUrl { get; set; } = "http://172.16.20.12:5005/server"; //Servidor API REST de Tourmaline Experiencwe
 		public string TExperienceStr { get; set; } = "http://192.168.0.9:5005/stream"; //Streamer de Tourmaline Experience
 		public string SfmInfoUrl { get; set; } = "https://info.trensfm.com:8084"; //Url del proveedor Armandito
+		public string DiamondTopologyId { get; set; } = ""; // Id de la topología de Diamond. Es un Guid, pero aquí lo leemos como string.
 		public string SfmInfoToken { get; set; } = "SFM2026"; //Token para Armandito
 		/// <summary>Base del panel de información al viajero (salidas por estación, Socket.IO).</summary>
 		public string SfmPanelUrl { get; set; } = "https://info.trensfm.com";

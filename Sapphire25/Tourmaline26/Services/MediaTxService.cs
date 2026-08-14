@@ -10,7 +10,7 @@
         private readonly IConfiguration _configuration;
         private readonly TourmalineService mvarTourmalineService;
         private IHttpClientFactory mvarHttpClientFactory;
-        private HttpClient mvarCliente;
+        private HttpClient? mvarCliente;
 
         public MediaMTXService(IHttpClientFactory httpClientFactory, ILogger<MediaMTXService> logger, IConfiguration configuration, TourmalineService tourmaline)
         {
@@ -67,6 +67,7 @@
                         sourceOnDemandStartTimeout = "15s",       // ← como string con "s"
                         sourceOnDemandCloseAfter = "30s"          // ← como string con "s"
                     };
+                    if (null == mvarCliente) return false;
 
                     var response = await mvarCliente.PostAsJsonAsync(
                         $"http://127.0.0.1:9997/v3/config/paths/add/cc{cam.Id}",
@@ -110,24 +111,27 @@
             {
                 mvarLogger.LogInformation("Eliminando todas las cámaras configuradas...");
 
-                var response = await mvarCliente.GetAsync("http://127.0.0.1:9997/v3/config/paths/list", cancellationToken);
-                if (!response.IsSuccessStatusCode) return;
-
-                var json = await response.Content.ReadAsStringAsync(cancellationToken);
-                var root = JsonDocument.Parse(json).RootElement;
-                var items = root.GetProperty("items");
-
-                int count = 0;
-                foreach (var item in items.EnumerateArray())
+                if(null != mvarCliente)
                 {
-                    string name = item.GetProperty("name").GetString() ?? "";
-                    if (string.IsNullOrEmpty(name) || name == "all_others") continue;
+                    var response = await mvarCliente.GetAsync("http://127.0.0.1:9997/v3/config/paths/list", cancellationToken);
+                    if (!response.IsSuccessStatusCode) return;
 
-                    await DeleteCameraAsync(name, cancellationToken);
-                    count++;
+                    var json = await response.Content.ReadAsStringAsync(cancellationToken);
+                    var root = JsonDocument.Parse(json).RootElement;
+                    var items = root.GetProperty("items");
+
+                    int count = 0;
+                    foreach (var item in items.EnumerateArray())
+                    {
+                        string name = item.GetProperty("name").GetString() ?? "";
+                        if (string.IsNullOrEmpty(name) || name == "all_others") continue;
+
+                        await DeleteCameraAsync(name, cancellationToken);
+                        count++;
+                    }
+
+                    mvarLogger.LogInformation("Se eliminaron {Count} cámaras.", count);
                 }
-
-                mvarLogger.LogInformation("Se eliminaron {Count} cámaras.", count);
             }
             catch (Exception ex)
             {
@@ -144,16 +148,19 @@
         {
             try
             {
-                var response = await mvarCliente.DeleteAsync(
-                    $"http://127.0.0.1:9997/v3/config/paths/delete/{cameraName}",
-                    cancellationToken);
-
-                if (response.IsSuccessStatusCode)
-                    mvarLogger.LogInformation("Cámara eliminada: {Name}", cameraName);
-                else
+                if (null != mvarCliente)
                 {
-                    var error = await response.Content.ReadAsStringAsync(cancellationToken);
-                    mvarLogger.LogWarning("Error eliminando {Name}: {Error}", cameraName, error);
+                    var response = await mvarCliente.DeleteAsync(
+                        $"http://127.0.0.1:9997/v3/config/paths/delete/{cameraName}",
+                        cancellationToken);
+
+                    if (response.IsSuccessStatusCode)
+                        mvarLogger.LogInformation("Cámara eliminada: {Name}", cameraName);
+                    else
+                    {
+                        var error = await response.Content.ReadAsStringAsync(cancellationToken);
+                        mvarLogger.LogWarning("Error eliminando {Name}: {Error}", cameraName, error);
+                    }
                 }
             }
             catch (Exception ex)
@@ -168,6 +175,7 @@
         {
             try
             {
+                if (null == mvarCliente) return false;
                 // Intentamos obtener la lista de paths (la API más básica)
                 var response = await mvarCliente.GetAsync(
                     "http://127.0.0.1:9997/v3/config/paths/list",
@@ -202,6 +210,9 @@
             return Task.CompletedTask;
         }
 
-        public void Dispose() { }
+        public void Dispose() 
+        { 
+            mvarCliente?.Dispose();
+        }
     }
 }

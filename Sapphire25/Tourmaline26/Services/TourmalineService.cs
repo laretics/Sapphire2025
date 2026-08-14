@@ -72,8 +72,10 @@ namespace Tourmaline26.Services
 				"Cámaras cargadas: {Count}",
 				SystemConfig.Cameras?.Count ?? 0);
 
-			string? topoIdText = config["Diamond:TopoId"];
-			if (Guid.TryParse(topoIdText, out Guid topoId))
+			//string? topoIdText = config["Diamond:TopoId"];
+			//if (Guid.TryParse(topoIdText, out Guid topoId))
+			//Cambiado lugar de configuración de Id de TopoId a la sección de sistema en appsettings.json.
+			if(Guid.TryParse(SystemConfig.DiamondTopologyId, out Guid topoId))
 				ConfiguredTopoId = topoId;
 			else
 				ConfiguredTopoId = Guid.Empty;

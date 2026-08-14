@@ -29,6 +29,12 @@
                 No hay sesión cargada.
             </div>
         }
+        else if(!mvarUrlAvailable)
+        {
+            <div class="alert alert-info mb-0">
+                Conexión no disponible
+            </div>
+        }
         else if (mvarSession.EarthMessages is null || mvarSession.EarthMessages.Count == 0)
         {
             <div class="alert alert-info mb-0">
@@ -96,6 +102,7 @@
 @code {
     private SessionConfiguration? mvarSession;
     private string mvarDummyServiceName = "XSFMX";
+    private bool mvarUrlAvailable = true;
 
     protected override void OnInitialized()
     {
@@ -119,6 +126,15 @@
     private async Task DummyTest()
     {
         //Ejecuta una petición de prueba para ver si funciona Armandito.
-        mvarTourmaline.SessionConfig.EarthMessages = await mvarArmandito.GetMessagesAsync(mvarDummyServiceName);
+        mvarUrlAvailable = true;
+        try
+        {
+            mvarTourmaline.SessionConfig.EarthMessages = await mvarArmandito.GetMessagesAsync(mvarDummyServiceName);
+        }
+        catch(Exception ex)
+        {
+            mvarUrlAvailable = false;
+            //No haremos nada. No tenemos conexión a internete. 
+        }
     }
 }
