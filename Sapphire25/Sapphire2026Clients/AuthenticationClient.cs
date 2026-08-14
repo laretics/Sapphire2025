@@ -29,10 +29,75 @@ namespace Sapphire2025.Storage
             if(respuesta.IsSuccessStatusCode)
             {
                 string salida = await respuesta.Content.ReadAsStringAsync();
+				// Puede venir como "26.8.14" con comillas JSON
+				salida = (salida ?? string.Empty).Trim().Trim('"');
                 return salida;
             }
-            return Common.GetVersionString; //En caso de no tener comunicación, devolvemos la del cliente.
+            return Common.SapphireSoftwareVersion; //En caso de no tener comunicación, devolvemos la del cliente.
         }
+
+		/// <summary>
+		/// Política de actualización por roles: el servidor indica si este usuario debe
+		/// recargar el cliente y qué notas de versión le corresponden.
+		/// </summary>
+		public async Task<VersionCheckResponse?> CheckClientVersion()
+		{
+			try
+			{
+				Guid token = Guid.Empty;
+				try { token = await getCurrentToken(); } catch { /* sin sesión */ }
+
+				VersionCheckRequest request = new VersionCheckRequest
+				{
+					ClientVersion = Common.SapphireSoftwareVersion,
+					SessionToken = token
+				};
+				string jsonString = JsonSerializer.Serialize(request);
+				// checkSession: false — debe funcionar también antes del login
+				HttpResponseMessage respuesta = await sendPutRequest("versioncheck", jsonString, checkSession: false);
+				if (respuesta.IsSuccessStatusCode)
+					return await respuesta.Content.ReadFromJsonAsync<VersionCheckResponse>();
+			}
+			catch
+			{
+				// Fallback local si el servidor no responde
+			}
+
+			// Fallback sin red: solo con datos del cliente y roles de sesión local
+			return await BuildLocalVersionCheckFallback();
+		}
+
+		private async Task<VersionCheckResponse> BuildLocalVersionCheckFallback()
+		{
+			VersionCheckResponse salida = new VersionCheckResponse
+			{
+				ServerVersion = Common.SapphireSoftwareVersion,
+				VersionMismatch = false,
+				NeedsUpdate = false
+			};
+
+			List<Common.UserRole> roles = new List<Common.UserRole>();
+			try
+			{
+				SessionModel? session = await mvarIntStorage.GetSessionInfo();
+				if (null != session?.Roles)
+					roles.AddRange(session.Roles);
+			}
+			catch
+			{
+				// sin roles
+			}
+
+			salida.Changes = Common.GetReleaseChangesFor(roles)
+				.Where(c => !string.IsNullOrWhiteSpace(c.Text))
+				.Select(c => new VersionChangeNote
+				{
+					Text = c.Text,
+					Observations = c.Observations ?? string.Empty
+				})
+				.ToList();
+			return salida;
+		}
 
 		#region Register
 		public async Task<bool> SetRegister(string key, string value)

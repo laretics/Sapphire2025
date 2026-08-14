@@ -1,0 +1,89 @@
+.contextual-help {
+	position: fixed;
+	/* Debajo de la topbar móvil; a la derecha del contenido */
+	top: 0.85rem;
+	right: 0.85rem;
+	z-index: 1030;
+	pointer-events: none;
+}
+
+.contextual-help-btn {
+	pointer-events: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.4rem 0.75rem 0.4rem 0.45rem;
+	border-radius: 999px;
+	background: #0d6efd;
+	color: #fff !important;
+	text-decoration: none !important;
+	font-weight: 600;
+	font-size: 0.875rem;
+	line-height: 1;
+	box-shadow: 0 0.35rem 1rem rgba(13, 110, 253, 0.35);
+	border: 2px solid rgba(255, 255, 255, 0.85);
+	transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+
+.contextual-help-btn:hover {
+	background: #0b5ed7;
+	color: #fff !important;
+	transform: translateY(-1px) scale(1.03);
+	box-shadow: 0 0.5rem 1.15rem rgba(13, 110, 253, 0.45);
+}
+
+.contextual-help-btn:focus-visible {
+	outline: 3px solid rgba(13, 110, 253, 0.45);
+	outline-offset: 2px;
+}
+
+.contextual-help-glyph {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.55rem;
+	height: 1.55rem;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.2);
+	font-size: 1rem;
+	font-weight: 700;
+}
+
+/* Modo inline (dentro de cabeceras de página) */
+.contextual-help.inline {
+	position: static;
+	top: auto;
+	right: auto;
+	z-index: auto;
+	pointer-events: auto;
+	display: inline-flex;
+}
+
+.contextual-help.inline .contextual-help-btn {
+	padding: 0.25rem 0.55rem 0.25rem 0.3rem;
+	font-size: 0.8rem;
+	box-shadow: none;
+}
+
+.contextual-help.inline .contextual-help-glyph {
+	width: 1.35rem;
+	height: 1.35rem;
+	font-size: 0.9rem;
+}
+
+/* Evitar solape con la topbar móvil */
+@media (max-width: 991.98px) {
+	.contextual-help:not(.inline) {
+		top: 3.6rem;
+		right: 0.65rem;
+	}
+
+	.contextual-help:not(.inline) .contextual-help-label {
+		display: none !important;
+	}
+
+	.contextual-help:not(.inline) .contextual-help-btn {
+		padding: 0.35rem;
+		border-radius: 50%;
+	}
+}

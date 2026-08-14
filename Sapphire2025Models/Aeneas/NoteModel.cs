@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,6 +14,7 @@ namespace Sapphire2025Models.Aeneas
 	/// </summary>
 	public class NoteModel:BasicRequestModel
 	{
+		public Guid Id { get; set; }
 		public string? Text { get; set; } //Texto de la nota
 		public Guid parent { get; set; } //Referencia al tren que posee esta nota
 		public byte Type { get; set; } //Tipo de nota
@@ -24,5 +25,12 @@ namespace Sapphire2025Models.Aeneas
 		//Fecha y hora del cierre de la nota.
 		public Guid? ClosureUser { get; set; }
 		//Usuario que cierra la nota.
+
+		/// <summary>Etiqueta: nota válida para procesamiento NLP / análisis.</summary>
+		public bool IsValid { get; set; }
+		/// <summary>Etiqueta: describe un síntoma/avería (true) o una resolución (false).</summary>
+		public bool IsSymptom { get; set; }
+		/// <summary>Etiqueta: sistema del tren afectado (<see cref="Common.TrainSystem"/>).</summary>
+		public byte SystemAffected { get; set; }
 	}
 }

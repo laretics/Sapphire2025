@@ -195,5 +195,44 @@ namespace Sapphire2025.Storage
 			JsonSerializerOptions opciones = new(JsonSerializerDefaults.Web);
 			return JsonSerializer.Deserialize<bool>(contenido, opciones);
 		}
+
+		/// <summary>
+		/// Búsqueda de notas con filtros (fecha, usuario, tren, tipo, etiquetas, keywords).
+		/// </summary>
+		public async Task<IEnumerable<NoteModel>> searchNotes(NoteSearchRequestModel request)
+		{
+			if (null == request)
+				return Array.Empty<NoteModel>();
+			if (Guid.Empty.Equals(request.SessionToken))
+				request.SessionToken = await getCurrentToken();
+
+			string jsonData = JsonSerializer.Serialize(request);
+			HttpResponseMessage respuesta = await sendPostRequest("searchnotes", jsonData);
+			if (respuesta.IsSuccessStatusCode)
+			{
+				IEnumerable<NoteModel>? lista = await respuesta.Content.ReadFromJsonAsync<IEnumerable<NoteModel>>();
+				if (null != lista)
+					return lista;
+			}
+			return Array.Empty<NoteModel>();
+		}
+
+		/// <summary>
+		/// Consulta compleja unificada de notas e incidencias (cambios de estado).
+		/// El servidor registra el uso en el log de actividad.
+		/// </summary>
+		public async Task<IncidenceQueryResponse?> incidenceQuery(IncidenceQueryRequest request)
+		{
+			if (null == request)
+				return null;
+			if (Guid.Empty.Equals(request.SessionToken))
+				request.SessionToken = await getCurrentToken();
+
+			string jsonData = JsonSerializer.Serialize(request);
+			HttpResponseMessage respuesta = await sendPostRequest("incidencequery", jsonData);
+			if (respuesta.IsSuccessStatusCode)
+				return await respuesta.Content.ReadFromJsonAsync<IncidenceQueryResponse>();
+			return null;
+		}
 	}
 }

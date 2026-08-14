@@ -1,0 +1,873 @@
+@page "/aeneas/incidenceQuery"
+@using System.Globalization
+@using System.Text
+@using Sapphire2025Models
+@inject AeneasClient mvarAeneasClient
+@inject AuthenticationClient mvarAuthClient
+@inject IntStorageService mvarLocalStorage
+@inject IJSRuntime mvarJS
+@inject NavigationManager mvarNavigator
+
+<PageTitle>Incidencias y notas · Consulta</PageTitle>
+
+<div class="container-fluid py-3">
+	<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+		<div>
+			<h3 class="mb-0">
+				<i class="bi bi-search-heart me-2"></i>Incidencias y notas
+			</h3>
+			<p class="text-muted small mb-0">
+				Consulta combinada sobre notas y cambios de estado (trenes, usuarios, fechas y etiquetas).
+			</p>
+		</div>
+		<div class="btn-group" role="group">
+			<button type="button" class="btn btn-outline-success" disabled="@(!HasResults || mvarLoading)" @onclick="ExportCsvAsync" title="Exportar CSV (Excel)">
+				<i class="bi bi-file-earmark-spreadsheet"></i>
+				<span class="d-none d-md-inline"> CSV / Excel</span>
+			</button>
+			<button type="button" class="btn btn-outline-secondary" disabled="@(!HasResults || mvarLoading)" @onclick="PrintReportAsync" title="Imprimir informe">
+				<i class="bi bi-printer"></i>
+				<span class="d-none d-md-inline"> Imprimir</span>
+			</button>
+		</div>
+	</div>
+
+	@* Filtros *@
+	<div class="card shadow-sm mb-3">
+		<div class="card-header bg-light d-flex flex-wrap align-items-center justify-content-between gap-2">
+			<span class="fw-semibold">
+				<i class="bi bi-funnel me-1"></i>Filtros
+			</span>
+			<div class="btn-group btn-group-sm" role="group" aria-label="Rangos rápidos">
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(0)">Hoy</button>
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(7)">7 días</button>
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(30)">30 días</button>
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(90)">90 días</button>
+			</div>
+		</div>
+		<div class="card-body">
+			<div class="row g-3">
+				<div class="col-6 col-md-3">
+					<label class="form-label" for="fromDate">Desde</label>
+					<input id="fromDate" type="date" class="form-control" @bind="mvarFromDate" />
+				</div>
+				<div class="col-6 col-md-3">
+					<label class="form-label" for="toDate">Hasta</label>
+					<input id="toDate" type="date" class="form-control" @bind="mvarToDate" />
+				</div>
+				<div class="col-6 col-md-3">
+					<label class="form-label" for="maxRecords">Máx. por tipo</label>
+					<select id="maxRecords" class="form-select" @bind="mvarMaxRecords">
+						<option value="100">100</option>
+						<option value="500">500</option>
+						<option value="1000">1.000</option>
+						<option value="2500">2.500</option>
+						<option value="5000">5.000</option>
+					</select>
+				</div>
+				<div class="col-6 col-md-3">
+					<label class="form-label">Origen de datos</label>
+					<div class="d-flex flex-wrap gap-3 pt-1">
+						<div class="form-check">
+							<input class="form-check-input" type="checkbox" id="incNotes" @bind="mvarIncludeNotes" />
+							<label class="form-check-label" for="incNotes">Notas</label>
+						</div>
+						<div class="form-check">
+							<input class="form-check-input" type="checkbox" id="incStatus" @bind="mvarIncludeStatus" />
+							<label class="form-check-label" for="incStatus">Cambios de estado</label>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-12">
+					<label class="form-label" for="keywords">Palabras clave (notas)</label>
+					<input id="keywords" type="text" class="form-control"
+						   placeholder="Separadas por espacio o coma (todas deben aparecer en el texto)"
+						   @bind="mvarKeywordsText" />
+					<div class="form-text">Solo se aplica a notas. Ejemplo: <em>puerta freno</em></div>
+				</div>
+
+				@* Trenes *@
+				<div class="col-12 col-lg-4">
+					<label class="form-label">Tren</label>
+					<div class="input-group mb-1">
+						<span class="input-group-text"><i class="bi bi-train-front"></i></span>
+						<input type="text" class="form-control" placeholder="Filtrar por número..."
+							   @bind="mvarTrainSearchText" @bind:event="oninput" />
+					</div>
+					<div class="border rounded p-2 filter-scroll">
+						@if (!FilteredTrains.Any())
+						{
+							<div class="text-muted small">No hay trenes que coincidan.</div>
+						}
+						else
+						{
+							@foreach (TrainModel train in FilteredTrains)
+							{
+								<div class="form-check">
+									<input class="form-check-input" type="checkbox" id="tr_@train.id"
+										   checked="@mcolSelectedTrainIds.Contains(train.id)"
+										   @onchange="(e) => OnTrainToggled(train.id, e)" />
+									<label class="form-check-label" for="tr_@train.id">@train.name</label>
+								</div>
+							}
+						}
+					</div>
+					<div class="form-text">
+						Sin selección = todos.
+						@if (mcolSelectedTrainIds.Count > 0)
+						{
+							<span class="badge text-bg-secondary ms-1">@mcolSelectedTrainIds.Count</span>
+							<button type="button" class="btn btn-link btn-sm p-0 ms-1" @onclick="ClearTrainSelection">Limpiar</button>
+						}
+					</div>
+				</div>
+
+				@* Usuarios *@
+				<div class="col-12 col-lg-4">
+					<label class="form-label">Usuario</label>
+					<div class="input-group mb-1">
+						<span class="input-group-text"><i class="bi bi-search"></i></span>
+						<input type="text" class="form-control" placeholder="CF o nombre..."
+							   @bind="mvarUserSearchText" @bind:event="oninput" />
+					</div>
+					<div class="border rounded p-2 filter-scroll">
+						@if (!FilteredUsers.Any())
+						{
+							<div class="text-muted small">No hay usuarios que coincidan.</div>
+						}
+						else
+						{
+							@foreach (UserModel user in FilteredUsers)
+							{
+								string uid = user.guid.ToString();
+								<div class="form-check">
+									<input class="form-check-input" type="checkbox" id="usr_@uid"
+										   checked="@mcolSelectedUserIds.Contains(user.guid)"
+										   @onchange="(e) => OnUserToggled(user.guid, e)" />
+									<label class="form-check-label" for="usr_@uid">
+										<span class="fw-semibold">@user.CF</span>
+										<span class="text-muted">— @user.Name</span>
+									</label>
+								</div>
+							}
+						}
+					</div>
+					<div class="form-text">
+						Sin selección = todos.
+						@if (mcolSelectedUserIds.Count > 0)
+						{
+							<span class="badge text-bg-secondary ms-1">@mcolSelectedUserIds.Count</span>
+							<button type="button" class="btn btn-link btn-sm p-0 ms-1" @onclick="ClearUserSelection">Limpiar</button>
+						}
+					</div>
+				</div>
+
+				@* Tipos de nota + etiquetas *@
+				<div class="col-12 col-lg-4">
+					<label class="form-label">Tipo de nota</label>
+					<div class="border rounded p-2 mb-2">
+						@foreach (NoteTypeOption opt in mcolNoteTypeOptions)
+						{
+							<div class="form-check">
+								<input class="form-check-input" type="checkbox" id="nt_@opt.Value"
+									   checked="@mcolSelectedNoteTypes.Contains(opt.Value)"
+									   @onchange="(e) => OnNoteTypeToggled(opt.Value, e)" />
+								<label class="form-check-label" for="nt_@opt.Value">@opt.Name</label>
+							</div>
+						}
+					</div>
+
+					<label class="form-label">Etiquetas NLP</label>
+					<div class="row g-2">
+						<div class="col-6">
+							<label class="form-label small mb-0" for="isValid">Válida</label>
+							<select id="isValid" class="form-select form-select-sm" @bind="mvarIsValidFilter">
+								<option value="">Cualquiera</option>
+								<option value="true">Sí</option>
+								<option value="false">No</option>
+							</select>
+						</div>
+						<div class="col-6">
+							<label class="form-label small mb-0" for="isSymptom">Síntoma</label>
+							<select id="isSymptom" class="form-select form-select-sm" @bind="mvarIsSymptomFilter">
+								<option value="">Cualquiera</option>
+								<option value="true">Síntoma / avería</option>
+								<option value="false">Resolución</option>
+							</select>
+						</div>
+					</div>
+
+					<label class="form-label mt-2">Sistema afectado</label>
+					<div class="border rounded p-2 filter-scroll-sm">
+						@foreach (SystemOption opt in mcolSystemOptions)
+						{
+							<div class="form-check">
+								<input class="form-check-input" type="checkbox" id="sys_@opt.Value"
+									   checked="@mcolSelectedSystems.Contains(opt.Value)"
+									   @onchange="(e) => OnSystemToggled(opt.Value, e)" />
+								<label class="form-check-label small" for="sys_@opt.Value">@opt.Name</label>
+							</div>
+						}
+					</div>
+					<div class="form-text">Las etiquetas y tipos solo filtran notas.</div>
+				</div>
+			</div>
+		</div>
+		<div class="card-footer d-flex flex-wrap gap-2 justify-content-end bg-white">
+			<button type="button" class="btn btn-outline-secondary" @onclick="ResetFilters" disabled="@mvarLoading">
+				<i class="bi bi-x-circle"></i> Limpiar
+			</button>
+			<button type="button" class="btn btn-primary" @onclick="SearchAsync" disabled="@mvarLoading">
+				@if (mvarLoading)
+				{
+					<span class="spinner-border spinner-border-sm me-1" role="status"></span>
+					<span>Buscando...</span>
+				}
+				else
+				{
+					<span><i class="bi bi-search"></i> Buscar</span>
+				}
+			</button>
+		</div>
+	</div>
+
+	@if (mvarError is not null)
+	{
+		<div class="alert alert-danger" role="alert">
+			<i class="bi bi-exclamation-triangle me-1"></i>@mvarError
+		</div>
+	}
+
+	@if (mvarHasSearched)
+	{
+		<div class="card shadow-sm">
+			<div class="card-header bg-white d-flex flex-wrap align-items-center justify-content-between gap-2">
+				<div>
+					<span class="fw-semibold">Resultados</span>
+					@if (mvarResponse is not null)
+					{
+						<span class="text-muted small ms-2">
+							@mvarResponse.Items.Count mostrados
+							@if (mvarResponse.TotalMatched != mvarResponse.Items.Count)
+							{
+								<span> · @mvarResponse.TotalNotes notas / @mvarResponse.TotalStatusChanges estados (totales)</span>
+							}
+							else
+							{
+								<span> · @mvarResponse.TotalNotes notas · @mvarResponse.TotalStatusChanges estados</span>
+							}
+						</span>
+						@if (mvarResponse.Truncated)
+						{
+							<span class="badge text-bg-warning ms-2">Truncado (aumenta el máximo)</span>
+						}
+					}
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-2">
+					<div class="btn-group btn-group-sm" role="group">
+						<button type="button" class="btn @(mvarViewMode == ViewMode.Timeline ? "btn-primary" : "btn-outline-primary")"
+								@onclick="() => mvarViewMode = ViewMode.Timeline">Cronología</button>
+						<button type="button" class="btn @(mvarViewMode == ViewMode.Notes ? "btn-primary" : "btn-outline-primary")"
+								@onclick="() => mvarViewMode = ViewMode.Notes">Notas</button>
+						<button type="button" class="btn @(mvarViewMode == ViewMode.Status ? "btn-primary" : "btn-outline-primary")"
+								@onclick="() => mvarViewMode = ViewMode.Status">Estados</button>
+					</div>
+					@if (HasResults)
+					{
+						<input type="text" class="form-control form-control-sm" style="max-width: 14rem;"
+							   placeholder="Filtrar en resultados..."
+							   @bind="mvarClientFilter" @bind:event="oninput" />
+					}
+				</div>
+			</div>
+			<div class="card-body p-0">
+				@if (mvarLoading)
+				{
+					<div class="text-center py-5">
+						<div class="spinner-border text-primary" role="status"></div>
+						<div class="mt-2 text-muted">Consultando el servidor...</div>
+					</div>
+				}
+				else if (!DisplayedItems.Any())
+				{
+					<div class="alert alert-warning m-3 mb-0">
+						No hay resultados para los filtros seleccionados.
+					</div>
+				}
+				else
+				{
+					<div class="table-responsive" style="max-height: 62vh; overflow-y: auto;">
+						<table class="table table-sm table-striped table-hover align-middle mb-0">
+							<thead class="table-light sticky-top">
+								<tr>
+									<th role="button" @onclick="() => SortBy(SortColumn.Time)">
+										Fecha @SortIcon(SortColumn.Time)
+									</th>
+									<th role="button" @onclick="() => SortBy(SortColumn.Kind)">
+										Tipo @SortIcon(SortColumn.Kind)
+									</th>
+									<th role="button" @onclick="() => SortBy(SortColumn.Train)">
+										Tren @SortIcon(SortColumn.Train)
+									</th>
+									<th role="button" @onclick="() => SortBy(SortColumn.User)">
+										Usuario @SortIcon(SortColumn.User)
+									</th>
+									<th>Detalle</th>
+									<th>Etiquetas</th>
+								</tr>
+							</thead>
+							<tbody>
+								@foreach (IncidenceQueryItem row in DisplayedItems)
+								{
+									<tr>
+										<td class="text-nowrap">
+											@Utils.autoDate(row.TimeStamp)
+											<span class="text-muted small">@ToLocal(row.TimeStamp).ToString("HH:mm:ss")</span>
+										</td>
+										<td>
+											@if (row.Kind == "note")
+											{
+												<span class="badge text-bg-info">@row.NoteTypeName</span>
+											}
+											else
+											{
+												<span class="badge text-bg-secondary">Estado</span>
+											}
+										</td>
+										<td class="fw-semibold">@(string.IsNullOrWhiteSpace(row.TrainName) ? "—" : row.TrainName)</td>
+										<td>
+											<div class="fw-semibold">@(string.IsNullOrWhiteSpace(row.UserName) ? "—" : row.UserName)</div>
+											@if (!string.IsNullOrWhiteSpace(row.UserCf))
+											{
+												<div class="text-muted small">@row.UserCf</div>
+											}
+										</td>
+										<td>
+											@if (row.Kind == "note")
+											{
+												<div class="note-text">@(string.IsNullOrWhiteSpace(row.Text) ? "—" : row.Text)</div>
+												@if (row.ClosureTime.HasValue)
+												{
+													<div class="text-muted small mt-1">
+														<i class="bi bi-check2-circle"></i> Cerrada @Utils.autoDate(row.ClosureTime)
+													</div>
+												}
+											}
+											else
+											{
+												<div>
+													<span class="fw-semibold">@row.OperationName</span>
+													<span class="text-muted">→</span>
+													<span class="badge" style="background-color:@StatusColor(row.Status); color:#222;">@row.StatusName</span>
+												</div>
+											}
+										</td>
+										<td>
+											@if (row.Kind == "note")
+											{
+												<div class="d-flex flex-wrap gap-1">
+													@if (row.IsValid == true)
+													{
+														<span class="badge text-bg-success">Válida</span>
+													}
+													else if (row.IsValid == false)
+													{
+														<span class="badge text-bg-light text-dark border">No válida</span>
+													}
+													@if (row.IsSymptom == true)
+													{
+														<span class="badge text-bg-danger">Síntoma</span>
+													}
+													else if (row.IsSymptom == false)
+													{
+														<span class="badge text-bg-primary">Resolución</span>
+													}
+													@if (row.SystemAffected is > 0)
+													{
+														<span class="badge text-bg-warning text-dark">@row.SystemName</span>
+													}
+												</div>
+											}
+											else
+											{
+												<span class="text-muted">—</span>
+											}
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+			</div>
+			@if (HasResults)
+			{
+				<div class="card-footer bg-white small text-muted">
+					@BuildFilterSummary()
+				</div>
+			}
+		</div>
+	}
+	else if (!mvarLoading)
+	{
+		<div class="alert alert-info">
+			<i class="bi bi-info-circle me-1"></i>
+			Define los filtros y pulsa <strong>Buscar</strong>. Por defecto se consultan los últimos 7 días (notas y cambios de estado).
+		</div>
+	}
+</div>
+
+@code {
+	private sealed class NoteTypeOption
+	{
+		public byte Value { get; init; }
+		public string Name { get; init; } = string.Empty;
+	}
+
+	private sealed class SystemOption
+	{
+		public byte Value { get; init; }
+		public string Name { get; init; } = string.Empty;
+	}
+
+	private enum SortColumn { Time, Kind, Train, User }
+	private enum ViewMode { Timeline, Notes, Status }
+
+	private List<TrainModel> mcolTrains = new();
+	private List<UserModel> mcolUsers = new();
+	private List<NoteTypeOption> mcolNoteTypeOptions = new();
+	private List<SystemOption> mcolSystemOptions = new();
+
+	private HashSet<Guid> mcolSelectedTrainIds = new();
+	private HashSet<Guid> mcolSelectedUserIds = new();
+	private HashSet<byte> mcolSelectedNoteTypes = new();
+	private HashSet<byte> mcolSelectedSystems = new();
+
+	private DateTime? mvarFromDate;
+	private DateTime? mvarToDate;
+	private string mvarKeywordsText = string.Empty;
+	private string mvarTrainSearchText = string.Empty;
+	private string mvarUserSearchText = string.Empty;
+	private string mvarClientFilter = string.Empty;
+	private string mvarIsValidFilter = string.Empty;
+	private string mvarIsSymptomFilter = string.Empty;
+	private int mvarMaxRecords = 500;
+	private bool mvarIncludeNotes = true;
+	private bool mvarIncludeStatus = true;
+
+	private bool mvarLoading;
+	private bool mvarHasSearched;
+	private string? mvarError;
+	private IncidenceQueryResponse? mvarResponse;
+
+	private SortColumn mvarSortColumn = SortColumn.Time;
+	private bool mvarSortAscending;
+	private ViewMode mvarViewMode = ViewMode.Timeline;
+
+	private bool HasResults => mvarResponse?.Items is { Count: > 0 };
+
+	private IEnumerable<TrainModel> FilteredTrains
+	{
+		get
+		{
+			IEnumerable<TrainModel> q = mcolTrains;
+			if (!string.IsNullOrWhiteSpace(mvarTrainSearchText))
+			{
+				string f = mvarTrainSearchText.Trim();
+				q = q.Where(t => t.name?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false);
+			}
+			return q;
+		}
+	}
+
+	private IEnumerable<UserModel> FilteredUsers
+	{
+		get
+		{
+			if (string.IsNullOrWhiteSpace(mvarUserSearchText))
+				return mcolUsers;
+			string q = mvarUserSearchText.Trim();
+			return mcolUsers.Where(u =>
+				(u.CF?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+				(u.Name?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false));
+		}
+	}
+
+	private IEnumerable<IncidenceQueryItem> DisplayedItems
+	{
+		get
+		{
+			if (mvarResponse is null)
+				return Enumerable.Empty<IncidenceQueryItem>();
+
+			IEnumerable<IncidenceQueryItem> q = mvarResponse.Items;
+
+			q = mvarViewMode switch
+			{
+				ViewMode.Notes => q.Where(i => i.Kind == "note"),
+				ViewMode.Status => q.Where(i => i.Kind == "status"),
+				_ => q
+			};
+
+			if (!string.IsNullOrWhiteSpace(mvarClientFilter))
+			{
+				string f = mvarClientFilter.Trim();
+				q = q.Where(r =>
+					(r.TrainName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
+					(r.UserName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
+					(r.UserCf?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
+					(r.Text?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
+					(r.NoteTypeName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
+					(r.OperationName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
+					(r.StatusName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
+					(r.SystemName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
+					(r.KindLabel?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false));
+			}
+
+			q = mvarSortColumn switch
+			{
+				SortColumn.Kind => mvarSortAscending
+					? q.OrderBy(r => r.Kind).ThenBy(r => r.NoteTypeName)
+					: q.OrderByDescending(r => r.Kind).ThenByDescending(r => r.NoteTypeName),
+				SortColumn.Train => mvarSortAscending
+					? q.OrderBy(r => r.TrainName)
+					: q.OrderByDescending(r => r.TrainName),
+				SortColumn.User => mvarSortAscending
+					? q.OrderBy(r => r.UserName)
+					: q.OrderByDescending(r => r.UserName),
+				_ => mvarSortAscending
+					? q.OrderBy(r => r.TimeStamp)
+					: q.OrderByDescending(r => r.TimeStamp)
+			};
+			return q;
+		}
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		BuildStaticOptions();
+		ApplyQuickRange(7);
+
+		mvarLoading = true;
+		try
+		{
+			IEnumerable<TrainModel> trains = await mvarAeneasClient.trainsList();
+			mcolTrains = trains.OrderBy(t => t.name).ToList();
+
+			IEnumerable<UserModel>? users = await mvarAuthClient.completeUsersList();
+			if (null != users)
+				mcolUsers = users.OrderBy(u => u.CF).ThenBy(u => u.Name).ToList();
+		}
+		catch (Exception ex)
+		{
+			mvarError = $"Error al cargar catálogos: {ex.Message}";
+		}
+		finally
+		{
+			mvarLoading = false;
+		}
+	}
+
+	private void BuildStaticOptions()
+	{
+		mcolNoteTypeOptions = new List<NoteTypeOption>
+		{
+			new() { Value = 0, Name = Common.NoteTypeName(0) },
+			new() { Value = 1, Name = Common.NoteTypeName(1) },
+			new() { Value = 2, Name = Common.NoteTypeName(2) },
+			new() { Value = 3, Name = Common.NoteTypeName(3) }
+		};
+
+		mcolSystemOptions = Enum.GetValues(typeof(Common.TrainSystem))
+			.Cast<Common.TrainSystem>()
+			.Select(s => new SystemOption
+			{
+				Value = (byte)s,
+				Name = Common.TrainSystemName(s)
+			})
+			.ToList();
+	}
+
+	private void ApplyQuickRange(int daysBack)
+	{
+		DateTime today = DateTime.Today;
+		mvarToDate = today;
+		mvarFromDate = daysBack <= 0 ? today : today.AddDays(-daysBack);
+	}
+
+	private void ResetFilters()
+	{
+		mcolSelectedTrainIds.Clear();
+		mcolSelectedUserIds.Clear();
+		mcolSelectedNoteTypes.Clear();
+		mcolSelectedSystems.Clear();
+		mvarKeywordsText = string.Empty;
+		mvarTrainSearchText = string.Empty;
+		mvarUserSearchText = string.Empty;
+		mvarClientFilter = string.Empty;
+		mvarIsValidFilter = string.Empty;
+		mvarIsSymptomFilter = string.Empty;
+		mvarMaxRecords = 500;
+		mvarIncludeNotes = true;
+		mvarIncludeStatus = true;
+		ApplyQuickRange(7);
+		mvarError = null;
+	}
+
+	private void ClearTrainSelection() => mcolSelectedTrainIds.Clear();
+	private void ClearUserSelection() => mcolSelectedUserIds.Clear();
+
+	private void OnTrainToggled(Guid trainId, ChangeEventArgs e)
+	{
+		if (IsChecked(e)) mcolSelectedTrainIds.Add(trainId);
+		else mcolSelectedTrainIds.Remove(trainId);
+	}
+
+	private void OnUserToggled(Guid userId, ChangeEventArgs e)
+	{
+		if (IsChecked(e)) mcolSelectedUserIds.Add(userId);
+		else mcolSelectedUserIds.Remove(userId);
+	}
+
+	private void OnNoteTypeToggled(byte value, ChangeEventArgs e)
+	{
+		if (IsChecked(e)) mcolSelectedNoteTypes.Add(value);
+		else mcolSelectedNoteTypes.Remove(value);
+	}
+
+	private void OnSystemToggled(byte value, ChangeEventArgs e)
+	{
+		if (IsChecked(e)) mcolSelectedSystems.Add(value);
+		else mcolSelectedSystems.Remove(value);
+	}
+
+	private static bool IsChecked(ChangeEventArgs e) =>
+		e.Value is bool b && b
+		|| (e.Value is string s && bool.TryParse(s, out bool parsed) && parsed);
+
+	private async Task SearchAsync()
+	{
+		if (!mvarIncludeNotes && !mvarIncludeStatus)
+		{
+			mvarError = "Selecciona al menos un origen de datos (notas o cambios de estado).";
+			return;
+		}
+
+		mvarLoading = true;
+		mvarError = null;
+		mvarHasSearched = true;
+		mvarClientFilter = string.Empty;
+		try
+		{
+			IncidenceQueryRequest request = BuildRequest();
+			IncidenceQueryResponse? response = await mvarAeneasClient.incidenceQuery(request);
+			if (null == response)
+			{
+				mvarResponse = null;
+				mvarError = "No se pudo obtener respuesta del servidor.";
+			}
+			else
+			{
+				mvarResponse = response;
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarResponse = null;
+			mvarError = $"Error al consultar: {ex.Message}";
+		}
+		finally
+		{
+			mvarLoading = false;
+		}
+	}
+
+	private IncidenceQueryRequest BuildRequest()
+	{
+		IncidenceQueryRequest request = new IncidenceQueryRequest
+		{
+			MaxRecords = mvarMaxRecords,
+			IncludeNotes = mvarIncludeNotes,
+			IncludeStatusChanges = mvarIncludeStatus
+		};
+
+		if (mvarFromDate.HasValue)
+		{
+			DateTime localStart = DateTime.SpecifyKind(mvarFromDate.Value.Date, DateTimeKind.Local);
+			request.FromUtc = localStart.ToUniversalTime();
+		}
+		if (mvarToDate.HasValue)
+		{
+			DateTime localEnd = DateTime.SpecifyKind(mvarToDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Local);
+			request.ToUtc = localEnd.ToUniversalTime();
+		}
+
+		if (mcolSelectedTrainIds.Count > 0)
+			request.TrainIds = mcolSelectedTrainIds.ToList();
+		if (mcolSelectedUserIds.Count > 0)
+			request.UserIds = mcolSelectedUserIds.ToList();
+		if (mcolSelectedNoteTypes.Count > 0)
+			request.NoteTypes = mcolSelectedNoteTypes.ToList();
+		if (mcolSelectedSystems.Count > 0)
+			request.SystemsAffected = mcolSelectedSystems.ToList();
+
+		if (!string.IsNullOrWhiteSpace(mvarIsValidFilter) && bool.TryParse(mvarIsValidFilter, out bool isValid))
+			request.IsValid = isValid;
+		if (!string.IsNullOrWhiteSpace(mvarIsSymptomFilter) && bool.TryParse(mvarIsSymptomFilter, out bool isSymptom))
+			request.IsSymptom = isSymptom;
+
+		if (!string.IsNullOrWhiteSpace(mvarKeywordsText))
+		{
+			request.Keywords = mvarKeywordsText
+				.Split(new[] { ' ', ',', ';', '\t' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToList();
+		}
+
+		return request;
+	}
+
+	private string BuildFilterSummary()
+	{
+		List<string> parts = new();
+		if (mvarFromDate.HasValue)
+			parts.Add($"Desde {mvarFromDate:dd/MM/yyyy}");
+		if (mvarToDate.HasValue)
+			parts.Add($"Hasta {mvarToDate:dd/MM/yyyy}");
+
+		List<string> sources = new();
+		if (mvarIncludeNotes) sources.Add("notas");
+		if (mvarIncludeStatus) sources.Add("estados");
+		parts.Add(string.Join(" + ", sources));
+
+		if (mcolSelectedTrainIds.Count > 0)
+			parts.Add($"{mcolSelectedTrainIds.Count} tren(es)");
+		else
+			parts.Add("Todos los trenes");
+
+		if (mcolSelectedUserIds.Count > 0)
+			parts.Add($"{mcolSelectedUserIds.Count} usuario(s)");
+		else
+			parts.Add("Todos los usuarios");
+
+		if (mcolSelectedNoteTypes.Count > 0)
+			parts.Add($"{mcolSelectedNoteTypes.Count} tipo(s) de nota");
+		if (mcolSelectedSystems.Count > 0)
+			parts.Add($"{mcolSelectedSystems.Count} sistema(s)");
+		if (!string.IsNullOrWhiteSpace(mvarIsValidFilter))
+			parts.Add($"Válida={mvarIsValidFilter}");
+		if (!string.IsNullOrWhiteSpace(mvarIsSymptomFilter))
+			parts.Add($"Síntoma={mvarIsSymptomFilter}");
+		if (!string.IsNullOrWhiteSpace(mvarKeywordsText))
+			parts.Add($"Keywords «{mvarKeywordsText.Trim()}»");
+
+		return string.Join(" · ", parts);
+	}
+
+	private async Task ExportCsvAsync()
+	{
+		if (!HasResults)
+			return;
+
+		StringBuilder sb = new StringBuilder();
+		sb.Append('\uFEFF'); // BOM UTF-8 para Excel
+		sb.AppendLine("FechaUTC;FechaLocal;Origen;TipoNota;Tren;Usuario;CF;UserId;Texto;Operacion;Estado;Valida;Sintoma;Sistema;Cierre");
+
+		foreach (IncidenceQueryItem row in DisplayedItems)
+		{
+			DateTime local = ToLocal(row.TimeStamp);
+			sb.Append(Csv(row.TimeStamp.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture))).Append(';');
+			sb.Append(Csv(local.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture))).Append(';');
+			sb.Append(Csv(row.KindLabel)).Append(';');
+			sb.Append(Csv(row.Kind == "note" ? row.NoteTypeName : string.Empty)).Append(';');
+			sb.Append(Csv(row.TrainName)).Append(';');
+			sb.Append(Csv(row.UserName)).Append(';');
+			sb.Append(Csv(row.UserCf)).Append(';');
+			sb.Append(Csv(row.UserId.ToString())).Append(';');
+			sb.Append(Csv(row.Text)).Append(';');
+			sb.Append(Csv(row.Kind == "status" ? row.OperationName : string.Empty)).Append(';');
+			sb.Append(Csv(row.Kind == "status" ? row.StatusName : string.Empty)).Append(';');
+			sb.Append(row.IsValid.HasValue ? (row.IsValid.Value ? "1" : "0") : string.Empty).Append(';');
+			sb.Append(row.IsSymptom.HasValue ? (row.IsSymptom.Value ? "1" : "0") : string.Empty).Append(';');
+			sb.Append(Csv(row.SystemAffected is > 0 ? row.SystemName : string.Empty)).Append(';');
+			sb.Append(row.ClosureTime.HasValue
+				? Csv(ToLocal(row.ClosureTime.Value).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture))
+				: string.Empty);
+			sb.AppendLine();
+		}
+
+		string fileName = $"incidencias-{DateTime.Now:yyyyMMdd-HHmmss}.csv";
+		await mvarJS.InvokeVoidAsync("downloadTextFile", sb.ToString(), fileName, "text/csv;charset=utf-8");
+
+		// Auditoría de exportación (detalle con resumen de filtros)
+		_ = mvarAuthClient.LogActivity(Common.sessionEventType.incidenceQueryExported, BuildFilterSummary());
+	}
+
+	private static string Csv(string? value)
+	{
+		if (string.IsNullOrEmpty(value))
+			return string.Empty;
+		string v = value.Replace("\"", "\"\"");
+		if (v.Contains(';') || v.Contains('"') || v.Contains('\n') || v.Contains('\r'))
+			return $"\"{v}\"";
+		return v;
+	}
+
+	private async Task PrintReportAsync()
+	{
+		if (!HasResults || mvarResponse is null)
+			return;
+
+		IncidenceQueryPrintPackage package = new IncidenceQueryPrintPackage
+		{
+			Items = DisplayedItems.ToList(),
+			FilterSummary = BuildFilterSummary(),
+			GeneratedAt = DateTime.Now,
+			TotalNotes = mvarResponse.TotalNotes,
+			TotalStatusChanges = mvarResponse.TotalStatusChanges,
+			Truncated = mvarResponse.Truncated
+		};
+		await mvarLocalStorage.SetIncidenceQueryPrintPackage(package);
+
+		_ = mvarAuthClient.LogActivity(Common.sessionEventType.incidenceQueryPrinted, BuildFilterSummary());
+
+		string printUrl = mvarNavigator.ToAbsoluteUri("aeneas/incidenceQuery/print").AbsoluteUri;
+		await mvarJS.InvokeVoidAsync("open", printUrl, "_blank");
+	}
+
+	private void SortBy(SortColumn column)
+	{
+		if (mvarSortColumn == column)
+			mvarSortAscending = !mvarSortAscending;
+		else
+		{
+			mvarSortColumn = column;
+			mvarSortAscending = column != SortColumn.Time;
+		}
+	}
+
+	private string SortIcon(SortColumn column)
+	{
+		if (mvarSortColumn != column)
+			return string.Empty;
+		return mvarSortAscending ? "↑" : "↓";
+	}
+
+	private static DateTime ToLocal(DateTime value)
+	{
+		if (value.Kind == DateTimeKind.Unspecified)
+			value = DateTime.SpecifyKind(value, DateTimeKind.Utc);
+		return value.Kind == DateTimeKind.Utc ? value.ToLocalTime() : value;
+	}
+
+	private static string StatusColor(byte? status)
+	{
+		if (!status.HasValue)
+			return "#ccc";
+		int idx = status.Value;
+		if (idx >= 0 && idx < Common.TrainStatusColor.Length)
+			return Common.TrainStatusColor[idx];
+		return "#ccc";
+	}
+}

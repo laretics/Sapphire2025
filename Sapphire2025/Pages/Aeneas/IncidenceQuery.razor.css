@@ -1,0 +1,25 @@
+.filter-scroll {
+	max-height: 12rem;
+	overflow-y: auto;
+}
+
+.filter-scroll-sm {
+	max-height: 8rem;
+	overflow-y: auto;
+}
+
+.note-text {
+	white-space: pre-wrap;
+	word-break: break-word;
+	max-width: 28rem;
+	line-height: 1.25;
+}
+
+.table thead th[role="button"] {
+	cursor: pointer;
+	user-select: none;
+}
+
+.table thead.sticky-top {
+	z-index: 2;
+}

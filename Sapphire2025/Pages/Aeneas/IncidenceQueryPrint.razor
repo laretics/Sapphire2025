@@ -1,0 +1,177 @@
+@page "/aeneas/incidenceQuery/print"
+@layout EmptyLayout
+@using Sapphire2025Models
+@inject IJSRuntime mvarJSRuntime
+@inject IntStorageService mvarLocalStorage
+
+<PageTitle>Informe de incidencias · Zafiro</PageTitle>
+
+<div class="print-area">
+	<div class="print-title d-flex align-items-center" style="gap: 1.0rem; max-width: 100%; flex-wrap: nowrap;">
+		<div class="print-logo" style="margin-bottom:0; flex: 0 0 auto;">
+			<img src="img/sfmImg.png" alt="Logotipo SFM" style="max-width: 90px; height: auto;" />
+		</div>
+		<h2 class="mb-0 flex-grow-1" style="font-size: 1.25em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+			Incidencias y notas — @mvarGeneratedAt.ToString("dd/MM/yyyy HH:mm")
+		</h2>
+		<h1 class="mb-0 flex-grow-1" style="font-size: 1.5em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+			ZAFIRO
+		</h1>
+	</div>
+
+	@if (!string.IsNullOrWhiteSpace(mvarFilterSummary))
+	{
+		<div class="card mb-3 shadow-sm print-only">
+			<div class="card-body py-2">
+				<label class="form-label fw-bold text-secondary mb-1">Criterios de la consulta</label>
+				<div class="comments-box">@mvarFilterSummary</div>
+				@if (mvarTruncated)
+				{
+					<div class="text-danger small mt-1">
+						Resultado truncado: se muestran @mcolItems.Count de @(mvarTotalNotes + mvarTotalStatusChanges) coincidencias.
+					</div>
+				}
+				else
+				{
+					<div class="text-muted small mt-1">
+						@mcolItems.Count registro(s) · @mvarTotalNotes notas · @mvarTotalStatusChanges cambios de estado.
+					</div>
+				}
+			</div>
+		</div>
+	}
+
+	@if (mvarLoading)
+	{
+		<div class="text-center my-5">
+			<div class="spinner-border text-primary" role="status"></div>
+			<div>Preparando informe...</div>
+		</div>
+	}
+	else if (mcolItems.Count == 0)
+	{
+		<div class="alert alert-warning">No hay datos para imprimir. Vuelve a la consulta y genera el informe de nuevo.</div>
+	}
+	else
+	{
+		<div class="table-responsive my-3">
+			<table class="table table-bordered table-sm align-middle">
+				<thead class="table-light">
+					<tr>
+						<th>Fecha / hora</th>
+						<th>Origen</th>
+						<th>Tren</th>
+						<th>Usuario</th>
+						<th>Detalle</th>
+						<th>Etiquetas</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (IncidenceQueryItem row in mcolItems)
+					{
+						DateTime local = ToLocal(row.TimeStamp);
+						<tr>
+							<td class="text-nowrap">@local.ToString("dd/MM/yyyy HH:mm:ss")</td>
+							<td>
+								@if (row.Kind == "note")
+								{
+									@row.NoteTypeName
+								}
+								else
+								{
+									<span>Cambio de estado</span>
+								}
+							</td>
+							<td>@(string.IsNullOrWhiteSpace(row.TrainName) ? "—" : row.TrainName)</td>
+							<td>
+								@if (!string.IsNullOrWhiteSpace(row.UserCf))
+								{
+									<span>@row.UserCf — </span>
+								}
+								@(string.IsNullOrWhiteSpace(row.UserName) ? "—" : row.UserName)
+							</td>
+							<td class="smallest-text">
+								@if (row.Kind == "note")
+								{
+									@(string.IsNullOrWhiteSpace(row.Text) ? "—" : row.Text)
+								}
+								else
+								{
+									<span>@row.OperationName → @row.StatusName</span>
+								}
+							</td>
+							<td class="smallest-text">
+								@if (row.Kind == "note")
+								{
+									List<string> tags = new();
+									if (row.IsValid == true) tags.Add("Válida");
+									if (row.IsValid == false) tags.Add("No válida");
+									if (row.IsSymptom == true) tags.Add("Síntoma");
+									if (row.IsSymptom == false) tags.Add("Resolución");
+									if (row.SystemAffected is > 0) tags.Add(row.SystemName);
+									@(tags.Count > 0 ? string.Join(", ", tags) : "—")
+								}
+								else
+								{
+									<span>—</span>
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+</div>
+
+@code {
+	private List<IncidenceQueryItem> mcolItems = new();
+	private string mvarFilterSummary = string.Empty;
+	private DateTime mvarGeneratedAt = DateTime.Now;
+	private int mvarTotalNotes;
+	private int mvarTotalStatusChanges;
+	private bool mvarTruncated;
+	private bool mvarLoading = true;
+	private bool mvarReadyToPrint;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (mvarReadyToPrint)
+		{
+			mvarReadyToPrint = false;
+			await Task.Delay(500);
+			await mvarJSRuntime.InvokeVoidAsync("window.print");
+		}
+	}
+
+	protected override async Task OnParametersSetAsync()
+	{
+		mvarLoading = true;
+		IncidenceQueryPrintPackage? package = await mvarLocalStorage.GetIncidenceQueryPrintPackage();
+
+		if (null != package)
+		{
+			mcolItems = package.Items ?? new List<IncidenceQueryItem>();
+			mvarFilterSummary = package.FilterSummary ?? string.Empty;
+			mvarGeneratedAt = package.GeneratedAt;
+			mvarTotalNotes = package.TotalNotes;
+			mvarTotalStatusChanges = package.TotalStatusChanges;
+			mvarTruncated = package.Truncated;
+		}
+		else
+		{
+			mcolItems = new List<IncidenceQueryItem>();
+		}
+
+		mvarLoading = false;
+		if (mcolItems.Count > 0)
+			mvarReadyToPrint = true;
+	}
+
+	private static DateTime ToLocal(DateTime value)
+	{
+		if (value.Kind == DateTimeKind.Unspecified)
+			value = DateTime.SpecifyKind(value, DateTimeKind.Utc);
+		return value.Kind == DateTimeKind.Utc ? value.ToLocalTime() : value;
+	}
+}

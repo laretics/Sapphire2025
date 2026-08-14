@@ -39,6 +39,7 @@
                 <SMWorkDaySheet/>
                 <SMDrivers />
                 <SMTrainQuery />
+                <SMIncidenceQuery/>
             </div>
         </div>
     }
@@ -53,6 +54,7 @@
                 <SMDriversWorkSheet Agents="@mcolAgentsViews" />
                 <SMTaller/>
                 <SMTrainQuery />
+                <SMIncidenceQuery />
             </div>
         </div>
     }
@@ -77,6 +79,7 @@
                 </div>
             </div>
             <SMTrainQuery/>
+            <SMIncidenceQuery />
         </div>
     }
     else if (Page.Equals("oficial"))
@@ -98,10 +101,10 @@
                     </div>
                 </div>
                 <SMTrainQuery />
+                <SMIncidenceQuery />
                 <SMTaller/>
                 <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
-                    <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                        @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
+                    <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">                        
                         <img src="img/TourmalineServiceMode.jpg" class="card-img-top" alt="Tourmaline" style="object-fit: cover; height: 180px;">
                         <div class="card-body">
                             <h5 class="card-title fw-bold text-dark mb-2 custom-title">Tourmaline</h5>
@@ -134,7 +137,8 @@
                     </div>
                 </div>
                 <SMTrainQuery />
-                <SMTaller/>                
+                <SMTaller/> 
+                <SMIncidenceQuery />
                 <SMWorkDaySheet />
                 <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
                     @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
@@ -211,6 +215,7 @@
                     </div>
                 </div>
                 <SMTrainQuery />
+                <SMIncidenceQuery />
             </div>
         </div>
     }

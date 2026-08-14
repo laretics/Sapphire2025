@@ -328,6 +328,22 @@ namespace Sapphire2025.Storage
 		}
 		#endregion
 
+		#region "Incidence Query (impresión)"
+		public async Task SetIncidenceQueryPrintPackage(IncidenceQueryPrintPackage package)
+		{
+			string cadena = JsonSerializer.Serialize(package);
+			await SetStringValue("incidenceQueryPrintPackage", cadena, false);
+		}
+
+		public async Task<IncidenceQueryPrintPackage?> GetIncidenceQueryPrintPackage()
+		{
+			string? cadena = await GetStringValue("incidenceQueryPrintPackage", false);
+			if (null == cadena)
+				return null;
+			return JsonSerializer.Deserialize<IncidenceQueryPrintPackage>(cadena);
+		}
+		#endregion
+
 		#region "Valores"
 		/// <summary>
 		/// Elimina un valor del almacenamiento interno
