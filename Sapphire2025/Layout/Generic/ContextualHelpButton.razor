@@ -1,0 +1,110 @@
+@using Sapphire2025.Help
+@using Sapphire2025Models
+@implements IDisposable
+@inject NavigationManager mvarNavigator
+
+@if (mvarVisible && !string.IsNullOrWhiteSpace(mvarTopicId))
+{
+	<div class="contextual-help @CssClass" title="@mvarTooltip">
+		<a class="contextual-help-btn"
+		   href="@($"help/{mvarTopicId}")"
+		   aria-label="@mvarTooltip">
+			<span class="contextual-help-glyph" aria-hidden="true">?</span>
+			<span class="contextual-help-label d-none d-sm-inline">Ayuda</span>
+		</a>
+	</div>
+}
+
+@code {
+	/// <summary>
+	/// Si se indica, fuerza un tema concreto (modo embebido en una página).
+	/// Si es null, se resuelve automáticamente por la ruta actual.
+	/// </summary>
+	[Parameter]
+	public string? TopicId { get; set; }
+
+	/// <summary>Clase CSS extra (p. ej. para modo inline en cabeceras).</summary>
+	[Parameter]
+	public string? CssClass { get; set; }
+
+	/// <summary>Si es true, se oculta el botón aunque haya tema (páginas print propias, etc.).</summary>
+	[Parameter]
+	public bool Hidden { get; set; }
+
+	[CascadingParameter]
+	public SessionModel? Session { get; set; }
+
+	private string? mvarTopicId;
+	private string mvarTooltip = "Ayuda de esta sección";
+	private bool mvarVisible;
+	private bool mvarSubscribed;
+
+	protected override void OnInitialized()
+	{
+		mvarNavigator.LocationChanged += OnLocationChanged;
+		mvarSubscribed = true;
+		Refresh();
+	}
+
+	protected override void OnParametersSet()
+	{
+		Refresh();
+	}
+
+	private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+	{
+		Refresh();
+		_ = InvokeAsync(StateHasChanged);
+	}
+
+	private void Refresh()
+	{
+		if (Hidden || Session is null || Session.Roles.Count == 0)
+		{
+			mvarVisible = false;
+			mvarTopicId = null;
+			return;
+		}
+
+		string? topicId = TopicId;
+		if (string.IsNullOrWhiteSpace(topicId))
+		{
+			string relative = mvarNavigator.ToBaseRelativePath(mvarNavigator.Uri);
+			topicId = HelpRouteMap.ResolveTopicId(relative);
+		}
+
+		if (string.IsNullOrWhiteSpace(topicId))
+		{
+			mvarVisible = false;
+			mvarTopicId = null;
+			return;
+		}
+
+		// Solo mostrar si el tema es visible para los roles del usuario
+		ZafiroHelpCatalog.HelpTopic? topic = ZafiroHelpCatalog
+			.ForRoles(Session.Roles)
+			.FirstOrDefault(t => t.Id.Equals(topicId, StringComparison.OrdinalIgnoreCase));
+
+		if (topic is null)
+		{
+			// Fallback: enlace al índice de ayuda si el tema no aplica al rol
+			// (mejor no mostrar un "?" que lleve a vacío)
+			mvarVisible = false;
+			mvarTopicId = null;
+			return;
+		}
+
+		mvarTopicId = topic.Id;
+		mvarTooltip = $"Ayuda: {topic.Title}";
+		mvarVisible = true;
+	}
+
+	public void Dispose()
+	{
+		if (mvarSubscribed)
+		{
+			mvarNavigator.LocationChanged -= OnLocationChanged;
+			mvarSubscribed = false;
+		}
+	}
+}

@@ -33,6 +33,66 @@ namespace Sapphire2025Server.Controllers
 			return Ok(Common.SapphireSoftwareVersion);
 		}
 
+		/// <summary>
+		/// Comprueba si el cliente WASM está desfasado y si, según los roles de la sesión,
+		/// debe recargar y/o ver las notas de esta versión.
+		/// Sin sesión solo aplican cambios globales (Roles vacío).
+		/// </summary>
+		[HttpPut("versioncheck")]
+		public async Task<VersionCheckResponse> VersionCheck(VersionCheckRequest? request)
+		{
+			VersionCheckResponse salida = new VersionCheckResponse
+			{
+				ServerVersion = Common.SapphireSoftwareVersion
+			};
+
+			string clientVersion = (request?.ClientVersion ?? string.Empty).Trim().Trim('"');
+			// Algunas pilas devuelven la versión GET como "26.x" con comillas JSON residuales
+			if (clientVersion.Length >= 2 && clientVersion.StartsWith('"') && clientVersion.EndsWith('"'))
+				clientVersion = clientVersion[1..^1];
+
+			salida.VersionMismatch = !string.Equals(
+				clientVersion,
+				Common.SapphireSoftwareVersion,
+				StringComparison.OrdinalIgnoreCase);
+
+			List<Common.UserRole> roles = new List<Common.UserRole>();
+			if (null != request && !Guid.Empty.Equals(request.SessionToken))
+			{
+				try
+				{
+					ActiveSessionModel? session = await retrieveSession(request.SessionToken);
+					if (null != session && !string.IsNullOrWhiteSpace(session.UserId))
+					{
+						List<Common.UserRole> fromDb = await retrieveBasicRoles(session.UserId);
+						if (null != fromDb)
+							roles.AddRange(fromDb);
+					}
+				}
+				catch
+				{
+					// Sin roles: solo cambios globales
+				}
+			}
+
+			IReadOnlyList<Common.SoftwareReleaseChange> applicable = Common.GetReleaseChangesFor(roles);
+			salida.Changes = applicable
+				.Where(c => !string.IsNullOrWhiteSpace(c.Text))
+				.Select(c => new VersionChangeNote
+				{
+					Text = c.Text,
+					Observations = c.Observations ?? string.Empty
+				})
+				.ToList();
+
+			// Exigir recarga solo si hay desfase, MajorVersion activo y algún cambio aplicable con RequiresReload.
+			salida.NeedsUpdate = salida.VersionMismatch
+				&& Common.MajorVersion
+				&& applicable.Any(c => c.RequiresReload);
+
+			return salida;
+		}
+
 		[HttpPut("sessionping")]
 		public async Task<SessionPingResponse> SessionPing(BasicRequestModel request)
 		{
@@ -886,7 +946,10 @@ namespace Sapphire2025Server.Controllers
 				|| eventType == Common.sessionEventType.circulationSheetPrinted
 				|| eventType == Common.sessionEventType.circulationBookExportedPdf
 				|| eventType == Common.sessionEventType.circulationSheetExportedPdf
-				|| eventType == Common.sessionEventType.circulationSealVerified;
+				|| eventType == Common.sessionEventType.circulationSealVerified
+				|| eventType == Common.sessionEventType.incidenceQuery
+				|| eventType == Common.sessionEventType.incidenceQueryExported
+				|| eventType == Common.sessionEventType.incidenceQueryPrinted;
 		}
 
 		/// <summary>

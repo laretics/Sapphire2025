@@ -1,0 +1,284 @@
+@page "/help"
+@page "/help/{TopicId}"
+@using Sapphire2025.Help
+@using Sapphire2025.Icons
+@using Sapphire2025Models
+@inject NavigationManager mvarNavigator
+
+<PageTitle>Ayuda · Zafiro</PageTitle>
+
+<div class="container-fluid py-3 help-center">
+	<div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+		<div>
+			<h3 class="mb-1">
+				<i class="bi bi-question-circle me-2"></i>Centro de ayuda
+			</h3>
+			<p class="text-muted mb-0 small">
+				Guías de las secciones a las que tiene acceso con su perfil.
+				@if (mvarSession is not null && mvarSession.Roles.Count > 0)
+				{
+					<span class="ms-1">
+						Roles:
+						@foreach (Common.UserRole role in mvarSession.Roles.Distinct().OrderBy(r => (byte)r))
+						{
+							<span class="badge text-bg-light border me-1">@RoleLabel(role)</span>
+						}
+					</span>
+				}
+			</p>
+		</div>
+		<div class="input-group" style="max-width: 22rem;">
+			<span class="input-group-text"><i class="bi bi-search"></i></span>
+			<input type="search" class="form-control" placeholder="Buscar en la ayuda..."
+				   @bind="mvarSearch" @bind:event="oninput" />
+		</div>
+	</div>
+
+	@if (mvarSession is null || mvarSession.Roles.Count == 0)
+	{
+		<div class="alert alert-warning">
+			Inicie sesión para ver la ayuda adaptada a su perfil.
+		</div>
+	}
+	else if (!VisibleTopics.Any())
+	{
+		<div class="alert alert-info">
+			No hay temas de ayuda para su perfil actual.
+		</div>
+	}
+	else
+	{
+		<div class="row g-3">
+			@* Índice por categorías *@
+			<div class="col-12 col-lg-4 col-xl-3">
+				<div class="card shadow-sm sticky-lg-top help-index">
+					<div class="card-header bg-light fw-semibold">
+						<i class="bi bi-list-ul me-1"></i>Índice
+					</div>
+					<div class="list-group list-group-flush help-index-list">
+						@foreach (IGrouping<string, ZafiroHelpCatalog.HelpTopic> group in GroupedTopics)
+						{
+							<div class="list-group-item py-2 bg-body-tertiary small fw-semibold text-secondary">
+								@group.Key
+							</div>
+							@foreach (ZafiroHelpCatalog.HelpTopic topic in group)
+							{
+								<button type="button"
+										class="list-group-item list-group-item-action d-flex align-items-start gap-2 @(SelectedId == topic.Id ? "active" : "")"
+										@onclick="() => SelectTopic(topic.Id)">
+									<span class="mt-1">
+										@if (!string.IsNullOrWhiteSpace(topic.Icon))
+										{
+											<GenIcon Name="@topic.Icon" Size="18" Color="@(SelectedId == topic.Id ? "#fff" : "#0d6efd")" />
+										}
+										else
+										{
+											<i class="bi bi-bookmark"></i>
+										}
+									</span>
+									<span>
+										<span class="d-block">@topic.Title</span>
+										<span class="small @(SelectedId == topic.Id ? "text-white-50" : "text-muted")">@topic.Summary</span>
+									</span>
+								</button>
+							}
+						}
+					</div>
+				</div>
+			</div>
+
+			@* Contenido *@
+			<div class="col-12 col-lg-8 col-xl-9">
+				@if (SelectedTopic is null)
+				{
+					<div class="card shadow-sm border-0 bg-light">
+						<div class="card-body p-4">
+							<h4 class="mb-3">¿Por dónde empiezo?</h4>
+							<p class="text-muted">
+								Elija un tema del índice o use el buscador. Solo se muestran las funciones
+								disponibles para <strong>sus roles</strong> (no se incluye la administración del sistema).
+							</p>
+							<div class="row g-3 mt-1">
+								@foreach (ZafiroHelpCatalog.HelpTopic topic in VisibleTopics.Take(6))
+								{
+									<div class="col-12 col-md-6">
+										<button type="button" class="card h-100 border-0 shadow-sm text-start w-100 help-quick-card"
+												@onclick="() => SelectTopic(topic.Id)">
+											<div class="card-body">
+												<div class="d-flex align-items-center gap-2 mb-2">
+													@if (!string.IsNullOrWhiteSpace(topic.Icon))
+													{
+														<span class="help-icon-wrap"><GenIcon Name="@topic.Icon" Size="22" Color="#0d6efd" /></span>
+													}
+													<span class="fw-semibold">@topic.Title</span>
+												</div>
+												<div class="small text-muted">@topic.Summary</div>
+											</div>
+										</button>
+									</div>
+								}
+							</div>
+						</div>
+					</div>
+				}
+				else
+				{
+					<div class="card shadow-sm">
+						<div class="card-header bg-white d-flex flex-wrap align-items-center justify-content-between gap-2">
+							<div>
+								<span class="badge text-bg-secondary me-2">@SelectedTopic.Category</span>
+								<span class="fw-semibold fs-5">@SelectedTopic.Title</span>
+							</div>
+							<div class="d-flex gap-2">
+								@if (!string.IsNullOrWhiteSpace(SelectedTopic.Route))
+								{
+									<a class="btn btn-sm btn-primary" href="@SelectedTopic.Route">
+										<i class="bi bi-box-arrow-up-right me-1"></i>Abrir sección
+									</a>
+								}
+								<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearSelection">
+									Índice
+								</button>
+							</div>
+						</div>
+						<div class="card-body help-body">
+							<p class="lead text-secondary">@SelectedTopic.Summary</p>
+							@foreach (HelpBodyParser.Block block in HelpBodyParser.Parse(SelectedTopic.Body))
+							{
+								@if (block is HelpBodyParser.ParagraphBlock para)
+								{
+									<p>@((MarkupString)para.Html)</p>
+								}
+								else if (block is HelpBodyParser.ListBlock list)
+								{
+									<ul class="mb-3">
+										@foreach (string itemHtml in list.ItemHtml)
+										{
+											<li>@((MarkupString)itemHtml)</li>
+										}
+									</ul>
+								}
+								else if (block is HelpBodyParser.ImageBlock image)
+								{
+									<figure class="help-figure">
+										<a href="@image.Src" target="_blank" rel="noopener" class="help-figure-link" title="Abrir imagen a tamaño completo">
+											<img src="@image.Src"
+												 alt="@image.Alt"
+												 class="help-figure-img img-fluid rounded border shadow-sm"
+												 loading="lazy" />
+										</a>
+										@if (!string.IsNullOrWhiteSpace(image.Caption))
+										{
+											<figcaption class="help-figure-caption">@image.Caption</figcaption>
+										}
+									</figure>
+								}
+							}
+						</div>
+						@if (RelatedTopics.Any())
+						{
+							<div class="card-footer bg-white">
+								<div class="small text-muted mb-2">Temas relacionados</div>
+								<div class="d-flex flex-wrap gap-2">
+									@foreach (ZafiroHelpCatalog.HelpTopic rel in RelatedTopics)
+									{
+										<button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SelectTopic(rel.Id)">
+											@rel.Title
+										</button>
+									}
+								</div>
+							</div>
+						}
+					</div>
+				}
+			</div>
+		</div>
+	}
+</div>
+
+@code {
+	[CascadingParameter]
+	public SessionModel? mvarSession { get; set; }
+
+	[Parameter]
+	public string? TopicId { get; set; }
+
+	private string mvarSearch = string.Empty;
+	private string? mvarSelectedId;
+
+	private string? SelectedId => mvarSelectedId ?? TopicId;
+
+	private IEnumerable<ZafiroHelpCatalog.HelpTopic> RoleTopics =>
+		ZafiroHelpCatalog.ForRoles(mvarSession?.Roles);
+
+	private IEnumerable<ZafiroHelpCatalog.HelpTopic> VisibleTopics
+	{
+		get
+		{
+			IEnumerable<ZafiroHelpCatalog.HelpTopic> q = RoleTopics;
+			if (!string.IsNullOrWhiteSpace(mvarSearch))
+			{
+				string s = mvarSearch.Trim();
+				q = q.Where(t =>
+					t.Title.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+					t.Summary.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+					t.Category.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+					t.Body.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+					t.Keywords.Any(k => k.Contains(s, StringComparison.OrdinalIgnoreCase)));
+			}
+			return q.OrderBy(t => t.Category).ThenBy(t => t.Title);
+		}
+	}
+
+	private IEnumerable<IGrouping<string, ZafiroHelpCatalog.HelpTopic>> GroupedTopics =>
+		VisibleTopics.GroupBy(t => t.Category);
+
+	private ZafiroHelpCatalog.HelpTopic? SelectedTopic =>
+		string.IsNullOrWhiteSpace(SelectedId)
+			? null
+			: VisibleTopics.FirstOrDefault(t => t.Id.Equals(SelectedId, StringComparison.OrdinalIgnoreCase))
+			  ?? RoleTopics.FirstOrDefault(t => t.Id.Equals(SelectedId, StringComparison.OrdinalIgnoreCase));
+
+	private IEnumerable<ZafiroHelpCatalog.HelpTopic> RelatedTopics
+	{
+		get
+		{
+			if (SelectedTopic is null)
+				return Enumerable.Empty<ZafiroHelpCatalog.HelpTopic>();
+			return RoleTopics
+				.Where(t => t.Id != SelectedTopic.Id && t.Category == SelectedTopic.Category)
+				.Take(4);
+		}
+	}
+
+	protected override void OnParametersSet()
+	{
+		if (!string.IsNullOrWhiteSpace(TopicId))
+			mvarSelectedId = TopicId;
+	}
+
+	private void SelectTopic(string id)
+	{
+		mvarSelectedId = id;
+		mvarNavigator.NavigateTo($"help/{id}", replace: true);
+	}
+
+	private void ClearSelection()
+	{
+		mvarSelectedId = null;
+		mvarNavigator.NavigateTo("help", replace: true);
+	}
+
+	private static string RoleLabel(Common.UserRole role) => role switch
+	{
+		Common.UserRole.Anonymous => "Movimiento",
+		Common.UserRole.Inspector => "Inspector",
+		Common.UserRole.Expert => "J. Maquinista",
+		Common.UserRole.Oficial => "Oficial",
+		Common.UserRole.Mechanic => "Mecánico",
+		Common.UserRole.Root => "Administrador",
+		Common.UserRole.Engineer => "Ingeniero",
+		Common.UserRole.Station => "Estación",
+		_ => role.ToString()
+	};
+}

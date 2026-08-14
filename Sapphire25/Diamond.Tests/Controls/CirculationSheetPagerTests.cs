@@ -291,10 +291,12 @@ namespace Diamond.Tests.Controls
 				Assert.True(vr.FoundInRegistry);
 				Assert.True(vr.Ok);
 
-				// QR parse
-				string qr = CirculationSheetQr.BuildQrPayload(em.SealCode, em.Payload);
+				// QR parse (solo sello; sin payload canónico)
+				string qr = CirculationSheetQr.BuildQrPayload(em.SealCode);
 				Assert.True(CirculationSheetQr.TryParseQrPayload(qr, out string s2, out string p2));
 				Assert.Equal(em.SealCode, s2);
+				Assert.True(string.IsNullOrEmpty(p2));
+				Assert.StartsWith(CirculationSheetQr.QrPrefix, qr);
 			}
 			finally
 			{

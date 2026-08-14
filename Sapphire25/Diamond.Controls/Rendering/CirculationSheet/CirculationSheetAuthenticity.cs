@@ -178,7 +178,7 @@ namespace Diamond.Controls.Rendering
 			string payload = BuildDocumentPayload(
 				documentKind, planOrTrain, editionLabel, dayLabel, sheetCount, extra);
 			string seal = ComputeSealCode(payload);
-			string qr = CirculationSheetQr.BuildQrPayload(seal, payload);
+			string qr = CirculationSheetQr.BuildQrPayload(seal);
 			string thumb;
 			try
 			{
