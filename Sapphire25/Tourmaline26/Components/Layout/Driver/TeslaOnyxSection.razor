@@ -1,6 +1,8 @@
 @using Diamond.Controls
 @using Diamond.Cabin
+@using Diamond.Topo
 @using ProjectCirculation = Diamond.Project.Circulation
+@using MeshRouteView = Diamond.Topo.RouteView
 @inject TourmalineService Tourmaline
 
 @* Contenedor oficial de la malla de cabina (CabinMeshView). *@
@@ -70,7 +72,49 @@
 
     private void auxHMIRefresh(object? sender, EventArgs e)
     {
+        UpdateLimitFromCurrentTrack();
         InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Canal de Vmax del velocímetro: limitación efectiva del tramo actual.
+    /// </summary>
+    private void UpdateLimitFromCurrentTrack()
+    {
+        if (cabin is null || cabin.Topo is null)
+            return;
+
+        if (mvarConfig.ServiceMode.ServiceKeyboard)
+            return;
+
+        MeshRouteView? view = RouteViewResolver.TryForCabinCirculation(
+            cabin.Topo,
+            cabin.Circulation?.Asimilation.ViewId,
+            cabin.Circulation?.Asimilation.PathSignature,
+            cabin.Circulation?.Origin.Id,
+            cabin.Circulation?.Destination.Id,
+            cabin.Circulation?.Origin.Avr,
+            cabin.Circulation?.Destination.Avr);
+        if (view is null)
+            view = RouteViewResolver.TryFromAxis(cabin.LinearLocation.Axis);
+        if (view is null)
+            return;
+
+        long routePk = cabin.PK;
+        if (cabin.LinearLocation.Axis is not null
+            && view.TryMapAxisToRoute(cabin.LinearLocation.Axis, cabin.PK, out long mapped))
+        {
+            routePk = mapped;
+        }
+
+        int? track = view.GetEffectiveSpeedLimit(routePk);
+        int limit = track ?? ActiveTrainVmax;
+        if (limit <= 0)
+            limit = 100;
+        if (ActiveTrainVmax > 0 && limit > ActiveTrainVmax)
+            limit = ActiveTrainVmax;
+
+        Tourmaline.SessionConfig.CurrentLimitSpeed = limit;
     }
 
     private async Task OnCirculationPicked(ProjectCirculation cir)

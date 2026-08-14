@@ -1,0 +1,39 @@
+@using Diamond.Controls
+@using Diamond.Cabin
+@implements IDisposable
+@inject TourmalineService Tourmaline
+
+<FloatRightContainer>
+    <div class="itinerary-sheet-fill">
+        <CabinItinerarySheetView Circulation="cabin?.Circulation"
+                                 Topo="cabin?.Topo"
+                                 DayProject="cabin?.DayProject"
+                                 PlanName="@(cabin?.PublishedPlanName ?? string.Empty)"
+                                 PlanningDay="@(cabin?.DayProject?.PlanningDay)"
+                                 NightMode="NightMode"
+                                 RoutePk="@(cabin?.PK ?? 0)"
+                                 StationAreaMeters="@(cabin?.StationAreaMeters ?? 250)" />
+    </div>
+</FloatRightContainer>
+
+@code {
+    [CascadingParameter]
+    public bool NightMode { get; set; }
+
+    private CabinEnvironment? cabin => Tourmaline.SessionConfig.Cabin;
+
+    protected override void OnInitialized()
+    {
+        Tourmaline.HMIUpdateRequested += OnHmi;
+    }
+
+    public void Dispose()
+    {
+        Tourmaline.HMIUpdateRequested -= OnHmi;
+    }
+
+    private void OnHmi(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+}

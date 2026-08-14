@@ -51,7 +51,8 @@ namespace Diamond.Controls.Rendering.CabinMesh
 			IReadOnlyList<Circulation>? dayCirculations,
 			Circulation? active,
 			bool nightMode,
-			int activeTrainVmaxKmh = 0)
+			int activeTrainVmaxKmh = 0,
+			TopoLayout? topo = null)
 		{
 			StringBuilder sb = new StringBuilder(8192);
 			List<HitSegment> hits = new List<HitSegment>();
@@ -95,40 +96,61 @@ namespace Diamond.Controls.Rendering.CabinMesh
 			{
 				AppendStations(sb, layout, palette, view);
 				AppendHectometerPks(sb, layout, palette, view);
-				AppendSpeedLimits(sb, layout, palette, view, activeTrainVmaxKmh);
+				AppendSpeedLimits(sb, layout, palette, view, activeTrainVmaxKmh, nightMode);
 			}
 
+			List<(Circulation Cir, bool Active, List<(double TimeSec, long Pk)> Keys)> drawn =
+				new List<(Circulation, bool, List<(double, long)>)>();
 			if (dayCirculations is not null && view is not null)
 			{
+				Dictionary<string, RouteView?> viewCache = new Dictionary<string, RouteView?>(
+					StringComparer.Ordinal);
 				int i = 0;
 				while (i < dayCirculations.Count)
 				{
 					Circulation cir = dayCirculations[i];
-					if (!BelongsToView(cir, view))
+					i++;
+					bool isActive = active is not null
+						&& (ReferenceEquals(cir, active)
+							|| string.Equals(cir.Id, active.Id, StringComparison.Ordinal));
+					if (isActive)
 					{
-						i++;
 						continue;
 					}
 
-					bool isActive = active is not null && ReferenceEquals(cir, active);
-					if (!isActive && active is not null
-						&& string.Equals(cir.Id, active.Id, StringComparison.Ordinal))
+					List<(double TimeSec, long Pk)> keys = BuildProjectedKeys(
+						cir, view, topo, viewCache);
+					if (keys.Count >= 2)
 					{
-						isActive = true;
+						drawn.Add((cir, false, keys));
 					}
-
-					if (!isActive)
-					{
-						AppendCirculation(sb, hits, layout, palette, cir, isActive: false, nightMode);
-					}
-
-					i++;
 				}
 
-				// Tren activo solo si pertenece a la vista (si no, no pintar “T3 sobre M1”).
-				if (active is not null && BelongsToView(active, view))
+				if (active is not null)
 				{
-					AppendCirculation(sb, hits, layout, palette, active, isActive: true, nightMode);
+					List<(double TimeSec, long Pk)> activeKeys = BuildProjectedKeys(
+						active, view, topo, viewCache);
+					if (activeKeys.Count >= 2)
+					{
+						drawn.Add((active, true, activeKeys));
+					}
+				}
+
+				int d = 0;
+				while (d < drawn.Count)
+				{
+					AppendCirculationPath(
+						sb, hits, layout, palette, drawn[d].Cir, drawn[d].Keys, drawn[d].Active, nightMode);
+					d++;
+				}
+
+				// Números encima de todas las trazas, anclados al tramo visible.
+				d = 0;
+				while (d < drawn.Count)
+				{
+					AppendTrainNumber(
+						sb, layout, palette, drawn[d].Cir, drawn[d].Keys, drawn[d].Active, nightMode);
+					d++;
 				}
 			}
 
@@ -179,7 +201,8 @@ namespace Diamond.Controls.Rendering.CabinMesh
 			}
 
 			if (pathSig.Length > 0
-				&& string.Equals(pathSig, currentId, StringComparison.OrdinalIgnoreCase))
+				&& (string.Equals(pathSig, currentId, StringComparison.OrdinalIgnoreCase)
+					|| string.Equals(pathSig, view.PathSignature(), StringComparison.OrdinalIgnoreCase)))
 			{
 				return true;
 			}
@@ -259,9 +282,10 @@ namespace Diamond.Controls.Rendering.CabinMesh
 			int i = 0;
 			while (i < parts.Length)
 			{
-				if (parts[i].Length > 0)
+				string axisId = RouteViewResolver.AxisIdFromPart(parts[i]);
+				if (axisId.Length > 0)
 				{
-					set.Add(parts[i]);
+					set.Add(axisId);
 				}
 
 				i++;
@@ -400,7 +424,8 @@ namespace Diamond.Controls.Rendering.CabinMesh
 		}
 
 		/// <summary>
-		/// Una etiqueta de PK por hectómetro visible (p. ej. 3.3, 3.4, 3.5).
+		/// Hectómetros del eje físico (PK de vía), no el PK de ruta de la vista.
+		/// En trenes descendentes los números bajan al avanzar.
 		/// </summary>
 		private static void AppendHectometerPks(
 			StringBuilder sb,
@@ -408,41 +433,43 @@ namespace Diamond.Controls.Rendering.CabinMesh
 			CabinMeshPalette palette,
 			RouteView view)
 		{
-			long lo = Math.Min(layout.PkBehind, layout.PkAhead);
-			long hi = Math.Max(layout.PkBehind, layout.PkAhead);
-
-			// Alinear al hectómetro inferior (múltiplo de 100 m).
-			long pk = (lo / 100L) * 100L;
-			if (pk < lo)
-			{
-				pk += 100L;
-			}
-
-			// Rango del eje de la vista (no dibujar fuera del recorrido físico).
-			long viewLo = Math.Min(view.PK, view.PKEnd);
-			long viewHi = Math.Max(view.PK, view.PKEnd);
-
 			sb.Append("<g class=\"cabin-mesh-hectometers\">");
-			while (pk <= hi)
+			int li = 0;
+			while (li < view.Legs.Count)
 			{
-				if (pk >= viewLo && pk <= viewHi && layout.IsRoutePkVisible(pk))
+				RouteLeg leg = view.Legs[li];
+				long axisMin = leg.AxisFromPk < leg.AxisToPk ? leg.AxisFromPk : leg.AxisToPk;
+				long axisMax = leg.AxisFromPk > leg.AxisToPk ? leg.AxisFromPk : leg.AxisToPk;
+				long h = (axisMin / 100L) * 100L;
+				if (h < axisMin)
 				{
-					double y = layout.YFromRoutePk(pk);
-					// km con un decimal: 3300 m → "3.3"
-					double km = pk / 1000.0;
-					string label = km.ToString("0.0", CultureInfo.InvariantCulture);
-					sb.Append("<text x=\"")
-						.Append(F(HectometerLabelLeftPx))
-						.Append("\" y=\"")
-						.Append(F(y + 3))
-						.Append("\" fill=\"")
-						.Append(palette.TimeLabel)
-						.Append("\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\" opacity=\"0.85\">")
-						.Append(label)
-						.Append("</text>");
+					h += 100L;
 				}
 
-				pk += 100L;
+				while (h <= axisMax)
+				{
+					if (leg.ContainsAxisPk(h)
+						&& view.TryMapAxisToRoute(leg.Axis, h, out long routePk)
+						&& layout.IsRoutePkVisible(routePk))
+					{
+						double y = layout.YFromRoutePk(routePk);
+						double km = h / 1000.0;
+						string label = km.ToString("0.0", CultureInfo.InvariantCulture);
+						sb.Append("<text x=\"")
+							.Append(F(HectometerLabelLeftPx))
+							.Append("\" y=\"")
+							.Append(F(y + 3))
+							.Append("\" fill=\"")
+							.Append(palette.TimeLabel)
+							.Append("\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\" opacity=\"0.85\">")
+							.Append(label)
+							.Append("</text>");
+					}
+
+					h += 100L;
+				}
+
+				li++;
 			}
 
 			sb.Append("</g>");
@@ -457,7 +484,8 @@ namespace Diamond.Controls.Rendering.CabinMesh
 			CabinMeshLayout layout,
 			CabinMeshPalette palette,
 			RouteView view,
-			int activeTrainVmaxKmh)
+			int activeTrainVmaxKmh,
+			bool nightMode)
 		{
 			long lo = Math.Min(layout.PkBehind, layout.PkAhead);
 			long hi = Math.Max(layout.PkBehind, layout.PkAhead);
@@ -528,9 +556,9 @@ namespace Diamond.Controls.Rendering.CabinMesh
 				segments.Add((runFrom, end, runSpeed.Value));
 			}
 
-			string boxFill = nightModeGray(palette);
-			string boxStroke = palette.TimeLineMinute;
-			string textFill = palette.StationLabel;
+			string boxFill = nightMode ? "#e8e0d8" : "#6a6a6a";
+			string boxStroke = nightMode ? "#c9a27a" : "#4a4a4a";
+			string textFill = nightMode ? "#000000" : "#ffffff";
 
 			sb.Append("<g class=\"cabin-mesh-speed-limits\">");
 			int i = 0;
@@ -544,17 +572,16 @@ namespace Diamond.Controls.Rendering.CabinMesh
 					continue;
 				}
 
-				// Altura del tramo en pantalla (para no solapar cajas si el tramo es corto).
 				double y0 = layout.YFromRoutePk(from);
 				double y1 = layout.YFromRoutePk(to);
-				double yMid = layout.YFromRoutePk(mid);
-				double spanPx = Math.Abs(y1 - y0);
-				if (spanPx < SpeedBoxHeight * 0.55)
-				{
-					// Tramo muy corto: aún se pinta la caja centrada.
-				}
-
-				double boxY = yMid - SpeedBoxHeight * 0.5;
+				double yTop = y0 < y1 ? y0 : y1;
+				double yBot = y0 > y1 ? y0 : y1;
+				double spanPx = yBot - yTop;
+				double boxH = spanPx < SpeedBoxHeight ? SpeedBoxHeight : spanPx;
+				double boxY = spanPx < SpeedBoxHeight
+					? ((yTop + yBot) * 0.5 - boxH * 0.5)
+					: yTop;
+				double textY = boxY + boxH * 0.5 + 3.5;
 				double boxX = SpeedLimitLeftPx;
 
 				sb.Append("<rect x=\"")
@@ -564,20 +591,20 @@ namespace Diamond.Controls.Rendering.CabinMesh
 					.Append("\" width=\"")
 					.Append(F(SpeedBoxWidth))
 					.Append("\" height=\"")
-					.Append(F(SpeedBoxHeight))
+					.Append(F(boxH))
 					.Append("\" rx=\"2\" ry=\"2\" fill=\"")
 					.Append(boxFill)
 					.Append("\" stroke=\"")
 					.Append(boxStroke)
-					.Append("\" stroke-width=\"0.6\" opacity=\"0.88\"/>");
+					.Append("\" stroke-width=\"0.6\" opacity=\"0.9\"/>");
 
 				sb.Append("<text x=\"")
 					.Append(F(boxX + SpeedBoxWidth * 0.5))
 					.Append("\" y=\"")
-					.Append(F(yMid + 3.5))
+					.Append(F(textY))
 					.Append("\" text-anchor=\"middle\" fill=\"")
 					.Append(textFill)
-					.Append("\" font-size=\"9\" font-weight=\"600\" font-family=\"Segoe UI,sans-serif\">")
+					.Append("\" font-size=\"9\" font-weight=\"700\" font-family=\"Segoe UI,sans-serif\">")
 					.Append(speed.ToString(CultureInfo.InvariantCulture))
 					.Append("</text>");
 
@@ -587,39 +614,20 @@ namespace Diamond.Controls.Rendering.CabinMesh
 			sb.Append("</g>");
 		}
 
-		private static string nightModeGray(CabinMeshPalette palette)
-		{
-			// Fondo de caja: gris medio legible en día y noche.
-			// (La paleta no trae un “panel fill”; usamos un gris fijo neutro.)
-			return "#8a8a8a";
-		}
-
-		private static void AppendCirculation(
+		private static void AppendCirculationPath(
 			StringBuilder sb,
 			List<HitSegment> hits,
 			CabinMeshLayout layout,
 			CabinMeshPalette palette,
 			Circulation cir,
+			List<(double TimeSec, long Pk)> keys,
 			bool isActive,
 			bool nightMode)
 		{
-			if (cir.Calls.Count < 1)
-			{
-				return;
-			}
-
-			// Claves densas (llegada/salida + muestras intermedias) → Bezier Catmull-Rom.
-			List<(double TimeSec, long Pk)> keys = BuildDenseKeys(cir);
-			if (keys.Count < 2)
-			{
-				return;
-			}
-
 			string color = palette.ResolveTrainColor(cir.Color, nightMode);
 			double opacity = isActive ? 1.0 : palette.TrainInactiveOpacity;
 			double strokeW = isActive ? 2.6 : 1.6;
 
-			// Tres tramos estilísticos del tren activo: pasado / actual / futuro.
 			List<MeshTrainPathBuilder.Point> past = new List<MeshTrainPathBuilder.Point>();
 			List<MeshTrainPathBuilder.Point> current = new List<MeshTrainPathBuilder.Point>();
 			List<MeshTrainPathBuilder.Point> future = new List<MeshTrainPathBuilder.Point>();
@@ -637,7 +645,7 @@ namespace Diamond.Controls.Rendering.CabinMesh
 
 				if (!isActive)
 				{
-					future.Add(pt); // reutilizamos "future" como trazo completo sólido
+					future.Add(pt);
 				}
 				else if (t < layout.NowSeconds - 1.0)
 				{
@@ -645,7 +653,6 @@ namespace Diamond.Controls.Rendering.CabinMesh
 				}
 				else if (t > layout.NowSeconds + 1.0)
 				{
-					// Empalme: copiar último punto del tramo actual/pasado.
 					if (future.Count == 0)
 					{
 						if (current.Count > 0)
@@ -688,61 +695,245 @@ namespace Diamond.Controls.Rendering.CabinMesh
 			{
 				hits.Add(new HitSegment(cir, hitPts));
 			}
+		}
 
-			// Etiqueta del tren.
-			if (hitPts.Count > 0)
+		private static void AppendTrainNumber(
+			StringBuilder sb,
+			CabinMeshLayout layout,
+			CabinMeshPalette palette,
+			Circulation cir,
+			List<(double TimeSec, long Pk)> keys,
+			bool isActive,
+			bool nightMode)
+		{
+			string label = cir.HasServiceNumber ? cir.ServiceNumber : cir.Id;
+			if (string.IsNullOrEmpty(label) || keys.Count == 0)
 			{
-				string label = cir.HasServiceNumber ? cir.ServiceNumber : cir.Id;
-				if (label.Length > 0)
+				return;
+			}
+
+			List<(double X, double Y)> pts = new List<(double, double)>();
+			int i = 0;
+			while (i < keys.Count)
+			{
+				double x = layout.XFromTimeSeconds(keys[i].TimeSec);
+				double y = layout.YFromRoutePk(keys[i].Pk);
+				pts.Add((x, y));
+				i++;
+			}
+
+			int topIdx;
+			int botIdx;
+			PickInsetLabelPoints(pts, layout.Width, layout.Height, out topIdx, out botIdx);
+			if (topIdx < 0 && botIdx < 0)
+			{
+				return;
+			}
+
+			string color = palette.ResolveTrainColor(cir.Color, nightMode);
+			string halo = nightMode ? "#000000" : "#ffffff";
+			double opacity = isActive ? 1.0 : Math.Max(palette.TrainInactiveOpacity, 0.88);
+			if (topIdx >= 0)
+			{
+				EmitTrainNumber(
+					sb, pts[topIdx].X, pts[topIdx].Y, label, color, halo, opacity, isActive);
+			}
+
+			if (botIdx >= 0 && botIdx != topIdx)
+			{
+				double dx = pts[botIdx].X - (topIdx >= 0 ? pts[topIdx].X : pts[botIdx].X);
+				double dy = pts[botIdx].Y - (topIdx >= 0 ? pts[topIdx].Y : pts[botIdx].Y);
+				if (topIdx < 0 || (dx * dx + dy * dy) > 28.0 * 28.0)
 				{
-					int mid = hitPts.Count / 2;
-					sb.Append("<text x=\"")
-						.Append(F(hitPts[mid].X + 4))
-						.Append("\" y=\"")
-						.Append(F(hitPts[mid].Y - 4))
-						.Append("\" fill=\"")
-						.Append(color)
-						.Append("\" font-size=\"")
-						.Append(isActive ? "12" : "10")
-						.Append("\" font-weight=\"")
-						.Append(isActive ? "600" : "400")
-						.Append("\" font-family=\"Segoe UI,sans-serif\" opacity=\"")
-						.Append(F(opacity))
-						.Append("\">")
-						.Append(System.Security.SecurityElement.Escape(label))
-						.Append("</text>");
+					EmitTrainNumber(
+						sb, pts[botIdx].X, pts[botIdx].Y, label, color, halo, opacity, isActive);
 				}
 			}
 		}
 
 		/// <summary>
-		/// Muestras densas a lo largo de la circulación (paradas + interpolación del trayecto).
+		/// Elige vértices en el 2.º/3.º segmento desde el extremo superior
+		/// y en el penúltimo/antepenúltimo desde el inferior, fuera del fade.
 		/// </summary>
-		private static List<(double TimeSec, long Pk)> BuildDenseKeys(Circulation cir)
+		private static void PickInsetLabelPoints(
+			List<(double X, double Y)> pts,
+			double width,
+			double height,
+			out int topIdx,
+			out int botIdx)
+		{
+			topIdx = -1;
+			botIdx = -1;
+			if (pts.Count == 0)
+			{
+				return;
+			}
+
+			// El host difumina 0–14 % y 86–100 %; nos quedamos en la banda opaca.
+			double yMin = height * 0.16;
+			double yMax = height * 0.84;
+			List<int> vis = new List<int>();
+			int i = 0;
+			while (i < pts.Count)
+			{
+				double x = pts[i].X;
+				double y = pts[i].Y;
+				if (x >= 0.0 && x <= width && y >= yMin && y <= yMax)
+				{
+					vis.Add(i);
+				}
+
+				i++;
+			}
+
+			if (vis.Count == 0)
+			{
+				i = 0;
+				while (i < pts.Count)
+				{
+					if (pts[i].X >= 0.0 && pts[i].X <= width
+						&& pts[i].Y >= 0.0 && pts[i].Y <= height)
+					{
+						vis.Add(i);
+					}
+
+					i++;
+				}
+			}
+
+			if (vis.Count == 0)
+			{
+				return;
+			}
+
+			int fromStart = InsetAlong(vis.Count, fromEnd: false);
+			int fromEnd = InsetAlong(vis.Count, fromEnd: true);
+			int startPt = vis[fromStart];
+			int endPt = vis[fromEnd];
+			if (pts[startPt].Y <= pts[endPt].Y)
+			{
+				topIdx = startPt;
+				botIdx = endPt;
+			}
+			else
+			{
+				topIdx = endPt;
+				botIdx = startPt;
+			}
+		}
+
+		/// <summary>
+		/// 3.er vértice (2.º–3.er segmento) si hay holgura; si no, el 2.º; si no, el extremo.
+		/// </summary>
+		private static int InsetAlong(int count, bool fromEnd)
+		{
+			int step;
+			if (count >= 7)
+			{
+				step = 3;
+			}
+			else if (count >= 5)
+			{
+				step = 2;
+			}
+			else if (count >= 3)
+			{
+				step = 1;
+			}
+			else
+			{
+				step = 0;
+			}
+
+			if (fromEnd)
+			{
+				int i = count - 1 - step;
+				return i < 0 ? 0 : i;
+			}
+
+			return step >= count ? count - 1 : step;
+		}
+
+		private static void EmitTrainNumber(
+			StringBuilder sb,
+			double x,
+			double y,
+			string label,
+			string color,
+			string halo,
+			double opacity,
+			bool isActive)
+		{
+			sb.Append("<text class=\"cabin-mesh-train-num\" x=\"")
+				.Append(F(x + 5))
+				.Append("\" y=\"")
+				.Append(F(y - 5))
+				.Append("\" fill=\"")
+				.Append(color)
+				.Append("\" stroke=\"")
+				.Append(halo)
+				.Append("\" stroke-width=\"3\" paint-order=\"stroke\" font-size=\"")
+				.Append(isActive ? "13" : "11")
+				.Append("\" font-weight=\"")
+				.Append(isActive ? "700" : "600")
+				.Append("\" font-family=\"Segoe UI,sans-serif\" opacity=\"")
+				.Append(F(opacity))
+				.Append("\">")
+				.Append(System.Security.SecurityElement.Escape(label))
+				.Append("</text>");
+		}
+
+		/// <summary>
+		/// Muestras en PK de la vista de pantalla. Proyecta trenes de otros
+		/// corredores (p. ej. T3 sobre T3+T2) y omite tramos que no solapan.
+		/// </summary>
+		private static List<(double TimeSec, long Pk)> BuildProjectedKeys(
+			Circulation cir,
+			RouteView display,
+			TopoLayout? topo,
+			Dictionary<string, RouteView?> viewCache)
 		{
 			List<(double TimeSec, long Pk)> keys = new List<(double, long)>();
+			if (cir.Calls.Count < 1)
+			{
+				return keys;
+			}
+
+			RouteView? trainView = ResolveTrainView(cir, display, topo, viewCache);
+			List<(TimedCall Call, long DisplayPk)> mapped = new List<(TimedCall, long)>();
 			int i = 0;
 			while (i < cir.Calls.Count)
 			{
-				TimedCall c = cir.Calls[i];
-				keys.Add((c.Arrival.TotalSeconds, c.Pk));
-				if (c.Departure > c.Arrival)
+				TimedCall call = cir.Calls[i];
+				long displayPk;
+				if (TryMapCallToDisplay(display, trainView, call, out displayPk))
 				{
-					keys.Add((c.Departure.TotalSeconds, c.Pk));
+					mapped.Add((call, displayPk));
 				}
 
-				// Interpolación hacia la siguiente parada (trayecto en marcha).
-				if (i + 1 < cir.Calls.Count)
+				i++;
+			}
+
+			i = 0;
+			while (i < mapped.Count)
+			{
+				TimedCall c = mapped[i].Call;
+				long pk = mapped[i].DisplayPk;
+				keys.Add((c.Arrival.TotalSeconds, pk));
+				if (c.Departure > c.Arrival)
 				{
-					TimedCall next = cir.Calls[i + 1];
+					keys.Add((c.Departure.TotalSeconds, pk));
+				}
+
+				if (i + 1 < mapped.Count)
+				{
+					TimedCall next = mapped[i + 1].Call;
+					long pk1 = mapped[i + 1].DisplayPk;
 					double t0 = c.Departure.TotalSeconds;
 					double t1 = next.Arrival.TotalSeconds;
-					long pk0 = c.Pk;
-					long pk1 = next.Pk;
 					double dt = t1 - t0;
 					if (dt > 1.0)
 					{
-						// ~1 muestra cada 20 s, mínimo 2 intermedias si el tramo es largo.
 						int n = (int)Math.Max(2, Math.Floor(dt / 20.0));
 						if (n > 24)
 						{
@@ -754,8 +945,8 @@ namespace Diamond.Controls.Rendering.CabinMesh
 						{
 							double u = (double)k / n;
 							double t = t0 + u * dt;
-							long pk = pk0 + (long)Math.Round((pk1 - pk0) * u);
-							keys.Add((t, pk));
+							long ipk = pk + (long)Math.Round((pk1 - pk) * u);
+							keys.Add((t, ipk));
 							k++;
 						}
 					}
@@ -765,6 +956,80 @@ namespace Diamond.Controls.Rendering.CabinMesh
 			}
 
 			return keys;
+		}
+
+		private static RouteView? ResolveTrainView(
+			Circulation cir,
+			RouteView display,
+			TopoLayout? topo,
+			Dictionary<string, RouteView?> cache)
+		{
+			string sig = (cir.Asimilation.PathSignature ?? string.Empty).Trim();
+			string vid = (cir.Asimilation.ViewId ?? string.Empty).Trim();
+			if (sig.Length > 0
+				&& string.Equals(sig, display.PathSignature(), StringComparison.Ordinal))
+			{
+				return display;
+			}
+
+			string key = sig.Length > 0 ? sig : vid;
+			if (key.Length > 0 && cache.TryGetValue(key, out RouteView? cached))
+			{
+				return cached;
+			}
+
+			RouteView? resolved = null;
+			if (topo is not null)
+			{
+				resolved = RouteViewResolver.TryForCabinCirculation(
+					topo,
+					vid,
+					sig,
+					cir.Origin.Id,
+					cir.Destination.Id,
+					cir.Origin.Avr,
+					cir.Destination.Avr);
+			}
+
+			if (key.Length > 0)
+			{
+				cache[key] = resolved;
+			}
+
+			return resolved;
+		}
+
+		private static bool TryMapCallToDisplay(
+			RouteView display,
+			RouteView? trainView,
+			TimedCall call,
+			out long displayPk)
+		{
+			displayPk = 0;
+			if (trainView is not null
+				&& (ReferenceEquals(trainView, display) || trainView.IsSamePath(display)))
+			{
+				displayPk = call.Pk;
+				return true;
+			}
+
+			StationOnRoute? onDisplay = display.FindStationByRef(
+				call.Station.Id,
+				call.Station.Avr,
+				call.Station.Name);
+			if (onDisplay is not null)
+			{
+				displayPk = onDisplay.PK;
+				return true;
+			}
+
+			if (trainView is not null
+				&& display.TryMapRoutePkFrom(trainView, call.Pk, out displayPk))
+			{
+				return true;
+			}
+
+			return false;
 		}
 
 		private static void AppendBezierPath(
