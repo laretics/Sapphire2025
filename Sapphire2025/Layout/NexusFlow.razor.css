@@ -13,6 +13,30 @@ body {
 
     .sidebar.collapsed {
         width: var(--sidebar-width-collapsed);
+        overflow-x: hidden;
+    }
+
+    .sidebar.collapsed ::deep .sidebar-link {
+        justify-content: center;
+        gap: 0;
+        margin: 0.2rem 0.4rem;
+        padding: 0.65rem 0;
+    }
+
+    .sidebar.collapsed ::deep .sidebar-link-icon {
+        margin: 0;
+    }
+
+    .sidebar.collapsed ::deep .profile-section {
+        padding: 0.75rem 0.25rem !important;
+        display: flex;
+        justify-content: center;
+    }
+
+    .sidebar.collapsed ::deep .profile-section .rounded-circle,
+    .sidebar.collapsed ::deep .profile-section svg {
+        height: 36px !important;
+        width: 36px !important;
     }
 
 .logo-text {
@@ -51,33 +75,97 @@ body {
     margin-left: var(--sidebar-width-collapsed);
 }
 
-.toggle-btn {
-    position: absolute;
-    right: -15px;
-    top: 20px;
-    background: white;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    border: none;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-    z-index: 100;
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 1.15rem 1rem 0.85rem 1.15rem;
+}
+
+.sidebar-brand-text {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.sidebar-brand .logo-text {
+    font-size: 1.1rem;
+}
+
+.sidebar-brand .logo-subtext {
+    font-size: 0.7rem;
+}
+
+.sidebar-pin-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.15rem;
+    height: 2.15rem;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 0.55rem;
+    background: rgba(255, 255, 255, 0.06);
+    color: #c8f0fa;
     cursor: pointer;
-    transition: transform 0.3s ease;
 }
 
-.collapsed .toggle-btn {
-    transform: rotate(180deg);
+.sidebar-pin-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
 }
 
-.bi-caret-left-fill {
-    display: inline-block;
-    position: center;
-    width: 1.25rem;
-    height: 1.25rem;
-    top: -1px;
-    background-size: cover;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' fill='gray' class='bi-caret-left-fill' viewBox='0 0 16 16'%3E%3Cpath d='m3.86 8.753 5.482 4.796c.646.566 1.658.106 1.658-.753V3.204a1 1 0 0 0-1.659-.753l-5.48 4.796a1 1 0 0 0 0 1.506z'/%3E%3C/svg%3E");
+.sidebar-pin-btn .pin-off {
+    display: none;
+}
+
+.sidebar.collapsed .sidebar-pin-btn .pin-on {
+    display: none;
+}
+
+.sidebar.collapsed .sidebar-pin-btn .pin-off {
+    display: inline-flex;
+}
+
+.sidebar.collapsed .sidebar-brand {
+    padding: 1rem 0.55rem 0.65rem;
+    justify-content: center;
+}
+
+.sidebar.collapsed .sidebar-brand-text {
+    display: none;
+}
+
+.app-nav-chrome {
+    display: flex;
+    align-items: center;
+    margin: -0.35rem 0 0.85rem 0;
+}
+
+.zen-exit {
+    display: none;
+    position: fixed;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border-radius: 0.55rem;
+    border: 1px solid rgba(26, 28, 46, 0.12);
+    background: rgba(255, 255, 255, 0.92);
+    color: #1a1c2e;
+    box-shadow: 0 2px 10px rgba(15, 18, 30, 0.16);
+    cursor: pointer;
+}
+
+.zen-exit:hover {
+    background: #eef2ff;
 }
 
 /* Mobile top bar (hidden on desktop) */
@@ -144,7 +232,11 @@ body {
             width: min(86vw, 300px);
         }
 
-        .sidebar .toggle-btn {
+        .sidebar .sidebar-pin-btn {
+            display: none;
+        }
+
+        .app-nav-chrome {
             display: none;
         }
 

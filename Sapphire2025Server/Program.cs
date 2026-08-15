@@ -1,13 +1,15 @@
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.FileProviders;
 using Sapphire2025Server.Comunications;
+using Sapphire2025Server.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Accede a la cadena de conexión remota
+// Accede a la cadena de conexiï¿½n remota
 var remoteConnectionString = builder.Configuration.GetConnectionString("RemoteConnection");
 
-// Configuración de CORS para permitir solicitudes tanto en modo desarrollo como en producción
+// Configuraciï¿½n de CORS para permitir solicitudes tanto en modo desarrollo como en producciï¿½n
 builder.Services.AddCors(options =>
 {
 	options.AddPolicy("AllowAll", policy =>
@@ -18,13 +20,22 @@ builder.Services.AddCors(options =>
 	});
 });
 
+builder.Services.Configure<FormOptions>(options =>
+{
+	options.MultipartBodyLengthLimit = 25L * 1024 * 1024;
+});
+builder.WebHost.ConfigureKestrel(options =>
+{
+	options.Limits.MaxRequestBodySize = 25L * 1024 * 1024;
+});
+
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 builder.Services.AddSignalR(); //Componente de SignalR
 
-// Configuración de Forwaded Headers para Nginx
+// Configuraciï¿½n de Forwaded Headers para Nginx
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
 	options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -38,15 +49,17 @@ builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 var app = builder.Build();
 
 IHostApplicationLifetime mvarLifeTime = app.Services.GetRequiredService<IHostApplicationLifetime>();
-//BotSoul instancia = app.Services.GetRequiredService<BotSoul>(); //De esta forma se crea la instancia nada más arrancar el programa.
+//BotSoul instancia = app.Services.GetRequiredService<BotSoul>(); //De esta forma se crea la instancia nada mï¿½s arrancar el programa.
 
 mvarLifeTime.ApplicationStopping.Register(() =>
 {
-	// Aquí tu lógica de parada, por ejemplo:
-	//instancia.BroadcastByRole("Mensaje desde el servidor: \"¡Sistema detenido!\"",true, new Sapphire2025Models.Common.UserRole[] { Sapphire2025Models.Common.UserRole.Root }).GetAwaiter().GetResult();
+	// Aquï¿½ tu lï¿½gica de parada, por ejemplo:
+	//instancia.BroadcastByRole("Mensaje desde el servidor: \"ï¿½Sistema detenido!\"",true, new Sapphire2025Models.Common.UserRole[] { Sapphire2025Models.Common.UserRole.Root }).GetAwaiter().GetResult();
 });
 
-//await instancia.BroadcastByRole("Mensaje desde el servidor: \"¡Sistema iniciado!\"",true, new Sapphire2025Models.Common.UserRole[] { Sapphire2025Models.Common.UserRole.Root });
+//await instancia.BroadcastByRole("Mensaje desde el servidor: \"ï¿½Sistema iniciado!\"",true, new Sapphire2025Models.Common.UserRole[] { Sapphire2025Models.Common.UserRole.Root });
+
+Directory.CreateDirectory(NoteMediaStore.GetRoot(app.Configuration));
 
 app.UseForwardedHeaders();
 

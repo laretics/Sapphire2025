@@ -1,0 +1,75 @@
+@if (CurrentIcon is not null)
+{
+	@if (Glow)
+	{
+		<svg xmlns="http://www.w3.org/2000/svg"
+			 width="@Size"
+			 height="@Size"
+			 fill="@Color"
+			 viewBox="@CurrentIcon.ViewBox"
+			 filter="url(#@FilterId)"
+			 aria-hidden="true">
+			<defs>
+				<filter id="@FilterId"
+						x="-50%" y="-50%"
+						width="200%" height="200%">
+					<feDropShadow dx="0"
+								  dy="0"
+								  stdDeviation="@mvarGlowBlur"
+								  flood-color="@GlowColor"
+								  flood-opacity="@mvarGlowOpacity" />
+				</filter>
+			</defs>
+			@if (CurrentIcon.UseFillRule)
+			{
+				<path fill-rule="evenodd" d="@CurrentIcon.Path" />
+			}
+			else
+			{
+				<path d="@CurrentIcon.Path" />
+			}
+		</svg>
+	}
+	else
+	{
+		<svg xmlns="http://www.w3.org/2000/svg"
+			 width="@Size"
+			 height="@Size"
+			 fill="@Color"
+			 viewBox="@CurrentIcon.ViewBox"
+			 aria-hidden="true">
+			@if (CurrentIcon.UseFillRule)
+			{
+				<path fill-rule="evenodd" d="@CurrentIcon.Path" />
+			}
+			else
+			{
+				<path d="@CurrentIcon.Path" />
+			}
+		</svg>
+	}
+}
+@code {
+	[Parameter] public string Name { get; set; } = "";
+	[Parameter] public int Size { get; set; } = 16;
+	[Parameter] public string Color { get; set; } = "currentColor";
+	[Parameter] public bool Glow { get; set; }
+	[Parameter] public string GlowColor { get; set; } = "#7d8ae6";
+
+	private double mvarGlowOpacity = 0.7;
+	private double mvarGlowBlur = 4.0;
+
+	private GenIcoSource.IconData? CurrentIcon => GenIcoSource.Get(Name);
+
+	private string? mvarFilterId;
+
+	private string FilterId
+	{
+		get
+		{
+			if (mvarFilterId is null && Glow)
+				mvarFilterId = $"glow-{Guid.NewGuid():N}";
+			return mvarFilterId ?? "";
+		}
+	}
+}

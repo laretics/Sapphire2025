@@ -1,0 +1,46 @@
+@using Sapphire2025.Icons
+@using Sapphire2025.Storage
+@implements IDisposable
+@inject NavigationStackService mvarStack
+
+<div class="nav-history @CssClass" role="navigation" aria-label="Historial de páginas">
+	<button type="button"
+			class="nav-history-btn"
+			disabled="@(!mvarStack.CanGoBack)"
+			title="Volver atrás"
+			aria-label="Volver atrás"
+			@onclick="mvarStack.GoBack">
+		<GenIcon Name="Left" Size="@IconSize" Color="currentColor" />
+	</button>
+	<button type="button"
+			class="nav-history-btn"
+			disabled="@(!mvarStack.CanGoForward)"
+			title="Regresar adelante"
+			aria-label="Regresar adelante"
+			@onclick="mvarStack.GoForward">
+		<GenIcon Name="Right" Size="@IconSize" Color="currentColor" />
+	</button>
+</div>
+
+@code {
+	[Parameter]
+	public string? CssClass { get; set; }
+
+	[Parameter]
+	public int IconSize { get; set; } = 28;
+
+	protected override void OnInitialized()
+	{
+		mvarStack.OnChange += OnStackChanged;
+	}
+
+	private void OnStackChanged()
+	{
+		_ = InvokeAsync(StateHasChanged);
+	}
+
+	public void Dispose()
+	{
+		mvarStack.OnChange -= OnStackChanged;
+	}
+}

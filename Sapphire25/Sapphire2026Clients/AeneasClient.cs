@@ -117,6 +117,47 @@ namespace Sapphire2025.Storage
 			return false;
 		}
 
+		public const long NoteMediaMaxBytes = 20L * 1024 * 1024;
+
+		/// <summary>
+		/// Sube un adjunto y crea una nota tipo multimedia (4).
+		/// </summary>
+		public async Task<NoteMediaUploadResult> addNoteMedia(Guid parent, Guid userId, string? caption, Stream file, string fileName, string? contentType)
+		{
+			Guid auxToken = await getCurrentToken();
+			using MultipartFormDataContent form = new MultipartFormDataContent();
+			form.Add(new StringContent(auxToken.ToString()), "sessionToken");
+			form.Add(new StringContent(parent.ToString()), "parent");
+			form.Add(new StringContent(userId.ToString()), "userId");
+			form.Add(new StringContent(caption ?? string.Empty), "text");
+			StreamContent fileContent = new StreamContent(file);
+			if (!string.IsNullOrWhiteSpace(contentType))
+				fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+			form.Add(fileContent, "file", fileName);
+			HttpResponseMessage respuesta = await sendPostRequest("addnotemedia", form);
+			if (respuesta.IsSuccessStatusCode)
+			{
+				NoteMediaUploadResult? parsed = await respuesta.Content.ReadFromJsonAsync<NoteMediaUploadResult>();
+				if (parsed is not null)
+					return parsed;
+			}
+			return new NoteMediaUploadResult { Success = false, Message = "No se pudo enviar el archivo." };
+		}
+
+		/// <summary>URL autenticada del adjunto (img/video/pdf).</summary>
+		public async Task<string> noteMediaUrl(Guid noteId)
+		{
+			Guid auxToken = await getCurrentToken();
+			string relative = composeCommand(
+				"notemedia",
+				new requestParam("id", noteId.ToString()),
+				new requestParam("token", auxToken.ToString()));
+			Uri? baseUri = mvarClient.BaseAddress;
+			if (baseUri is null)
+				return relative;
+			return new Uri(baseUri, relative).ToString();
+		}
+
 		/// <summary>
 		/// Etiqueta una nota (IsSymptom + SystemAffected) y marca IsValid = true.
 		/// </summary>

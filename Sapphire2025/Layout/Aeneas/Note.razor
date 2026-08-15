@@ -1,5 +1,6 @@
 ﻿@page "/addnote/{trainId}/{noteType}"
 @using Microsoft.AspNetCore.Components.Web
+@using Sapphire2025.Icons
 @inject NavigationManager mvarNavigationManager
 @inject AuthenticationClient mvarAuthClient
 @inject AeneasClient mvarAeneasClient
@@ -25,6 +26,39 @@ else
         <ValidationSummary />
 
         <div class="card shadow-sm p-4">
+            @if (IsMediaNote)
+            {
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Archivo</label>
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                        <button type="button" class="btn btn-outline-primary" @onclick="PickFile" disabled="@mvarSaving">
+                            <GenIcon Name="Upload" Size="18" /> Elegir archivo
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="PickCamera" disabled="@mvarSaving">
+                            <GenIcon Name="CCTV" Size="18" /> Cámara
+                        </button>
+                    </div>
+                    <InputFile @ref="mvarFileInput"
+                               class="d-none"
+                               accept="image/*,video/*,.pdf,application/pdf"
+                               OnChange="OnFilePicked"
+                               MaxAllowedSize="20971520" />
+                    <InputFile @ref="mvarCameraInput"
+                               class="d-none"
+                               accept="image/*"
+                               capture="environment"
+                               OnChange="OnFilePicked"
+                               MaxAllowedSize="20971520" />
+                    @if (!string.IsNullOrWhiteSpace(mvarFileName))
+                    {
+                        <div class="small text-muted">Seleccionado: @mvarFileName (@FormatSize(mvarFileSize))</div>
+                    }
+                    else
+                    {
+                        <div class="form-text">Imágenes, vídeo (mp4/webm) o PDF. Máximo 20 MB.</div>
+                    }
+                </div>
+            }
             <div class="mb-3">
                 <label for="noteText" class="form-label fw-bold">
                     <i class="bi bi-pencil-square me-1"></i>
@@ -34,7 +68,7 @@ else
                     class="form-control" 
                     @bind="noteModel.Text" 
                     rows="4" 
-                    placeholder="Aquí va el texto..." 
+                    placeholder="@(IsMediaNote ? "Pie de foto o comentario (opcional)…" : "Aquí va el texto...")" 
                     @ref="focusAreaRef"
                 ></textarea>
                 <ValidationMessage For="@(() => noteModel.Text)" />
@@ -48,8 +82,16 @@ else
                 <InputDate class="form-control" @bind-Value="noteModel.TimeStamp" readonly tabindex="-1" />
             </div>
 
+            @if (!string.IsNullOrWhiteSpace(mvarError))
+            {
+                <div class="alert alert-danger py-2">@mvarError</div>
+            }
             <div class="d-flex justify-content-end gap-2">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" disabled="@mvarSaving">
+                    @if (mvarSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    }
                     <i class="bi bi-save me-1"></i> Guardar
                 </button>
                 <button type="button" class="btn btn-secondary" @onclick="Cancelar">
@@ -74,6 +116,15 @@ else
     public string noteType { get; set; } = "0";
     private DateTime mvarFirstDate { get; set; } = DateTime.Now;
     private ElementReference focusAreaRef;
+    private InputFile? mvarFileInput;
+    private InputFile? mvarCameraInput;
+    private IBrowserFile? mvarPickedFile;
+    private string? mvarFileName;
+    private long mvarFileSize;
+    private bool mvarSaving;
+    private string? mvarError;
+
+    private bool IsMediaNote => noteType == "4";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -98,6 +149,8 @@ else
                         return string.Format("Nota del tren {0}",mvarTrain.name);
                     case "3":
                         return string.Format("Nota técnica del tren {0}", mvarTrain.name);
+                    case "4":
+                        return string.Format("Multimedia del tren {0}", mvarTrain.name);
                     default:
                         return string.Format("Documento del tren {0}",mvarTrain.name);
                 }
@@ -117,6 +170,8 @@ else
                     return "Texto de la información";
                 case "3":
                     return "Anotación técnica";
+                case "4":
+                    return "Comentario (opcional)";
                 default:
                     return "Contenido";
             }
@@ -147,26 +202,87 @@ else
         }
     }
 
+    private async Task PickFile()
+    {
+        if (mvarFileInput is not null)
+            await mvarJS.InvokeVoidAsync("triggerFileInputClick", mvarFileInput.Element);
+    }
+
+    private async Task PickCamera()
+    {
+        if (mvarCameraInput is not null)
+            await mvarJS.InvokeVoidAsync("triggerFileInputClick", mvarCameraInput.Element);
+    }
+
+    private void OnFilePicked(InputFileChangeEventArgs e)
+    {
+        mvarPickedFile = e.File;
+        mvarFileName = e.File?.Name;
+        mvarFileSize = e.File?.Size ?? 0;
+        mvarError = null;
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} KB";
+        return $"{bytes / (1024.0 * 1024.0):0.#} MB";
+    }
+
     private async void HandleValidSubmit()
     {
-        // Aquí iría la lógica para guardar la nota
-        // Por ejemplo, llamar a un servicio o API
-        if(null!=noteModel && null!=noteModel.Text && noteModel.Text.Length>0)
+        if (null == noteModel)
+            return;
+
+        mvarSaving = true;
+        mvarError = null;
+        try
         {
-            await mvarAeneasClient.addNote(noteModel);
-            if(null!=mvarTrain)
+            if (IsMediaNote)
             {
-                //Parte específica de los partes y las notas de los trenes.
-                if (noteModel.Type == 1)
+                if (mvarPickedFile is null)
                 {
-                    //La apertura de un parte de avería va a cambiar el tren al estado pendiente
-                    //de diagnóstico, pero esto no lo deberíamos hacer aquí, sino en el cliente
-                    //de Aeneas.
-                    await mvarAeneasClient.openFailReport(mvarTrain);
+                    mvarError = "Seleccione un archivo o haga una foto.";
+                    return;
+                }
+
+                await using Stream stream = mvarPickedFile.OpenReadStream(AeneasClient.NoteMediaMaxBytes);
+                NoteMediaUploadResult result = await mvarAeneasClient.addNoteMedia(
+                    noteModel.parent,
+                    noteModel.UserId,
+                    noteModel.Text,
+                    stream,
+                    mvarPickedFile.Name,
+                    mvarPickedFile.ContentType);
+                if (!result.Success)
+                {
+                    mvarError = string.IsNullOrWhiteSpace(result.Message)
+                        ? "No se pudo guardar el archivo."
+                        : result.Message;
+                    return;
                 }
             }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(noteModel.Text))
+                    return;
+
+                await mvarAeneasClient.addNote(noteModel);
+                if (null != mvarTrain && noteModel.Type == 1)
+                    await mvarAeneasClient.openFailReport(mvarTrain);
+            }
+
             mvarNavigationManager.NavigateTo($"/train/{trainId}");
-        }                
+        }
+        catch (Exception ex)
+        {
+            mvarError = ex.Message;
+        }
+        finally
+        {
+            mvarSaving = false;
+            StateHasChanged();
+        }
     }
 
     private void Cancelar()

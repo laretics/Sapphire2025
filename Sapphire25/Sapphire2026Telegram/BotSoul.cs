@@ -63,6 +63,15 @@ namespace Sapphire2026Telegram
 				return TimeSpan.FromSeconds(10);
 			}
 		}
+		private TimeSpan BroadcastMediaSendTimeout
+		{
+			get
+			{
+				if (int.TryParse(config["TelegramBot:BroadcastMediaTimeoutSeconds"], out int value) && value > 0)
+					return TimeSpan.FromSeconds(value);
+				return TimeSpan.FromSeconds(90);
+			}
+		}
 		private TimeSpan BroadcastMinimumGap { get => TimeSpan.FromMinutes(1d / BroadcastMessagesPerMinute); }
 		private readonly object mvarBroadcastRateLock = new object();
 		private DateTimeOffset mvarBroadcastNextAllowedSendUtc = DateTimeOffset.MinValue;
@@ -238,6 +247,22 @@ namespace Sapphire2026Telegram
 				await Broadcast(message, auxUsers, priority);
 			}
 		}
+
+		public async Task BroadcastByRoleWithMedia(TelegramMediaBroadcastModel payload)
+		{
+			if (!await GetTelegramEnabled())
+				return;
+
+			List<UserModel> auxUsers = await BuildBroadcastRecipientsByRole(payload.Priority, payload.Roles ?? Array.Empty<Common.UserRole>());
+			if (string.IsNullOrWhiteSpace(payload.MediaPath) || !System.IO.File.Exists(payload.MediaPath))
+			{
+				mvarLogger.LogWarning("Adjunto de broadcast no encontrado ({Path}). Se envía sólo texto.", payload.MediaPath);
+				await Broadcast(payload.Message, auxUsers, payload.Priority);
+				return;
+			}
+
+			await BroadcastMedia(payload, auxUsers);
+		}
 		private async Task Broadcast(string message, List<UserModel> users, bool includeOffline = false)
 		{
 			if (null == mvarBot || 0 == users.Count)
@@ -300,6 +325,123 @@ namespace Sapphire2026Telegram
 		{
 			mvarLogger.LogDebug($"Broadcast to {telegramId} ({userId})");
 			await mvarBot!.SendMessage(telegramId, message).WaitAsync(BroadcastSendTimeout, cancellationToken);
+		}
+
+		private async Task BroadcastMedia(TelegramMediaBroadcastModel payload, List<UserModel> users)
+		{
+			if (null == mvarBot || 0 == users.Count)
+				return;
+
+			ParallelOptions auxOptions = new ParallelOptions
+			{
+				MaxDegreeOfParallelism = BroadcastMaxDegreeOfParallelism
+			};
+
+			await Parallel.ForEachAsync(users, auxOptions, async (usuario, cancellationToken) =>
+			{
+				await SendBroadcastMediaToUser(usuario, payload, cancellationToken);
+			});
+		}
+
+		private async Task SendBroadcastMediaToUser(UserModel usuario, TelegramMediaBroadcastModel payload, CancellationToken cancellationToken)
+		{
+			if (0 == usuario.TelegramId || (!payload.Priority && !usuario.TelegramEnabled) || null == mvarBot)
+				return;
+
+			try
+			{
+				await WaitForBroadcastSlotAsync(cancellationToken);
+				await SendBroadcastMediaWithTimeout(usuario.TelegramId, payload, usuario.Name ?? "Unknown", cancellationToken);
+			}
+			catch (Telegram.Bot.Exceptions.ApiRequestException ex) when (ex.ErrorCode == 403)
+			{
+				mvarLogger.LogWarning("Usuario {ChatId} ha bloqueado el bot", usuario.Name);
+			}
+			catch (Telegram.Bot.Exceptions.ApiRequestException ex) when (ex.ErrorCode == 429)
+			{
+				TimeSpan retryDelay = GetTelegramRetryDelay(ex) ?? TimeSpan.FromSeconds(30);
+				mvarLogger.LogWarning("Telegram devolvió 429 para {ChatId}. Reintentando en {Delay}.", usuario.TelegramId, retryDelay);
+				ApplyBroadcastCooldown(retryDelay);
+				try
+				{
+					await WaitForBroadcastSlotAsync(cancellationToken);
+					await SendBroadcastMediaWithTimeout(usuario.TelegramId, payload, usuario.Name ?? "Unknown", cancellationToken);
+				}
+				catch (Telegram.Bot.Exceptions.ApiRequestException retryEx) when (retryEx.ErrorCode == 429)
+				{
+					mvarLogger.LogWarning("Telegram volvió a devolver 429 para {ChatId} tras el reintento.", usuario.TelegramId);
+				}
+			}
+			catch (TimeoutException)
+			{
+				mvarLogger.LogWarning("Timeout enviando multimedia a {ChatId}", usuario.TelegramId);
+			}
+			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+			{
+				throw;
+			}
+			catch (Exception ex)
+			{
+				mvarLogger.LogError(ex, "Error enviando multimedia a {ChatId}. Se intenta texto.", usuario.Name);
+				try
+				{
+					await SendBroadcastMessageWithTimeout(usuario.TelegramId, payload.Message, usuario.Name ?? "Unknown", cancellationToken);
+				}
+				catch (Exception textEx)
+				{
+					mvarLogger.LogError(textEx, "Tampoco se pudo enviar el texto a {ChatId}", usuario.Name);
+				}
+			}
+		}
+
+		private async Task SendBroadcastMediaWithTimeout(long telegramId, TelegramMediaBroadcastModel payload, string userId, CancellationToken cancellationToken)
+		{
+			mvarLogger.LogDebug("Broadcast media to {TelegramId} ({UserId}) kind={Kind}", telegramId, userId, payload.MediaKind);
+			string caption = TruncateTelegramCaption(payload.Message);
+			string fileName = string.IsNullOrWhiteSpace(payload.FileName)
+				? Path.GetFileName(payload.MediaPath)
+				: payload.FileName;
+
+			try
+			{
+				await SendTelegramFile(telegramId, payload.MediaKind, payload.MediaPath!, fileName, caption)
+					.WaitAsync(BroadcastMediaSendTimeout, cancellationToken);
+			}
+			catch (Telegram.Bot.Exceptions.ApiRequestException ex) when (ex.ErrorCode == 400)
+			{
+				mvarLogger.LogWarning(ex, "Telegram rechazó {Kind} para {ChatId}. Reintento como documento.", payload.MediaKind, telegramId);
+				await SendTelegramFile(telegramId, "document", payload.MediaPath!, fileName, caption)
+					.WaitAsync(BroadcastMediaSendTimeout, cancellationToken);
+			}
+		}
+
+		private async Task SendTelegramFile(long telegramId, string kind, string path, string? fileName, string caption)
+		{
+			await using FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+			InputFile file = InputFile.FromStream(stream, fileName);
+			string kindNorm = (kind ?? "document").Trim().ToLowerInvariant();
+			switch (kindNorm)
+			{
+				case "photo":
+					await mvarBot!.SendPhoto(telegramId, file, caption: caption);
+					break;
+				case "video":
+					await mvarBot!.SendVideo(telegramId, file, caption: caption);
+					break;
+				case "animation":
+					await mvarBot!.SendAnimation(telegramId, file, caption: caption);
+					break;
+				default:
+					await mvarBot!.SendDocument(telegramId, file, caption: caption);
+					break;
+			}
+		}
+
+		private static string TruncateTelegramCaption(string message)
+		{
+			if (string.IsNullOrEmpty(message) || message.Length <= 1024)
+				return message ?? string.Empty;
+			return message.Substring(0, 1021) + "...";
 		}
 		private async Task WaitForBroadcastSlotAsync(CancellationToken cancellationToken)
 		{

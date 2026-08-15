@@ -15,8 +15,8 @@ namespace Diamond.Timed
 	/// </summary>
 	public static class TrainNumbering
 	{
-		private static readonly Regex s_hashRun = new Regex("#+", RegexOptions.CultureInvariant | RegexOptions.Compiled);
-		private static readonly Regex s_classicNumeric = new Regex(
+		private static readonly Regex svarHashRun = new Regex("#+", RegexOptions.CultureInvariant | RegexOptions.Compiled);
+		private static readonly Regex svarClassicNumeric = new Regex(
 			@"^(\d+)(#+)$",
 			RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
@@ -394,7 +394,7 @@ namespace Diamond.Timed
 			}
 
 			string p = pattern.Trim();
-			Match classic = s_classicNumeric.Match(p);
+			Match classic = svarClassicNumeric.Match(p);
 			if (classic.Success)
 			{
 				string prefix = classic.Groups[1].Value;
@@ -417,7 +417,7 @@ namespace Diamond.Timed
 			}
 
 			// Alfanumérico: sustituir cada racha de # por el número natural (P##MTX → P1MTX).
-			Match hash = s_hashRun.Match(p);
+			Match hash = svarHashRun.Match(p);
 			if (!hash.Success)
 			{
 				return p + sequence.ToString(CultureInfo.InvariantCulture);
@@ -588,7 +588,7 @@ namespace Diamond.Timed
 		private static bool TryGetClassicSeriesBase(string pattern, out int seriesBase)
 		{
 			seriesBase = 0;
-			Match classic = s_classicNumeric.Match(pattern.Trim());
+			Match classic = svarClassicNumeric.Match(pattern.Trim());
 			if (!classic.Success)
 			{
 				return false;

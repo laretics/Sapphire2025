@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Sapphire2025Models;
 using Sapphire2025Models.Aeneas;
+using Sapphire2025Server.Storage;
 using Sapphire2026.Data;
 using Sapphire2026.Data.Models;
 using Microsoft.EntityFrameworkCore;
@@ -406,18 +407,231 @@ namespace Sapphire2025Server.Controllers
 			}
 		}
 
+		/// <summary>
+		/// Sube un adjunto multimedia y crea la nota tipo 4.
+		/// Ruta: {root}/yyyy/MM/dd/{guid}.{ext}
+		/// </summary>
+		[HttpPost("addnotemedia")]
+		[RequestSizeLimit(25_000_000)]
+		public async Task<NoteMediaUploadResult> AddNoteMedia(
+			[FromForm] Guid sessionToken,
+			[FromForm] Guid parent,
+			[FromForm] Guid userId,
+			[FromForm] string? text,
+			[FromForm] IFormFile? file)
+		{
+			NoteMediaUploadResult result = new NoteMediaUploadResult();
+			if (file is null || file.Length <= 0)
+			{
+				result.Message = "No se ha recibido ningún archivo.";
+				return result;
+			}
+
+			User? actor = await retrieveSessionUser(sessionToken);
+			if (null == actor)
+			{
+				result.Message = "Sesión no válida.";
+				return result;
+			}
+
+			long maxBytes = NoteMediaStore.GetMaxFileBytes(mvarConfig);
+			if (file.Length > maxBytes)
+			{
+				result.Message = $"El archivo supera el tamaño máximo ({maxBytes / (1024 * 1024)} MB).";
+				return result;
+			}
+
+			string ext = NoteMediaStore.NormalizeExt(Path.GetExtension(file.FileName));
+			if (!NoteMediaStore.IsAllowedExtension(ext))
+			{
+				result.Message = "Tipo de archivo no permitido. Use imagen (jpg, png, gif, webp), vídeo (mp4, webm) o PDF.";
+				return result;
+			}
+
+			Guid authorId = userId != Guid.Empty ? userId : actor.guid;
+			int maxPerDay = NoteMediaStore.GetMaxUploadsPerUserPerDay(mvarConfig);
+			DateTime dayStart = DateTime.UtcNow.Date;
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				int already = await almacen.Notes.CountAsync(x =>
+					x.UserId == authorId &&
+					x.Type == 4 &&
+					x.TimeStamp >= dayStart);
+				if (already >= maxPerDay)
+				{
+					result.Message = $"Ha alcanzado el máximo de {maxPerDay} archivos multimedia por día.";
+					return result;
+				}
+
+				Guid noteId = Guid.NewGuid();
+				DateTime stamp = DateTime.UtcNow;
+				string contentType = string.IsNullOrWhiteSpace(file.ContentType)
+					? NoteMediaStore.GuessContentType(ext)
+					: file.ContentType;
+
+				Note nueva = new Note
+				{
+					Id = noteId,
+					Parent = parent,
+					TimeStamp = stamp,
+					UserId = authorId,
+					Text = string.IsNullOrWhiteSpace(text) ? null : text.Trim(),
+					Type = 4,
+					MediaExtension = ext,
+					MediaContentType = contentType
+				};
+
+				string path = NoteMediaStore.BuildPath(mvarConfig, stamp, noteId, ext);
+				try
+				{
+					NoteMediaStore.EnsureDirectory(path);
+					using (FileStream stream = System.IO.File.Create(path))
+					{
+						await file.CopyToAsync(stream);
+					}
+				}
+				catch (Exception ex)
+				{
+					result.Message = "No se pudo guardar el archivo en el servidor: " + ex.Message;
+					return result;
+				}
+
+				almacen.Notes.Add(nueva);
+				bool saved = await almacen.SaveChangesAsync() > 0;
+				if (!saved)
+				{
+					try { System.IO.File.Delete(path); } catch { }
+					result.Message = "No se pudo registrar la nota.";
+					return result;
+				}
+
+				if (!Guid.Empty.Equals(authorId))
+					await addSessionEventStatic(mvarConfig, authorId, Common.sessionEventType.noteMediaAdded, clientHostPoint());
+
+				await NotifyTelegramNoteMedia(nueva, path, file.Length);
+
+				result.Success = true;
+				result.Message = "Archivo guardado.";
+				result.Note = noteFromNote(nueva);
+				return result;
+			}
+		}
+
+		/// <summary>
+		/// Descarga el adjunto de una nota. 404 si no existe en disco (pruebas locales / recurso perdido).
+		/// </summary>
+		[HttpGet("notemedia")]
+		public async Task<IActionResult> GetNoteMedia([FromQuery] Guid id, [FromQuery] Guid token)
+		{
+			if (id == Guid.Empty)
+				return BadRequest();
+
+			User? actor = await retrieveSessionUser(token);
+			if (null == actor)
+				return Unauthorized();
+
+			try
+			{
+				using (DataStorage almacen = new DataStorage(mvarConfig))
+				{
+					Note? nota = await almacen.Notes.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+					if (nota is null || string.IsNullOrWhiteSpace(nota.MediaExtension))
+						return NotFound();
+
+					string path = NoteMediaStore.BuildPath(mvarConfig, nota.TimeStamp, nota.Id, nota.MediaExtension);
+					if (!System.IO.File.Exists(path))
+						return NotFound();
+
+					string contentType = string.IsNullOrWhiteSpace(nota.MediaContentType)
+						? NoteMediaStore.GuessContentType(nota.MediaExtension)
+						: nota.MediaContentType;
+					string downloadName = id.ToString("N") + "." + NoteMediaStore.NormalizeExt(nota.MediaExtension);
+					return PhysicalFile(path, contentType, downloadName, enableRangeProcessing: true);
+				}
+			}
+			catch
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError);
+			}
+		}
+
 		public static async Task<string> lastNoteStatic(Guid trainId, IConfiguration config)
 		{
+			LastNoteSnapshot snap = await lastNoteSnapshotStatic(trainId, config);
+			return snap.Text;
+		}
+
+		/// <summary>Última nota del tren, con ruta de adjunto si existe en disco.</summary>
+		public static async Task<LastNoteSnapshot> lastNoteSnapshotStatic(Guid trainId, IConfiguration config)
+		{
+			LastNoteSnapshot salida = new LastNoteSnapshot();
 			using (DataStorage almacen = new DataStorage(config))
 			{
 				Note? auxNota = await almacen.Notes.AsNoTracking()
 					.Where(x => x.Parent == trainId)
 					.OrderByDescending(x => x.TimeStamp)
 					.FirstOrDefaultAsync();
-				if (null != auxNota && null != auxNota.Text)
-					return auxNota.Text;
+				if (null == auxNota)
+					return salida;
+
+				if (!string.IsNullOrWhiteSpace(auxNota.Text))
+					salida.Text = auxNota.Text;
+				else if (!string.IsNullOrWhiteSpace(auxNota.MediaExtension))
+					salida.Text = MediaShortLabel(auxNota.MediaExtension);
+
+				if (string.IsNullOrWhiteSpace(auxNota.MediaExtension))
+					return salida;
+
+				string path = NoteMediaStore.BuildPath(config, auxNota.TimeStamp, auxNota.Id, auxNota.MediaExtension);
+				if (!System.IO.File.Exists(path))
+					return salida;
+
+				long size = 0;
+				try { size = new FileInfo(path).Length; } catch { }
+				salida.MediaPath = path;
+				salida.MediaKind = NoteMediaStore.TelegramKind(auxNota.MediaExtension, size);
+				salida.FileName = Path.GetFileName(path);
 			}
-			return string.Empty;
+			return salida;
+		}
+
+		private static string MediaShortLabel(string? ext)
+		{
+			string e = NoteMediaStore.NormalizeExt(ext ?? string.Empty);
+			if (NoteMediaStore.IsImage(e)) return "(foto)";
+			if (e == "mp4" || e == "webm") return "(vídeo)";
+			if (e == "pdf") return "(PDF)";
+			return "(archivo)";
+		}
+
+		private async Task NotifyTelegramNoteMedia(Note note, string path, long fileBytes)
+		{
+			try
+			{
+				User? usuario = await retrieveUserStatic(note.UserId, mvarConfig);
+				TrainModel? tren = await TrainInfo(note.Parent.ToString());
+				string nombre = usuario?.UserName ?? "Un usuario";
+				string trenName = tren?.name ?? "?";
+				string kind = NoteMediaStore.KindLabel(note.MediaExtension);
+				string message = string.IsNullOrWhiteSpace(note.Text)
+					? string.Format("{0} ha enviado {1} del tren {2}.", nombre, kind, trenName)
+					: string.Format("{0} ha enviado {1} del tren {2}: \"{3}\"", nombre, kind, trenName, note.Text);
+
+				await SendTelegramMediaBroadcast(
+					message,
+					false,
+					path,
+					NoteMediaStore.TelegramKind(note.MediaExtension, fileBytes),
+					Path.GetFileName(path),
+					Common.UserRole.Inspector,
+					Common.UserRole.Expert,
+					Common.UserRole.Oficial,
+					Common.UserRole.Mechanic);
+			}
+			catch (Exception ex)
+			{
+				mvarLogger.LogError(ex, "No se pudo avisar por Telegram de la nota multimedia {NoteId}", note.Id);
+			}
 		}
 
 		public static async Task<bool> addNoteStatic(NoteModel note, IConfiguration config, string hostPoint = "static")
@@ -440,6 +654,8 @@ namespace Sapphire2025Server.Controllers
 					nuevaNota.IsValid = note.IsValid;
 					nuevaNota.IsSymptom = note.IsSymptom;
 					nuevaNota.SystemAffected = note.SystemAffected;
+					nuevaNota.MediaExtension = note.MediaExtension;
+					nuevaNota.MediaContentType = note.MediaContentType;
 					almacen.Notes.Add(nuevaNota);
 					salida = (await almacen.SaveChangesAsync() > 0);
 					// También cubre invocaciones desde Telegram u otras vías estáticas.
@@ -464,7 +680,19 @@ namespace Sapphire2025Server.Controllers
 			salida.IsValid = rhs.IsValid;
 			salida.IsSymptom = rhs.IsSymptom;
 			salida.SystemAffected = rhs.SystemAffected;
+			salida.MediaExtension = rhs.MediaExtension;
+			salida.MediaContentType = rhs.MediaContentType;
 			return salida;
 		}
+	}
+
+	/// <summary>Última nota de un tren, con adjunto si está en disco.</summary>
+	public sealed class LastNoteSnapshot
+	{
+		public string Text { get; set; } = string.Empty;
+		public string? MediaPath { get; set; }
+		public string MediaKind { get; set; } = "document";
+		public string? FileName { get; set; }
+		public bool HasMedia => !string.IsNullOrWhiteSpace(MediaPath);
 	}
 }

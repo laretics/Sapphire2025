@@ -41,16 +41,42 @@
 
 			var dragging = false;
 
+			function splitMode() {
+				if (root.classList.contains("mesh-layout-mesh") || root.classList.contains("mesh-layout-script")) {
+					return "fixed";
+				}
+				if (root.classList.contains("mesh-dock-bottom")) {
+					return "bottom";
+				}
+				return "right";
+			}
+
 			function onMove(ev) {
 				if (!dragging) {
 					return;
 				}
+				var mode = splitMode();
+				if (mode === "fixed") {
+					return;
+				}
 				var rect = root.getBoundingClientRect();
-				var x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - rect.left;
-				var pct = (x / rect.width) * 100;
-				if (pct < 28) pct = 28;
-				if (pct > 72) pct = 72;
-				root.style.gridTemplateColumns = pct + "% 6px 1fr";
+				var evX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+				var evY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+				if (mode === "bottom") {
+					var y = evY - rect.top;
+					var rpct = (y / rect.height) * 100;
+					if (rpct < 28) rpct = 28;
+					if (rpct > 78) rpct = 78;
+					root.style.gridTemplateColumns = "1fr";
+					root.style.gridTemplateRows = rpct + "% 6px 1fr";
+				} else {
+					var x = evX - rect.left;
+					var pct = (x / rect.width) * 100;
+					if (pct < 28) pct = 28;
+					if (pct > 72) pct = 72;
+					root.style.gridTemplateRows = "";
+					root.style.gridTemplateColumns = pct + "% 6px 1fr";
+				}
 				// No layout en cada mousemove: el ResizeObserver (debounced) del editor basta.
 				ev.preventDefault();
 			}
@@ -70,6 +96,9 @@
 			}
 
 			function onDown(ev) {
+				if (splitMode() === "fixed") {
+					return;
+				}
 				dragging = true;
 				document.body.classList.add("mesh-split-dragging");
 				document.addEventListener("mousemove", onMove);

@@ -1,4 +1,5 @@
-﻿@using Sapphire2025.Pages.Authentication
+﻿@using Sapphire2025.Icons
+@using Sapphire2025.Pages.Authentication
 @inject IntStorageService mvarClientStorage
 @inject InteractiveService mvarInteractive
 @inherits LayoutComponentBase
@@ -9,15 +10,21 @@
         <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeMobileSidebar()"></div>
 
         <nav class="sidebar d-flex flex-column flex-shrink-0 position-fixed" id="appSidebar">
-            <button class="toggle-btn" type="button" onclick="toggleSidebar()" title="Contraer menú" aria-label="Contraer menú">
-                <i class="bi-caret-left-fill"></i>
-            </button>
-
-            <div class="p-4 sidebar-brand" style="display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap;">
-                <h3 class="logo-text fw-bold mb-0" style="font-size: 1.1rem;">Zafiro</h3>
-                <small class="logo-subtext fw-bold mb-0" style="font-size: 0.7rem;">
-                    @Sapphire2025Models.Common.SapphireSoftwareVersion
-                </small>
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-text">
+                    <h3 class="logo-text fw-bold mb-0">Zafiro</h3>
+                    <small class="logo-subtext fw-bold">
+                        @Sapphire2025Models.Common.SapphireSoftwareVersion
+                    </small>
+                </div>
+                <button class="sidebar-pin-btn" type="button" onclick="toggleSidebar()" title="Fijar o contraer el menú" aria-label="Fijar o contraer el menú">
+                    <span class="pin-on" aria-hidden="true">
+                        <GenIcon Name="PinOn" Size="20" Color="#c8f0fa" />
+                    </span>
+                    <span class="pin-off" aria-hidden="true">
+                        <GenIcon Name="PinOff" Size="20" Color="#c8f0fa" />
+                    </span>
+                </button>
             </div>
 
             <div class="nav flex-column flex-grow-1" style="overflow-y: auto;">
@@ -34,9 +41,16 @@
                 <button type="button" class="mobile-menu-btn" onclick="openMobileSidebar()" aria-label="Abrir menú">
                     ☰
                 </button>
+                <NavHistoryButtons CssClass="compact" IconSize="22" />
                 <span class="mobile-topbar-title">Zafiro</span>
             </div>
+            <div class="app-nav-chrome">
+                <NavHistoryButtons />
+            </div>
             <ContextualHelpButton />
+            <button type="button" class="zen-exit" onclick="zafiroExitZen()" title="Salir de pantalla completa (F11)" aria-label="Salir de pantalla completa">
+                <GenIcon Name="Collapse" Size="18" Color="currentColor" />
+            </button>
             <div class="container-fluid px-0 px-sm-2">
                 @Body
             </div>
@@ -44,6 +58,46 @@
         <script>
             function isMobileNav() {
                 return window.matchMedia('(max-width: 991.98px)').matches;
+            }
+
+            function zafiroSetZen(on) {
+                document.body.classList.toggle('app-zen', !!on);
+            }
+
+            function zafiroExitZen() {
+                zafiroSetZen(false);
+                try {
+                    const cur = document.fullscreenElement || document.webkitFullscreenElement;
+                    const ext = document.exitFullscreen || document.webkitExitFullscreen;
+                    if (cur && ext) ext.call(document);
+                } catch (e) { }
+            }
+
+            function zafiroEnterZen() {
+                zafiroSetZen(true);
+                try {
+                    const el = document.documentElement;
+                    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+                    if (req && !document.fullscreenElement && !document.webkitFullscreenElement)
+                        req.call(el).catch(function () { });
+                } catch (e) { }
+            }
+
+            if (!window.zafiroZenBound) {
+                window.zafiroZenBound = true;
+                window.zafiroExitZen = zafiroExitZen;
+                document.addEventListener('keydown', function (e) {
+                    if (e.key !== 'F11' && e.code !== 'F11') return;
+                    e.preventDefault();
+                    if (document.body.classList.contains('app-zen')) zafiroExitZen();
+                    else zafiroEnterZen();
+                }, true);
+                document.addEventListener('fullscreenchange', function () {
+                    if (!document.fullscreenElement) zafiroSetZen(false);
+                });
+                document.addEventListener('webkitfullscreenchange', function () {
+                    if (!document.webkitFullscreenElement) zafiroSetZen(false);
+                });
             }
 
             function toggleSidebar() {
@@ -55,7 +109,20 @@
                     return;
                 }
                 sidebar.classList.toggle('collapsed');
+                try {
+                    localStorage.setItem('zafiro.sidebarCollapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
+                } catch (e) { }
             }
+
+            function applySidebarPin() {
+                const sidebar = document.getElementById('appSidebar') || document.querySelector('.sidebar');
+                if (!sidebar || isMobileNav()) return;
+                try {
+                    if (localStorage.getItem('zafiro.sidebarCollapsed') === '1')
+                        sidebar.classList.add('collapsed');
+                } catch (e) { }
+            }
+            applySidebarPin();
 
             function openMobileSidebar() {
                 const sidebar = document.getElementById('appSidebar') || document.querySelector('.sidebar');

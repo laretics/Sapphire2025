@@ -37,5 +37,6 @@ builder.Services.AddScoped<AeneasClient>();
 builder.Services.AddScoped<ExpertClient>();
 builder.Services.AddScoped<DiamondClient>();
 builder.Services.AddScoped<SessionService>();
+builder.Services.AddScoped<NavigationStackService>();
 
 await builder.Build().RunAsync();

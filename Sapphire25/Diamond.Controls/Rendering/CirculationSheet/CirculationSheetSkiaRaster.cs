@@ -7,7 +7,7 @@ namespace Diamond.Controls.Rendering
 	/// </summary>
 	internal static class CirculationSheetSkiaRaster
 	{
-		private static int s_probe; // 0 = no, 1 = ok, -1 = fail
+		private static int svarProbe; // 0 = no, 1 = ok, -1 = fail
 
 		/// <summary>
 		/// Comprueba nativos sin contaminar el camino WASM (no llamar si IsBrowser).
@@ -19,22 +19,22 @@ namespace Diamond.Controls.Rendering
 				return false;
 			}
 
-			if (s_probe != 0)
+			if (svarProbe != 0)
 			{
-				return s_probe > 0;
+				return svarProbe > 0;
 			}
 
 			try
 			{
 				using SkiaSharp.SKBitmap bmp = new SkiaSharp.SKBitmap(1, 1);
-				s_probe = bmp.Width == 1 ? 1 : -1;
+				svarProbe = bmp.Width == 1 ? 1 : -1;
 			}
 			catch
 			{
-				s_probe = -1;
+				svarProbe = -1;
 			}
 
-			return s_probe > 0;
+			return svarProbe > 0;
 		}
 
 		public static byte[] RasterizeSvgToPng(string svg)

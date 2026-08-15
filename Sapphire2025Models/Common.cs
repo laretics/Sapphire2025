@@ -8,7 +8,7 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public static string SapphireSoftwareVersion => "26.8.14";
+		public static string SapphireSoftwareVersion => "26.8.15";
 
 		/// <summary>
 		/// Interruptor global: si es false, nunca se exige recarga aunque haya cambios con RequiresReload.
@@ -34,42 +34,35 @@ namespace Sapphire2025Models
 		/// </remarks>
 		public static readonly SoftwareReleaseChange[] ReleaseChanges =
 		{
-			// Material móvil / incidencias — roles con acceso a IncidenceQuery y Taller
 			new SoftwareReleaseChange(
-				"Consulta de incidencias y notas",
-				@"Nueva pantalla de consulta combinada de notas y cambios de estado de los trenes.
+				"Navegación, barra lateral y modo zen",
+				@"La cabecera de Zafiro incorpora botones de atrás y adelante propios de la aplicación (no los del navegador), para recorrer las pantallas que ha visitado en esta sesión.
 
-Puede filtrar por fechas, tren, usuario, tipo de nota y etiquetas (síntoma, sistema afectado, etc.), exportar a CSV/Excel e imprimir un informe.
+La barra lateral se reduce con el icono de chincheta (pinchada = fija con textos; despinchada = solo iconos y tooltip). El triángulo de la esquina ya no colapsa el menú.
 
-Acceso: menú de su colectivo → tarjeta «Incidencias y notas», o la ruta aeneas/incidenceQuery.
-
-Si no ve la tarjeta, es posible que su perfil no tenga el permiso correspondiente; consulte con un administrador.",
-				requiresReload: true,
-				UserRole.Anonymous, UserRole.Inspector, UserRole.Expert,
-				UserRole.Oficial, UserRole.Mechanic, UserRole.Engineer, UserRole.Station),
-
-			// Ayuda contextual — todos los usuarios autenticados
-			new SoftwareReleaseChange(
-				"Centro de ayuda según perfil",
-				@"Se ha añadido un centro de ayuda con guías por sección, filtradas según los roles de su usuario.
-
-• Menú lateral: entrada «Ayuda».
-• Botón flotante «?» en cada pantalla, que abre el tema de esa sección.
-• En Inicio, botón «Centro de ayuda» cuando hay sesión.
-
-Las capturas de pantalla de la ayuda se documentan en el propio centro de ayuda.",
-				requiresReload: false,
-				UserRole.Anonymous, UserRole.Inspector, UserRole.Expert,
-				UserRole.Oficial, UserRole.Mechanic, UserRole.Engineer, UserRole.Station, UserRole.Root),
-
-			// Cambios de versión personalizados
-			new SoftwareReleaseChange(
-				"Actualizaciones por rol",
-				@"De ahora en adelante, sólo verá los cambios en el programa que le afecten como usuario. 
-				Esto implica que sólo necesitará actualizar el navegador si ese cambio tiene consecuencias para su manera de trabajar con Zafiro.",
+F11 entra en modo zen: oculta la barra lateral, la cabecera de navegación y la ayuda, y pide pantalla completa al navegador. Vuelva a pulsar F11 o Esc para salir.",
 				requiresReload: true,
 				UserRole.Anonymous, UserRole.Inspector, UserRole.Expert,
 				UserRole.Oficial, UserRole.Mechanic, UserRole.Engineer, UserRole.Station, UserRole.Root),
+
+			new SoftwareReleaseChange(
+				"Notas multimedia en el tren",
+				@"En el expediente del tren puede adjuntar fotos, vídeo o un PDF a una nota (botón Multimedia / cámara en el móvil).
+
+El archivo se guarda en el servidor y aparece en el chat de incidencias. Si falta o no se puede leer, se muestra el icono de no disponible. Hay un límite de tamaño y de archivos por usuario y día.
+
+Los avisos de Telegram de ese tren incluyen el adjunto cuando existe.",
+				requiresReload: true,
+				UserRole.Inspector, UserRole.Expert, UserRole.Oficial,
+				UserRole.Mechanic, UserRole.Engineer, UserRole.Station, UserRole.Root),
+
+			new SoftwareReleaseChange(
+				"Planificador de malla Diamond",
+				@"Se ha rediseñado el espacio de trabajo del planificador: las barras usan iconos, la malla y el script se pueden minimizar o ampliar por separado, y la malla admite vista a pantalla completa.
+
+Puede acoplar el script a la derecha o abajo y trabajar solo con la malla cuando lo necesite.",
+				requiresReload: true,
+				UserRole.Engineer, UserRole.Root),
 		};
 
 		/// <summary>
@@ -395,6 +388,7 @@ Las capturas de pantalla de la ayuda se documentan en el propio centro de ayuda.
 			// Notas e incidencias
 			noteAdded = 30,             //Se abrió/añadió una nota
 			incidentOpened = 31,        //Se abrió un parte de incidencia (correctivo)
+			noteMediaAdded = 32,        //Se subió contenido multimedia a una nota
 
 			// Órdenes de trabajo / lavados (GMao)
 			workOrderRequested = 40,    //Se solicitó una orden de trabajo (p.ej. lavado)
@@ -458,6 +452,7 @@ Las capturas de pantalla de la ayuda se documentan en el propio centro de ayuda.
 				sessionEventType.trainOdometerUpdated => "Actualización de odómetro",
 				sessionEventType.noteAdded => "Nota añadida",
 				sessionEventType.incidentOpened => "Apertura de incidencia",
+				sessionEventType.noteMediaAdded => "Multimedia añadido",
 				sessionEventType.workOrderRequested => "Solicitud de orden de trabajo",
 				sessionEventType.workOrderOpened => "Inicio de orden de trabajo",
 				sessionEventType.workOrderClosed => "Finalización de orden de trabajo",
@@ -541,6 +536,7 @@ Las capturas de pantalla de la ayuda se documentan en el propio centro de ayuda.
 				1 => "Parte de avería",
 				2 => "Nota informativa",
 				3 => "Nota técnica",
+				4 => "Multimedia",
 				_ => $"Tipo {noteType}"
 			};
 		}

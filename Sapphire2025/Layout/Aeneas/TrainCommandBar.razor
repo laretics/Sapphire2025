@@ -336,6 +336,13 @@
 						IconId = "WriteNote",
 						IconColor = "gray"
 					});
+					salida.Add(new TrainCommand
+					{
+						Label = "Multimedia",
+						Action = onAddMedia,
+						IconId = "CCTV",
+						IconColor = "gray"
+					});
 				}
 			}
 			return salida;
@@ -380,6 +387,12 @@
 				mvarNavigationManager.NavigateTo($"/addnote/{Train.id}/3");
 			else
 				mvarNavigationManager.NavigateTo($"/addnote/{Train.id}/2");
+	}
+	private async Task onAddMedia()
+	{
+		if (null != Train)
+			mvarNavigationManager.NavigateTo($"/addnote/{Train.id}/4");
+		await Task.CompletedTask;
 	}
 	/// <summary>
 	/// El tren ha sido diagnosticado y el inspector decide enviarlo a reparar.

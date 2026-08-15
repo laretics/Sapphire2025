@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR.Client;
 using Sapphire2025Models;
+using Sapphire2025Models.Authentication;
 using Sapphire2026Telegram;
 
 namespace Sapphire2026Telegram
@@ -130,6 +131,20 @@ namespace Sapphire2026Telegram
 						catch (Exception ex)
 						{
 							mvarLogger.LogError(ex, "Error en el handler de ReceiveBroadcastRequest2");
+						}
+					});
+				});
+				mvarHubConnection.On<TelegramMediaBroadcastModel>("ReceiveBroadcastRequestMedia", (payload) =>
+				{
+					_ = Task.Run(async () =>
+					{
+						try
+						{
+							await OnTelegramBroadcastMedia(payload);
+						}
+						catch (Exception ex)
+						{
+							mvarLogger.LogError(ex, "Error en el handler de ReceiveBroadcastRequestMedia");
 						}
 					});
 				});
@@ -264,6 +279,17 @@ namespace Sapphire2026Telegram
 		{
 			mvarLogger.LogInformation("Transmisi�n Telegram Message:{0} Priority:{1} Roles:{2}", message, false, roles);
 			await mvarBotSoul.BroadcastByRole(message, priority, roles);
+		}
+		private async Task OnTelegramBroadcastMedia(TelegramMediaBroadcastModel? payload)
+		{
+			if (payload is null || string.IsNullOrWhiteSpace(payload.Message))
+			{
+				mvarLogger.LogWarning("Broadcast multimedia vacío o nulo.");
+				return;
+			}
+			mvarLogger.LogInformation("Transmisión Telegram multimedia Kind:{0} Path:{1} Message:{2}",
+				payload.MediaKind, payload.MediaPath, payload.Message);
+			await mvarBotSoul.BroadcastByRoleWithMedia(payload);
 		}
 		private async Task OnRequestPairingCode(string requestId, string userId)
 		{

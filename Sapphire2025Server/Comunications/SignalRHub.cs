@@ -86,5 +86,12 @@ namespace Sapphire2025Server.Comunications
 			//Envío al cliente worker
 			await Clients.All.SendAsync("ReceiveBroadcastRequest2", message, priority, roles);
 		}
+
+		public async Task BroadcastTelegramMedia(Sapphire2025Models.Authentication.TelegramMediaBroadcastModel payload)
+		{
+			mvarLogger.LogInformation("Broadcast media: Message={0}, Kind={1}, Path={2}",
+				payload?.Message, payload?.MediaKind, payload?.MediaPath);
+			await Clients.All.SendAsync("ReceiveBroadcastRequestMedia", payload);
+		}
 	}
 }

@@ -396,6 +396,46 @@ namespace Sapphire2025Server.Controllers
 			}
 		}
 
+		private async Task<bool> SendTelegramMediaBroadcast(
+			string message,
+			bool priority,
+			string mediaPath,
+			string mediaKind,
+			string? fileName,
+			params Common.UserRole[] roles)
+		{
+			if (string.IsNullOrWhiteSpace(mediaPath) || !System.IO.File.Exists(mediaPath))
+				return await SendTelegramBroadcast(message, priority, roles);
+
+			try
+			{
+				TelegramMediaBroadcastModel payload = new TelegramMediaBroadcastModel
+				{
+					Message = message,
+					Priority = priority,
+					Roles = roles ?? Array.Empty<Common.UserRole>(),
+					MediaPath = mediaPath,
+					MediaKind = string.IsNullOrWhiteSpace(mediaKind) ? "document" : mediaKind,
+					FileName = fileName
+				};
+				await mvarHubContext.Clients.All.SendAsync("ReceiveBroadcastRequestMedia", payload);
+				return true;
+			}
+			catch (Exception ex)
+			{
+				mvarLogger.LogError(ex, "TelegramMediaBroadcast falló; se envía sólo texto.");
+				return await SendTelegramBroadcast(message, priority, roles);
+			}
+		}
+
+		private async Task NotifyTelegramWithOptionalMedia(string message, LastNoteSnapshot? media, params Common.UserRole[] roles)
+		{
+			if (null != media && media.HasMedia)
+				await SendTelegramMediaBroadcast(message, false, media.MediaPath!, media.MediaKind, media.FileName, roles);
+			else
+				await SendTelegramBroadcast(message, false, roles);
+		}
+
 		/// <summary>
 		/// Notificación a todos los usuarios registrados en Telegram del cambio de estado
 		/// en uno de los trenes (Sólo si le afecta).
@@ -406,7 +446,7 @@ namespace Sapphire2025Server.Controllers
 		{
 			User? usuario = await retrieveUserStatic(statusChange.UserId,config);
 			string nombreUsuario = "un usuario desconocido";
-			string ultimoParte = string.Empty;
+			LastNoteSnapshot? ultimoParte = null;
 			if (null!=usuario && null!=usuario.UserName) nombreUsuario = usuario.UserName;
 			switch(statusChange.Operation)
 			{
@@ -417,14 +457,26 @@ namespace Sapphire2025Server.Controllers
 					await SendTelegramBroadcast(string.Format("La UT {0} acaba de reincorporarse a la circulación tras dar {1} por terminada la reparación.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector }); 
 					break;
 				case Common.OperationType.CorrectiveRequest:
-					ultimoParte = await lastNoteStatic(train.Guid, config);
-					await SendTelegramBroadcast(string.Format("{1} abrió incidencia a la UT {0}: \"{2}\"", train.Name, nombreUsuario, ultimoParte), false, new Common.UserRole[] { Common.UserRole.Inspector, Common.UserRole.Expert, Common.UserRole.Oficial, Common.UserRole.Mechanic }); break;
+					ultimoParte = await lastNoteSnapshotStatic(train.Guid, config);
+					await NotifyTelegramWithOptionalMedia(
+						string.Format("{1} abrió incidencia a la UT {0}: \"{2}\"", train.Name, nombreUsuario, ultimoParte.Text),
+						ultimoParte,
+						Common.UserRole.Inspector, Common.UserRole.Expert, Common.UserRole.Oficial, Common.UserRole.Mechanic);
+					break;
 				case Common.OperationType.DiagnoseToFault:
-					ultimoParte = await lastNoteStatic(train.Guid, config);
-					await SendTelegramBroadcast(string.Format("{1} pide retirar el tren {0} de la circulación. \"{2}\"", train.Name, nombreUsuario,ultimoParte), false, new Common.UserRole[] { Common.UserRole.Inspector, Common.UserRole.Station }); break;
+					ultimoParte = await lastNoteSnapshotStatic(train.Guid, config);
+					await NotifyTelegramWithOptionalMedia(
+						string.Format("{1} pide retirar el tren {0} de la circulación. \"{2}\"", train.Name, nombreUsuario, ultimoParte.Text),
+						ultimoParte,
+						Common.UserRole.Inspector, Common.UserRole.Station);
+					break;
 				case Common.OperationType.DiagnoseToAvailable:
-					ultimoParte = await lastNoteStatic(train.Guid, config);
-					await SendTelegramBroadcast(string.Format("{1} considera que la UT {0} puede seguir en servicio. La última nota es:\"{2}\"", train.Name, nombreUsuario,ultimoParte), false, new Common.UserRole[] { Common.UserRole.Inspector }); break;
+					ultimoParte = await lastNoteSnapshotStatic(train.Guid, config);
+					await NotifyTelegramWithOptionalMedia(
+						string.Format("{1} considera que la UT {0} puede seguir en servicio. La última nota es:\"{2}\"", train.Name, nombreUsuario, ultimoParte.Text),
+						ultimoParte,
+						Common.UserRole.Inspector);
+					break;
 				case Common.OperationType.BeginCorrective:
 					await SendTelegramBroadcast(string.Format("{1} ha dado entrada en taller a la UT {0} para correctivo.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Oficial, Common.UserRole.Engineer, Common.UserRole.Inspector, Common.UserRole.Station }); break;
 				case Common.OperationType.DepotRequest:

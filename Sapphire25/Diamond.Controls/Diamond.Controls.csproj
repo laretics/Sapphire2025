@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Diamond\Diamond.csproj" />
+    <ProjectReference Include="..\..\Sapphire2025Models\Sapphire2025Models.csproj" />
   </ItemGroup>
 
   <!-- Topos/muestras para el planificador (host debe copiarlos al output si WASM). -->

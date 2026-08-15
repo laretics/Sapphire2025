@@ -45,6 +45,20 @@
 	border-color: #334155;
 }
 
+.diamond-mesh-layer-toolbar .mesh-icon-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.25rem;
+	min-width: 1.85rem;
+	padding: 0.14rem 0.38rem;
+	line-height: 1;
+}
+
+.diamond-mesh-layer-toolbar .mesh-icon-btn svg {
+	flex-shrink: 0;
+}
+
 /*
   Escenario común: un único marco con aspect-ratio lógico
   (columna + plot [+ columna dcha]) / Height.

@@ -154,6 +154,35 @@
 	letter-spacing: 0.05em;
 }
 
+.mesh-icon-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.3rem;
+	min-width: 2rem;
+	padding: 0.22rem 0.42rem;
+	line-height: 1;
+}
+
+.mesh-icon-btn svg,
+.mesh-editor-actions .btn svg,
+.dropdown-item svg {
+	flex-shrink: 0;
+	vertical-align: -0.15em;
+}
+
+.dropdown-item {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+}
+
+.mesh-editor-actions .btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
 .mesh-statusline {
 	display: flex;
 	flex-wrap: wrap;
@@ -190,6 +219,96 @@
 	display: grid;
 	grid-template-columns: minmax(300px, 1.35fr) 6px minmax(280px, 1fr);
 	overflow: hidden;
+}
+
+.mesh-split.mesh-layout-mesh {
+	grid-template-columns: 1fr 40px;
+}
+
+.mesh-split.mesh-layout-script {
+	grid-template-columns: 40px 1fr;
+}
+
+.mesh-split.mesh-layout-mesh .mesh-gutter,
+.mesh-split.mesh-layout-script .mesh-gutter {
+	display: none;
+}
+
+.mesh-layout-mesh .mesh-panel-script .mesh-panel-head,
+.mesh-layout-script .mesh-panel-mesh .mesh-panel-head {
+	flex: 1;
+	border-bottom: 0;
+	padding: 0.15rem;
+}
+
+.mesh-split.mesh-layout-mesh .mesh-panel-script .mesh-panel-body,
+.mesh-split.mesh-layout-mesh .mesh-panel-script .hide-when-rail,
+.mesh-split.mesh-layout-script .mesh-panel-mesh .mesh-panel-body,
+.mesh-split.mesh-layout-script .mesh-panel-mesh .hide-when-rail {
+	display: none !important;
+}
+
+.mesh-split.mesh-dock-bottom {
+	grid-template-columns: 1fr;
+	grid-template-rows: minmax(220px, 1.35fr) 6px minmax(180px, 0.8fr);
+}
+
+.mesh-split.mesh-dock-bottom .mesh-gutter {
+	cursor: row-resize;
+}
+
+.mesh-split.mesh-dock-bottom .mesh-panel-script {
+	border-left: 0;
+	border-top: 1px solid #1e293b;
+}
+
+.mesh-split.mesh-dock-bottom.mesh-layout-mesh {
+	grid-template-columns: 1fr;
+	grid-template-rows: 1fr 36px;
+}
+
+.mesh-split.mesh-dock-bottom.mesh-layout-script {
+	grid-template-columns: 1fr;
+	grid-template-rows: 36px 1fr;
+}
+
+.mesh-panel-mesh:fullscreen,
+.mesh-panel-mesh:-webkit-full-screen {
+	width: 100vw;
+	height: 100vh;
+	background: #0b0f14;
+}
+
+.mesh-rail-hit {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+}
+
+.mesh-layout-mesh .mesh-panel-script .mesh-rail-hit,
+.mesh-layout-script .mesh-panel-mesh .mesh-rail-hit {
+	width: 100%;
+	height: 100%;
+	justify-content: center;
+	writing-mode: vertical-rl;
+	transform: rotate(180deg);
+}
+
+.mesh-dock-bottom.mesh-layout-mesh .mesh-panel-script .mesh-rail-hit,
+.mesh-dock-bottom.mesh-layout-script .mesh-panel-mesh .mesh-rail-hit {
+	writing-mode: horizontal-tb;
+	transform: none;
+}
+
+.mesh-panel-tools {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.2rem;
 }
 
 body.mesh-split-dragging {

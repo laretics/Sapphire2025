@@ -2,10 +2,10 @@
 @inject NavigationManager mvarNavegador
 @if(matchRoles)
 {
-    <div class="sidebar-link @selText text-decoration-none p-3"
+    <div class="sidebar-link @selText"
     title="@Tooltip"
     @onclick="OnClickHandler">
-        <span class="me-2 d-inline-flex">
+        <span class="sidebar-link-icon">
             @if(Selected)
             {
                 <GenIcon Name="@Image" Size="28" Color="#c8f0fa" Glow="true" GlowColor="white" />
@@ -14,17 +14,16 @@
             {
                 <GenIcon Name="@Image" Size="28" Color="#c8f0fa" />
             }
-            
-        </span>        
+        </span>
         @if (null == Badge)
         {
-            <span class="hide-on-collapse">@Caption</span>
+            <span class="sidebar-link-label hide-on-collapse">@Caption</span>
         }
         else
         {
-            <span class="hide-on-collapse">
+            <span class="sidebar-link-label hide-on-collapse">
                 @Caption
-                <span class="badge bg-info hide-on-collapse">@Badge</span>
+                <span class="badge bg-info">@Badge</span>
             </span>
         }
     </div>

@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Sapphire2026.Data.Models
 {
@@ -16,7 +17,7 @@ namespace Sapphire2026.Data.Models
 		///El cero va a ser un texto de anotación de un mecánico.
 		///El uno será un parte de avería.
 		
-		public DateTime? ClosureTime{ get; set; }
+		public DateTime? ClosureTime{ get; set; }							
 		//Fecha y hora del cierre de la nota.
 		public Guid? ClosureUser{ get; set; }
 		//Usuario que cierra la nota.
@@ -28,6 +29,13 @@ namespace Sapphire2026.Data.Models
 		public bool IsValid { get; set; } //Es una nota válida para el procesamiento.
 		public bool IsSymptom { get; set; } //Este registro describe o informa de una avería. (En caso contrario sería una resolución)
 		public byte SystemAffected { get; set; } //Sistema del tren afectado.
+
+		/// <summary>Extensión del adjunto (jpg, mp4, pdf…) sin punto. Vacío = nota solo texto.</summary>
+		[MaxLength(16)]
+		public string? MediaExtension { get; set; }
+		/// <summary>Content-Type del adjunto (image/jpeg, video/mp4…).</summary>
+		[MaxLength(80)]
+		public string? MediaContentType { get; set; }
 
 	}
 }

@@ -32,5 +32,13 @@ namespace Sapphire2025Models.Aeneas
 		public bool IsSymptom { get; set; }
 		/// <summary>Etiqueta: sistema del tren afectado (<see cref="Common.TrainSystem"/>).</summary>
 		public byte SystemAffected { get; set; }
+
+		/// <summary>Extensión del adjunto (sin punto). Vacío = no hay fichero.</summary>
+		public string? MediaExtension { get; set; }
+		/// <summary>MIME del adjunto.</summary>
+		public string? MediaContentType { get; set; }
+
+		public bool HasMedia =>
+			Type == 4 || !string.IsNullOrWhiteSpace(MediaExtension);
 	}
 }

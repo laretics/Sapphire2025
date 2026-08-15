@@ -191,9 +191,15 @@ code {
     background: #0b0f14;
 }
 
-.main-content:has(.engineer-diamond-host) > .mobile-topbar {
+.main-content:has(.engineer-diamond-host) > .mobile-topbar,
+.main-content:has(.engineer-diamond-host) > .app-nav-chrome {
     margin: 0;
     flex-shrink: 0;
+}
+
+.main-content:has(.engineer-diamond-host) > .app-nav-chrome {
+    padding: 0.45rem 0.65rem 0.25rem;
+    background: #0b0f14;
 }
 
 .main-content:has(.engineer-diamond-host) > .container-fluid {
@@ -247,16 +253,32 @@ code {
 }
 
 .collapsed .hide-on-collapse {
-    opacity: 0;
-    visibility: hidden;
+    display: none !important;
 }
 
 .collapsed .logo-text {
-    opacity: 0;
+    display: none;
 }
 
 .collapsed .profile-info {
-    opacity: 0;
+    display: none !important;
+}
+
+/* Modo zen / pantalla completa (F11): sin chrome de aplicación */
+body.app-zen .sidebar,
+body.app-zen .sidebar-backdrop,
+body.app-zen .app-nav-chrome,
+body.app-zen .mobile-topbar,
+body.app-zen .contextual-help {
+    display: none !important;
+}
+
+body.app-zen .main-content {
+    margin-left: 0 !important;
+}
+
+body.app-zen .zen-exit {
+    display: inline-flex;
 }
 
 .profile-info {

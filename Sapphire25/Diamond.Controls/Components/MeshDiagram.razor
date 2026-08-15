@@ -15,14 +15,30 @@
 	{
 		<div class="diamond-mesh-layer-toolbar">
 			<span class="diamond-mesh-layer-label">Capas</span>
-			<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowOccupations)" @onclick="ToggleOccupations">Cantones</button>
-			<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowTrainPaths)" @onclick="ToggleTrainPaths">Trazas</button>
-			<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowTrainNumbers)" @onclick="ToggleTrainNumbers">Números</button>
-			<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowConflicts)" @onclick="ToggleConflicts">Conflictos</button>
-			<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowSpeedStrip)" @onclick="ToggleSpeedStrip">V</button>
-			<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowTrackStrip)" @onclick="ToggleTrackStrip">#</button>
-			<button type="button" class="btn btn-sm @LayerButtonClass(mvarShowNowLine)" @onclick="ToggleNowLine">
-				Ahora @(mvarShowNowLine ? "· " + FormatClockWithSeconds(mvarClockNow) : "")
+			<button type="button" class="btn btn-sm mesh-icon-btn @LayerButtonClass(mvarShowOccupations)" @onclick="ToggleOccupations" title="Cantones / ocupaciones">
+				<DmdIcon Name="CheckBox" Size="14" />
+			</button>
+			<button type="button" class="btn btn-sm mesh-icon-btn @LayerButtonClass(mvarShowTrainPaths)" @onclick="ToggleTrainPaths" title="Trazas de tren">
+				<DmdIcon Name="Train" Size="14" />
+			</button>
+			<button type="button" class="btn btn-sm mesh-icon-btn @LayerButtonClass(mvarShowTrainNumbers)" @onclick="ToggleTrainNumbers" title="Números de tren">
+				<DmdIcon Name="Eye" Size="14" />
+			</button>
+			<button type="button" class="btn btn-sm mesh-icon-btn @LayerButtonClass(mvarShowConflicts)" @onclick="ToggleConflicts" title="Conflictos">
+				<DmdIcon Name="Warning" Size="14" />
+			</button>
+			<button type="button" class="btn btn-sm mesh-icon-btn @LayerButtonClass(mvarShowSpeedStrip)" @onclick="ToggleSpeedStrip" title="Franja de velocidad">
+				<DmdIcon Name="Speedometer" Size="14" />
+			</button>
+			<button type="button" class="btn btn-sm mesh-icon-btn @LayerButtonClass(mvarShowTrackStrip)" @onclick="ToggleTrackStrip" title="Franja de vía">
+				<DmdIcon Name="TrainTrack" Size="14" />
+			</button>
+			<button type="button" class="btn btn-sm mesh-icon-btn @LayerButtonClass(mvarShowNowLine)" @onclick="ToggleNowLine" title="Línea de hora actual">
+				<DmdIcon Name="TimeValue" Size="14" />
+				@if (mvarShowNowLine)
+				{
+					<span>@FormatClockWithSeconds(mvarClockNow)</span>
+				}
 			</button>
 		</div>
 	}
@@ -31,33 +47,49 @@
 	{
 		<div class="diamond-mesh-layer-toolbar">
 			<span class="diamond-mesh-layer-label">Vista</span>
-			<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ZoomIn">+</button>
-			<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ZoomOut">−</button>
-			<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ResetView">Reset</button>
-			<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => NudgeTime(-1)">←t</button>
-			<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => NudgeTime(1)">t→</button>
-			<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => NudgePk(1)">↑PK</button>
-			<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => NudgePk(-1)">↓PK</button>
+			<button type="button" class="btn btn-sm btn-outline-secondary mesh-icon-btn" @onclick="ZoomIn" title="Acercar">+</button>
+			<button type="button" class="btn btn-sm btn-outline-secondary mesh-icon-btn" @onclick="ZoomOut" title="Alejar">−</button>
+			<button type="button" class="btn btn-sm btn-outline-secondary mesh-icon-btn" @onclick="ResetView" title="Restablecer vista">
+				<DmdIcon Name="Circle" Size="14" />
+			</button>
+			<button type="button" class="btn btn-sm btn-outline-secondary mesh-icon-btn" @onclick="() => NudgeTime(-1)" title="Desplazar tiempo atrás">
+				<DmdIcon Name="Left" Size="14" />
+			</button>
+			<button type="button" class="btn btn-sm btn-outline-secondary mesh-icon-btn" @onclick="() => NudgeTime(1)" title="Desplazar tiempo adelante">
+				<DmdIcon Name="Right" Size="14" />
+			</button>
+			<button type="button" class="btn btn-sm btn-outline-secondary mesh-icon-btn" @onclick="() => NudgePk(1)" title="Desplazar PK arriba">
+				<DmdIcon Name="Up" Size="14" />
+			</button>
+			<button type="button" class="btn btn-sm btn-outline-secondary mesh-icon-btn" @onclick="() => NudgePk(-1)" title="Desplazar PK abajo">
+				<DmdIcon Name="Down" Size="14" />
+			</button>
 			<span class="diamond-mesh-layer-label ms-1">Zoom</span>
 			<div class="btn-group btn-group-sm" role="group" aria-label="Ejes de zoom">
 				<button type="button"
-						class="btn @ZoomModeButtonClass(ZoomAxisMode.Both)"
+						class="btn mesh-icon-btn @ZoomModeButtonClass(ZoomAxisMode.Both)"
 						@onclick="() => SetZoomMode(ZoomAxisMode.Both)"
-						title="Zoom en tiempo y PK">Ambos</button>
+						title="Zoom en tiempo y PK">
+					<DmdIcon Name="LeftRight" Size="14" />
+				</button>
 				<button type="button"
-						class="btn @ZoomModeButtonClass(ZoomAxisMode.Time)"
+						class="btn mesh-icon-btn @ZoomModeButtonClass(ZoomAxisMode.Time)"
 						@onclick="() => SetZoomMode(ZoomAxisMode.Time)"
-						title="Solo eje horizontal (tiempo)">Tiempo</button>
+						title="Solo eje horizontal (tiempo)">
+					<DmdIcon Name="TimeValue" Size="14" />
+				</button>
 				<button type="button"
-						class="btn @ZoomModeButtonClass(ZoomAxisMode.Space)"
+						class="btn mesh-icon-btn @ZoomModeButtonClass(ZoomAxisMode.Space)"
 						@onclick="() => SetZoomMode(ZoomAxisMode.Space)"
-						title="Solo eje vertical (PK / estaciones)">PK</button>
+						title="Solo eje vertical (PK / estaciones)">
+					<DmdIcon Name="Location" Size="14" />
+				</button>
 			</div>
 			<button type="button"
-					class="btn btn-sm @LayerButtonClass(mvarYScaleMode == MeshYScaleMode.SteppedSingular)"
-					title="Alterna PK lineal vs singulares equidistantes (límites de V + estaciones)"
+					class="btn btn-sm mesh-icon-btn @LayerButtonClass(mvarYScaleMode == MeshYScaleMode.SteppedSingular)"
+					title="@(mvarYScaleMode == MeshYScaleMode.SteppedSingular ? "Escala escalonada (singulares equidistantes)" : "Escala PK lineal")"
 					@onclick="ToggleYScaleMode">
-				@(mvarYScaleMode == MeshYScaleMode.SteppedSingular ? "Escala: escalonada" : "Escala: PK lineal")
+				<DmdIcon Name="UpDown" Size="14" />
 			</button>
 			@if (SelectedCirculation is not null)
 			{
@@ -66,26 +98,28 @@
 					· @FormatClock(SelectedCirculation.Departure)
 				</span>
 				<button type="button"
-						class="btn btn-sm btn-warning"
+						class="btn btn-sm btn-warning mesh-icon-btn"
 						title="Ficha de marcha del tren seleccionado"
 						@onclick="OpenCirculationSheet">
-					Ficha
+					<DmdIcon Name="Clipboard" Size="14" />
 				</button>
-				<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearSelection" title="Quitar selección">×</button>
+				<button type="button" class="btn btn-sm btn-outline-secondary mesh-icon-btn" @onclick="ClearSelection" title="Quitar selección">
+					<DmdIcon Name="StatusDisabled" Size="14" />
+				</button>
 			}
 			<button type="button"
-					class="btn btn-sm btn-outline-info"
+					class="btn btn-sm btn-outline-info mesh-icon-btn"
 					title="Libro itinerario de toda la malla (portada, índice y todos los trenes)"
 					disabled="@(Mesh is null || Mesh.Circulations.Count == 0)"
 					@onclick="OpenItineraryBook">
-				Libro
+				<DmdIcon Name="Itinerary" Size="14" />
 			</button>
 			<button type="button"
-					class="btn btn-sm btn-outline-light"
+					class="btn btn-sm btn-outline-light mesh-icon-btn"
 					title="Imprimir la ventana actual de malla (A3 apaisado, tema papel)"
 					disabled="@(Mesh is null || View is null)"
 					@onclick="OpenPrintPreview">
-				Imprimir malla
+				<DmdIcon Name="Printer" Size="14" />
 			</button>
 			<span class="badge bg-dark text-light border">
 				@FormatClock(mvarViewT0)–@FormatClock(mvarViewT1)

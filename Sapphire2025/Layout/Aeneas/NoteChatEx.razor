@@ -4,23 +4,23 @@
 @inject IntStorageService mvarIntStorage
 
 <div style="height:100%; max-height:70vh; overflow-y:auto;" class="bg-light rounded p-3">
-	@if (Loading)
+	@if (mvarLoading)
 	{
 		<div class="text-muted text-center py-3">Cargando...</div>
 	}
-	else if (FeedItems.Count == 0)
+	else if (mcolFeedItems.Count == 0)
 	{
 		<div class="text-muted text-center py-3">No hay notas ni cambios de estado.</div>
 	}
 	else
 	{
 		<CascadingValue Value="Users">
-			@foreach (FeedEntry entry in FeedItems)
+			@foreach (FeedEntry entry in mcolFeedItems)
 			{
 				if (entry.Kind == FeedKind.Note && entry.Note is not null)
 				{
 					<NoteChatEntry Note="@entry.Note"
-								   LastValidNoteTime="@LastValidNoteTime"
+								   LastValidNoteTime="@mvarLastValidNoteTime"
 								   OnLabelRequested="OpenLabelAsync" />
 				}
 				else if (entry.Kind == FeedKind.StatusChange && entry.StatusChange is not null)
@@ -86,22 +86,22 @@
 	public int MaxLines { get; set; } = 30; //Máximo de líneas a mostrar en el chat
 	[CascadingParameter]
 	public Dictionary<Guid, UserModelBase>? Users { get; set; }
-	private List<NoteModel>? Notes { get; set; } = new List<NoteModel>();
-	private IEnumerable<StatusChangeModel>? StatusChanges{ get; set; }
-	private Guid lastParent = Guid.Empty;
-	private string lastNoteType = string.Empty;
-	private int lastMaxLines = -1;
+	private List<NoteModel>? mcolNotes = new List<NoteModel>();
+	private IEnumerable<StatusChangeModel>? mcolStatusChanges;
+	private Guid mvarLastParent = Guid.Empty;
+	private string mvarLastNoteType = string.Empty;
+	private int mvarLastMaxLines = -1;
 	private bool mvarCanLabel;
 	private bool mvarLabelRoleResolved;
-	private DateTime LastValidNoteTime { get; set; } = DateTime.MinValue;
+	private DateTime mvarLastValidNoteTime = DateTime.MinValue;
 	private NoteLabelDialog? mvarLabelDialog;
 
-	private List<FeedEntry> FeedItems { get; set; } = new();
-	private bool Loading { get; set; } = true;
+	private List<FeedEntry> mcolFeedItems = new();
+	private bool mvarLoading = true;
 
 	protected async override Task OnParametersSetAsync()
 	{
-		Loading = true;
+		mvarLoading = true;
 		if (!mvarLabelRoleResolved)
 		{
 			SessionModel? session = await mvarIntStorage.GetSessionInfo();
@@ -111,33 +111,33 @@
 
 		int take = mvarCanLabel ? 0 : MaxLines;
 		if (Parent != Guid.Empty &&
-		(Parent != lastParent || NoteType != lastNoteType || MaxLines != lastMaxLines))
+		(Parent != mvarLastParent || NoteType != mvarLastNoteType || MaxLines != mvarLastMaxLines))
 		{
-			Notes = await mvarAeneasClient.retrieveNotes(Parent, NoteType, take);
+			mcolNotes = await mvarAeneasClient.retrieveNotes(Parent, NoteType, take);
 			DateTime auxOldest = DateTime.MinValue;
 			//Modificado por error con tablas vacías.
-			if (Notes is { Count: > 0 })
+			if (mcolNotes is { Count: > 0 })
 			{
-				auxOldest = Notes.Min(x => x.TimeStamp);
-				StatusChanges = await mvarAeneasClient.trainChangesList(Parent, auxOldest);
+				auxOldest = mcolNotes.Min(x => x.TimeStamp);
+				mcolStatusChanges = await mvarAeneasClient.trainChangesList(Parent, auxOldest);
 			}
 			else
-				StatusChanges = new List<StatusChangeModel>();
+				mcolStatusChanges = new List<StatusChangeModel>();
 
-			lastParent = Parent;
-			lastNoteType = NoteType;
-			lastMaxLines = MaxLines;
+			mvarLastParent = Parent;
+			mvarLastNoteType = NoteType;
+			mvarLastMaxLines = MaxLines;
 			RefreshLastValid();
 		}
 
 		BuildFeed();
-		Loading = false;
+		mvarLoading = false;
 	}
 
 	private void RefreshLastValid()
 	{
-		LastValidNoteTime = Notes is { Count: > 0 }
-			? Notes.Where(n => n.IsValid).Select(n => n.TimeStamp).DefaultIfEmpty(DateTime.MinValue).Max()
+		mvarLastValidNoteTime = mcolNotes is { Count: > 0 }
+			? mcolNotes.Where(n => n.IsValid).Select(n => n.TimeStamp).DefaultIfEmpty(DateTime.MinValue).Max()
 			: DateTime.MinValue;
 	}
 
@@ -145,14 +145,14 @@
 	{
 		if (mvarLabelDialog is null)
 			return;
-		bool hasOlderUnlabeled = Notes is not null &&
-			Notes.Any(n => !n.IsValid && n.Id != note.Id && n.TimeStamp > LastValidNoteTime && n.TimeStamp < note.TimeStamp);
+		bool hasOlderUnlabeled = mcolNotes is not null &&
+			mcolNotes.Any(n => !n.IsValid && n.Id != note.Id && n.TimeStamp > mvarLastValidNoteTime && n.TimeStamp < note.TimeStamp);
 		await mvarLabelDialog.ShowAsync(note, hasOlderUnlabeled);
 	}
 
 	private void OnNoteLabeled(NoteModel labeled)
 	{
-		NoteModel? existing = Notes?.FirstOrDefault(n => n.Id == labeled.Id);
+		NoteModel? existing = mcolNotes?.FirstOrDefault(n => n.Id == labeled.Id);
 		if (existing is not null)
 		{
 			existing.IsValid = true;
@@ -203,18 +203,18 @@
 	{
 		List<FeedEntry> items = new();
 		int sequence = 0;
-		if(null!=Notes)
+		if(null!=mcolNotes)
 		{
-			foreach (NoteModel note in Notes)
+			foreach (NoteModel note in mcolNotes)
 				items.Add(new FeedEntry(FeedKind.Note, note.TimeStamp, sequence++, note, null));
 		}
-		if(null!=StatusChanges)
+		if(null!=mcolStatusChanges)
 		{
-			foreach (StatusChangeModel change in StatusChanges)
+			foreach (StatusChangeModel change in mcolStatusChanges)
 				items.Add(new FeedEntry(FeedKind.StatusChange, change.timeStamp, sequence++, null, change));
 		}
 
-		FeedItems = items.OrderByDescending(x => x.TimeStamp)
+		mcolFeedItems = items.OrderByDescending(x => x.TimeStamp)
 					.ThenBy(x => x.sequence)
 					.ToList();
 	}

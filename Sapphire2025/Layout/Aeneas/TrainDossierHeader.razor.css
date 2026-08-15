@@ -24,11 +24,6 @@
     color: #1f2937;
 }
 
-.train-dossier-back {
-    min-width: 60px;
-    flex-shrink: 0;
-}
-
 /* No usar overflow:hidden aquí: recortaba PlatformSelectCTL y su dropdown */
 .train-dossier-status {
     overflow: visible;
@@ -138,11 +133,6 @@
 }
 
 @media (max-width: 575.98px) {
-    .train-dossier-back {
-        min-height: 44px;
-        width: 100%;
-    }
-
     .train-dossier-meta,
     .train-dossier-platform,
     .train-dossier-odometer {

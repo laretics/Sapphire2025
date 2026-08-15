@@ -52,6 +52,7 @@ Write-Host "Desplegando en el servidor..." -ForegroundColor Green
 ssh $remoteHost "systemctl stop sapphire2025"
 ssh $remoteHost "cd $remotePath && rm -rf *"
 ssh $remoteHost "tar -xzf /tmp/server-deploy.tar.gz -C $remotePath"
+ssh $remoteHost "mkdir -p /home/Zafiro/SapphireMedia && chown zafiro:zafiro /home/Zafiro/SapphireMedia && chmod 775 /home/Zafiro/SapphireMedia"
 ssh $remoteHost "chown -R zafiro:zafiro $remotePath"
 ssh $remoteHost "systemctl start sapphire2025"
 ssh $remoteHost "systemctl status sapphire2025 --no-pager -l"

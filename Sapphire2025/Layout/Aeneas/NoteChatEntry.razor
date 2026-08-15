@@ -1,5 +1,6 @@
 ﻿@using Sapphire2025.Icons
 @using Sapphire2025Models
+@inject AeneasClient mvarAeneasClient
 <div class="d-flex @alineacion mb-3">
 	<div class="card shadow-sm" style="max-width: 75%;">
 		<div class="card-header @bgType text-white">
@@ -8,7 +9,42 @@
 			<small class="text-white float-end">@textoFecha</small>
 		</div>
 		<div class="card-body">
-			<p class="card-text mb-2">@Note.Text</p>
+			@if (Note.HasMedia)
+			{
+				<div class="note-media mb-2">
+					@if (mvarMediaMissing)
+					{
+						<div class="d-flex align-items-center gap-2 text-muted">
+							<GenIcon Name="MediaOff" Size="32" Color="#6c757d" />
+							<span>Recurso no disponible</span>
+						</div>
+					}
+					else if (!string.IsNullOrWhiteSpace(mvarMediaUrl) && IsImage)
+					{
+						<img src="@mvarMediaUrl" class="img-fluid rounded" alt="Adjunto" @onerror="OnMediaError" />
+					}
+					else if (!string.IsNullOrWhiteSpace(mvarMediaUrl) && IsVideo)
+					{
+						<video src="@mvarMediaUrl" class="w-100 rounded" controls @onerror="OnMediaError"></video>
+					}
+					else if (!string.IsNullOrWhiteSpace(mvarMediaUrl) && IsPdf)
+					{
+						<a href="@mvarMediaUrl" target="_blank" rel="noopener" class="d-inline-flex align-items-center gap-2">
+							<GenIcon Name="Clipboard" Size="24" /> Abrir PDF
+						</a>
+					}
+					else if (!string.IsNullOrWhiteSpace(mvarMediaUrl))
+					{
+						<a href="@mvarMediaUrl" target="_blank" rel="noopener" class="d-inline-flex align-items-center gap-2">
+							<GenIcon Name="Upload" Size="24" /> Descargar adjunto
+						</a>
+					}
+				</div>
+			}
+			@if (!string.IsNullOrWhiteSpace(Note.Text))
+			{
+				<p class="card-text mb-2">@Note.Text</p>
+			}
 			@if (ShowLabelAction)
 			{
 				<button type="button"
@@ -56,6 +92,7 @@
 				case 1: return "bg-primary";
 				case 2: return "bg-secondary";
 				case 3: return "bg-warning";
+				case 4: return "bg-info";
 				default: return "bg-light";
 			}
 		}
@@ -73,6 +110,15 @@
 		//get => Sapphire2025Models.Common.timeString(Note.TimeStamp.ToLocalTime());
 		get => Sapphire2025Models.Utils.autoDate(Note.TimeStamp);
 	}
+	private string? mvarMediaUrl;
+	private bool mvarMediaMissing;
+	private Guid mvarLoadedFor = Guid.Empty;
+
+	private string MediaExt => (Note.MediaExtension ?? string.Empty).Trim().TrimStart('.').ToLowerInvariant();
+	private bool IsImage => MediaExt is "jpg" or "jpeg" or "png" or "gif" or "webp";
+	private bool IsVideo => MediaExt is "mp4" or "webm";
+	private bool IsPdf => MediaExt is "pdf";
+
 	private bool CanLabel => Utils.isOfficial(Session);
 	private bool ShowLabelAction =>
 		CanLabel &&
@@ -85,12 +131,31 @@
 		if (ShowLabelAction)
 			await OnLabelRequested.InvokeAsync(Note);
 	}
-	protected override void OnParametersSet()
+	protected override async Task OnParametersSetAsync()
 	{
 		if (null != Users && Users.ContainsKey(Note.UserId)) 
 			mvarUser = Users[Note.UserId];
 		else
 			mvarUser = null;
-		base.OnParametersSet();
+
+		if (Note.HasMedia && Note.Id != Guid.Empty && Note.Id != mvarLoadedFor)
+		{
+			mvarLoadedFor = Note.Id;
+			mvarMediaMissing = false;
+			try
+			{
+				mvarMediaUrl = await mvarAeneasClient.noteMediaUrl(Note.Id);
+			}
+			catch
+			{
+				mvarMediaUrl = null;
+				mvarMediaMissing = true;
+			}
+		}
+	}
+
+	private void OnMediaError()
+	{
+		mvarMediaMissing = true;
 	}
 }

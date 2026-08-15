@@ -2,17 +2,17 @@
 @inject AeneasClient mvarAeneasClient
 @inject IntStorageService mvarIntStorage
 <div style="height: 80vh; overflow-y: auto;" class="bg-light rounded p-3">
-	@if(null==Notes)
+	@if(null==mcolNotes)
 	{
 		<h3>...</h3>
 	}
 	else
 	{
 		<CascadingValue Value="Users">
-			@foreach (NoteModel note in Notes)
+			@foreach (NoteModel note in mcolNotes)
 			{
 				<NoteChatEntry Note="@note"
-							   LastValidNoteTime="@LastValidNoteTime"
+							   LastValidNoteTime="@mvarLastValidNoteTime"
 							   OnLabelRequested="OpenLabelAsync" />
 			}
 		</CascadingValue>
@@ -34,9 +34,9 @@
 	public int MaxLines { get; set; } = 30; //Máximo de líneas a mostrar en el chat
 	[CascadingParameter]
 	public Dictionary<Guid, UserModelBase>? Users { get; set; }
-	private List<NoteModel>? Notes { get; set; } = new List<NoteModel>();
+	private List<NoteModel>? mcolNotes = new List<NoteModel>();
 	private bool mvarCanLabel;
-	private DateTime LastValidNoteTime { get; set; } = DateTime.MinValue;
+	private DateTime mvarLastValidNoteTime = DateTime.MinValue;
 	private NoteLabelDialog? mvarLabelDialog;
 
 	protected async override Task OnInitializedAsync()
@@ -44,14 +44,14 @@
 		SessionModel? session = await mvarIntStorage.GetSessionInfo();
 		mvarCanLabel = Utils.isOfficial(session);
 		int take = mvarCanLabel ? 0 : MaxLines;
-		Notes = await mvarAeneasClient.retrieveNotes(Parent, NoteType, take);
+		mcolNotes = await mvarAeneasClient.retrieveNotes(Parent, NoteType, take);
 		RefreshLastValid();
 	}
 
 	private void RefreshLastValid()
 	{
-		LastValidNoteTime = Notes is { Count: > 0 }
-			? Notes.Where(n => n.IsValid).Select(n => n.TimeStamp).DefaultIfEmpty(DateTime.MinValue).Max()
+		mvarLastValidNoteTime = mcolNotes is { Count: > 0 }
+			? mcolNotes.Where(n => n.IsValid).Select(n => n.TimeStamp).DefaultIfEmpty(DateTime.MinValue).Max()
 			: DateTime.MinValue;
 	}
 
@@ -59,14 +59,14 @@
 	{
 		if (mvarLabelDialog is null)
 			return;
-		bool hasOlderUnlabeled = Notes is not null &&
-			Notes.Any(n => !n.IsValid && n.Id != note.Id && n.TimeStamp > LastValidNoteTime && n.TimeStamp < note.TimeStamp);
+		bool hasOlderUnlabeled = mcolNotes is not null &&
+			mcolNotes.Any(n => !n.IsValid && n.Id != note.Id && n.TimeStamp > mvarLastValidNoteTime && n.TimeStamp < note.TimeStamp);
 		await mvarLabelDialog.ShowAsync(note, hasOlderUnlabeled);
 	}
 
 	private void OnNoteLabeled(NoteModel labeled)
 	{
-		NoteModel? existing = Notes?.FirstOrDefault(n => n.Id == labeled.Id);
+		NoteModel? existing = mcolNotes?.FirstOrDefault(n => n.Id == labeled.Id);
 		if (existing is not null)
 		{
 			existing.IsValid = true;
