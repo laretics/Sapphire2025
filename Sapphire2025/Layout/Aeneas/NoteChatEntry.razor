@@ -1,4 +1,5 @@
 ﻿@using Sapphire2025.Icons
+@using Sapphire2025Models
 <div class="d-flex @alineacion mb-3">
 	<div class="card shadow-sm" style="max-width: 75%;">
 		<div class="card-header @bgType text-white">
@@ -7,15 +8,38 @@
 			<small class="text-white float-end">@textoFecha</small>
 		</div>
 		<div class="card-body">
-			<p class="card-text">@Note.Text</p>
+			<p class="card-text mb-2">@Note.Text</p>
+			@if (ShowLabelAction)
+			{
+				<button type="button"
+						class="btn btn-sm btn-outline-primary"
+						@onclick="RequestLabelAsync">
+					<i class="bi bi-tag me-1"></i>Etiquetar
+				</button>
+			}
+			else if (ShowLabelBadge)
+			{
+				<div class="d-flex flex-wrap gap-1">
+					<span class="badge bg-success">@Common.TrainSystemName((Common.TrainSystem)Note.SystemAffected)</span>
+					<span class="badge @(Note.IsSymptom ? "bg-danger" : "bg-secondary")">
+						@(Note.IsSymptom ? "Síntoma" : "Resolución")
+					</span>
+				</div>
+			}
 		</div>
 	</div>
 </div>
 @code {
 	[Parameter]
 	public NoteModel Note { get; set; } = new NoteModel();
+	[Parameter]
+	public DateTime LastValidNoteTime { get; set; } = DateTime.MinValue;
+	[Parameter]
+	public EventCallback<NoteModel> OnLabelRequested { get; set; }
 	[CascadingParameter]
 	public Dictionary<Guid, UserModelBase>? Users { get; set; }
+	[CascadingParameter]
+	public SessionModel? Session { get; set; }
 	private UserModelBase? mvarUser { get; set; } = null;
 	private Sapphire2025Models.Common.UserRole Role 
 	{ 
@@ -48,6 +72,18 @@
 	{
 		//get => Sapphire2025Models.Common.timeString(Note.TimeStamp.ToLocalTime());
 		get => Sapphire2025Models.Utils.autoDate(Note.TimeStamp);
+	}
+	private bool CanLabel => Utils.isOfficial(Session);
+	private bool ShowLabelAction =>
+		CanLabel &&
+		OnLabelRequested.HasDelegate &&
+		!Note.IsValid &&
+		Note.TimeStamp > LastValidNoteTime;
+	private bool ShowLabelBadge => CanLabel && Note.IsValid;
+	private async Task RequestLabelAsync()
+	{
+		if (ShowLabelAction)
+			await OnLabelRequested.InvokeAsync(Note);
 	}
 	protected override void OnParametersSet()
 	{

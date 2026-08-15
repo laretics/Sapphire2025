@@ -116,6 +116,20 @@ namespace Sapphire2025.Storage
 				return await respuesta.Content.ReadFromJsonAsync<bool>();
 			return false;
 		}
+
+		/// <summary>
+		/// Etiqueta una nota (IsSymptom + SystemAffected) y marca IsValid = true.
+		/// </summary>
+		public async Task<bool> labelNote(Guid noteId, bool isSymptom, byte systemAffected)
+		{
+			Guid auxToken = await getCurrentToken();
+			NoteLabelRequestModel request = new NoteLabelRequestModel(auxToken, noteId, isSymptom, systemAffected);
+			string jsonData = JsonSerializer.Serialize(request);
+			HttpResponseMessage respuesta = await sendPostRequest("labelnote", jsonData);
+			if (respuesta.IsSuccessStatusCode)
+				return await respuesta.Content.ReadFromJsonAsync<bool>();
+			return false;
+		}
 		//Fuerza la modificación del andén actual del tren
 		public async Task<bool> changePlatform(TrainModel train)
 		{

@@ -358,6 +358,54 @@ namespace Sapphire2025Server.Controllers
 			return string.Join(';', parts);
 		}
 
+		/// <summary>
+		/// Etiquetado manual de una nota para entrenamiento del clasificador.
+		/// Solo Root, Engineer u Oficial. La nota debe ser posterior a la última
+		/// IsValid=true del mismo tren. Tras guardar, IsValid pasa a true.
+		/// </summary>
+		[HttpPost("labelnote")]
+		public async Task<bool> LabelNote(NoteLabelRequestModel? request)
+		{
+			if (request is null || request.NoteId == Guid.Empty)
+				return false;
+
+			if (request.SystemAffected == (byte)Common.TrainSystem.undefined ||
+				!Enum.IsDefined(typeof(Common.TrainSystem), request.SystemAffected))
+				return false;
+
+			User? actor = await retrieveSessionUser(request.SessionToken);
+			if (null == actor)
+				return false;
+
+			List<Common.UserRole> roles = await retrieveBasicRoles(actor.Id);
+			bool allowed =
+				roles.Contains(Common.UserRole.Root) ||
+				roles.Contains(Common.UserRole.Engineer) ||
+				roles.Contains(Common.UserRole.Oficial);
+			if (!allowed)
+				return false;
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				Note? nota = await almacen.Notes.FirstOrDefaultAsync(x => x.Id == request.NoteId);
+				if (null == nota)
+					return false;
+
+				DateTime? lastValid = await almacen.Notes
+					.AsNoTracking()
+					.Where(x => x.Parent == nota.Parent && x.IsValid)
+					.MaxAsync(x => (DateTime?)x.TimeStamp);
+
+				if (lastValid.HasValue && nota.TimeStamp <= lastValid.Value)
+					return false;
+
+				nota.IsSymptom = request.IsSymptom;
+				nota.SystemAffected = request.SystemAffected;
+				nota.IsValid = true;
+				return await almacen.SaveChangesAsync() > 0;
+			}
+		}
+
 		public static async Task<string> lastNoteStatic(Guid trainId, IConfiguration config)
 		{
 			using (DataStorage almacen = new DataStorage(config))

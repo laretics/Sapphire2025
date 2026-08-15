@@ -1,4 +1,6 @@
-﻿@inject AeneasClient mvarAeneasClient
+﻿@using Sapphire2025Models
+@inject AeneasClient mvarAeneasClient
+@inject IntStorageService mvarIntStorage
 <div style="height: 80vh; overflow-y: auto;" class="bg-light rounded p-3">
 	@if(null==Notes)
 	{
@@ -9,11 +11,14 @@
 		<CascadingValue Value="Users">
 			@foreach (NoteModel note in Notes)
 			{
-				<NoteChatEntry Note="@note" />
+				<NoteChatEntry Note="@note"
+							   LastValidNoteTime="@LastValidNoteTime"
+							   OnLabelRequested="OpenLabelAsync" />
 			}
 		</CascadingValue>
 	}
 </div>
+<NoteLabelDialog @ref="mvarLabelDialog" OnSaved="OnNoteLabeled" />
 
 @code {
 	///El noteChat es un documento que muestra las entradas de texto (y en un futuro gráficos)
@@ -30,9 +35,44 @@
 	[CascadingParameter]
 	public Dictionary<Guid, UserModelBase>? Users { get; set; }
 	private List<NoteModel>? Notes { get; set; } = new List<NoteModel>();
+	private bool mvarCanLabel;
+	private DateTime LastValidNoteTime { get; set; } = DateTime.MinValue;
+	private NoteLabelDialog? mvarLabelDialog;
 
 	protected async override Task OnInitializedAsync()
 	{
-		Notes = await mvarAeneasClient.retrieveNotes(Parent, NoteType,MaxLines);		
+		SessionModel? session = await mvarIntStorage.GetSessionInfo();
+		mvarCanLabel = Utils.isOfficial(session);
+		int take = mvarCanLabel ? 0 : MaxLines;
+		Notes = await mvarAeneasClient.retrieveNotes(Parent, NoteType, take);
+		RefreshLastValid();
+	}
+
+	private void RefreshLastValid()
+	{
+		LastValidNoteTime = Notes is { Count: > 0 }
+			? Notes.Where(n => n.IsValid).Select(n => n.TimeStamp).DefaultIfEmpty(DateTime.MinValue).Max()
+			: DateTime.MinValue;
+	}
+
+	private async Task OpenLabelAsync(NoteModel note)
+	{
+		if (mvarLabelDialog is null)
+			return;
+		bool hasOlderUnlabeled = Notes is not null &&
+			Notes.Any(n => !n.IsValid && n.Id != note.Id && n.TimeStamp > LastValidNoteTime && n.TimeStamp < note.TimeStamp);
+		await mvarLabelDialog.ShowAsync(note, hasOlderUnlabeled);
+	}
+
+	private void OnNoteLabeled(NoteModel labeled)
+	{
+		NoteModel? existing = Notes?.FirstOrDefault(n => n.Id == labeled.Id);
+		if (existing is not null)
+		{
+			existing.IsValid = true;
+			existing.IsSymptom = labeled.IsSymptom;
+			existing.SystemAffected = labeled.SystemAffected;
+		}
+		RefreshLastValid();
 	}
 }

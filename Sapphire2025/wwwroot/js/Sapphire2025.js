@@ -14,6 +14,13 @@ window.showModal = (modalId) => {
     modal.show();
 };
 
+window.hideModal = (modalId) => {
+    var el = document.getElementById(modalId);
+    if (!el) return;
+    var modal = bootstrap.Modal.getInstance(el);
+    if (modal) modal.hide();
+};
+
 //Función del foco por defecto.
 window.focusElement = (element) => {
     if (element && typeof element.focus == "function") {

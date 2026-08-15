@@ -1,5 +1,7 @@
 ﻿@using Sapphire2025.Icons
+@using Sapphire2025Models
 @inject AeneasClient mvarAeneasClient
+@inject IntStorageService mvarIntStorage
 
 <div style="height:100%; max-height:70vh; overflow-y:auto;" class="bg-light rounded p-3">
 	@if (Loading)
@@ -17,7 +19,9 @@
 			{
 				if (entry.Kind == FeedKind.Note && entry.Note is not null)
 				{
-					<NoteChatEntry Note="@entry.Note" />
+					<NoteChatEntry Note="@entry.Note"
+								   LastValidNoteTime="@LastValidNoteTime"
+								   OnLabelRequested="OpenLabelAsync" />
 				}
 				else if (entry.Kind == FeedKind.StatusChange && entry.StatusChange is not null)
 				{
@@ -66,6 +70,7 @@
 		</CascadingValue>
 	}
 </div>
+<NoteLabelDialog @ref="mvarLabelDialog" OnSaved="OnNoteLabeled" />
 
 @code {
 	///El noteChat es un documento que muestra las entradas de texto (y en un futuro gráficos)
@@ -86,6 +91,10 @@
 	private Guid lastParent = Guid.Empty;
 	private string lastNoteType = string.Empty;
 	private int lastMaxLines = -1;
+	private bool mvarCanLabel;
+	private bool mvarLabelRoleResolved;
+	private DateTime LastValidNoteTime { get; set; } = DateTime.MinValue;
+	private NoteLabelDialog? mvarLabelDialog;
 
 	private List<FeedEntry> FeedItems { get; set; } = new();
 	private bool Loading { get; set; } = true;
@@ -93,10 +102,18 @@
 	protected async override Task OnParametersSetAsync()
 	{
 		Loading = true;
+		if (!mvarLabelRoleResolved)
+		{
+			SessionModel? session = await mvarIntStorage.GetSessionInfo();
+			mvarCanLabel = Utils.isOfficial(session);
+			mvarLabelRoleResolved = true;
+		}
+
+		int take = mvarCanLabel ? 0 : MaxLines;
 		if (Parent != Guid.Empty &&
 		(Parent != lastParent || NoteType != lastNoteType || MaxLines != lastMaxLines))
 		{
-			Notes = await mvarAeneasClient.retrieveNotes(Parent, NoteType, MaxLines);
+			Notes = await mvarAeneasClient.retrieveNotes(Parent, NoteType, take);
 			DateTime auxOldest = DateTime.MinValue;
 			//Modificado por error con tablas vacías.
 			if (Notes is { Count: > 0 })
@@ -110,10 +127,40 @@
 			lastParent = Parent;
 			lastNoteType = NoteType;
 			lastMaxLines = MaxLines;
+			RefreshLastValid();
 		}
 
 		BuildFeed();
 		Loading = false;
+	}
+
+	private void RefreshLastValid()
+	{
+		LastValidNoteTime = Notes is { Count: > 0 }
+			? Notes.Where(n => n.IsValid).Select(n => n.TimeStamp).DefaultIfEmpty(DateTime.MinValue).Max()
+			: DateTime.MinValue;
+	}
+
+	private async Task OpenLabelAsync(NoteModel note)
+	{
+		if (mvarLabelDialog is null)
+			return;
+		bool hasOlderUnlabeled = Notes is not null &&
+			Notes.Any(n => !n.IsValid && n.Id != note.Id && n.TimeStamp > LastValidNoteTime && n.TimeStamp < note.TimeStamp);
+		await mvarLabelDialog.ShowAsync(note, hasOlderUnlabeled);
+	}
+
+	private void OnNoteLabeled(NoteModel labeled)
+	{
+		NoteModel? existing = Notes?.FirstOrDefault(n => n.Id == labeled.Id);
+		if (existing is not null)
+		{
+			existing.IsValid = true;
+			existing.IsSymptom = labeled.IsSymptom;
+			existing.SystemAffected = labeled.SystemAffected;
+		}
+		RefreshLastValid();
+		BuildFeed();
 	}
 
 	private string GetStatusColor(Sapphire2025Models.Common.TrainStatus status)
