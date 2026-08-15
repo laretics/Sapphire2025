@@ -93,12 +93,19 @@ namespace Diamond.Controls.Rendering
 			double x,
 			double y,
 			double sizePt,
-			string qrText)
+			string qrText,
+			string? moduleFill = null,
+			string? paperFill = null,
+			string? frameStroke = null)
 		{
 			if (sb is null || string.IsNullOrEmpty(qrText) || sizePt < 8)
 			{
 				return;
 			}
+
+			string dark = string.IsNullOrEmpty(moduleFill) ? "#000" : moduleFill;
+			string paper = string.IsNullOrEmpty(paperFill) ? "#fff" : paperFill;
+			string frame = string.IsNullOrEmpty(frameStroke) ? dark : frameStroke;
 
 			using QRCodeGenerator gen = new QRCodeGenerator();
 			using QRCodeData data = gen.CreateQrCode(qrText, QRCodeGenerator.ECCLevel.Q);
@@ -111,9 +118,8 @@ namespace Diamond.Controls.Rendering
 			double module = sizePt / modules;
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<g class=\"diamond-circ-qr\" opacity=\"0.92\">");
-			// Fondo blanco para contraste en impresión.
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{F(x)}\" y=\"{F(y)}\" width=\"{F(sizePt)}\" height=\"{F(sizePt)}\" fill=\"#fff\" stroke=\"#000\" stroke-width=\"0.4\"/>");
+				$"<rect x=\"{F(x)}\" y=\"{F(y)}\" width=\"{F(sizePt)}\" height=\"{F(sizePt)}\" fill=\"{paper}\" stroke=\"{frame}\" stroke-width=\"0.4\"/>");
 
 			int r = 0;
 			while (r < modules)
@@ -126,7 +132,7 @@ namespace Diamond.Controls.Rendering
 						double rx = x + c * module;
 						double ry = y + r * module;
 						sb.Append(CultureInfo.InvariantCulture,
-							$"<rect x=\"{F(rx)}\" y=\"{F(ry)}\" width=\"{F(module + 0.02)}\" height=\"{F(module + 0.02)}\" fill=\"#000\"/>");
+							$"<rect x=\"{F(rx)}\" y=\"{F(ry)}\" width=\"{F(module + 0.02)}\" height=\"{F(module + 0.02)}\" fill=\"{dark}\"/>");
 					}
 
 					c++;

@@ -1,0 +1,430 @@
+@namespace Diamond.Controls
+@using Diamond.Cabin
+@using Diamond.Controls.Rendering
+@using Diamond.Timed
+@using ProjectCirculation = Diamond.Project.Circulation
+@using ProjectModel = Diamond.Project.Project
+@inject IJSRuntime Js
+
+@*
+  Lista de marcha del tren activo (cabina):
+  mismas columnas que el libro itinerario, a todo el ancho, sin paginar.
+  Resalta la estación / dependencia o el tramo donde está el tren.
+*@
+<div @ref="mvarHost"
+	 class="cabin-itinerary-host @(NightMode ? "cabin-itinerary-host--night" : "cabin-itinerary-host--day")">
+	@if (!string.IsNullOrEmpty(mvarError))
+	{
+		<div class="cabin-itinerary-error">@mvarError</div>
+	}
+	else if (mcolFrontiers.Count == 0)
+	{
+		<div class="cabin-itinerary-error">No hay hoja de circulación para mostrar.</div>
+	}
+	else
+	{
+		<div class="cabin-itinerary-list" role="table" aria-label="Hoja de circulación">
+			<div class="cabin-itinerary-row cabin-itinerary-row--head" role="row">
+				<span class="cabin-itinerary-rail" aria-hidden="true"></span>
+				<span>Vía</span>
+				<span>PK</span>
+				<span>Max</span>
+				<span class="cabin-itinerary-dep-h">Dependencia</span>
+				<span>Com</span>
+				<span>Hora</span>
+				<span>Conc.</span>
+				<span>Obs.</span>
+			</div>
+			@for (int i = 0; i < mcolFrontiers.Count; i++)
+			{
+				CirculationSheetFrontier row = mcolFrontiers[i];
+				bool hereStop = mvarCursor.IsStation && mvarCursor.FrontierIndex == i;
+				bool axisBreak = i > 0 && !SameAxis(mcolFrontiers[i - 1].AxisId, row.AxisId);
+				string hora = RowClock(row, out string horaHalf);
+				string dwell = CirculationSheetDocument.FormatCommercialDwell(row.Dwell, out bool dwellDot);
+				bool trainStops = (row.IsOrigin || row.IsDestination || row.IsCommercialStop)
+					&& row.MarkKind != CirculationSheetMarkKind.SpeedLimitChange;
+
+				<div class="@StopRowClass(hereStop, axisBreak)" role="row">
+					<span class="cabin-itinerary-rail">
+						@if (hereStop)
+						{
+							<span class="cabin-itinerary-now" title="Posición actual"></span>
+						}
+					</span>
+					<span class="cabin-itinerary-via"></span>
+					<span class="cabin-itinerary-pk">@row.StationKm</span>
+					<span class="cabin-itinerary-vmax"></span>
+					<span class="cabin-itinerary-dep">
+						<span class="@DepNameClass(trainStops)">@row.DependencyName</span>
+						<span class="cabin-itinerary-dep-dots" aria-hidden="true"></span>
+					</span>
+					<span class="cabin-itinerary-com">
+						@if (dwellDot)
+						{
+							<span class="cabin-itinerary-com-dot" aria-label="Parada breve"></span>
+						}
+						else
+						{
+							@dwell
+						}
+					</span>
+					<span class="cabin-itinerary-hora">
+						@if (hora.Length > 0)
+						{
+							<span>@hora</span>
+							@if (horaHalf.Length > 0)
+							{
+								<sup>@horaHalf</sup>
+							}
+						}
+					</span>
+					<span class="cabin-itinerary-conc"></span>
+					<span class="cabin-itinerary-obs">@row.CrossingTrains</span>
+				</div>
+
+				@if (i < mcolFrontiers.Count - 1)
+				{
+					bool hereLeg = mvarCursor.IsSegment && mvarCursor.FrontierIndex == i;
+					string via = mcolViaLabel[i];
+					string vmax = mcolVmaxLabel[i];
+					string granted = CirculationSheetDocument.FormatGrantedMinutes(row.GrantedToNext);
+					string progressStyle = hereLeg
+						? "--leg-progress:" + mvarCursor.Progress.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)
+						: string.Empty;
+
+					<div class="@LegRowClass(hereLeg)" style="@progressStyle" role="row">
+						<span class="cabin-itinerary-rail">
+							@if (hereLeg)
+							{
+								<span class="cabin-itinerary-now cabin-itinerary-now--leg" title="En este tramo"></span>
+							}
+						</span>
+						<span class="cabin-itinerary-via">@via</span>
+						<span class="cabin-itinerary-pk"></span>
+						<span class="cabin-itinerary-vmax">@vmax</span>
+						<span class="cabin-itinerary-dep cabin-itinerary-dep--leg"></span>
+						<span class="cabin-itinerary-com"></span>
+						<span class="cabin-itinerary-hora"></span>
+						<span class="cabin-itinerary-conc">@granted</span>
+						<span class="cabin-itinerary-obs"></span>
+					</div>
+				}
+			}
+		</div>
+	}
+</div>
+
+@code {
+	private readonly List<CirculationSheetFrontier> mcolFrontiers = new List<CirculationSheetFrontier>();
+	private string[] mcolViaLabel = Array.Empty<string>();
+	private string[] mcolVmaxLabel = Array.Empty<string>();
+	private string? mvarError;
+	private string mvarDocKey = string.Empty;
+	private string mvarCursorKey = string.Empty;
+	private CabinItineraryCursor mvarCursor = CabinItineraryCursor.None;
+	private ElementReference mvarHost;
+	private bool mvarNeedScroll;
+
+	[Parameter]
+	public ProjectCirculation? Circulation { get; set; }
+
+	[Parameter]
+	public TopoLayout? Topo { get; set; }
+
+	[Parameter]
+	public ProjectModel? DayProject { get; set; }
+
+	[Parameter]
+	public string PlanName { get; set; } = string.Empty;
+
+	[Parameter]
+	public DayOfWeek? PlanningDay { get; set; }
+
+	[Parameter]
+	public bool NightMode { get; set; }
+
+	[Parameter]
+	public long RoutePk { get; set; }
+
+	[Parameter]
+	public long StationAreaMeters { get; set; } = CabinItinerary.DefaultStationAreaMeters;
+
+	protected override void OnParametersSet()
+	{
+		string docKey = BuildDocKey();
+		if (!string.Equals(docKey, mvarDocKey, StringComparison.Ordinal))
+		{
+			mvarDocKey = docKey;
+			RebuildDocument();
+		}
+
+		CabinItineraryCursor next = CabinItineraryCursor.Resolve(
+			mcolFrontiers,
+			RoutePk,
+			StationAreaMeters);
+		if (!string.Equals(next.Key, mvarCursorKey, StringComparison.Ordinal))
+		{
+			mvarCursorKey = next.Key;
+			mvarNeedScroll = next.Kind != CabinItineraryCursorKind.None;
+		}
+
+		mvarCursor = next;
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!mvarNeedScroll)
+		{
+			return;
+		}
+
+		mvarNeedScroll = false;
+		try
+		{
+			await Js.InvokeVoidAsync("diamondCabinItinerary.scrollHere", mvarHost);
+		}
+		catch
+		{
+		}
+	}
+
+	private string BuildDocKey()
+	{
+		System.Text.StringBuilder sb = new System.Text.StringBuilder(96);
+		sb.Append(PlanName ?? string.Empty);
+		sb.Append('|');
+		sb.Append(PlanningDay.HasValue ? ((int)PlanningDay.Value).ToString(System.Globalization.CultureInfo.InvariantCulture) : "-");
+		sb.Append('|');
+		if (Circulation is not null)
+		{
+			sb.Append(Circulation.TechnicalId ?? string.Empty);
+			sb.Append('@');
+			sb.Append(Circulation.Departure.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture));
+			sb.Append('#');
+			sb.Append(Circulation.Calls.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+		}
+		else
+		{
+			sb.Append('-');
+		}
+
+		sb.Append('|');
+		if (Topo is not null)
+		{
+			sb.Append(Topo.Axes.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+			sb.Append('/');
+			sb.Append(System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Topo)
+				.ToString(System.Globalization.CultureInfo.InvariantCulture));
+		}
+		else
+		{
+			sb.Append('-');
+		}
+
+		return sb.ToString();
+	}
+
+	private void RebuildDocument()
+	{
+		mcolFrontiers.Clear();
+		mcolViaLabel = Array.Empty<string>();
+		mcolVmaxLabel = Array.Empty<string>();
+		mvarError = null;
+		mvarCursorKey = string.Empty;
+
+		if (Circulation is null)
+		{
+			mvarError = "No hay tren seleccionado.";
+			return;
+		}
+
+		if (Topo is null)
+		{
+			mvarError = "No hay topología cargada para generar la hoja de circulación.";
+			return;
+		}
+
+		try
+		{
+			DayOfWeek? day = PlanningDay ?? DayProject?.PlanningDay;
+			ServiceDays? days = day.HasValue
+				? ServiceDays.FromDayOfWeekMask(day.Value)
+				: null;
+			string edition = string.IsNullOrWhiteSpace(PlanName)
+				? "Tourmaline"
+				: PlanName.Trim();
+
+			CirculationSheetDocument doc = CirculationSheetDocument.BuildFromProject(
+				Circulation,
+				Topo,
+				editionLabel: edition,
+				serviceDays: days);
+
+			int n = doc.Frontiers.Count;
+			int i = 0;
+			while (i < n)
+			{
+				mcolFrontiers.Add(doc.Frontiers[i]);
+				i++;
+			}
+
+			BuildSegmentLabels();
+			if (mcolFrontiers.Count == 0)
+			{
+				mvarError = "La hoja de circulación está vacía.";
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarError = "No se pudo generar la hoja de circulación: " + ex.Message;
+		}
+	}
+
+	private void BuildSegmentLabels()
+	{
+		int n = mcolFrontiers.Count;
+		mcolViaLabel = new string[Math.Max(0, n - 1)];
+		mcolVmaxLabel = new string[Math.Max(0, n - 1)];
+		if (n < 2)
+		{
+			return;
+		}
+
+		int i = 0;
+		while (i < n - 1)
+		{
+			bool isDouble = mcolFrontiers[i].OutgoingIsDoubleTrack;
+			int j = i + 1;
+			while (j < n - 1 && mcolFrontiers[j].OutgoingIsDoubleTrack == isDouble)
+			{
+				j++;
+			}
+
+			int mid = (i + j - 1) / 2;
+			if (mid < 0)
+			{
+				mid = i;
+			}
+
+			if (mid > n - 2)
+			{
+				mid = n - 2;
+			}
+
+			mcolViaLabel[mid] = isDouble ? "Doble" : "Única";
+			i = j;
+		}
+
+		i = 0;
+		while (i < n - 1)
+		{
+			int? vmax = mcolFrontiers[i].OutgoingVmaxKmh;
+			int j = i + 1;
+			while (j < n - 1 && SameVmax(mcolFrontiers[j].OutgoingVmaxKmh, vmax))
+			{
+				j++;
+			}
+
+			int mid = (i + j - 1) / 2;
+			if (mid < 0)
+			{
+				mid = i;
+			}
+
+			if (mid > n - 2)
+			{
+				mid = n - 2;
+			}
+
+			if (vmax.HasValue)
+			{
+				mcolVmaxLabel[mid] = vmax.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+			}
+
+			i = j;
+		}
+	}
+
+	private static bool SameVmax(int? a, int? b)
+	{
+		if (!a.HasValue && !b.HasValue)
+		{
+			return true;
+		}
+
+		if (!a.HasValue || !b.HasValue)
+		{
+			return false;
+		}
+
+		return a.Value == b.Value;
+	}
+
+	private static string StopRowClass(bool here, bool axisBreak)
+	{
+		if (here && axisBreak)
+		{
+			return "cabin-itinerary-row cabin-itinerary-row--stop cabin-itinerary-here cabin-itinerary-row--axis";
+		}
+
+		if (here)
+		{
+			return "cabin-itinerary-row cabin-itinerary-row--stop cabin-itinerary-here";
+		}
+
+		if (axisBreak)
+		{
+			return "cabin-itinerary-row cabin-itinerary-row--stop cabin-itinerary-row--axis";
+		}
+
+		return "cabin-itinerary-row cabin-itinerary-row--stop";
+	}
+
+	private static string LegRowClass(bool here)
+	{
+		return here
+			? "cabin-itinerary-row cabin-itinerary-row--leg cabin-itinerary-here"
+			: "cabin-itinerary-row cabin-itinerary-row--leg";
+	}
+
+	private static string DepNameClass(bool trainStops)
+	{
+		return trainStops
+			? "cabin-itinerary-dep-name cabin-itinerary-dep-name--stop"
+			: "cabin-itinerary-dep-name";
+	}
+
+	private static bool SameAxis(string a, string b)
+	{
+		if (string.IsNullOrEmpty(a) && string.IsNullOrEmpty(b))
+		{
+			return true;
+		}
+
+		return string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static string RowClock(CirculationSheetFrontier row, out string half)
+	{
+		TimeSpan? clock;
+		if (row.IsOrigin)
+		{
+			clock = row.Departure;
+		}
+		else if (row.IsDestination)
+		{
+			clock = row.Arrival ?? row.Departure;
+		}
+		else if (row.IsCommercialStop)
+		{
+			clock = row.Departure ?? row.Arrival;
+		}
+		else
+		{
+			clock = row.Departure ?? row.Arrival;
+		}
+
+		return CirculationSheetDocument.FormatSheetTime(clock, out half);
+	}
+}

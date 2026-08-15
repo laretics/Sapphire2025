@@ -25,7 +25,8 @@ namespace Diamond.Timed
 			Asimilation asimilation,
 			TrainSpecs specs,
 			TimeSpan departure,
-			string? color = null)
+			string? color = null,
+			string? serviceNumber = null)
 		{
 			if (asimilation is null)
 			{
@@ -45,6 +46,10 @@ namespace Diamond.Timed
 			mvarDeparture = departure;
 			mvarServiceNumber = string.Empty;
 			mvarColor = string.IsNullOrWhiteSpace(color) ? string.Empty : color.Trim();
+			if (!string.IsNullOrWhiteSpace(serviceNumber))
+			{
+				AssignServiceNumber(serviceNumber.Trim());
+			}
 		}
 
 		/// <summary>

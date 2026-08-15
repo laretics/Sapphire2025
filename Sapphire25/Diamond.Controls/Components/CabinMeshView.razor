@@ -97,40 +97,48 @@
 			mvarHeight = Height;
 		}
 
-		MeshRouteView? view = ResolveView();
-		long routePk = ResolveRoutePk(view);
-		bool increasing = ResolveIncreasing(view);
-
-		CabinMeshLayout layout = new CabinMeshLayout(
-			mvarWidth,
-			mvarHeight,
-			routePk,
-			increasing,
-			ClockNow.TimeOfDay);
-
-		CabinMeshPalette palette = CabinMeshPalette.ForNightMode(NightMode);
-		// Solo circulaciones de esta vista/eje (filtro también en el builder).
-		IReadOnlyList<ProjectCirculation>? cirs = DayProject?.Circulations;
-
-		int trainVmax = ActiveTrainVmaxKmh;
-		if (trainVmax <= 0 && ActiveCirculation is not null)
+		try
 		{
-			// Fallback SFM diésel típico si el host no indica Vmax.
-			trainVmax = 100;
+			MeshRouteView? view = ResolveView();
+			long routePk = ResolveRoutePk(view);
+			bool increasing = ResolveIncreasing(view);
+
+			CabinMeshLayout layout = new CabinMeshLayout(
+				mvarWidth,
+				mvarHeight,
+				routePk,
+				increasing,
+				ClockNow.TimeOfDay);
+
+			CabinMeshPalette palette = CabinMeshPalette.ForNightMode(NightMode);
+			IReadOnlyList<ProjectCirculation>? cirs = DayProject?.Circulations;
+
+			int trainVmax = ActiveTrainVmaxKmh;
+			if (trainVmax <= 0 && ActiveCirculation is not null)
+			{
+				trainVmax = 100;
+			}
+
+			CabinMeshSvgBuilder.Result result = CabinMeshSvgBuilder.Build(
+				layout,
+				palette,
+				view,
+				cirs,
+				ActiveCirculation,
+				NightMode,
+				trainVmax,
+				Topo);
+
+			mvarSvg = result.SvgMarkup;
+			mcolHits = result.Hits;
+			mvarRenderStamp++;
 		}
-
-		CabinMeshSvgBuilder.Result result = CabinMeshSvgBuilder.Build(
-			layout,
-			palette,
-			view,
-			cirs,
-			ActiveCirculation,
-			NightMode,
-			trainVmax);
-
-		mvarSvg = result.SvgMarkup;
-		mcolHits = result.Hits;
-		mvarRenderStamp++;
+		catch (Exception)
+		{
+			// Una vista/circulación mal resuelta no debe tumbar el panel ónice.
+			mcolHits = Array.Empty<CabinMeshSvgBuilder.HitSegment>();
+			mvarSvg = string.Empty;
+		}
 	}
 
 	private MeshRouteView? ResolveView()
@@ -142,21 +150,17 @@
 
 		if (ActiveCirculation is not null)
 		{
-			string viewId = ActiveCirculation.Asimilation.ViewId;
-			MeshRouteView? fromAsim = RouteViewResolver.TryFromViewId(Topo, viewId);
-			if (fromAsim is not null)
+			MeshRouteView? fromCir = RouteViewResolver.TryForCabinCirculation(
+				Topo,
+				ActiveCirculation.Asimilation.ViewId,
+				ActiveCirculation.Asimilation.PathSignature,
+				ActiveCirculation.Origin.Id,
+				ActiveCirculation.Destination.Id,
+				ActiveCirculation.Origin.Avr,
+				ActiveCirculation.Destination.Avr);
+			if (fromCir is not null)
 			{
-				return fromAsim;
-			}
-
-			// PathSignature a veces codifica ejes; si no, TryFindPath origen-destino.
-			TopoStation? from = Topo.FindStationById(ActiveCirculation.Origin.Id);
-			TopoStation? to = Topo.FindStationById(ActiveCirculation.Destination.Id);
-			if (from is not null && to is not null
-				&& MeshRouteView.TryFindPath(Topo, from, to, out MeshRouteView? path, out _, out _)
-				&& path is not null)
-			{
-				return path;
+				return fromCir;
 			}
 		}
 

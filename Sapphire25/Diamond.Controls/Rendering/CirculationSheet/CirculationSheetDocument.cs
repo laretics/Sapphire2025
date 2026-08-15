@@ -3,6 +3,8 @@ using Diamond.Basis;
 using Diamond.Motion;
 using Diamond.Timed;
 using Diamond.Topo;
+using ProjectCirculation = Diamond.Project.Circulation;
+using ProjectTimedCall = Diamond.Project.TimedCall;
 
 namespace Diamond.Controls.Rendering
 {
@@ -151,12 +153,45 @@ namespace Diamond.Controls.Rendering
 		/// <param name="serviceDays">
 		/// Días de circulación del tren (demanda o unión multi-día del plan de explotación).
 		/// </param>
+		/// <summary>
+		/// Ficha del tren activo en cabina: circulación de proyecto + topología viva.
+		/// Los horarios de parada salen del proyecto publicado; el resto se interpola.
+		/// </summary>
+		public static CirculationSheetDocument BuildFromProject(
+			ProjectCirculation circulation,
+			TopoLayout topo,
+			int maxFrontiersPerPage = CirculationSheetPager.DefaultMaxFrontiersPerPage,
+			string? editionLabel = null,
+			ServiceDays? serviceDays = null,
+			TrainSpecs? specs = null)
+		{
+			if (circulation is null)
+			{
+				throw new ArgumentNullException(nameof(circulation));
+			}
+
+			if (topo is null)
+			{
+				throw new ArgumentNullException(nameof(topo));
+			}
+
+			Circulation timed = CabinCirculationHydrator.ToTimed(circulation, topo, specs);
+			return Build(
+				timed,
+				mesh: null,
+				maxFrontiersPerPage,
+				editionLabel,
+				serviceDays,
+				scheduledTimes: circulation);
+		}
+
 		public static CirculationSheetDocument Build(
 			Circulation circulation,
 			Mesh? mesh,
 			int maxFrontiersPerPage = CirculationSheetPager.DefaultMaxFrontiersPerPage,
 			string? editionLabel = null,
-			ServiceDays? serviceDays = null)
+			ServiceDays? serviceDays = null,
+			ProjectCirculation? scheduledTimes = null)
 		{
 			if (circulation is null)
 			{
@@ -200,7 +235,7 @@ namespace Diamond.Controls.Rendering
 			}
 
 			List<CirculationSheetFrontier> frontiers = BuildFrontiers(
-				circulation, asim, view, originPk, destPk, increasing);
+				circulation, asim, view, originPk, destPk, increasing, scheduledTimes);
 			if (mesh is not null)
 			{
 				frontiers = AttachCrossings(frontiers, circulation, view, mesh);
@@ -515,7 +550,8 @@ namespace Diamond.Controls.Rendering
 			RouteView view,
 			long originPk,
 			long destPk,
-			bool increasing)
+			bool increasing,
+			ProjectCirculation? scheduledTimes)
 		{
 			// —— Paradas comerciales (dwell) ——
 			HashSet<long> commercialPk = new HashSet<long>();
@@ -653,7 +689,7 @@ namespace Diamond.Controls.Rendering
 					dwell = d2;
 				}
 
-				ResolveTimes(circulation, asim, pk, isOrigin, isDest, dwell, out TimeSpan? arr, out TimeSpan? dep);
+				ResolveTimes(circulation, asim, pk, isOrigin, isDest, dwell, scheduledTimes, out TimeSpan? arr, out TimeSpan? dep);
 
 				// Tramo saliente hacia la siguiente frontera.
 				int? outTracks = null;
@@ -681,6 +717,7 @@ namespace Diamond.Controls.Rendering
 
 					ResolveTimes(circulation, asim, nextPk, nextPk == originPk, nextPk == destPk,
 						dwellByPk.TryGetValue(nextPk, out TimeSpan nd) ? nd : TimeSpan.Zero,
+						scheduledTimes,
 						out TimeSpan? nextArr, out TimeSpan? nextDep);
 
 					bool nextCommercial = dwellByPk.ContainsKey(nextPk) || nextPk == destPk;
@@ -723,11 +760,17 @@ namespace Diamond.Controls.Rendering
 			bool isOrigin,
 			bool isDest,
 			TimeSpan dwell,
+			ProjectCirculation? scheduledTimes,
 			out TimeSpan? arrAbs,
 			out TimeSpan? depAbs)
 		{
 			arrAbs = null;
 			depAbs = null;
+			if (TryResolveScheduledTimes(scheduledTimes, pk, isOrigin, isDest, circulation.Departure, out arrAbs, out depAbs))
+			{
+				return;
+			}
+
 			if (isOrigin)
 			{
 				depAbs = circulation.Departure;
@@ -759,6 +802,129 @@ namespace Diamond.Controls.Rendering
 			{
 				arrAbs = depAbs;
 			}
+		}
+
+		/// <summary>
+		/// Horarios oficiales del proyecto publicado: parada exacta o interpolación entre llamadas.
+		/// </summary>
+		private static bool TryResolveScheduledTimes(
+			ProjectCirculation? scheduledTimes,
+			long pk,
+			bool isOrigin,
+			bool isDest,
+			TimeSpan trainDeparture,
+			out TimeSpan? arrAbs,
+			out TimeSpan? depAbs)
+		{
+			arrAbs = null;
+			depAbs = null;
+			if (scheduledTimes is null || scheduledTimes.Calls.Count == 0)
+			{
+				return false;
+			}
+
+			if (isOrigin)
+			{
+				arrAbs = trainDeparture;
+				depAbs = trainDeparture;
+				return true;
+			}
+
+			int i = 0;
+			while (i < scheduledTimes.Calls.Count)
+			{
+				ProjectTimedCall call = scheduledTimes.Calls[i];
+				if (call.Pk == pk)
+				{
+					arrAbs = call.Arrival;
+					depAbs = call.Departure;
+					return true;
+				}
+
+				i++;
+			}
+
+			// Interpolación entre llamadas colindantes (fronteras de V en plena vía).
+			ProjectTimedCall first = scheduledTimes.Calls[0];
+			ProjectTimedCall last = scheduledTimes.Calls[scheduledTimes.Calls.Count - 1];
+			bool increasing = first.Pk <= last.Pk;
+			int prev = -1;
+			int next = -1;
+			int k = 0;
+			while (k < scheduledTimes.Calls.Count)
+			{
+				long cpk = scheduledTimes.Calls[k].Pk;
+				if (increasing)
+				{
+					if (cpk <= pk)
+					{
+						prev = k;
+					}
+
+					if (cpk >= pk && next < 0)
+					{
+						next = k;
+					}
+				}
+				else
+				{
+					if (cpk >= pk)
+					{
+						prev = k;
+					}
+
+					if (cpk <= pk && next < 0)
+					{
+						next = k;
+					}
+				}
+
+				k++;
+			}
+
+			if (prev < 0 || next < 0 || prev == next)
+			{
+				if (isDest)
+				{
+					arrAbs = last.Arrival;
+					depAbs = last.Departure;
+					return true;
+				}
+
+				return false;
+			}
+
+			long pk0 = scheduledTimes.Calls[prev].Pk;
+			long pk1 = scheduledTimes.Calls[next].Pk;
+			long span = pk1 - pk0;
+			if (span == 0)
+			{
+				return false;
+			}
+
+			double u = (pk - pk0) / (double)span;
+			if (u < 0.0)
+			{
+				u = 0.0;
+			}
+
+			if (u > 1.0)
+			{
+				u = 1.0;
+			}
+
+			TimeSpan t0 = scheduledTimes.Calls[prev].Departure;
+			TimeSpan t1 = scheduledTimes.Calls[next].Arrival;
+			long ticks = t0.Ticks + (long)Math.Round((t1.Ticks - t0.Ticks) * u);
+			if (ticks < 0)
+			{
+				ticks = 0;
+			}
+
+			TimeSpan t = TimeSpan.FromTicks(ticks);
+			arrAbs = t;
+			depAbs = t;
+			return true;
 		}
 
 		private static long MidPk(long a, long b)

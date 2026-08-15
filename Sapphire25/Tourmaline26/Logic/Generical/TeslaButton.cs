@@ -19,6 +19,7 @@ namespace Tourmaline26.Logic.Generical
 			this.Comment = (null==comment)?string.Empty:comment;            
             this.IsToggle = toggled;
             this.Enabled = !disabled; //Por defecto, los botones están habilitados
+            this.DisableOnMotion = disabledOnMoving;
             this.Callback = callback??EventCallback.Empty;
         }
         public Guid Id => mvarId;
@@ -29,6 +30,8 @@ namespace Tourmaline26.Logic.Generical
         }
         public void DoToggle()
         {
+			if (!this.Enabled)
+				return;
 			if (IsToggle)
 				this.Selected = !this.Selected;
 		}

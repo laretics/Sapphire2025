@@ -27,13 +27,17 @@
                         </div>
                     }
                     <TeslaNavigationSection />
-                    @if (RightPanelVisible)
-                    {
-                        <SideMenu @ref="mvarSideMenu" />
-                    }
-                    else if (AeneasPanelVisible)
+                    @if (AeneasPanelVisible)
                     {
                         <AeneasLog />
+                    }
+                    else if (ItineraryPanelVisible)
+                    {
+                        <ItinerarySheet />
+                    }
+                    else if (RightPanelVisible)
+                    {
+                        <SideMenu @ref="mvarSideMenu" />
                     }
                 </div>
                 @if (mvarTourmaline.SystemConfig.ToniCruz != "right")
@@ -90,13 +94,20 @@
         UserSession = 9
     }
     private bool ZeroSpeed { get => mvarTourmaline.SessionConfig.CurrentSpeed < 10; }
+    private static readonly string[] OverlayPanelKeys =
+    {
+        "Cameras",
+        "Microphone",
+        "Itinerary",
+        "DamageClipboard"
+    };
     private Dictionary<string, TeslaButton?> buttonData = new Dictionary<string, TeslaButton?>();
     protected async override Task OnInitializedAsync()
     {
-        buttonData.Add("Main Menu", new TeslaButton("Train", null, true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged())));
+        buttonData.Add("Main Menu", new TeslaButton("Train", null, true, EventCallback.Factory.Create(this, () => OnPanelButtonChanged("Main Menu"))));
         buttonData.Add("Night Mode",new TeslaButton( "BlackSun", "WhiteSun", true, EventCallback.Factory.Create(this, () => NightModeChanged())));
-        buttonData.Add("Cameras", new TeslaButton("CCTV", null, true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged())));
-        buttonData.Add("Microphone", new TeslaButton("Microphone", null, true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged())));
+        buttonData.Add("Cameras", new TeslaButton("CCTV", null, true, EventCallback.Factory.Create(this, () => OnPanelButtonChanged("Cameras"))));
+        buttonData.Add("Microphone", new TeslaButton("Microphone", null, true, EventCallback.Factory.Create(this, () => OnPanelButtonChanged("Microphone"))));
         // Icon[0]=no seleccionado (3D apagado), Icon[1]=seleccionado (3D encendido). Debe coincidir con View3DEnabled.
         // Arranca activado: stream 3D visible e icono 3DOn.
         var view3D = new TeslaButton("3DOff", "3DOn", true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged()));
@@ -104,12 +115,13 @@
         buttonData.Add("View3D", view3D);
         buttonData.Add("Spc0", null);
         buttonData.Add("Spc1", null);
-        buttonData.Add("Mesh", new TeslaButton("Bezier", null, true, null,false,true));
-        buttonData.Add("DamageClipboard", new TeslaButton("Clipboard", null, true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged()),false,true));
+        buttonData.Add("Itinerary", new TeslaButton("Itinerary", null, true, EventCallback.Factory.Create(this, () => OnPanelButtonChanged("Itinerary")), false, false));
+        buttonData.Add("DamageClipboard", new TeslaButton("Clipboard", null, true, EventCallback.Factory.Create(this, () => OnPanelButtonChanged("DamageClipboard")),false,true));
         buttonData.Add("Login", new TeslaButton("KeyOff", "Key", false, EventCallback.Factory.Create(this, () => OnLoginRequest()), false, true));
         if (mvarTourmaline.SystemConfig.ToniCruz == "left")
             buttonData = buttonData.Reverse().ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
+        SyncPanelAvailability();
         mvarTourmaline.HMIUpdateRequested += auxHMIRefresh;
     }
     private bool auxButtonSelected(string index)
@@ -123,36 +135,103 @@
     }
     private void OnButtonInternalChanged()
     {
-        //Aprovechamos para validar la lógica de los botones de la barra de tareas.
-        auxButtonSelect("Login", null != mvarTourmaline.SessionConfig.Session) ;
-
-        //No se puede abrir ninguno de los botones si está seleccionado el modo de cámaras.
-        if(auxButtonSelected("Cameras"))
-        {
-            auxButtonSelect("Main Menu",false);
-            auxButtonSelect("DamageClipboard", false);
-            auxButtonSelect("Mesh", false);
-            auxButtonSelect("Microphone", false);
-        }
-        // Anuncios a viajeros: panel flotante exclusivo (como CCTV).
-        if (auxButtonSelected("Microphone"))
-        {
-            auxButtonSelect("Main Menu", false);
-            auxButtonSelect("DamageClipboard", false);
-            auxButtonSelect("Mesh", false);
-            auxButtonSelect("Cameras", false);
-        }
-        //No se puede abrir la sección de partes de avería si está seleccionado el menú principal.
-        if(auxButtonSelected("Main Menu"))
-        {
-            auxButtonSelect("DamageClipboard",false);
-            auxButtonSelect("Mesh", false);
-        }
-        if (auxButtonSelected("DamageClipboard"))
-            auxButtonSelect("Mesh", false);
-
+        auxButtonSelect("Login", null != mvarTourmaline.SessionConfig.Session);
+        SyncPanelAvailability();
         SyncMicrophoneAnnouncementIndicator();
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// Pila de paneles del área cliente: Main Menu es la base.
+    /// Las demás capas son excluyentes entre sí; al pulsar Main Menu se vacían.
+    /// </summary>
+    private void OnPanelButtonChanged(string key)
+    {
+        auxButtonSelect("Login", null != mvarTourmaline.SessionConfig.Session);
+
+        TeslaButton? pressed = GetPanelButton(key);
+        if (pressed is null)
+        {
+            OnButtonInternalChanged();
+            return;
+        }
+
+        if (!pressed.Enabled)
+        {
+            pressed.Selected = false;
+            SyncPanelAvailability();
+            SyncMicrophoneAnnouncementIndicator();
+            StateHasChanged();
+            return;
+        }
+
+        if (string.Equals(key, "Main Menu", StringComparison.Ordinal))
+        {
+            if (pressed.Selected)
+                DeselectOverlayPanels();
+        }
+        else if (pressed.Selected)
+        {
+            int i = 0;
+            while (i < OverlayPanelKeys.Length)
+            {
+                string other = OverlayPanelKeys[i];
+                if (!string.Equals(other, key, StringComparison.Ordinal))
+                    auxButtonSelect(other, false);
+                i++;
+            }
+        }
+
+        SyncPanelAvailability();
+        SyncMicrophoneAnnouncementIndicator();
+        StateHasChanged();
+    }
+
+    private TeslaButton? GetPanelButton(string index)
+    {
+        if (buttonData is null || !buttonData.TryGetValue(index, out var button))
+            return null;
+        return button;
+    }
+
+    private void DeselectOverlayPanels()
+    {
+        int i = 0;
+        while (i < OverlayPanelKeys.Length)
+        {
+            auxButtonSelect(OverlayPanelKeys[i], false);
+            i++;
+        }
+    }
+
+    private bool CanShowPanel(string key)
+    {
+        TeslaButton? button = GetPanelButton(key);
+        if (button is null || !button.Enabled || !button.Selected)
+            return false;
+
+        if (string.Equals(key, "Itinerary", StringComparison.Ordinal))
+            return HasActiveTrain;
+        if (string.Equals(key, "DamageClipboard", StringComparison.Ordinal))
+            return ZeroSpeed;
+        return true;
+    }
+
+    private string? VisibleOverlayKey
+    {
+        get
+        {
+            int i = 0;
+            while (i < OverlayPanelKeys.Length)
+            {
+                string key = OverlayPanelKeys[i];
+                if (CanShowPanel(key))
+                    return key;
+                i++;
+            }
+
+            return null;
+        }
     }
 
     /// <summary>
@@ -177,19 +256,52 @@
     }
     private bool AeneasPanelVisible
     {        
-        get => auxButtonSelected("DamageClipboard") && ZeroSpeed;
+        get => string.Equals(VisibleOverlayKey, "DamageClipboard", StringComparison.Ordinal);
+    }
+    private bool ItineraryPanelVisible
+    {
+        get => string.Equals(VisibleOverlayKey, "Itinerary", StringComparison.Ordinal);
+    }
+    private bool HasActiveTrain
+    {
+        get => mvarTourmaline.SessionConfig.Cabin?.Circulation is not null;
+    }
+
+    private void SyncPanelAvailability()
+    {
+        if (buttonData is null)
+            return;
+
+        bool zeroSpeed = ZeroSpeed;
+        foreach (TeslaButton? auxBoton in buttonData.Values)
+        {
+            if (null != auxBoton && auxBoton.DisableOnMotion)
+                auxBoton.Enabled = zeroSpeed;
+        }
+
+        if (buttonData.TryGetValue("Itinerary", out var itinerary) && itinerary is not null)
+            itinerary.Enabled = HasActiveTrain;
+
+        int i = 0;
+        while (i < OverlayPanelKeys.Length)
+        {
+            TeslaButton? overlay = GetPanelButton(OverlayPanelKeys[i]);
+            if (overlay is not null && !overlay.Enabled)
+                overlay.Selected = false;
+            i++;
+        }
     }
     private bool RightPanelVisible
     {
-        get => auxButtonSelected("Main Menu");
+        get => VisibleOverlayKey is null && auxButtonSelected("Main Menu");
     }
     private bool CameraViewMode
     {
-        get => auxButtonSelected("Cameras");
+        get => string.Equals(VisibleOverlayKey, "Cameras", StringComparison.Ordinal);
     }
     private bool PassengerAnnouncementViewMode
     {
-        get => auxButtonSelected("Microphone");
+        get => string.Equals(VisibleOverlayKey, "Microphone", StringComparison.Ordinal);
     }
     private bool View3DEnabled
     {
@@ -211,7 +323,7 @@
         {
             if (byte.TryParse(key, out _) && null != mvarTeclado)
                 await mvarTeclado.ManagePhysicalKeyboard(key);
-            if(auxButtonSelected("Main Menu") &&null!=mvarSideMenu)
+            if(RightPanelVisible && null!=mvarSideMenu)
                 await mvarSideMenu.ManagePhysicalKeyboard(key);
         }
     }
@@ -240,12 +352,7 @@
 
     private void auxHMIRefresh(object? sender, EventArgs e) 
     {
-        bool zeroSpeed = ZeroSpeed;
-        foreach (TeslaButton? auxBoton in buttonData.Values)
-        {
-            if (null != auxBoton && auxBoton.DisableOnMotion)
-                auxBoton.Enabled = zeroSpeed;
-        }
+        SyncPanelAvailability();
         SyncMicrophoneAnnouncementIndicator();
         InvokeAsync(StateHasChanged); 
     }
