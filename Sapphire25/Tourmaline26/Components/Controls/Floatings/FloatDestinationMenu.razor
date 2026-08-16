@@ -2,87 +2,114 @@
 @using Tourmaline26.Logic
 @using ProjectCirculation = Diamond.Project.Circulation
 <div class="floating-destination-menu @panelClass">
-    @if (byAll.Count() > 0)
+    @if (HasAnyList)
     {
-        <ul>
-            @foreach (ProjectCirculation cir in byAll)
-            {
-                <li>
-                    <FloatDestinationMenuCirculation Circulation="@cir" OnCirculationSelected="HandleCirculationSelected" />
-                </li>
-            }
-        </ul>
+        @if (byShift.Count > 0)
+        {
+            <section class="dest-bucket">
+                <header class="dest-bucket-title">
+                    Turno @(Environment?.DriverShiftName ?? "hoy")
+                    <span class="dest-bucket-count">@byShift.Count</span>
+                </header>
+                <div class="dest-bucket-list">
+                    @foreach (ProjectCirculation cir in byShift)
+                    {
+                        <FloatDestinationMenuCirculation Circulation="@cir" OnCirculationSelected="HandleCirculationSelected" />
+                    }
+                </div>
+            </section>
+        }
+        @if (byAll.Count > 0)
+        {
+            <section class="dest-bucket">
+                <header class="dest-bucket-title">
+                    Coincidencia múltiple
+                    <span class="dest-bucket-count">@byAll.Count</span>
+                </header>
+                <div class="dest-bucket-list">
+                    @foreach (ProjectCirculation cir in byAll)
+                    {
+                        <FloatDestinationMenuCirculation Circulation="@cir" OnCirculationSelected="HandleCirculationSelected" />
+                    }
+                </div>
+            </section>
+        }
+        @if (byName.Count > 0)
+        {
+            <section class="dest-bucket">
+                <header class="dest-bucket-title">
+                    Por número
+                    <span class="dest-bucket-count">@byName.Count</span>
+                </header>
+                <div class="dest-bucket-list">
+                    @foreach (ProjectCirculation cir in byName)
+                    {
+                        <FloatDestinationMenuCirculation Circulation="@cir" OnCirculationSelected="HandleCirculationSelected" />
+                    }
+                </div>
+            </section>
+        }
+        @if (byTime.Count > 0)
+        {
+            <section class="dest-bucket">
+                <header class="dest-bucket-title">
+                    Por hora de salida
+                    <span class="dest-bucket-count">@byTime.Count</span>
+                </header>
+                <div class="dest-bucket-list">
+                    @foreach (ProjectCirculation cir in byTime)
+                    {
+                        <FloatDestinationMenuCirculation Circulation="@cir" OnCirculationSelected="HandleCirculationSelected" />
+                    }
+                </div>
+            </section>
+        }
+        @if (byDestination.Count > 0)
+        {
+            <section class="dest-bucket">
+                <header class="dest-bucket-title">
+                    Por destino
+                    <span class="dest-bucket-count">@byDestination.Count</span>
+                </header>
+                <div class="dest-bucket-list">
+                    @foreach (ProjectCirculation cir in byDestination)
+                    {
+                        <FloatDestinationMenuCirculation Circulation="@cir" OnCirculationSelected="HandleCirculationSelected" />
+                    }
+                </div>
+            </section>
+        }
+        @if (byLocation.Count > 0)
+        {
+            <section class="dest-bucket">
+                <header class="dest-bucket-title">
+                    Por ubicación
+                    <span class="dest-bucket-count">@byLocation.Count</span>
+                </header>
+                <div class="dest-bucket-list">
+                    @foreach (ProjectCirculation cir in byLocation)
+                    {
+                        <FloatDestinationMenuCirculation Circulation="@cir" OnCirculationSelected="HandleCirculationSelected" />
+                    }
+                </div>
+            </section>
+        }
+    }
+    else if (string.IsNullOrWhiteSpace(SearchString))
+    {
+        <p class="dest-hint">
+            @(OnlyUpcoming
+                ? "No hay salidas posteriores a ahora. Desactive el pin para ver el día completo."
+                : "Escriba un número de tren, una hora o un destino.")
+        </p>
     }
     else
     {
-        <ul>
-            @if (byName.Count > 0)
-            {
-                <li>
-                    Por número
-                    <ul>
-                        <li>
-                            @string.Format("{0} trenes", byName.Count)
-                            @if (byName.Count < 11)
-                            {
-                                <ul>
-                                    @foreach (ProjectCirculation cir in byName)
-                                    {
-                                        <li>
-                                            <FloatDestinationMenuCirculation Circulation="@cir" OnCirculationSelected="HandleCirculationSelected" />
-                                        </li>
-                                    }
-                                </ul>
-                            }
-                        </li>
-                    </ul>
-                </li>
-            }
-            @if (byTime.Count > 0)
-            {
-                <li>
-                    Por hora de salida
-                    <ul>
-                        <li>
-                            @string.Format("{0} trenes", byTime.Count)
-                            @if (byTime.Count < 11)
-                            {
-                                <ul>
-                                    @foreach (ProjectCirculation cir in byTime)
-                                    {
-                                        <li>
-                                            <FloatDestinationMenuCirculation Circulation="@cir" OnCirculationSelected="HandleCirculationSelected" />
-                                        </li>
-                                    }
-                                </ul>
-                            }
-                        </li>
-                    </ul>
-                </li>
-            }
-            @if (byDestination.Count > 0)
-            {
-                <li>
-                    Por destino
-                    <ul>
-                        <li>
-                            @string.Format("{0} trenes", byDestination.Count)
-                            @if (byDestination.Count < 11)
-                            {
-                                <ul>
-                                    @foreach (ProjectCirculation cir in byDestination)
-                                    {
-                                        <li>
-                                            <FloatDestinationMenuCirculation Circulation="@cir" OnCirculationSelected="HandleCirculationSelected" />
-                                        </li>
-                                    }
-                                </ul>
-                            }
-                        </li>
-                    </ul>
-                </li>
-            }
-        </ul>
+        <p class="dest-hint">
+            @(OnlyUpcoming
+                ? $"Ninguna salida posterior coincide con «{SearchString}»."
+                : $"Ningún tren coincide con «{SearchString}».")
+        </p>
     }
 </div>
 
@@ -95,6 +122,8 @@
     public SessionConfiguration? Environment { get; set; }
     [Parameter]
     public EventCallback<ProjectCirculation> OnCirculationSelected { get; set; }
+    [Parameter]
+    public bool OnlyUpcoming { get; set; } = true;
 
     private Task HandleCirculationSelected(ProjectCirculation cir)
         => OnCirculationSelected.InvokeAsync(cir);
@@ -107,13 +136,22 @@
     private List<ProjectCirculation> byName = new List<ProjectCirculation>();
     private List<ProjectCirculation> byTime = new List<ProjectCirculation>();
     private List<ProjectCirculation> byDestination = new List<ProjectCirculation>();
-    private IEnumerable<ProjectCirculation> byAll = Array.Empty<ProjectCirculation>();
+    private List<ProjectCirculation> byLocation = new List<ProjectCirculation>();
+    private List<ProjectCirculation> byAll = new List<ProjectCirculation>();
+    private List<ProjectCirculation> byShift = new List<ProjectCirculation>();
+
+    private bool HasAnyList =>
+        byShift.Count > 0
+        || byAll.Count > 0
+        || byName.Count > 0
+        || byTime.Count > 0
+        || byDestination.Count > 0
+        || byLocation.Count > 0;
 
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
         DoSearch();
-        StateHasChanged();
     }
 
     private void DoSearch()
@@ -121,21 +159,53 @@
         byName.Clear();
         byTime.Clear();
         byDestination.Clear();
-        byAll = Array.Empty<ProjectCirculation>();
+        byLocation.Clear();
+        byAll.Clear();
+        byShift.Clear();
 
         if (null == Environment?.Cabin)
             return;
+
+        if (Environment.HasDriverShiftToday)
+        {
+            byShift.AddRange(Environment.Cabin.CirculationsForShiftTokens(
+                Environment.DriverShiftTrainTokens,
+                SearchString));
+        }
 
         Environment.Cabin.SearchBuckets(
             SearchString,
             out IReadOnlyList<ProjectCirculation> names,
             out IReadOnlyList<ProjectCirculation> times,
             out IReadOnlyList<ProjectCirculation> dests,
+            out IReadOnlyList<ProjectCirculation> locs,
             out IReadOnlyList<ProjectCirculation> multi);
 
-        byName.AddRange(names);
-        byTime.AddRange(times);
-        byDestination.AddRange(dests);
-        byAll = multi;
+        TimeSpan now = Environment.Cabin.ClockNow.TimeOfDay;
+        byName.AddRange(FilterUpcoming(names, now));
+        byTime.AddRange(FilterUpcoming(times, now));
+        byDestination.AddRange(FilterUpcoming(dests, now));
+        byLocation.AddRange(FilterUpcoming(locs, now));
+        byAll.AddRange(FilterUpcoming(multi, now));
+        if (byShift.Count > 0)
+        {
+            List<ProjectCirculation> upcomingShift = FilterUpcoming(byShift, now);
+            byShift.Clear();
+            byShift.AddRange(upcomingShift);
+        }
+    }
+
+    private List<ProjectCirculation> FilterUpcoming(
+        IEnumerable<ProjectCirculation> source,
+        TimeSpan now)
+    {
+        List<ProjectCirculation> salida = new List<ProjectCirculation>();
+        foreach (ProjectCirculation cir in source)
+        {
+            if (!OnlyUpcoming || cir.Departure > now)
+                salida.Add(cir);
+        }
+
+        return salida;
     }
 }

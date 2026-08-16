@@ -1,0 +1,12 @@
+.diamond-day-group {
+	display: flex;
+	flex-wrap: nowrap;
+	width: 100%;
+}
+
+.diamond-day-group > .btn {
+	flex: 1 1 0;
+	padding-left: 0.15rem;
+	padding-right: 0.15rem;
+	text-transform: capitalize;
+}

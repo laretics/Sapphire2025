@@ -1,5 +1,6 @@
 ﻿@* <VirtualKeyboard></VirtualKeyboard> *@
 @using System.Threading.Tasks
+@using Sapphire2025Models.Authentication
 @using Tourmaline26.Components.Controls
 @using Tourmaline26.Components.Controls.Cameras
 @using Tourmaline26.Components.Controls.Generical
@@ -8,6 +9,8 @@
 @using Tourmaline26.Components.Controls.Passenger
 @inject ILogger<DriverInfotaiment> Logger
 @inject Sapphire2025.Storage.IntStorageService InternalStorage
+@inject Sapphire2025.Storage.DiamondClient DiamondClient
+@inject Sapphire2025.Storage.ExpertClient ExpertClient
 <div class="tesla-root @(NightMode?" night":"")">
     @if(mvarTourmaline.SessionConfig.Initialized)
     {
@@ -101,6 +104,15 @@
         "Itinerary",
         "DamageClipboard"
     };
+    private static readonly string[] SessionRequiredKeys =
+    {
+        "Cameras",
+        "Microphone",
+        "View3D",
+        "Itinerary",
+        "DamageClipboard"
+    };
+    private bool HasSession => mvarTourmaline.SessionConfig.Session is not null;
     private Dictionary<string, TeslaButton?> buttonData = new Dictionary<string, TeslaButton?>();
     protected async override Task OnInitializedAsync()
     {
@@ -272,6 +284,7 @@
         if (buttonData is null)
             return;
 
+        bool loggedIn = HasSession;
         bool zeroSpeed = ZeroSpeed;
         foreach (TeslaButton? auxBoton in buttonData.Values)
         {
@@ -282,6 +295,27 @@
         if (buttonData.TryGetValue("Itinerary", out var itinerary) && itinerary is not null)
             itinerary.Enabled = HasActiveTrain;
 
+        int s = 0;
+        while (s < SessionRequiredKeys.Length)
+        {
+            string key = SessionRequiredKeys[s];
+            TeslaButton? required = GetPanelButton(key);
+            if (required is not null)
+            {
+                if (!loggedIn)
+                {
+                    required.Enabled = false;
+                }
+                else if (!required.DisableOnMotion
+                    && !string.Equals(key, "Itinerary", StringComparison.Ordinal))
+                {
+                    required.Enabled = true;
+                }
+            }
+
+            s++;
+        }
+
         int i = 0;
         while (i < OverlayPanelKeys.Length)
         {
@@ -290,6 +324,10 @@
                 overlay.Selected = false;
             i++;
         }
+
+        TeslaButton? view3d = GetPanelButton("View3D");
+        if (view3d is not null && !view3d.Enabled)
+            view3d.Selected = false;
     }
     private bool RightPanelVisible
     {
@@ -392,12 +430,40 @@
     }
     protected async Task OnUserLogin((string username, string password) credentials)
     {
-        // Aquí iría la lógica de autenticación real
-        // Por ahora, simplemente salimos del modo de login
-        await mvarTourmaline.UserLogin(credentials.username, credentials.password);
-        await InternalStorage.SetSessionInfo(mvarTourmaline.SessionConfig.Session);
+        SessionModel? session = await mvarTourmaline.UserLogin(credentials.username, credentials.password);
+        if (session is not null)
+        {
+            await InternalStorage.SetSessionInfo(session);
+            TeslaButton? view3d = GetPanelButton("View3D");
+            if (view3d is not null)
+                view3d.Selected = true;
+        }
+
         LoginMode = false;
         OnButtonInternalChanged();
+
+        if (session is not null)
+        {
+            try
+            {
+                await mvarTourmaline.TrySyncAfterLoginAsync(DiamondClient);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Resincronización Sapphire tras login omitida");
+            }
+
+            try
+            {
+                await mvarTourmaline.TryLoadDriverShiftAsync(ExpertClient);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Turno grafiado no cargado tras login");
+            }
+
+            OnButtonInternalChanged();
+        }
     }
 
 }

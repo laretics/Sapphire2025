@@ -2,10 +2,48 @@
 	position: absolute;
 	top: 115px;
 	left: 16px;
-	width: 300px;
-	min-height: 360px;
+	width: 420px;
+	max-height: 62vh;
+	overflow-y: auto;
 	border-radius: 16px;
 	box-shadow: 0 4px 24px rgba(0,0,0,0.15);
-	padding: 20px;
+	padding: 14px 16px 18px;
 	z-index: 100;
+}
+
+.dest-bucket {
+	margin-bottom: 0.85rem;
+}
+
+.dest-bucket:last-child {
+	margin-bottom: 0;
+}
+
+.dest-bucket-title {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 0.78rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	opacity: 0.72;
+	margin-bottom: 0.35rem;
+}
+
+.dest-bucket-count {
+	font-weight: 600;
+	opacity: 0.8;
+}
+
+.dest-bucket-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+
+.dest-hint {
+	margin: 0.4rem 0 0;
+	opacity: 0.65;
+	font-size: 0.95rem;
 }

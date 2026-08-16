@@ -1,26 +1,42 @@
 @using Tourmaline26.Components.Images
 @using Tourmaline26.Logic
-<div class="floating-destination-panel @panelClass">
+<div class="floating-destination-panel @panelClass @(IsSearching || HasCirculation ? "is-open" : "is-idle")"
+     role="button"
+     tabindex="0"
+     @onclick="OnPanelClick"
+     @onkeydown="OnPanelKey">
     @if(null!=Environment && null!=Environment.Cabin)
     {
-        @if(null==Environment.Cabin.Circulation)
+        @if(IsSearching)
         {
             <ColorIcon Name="Search" Size="32"/>
-            <span class="fs-4">
-            @if(null!=mvarSearchString && mvarSearchString.Length>0)
-            {
-                @mvarSearchString
-            }
-            else
-            {
-                <button class="btn btn-outline-dark border-0" onclick="@onSearchCirculation">Destino</button>
-            }
+            <span class="fs-4 dest-query">
+                @if (!string.IsNullOrEmpty(mvarSearchString))
+                {
+                    @mvarSearchString
+                }
+                else
+                {
+                    <span class="dest-placeholder">Número, hora o destino…</span>
+                }
             </span>
+            <button type="button"
+                    class="dest-pin-btn @(OnlyUpcoming ? "is-on" : "is-off")"
+                    title="@(OnlyUpcoming ? "Sólo salidas posteriores a ahora" : "Todos los trenes del día")"
+                    @onclick="OnPinClick"
+                    @onclick:stopPropagation="true">
+                <ColorIcon Name="@(OnlyUpcoming ? "PinOn" : "PinOff")" Size="28" />
+            </button>
+        }
+        else if(HasCirculation)
+        {
+            <span class="fs-2">@ServiceLabel</span>
+            <span class="fs-5 dest-route">@RouteLabel</span>
         }
         else
         {
-            <span class="fs-2">@ServiceLabel</span>
-            <span class="fs-5">  @RouteLabel</span>
+            <ColorIcon Name="Search" Size="32"/>
+            <span class="fs-4 dest-placeholder">Destino</span>
         }
     }
 </div>
@@ -34,14 +50,33 @@
     SessionConfiguration? Environment{ get; set; }
     [Parameter]
     public EventCallback OnBeginSearchCirculation{ get; set; }
+    [Parameter]
+    public EventCallback OnToggleUpcoming { get; set; }
+    [Parameter]
+    public bool IsSearching { get; set; }
+    [Parameter]
+    public bool OnlyUpcoming { get; set; } = true;
+
+    private bool HasCirculation => Environment?.Cabin?.Circulation is not null;
 
     private string panelClass
     {
         get => string.Format("floating-panel {0}", NightMode ? "night" : "day");
     }
-    private async Task onSearchCirculation()
+    private async Task OnPanelClick()
     {
         await OnBeginSearchCirculation.InvokeAsync();
+    }
+
+    private async Task OnPinClick()
+    {
+        await OnToggleUpcoming.InvokeAsync();
+    }
+
+    private async Task OnPanelKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" || e.Key == " ")
+            await OnBeginSearchCirculation.InvokeAsync();
     }
 
     private string ServiceLabel

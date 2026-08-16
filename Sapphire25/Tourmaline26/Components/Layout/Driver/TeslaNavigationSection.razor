@@ -4,14 +4,19 @@
 @using Tourmaline26.Components.Controls
 @using ProjectCirculation = Diamond.Project.Circulation
 @inject TourmalineService Tourmaline
+@inject Sapphire2025.Storage.ExpertClient ExpertClient
     <CascadingValue Value="Tourmaline.SessionConfig">
         <TeslaTopRightBar />
         <CascadingValue Value="mvarSearchString">
         <FloatDestinationInput
-            OnBeginSearchCirculation="BeginSearchCirculation"/>
+            IsSearching="mvarSearchingCirculation"
+            OnlyUpcoming="mvarOnlyUpcoming"
+            OnBeginSearchCirculation="BeginSearchCirculation"
+            OnToggleUpcoming="ToggleUpcoming"/>
         @if (mvarSearchingCirculation)
         {
             <FloatDestinationMenu
+                OnlyUpcoming="mvarOnlyUpcoming"
                 OnCirculationSelected="CirculationSelected"/>
 
             <VirtualKeyboard
@@ -35,6 +40,7 @@
     </CascadingValue>
 @code {
     private bool mvarSearchingCirculation { get; set; } = false;
+    private bool mvarOnlyUpcoming { get; set; } = true;
     private string? mvarSearchString = null;
 
     protected override void OnInitialized()
@@ -50,11 +56,31 @@
     {
         InvokeAsync(StateHasChanged);
     }
-    private void BeginSearchCirculation()
+    private async Task BeginSearchCirculation()
     {
         mvarSearchingCirculation = true;
+        if (Tourmaline.SessionConfig.Session is not null
+            && !Tourmaline.SessionConfig.DriverShiftLoaded)
+        {
+            try
+            {
+                await Tourmaline.TryLoadDriverShiftAsync(ExpertClient);
+            }
+            catch
+            {
+                // Sin turno: la lista de maquinista no aparece.
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleUpcoming()
+    {
+        mvarOnlyUpcoming = !mvarOnlyUpcoming;
         InvokeAsync(StateHasChanged);
     }
+
     private async Task TerminateCirculation()
     {
         mvarSearchString = null;

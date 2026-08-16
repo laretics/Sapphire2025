@@ -131,6 +131,23 @@ namespace Tourmaline26.Logic
 		public SessionModel? Session { get; set; } = null;
 		public Dictionary<Guid, UserModelBase>? ColUsers { get; set; } = null;
 
+		/// <summary>Nombre del turno grafiado hoy (solo si el usuario es maquinista con asignación).</summary>
+		public string? DriverShiftName { get; set; }
+
+		/// <summary>Números de tren del turno de hoy (tokens del gráfico).</summary>
+		public List<string> DriverShiftTrainTokens { get; } = new List<string>();
+
+		public bool DriverShiftLoaded { get; set; }
+
+		public bool HasDriverShiftToday => DriverShiftTrainTokens.Count > 0;
+
+		public void ClearDriverShift()
+		{
+			DriverShiftName = null;
+			DriverShiftTrainTokens.Clear();
+			DriverShiftLoaded = false;
+		}
+
 		/// <summary>
 		/// Entorno Diamond de cabina (topo + plan publicado + misión).
 		/// </summary>

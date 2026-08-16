@@ -40,7 +40,8 @@
         {
             if (null == Circulation)
                 return string.Empty;
-            return Circulation.HasServiceNumber ? Circulation.ServiceNumber : Circulation.Id;
+            string number = Circulation.HasServiceNumber ? Circulation.ServiceNumber : Circulation.Id;
+            return number + "  " + Circulation.Origin.DisplayCode + "→" + Circulation.Destination.DisplayCode;
         }
     }
 

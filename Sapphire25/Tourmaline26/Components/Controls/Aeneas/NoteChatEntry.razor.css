@@ -1,0 +1,5 @@
+.note-media img,
+.note-media video {
+	max-height: 240px;
+	object-fit: contain;
+}
