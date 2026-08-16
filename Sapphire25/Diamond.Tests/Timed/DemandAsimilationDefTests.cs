@@ -166,6 +166,143 @@ namespace Diamond.Tests.Timed
 			Assert.NotEmpty(toPmi);
 			Assert.All(toMan, c => Assert.StartsWith("49", c.ServiceNumber));
 			Assert.All(toPmi, c => Assert.StartsWith("48", c.ServiceNumber));
+			Assert.All(toMan, c =>
+			{
+				int n = int.Parse(c.ServiceNumber, System.Globalization.CultureInfo.InvariantCulture);
+				Assert.Equal(1, n % 2);
+			});
+			Assert.All(toPmi, c =>
+			{
+				int n = int.Parse(c.ServiceNumber, System.Globalization.CultureInfo.InvariantCulture);
+				Assert.Equal(0, n % 2);
+			});
+		}
+
+		[Fact]
+		public void Numbering_DirectedAsim_SamePattern_OddAscendingEvenDescending()
+		{
+			TopoLayout topo = DemoInfrastructure();
+			string script = """
+				plan "weekend"
+				days fes
+				  asim PMI -> SPB numbers 48## color #30e3e3
+				  asim SPB -> PMI numbers 48## color #30e3e3
+				  asim PMI -> MAN numbers 44## color #e3e330
+				  asim MAN -> PMI numbers 44## color #e3e330
+				req 1/h PMI -> SPB 06:35-09:40 as R-spb-up
+				  days fes
+				  stops 30s
+				req 1/h SPB -> PMI 08:08-11:09 as R-spb-down
+				  days fes
+				  stops 30s
+				req 1/h PMI -> MAN 06:04-09:05 as R-man-up
+				  days fes
+				  stops 30s
+				req 1/h MAN -> PMI 06:25-09:25 as R-man-down
+				  days fes
+				  stops 30s
+				""";
+
+			Plan plan = new Plan(topo);
+			plan.EnsureDefaultTrainSpecs();
+			DemandCompileResult compiled = plan.CompileDemand(script);
+			Assert.True(compiled.Success, string.Join("; ", compiled.Errors));
+
+			Mesh mesh = new MeshPlanner(plan).Solve(DayOfWeek.Sunday);
+			Assert.True(mesh.Circulations.Count >= 4);
+
+			List<Circulation> toSpb = mesh.Circulations
+				.Where(c => DestinationAvr(c, "SPB"))
+				.OrderBy(c => c.Departure)
+				.ToList();
+			List<Circulation> fromSpb = mesh.Circulations
+				.Where(c => OriginAvr(c, "SPB"))
+				.OrderBy(c => c.Departure)
+				.ToList();
+			List<Circulation> toMan = mesh.Circulations
+				.Where(c => DestinationAvr(c, "MAN"))
+				.OrderBy(c => c.Departure)
+				.ToList();
+			List<Circulation> fromMan = mesh.Circulations
+				.Where(c => OriginAvr(c, "MAN"))
+				.OrderBy(c => c.Departure)
+				.ToList();
+
+			Assert.NotEmpty(toSpb);
+			Assert.NotEmpty(fromSpb);
+			Assert.NotEmpty(toMan);
+			Assert.NotEmpty(fromMan);
+
+			Assert.All(toSpb, c => AssertParity(c, series: 48, odd: true));
+			Assert.All(fromSpb, c => AssertParity(c, series: 48, odd: false));
+			Assert.All(toMan, c => AssertParity(c, series: 44, odd: true));
+			Assert.All(fromMan, c => AssertParity(c, series: 44, odd: false));
+
+			AssertSequentialStep(toSpb, 2);
+			AssertSequentialStep(fromSpb, 2);
+			AssertSequentialStep(toMan, 2);
+			AssertSequentialStep(fromMan, 2);
+		}
+
+		[Fact]
+		public void Numbering_DirectedAsim_OneDirectionOnly_StillOddIfAscending()
+		{
+			TopoLayout topo = DemoInfrastructure();
+			string script = """
+				plan "solo-ida"
+				days lab
+				  asim PMI -> MAN numbers 44##
+				require every 60 min PMI -> MAN 06:00-08:00 as R-up
+				  days lab
+				  stops 30s
+				""";
+
+			Plan plan = new Plan(topo);
+			plan.EnsureDefaultTrainSpecs();
+			Assert.True(plan.CompileDemand(script).Success);
+
+			Mesh mesh = new MeshPlanner(plan).Solve(DayOfWeek.Monday);
+			Assert.NotEmpty(mesh.Circulations);
+			Assert.All(mesh.Circulations, c => AssertParity(c, series: 44, odd: true));
+			AssertSequentialStep(
+				mesh.Circulations.OrderBy(c => c.Departure).ToList(),
+				2);
+		}
+
+		private static bool OriginAvr(Circulation circulation, string avr)
+		{
+			return string.Equals(
+				circulation.Asimilation.Origin.Station.Avr,
+				avr,
+				StringComparison.OrdinalIgnoreCase);
+		}
+
+		private static bool DestinationAvr(Circulation circulation, string avr)
+		{
+			return string.Equals(
+				circulation.Asimilation.Destination.Station.Avr,
+				avr,
+				StringComparison.OrdinalIgnoreCase);
+		}
+
+		private static void AssertParity(Circulation circulation, int series, bool odd)
+		{
+			Assert.True(circulation.HasServiceNumber);
+			int n = int.Parse(circulation.ServiceNumber, System.Globalization.CultureInfo.InvariantCulture);
+			Assert.Equal(series, n / 100);
+			Assert.Equal(odd ? 1 : 0, n % 2);
+		}
+
+		private static void AssertSequentialStep(List<Circulation> ordered, int step)
+		{
+			int i = 1;
+			while (i < ordered.Count)
+			{
+				int prev = int.Parse(ordered[i - 1].ServiceNumber, System.Globalization.CultureInfo.InvariantCulture);
+				int cur = int.Parse(ordered[i].ServiceNumber, System.Globalization.CultureInfo.InvariantCulture);
+				Assert.Equal(prev + step, cur);
+				i++;
+			}
 		}
 
 		private static TopoLayout DemoInfrastructure()

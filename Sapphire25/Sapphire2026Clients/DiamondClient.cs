@@ -357,6 +357,59 @@ namespace Sapphire2025.Storage
 			return list;
 		}
 
+		// ── Festivos ──────────────────────────────────────────────────────
+
+		public async Task<DiamondFestiveYearModel?> ListFestivesAsync(int year)
+		{
+			string request = composeCommand(
+				"festives",
+				new requestParam("year", year.ToString()));
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				return await response.Content.ReadFromJsonAsync<DiamondFestiveYearModel>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<bool?> IsFestiveAsync(DateTime day)
+		{
+			string request = composeCommand(
+				"isfestive",
+				new requestParam("date", day.ToString("yyyy-MM-dd")));
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				return await response.Content.ReadFromJsonAsync<bool>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<DiamondFestiveSetResult?> SetFestiveAsync(DateTime day, bool festive)
+		{
+			DiamondFestiveSetRequest body = new DiamondFestiveSetRequest
+			{
+				Date = day.ToString("yyyy-MM-dd"),
+				Festive = festive
+			};
+			string json = System.Text.Json.JsonSerializer.Serialize(body);
+			try
+			{
+				HttpResponseMessage response = await sendPostRequest("setfestive", json);
+				return await response.Content.ReadFromJsonAsync<DiamondFestiveSetResult>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
 		public async Task<DiamondDeviceTopoPackageModel?> GetDeviceTopoPackageAsync(
 			Guid topoId,
 			DateTime? fromDate = null)

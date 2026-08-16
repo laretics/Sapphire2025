@@ -701,6 +701,98 @@ namespace Sapphire2025Server.Controllers
 			};
 		}
 
+		// ── Festivos (tabla Festives) ───────────────────────────────────────
+
+		/// <summary>Lista los festivos de un año civil (fechas ISO yyyy-MM-dd).</summary>
+		[HttpGet("festives")]
+		public async Task<ActionResult<DiamondFestiveYearModel>> ListFestives([FromQuery] int year)
+		{
+			int resolvedYear = year;
+			if (resolvedYear < 1900 || resolvedYear > 2200)
+			{
+				resolvedYear = DateTime.Today.Year;
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				FestiveStore store = new FestiveStore(almacen);
+				IReadOnlyList<DateTime> dates = await store.ListYearAsync(resolvedYear);
+				DiamondFestiveYearModel model = new DiamondFestiveYearModel();
+				model.Year = resolvedYear;
+				int i = 0;
+				while (i < dates.Count)
+				{
+					model.Dates.Add(FestiveStore.ToIsoDate(dates[i]));
+					i++;
+				}
+
+				return model;
+			}
+		}
+
+		/// <summary>Consulta si una fecha civil es festiva.</summary>
+		[HttpGet("isfestive")]
+		public async Task<ActionResult<bool>> IsFestive([FromQuery] string date)
+		{
+			DateTime day;
+			if (!FestiveStore.TryParseIsoDate(date, out day))
+			{
+				return BadRequest("Fecha no válida (use yyyy-MM-dd).");
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				FestiveStore store = new FestiveStore(almacen);
+				return await store.IsFestiveAsync(day);
+			}
+		}
+
+		/// <summary>Marca o desmarca un día festivo en la tabla Festives.</summary>
+		[HttpPost("setfestive")]
+		public async Task<DiamondFestiveSetResult> SetFestive([FromBody] DiamondFestiveSetRequest request)
+		{
+			DiamondFestiveSetResult result = new DiamondFestiveSetResult();
+			if (request is null)
+			{
+				result.Success = false;
+				result.Message = "Petición vacía.";
+				return result;
+			}
+
+			DateTime day;
+			if (!FestiveStore.TryParseIsoDate(request.Date, out day))
+			{
+				result.Success = false;
+				result.Message = "Fecha no válida (use yyyy-MM-dd).";
+				result.Date = request.Date ?? string.Empty;
+				return result;
+			}
+
+			try
+			{
+				using (DataStorage almacen = new DataStorage(mvarConfig))
+				{
+					FestiveStore store = new FestiveStore(almacen);
+					await store.SetAsync(day, request.Festive);
+					result.Success = true;
+					result.Date = FestiveStore.ToIsoDate(day);
+					result.Festive = request.Festive;
+					result.Message = request.Festive
+						? "Marcado como festivo."
+						: "Ya no es festivo.";
+					return result;
+				}
+			}
+			catch (Exception ex)
+			{
+				result.Success = false;
+				result.Date = FestiveStore.ToIsoDate(day);
+				result.Festive = request.Festive;
+				result.Message = "No se pudo guardar el festivo: " + ex.Message;
+				return result;
+			}
+		}
+
 		private static string Trunc(string? s, int max)
 		{
 			if (string.IsNullOrEmpty(s))

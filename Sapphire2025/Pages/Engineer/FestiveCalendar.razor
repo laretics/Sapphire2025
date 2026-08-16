@@ -1,0 +1,358 @@
+@using System.Globalization
+@using Sapphire2025Models.Diamond
+@inject DiamondClient mvarDiamond
+
+<div class="fes-cal">
+	<div class="fes-cal-toolbar">
+		<div class="fes-cal-year-nav">
+			<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => ChangeYearAsync(-1)" disabled="@mvarBusy" title="Año anterior">
+				<i class="bi bi-chevron-left"></i>
+			</button>
+			<h2>@mvarYear</h2>
+			<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => ChangeYearAsync(1)" disabled="@mvarBusy" title="Año siguiente">
+				<i class="bi bi-chevron-right"></i>
+			</button>
+			<button type="button" class="btn btn-outline-primary btn-sm" @onclick="GoTodayAsync" disabled="@mvarBusy">
+				Hoy
+			</button>
+		</div>
+		<div class="fes-cal-legend">
+			<span class="fes-cal-chip fes-cal-chip-festive"><i class="bi bi-star-fill"></i> Festivo</span>
+			<span class="fes-cal-chip fes-cal-chip-weekend">Fin de semana</span>
+			<span class="fes-cal-chip fes-cal-chip-today">Hoy</span>
+			<span class="badge text-bg-warning">@mcolFestives.Count festivo(s)</span>
+		</div>
+		<button type="button" class="btn btn-primary btn-sm" @onclick="ReloadAsync" disabled="@mvarBusy">
+			<i class="bi bi-arrow-clockwise"></i> Actualizar
+		</button>
+	</div>
+
+	@if (!string.IsNullOrEmpty(mvarNotice))
+	{
+		<div class="alert @(mvarNoticeOk ? "alert-success" : "alert-warning") alert-dismissible fade show py-2" role="alert">
+			@mvarNotice
+			<button type="button" class="btn-close" @onclick="() => mvarNotice = null"></button>
+		</div>
+	}
+
+	<p class="fes-cal-hint">
+		Pulse un día para marcarlo o desmarcarlo como festivo. Los festivos entre semana (y los sábados o
+		domingos que quiera tratar como tales) quedan en la tabla <code>Festives</code> y los usa todo Sapphire.
+	</p>
+
+	@if (mvarBusy && mcolFestives.Count == 0)
+	{
+		<div class="text-center text-muted py-5">
+			<div class="spinner-border text-warning mb-2"></div>
+			<div>Cargando festivos…</div>
+		</div>
+	}
+	else
+	{
+		<div class="fes-cal-layout">
+			<div class="fes-cal-grid">
+				@for (int month = 1; month <= 12; month++)
+				{
+					int monthCopy = month;
+					<div class="fes-cal-month">
+						<h3>@MonthTitle(monthCopy)</h3>
+						<div class="fes-cal-weekdays">
+							<span>L</span><span>M</span><span>X</span><span>J</span><span>V</span>
+							<span class="fes-cal-wd-we">S</span><span class="fes-cal-wd-we">D</span>
+						</div>
+						<div class="fes-cal-days">
+							@foreach (CalendarCell cell in BuildMonth(monthCopy))
+							{
+								if (!cell.InMonth)
+								{
+									<span class="fes-cal-day fes-cal-day-empty" aria-hidden="true"></span>
+								}
+								else
+								{
+									bool festive = mcolFestives.Contains(cell.Day);
+									bool weekend = IsWeekend(cell.Day);
+									bool today = cell.Day == mvarToday;
+									bool selected = mvarSelected.HasValue && mvarSelected.Value == cell.Day;
+									bool pending = mvarPending.HasValue && mvarPending.Value == cell.Day;
+									string css = "fes-cal-day"
+										+ (festive ? " fes-cal-day-festive" : string.Empty)
+										+ (weekend && !festive ? " fes-cal-day-weekend" : string.Empty)
+										+ (today ? " fes-cal-day-today" : string.Empty)
+										+ (selected ? " fes-cal-day-selected" : string.Empty)
+										+ (pending ? " fes-cal-day-pending" : string.Empty);
+									string label = cell.Day.ToString("dddd d 'de' MMMM", mvarCulture)
+										+ (festive ? ", festivo" : string.Empty);
+									<button type="button"
+											class="@css"
+											disabled="@(mvarBusy || pending)"
+											title="@label. Pulse para @(festive ? "quitar" : "marcar") festivo."
+											aria-label="@label"
+											aria-pressed="@festive"
+											@onclick="() => ToggleAsync(cell.Day)">
+										<span class="fes-cal-num">@cell.Day.Day</span>
+										@if (festive)
+										{
+											<i class="bi bi-star-fill fes-cal-star" aria-hidden="true"></i>
+										}
+									</button>
+								}
+							}
+						</div>
+					</div>
+				}
+			</div>
+
+			<aside class="fes-cal-side">
+				<div class="fes-cal-side-card">
+					<h3>Día seleccionado</h3>
+					@if (!mvarSelected.HasValue)
+					{
+						<p class="text-muted small mb-0">Pulse un día del calendario.</p>
+					}
+					else
+					{
+						DateTime sel = mvarSelected.Value;
+						bool festive = mcolFestives.Contains(sel);
+						<p class="fes-cal-side-date">@sel.ToString("dddd d 'de' MMMM 'de' yyyy", mvarCulture)</p>
+						<p class="mb-2">
+							@if (festive)
+							{
+								<span class="badge text-bg-warning"><i class="bi bi-star-fill"></i> Festivo</span>
+							}
+							else if (IsWeekend(sel))
+							{
+								<span class="badge text-bg-secondary">Fin de semana (no marcado)</span>
+							}
+							else
+							{
+								<span class="badge text-bg-light border">Laborable</span>
+							}
+						</p>
+						<button type="button"
+								class="btn btn-sm @(festive ? "btn-outline-secondary" : "btn-warning")"
+								disabled="@mvarBusy"
+								@onclick="() => ToggleAsync(sel)">
+							@(festive ? "Quitar festivo" : "Marcar festivo")
+						</button>
+					}
+				</div>
+				<div class="fes-cal-side-card">
+					<h3>Festivos de @mvarYear</h3>
+					@if (mcolFestives.Count == 0)
+					{
+						<p class="text-muted small mb-0">Ningún día marcado este año.</p>
+					}
+					else
+					{
+						<ul class="fes-cal-list">
+							@foreach (DateTime day in mcolFestives.OrderBy(d => d))
+							{
+								<li>
+									<button type="button" class="fes-cal-list-item" @onclick="() => SelectOnly(day)">
+										<span class="fes-cal-list-when">@day.ToString("ddd d MMM", mvarCulture)</span>
+										<span class="fes-cal-list-wd">@day.ToString("dddd", mvarCulture)</span>
+									</button>
+								</li>
+							}
+						</ul>
+					}
+				</div>
+			</aside>
+		</div>
+	}
+</div>
+
+@code {
+	private readonly CultureInfo mvarCulture = CultureInfo.GetCultureInfo("es-ES");
+	private readonly HashSet<DateTime> mcolFestives = new HashSet<DateTime>();
+	private readonly DateTime mvarToday = DateTime.Today;
+
+	private int mvarYear = DateTime.Today.Year;
+	private DateTime? mvarSelected;
+	private DateTime? mvarPending;
+	private bool mvarBusy;
+	private string? mvarNotice;
+	private bool mvarNoticeOk;
+
+	protected override async Task OnInitializedAsync()
+	{
+		mvarSelected = mvarToday;
+		await ReloadAsync();
+	}
+
+	private async Task ChangeYearAsync(int delta)
+	{
+		int next = mvarYear + delta;
+		if (next < 1900 || next > 2200)
+		{
+			return;
+		}
+
+		mvarYear = next;
+		await ReloadAsync();
+	}
+
+	private async Task GoTodayAsync()
+	{
+		mvarYear = mvarToday.Year;
+		mvarSelected = mvarToday;
+		await ReloadAsync();
+	}
+
+	private async Task ReloadAsync()
+	{
+		mvarBusy = true;
+		mvarNotice = null;
+		try
+		{
+			DiamondFestiveYearModel? model = await mvarDiamond.ListFestivesAsync(mvarYear);
+			mcolFestives.Clear();
+			if (model is null)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "No se pudo cargar el calendario de festivos (¿API en marcha?).";
+				return;
+			}
+
+			int i = 0;
+			while (i < model.Dates.Count)
+			{
+				DateTime parsed;
+				if (DateTime.TryParseExact(
+					model.Dates[i],
+					"yyyy-MM-dd",
+					CultureInfo.InvariantCulture,
+					DateTimeStyles.None,
+					out parsed))
+				{
+					mcolFestives.Add(parsed.Date);
+				}
+
+				i++;
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al cargar festivos: " + ex.Message;
+			mcolFestives.Clear();
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private void SelectOnly(DateTime day)
+	{
+		mvarSelected = day.Date;
+		if (day.Year != mvarYear)
+		{
+			mvarYear = day.Year;
+			_ = ReloadAsync();
+		}
+	}
+
+	private async Task ToggleAsync(DateTime day)
+	{
+		DateTime civil = day.Date;
+		mvarSelected = civil;
+		bool next = !mcolFestives.Contains(civil);
+		if (next)
+		{
+			mcolFestives.Add(civil);
+		}
+		else
+		{
+			mcolFestives.Remove(civil);
+		}
+
+		mvarPending = civil;
+		try
+		{
+			DiamondFestiveSetResult? result = await mvarDiamond.SetFestiveAsync(civil, next);
+			if (result is null || !result.Success)
+			{
+				if (next)
+				{
+					mcolFestives.Remove(civil);
+				}
+				else
+				{
+					mcolFestives.Add(civil);
+				}
+
+				mvarNoticeOk = false;
+				mvarNotice = result is null
+					? "No se pudo contactar con el almacén."
+					: result.Message;
+				return;
+			}
+
+			mvarNoticeOk = true;
+			mvarNotice = civil.ToString("d MMMM yyyy", mvarCulture) + ": " + result.Message;
+		}
+		catch (Exception ex)
+		{
+			if (next)
+			{
+				mcolFestives.Remove(civil);
+			}
+			else
+			{
+				mcolFestives.Add(civil);
+			}
+
+			mvarNoticeOk = false;
+			mvarNotice = "No se pudo guardar: " + ex.Message;
+		}
+		finally
+		{
+			mvarPending = null;
+		}
+	}
+
+	private static bool IsWeekend(DateTime day)
+	{
+		return day.DayOfWeek == DayOfWeek.Saturday || day.DayOfWeek == DayOfWeek.Sunday;
+	}
+
+	private string MonthTitle(int month)
+	{
+		return mvarCulture.DateTimeFormat.GetMonthName(month);
+	}
+
+	private List<CalendarCell> BuildMonth(int month)
+	{
+		DateTime first = new DateTime(mvarYear, month, 1);
+		int offset = ((int)first.DayOfWeek + 6) % 7;
+		int days = DateTime.DaysInMonth(mvarYear, month);
+		List<CalendarCell> cells = new List<CalendarCell>(42);
+		int i = 0;
+		while (i < offset)
+		{
+			cells.Add(new CalendarCell { InMonth = false });
+			i++;
+		}
+
+		int d = 1;
+		while (d <= days)
+		{
+			cells.Add(new CalendarCell
+			{
+				InMonth = true,
+				Day = new DateTime(mvarYear, month, d)
+			});
+			d++;
+		}
+
+		return cells;
+	}
+
+	private sealed class CalendarCell
+	{
+		public bool InMonth { get; set; }
+
+		public DateTime Day { get; set; }
+	}
+}

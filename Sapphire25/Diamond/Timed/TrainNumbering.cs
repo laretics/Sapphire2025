@@ -10,8 +10,10 @@ namespace Diamond.Timed
 {
 	/// <summary>
 	/// Numeración de circulaciones (texto: <c>4901</c>, <c>P1MTX</c>…).
-	/// Las defs <c>asim ORIGEN -&gt; DESTINO</c> son <strong>dirigidas</strong>: PMI→MAN ≠ MAN→PMI.
-	/// Sin def de script: corredor no dirigido + impares (PK↑) / pares (PK↓) como SFM clásico.
+	/// Las defs <c>asim ORIGEN -&gt; DESTINO</c> son <strong>dirigidas</strong>: PMI→MAN ≠ MAN→PMI
+	/// (patrón o color pueden diferir). La paridad es siempre SFM: impares si avanza el PK de red,
+	/// pares en el sentido contrario. Un tren ascendente no puede ser par; uno descendente no puede ser impar.
+	/// Sin def de script: corredor no dirigido + mismas reglas de paridad + serie conocida o hash.
 	/// </summary>
 	public static class TrainNumbering
 	{
@@ -96,9 +98,7 @@ namespace Diamond.Timed
 						usedSeriesBases.Add(classicBase);
 					}
 
-					SortByDepartureThenTechnicalId(trains);
-					// Un sentido, un patrón: secuencia 1,2,3… (no impares/pares compartidos).
-					AssignByPattern(trains, pattern, startSequence: 1, step: 1, usedNumbers);
+					AssignBySfmParity(trains, pattern, usedNumbers);
 					int t = 0;
 					while (t < trains.Count)
 					{
@@ -149,33 +149,7 @@ namespace Diamond.Timed
 					usedSeriesBases.Add(classicBase);
 				}
 
-				// Impares = avance de PK de red (PMI→SPB, PMI→MAN…);
-				// pares = sentido opuesto (SPB→PMI…).
-				// No usar Asimilation.Sense: en multi-eje cada OD tiene PK de ruta 0 en origen
-				// y Sense siempre Increasing (todos saldrían impares).
-				List<Circulation> ascending = new List<Circulation>();
-				List<Circulation> descending = new List<Circulation>();
-				int t = 0;
-				while (t < trains.Count)
-				{
-					Circulation c = trains[t];
-					if (IsNetworkAscendingForNumbering(c))
-					{
-						ascending.Add(c);
-					}
-					else
-					{
-						descending.Add(c);
-					}
-
-					t++;
-				}
-
-				SortByDepartureThenTechnicalId(ascending);
-				SortByDepartureThenTechnicalId(descending);
-
-				AssignByPattern(ascending, pattern, startSequence: 1, step: 2, usedNumbers);
-				AssignByPattern(descending, pattern, startSequence: 2, step: 2, usedNumbers);
+				AssignBySfmParity(trains, pattern, usedNumbers);
 
 				k++;
 			}
@@ -511,6 +485,42 @@ namespace Diamond.Timed
 			seriesBase = 0;
 			error = null;
 			return true;
+		}
+
+		/// <summary>
+		/// Impares = avance de PK de red (PMI→SPB, PMI→MAN…);
+		/// pares = sentido opuesto (SPB→PMI…).
+		/// No usar <see cref="Asimilation.Sense"/>: en multi-eje cada OD tiene PK de ruta 0 en origen
+		/// y Sense siempre Increasing (todos saldrían impares).
+		/// </summary>
+		private static void AssignBySfmParity(
+			List<Circulation> trains,
+			string pattern,
+			HashSet<string> usedNumbers)
+		{
+			List<Circulation> ascending = new List<Circulation>();
+			List<Circulation> descending = new List<Circulation>();
+			int t = 0;
+			while (t < trains.Count)
+			{
+				Circulation c = trains[t];
+				if (IsNetworkAscendingForNumbering(c))
+				{
+					ascending.Add(c);
+				}
+				else
+				{
+					descending.Add(c);
+				}
+
+				t++;
+			}
+
+			SortByDepartureThenTechnicalId(ascending);
+			SortByDepartureThenTechnicalId(descending);
+
+			AssignByPattern(ascending, pattern, startSequence: 1, step: 2, usedNumbers);
+			AssignByPattern(descending, pattern, startSequence: 2, step: 2, usedNumbers);
 		}
 
 		private static void AssignByPattern(

@@ -50,7 +50,7 @@
 					@if (mvarHasOlderUnlabeled)
 					{
 						<div class="alert alert-warning py-2 small mb-0">
-							Hay notas anteriores todavía sin etiquetar. Si guarda esta, esas dejarán de poder etiquetarse.
+							Hay notas anteriores (que no son partes de avería) todavía sin etiquetar. Si guarda esta, esas dejarán de poder etiquetarse. Los partes de avería se pueden etiquetar en cualquier momento.
 						</div>
 					}
 
@@ -132,7 +132,7 @@
 			bool ok = await mvarAeneasClient.labelNote(mvarNote.Id, mvarIsSymptom, systemValue);
 			if (!ok)
 			{
-				mvarError = "No se pudo guardar la etiqueta. Compruebe permisos o si otra nota más reciente ya está etiquetada.";
+				mvarError = "No se pudo guardar la etiqueta. Compruebe permisos o, si no es un parte de avería, si otra nota más reciente ya está etiquetada.";
 				return;
 			}
 

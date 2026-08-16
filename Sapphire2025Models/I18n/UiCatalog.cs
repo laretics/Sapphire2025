@@ -237,7 +237,7 @@ namespace Sapphire2025Models.I18n
 			A("card.legacy", "Explotació (Legacy)", "Explotación (Legacy)", "Operations (Legacy)");
 			A("card.legacy.desc", "Horaris, plans d'explotació.", "Horarios, Planes de Explotación.", "Timetables and exploitation plans.");
 			A("card.store", "Magatzem Diamond", "Almacén Diamond", "Diamond store");
-			A("card.store.desc", "Topologies i plans d'explotació versionats", "Topologías y planes de explotación versionados", "Versioned topologies and exploitation plans");
+			A("card.store.desc", "Topologies, plans d'explotació i calendari de festius", "Topologías, planes de explotación y calendario de festivos", "Topologies, exploitation plans and festive calendar");
 			A("card.plans", "Plans d'explotació", "Planes de Explotación", "Exploitation plans");
 			A("card.plans.desc", "Malles horàries Diamond (planificador)", "Mallas horarias Diamond (planificador)", "Diamond timetable meshes (planner)");
 			A("card.mysheet", "El meu gràfic", "Mi gráfico", "My chart");

@@ -414,18 +414,19 @@ Es el punto de entrada para combinar la visión de personal con la del material 
 					Route = "submenu/diamond",
 					Roles = diamondRoles,
 					Summary = "Almacén de topologías, mallas y planes de explotación.",
-					Keywords = new[] { "diamond", "timenet", "malla", "topología", "plan", "explotación" },
+					Keywords = new[] { "diamond", "timenet", "malla", "topología", "plan", "explotación", "festivo", "festivos", "calendario" },
 					Body =
 @"El menú **Diamond** agrupa la planificación de horarios:
 
 • **Explotación (Legacy)**: gestión clásica de turnos / workshifts.
-• **Almacén Diamond**: topologías y planes versionados.
+• **Almacén Diamond**: topologías, planes versionados y calendario de festivos.
 • **Planes de Explotación**: mallas horarias del planificador Diamond / TimeNet.
 
 Flujo habitual:
 1. Mantener la topología correcta en el almacén.
-2. Editar o importar el plan de explotación.
-3. Publicar / validar según el procedimiento de su área.
+2. Marcar los días festivos del año en la solapa **Festivos** (calendario; se guarda en la tabla `Festives`).
+3. Editar o importar el plan de explotación.
+4. Publicar / validar según el procedimiento de su área.
 
 Los cambios de topología o borrados relevantes pueden quedar auditados en el registro de eventos."
 				},

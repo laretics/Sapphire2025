@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Diamond\Diamond.csproj" />
     <ProjectReference Include="..\Diamond.Controls\Diamond.Controls.csproj" />
+    <ProjectReference Include="..\..\Sapphire2025Models\Sapphire2025Models.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -362,8 +362,10 @@ namespace Sapphire2025Server.Controllers
 
 		/// <summary>
 		/// Etiquetado manual de una nota para entrenamiento del clasificador.
-		/// Solo Root, Engineer u Oficial. La nota debe ser posterior a la última
-		/// IsValid=true del mismo tren. Tras guardar, IsValid pasa a true.
+		/// Solo Root, Engineer u Oficial. Un parte de avería (tipo 1) se puede
+		/// etiquetar aunque haya otro posterior ya etiquetado. El resto de tipos
+		/// deben ser posteriores a la última IsValid=true del mismo tren.
+		/// Tras guardar, IsValid pasa a true.
 		/// </summary>
 		[HttpPost("labelnote")]
 		public async Task<bool> LabelNote(NoteLabelRequestModel? request)
@@ -393,13 +395,17 @@ namespace Sapphire2025Server.Controllers
 				if (null == nota)
 					return false;
 
-				DateTime? lastValid = await almacen.Notes
-					.AsNoTracking()
-					.Where(x => x.Parent == nota.Parent && x.IsValid)
-					.MaxAsync(x => (DateTime?)x.TimeStamp);
+				// Tipo 1 (parte de avería): no se bloquea por un etiquetado posterior.
+				if (nota.Type != 1)
+				{
+					DateTime? lastValid = await almacen.Notes
+						.AsNoTracking()
+						.Where(x => x.Parent == nota.Parent && x.IsValid)
+						.MaxAsync(x => (DateTime?)x.TimeStamp);
 
-				if (lastValid.HasValue && nota.TimeStamp <= lastValid.Value)
-					return false;
+					if (lastValid.HasValue && nota.TimeStamp <= lastValid.Value)
+						return false;
+				}
 
 				nota.IsSymptom = request.IsSymptom;
 				nota.SystemAffected = request.SystemAffected;

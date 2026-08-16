@@ -622,9 +622,10 @@
         <thead><tr><th>Regla</th><th>Detalle</th></tr></thead>
         <tbody>
           <tr><td>Corredor</td><td>Mismo par origen–destino (sin importar la asimilación / paradas).</td></tr>
-          <tr><td>↑ PK (ida “natural”)</td><td>Números <strong>impares</strong>: xx01, xx03, xx05…</td></tr>
-          <tr><td>↓ PK</td><td>Números <strong>pares</strong>: xx02, xx04, xx06…</td></tr>
+          <tr><td>↑ PK (ida “natural”)</td><td>Números <strong>impares</strong>: xx01, xx03, xx05… Un ascendente no puede ser par.</td></tr>
+          <tr><td>↓ PK</td><td>Números <strong>pares</strong>: xx02, xx04, xx06… Un descendente no puede ser impar.</td></tr>
           <tr><td>Orden</td><td>Por hora de salida (+2 en cada sentido).</td></tr>
+          <tr><td><code>asim … numbers</code></td><td>Elige la serie (<code>48##</code>, <code>44##</code>…). No cambia la paridad.</td></tr>
         </tbody>
       </table>
       <p>Series conocidas en la demo SFM:</p>
