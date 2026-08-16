@@ -5,20 +5,20 @@
 @using Sapphire2025Models
 @inject NavigationManager mvarNavigator
 
-<PageTitle>Ayuda · Zafiro</PageTitle>
+<PageTitle>@Prefs.T("page.help")</PageTitle>
 
 <div class="container-fluid py-3 help-center">
 	<div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
 		<div>
 			<h3 class="mb-1">
-				<i class="bi bi-question-circle me-2"></i>Centro de ayuda
+				<i class="bi bi-question-circle me-2"></i>@Prefs.T("page.help.center")
 			</h3>
 			<p class="text-muted mb-0 small">
-				Guías de las secciones a las que tiene acceso con su perfil.
+				@Prefs.T("help.lead")
 				@if (mvarSession is not null && mvarSession.Roles.Count > 0)
 				{
 					<span class="ms-1">
-						Roles:
+						@Prefs.T("help.roles")
 						@foreach (Common.UserRole role in mvarSession.Roles.Distinct().OrderBy(r => (byte)r))
 						{
 							<span class="badge text-bg-light border me-1">@RoleLabel(role)</span>
@@ -29,7 +29,7 @@
 		</div>
 		<div class="input-group" style="max-width: 22rem;">
 			<span class="input-group-text"><i class="bi bi-search"></i></span>
-			<input type="search" class="form-control" placeholder="Buscar en la ayuda..."
+			<input type="search" class="form-control" placeholder="@Prefs.T("help.search.ph")"
 				   @bind="mvarSearch" @bind:event="oninput" />
 		</div>
 	</div>
@@ -37,13 +37,13 @@
 	@if (mvarSession is null || mvarSession.Roles.Count == 0)
 	{
 		<div class="alert alert-warning">
-			Inicie sesión para ver la ayuda adaptada a su perfil.
+			@Prefs.T("help.login")
 		</div>
 	}
 	else if (!VisibleTopics.Any())
 	{
 		<div class="alert alert-info">
-			No hay temas de ayuda para su perfil actual.
+			@Prefs.T("help.empty")
 		</div>
 	}
 	else
@@ -53,7 +53,7 @@
 			<div class="col-12 col-lg-4 col-xl-3">
 				<div class="card shadow-sm sticky-lg-top help-index">
 					<div class="card-header bg-light fw-semibold">
-						<i class="bi bi-list-ul me-1"></i>Índice
+						<i class="bi bi-list-ul me-1"></i>@Prefs.T("help.index")
 					</div>
 					<div class="list-group list-group-flush help-index-list">
 						@foreach (IGrouping<string, ZafiroHelpCatalog.HelpTopic> group in GroupedTopics)
@@ -93,10 +93,9 @@
 				{
 					<div class="card shadow-sm border-0 bg-light">
 						<div class="card-body p-4">
-							<h4 class="mb-3">¿Por dónde empiezo?</h4>
+							<h4 class="mb-3">@Prefs.T("help.start")</h4>
 							<p class="text-muted">
-								Elija un tema del índice o use el buscador. Solo se muestran las funciones
-								disponibles para <strong>sus roles</strong> (no se incluye la administración del sistema).
+								@Prefs.T("help.start.body")
 							</p>
 							<div class="row g-3 mt-1">
 								@foreach (ZafiroHelpCatalog.HelpTopic topic in VisibleTopics.Take(6))
@@ -133,11 +132,11 @@
 								@if (!string.IsNullOrWhiteSpace(SelectedTopic.Route))
 								{
 									<a class="btn btn-sm btn-primary" href="@SelectedTopic.Route">
-										<i class="bi bi-box-arrow-up-right me-1"></i>Abrir sección
+										<i class="bi bi-box-arrow-up-right me-1"></i>@Prefs.T("help.open")
 									</a>
 								}
 								<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearSelection">
-									Índice
+									@Prefs.T("help.index")
 								</button>
 							</div>
 						</div>
@@ -269,16 +268,16 @@
 		mvarNavigator.NavigateTo("help", replace: true);
 	}
 
-	private static string RoleLabel(Common.UserRole role) => role switch
+	private string RoleLabel(Common.UserRole role) => role switch
 	{
-		Common.UserRole.Anonymous => "Movimiento",
-		Common.UserRole.Inspector => "Inspector",
-		Common.UserRole.Expert => "J. Maquinista",
-		Common.UserRole.Oficial => "Oficial",
-		Common.UserRole.Mechanic => "Mecánico",
-		Common.UserRole.Root => "Administrador",
-		Common.UserRole.Engineer => "Ingeniero",
-		Common.UserRole.Station => "Estación",
+		Common.UserRole.Anonymous => Prefs.T("nav.movement"),
+		Common.UserRole.Inspector => Prefs.T("nav.inspector"),
+		Common.UserRole.Expert => Prefs.T("nav.expert"),
+		Common.UserRole.Oficial => Prefs.T("nav.oficial"),
+		Common.UserRole.Mechanic => Prefs.T("nav.mechanic"),
+		Common.UserRole.Root => Prefs.T("role.admin"),
+		Common.UserRole.Engineer => Prefs.T("nav.engineer"),
+		Common.UserRole.Station => Prefs.T("nav.station"),
 		_ => role.ToString()
 	};
 }

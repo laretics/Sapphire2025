@@ -4,24 +4,24 @@
 @inject AuthenticationClient mvarAuthClient
 @inject IntStorageService mvarStorage
 @inject IJSRuntime mvarJSRuntime
-<PageTitle>Gestión de Turnos</PageTitle>
+<PageTitle>@Prefs.T("page.workshifts")</PageTitle>
 
 <ModalDialog @ref="mvarModal" OnClose="OnModalClose" />
 
 <div class="container-fluid py-4">
-    <h2 class="mb-4">Gestión de Turnos del Personal</h2>
+    <h2 class="mb-4">@Prefs.T("work.title")</h2>
     <div class="row mb-3">
         <div class="col-auto">
-            <button class="btn btn-primary" @onclick="onAssignationsClear">Limpiar Asignaciones</button>
+            <button class="btn btn-primary" @onclick="onAssignationsClear">@Prefs.T("work.clear.assign")</button>
         </div>
         <div class="col-auto">
-            <button class="btn btn-secondary" @onclick="onAgentsListClear">Limpiar Lista de Agentes</button>
+            <button class="btn btn-secondary" @onclick="onAgentsListClear">@Prefs.T("work.clear.agents")</button>
         </div>
         <div class="col-auto">
-            <button class="btn btn-success" @onclick="onImportExcel">Importar Excel</button>
+            <button class="btn btn-success" @onclick="onImportExcel">@Prefs.T("work.import.excel")</button>
         </div>
         <div class="col-auto">
-            <button class="btn btn-outline-success" @onclick="onImportXml" title="Subir plan de explotación o lista de agentes en XML">Importar XML</button>
+            <button class="btn btn-outline-success" @onclick="onImportXml" title="@Prefs.T("work.import.xml.tip")">@Prefs.T("work.import.xml")</button>
         </div>
         <div class="col-auto">
             <div class="form-check form-switch">
@@ -37,7 +37,7 @@
     }
     else if (mcolPlanes is null)
     {
-        <LoadingTab ElementText="Cargando planes de explotación" />
+        <LoadingTab ElementText="@Prefs.T("work.loading.plans")" />
     }
     else if (!mcolPlanes.Any())
     {

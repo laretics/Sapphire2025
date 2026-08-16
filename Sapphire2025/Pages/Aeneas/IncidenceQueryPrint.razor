@@ -4,7 +4,7 @@
 @inject IJSRuntime mvarJSRuntime
 @inject IntStorageService mvarLocalStorage
 
-<PageTitle>Informe de incidencias · Zafiro</PageTitle>
+<PageTitle>@Prefs.T("page.inc.print")</PageTitle>
 
 <div class="print-area">
 	<div class="print-title d-flex align-items-center" style="gap: 1.0rem; max-width: 100%; flex-wrap: nowrap;">
@@ -12,7 +12,7 @@
 			<img src="img/sfmImg.png" alt="Logotipo SFM" style="max-width: 90px; height: auto;" />
 		</div>
 		<h2 class="mb-0 flex-grow-1" style="font-size: 1.25em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-			Incidencias y notas — @mvarGeneratedAt.ToString("dd/MM/yyyy HH:mm")
+			@Prefs.T("inc.title") — @mvarGeneratedAt.ToString("dd/MM/yyyy HH:mm")
 		</h2>
 		<h1 class="mb-0 flex-grow-1" style="font-size: 1.5em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
 			ZAFIRO

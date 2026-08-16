@@ -129,6 +129,50 @@ namespace Sapphire2025Server.Controllers
 		/// </summary>
 		protected const int SessionEventHostPointMaxLength = 255;
 
+		protected const string TourmalineClientId = "tourmaline";
+
+		protected static bool IsTourmalineClient(string? client)
+		{
+			return string.Equals(client, TourmalineClientId, StringComparison.OrdinalIgnoreCase);
+		}
+
+		/// <summary>
+		/// Detalle compacto para SessionEvents.hostPoint (máx. 255).
+		/// </summary>
+		protected static string ComposeTourmalineHostPoint(
+			string? trainName,
+			string? trainId,
+			string? extra,
+			string? ip)
+		{
+			System.Text.StringBuilder sb = new System.Text.StringBuilder("tourmaline");
+			if (!string.IsNullOrWhiteSpace(trainName))
+			{
+				sb.Append(" tren=");
+				sb.Append(trainName.Trim());
+			}
+
+			if (!string.IsNullOrWhiteSpace(trainId) && !string.Equals(trainId.Trim(), Guid.Empty.ToString(), StringComparison.OrdinalIgnoreCase))
+			{
+				sb.Append(" id=");
+				sb.Append(trainId.Trim());
+			}
+
+			if (!string.IsNullOrWhiteSpace(extra))
+			{
+				sb.Append(' ');
+				sb.Append(extra.Trim());
+			}
+
+			if (!string.IsNullOrWhiteSpace(ip))
+			{
+				sb.Append(" ip=");
+				sb.Append(ip.Trim());
+			}
+
+			return TruncateHostPoint(sb.ToString());
+		}
+
 		protected static async Task addSessionEventStatic(
 			IConfiguration config,
 			string userId,

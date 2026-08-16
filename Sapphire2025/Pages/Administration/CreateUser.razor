@@ -5,13 +5,13 @@
 @inject AuthenticationClient mvarCliente
 @inject IntStorageService mvarLocalStorage
 @inject NavigationManager mvarNavigationManager
-<PageTitle>Nuevo usuario</PageTitle>
-<h3>Nuevo Usuario</h3>
+<PageTitle>@Prefs.T("page.createuser")</PageTitle>
+<h3>@Prefs.T("usernew.title")</h3>
 @if(null==Model)
 {
 	<div class="d-flex justify-content-center">
 		<div class="spinner-border" role="status">
-			<span class="visually-hidden">Cargando...</span>
+			<span class="visually-hidden">@Prefs.T("common.loading")</span>
 		</div>
 	</div>
 }
@@ -21,30 +21,30 @@ else
 		<div class="col-6">
 			<EditForm Model="@Model">
 				<div class="mb-3">
-					<label for="CF" class="form-label">Carnet</label>
+					<label for="CF" class="form-label">@Prefs.T("usernew.cf")</label>
 					<InputText id="CF" @bind-Value="Model.CF" class="form-control" aria-describedby="CFNotes"></InputText>
-					<div id="CFNotes" class="form-text">El número de carnet ferroviario es un código de identificación único para los trabajadores de la empresa y para los externos, que deberán ser identificados con una numeración alternativa y compatible con la de los internos.</div>
+					<div id="CFNotes" class="form-text">@Prefs.T("usernew.cf.hint")</div>
 				</div>
 				<div class="mb-3">
-					<label for="Name" class="form-label">Nombre</label>
+					<label for="Name" class="form-label">@Prefs.T("common.name")</label>
 					<InputText id="Name" @bind-Value="Model.UserName" class="form-control" aria-describedby="NameNotes"></InputText>
-					<div id="NameNotes" class="form-text">El nombre de usuario que está introduciendo será buscado en la base de datos actual para evitar dar de alta dos veces al mismo usuario en el sistema. Por favor, asegúrese de que la lista de usuarios en conflicto aparezca vacía o bien los nombres que contiene pertenezcan a otras personas.</div>
+					<div id="NameNotes" class="form-text">@Prefs.T("usernew.name.hint")</div>
 				</div>
-				<Button Class="btn btn-primary" @onclick=@StateHasChanged>Comprobar</Button>
-				<Button Class="btn btn-primary" @onclick=@addNewUser>Enviar</Button>
+				<Button Class="btn btn-primary" @onclick=@StateHasChanged>@Prefs.T("common.check")</Button>
+				<Button Class="btn btn-primary" @onclick=@addNewUser>@Prefs.T("common.send")</Button>
 			</EditForm>
 		</div>	
 		<div class="col-5">
 			@if (null == mcolFilteredUsers || 0 == mcolFilteredUsers.Count())
 			{
 				<div class="alert alert-success" role="alert">
-					No se han encontrado usuarios en conflicto.
+					@Prefs.T("usernew.noconflict")
 				</div>
 			}
 			else
 			{
 				<div class="alert alert-danger" role="alert">
-					Se han encontrado los siguientes usuarios en conflicto:
+					@Prefs.T("usernew.conflict")
 				</div>
 				<div class="overflow-auto" style="max-height: 90vh;">
 					@foreach (UserModelBase usuario in mcolFilteredUsers)

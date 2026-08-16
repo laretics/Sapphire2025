@@ -33,71 +33,52 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 				Sympthoms = text;
 			else
 			{
-				mvarConfirmed = text.ToUpper().Contains('S');
+				mvarConfirmed = Sapphire2025Models.I18n.TelegramI18n.IsAffirmative(text);
 				//Procesa el parte
 
 			}
 		}
 	
-		public TextResponse Confirmation()
+		public TextResponse Confirmation(Sapphire2025Models.I18n.UiLocale locale)
 		{
 			if(mcolTrains.Count<1)
 			{
 				TextResponse auxPideUT = new TextResponse();
-				auxPideUT.addText("¿De qué material móvil estamos hablando?");
-				auxPideUT.addText("Necesito saber qué tren o vehículo está implicado");
-				auxPideUT.addText("Me hacen falta datos; ¿A qué unidad tren o coche te estás refiriendo?");
-				auxPideUT.addText("¿Qué tren es?");
-				auxPideUT.addText("¿Qué material móvil se ha visto afectado?");
-				auxPideUT.addText("Me falta saber qué tren es.");
+				auxPideUT.addCatalog("tg.ask.train.1", "tg.ask.train.2", "tg.ask.train.3", "tg.ask.train.4", "tg.ask.train.5", "tg.ask.train.6");
 				return auxPideUT;
 			}
 			else if(null==Sympthoms)
 			{
 				TextResponse auxPideSintomas = new TextResponse();
-				auxPideSintomas.addText("¿Qué le ocurre #utf ?");
-				auxPideSintomas.addText("¿Qué síntomas tiene #ut ?");
-				auxPideSintomas.addText("Por favor, describe la incidencia de #ut .");
-				auxPideSintomas.addKey("utf", TrainVerbose(false,true));
-				auxPideSintomas.addKey("ut", TrainVerbose(true, false));
+				auxPideSintomas.addCatalog("tg.ask.sym.1", "tg.ask.sym.2", "tg.ask.sym.3");
+				auxPideSintomas.addKey("utf", TrainVerbose(locale, false,true));
+				auxPideSintomas.addKey("ut", TrainVerbose(locale, true, false));
 
 				return auxPideSintomas;				
 			}
 			else if(!Validated)
 			{
 				TextResponse auxConfirmationMessage = new TextResponse();
-				auxConfirmationMessage.addKey("ut", TrainVerbose(false,true));
-				auxConfirmationMessage.addKey("utf", TrainVerbose(true, false));
-				auxConfirmationMessage.addKey("sym", Sympthoms);
+				auxConfirmationMessage.addKey("ut", TrainVerbose(locale, false,true));
+				auxConfirmationMessage.addKey("utf", TrainVerbose(locale, true, false));
+				auxConfirmationMessage.addKey("sym", Sympthoms ?? string.Empty);
 				if(Incidence)
-				{
-					auxConfirmationMessage.addText("Se está abriendo un parte de incidencia #ut con la siguiente descripción: \"#sym\". ¿Es correcto?");
-					auxConfirmationMessage.addText("#utf está a punto de abrir un parte de incidencia por #sym. ¿Procedo?");
-					auxConfirmationMessage.addText("Si acepta #utf, se abrirá un parte de avería con esta descripción: \"#sym\" ¿De acuerdo?");
-					auxConfirmationMessage.addText("#utf va a acumular un parte de avería con esta descripción: \"#sym\" ¿Es correcto?");
-				}
+					auxConfirmationMessage.addCatalog("tg.confirm.inc.1", "tg.confirm.inc.2", "tg.confirm.inc.3", "tg.confirm.inc.4");
 				else
-				{
-					auxConfirmationMessage.addText("Está creando una nota en Zafiro para #ut con la siguiente descripción: \"#sym\". ¿Es correcto?");
-					auxConfirmationMessage.addText("#utf está a punto de abrir una nota en Zafiro por #sym. ¿Procedo?");
-					auxConfirmationMessage.addText("Si acepta #utf, se abrirá una nueva nota con esta descripción: \"#sym\" ¿De acuerdo?");
-					auxConfirmationMessage.addText("#utf va a acumular una nota con esta descripción: \"#sym\" ¿Es correcto?");
-				}
+					auxConfirmationMessage.addCatalog("tg.confirm.note.1", "tg.confirm.note.2", "tg.confirm.note.3", "tg.confirm.note.4");
 				return auxConfirmationMessage;
 			}
 			else if(Validated)
 			{
 				TextResponse auxConfirmationMessage2 = new TextResponse();
-				auxConfirmationMessage2.addKey("utf", TrainVerbose(true,true));
-				auxConfirmationMessage2.addKey("ut", TrainVerbose(false, false));
-				auxConfirmationMessage2.addKey("sym", Sympthoms);
-				auxConfirmationMessage2.addText("Abierto un parte de incidencia #utf con la siguiente descripción: \"#sym\".");
-				auxConfirmationMessage2.addText("#ut tiene abierto un parte de incidencia por #sym.");
-				auxConfirmationMessage2.addText("#ut acumula un nuevo parte de incidencia con esta descripción: \"#sym\".");
+				auxConfirmationMessage2.addKey("utf", TrainVerbose(locale, true,true));
+				auxConfirmationMessage2.addKey("ut", TrainVerbose(locale, false, false));
+				auxConfirmationMessage2.addKey("sym", Sympthoms ?? string.Empty);
+				auxConfirmationMessage2.addCatalog("tg.done.inc.1", "tg.done.inc.2", "tg.done.inc.3");
 				return auxConfirmationMessage2;
 			}
 			TextResponse auxErrorMessage = new TextResponse();
-			auxErrorMessage.addText("Error interno en TrainIncidenceConcept");
+			auxErrorMessage.addCatalog("tg.err.internal");
 			return auxErrorMessage;
 		}
 		public bool HasAllTheInformation()

@@ -20,11 +20,12 @@
         </div>
     </div>
     <div class="d-flex justify-content-between align-items-center mt-2">
-        <button class="btn btn-outline-secondary w-100" onclick="@onTerminateCirculation">Finalizar</button>
+        <button class="btn btn-outline-secondary w-100" onclick="@onTerminateCirculation">@Prefs.T("tm.end")</button>
         <span class="ms-2 text-secondary" style="font-size: 1.5rem;">&#8942;</span>
     </div>
 </div>
 @code {
+    [Inject] public UserPreferencesService Prefs { get; set; } = default!;
     [CascadingParameter]
     public bool NightMode { get; set; }
     [CascadingParameter]

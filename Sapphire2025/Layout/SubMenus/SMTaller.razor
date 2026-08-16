@@ -1,11 +1,11 @@
-﻿<div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-    @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
-    <img src="img/flujoTaller.png" class="card-img-top" alt="Aeneas" style="object-fit: cover; height: 180px;">
+<div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
+    @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">@Prefs.T("common.badge.new")</span> *@
+    <img src="img/flujoTaller.png" class="card-img-top" alt="@Prefs.T("card.workshop")" style="object-fit: cover; height: 180px;">
     <div class="card-body">
-        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Taller</h5>
+        <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Prefs.T("card.workshop")</h5>
         <p class="card-text text-muted custom-comment">
-            Estado del material móvil y talleres.
+            @Prefs.T("card.workshop.desc")
         </p>
-        <a href="/trainFlow" class="btn btn-outline-primary w-100">Abrir</a>
+        <a href="/trainFlow" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
     </div>
 </div>

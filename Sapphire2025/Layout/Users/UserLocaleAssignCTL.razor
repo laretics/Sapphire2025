@@ -1,0 +1,102 @@
+@inject AuthenticationClient Auth
+
+<div class="mb-3">
+	<label class="form-label fw-semibold">@Prefs.T("useredit.locale")</label>
+	<p class="text-muted small mb-2">@Prefs.T("useredit.locale.hint")</p>
+	<div class="d-flex flex-wrap gap-2">
+		@foreach (UiLocale locale in UiLocales.All)
+		{
+			<button type="button"
+					class="btn @(mvarLocale == locale && mvarHasExplicit ? "btn-primary" : mvarLocale == locale ? "btn-outline-primary" : "btn-outline-secondary")"
+					disabled="@(mvarBusy || Guid.Empty.Equals(UserId))"
+					@onclick="() => OnLocaleAsync(locale)">
+				@UiLocales.NativeName(locale)
+			</button>
+		}
+	</div>
+	@if (!mvarHasExplicit && !mvarBusy)
+	{
+		<p class="form-text mb-0">@Prefs.T("useredit.locale.system")</p>
+	}
+	@if (!string.IsNullOrWhiteSpace(mvarNotice))
+	{
+		<div class="alert @(mvarError ? "alert-danger" : "alert-success") py-2 mt-2 mb-0">@mvarNotice</div>
+	}
+</div>
+
+@code {
+	[Parameter]
+	public Guid UserId { get; set; }
+
+	private UiLocale mvarLocale = UiLocale.Spanish;
+	private bool mvarHasExplicit;
+	private bool mvarBusy;
+	private bool mvarError;
+	private string? mvarNotice;
+	private Guid mvarLoadedFor = Guid.Empty;
+
+	protected override async Task OnParametersSetAsync()
+	{
+		if (mvarLoadedFor == UserId)
+			return;
+		mvarLoadedFor = UserId;
+		await LoadAsync();
+	}
+
+	private async Task LoadAsync()
+	{
+		if (Guid.Empty.Equals(UserId))
+			return;
+
+		mvarBusy = true;
+		try
+		{
+			UserPreferencesModel? remote = await Auth.GetUserPreferencesAsync(UserId);
+			string? raw = remote?.Get(PreferenceKeys.Locale);
+			mvarHasExplicit = !string.IsNullOrWhiteSpace(raw);
+			mvarLocale = UiLocales.Parse(raw);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task OnLocaleAsync(UiLocale locale)
+	{
+		if (Guid.Empty.Equals(UserId))
+			return;
+
+		mvarBusy = true;
+		mvarNotice = null;
+		mvarError = false;
+		try
+		{
+			UserPreferencesModel? saved = await Auth.SetUserPreferencesAsync(
+				new[]
+				{
+					new UserPreferenceItem
+					{
+						Key = PreferenceKeys.Locale,
+						Value = UiLocales.ToCode(locale)
+					}
+				},
+				UserId);
+
+			if (saved is null)
+			{
+				mvarError = true;
+				mvarNotice = Prefs.T("useredit.locale.error");
+				return;
+			}
+
+			mvarLocale = locale;
+			mvarHasExplicit = true;
+			mvarNotice = Prefs.T("useredit.locale.saved");
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+}

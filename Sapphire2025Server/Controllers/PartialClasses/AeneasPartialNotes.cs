@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Sapphire2025Models;
 using Sapphire2025Models.Aeneas;
+using Sapphire2025Models.I18n;
 using Sapphire2025Server.Storage;
 using Sapphire2026.Data;
 using Sapphire2026.Data.Models;
@@ -19,10 +20,10 @@ namespace Sapphire2025Server.Controllers
 				TrainModel? tren = await TrainInfo(note.parent.ToString());
 				if (null != usuario && null != tren)
 					await SendTelegramBroadcast(
-						string.Format("{0} ha escrito \"{1}\" (Nota técnica del tren {2})", usuario.UserName, note.Text, tren.name),
+						"tg.note.technical",
+						new object[] { usuario.UserName, note.Text, tren.name },
 						false,
-						new Common.UserRole[] { Common.UserRole.Inspector, Common.UserRole.Expert, Common.UserRole.Oficial, Common.UserRole.Mechanic }
-						);
+						Common.UserRole.Inspector, Common.UserRole.Expert, Common.UserRole.Oficial, Common.UserRole.Mechanic);
 			}
 			// El registro de actividad se hace dentro de addNoteStatic (también cubre Telegram).
 			return await addNoteStatic(note, mvarConfig, clientHostPoint());
@@ -577,7 +578,10 @@ namespace Sapphire2025Server.Controllers
 				if (!string.IsNullOrWhiteSpace(auxNota.Text))
 					salida.Text = auxNota.Text;
 				else if (!string.IsNullOrWhiteSpace(auxNota.MediaExtension))
+				{
+					salida.TextKey = MediaShortKey(auxNota.MediaExtension);
 					salida.Text = MediaShortLabel(auxNota.MediaExtension);
+				}
 
 				if (string.IsNullOrWhiteSpace(auxNota.MediaExtension))
 					return salida;
@@ -604,29 +608,63 @@ namespace Sapphire2025Server.Controllers
 			return "(archivo)";
 		}
 
+		private static string MediaShortKey(string? ext)
+		{
+			string e = NoteMediaStore.NormalizeExt(ext ?? string.Empty);
+			if (NoteMediaStore.IsImage(e)) return "tg.media.short.photo";
+			if (e == "mp4" || e == "webm") return "tg.media.short.video";
+			if (e == "pdf") return "tg.media.short.pdf";
+			return "tg.media.short.file";
+		}
+
+		private static string MediaKindKey(string? ext)
+		{
+			string e = NoteMediaStore.NormalizeExt(ext ?? string.Empty);
+			if (NoteMediaStore.IsImage(e)) return "tg.media.photo";
+			if (e == "mp4" || e == "webm") return "tg.media.video";
+			if (e == "pdf") return "tg.media.pdf";
+			return "tg.media.file";
+		}
+
 		private async Task NotifyTelegramNoteMedia(Note note, string path, long fileBytes)
 		{
 			try
 			{
 				User? usuario = await retrieveUserStatic(note.UserId, mvarConfig);
 				TrainModel? tren = await TrainInfo(note.Parent.ToString());
-				string nombre = usuario?.UserName ?? "Un usuario";
+				string nombre = string.IsNullOrWhiteSpace(usuario?.UserName)
+					? TelegramI18n.Token("tg.user.someone")
+					: usuario.UserName;
 				string trenName = tren?.name ?? "?";
-				string kind = NoteMediaStore.KindLabel(note.MediaExtension);
-				string message = string.IsNullOrWhiteSpace(note.Text)
-					? string.Format("{0} ha enviado {1} del tren {2}.", nombre, kind, trenName)
-					: string.Format("{0} ha enviado {1} del tren {2}: \"{3}\"", nombre, kind, trenName, note.Text);
-
-				await SendTelegramMediaBroadcast(
-					message,
-					false,
-					path,
-					NoteMediaStore.TelegramKind(note.MediaExtension, fileBytes),
-					Path.GetFileName(path),
-					Common.UserRole.Inspector,
-					Common.UserRole.Expert,
-					Common.UserRole.Oficial,
-					Common.UserRole.Mechanic);
+				string kind = TelegramI18n.Token(MediaKindKey(note.MediaExtension));
+				if (string.IsNullOrWhiteSpace(note.Text))
+				{
+					await SendTelegramMediaBroadcast(
+						"tg.note.media",
+						new object[] { nombre, kind, trenName },
+						false,
+						path,
+						NoteMediaStore.TelegramKind(note.MediaExtension, fileBytes),
+						Path.GetFileName(path),
+						Common.UserRole.Inspector,
+						Common.UserRole.Expert,
+						Common.UserRole.Oficial,
+						Common.UserRole.Mechanic);
+				}
+				else
+				{
+					await SendTelegramMediaBroadcast(
+						"tg.note.media.text",
+						new object[] { nombre, kind, trenName, note.Text },
+						false,
+						path,
+						NoteMediaStore.TelegramKind(note.MediaExtension, fileBytes),
+						Path.GetFileName(path),
+						Common.UserRole.Inspector,
+						Common.UserRole.Expert,
+						Common.UserRole.Oficial,
+						Common.UserRole.Mechanic);
+				}
 			}
 			catch (Exception ex)
 			{
@@ -690,6 +728,8 @@ namespace Sapphire2025Server.Controllers
 	public sealed class LastNoteSnapshot
 	{
 		public string Text { get; set; } = string.Empty;
+		/// <summary>Si no hay texto, etiqueta localizable (tg.media.short.*). El texto de la nota se deja tal cual.</summary>
+		public string? TextKey { get; set; }
 		public string? MediaPath { get; set; }
 		public string MediaKind { get; set; } = "document";
 		public string? FileName { get; set; }

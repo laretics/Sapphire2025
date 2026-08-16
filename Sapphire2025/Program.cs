@@ -38,6 +38,7 @@ builder.Services.AddScoped<ExpertClient>();
 builder.Services.AddScoped<DiamondClient>();
 builder.Services.AddScoped<SchedulePublishedPlanLookup>();
 builder.Services.AddScoped<SessionService>();
+builder.Services.AddScoped<UserPreferencesService>();
 builder.Services.AddScoped<NavigationStackService>();
 
 await builder.Build().RunAsync();

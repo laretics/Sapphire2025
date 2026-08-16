@@ -12,11 +12,11 @@
 	<div class="d-flex justify-content-center align-items-center trainflow-loading">
 		<div class="text-center px-3">
 			<div class="spinner-border text-primary mb-3 trainflow-spinner" role="status">
-				<span class="visually-hidden">Cargando...</span>
+				<span class="visually-hidden">@Prefs.T("common.loading")</span>
 			</div>
 			<div>
-				<h5 class="mt-2">Cargando ciclos de taller...</h5>
-				<p class="text-muted mb-0">Por favor, espere un momento.</p>
+				<h5 class="mt-2">@Prefs.T("trainflow.loading")</h5>
+				<p class="text-muted mb-0">@Prefs.T("common.pleasewait")</p>
 			</div>
 		</div>
 	</div>
@@ -30,33 +30,33 @@ else
 				<!-- Grupo izquierdo: Acciones principales -->
 				<div class="btn-toolbar" role="toolbar">
 					<div class="btn-group me-2 mb-1" role="group">
-						<button type="button" class="btn btn-primary btn-sm" @onclick="RefreshData" title="Actualizar datos">
+						<button type="button" class="btn btn-primary btn-sm" @onclick="RefreshData" title="@Prefs.T("trainflow.refresh.tip")">
 							<i class="bi bi-arrow-clockwise"></i>
-							<span class="btn-label-full"> Actualizar</span>
-							<span class="btn-label-short"> Act.</span>
+							<span class="btn-label-full"> @Prefs.T("trainflow.refresh")</span>
+							<span class="btn-label-short"> @Prefs.T("trainflow.refresh.short")</span>
 						</button>
-						<button type="button" class="btn btn-success btn-sm" title="Exportar datos">
+						<button type="button" class="btn btn-success btn-sm" title="@Prefs.T("trainflow.export.tip")">
 							<i class="bi bi-download"></i>
-							<span class="btn-label-full"> Exportar</span>
-							<span class="btn-label-short"> Exp.</span>
+							<span class="btn-label-full"> @Prefs.T("common.export")</span>
+							<span class="btn-label-short"> @Prefs.T("trainflow.export.short")</span>
 						</button>
 					</div>
 
 					<div class="btn-group me-2 mb-1" role="group">
 						<button type="button" class="btn @(Extended ? "btn-warning" : "btn-outline-secondary") btn-sm"
 								@onclick="changeExtended"
-								title="@(Extended ? "Vista compacta" : "Vista extendida")">
+								title="@(Extended ? Prefs.T("trainflow.compact") : Prefs.T("trainflow.extended"))">
 							<i class="bi @(Extended ? "bi-arrows-angle-contract" : "bi-arrows-angle-expand")"></i>
-							<span class="btn-label-full"> @(Extended ? "Compactar" : "Expandir")</span>
+							<span class="btn-label-full"> @(Extended ? Prefs.T("common.collapse") : Prefs.T("common.expand"))</span>
 						</button>
 					</div>
 
 					<div class="btn-group me-2 mb-1" role="group">
 						<button type="button" class="btn @(AudioNotificationsEnabled ? "btn-info" : "btn-outline-secondary") btn-sm"
 								@onclick="ToggleAudioNotifications"
-								title="@(AudioNotificationsEnabled ? "Desactivar notificaciones de audio" : "Activar notificaciones de audio")">
+								title="@(AudioNotificationsEnabled ? Prefs.T("trainflow.audio.off") : Prefs.T("trainflow.audio.on"))">
 							<i class="bi @(AudioNotificationsEnabled ? "bi-volume-up-fill" : "bi-volume-mute-fill")"></i>
-							<span class="btn-label-full"> @(AudioNotificationsEnabled ? "Sonido" : "Silencio")</span>
+							<span class="btn-label-full"> @(AudioNotificationsEnabled ? Prefs.T("common.sound") : Prefs.T("common.mute"))</span>
 						</button>
 					</div>
 				</div>
@@ -67,16 +67,16 @@ else
 					{
 						<div class="badge me-1 mb-1 d-flex align-items-center px-2 px-sm-3 py-2 trainflow-live-badge" title="Trenes con cambio reciente">
 							<i class="bi bi-lightning-charge-fill me-1 me-sm-2"></i>
-							<span>@mcolHighlightedTrains.Count <span class="btn-label-full">cambio(s) reciente(s)</span><span class="btn-label-short">cambios</span></span>
+							<span>@mcolHighlightedTrains.Count <span class="btn-label-full">@Prefs.T("trainflow.recent")</span><span class="btn-label-short">@Prefs.T("trainflow.recent.short")</span></span>
 						</div>
 					}
 					<div class="badge bg-secondary me-1 mb-1 d-flex align-items-center px-2 px-sm-3 py-2">
 						<i class="bi bi-train-front me-1 me-sm-2"></i>
-						<span><span class="btn-label-full">Disponibles: </span><span class="btn-label-short">Disp. </span>@AvailableTrains</span>
+						<span><span class="btn-label-full">@Prefs.T("common.available"): </span><span class="btn-label-short">@Prefs.T("trainflow.avail.short") </span>@AvailableTrains</span>
 					</div>
 					<div class="badge bg-secondary me-1 mb-1 d-flex align-items-center px-2 px-sm-3 py-2">
 						<i class="bi bi-train-front me-1 me-sm-2"></i>
-						<span><span class="btn-label-full">Taller: </span><span class="btn-label-short">Tall. </span>@NonAvailableTrains</span>
+						<span><span class="btn-label-full">@Prefs.T("common.workshop"): </span><span class="btn-label-short">@Prefs.T("trainflow.workshop.short") </span>@NonAvailableTrains</span>
 					</div>
 					<div class="badge bg-secondary me-1 mb-1 d-flex align-items-center px-2 px-sm-3 py-2">
 						<i class="bi bi-train-front me-1 me-sm-2"></i>

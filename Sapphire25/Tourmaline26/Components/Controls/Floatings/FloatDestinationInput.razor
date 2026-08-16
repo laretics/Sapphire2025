@@ -17,12 +17,12 @@
                 }
                 else
                 {
-                    <span class="dest-placeholder">Número, hora o destino…</span>
+                    <span class="dest-placeholder">@Prefs.T("tm.search.ph")</span>
                 }
             </span>
             <button type="button"
                     class="dest-pin-btn @(OnlyUpcoming ? "is-on" : "is-off")"
-                    title="@(OnlyUpcoming ? "Sólo salidas posteriores a ahora" : "Todos los trenes del día")"
+                    title="@(OnlyUpcoming ? Prefs.T("tm.search.upcoming") : Prefs.T("tm.search.all"))"
                     @onclick="OnPinClick"
                     @onclick:stopPropagation="true">
                 <ColorIcon Name="@(OnlyUpcoming ? "PinOn" : "PinOff")" Size="28" />
@@ -36,12 +36,13 @@
         else
         {
             <ColorIcon Name="Search" Size="32"/>
-            <span class="fs-4 dest-placeholder">Destino</span>
+            <span class="fs-4 dest-placeholder">@Prefs.T("tm.dest")</span>
         }
     }
 </div>
 
 @code {
+    [Inject] public UserPreferencesService Prefs { get; set; } = default!;
     [CascadingParameter]
     public bool NightMode { get; set; }
     [CascadingParameter]

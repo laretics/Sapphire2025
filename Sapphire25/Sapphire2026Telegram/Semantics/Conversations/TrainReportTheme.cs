@@ -19,7 +19,7 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 
 
 			TextResponse respuesta = new TextResponse();
-			respuesta.addText("Ahora estaría mostrando un informe de estado de los trenes en la base de datos.");
+			respuesta.addCatalog("tg.report.placeholder");
 			await respuesta.Send(client, mvarParent.userContext);
 			this.endTheme();
 		}

@@ -10,7 +10,7 @@
 @attribute [Authorize]
 @* Planificador Diamond: include + planes del almacén Zafiro. *@
 
-<PageTitle>Planes de Explotación · Diamond</PageTitle>
+<PageTitle>@Prefs.T("page.timenet")</PageTitle>
 
 <link rel="stylesheet" href="_content/Diamond.Controls/css/diamond-mesh.css" />
 <link rel="stylesheet" href="_content/Diamond.Controls/css/mesh-workspace.css" />
@@ -26,11 +26,11 @@
 @if (!string.IsNullOrEmpty(mvarCatalogStatus))
 {
 	<div class="alert alert-info alert-dismissible fade show m-2 py-2" role="alert">
-		<strong>Include / topología</strong> — @mvarCatalogStatus
+		<strong>@Prefs.T("timenet.include")</strong> — @mvarCatalogStatus
 		@if (mvarCatalog is not null && mvarCatalog.DisplayNames.Count > 0)
 		{
 			<span class="ms-1 text-muted small">
-				Ej.: <code>include @FirstIncludeHint()</code>
+				@Prefs.T("timenet.example") <code>include @FirstIncludeHint()</code>
 			</span>
 		}
 		<button type="button" class="btn-close" @onclick="() => mvarCatalogStatus = null"></button>
@@ -42,7 +42,7 @@
 	{
 		<div class="d-flex align-items-center gap-2 m-3 text-secondary">
 			<div class="spinner-border spinner-border-sm" role="status"></div>
-			<span>Cargando topologías del almacén Zafiro…</span>
+			<span>@Prefs.T("timenet.loading")</span>
 		</div>
 	}
 	else

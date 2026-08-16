@@ -2,16 +2,16 @@
 <CascadingValue Value="Session">
     <NexusNavOption Selected="@(0==SelectedNavItem)"
     onclick="@(()=>SelectNavItem(0))"
-    Link="#" Caption="Inicio"
+    Link="#" Caption="@L("nav.home")"
     Image="Home" 
-    Tooltip="Pantalla de inicio"
+    Tooltip="@L("nav.home.tip")"
     />
 
     <NexusNavOption Selected="@(1 == SelectedNavItem)"
                     onclick="@(()=>SelectNavItem(1))"
-                    Link="admin/myuserdossier" Caption="Yo"
+                    Link="admin/myuserdossier" Caption="@L("nav.me")"
                     Image="Myself"
-                    Tooltip="Mi página de información."
+                    Tooltip="@L("nav.me.tip")"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{ 
                     Sapphire2025Models.Common.UserRole.Engineer, 
                     Sapphire2025Models.Common.UserRole.Expert, 
@@ -24,9 +24,9 @@
 
     <NexusNavOption Selected="@(11 == SelectedNavItem)"
                     onclick="@(()=>SelectNavItem(11))"
-                    Link="help" Caption="Ayuda"
+                    Link="help" Caption="@L("nav.help")"
                     Image="Help"
-                    Tooltip="Centro de ayuda según su perfil."
+                    Tooltip="@L("nav.help.tip")"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{ 
                     Sapphire2025Models.Common.UserRole.Engineer, 
                     Sapphire2025Models.Common.UserRole.Expert, 
@@ -39,63 +39,63 @@
 
     <NexusNavOption Selected="@(2 == SelectedNavItem)"
                     onclick="@(()=>SelectNavItem(2))"
-                    Link="submenu/admin" Caption="Admin"
+                    Link="submenu/admin" Caption="@L("nav.admin")"
                     Image="RoleAdmin"
-                    Tooltip="Administración del sistema."
+                    Tooltip="@L("nav.admin.tip")"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Root}" />
 
     <NexusNavOption Selected ="@(3 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(3))" 
-                    Link="submenu/caps" Caption="J.Maquinista"
+                    Link="submenu/caps" Caption="@L("nav.expert")"
                     Image="RoleDiagnoser"
-                    Tooltip="Opciones para Jefes de Maquinistas"
+                    Tooltip="@L("nav.expert.tip")"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{ Sapphire2025Models.Common.UserRole.Expert}" />
     
     <NexusNavOption Selected="@(4 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(4))"
-                    Link="submenu/station" Caption="Estación"
+                    Link="submenu/station" Caption="@L("nav.station")"
                     Image="RoleStation"
-                    Tooltip="Personal de estaciones"
+                    Tooltip="@L("nav.station.tip")"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Station}" />
 
     <NexusNavOption Selected="@(5 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(5))"
-                    Link="submenu/inspector" Caption="Inspector"
+                    Link="submenu/inspector" Caption="@L("nav.inspector")"
                     Image="RoleInspector"
-                    Tooltip="Opciones para Inspectores"
+                    Tooltip="@L("nav.inspector.tip")"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Inspector}" />    
 
     <NexusNavOption Selected="@(6 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(6))"
-                    Link="submenu/mechanic" Caption="Mecánico"
+                    Link="submenu/mechanic" Caption="@L("nav.mechanic")"
                     Image="RoleMechanic"
-                    Tooltip="Opciones para Personal de los Talleres"
+                    Tooltip="@L("nav.mechanic.tip")"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Mechanic}" />
 
     <NexusNavOption Selected="@(7 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(7))"
-                    Link="submenu/oficial" Caption="Oficial"
+                    Link="submenu/oficial" Caption="@L("nav.oficial")"
                     Image="RoleAdvancedUser"
-                    Tooltip="Opciones para Oficiales de taller de SFM"
+                    Tooltip="@L("nav.oficial.tip")"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Oficial}" />
 
     <NexusNavOption Selected="@(8 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(8))"
-                    Link="submenu/engineer" Caption="Ingeniero"
+                    Link="submenu/engineer" Caption="@L("nav.engineer")"
                     Image="RoleDetective"
-                    Tooltip="Opciones para Análisis de Información"
+                    Tooltip="@L("nav.engineer.tip")"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Engineer}" />
     <NexusNavOption Selected="@(9 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(9))"
-                    Link="submenu/diamond" Caption="Diamond"
+                    Link="submenu/diamond" Caption="@L("nav.diamond")"
                     Image="Map"
-                    Tooltip="Generación de mallas horarias"
+                    Tooltip="@L("nav.diamond.tip")"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Engineer}" />
     <NexusNavOption Selected="@(10 == SelectedNavItem)"
                     OnClick="@(()=>SelectNavItem(10))"
-                    Link="submenu/anonymous" Caption="Movimiento"
+                    Link="submenu/anonymous" Caption="@L("nav.movement")"
                     Image="RoleTrainDriver"
-                    Tooltip="Maquinistas y personal de trenes"
+                    Tooltip="@L("nav.movement.tip")"
                     Roles="new List<Sapphire2025Models.Common.UserRole>{Sapphire2025Models.Common.UserRole.Anonymous}" />
 
 </CascadingValue>
@@ -103,16 +103,27 @@
     <Image Src="img/sfmImg.png" Style="width:75%; margin:5%;" />
 </div>
 
+
+@implements IDisposable
 @code {
-    //Este componente muestra los datos de la sesión actual leyendo desde
-    //el almacenamiento interno.
     [CascadingParameter]
     public SessionModel? Session { get; set; }
     [Parameter]
     public int SelectedNavItem{ get; set; }
-    
 
-    
+    protected override void OnInitialized()
+    {
+        Prefs.Changed += OnPrefsChanged;
+    }
+
+    public void Dispose()
+    {
+        Prefs.Changed -= OnPrefsChanged;
+    }
+
+    private void OnPrefsChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
+
+    private string L(string key) => Prefs.T(key);
 
     private void SelectNavItem(int id){SelectedNavItem = id;}
 }

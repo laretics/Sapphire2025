@@ -13,25 +13,25 @@
             <div class="col-12 col-md-10 col-lg-8">
                 <div class="alert alert-warning border-2 rounded-4 shadow-sm text-center home-alert" role="alert">
                     <GenIcon Name="Scheduler"/>
-                    <strong class="d-block d-sm-inline">Importante:</strong>
-                    <p class="mb-1 mt-2">La versión que está utilizando usted es la @mvarCurrentVersion.</p>
-                    <p class="mb-1">El programa deberá ser actualizado a la versión @mvarNewVersion.</p>
+                    <strong class="d-block d-sm-inline">@Prefs.T("home.important")</strong>
+                    <p class="mb-1 mt-2">@Prefs.T("home.version.current", mvarCurrentVersion)</p>
+                    <p class="mb-1">@Prefs.T("home.version.new", mvarNewVersion)</p>
                     @if (mcolChanges is { Count: > 0 })
                     {
                         <div class="text-start small mt-2 mb-2">
-                            <div class="fw-semibold mb-1">Cambios que le afectan:</div>
+                            <div class="fw-semibold mb-1">@Prefs.T("home.changes")</div>
                             <ul class="mb-0 list-unstyled">
                                 @foreach (VersionChangeNote change in mcolChanges)
                                 {
                                     <li class="d-flex align-items-start justify-content-between gap-2 py-1 border-bottom border-warning-subtle">
-                                        <span>@change.Text</span>
+                                        <span>@ChangeTitle(change)</span>
                                         @if (change.HasObservations)
                                         {
                                             <button type="button" class="btn btn-sm btn-outline-dark flex-shrink-0"
                                                     @onclick="() => ShowChangeDetails(change)"
-                                                    title="Más información sobre este cambio">
+                                                    title="@Prefs.T("home.moreinfo.tip")">
                                                 <i class="bi bi-info-circle"></i>
-                                                <span class="d-none d-sm-inline"> Más info</span>
+                                                <span class="d-none d-sm-inline"> @Prefs.T("common.moreinfo")</span>
                                             </button>
                                         }
                                     </li>
@@ -39,8 +39,8 @@
                             </ul>
                         </div>
                     }
-                    <p class="mb-1 small">Para ello puede pulsar las teclas Ctrl + F5, borrar los datos de navegación, vaciar el historial de esta página o eliminar las cookies de navegación.</p>
-                    <p class="mb-0 small">Seguirá viendo este aviso mientras su versión no coincida con la actual. Mientras tanto se podrían producir errores. Sus datos en el sistema permanecen almacenados de forma segura.</p>
+                    <p class="mb-1 small">@Prefs.T("home.reload.hint")</p>
+                    <p class="mb-0 small">@Prefs.T("home.reload.warn")</p>
                 </div>
             </div>
         </div>
@@ -64,8 +64,8 @@
                 <div class="col-12 col-sm-6 col-lg-4">
                     <div class="card h-100 shadow-sm border-0">
                         <div class="card-header bg-white d-flex align-items-center justify-content-between">
-                            <span class="fw-semibold">Panel A</span>
-                            <span class="badge bg-secondary">Tiempo real</span>
+                            <span class="fw-semibold">@Prefs.T("home.panel.a")</span>
+                            <span class="badge bg-secondary">@Prefs.T("common.realtime")</span>
                         </div>
                         <div class="card-body">
                             <div class="d-flex flex-column gap-2">
@@ -75,7 +75,7 @@
                             </div>
                         </div>
                         <div class="card-footer bg-white d-flex justify-content-end">
-                            <button class="btn btn-outline-primary btn-sm">Acción</button>
+                            <button class="btn btn-outline-primary btn-sm">@Prefs.T("common.action")</button>
                         </div>
                     </div>
                 </div>
@@ -83,15 +83,15 @@
                 <div class="col-12 col-sm-6 col-lg-4">
                     <div class="card h-100 shadow-sm border-0">
                         <div class="card-header bg-white d-flex align-items-center justify-content-between">
-                            <span class="fw-semibold">Panel B</span>
-                            <span class="badge bg-secondary">Tiempo real</span>
+                            <span class="fw-semibold">@Prefs.T("home.panel.b")</span>
+                            <span class="badge bg-secondary">@Prefs.T("common.realtime")</span>
                         </div>
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between mb-2">
-                                <div class="text-muted small">Estado</div>
-                                <div class="badge bg-success">OK</div>
+                                <div class="text-muted small">@Prefs.T("common.status")</div>
+                                <div class="badge bg-success">@Prefs.T("common.ok")</div>
                             </div>
-                            <div class="progress" role="progressbar" aria-label="Carga" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress" role="progressbar" aria-label="@Prefs.T("home.load")" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100">
                                 <div class="progress-bar" style="width: 45%"></div>
                             </div>
                             <div class="placeholder-glow mt-3">
@@ -99,7 +99,7 @@
                             </div>
                         </div>
                         <div class="card-footer bg-white d-flex justify-content-end">
-                            <button class="btn btn-outline-secondary btn-sm">Ver detalles</button>
+                            <button class="btn btn-outline-secondary btn-sm">@Prefs.T("common.viewdetails")</button>
                         </div>
                     </div>
                 </div>
@@ -107,17 +107,17 @@
                 <div class="col-12 col-sm-12 col-lg-4">
                     <div class="card h-100 shadow-sm border-0">
                         <div class="card-header bg-white d-flex align-items-center justify-content-between">
-                            <span class="fw-semibold">Panel C</span>
-                            <span class="badge bg-secondary">Tiempo real</span>
+                            <span class="fw-semibold">@Prefs.T("home.panel.c")</span>
+                            <span class="badge bg-secondary">@Prefs.T("common.realtime")</span>
                         </div>
                         <div class="card-body">
                             <div class="row gy-2">
                                 <div class="col-6">
-                                    <div class="text-muted small">Métrica 1</div>
+                                    <div class="text-muted small">@Prefs.T("home.metric", 1)</div>
                                     <div class="h5 mb-0">—</div>
                                 </div>
                                 <div class="col-6">
-                                    <div class="text-muted small">Métrica 2</div>
+                                    <div class="text-muted small">@Prefs.T("home.metric", 2)</div>
                                     <div class="h5 mb-0">—</div>
                                 </div>
                                 <div class="col-12 mt-2">
@@ -126,7 +126,7 @@
                             </div>
                         </div>
                         <div class="card-footer bg-white d-flex justify-content-end">
-                            <button class="btn btn-outline-success btn-sm">Actualizar</button>
+                            <button class="btn btn-outline-success btn-sm">@Prefs.T("common.update")</button>
                         </div>
                     </div>
                 </div>
@@ -149,7 +149,7 @@
                                 <button type="button"
                                         class="btn @(IsLoggedIn ? "btn-outline-secondary" : "btn-primary") w-100"
                                         @onclick="OnAuthAction">
-                                    @(IsLoggedIn ? "Cerrar sesión" : "Iniciar sesión")
+                                    @(IsLoggedIn ? Prefs.T("auth.logout") : Prefs.T("home.signin"))
                                 </button>
                             </div>
                         </div>
@@ -162,17 +162,17 @@
 
                             @if (mcolChanges is { Count: > 0 })
                             {
-                                <h6 class="mt-3 mb-2 text-secondary">Notas de la versión @Sapphire2025Models.Common.SapphireSoftwareVersion</h6>
+                                <h6 class="mt-3 mb-2 text-secondary">@Prefs.T("home.notes", Sapphire2025Models.Common.SapphireSoftwareVersion)</h6>
                                 <ul class="list-group list-group-flush small home-notes">
                                     @foreach (VersionChangeNote change in mcolChanges)
                                     {
                                         <li class="list-group-item px-0 py-2 d-flex align-items-start justify-content-between gap-2">
-                                            <span class="flex-grow-1">@change.Text</span>
+                                            <span class="flex-grow-1">@ChangeTitle(change)</span>
                                             @if (change.HasObservations)
                                             {
                                                 <button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0"
                                                         @onclick="() => ShowChangeDetails(change)"
-                                                        title="Más información sobre este cambio">
+                                                        title="@Prefs.T("home.moreinfo.tip")">
                                                     <i class="bi bi-info-circle"></i>
                                                     <GenIcon Name="Info" />
                                                 </button>
@@ -185,7 +185,7 @@
                                 <button type="button"
                                         class="btn @(IsLoggedIn ? "btn-outline-secondary" : "btn-outline-primary")"
                                         @onclick="OnAuthAction">
-                                    @(IsLoggedIn ? "Cerrar sesión" : "Ir al inicio de sesión")
+                                    @(IsLoggedIn ? Prefs.T("auth.logout") : Prefs.T("home.signin.go"))
                                 </button>
                             </div>
                         </div>
@@ -205,12 +205,12 @@
             <div class="modal-content shadow">
                 <div class="modal-header">
                     <h5 class="modal-title">
-                        <i class="bi bi-info-circle me-2 text-primary"></i>@mvarDetailChange.Text
+                        <i class="bi bi-info-circle me-2 text-primary"></i>@ChangeTitle(mvarDetailChange)
                     </h5>
-                    <button type="button" class="btn-close" aria-label="Cerrar" @onclick="CloseChangeDetails"></button>
+                    <button type="button" class="btn-close" aria-label="@Prefs.T("common.close")" @onclick="CloseChangeDetails"></button>
                 </div>
                 <div class="modal-body">
-                    @foreach (string paragraph in SplitObservations(mvarDetailChange.Observations))
+                    @foreach (string paragraph in SplitObservations(ChangeBody(mvarDetailChange)))
                     {
                         @if (paragraph.StartsWith("• "))
                         {
@@ -228,7 +228,7 @@
                     }
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" @onclick="CloseChangeDetails">Entendido</button>
+                    <button type="button" class="btn btn-primary" @onclick="CloseChangeDetails">@Prefs.T("common.understood")</button>
                 </div>
             </div>
         </div>
@@ -249,6 +249,20 @@
     private bool mvarDetailOpen;
 
     private bool IsLoggedIn => mvarSession is not null;
+
+    private string ChangeTitle(VersionChangeNote change)
+    {
+        if (!string.IsNullOrWhiteSpace(change.TextKey))
+            return Prefs.T(change.TextKey);
+        return change.Text ?? string.Empty;
+    }
+
+    private string ChangeBody(VersionChangeNote change)
+    {
+        if (!string.IsNullOrWhiteSpace(change.ObservationsKey))
+            return Prefs.T(change.ObservationsKey);
+        return change.Observations ?? string.Empty;
+    }
 
     private void OnAuthAction()
     {
@@ -304,12 +318,12 @@
             {
                 mvarNeedsUpdate = true;
                 mvarNewVersion = string.IsNullOrWhiteSpace(check.ServerVersion)
-                    ? "nueva"
+                    ? Prefs.T("home.version.new.fallback")
                     : check.ServerVersion.Trim().Trim('"');
             }
 
             if (check.Changes is { Count: > 0 })
-                mcolChanges = check.Changes.Where(c => !string.IsNullOrWhiteSpace(c.Text)).ToList();
+                mcolChanges = check.Changes.Where(c => !string.IsNullOrWhiteSpace(c.TextKey) || !string.IsNullOrWhiteSpace(c.Text)).ToList();
             else if (check.Notes is { Count: > 0 })
             {
                 // Compatibilidad si el servidor solo enviara textos
@@ -322,9 +336,11 @@
         else
         {
             mcolChanges = Sapphire2025Models.Common.GetReleaseChangesFor(mvarSession?.Roles)
-                .Where(c => !string.IsNullOrWhiteSpace(c.Text))
+                .Where(c => !string.IsNullOrWhiteSpace(c.TextKey) || !string.IsNullOrWhiteSpace(c.Text))
                 .Select(c => new VersionChangeNote
                 {
+                    TextKey = c.TextKey,
+                    ObservationsKey = c.ObservationsKey,
                     Text = c.Text,
                     Observations = c.Observations ?? string.Empty
                 })

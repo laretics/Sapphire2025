@@ -7,18 +7,18 @@
     {
         <div class="container py-4">
             <p class="lead text-secondary text-center mb-4">
-                Todo lo necesario para las tareas que un inspector de operaciones requiere de la gestión del personal de movimiento y tracción.
+                @Prefs.T("menu.inspector.lead")
             </p>
             <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
                 <SMDrivers/>
                 <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
                     <img src="img/PlatformReport.png" class="card-img-top" alt="Sapphire Log" style="object-fit: cover; height: 180px;">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Vías</h5>
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Prefs.T("card.platforms")</h5>
                         <p class="card-text text-muted custom-comment">
-                            Estado del material
+                            @Prefs.T("card.platforms.desc")
                         </p>
-                        <a href="/inspector/platformreport" class="btn btn-outline-primary w-100">Abrir</a>
+                        <a href="/inspector/platformreport" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
                     </div>
                 </div>
                 <SMDriversWorkSheet Agents="@mcolAgentsViews" />
@@ -32,7 +32,7 @@
     {
         <div class="container py-4">
             <p class="lead text-secondary text-center mb-4">
-                Gestión de personal y material móvil
+                @Prefs.T("menu.station.lead")
             </p>
             <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
                 <SMTaller/>
@@ -47,7 +47,7 @@
     {
         <div class="container py-4">
             <p class="lead text-secondary text-center mb-4">
-                Conjunto de herramientas para responsables del colectivo de tracción y supervisión técnica del material móvil.
+                @Prefs.T("menu.caps.lead")
             </p>
             <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
                 <SMWorkDaySheet />
@@ -62,7 +62,7 @@
     {
         <div class="container py-4">
             <p class="lead text-secondary text-center mb-4">
-                Herramientas para el personal de taller de SFM y de las empresas colaboradoras
+                @Prefs.T("menu.mechanic.lead")
             </p>
             <SMTaller/>
             <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
@@ -70,11 +70,11 @@
                     @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
                     <img src="img/TourmalineServiceMode.jpg" class="card-img-top" alt="Tourmaline" style="object-fit: cover; height: 180px;">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Tourmaline</h5>
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Prefs.T("card.tourmaline")</h5>
                         <p class="card-text text-muted custom-comment">
-                            Modo de servicio de Tourmaline.
+                            @Prefs.T("card.tourmaline.desc")
                         </p>
-                        <a href="/tourmalineServiceMode" class="btn btn-outline-primary w-100">Abrir</a>
+                        <a href="/tourmalineServiceMode" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
                     </div>
                 </div>
             </div>
@@ -86,18 +86,18 @@
     {
         <div class="container py-4">
             <p class="lead text-secondary text-center mb-4">
-                Herramientas para el personal de taller de SFM
+                @Prefs.T("menu.oficial.lead")
             </p>
             <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
                 <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span>
+                    <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">@Prefs.T("common.badge.new")</span>
                     <img src="img/disponib.png" class="card-img-top" alt="TimeSnap" style="object-fit: cover; height: 180px;">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Disponibilidad</h5>
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Prefs.T("card.avail")</h5>
                         <p class="card-text text-muted custom-comment">
-                            Línea temporal de disponibilidad
+                            @Prefs.T("card.avail.desc")
                         </p>
-                        <a href="/timeSnap" class="btn btn-outline-primary w-100">Abrir</a>
+                        <a href="/timeSnap" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
                     </div>
                 </div>
                 <SMTrainQuery />
@@ -107,11 +107,11 @@
                     <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">                        
                         <img src="img/TourmalineServiceMode.jpg" class="card-img-top" alt="Tourmaline" style="object-fit: cover; height: 180px;">
                         <div class="card-body">
-                            <h5 class="card-title fw-bold text-dark mb-2 custom-title">Tourmaline</h5>
+                            <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Prefs.T("card.tourmaline")</h5>
                             <p class="card-text text-muted custom-comment">
-                                Modo de servicio de Tourmaline.
+                                @Prefs.T("card.tourmaline.desc")
                             </p>
-                            <a href="/tourmalineServiceMode" class="btn btn-outline-primary w-100">Abrir</a>
+                            <a href="/tourmalineServiceMode" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
                         </div>
                     </div>
                 </div>
@@ -122,18 +122,18 @@
     {
         <div class="container py-4">
             <p class="lead text-secondary text-center mb-4">
-                Acceso a herramientas de minería de datos y evaluación del servicio
+                @Prefs.T("menu.engineer.lead")
             </p>
             <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
                 <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
                     @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
                     <img src="img/disponib.png" class="card-img-top" alt="TimeSnap" style="object-fit: cover; height: 180px;">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Disponibilidad</h5>
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Prefs.T("card.avail")</h5>
                         <p class="card-text text-muted custom-comment">
-                            Línea temporal de disponibilidad
+                            @Prefs.T("card.avail.desc")
                         </p>
-                        <a href="/timeSnap/lines" class="btn btn-outline-primary w-100">Abrir</a>
+                        <a href="/timeSnap/lines" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
                     </div>
                 </div>
                 <SMTrainQuery />
@@ -144,11 +144,11 @@
                     @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
                     <img src="img/certificacion.jpg" class="card-img-top" alt="Disponibilidad" style="object-fit: cover; height: 180px;">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Contrato SFM Erion</h5>
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Prefs.T("card.contract")</h5>
                         <p class="card-text text-muted custom-comment">
-                            Seguimiento según pliego
+                            @Prefs.T("card.contract.desc")
                         </p>
-                        <a href="/timeSnap/avail" class="btn btn-outline-primary w-100">Abrir</a>
+                        <a href="/timeSnap/avail" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
                     </div>
                 </div>
                 <SMDriversWorkSheet Agents="@mcolAgentsViews"/>
@@ -159,37 +159,37 @@
     {
         <div class="container py-4">
             <p class="lead text-secondary text-center mb-4">
-                Gestión de horarios y explotación
+                @Prefs.T("menu.diamond.lead")
             </p>
             <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
                 <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
                     <img src="img/SplitFlap.png" class="card-img-top" alt="Horarios" style="object-fit: cover; height: 180px;">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Explotación (Legacy)</h5>
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Prefs.T("card.legacy")</h5>
                         <p class="card-text text-muted custom-comment">
-                            Horarios, Planes de Explotación.
+                            @Prefs.T("card.legacy.desc")
                         </p>
-                        <a href="/admin/manageworkshifts" class="btn btn-outline-primary w-100">Abrir</a>
+                        <a href="/admin/manageworkshifts" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
                     </div>
                 </div>
                 <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
                     <img src="img/MajorcaMap.png" class="card-img-top" alt="Almacén" style="object-fit: cover; height: 180px;">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Almacén Diamond</h5>
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Prefs.T("card.store")</h5>
                         <p class="card-text text-muted custom-comment">
-                            Topologías y planes de explotación versionados
+                            @Prefs.T("card.store.desc")
                         </p>
-                        <a href="/engineer/topostorage" class="btn btn-outline-primary w-100">Abrir</a>
+                        <a href="/engineer/topostorage" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
                     </div>
                 </div>
                 <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
                     <img src="img/TimeNet.png" class="card-img-top" alt="Planes Diamond" style="object-fit: cover; height: 180px;">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Planes de Explotación</h5>
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Prefs.T("card.plans")</h5>
                         <p class="card-text text-muted custom-comment">
-                            Mallas horarias Diamond (planificador)
+                            @Prefs.T("card.plans.desc")
                         </p>
-                        <a href="/engineer/timenet" class="btn btn-outline-primary w-100">Abrir</a>
+                        <a href="/engineer/timenet" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
                     </div>
                 </div>
             </div>
@@ -199,19 +199,19 @@
     {
         <div class="container py-4">
             <p class="lead text-secondary text-center mb-4">
-                Material Móvil
+                @Prefs.T("menu.anonymous.lead")
             </p>
             <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
                 <SMTaller/>
                 <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
-                    <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span>
+                    <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">@Prefs.T("common.badge.new")</span>
                     <img src="img/grExcel.png" class="card-img-top" alt="Gráfico" style="object-fit: cover; height: 180px;">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Mi gráfico</h5>
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Prefs.T("card.mysheet")</h5>
                         <p class="card-text text-muted custom-comment">
-                            Turnos y trenes
+                            @Prefs.T("card.mysheet.desc")
                         </p>
-                        <a href="/drivers/schedules" class="btn btn-outline-primary w-100">Abrir</a>
+                        <a href="/drivers/schedules" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
                     </div>
                 </div>
                 <SMTrainQuery />
@@ -223,27 +223,27 @@
     {
         <div class="container py-4">            
             <p class="lead text-secondary text-center mb-4">
-                Configuración del sistema Zafiro para administradores
+                @Prefs.T("menu.admin.lead")
             </p>
             <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
                 <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">                    
                     <img src="img/UsersAdmin.png" class="card-img-top" alt="Users Administration" style="object-fit: cover; height: 180px;">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Usuarios del Sistema</h5>
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Prefs.T("card.users")</h5>
                         <p class="card-text text-muted custom-comment">
-                            Gestión de usuarios y permisos
+                            @Prefs.T("card.users.desc")
                         </p>
-                        <a href="/admin/usersmanage" class="btn btn-outline-primary w-100">Abrir</a>
+                        <a href="/admin/usersmanage" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
                     </div>
                 </div>
                 <div class="card flex-fill shadow-sm border-0 custom-card" style="min-width: 260px; max-width: 340px;">
                     <img src="img/SapphireLog.jpg" class="card-img-top" alt="Sapphire Log" style="object-fit: cover; height: 180px;">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">Eventos</h5>
+                        <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Prefs.T("card.events")</h5>
                         <p class="card-text text-muted custom-comment">
-                            Revisión de actividad
+                            @Prefs.T("card.events.desc")
                         </p>
-                        <a href="/admin/sapphirelog" class="btn btn-outline-primary w-100">Abrir</a>
+                        <a href="/admin/sapphirelog" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
                     </div>
                 </div>
                 <div class="d-flex flex-row flex-wrap gap-4 justify-content-center">
@@ -251,11 +251,11 @@
                         @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
                         <img src="img/TourmalineServiceMode.jpg" class="card-img-top" alt="Tourmaline" style="object-fit: cover; height: 180px;">
                         <div class="card-body">
-                            <h5 class="card-title fw-bold text-dark mb-2 custom-title">Tourmaline</h5>
+                            <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Prefs.T("card.tourmaline")</h5>
                             <p class="card-text text-muted custom-comment">
-                                Modo de servicio de Tourmaline.
+                                @Prefs.T("card.tourmaline.desc")
                             </p>
-                            <a href="/tourmalineServiceMode" class="btn btn-outline-primary w-100">Abrir</a>
+                            <a href="/tourmalineServiceMode" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
                         </div>
                     </div>
                 </div>
@@ -264,11 +264,11 @@
                         @* <span class="badge bg-primary position-absolute top-0 end-0 m-2 fs-6 shadow badge-animate">Nuevo</span> *@
                         <img src="img/communication.jpg" class="card-img-top" alt="Comunicación" style="object-fit: cover; height: 180px;">
                         <div class="card-body">
-                            <h5 class="card-title fw-bold text-dark mb-2 custom-title">Comunicación</h5>
+                            <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Prefs.T("card.comm")</h5>
                             <p class="card-text text-muted custom-comment">
-                                Avisos a los usuarios del sistema.
+                                @Prefs.T("card.comm.desc")
                             </p>
-                            <a href="/communication" class="btn btn-outline-primary w-100">Abrir</a>
+                            <a href="/communication" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
                         </div>
                     </div>
                 </div>

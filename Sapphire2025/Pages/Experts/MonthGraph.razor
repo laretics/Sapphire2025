@@ -3,13 +3,13 @@
 @inject IJSRuntime mvarJSRuntime
 @inject ExpertClient mvarExpertClient
 @inject AuthenticationClient mvarAuthClient
-<PageTitle>Gráfico mensual de Tracción</PageTitle>
+<PageTitle>@Prefs.T("page.monthgraph")</PageTitle>
 <ModalDialog></ModalDialog>
 <InputFile style="display:none" @ref="mvarCBExcelInputRef" OnChange="onExcelImport" MaxAllowedSize="5242880" accept=".xlsx" />
 <div style="max-height: 80vh; overflow-y: auto;">
     @if (mvarLoading)
     {
-        <LoadingTab ElementText="Importando gráfico desde Excel" />
+        <LoadingTab ElementText="@Prefs.T("month.importing")" />
     }
     else
     {
@@ -23,10 +23,10 @@
 </div>
 <div class="btn-toolbar mb-3" role="toolbar" aria-label="Barra de herramientas">
     <div class="btn-group" role="group" aria-label="Grupo 3">
-        <button Type="button" class="btn btn-secondary" @onclick="() => TriggerFileInputBlazor(mvarCBExcelInputRef)">Importar</button>
+        <button Type="button" class="btn btn-secondary" @onclick="() => TriggerFileInputBlazor(mvarCBExcelInputRef)">@Prefs.T("month.import")</button>
     </div>
     <div class="input-group" style="width: 120px;">
-        <span class="input-group-text">Días</span>
+        <span class="input-group-text">@Prefs.T("common.days")</span>
         <InputNumber @bind-Value="dayCount" class="form-control" />
     </div>
 </div>

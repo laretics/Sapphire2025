@@ -77,6 +77,8 @@
     private IJSRuntime JS { get; set; } = default!;
     [Inject]
     private TourmalineService mvarTourmaline{ get; set; }=default!;
+    [Inject]
+    private UserPreferencesService Prefs { get; set; } = default!;
     [CascadingParameter]
     public bool NightMode{ get; set; }
     [CascadingParameter]
@@ -135,6 +137,7 @@
 
         SyncPanelAvailability();
         mvarTourmaline.HMIUpdateRequested += auxHMIRefresh;
+        await Prefs.LoadLocalAsync();
     }
     private bool auxButtonSelected(string index)
     {
@@ -451,6 +454,15 @@
             catch (Exception ex)
             {
                 Logger.LogWarning(ex, "Resincronización Sapphire tras login omitida");
+            }
+
+            try
+            {
+                await Prefs.LoadFromServerAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Preferencias de usuario no cargadas tras login");
             }
 
             try

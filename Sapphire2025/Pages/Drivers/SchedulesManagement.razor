@@ -19,7 +19,7 @@
 
 <link rel="stylesheet" href="_content/Diamond.Controls/css/diamond-mesh.css" />
 
-<PageTitle>Mi cuadrante</PageTitle>
+<PageTitle>@Prefs.T("sched.title")</PageTitle>
 <ModalDialog @ref="mvarModal" />
 
 <div class="sched-page @(mvarMobilePanel.ToString().ToLowerInvariant())">
@@ -29,19 +29,19 @@
 		<div class="sched-dev-bar card border-0 shadow-sm mb-2 mb-md-3">
 			<div class="card-body py-2 px-3">
 				<div class="sched-dev-row">
-					<div class="sched-dev-label text-muted small text-uppercase fw-semibold">Vista como</div>
+					<div class="sched-dev-label text-muted small text-uppercase fw-semibold">@Prefs.T("sched.viewas")</div>
 					<div class="input-group input-group-sm sched-cf-group">
-						<span class="input-group-text">CF</span>
+						<span class="input-group-text">@Prefs.T("me.cf")</span>
 						<input type="text"
 							   class="form-control"
 							   @bind="mvarCfInput"
 							   @bind:event="oninput"
-							   placeholder="ej. 196"
+							   placeholder="@Prefs.T("sched.cf.ph")"
 							   maxlength="8"
 							   inputmode="numeric"
 							   autocomplete="off"
-							   title="CF del maquinista a simular (solo desarrollo)" />
-						<button type="button" class="btn btn-outline-primary" @onclick="ApplyCfAsync">Ver</button>
+							   title="@Prefs.T("sched.cf.tip")" />
+						<button type="button" class="btn btn-outline-primary" @onclick="ApplyCfAsync">@Prefs.T("sched.view")</button>
 					</div>
 					@if (null != ViewedUser)
 					{
@@ -53,11 +53,11 @@
 								{
 									<a class="sched-user-phone"
 									   href="tel:@DigitsOnly(ViewedUser.PhoneNumber)"
-									   title="Teléfono del maquinista">
+									   title="@Prefs.T("sched.phone.tip")">
 										@Sapphire2025Models.Common.phoneString(ViewedUser.PhoneNumber)
 									</a>
 								}
-								<span class="badge bg-warning text-dark">Simulación</span>
+								<span class="badge bg-warning text-dark">@Prefs.T("sched.sim")</span>
 							}
 						</div>
 					}
@@ -68,11 +68,11 @@
 					<button type="button"
 							class="btn btn-sm btn-outline-secondary sched-my-user-btn"
 							@onclick="UseMyUserAsync"
-							title="Usar el usuario de la sesión actual">
-						Mi usuario
+							title="@Prefs.T("sched.myuser.tip")">
+						@Prefs.T("sched.myuser")
 					</button>
 				</div>
-			</div>
+			</div>								  
 		</div>
 	}
 
@@ -83,24 +83,24 @@
 	else if (null == ViewedUser)
 	{
 		<div class="alert alert-info">
-			Indica un <strong>CF</strong> de maquinista (p. ej. 196) para cargar su gráfico, o pulsa <em>Mi usuario</em>.
+			@Prefs.T("sched.needcf")
 		</div>
 	}
 	else
 	{
 		@* Navegación inferior / superior solo en pantallas reducidas *@
-		<nav class="sched-mobile-nav" aria-label="Secciones del cuadrante">
+		<nav class="sched-mobile-nav" aria-label="@Prefs.T("sched.nav.aria")">
 			<button type="button"
 					class="sched-mobile-tab @(mvarMobilePanel == MobilePanel.Assignations ? "active" : null)"
 					@onclick="() => SetMobilePanel(MobilePanel.Assignations)">
 				<span class="sched-mobile-tab-icon" aria-hidden="true">☰</span>
-				<span class="sched-mobile-tab-label">Gráfico</span>
+				<span class="sched-mobile-tab-label">@Prefs.T("sched.tab.chart")</span>
 			</button>
 			<button type="button"
 					class="sched-mobile-tab @(mvarMobilePanel == MobilePanel.Day ? "active" : null)"
 					@onclick="() => SetMobilePanel(MobilePanel.Day)">
 				<span class="sched-mobile-tab-icon" aria-hidden="true">◎</span>
-				<span class="sched-mobile-tab-label">Turnos</span>
+				<span class="sched-mobile-tab-label">@Prefs.T("sched.tab.shifts")</span>
 				@if (null != SelectedRow?.Assignation)
 				{
 					<span class="sched-mobile-tab-chip"
@@ -113,7 +113,7 @@
 					class="sched-mobile-tab @(mvarMobilePanel == MobilePanel.Query ? "active" : null)"
 					@onclick="() => SetMobilePanel(MobilePanel.Query)">
 				<span class="sched-mobile-tab-icon" aria-hidden="true">⌕</span>
-				<span class="sched-mobile-tab-label">Consulta</span>
+				<span class="sched-mobile-tab-label">@Prefs.T("sched.tab.query")</span>
 			</button>
 		</nav>
 
@@ -123,23 +123,23 @@
 				<div class="card-header bg-white border-bottom sched-panel-header">
 					<div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
 						<div>
-							<div class="fw-semibold">Mi gráfico</div>
+							<div class="fw-semibold">@Prefs.T("sched.mychart")</div>
 							<div class="small text-muted">@RangeLabel</div>
 						</div>
 						<button type="button"
 								class="btn btn-outline-success btn-sm sched-touch-btn sched-export-btn"
 								disabled="@(AgentRows.Count == 0)"
-								title="Descargar el periodo visible como calendario (.ics) para Google Calendar, Outlook, etc."
+								title="@Prefs.T("sched.export.ics.tip")"
 								@onclick="ExportIcsAsync">
 							<span class="sched-export-icon" aria-hidden="true">⬇</span>
-							Exportar .ics
+							@Prefs.T("sched.export.ics")
 						</button>
 					</div>
 				</div>
 				<div class="card-body p-0 sched-panel-scroll">
 					@if (AgentRows.Count == 0)
 					{
-						<div class="p-3 text-muted small">No hay turnos.</div>
+						<div class="p-3 text-muted small">@Prefs.T("sched.noshifts")</div>
 					}
 					else
 					{
@@ -169,7 +169,7 @@
 												}
 												@if (row.Assignation.SwappingAgent != Guid.Empty)
 												{
-													<span class="badge text-bg-info">Cambio</span>
+													<span class="badge text-bg-info">@Prefs.T("sched.swap")</span>
 												}
 											</div>
 											@if (row.Template is AttTemplateModel attCard)
@@ -186,7 +186,7 @@
 										}
 										else
 										{
-											<span class="text-muted">Sin asignación</span>
+											<span class="text-muted">@Prefs.T("sched.noassign")</span>
 										}
 									</div>
 									<span class="sched-day-card-chevron" aria-hidden="true">›</span>
@@ -198,10 +198,10 @@
 						<table class="table table-sm table-hover mb-0 sched-assign-table">
 							<thead class="table-light sticky-top">
 								<tr>
-									<th>Día</th>
-									<th>Turno</th>
-									<th class="d-none d-xl-table-cell">Horario</th>
-									<th class="d-none d-xxl-table-cell">Notas</th>
+									<th>@Prefs.T("sched.col.day")</th>
+									<th>@Prefs.T("sched.col.shift")</th>
+									<th class="d-none d-xl-table-cell">@Prefs.T("sched.col.hours")</th>
+									<th class="d-none d-xxl-table-cell">@Prefs.T("sched.col.notes")</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -224,11 +224,11 @@
 												</span>
 												@if (row.Assignation.TD)
 												{
-													<span class="badge bg-success-subtle text-success border ms-1" title="Turno en descanso">TD</span>
+													<span class="badge bg-success-subtle text-success border ms-1" title="@Prefs.T("sched.td.tip")">TD</span>
 												}
 												@if (row.Assignation.SwappingAgent != Guid.Empty)
 												{
-													<span class="badge bg-info-subtle text-info border ms-1" title="@GetUserName(row.Assignation.SwappingAgent)">Cambio</span>
+													<span class="badge bg-info-subtle text-info border ms-1" title="@GetUserName(row.Assignation.SwappingAgent)">@Prefs.T("sched.swap")</span>
 												}
 												@if (!string.IsNullOrWhiteSpace(row.Template?.comment))
 												{
@@ -261,7 +261,7 @@
 			@* ========== CENTRO: fecha + trenes del turno ========== *@
 			<section class="sched-panel sched-panel-center card shadow-sm border-0 @(mvarMobilePanel == MobilePanel.Day ? "sched-panel-active" : null)">
 				<div class="card-header bg-white border-bottom sched-panel-header">
-					<div class="fw-semibold mb-2">Día</div>
+					<div class="fw-semibold mb-2">@Prefs.T("common.day")</div>
 					<div class="sched-datepicker-wrap">
 						<DateTimePicker @bind-SelectedDate="SelectedDate" />
 					</div>
@@ -271,7 +271,7 @@
 					{
 						<div class="sched-empty-state">
 							<div class="sched-empty-icon" aria-hidden="true">◎</div>
-							<p class="text-muted small mb-0">Selecciona un día en la lista o con el selector de fecha.</p>
+							<p class="text-muted small mb-0">@Prefs.T("sched.pickday")</p>
 						</div>
 					}
 					else
@@ -279,7 +279,7 @@
 						<div class="sched-day-hero mb-3">
 							<div class="sched-day-hero-top">
 								<div class="sched-day-hero-text">
-									<span class="sched-day-kicker">Jornada</span>
+									<span class="sched-day-kicker">@Prefs.T("sched.duty")</span>
 									<span class="sched-day-title">@SelectedDate.ToString("dddd d MMMM yyyy")</span>
 								</div>
 								@if (null != SelectedRow.Assignation)
@@ -294,19 +294,19 @@
 							{
 								<div class="sched-day-hero-meta">
 									<span class="sched-meta-chip">
-										<span class="sched-meta-chip-label">Horario</span>
+										<span class="sched-meta-chip-label">@Prefs.T("sched.col.hours")</span>
 										<span class="sched-meta-chip-value">
 											@Sapphire2025Models.Utils.autoInterval(selAtt.StartTime, true)–@Sapphire2025Models.Utils.autoInterval(selAtt.EndTime, true)
 										</span>
 									</span>
 									<span class="sched-meta-chip">
-										<span class="sched-meta-chip-label">Duración</span>
+										<span class="sched-meta-chip-label">@Prefs.T("sched.duration")</span>
 										<span class="sched-meta-chip-value">@Sapphire2025Models.Utils.autoInterval(selAtt.Duration, false)</span>
 									</span>
 									@if (SelectedTrains.Count > 0)
 									{
 										<span class="sched-meta-chip">
-											<span class="sched-meta-chip-label">Trenes</span>
+											<span class="sched-meta-chip-label">@Prefs.T("sched.trains")</span>
 											<span class="sched-meta-chip-value">@SelectedTrains.Count</span>
 										</span>
 									}
@@ -314,16 +314,16 @@
 							}
 							else if (null != SelectedRow.Assignation)
 							{
-								<div class="sched-day-hero-hint">Sin horario de trabajo (descanso / licencia / vacaciones).</div>
+								<div class="sched-day-hero-hint">@Prefs.T("sched.nohours")</div>
 							}
 							else
 							{
-								<div class="sched-day-hero-hint">Sin turno grafiado este día.</div>
+								<div class="sched-day-hero-hint">@Prefs.T("sched.noshiftday")</div>
 							}
 							@if (!string.IsNullOrWhiteSpace(FormatAssignationNote(SelectedRow.Assignation?.Comment)))
 							{
 								<div class="sched-jm-note mt-2">
-									<span class="sched-jm-note-label">Nota JM</span>
+									<span class="sched-jm-note-label">@Prefs.T("sched.jmnote")</span>
 									<span class="sched-jm-note-text">@FormatAssignationNote(SelectedRow.Assignation?.Comment)</span>
 								</div>
 							}
@@ -332,10 +332,10 @@
 								{
 									<button type="button"
 											class="btn btn-outline-success btn-sm mt-3 sched-touch-btn sched-export-day-btn"
-											title="Descargar trenes y depósitos de este turno como calendario (.ics)"
+											title="@Prefs.T("sched.export.day.tip")"
 											@onclick="ExportDayShiftIcsAsync">
 										<span class="sched-export-icon" aria-hidden="true">⬇</span>
-										Exportar trenes .ics
+										@Prefs.T("sched.export.trains")
 									</button>
 								}
 								@if (SelectedRow.Assignation is not null && SelectedRow.Template is AttTemplateModel)
@@ -343,7 +343,7 @@
 									<button type="button"
 											class="btn btn-primary btn-sm mt-3 sched-touch-btn sched-swap-cta"
 											@onclick="OpenSwapDialog">
-										Pedir cambio de turno…
+										@Prefs.T("sched.askswap")
 									</button>
 								}
 							</div>
@@ -351,7 +351,7 @@
 							{
 								<div class="sched-live-hint mt-2">
 									<span class="sched-live-dot" aria-hidden="true"></span>
-									Resalte en vivo · @DateTime.Now.ToString("HH:mm")
+									@Prefs.T("sched.live", DateTime.Now.ToString("HH:mm"))
 								</div>
 							}
 						</div>
@@ -360,9 +360,9 @@
 						{
 							<div class="sched-section">
 								<div class="sched-section-head">
-									<h6 class="sched-section-title">Circulaciones del turno</h6>
+									<h6 class="sched-section-title">@Prefs.T("sched.circs")</h6>
 								</div>
-								<p class="text-muted small mb-0">No hay trenes ni depósitos asociados a este turno.</p>
+								<p class="text-muted small mb-0">@Prefs.T("sched.notrains")</p>
 							</div>
 						}
 						else
@@ -371,18 +371,18 @@
 							{
 								<div class="sched-section">
 									<div class="sched-section-head">
-										<h6 class="sched-section-title">Circulaciones del turno</h6>
+										<h6 class="sched-section-title">@Prefs.T("sched.circs")</h6>
 										<div class="d-flex align-items-center gap-2">
 											@if (mvarPlanLookupBusy)
 											{
-												<span class="sched-plan-lookup" title="Buscando trenes en el plan de explotación vigente">
+												<span class="sched-plan-lookup" title="@Prefs.T("sched.plan.lookup")">
 													<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
 												</span>
 											}
 											<span class="sched-section-count">@SelectedTrains.Count</span>
 											<button type="button"
 													class="btn btn-outline-success btn-sm sched-export-mini"
-													title="Exportar trenes y depósitos de este turno a .ics"
+													title="@Prefs.T("sched.export.day.tip")"
 													@onclick="ExportDayShiftIcsAsync">
 												.ics
 											</button>
@@ -402,7 +402,7 @@
 														{
 															<button type="button"
 																	class="sched-train-number sched-train-number-link"
-																	title="Abrir hoja de circulación"
+																	title="@Prefs.T("sched.sheet.open")"
 																	@onclick="() => OpenCirculationSheetAsync(train)"
 																	@onclick:stopPropagation="true">
 																@train.TrainId
@@ -412,22 +412,22 @@
 														{
 															<span class="sched-train-number"
 																  title="@(mvarPlanLookupBusy
-																	  ? "Comprobando el plan de explotación…"
-																	  : "Este tren no figura en el plan de explotación de esa fecha")">
+																	  ? Prefs.T("sched.plan.checking")
+																	  : Prefs.T("sched.plan.missing"))">
 																@train.TrainId
 															</span>
 														}
 														@if (slot == SlotStatus.Current)
 														{
-															<span class="sched-pill sched-pill-live">En curso</span>
+															<span class="sched-pill sched-pill-live">@Prefs.T("sched.live.now")</span>
 														}
 														else if (slot == SlotStatus.Past)
 														{
-															<span class="sched-pill sched-pill-done">Hecho</span>
+															<span class="sched-pill sched-pill-done">@Prefs.T("sched.done")</span>
 														}
 														@if (train.Discrectional)
 														{
-															<span class="sched-pill sched-pill-optional">Opcional</span>
+															<span class="sched-pill sched-pill-optional">@Prefs.T("sched.optional")</span>
 														}
 													</div>
 													<div class="sched-train-time">
@@ -445,7 +445,7 @@
 							{
 								<div class="sched-section @(SelectedTrains.Count > 0 ? "mt-3" : null)">
 									<div class="sched-section-head">
-										<h6 class="sched-section-title">Depósitos / disponibilidad</h6>
+										<h6 class="sched-section-title">@Prefs.T("sched.depots")</h6>
 										<span class="sched-section-count">@SelectedDepots.Count</span>
 									</div>
 									<div class="sched-content-list">
@@ -463,19 +463,19 @@
 														<span>@Sapphire2025Models.Utils.autoInterval(depot.Duration, false)</span>
 														@if (slot == SlotStatus.Current)
 														{
-															<span class="sched-pill sched-pill-live">En curso</span>
+															<span class="sched-pill sched-pill-live">@Prefs.T("sched.live.now")</span>
 														}
 														else if (slot == SlotStatus.Past)
 														{
-															<span class="sched-pill sched-pill-done">Hecho</span>
+															<span class="sched-pill sched-pill-done">@Prefs.T("sched.done")</span>
 														}
 														@if (depot.Foreign)
 														{
-															<span class="sched-pill sched-pill-foreign">Fuera</span>
+															<span class="sched-pill sched-pill-foreign">@Prefs.T("sched.away")</span>
 														}
 														else
 														{
-															<span class="sched-pill sched-pill-depot">Depósito</span>
+															<span class="sched-pill sched-pill-depot">@Prefs.T("sched.depot")</span>
 														}
 													</div>
 												</div>
@@ -492,25 +492,25 @@
 			@* ========== DERECHA: consulta + cambio ========== *@
 			<section class="sched-panel sched-panel-right card shadow-sm border-0 @(mvarMobilePanel == MobilePanel.Query ? "sched-panel-active" : null)">
 				<div class="card-header bg-white border-bottom sched-panel-header">
-					<div class="fw-semibold">Consultas</div>
-					<div class="small text-muted">Quién hace un turno</div>
+					<div class="fw-semibold">@Prefs.T("sched.queries")</div>
+					<div class="small text-muted">@Prefs.T("sched.queries.hint")</div>
 				</div>
 				<div class="card-body sched-panel-scroll">
 					<div class="mb-3">
-						<label class="form-label small fw-semibold mb-1">Fecha</label>
+						<label class="form-label small fw-semibold mb-1">@Prefs.T("common.date")</label>
 						<InputDate class="form-control form-control-sm sched-touch-input" @bind-Value="mvarQueryDate" />
 					</div>
 					<div class="mb-3">
-						<label class="form-label small fw-semibold mb-1">Turno</label>
+						<label class="form-label small fw-semibold mb-1">@Prefs.T("sched.col.shift")</label>
 						<div class="input-group input-group-sm sched-query-input-group">
 							<input type="text"
 								   class="form-control sched-touch-input"
 								   @bind="mvarQueryShift"
 								   @bind:event="oninput"
-								   placeholder="ej. 3, 1f, DD…"
+								   placeholder="@Prefs.T("sched.shift.ph")"
 								   list="sched-shift-suggestions"
 								   autocomplete="off" />
-							<button type="button" class="btn btn-primary sched-touch-btn" @onclick="QueryShiftAsync">Buscar</button>
+							<button type="button" class="btn btn-primary sched-touch-btn" @onclick="QueryShiftAsync">@Prefs.T("common.search")</button>
 						</div>
 						<datalist id="sched-shift-suggestions">
 							@foreach (string name in ShiftSuggestions)
@@ -529,11 +529,11 @@
 					{
 						<div class="sched-query-result">
 							<div class="small text-muted mb-2">
-								Resultado para <strong>@mvarQueryShift</strong> el @mvarQueryDate.ToString("dd/MM/yyyy")
+								@Prefs.T("sched.query.result", mvarQueryShift, mvarQueryDate.ToString("dd/MM/yyyy"))
 							</div>
 							@if (QueryResults.Count == 0)
 							{
-								<div class="text-muted small">Nadie asignado a ese turno ese día (o turno no grafiado).</div>
+								<div class="text-muted small">@Prefs.T("sched.query.empty")</div>
 							}
 							else
 							{
@@ -553,12 +553,12 @@
 												<button type="button"
 														class="btn btn-outline-primary btn-sm sched-touch-btn"
 														@onclick="() => OpenSwapDialogFor(hit)">
-													Pedir cambio
+													@Prefs.T("sched.askswap.short")
 												</button>
 											}
 											else
 											{
-												<span class="badge text-bg-light border align-self-center">Tú</span>
+												<span class="badge text-bg-light border align-self-center">@Prefs.T("common.you")</span>
 											}
 										</li>
 									}
@@ -569,8 +569,7 @@
 
 					<hr class="my-3" />
 					<div class="small text-muted">
-						<strong>Próximamente:</strong> el cambio de turno se enviará al otro maquinista y al JM.
-						De momento puedes esbozar la solicitud con el diálogo.
+						<strong>@Prefs.T("sched.soon")</strong> @Prefs.T("sched.soon.body")
 					</div>
 				</div>
 			</section>
@@ -585,15 +584,15 @@
 		<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable sched-swap-dialog">
 			<div class="modal-content shadow">
 				<div class="modal-header">
-					<h5 class="modal-title">Pedir cambio de turno</h5>
+					<h5 class="modal-title">@Prefs.T("sched.swap.title")</h5>
 					<button type="button" class="btn-close" @onclick="CloseSwapDialog"></button>
 				</div>
 				<div class="modal-body">
 					<p class="small text-muted">
-						Esbozo de la petición. Aún no se envía al servidor.
+						@Prefs.T("sched.swap.draft")
 					</p>
 					<div class="mb-2">
-						<label class="form-label small fw-semibold">Tu turno</label>
+						<label class="form-label small fw-semibold">@Prefs.T("sched.swap.yours")</label>
 						<div>
 							<span class="sched-shift-badge"
 								  style="@GetTemplateStyle(mvarSwapOwnTemplate, mvarSwapOwnTd)">
@@ -603,23 +602,23 @@
 						</div>
 					</div>
 					<div class="mb-2">
-						<label class="form-label small fw-semibold">Maquinista destino</label>
+						<label class="form-label small fw-semibold">@Prefs.T("sched.swap.target")</label>
 						<input type="text" class="form-control form-control-sm" @bind="mvarSwapTargetDisplay" readonly />
 					</div>
 					<div class="mb-2">
-						<label class="form-label small fw-semibold">Turno que ofrece / pide</label>
+						<label class="form-label small fw-semibold">@Prefs.T("sched.swap.offer")</label>
 						<input type="text" class="form-control form-control-sm" @bind="mvarSwapTargetShift" />
 					</div>
 					<div class="mb-2">
-						<label class="form-label small fw-semibold">Mensaje</label>
+						<label class="form-label small fw-semibold">@Prefs.T("sched.swap.message")</label>
 						<textarea class="form-control form-control-sm" rows="3" @bind="mvarSwapMessage"
-								  placeholder="Motivo del cambio, preferencia de contacto…"></textarea>
+								  placeholder="@Prefs.T("sched.swap.message.ph")"></textarea>
 					</div>
 				</div>
 				<div class="modal-footer">
-					<button type="button" class="btn btn-outline-secondary" @onclick="CloseSwapDialog">Cancelar</button>
+					<button type="button" class="btn btn-outline-secondary" @onclick="CloseSwapDialog">@Prefs.T("common.cancel")</button>
 					<button type="button" class="btn btn-primary" @onclick="SubmitSwapSketchAsync">
-						Enviar solicitud (esbozo)
+						@Prefs.T("sched.swap.submit")
 					</button>
 				</div>
 			</div>
@@ -637,7 +636,7 @@
 		@if (mcolCrossingDrivers.Count > 0)
 		{
 			<div class="sched-crossing-panel">
-				<div class="sched-crossing-title">Cruzamientos · maquinista</div>
+				<div class="sched-crossing-title">@Prefs.T("sched.crossing")</div>
 				<ul class="sched-crossing-list">
 					@foreach (CrossingDriverRow row in mcolCrossingDrivers)
 					{

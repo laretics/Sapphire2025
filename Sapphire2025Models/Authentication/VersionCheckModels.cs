@@ -18,15 +18,22 @@ namespace Sapphire2025Models.Authentication
 	/// </summary>
 	public class VersionChangeNote
 	{
-		/// <summary>Resumen del cambio (lista principal).</summary>
+		/// <summary>Clave de catálogo del resumen. Si existe, la UI traduce con el idioma del usuario.</summary>
+		public string TextKey { get; set; } = string.Empty;
+
+		/// <summary>Clave de catálogo del detalle. Vacío = sin «Más info».</summary>
+		public string ObservationsKey { get; set; } = string.Empty;
+
+		/// <summary>Resumen del cambio (reserva en castellano si no hay clave).</summary>
 		public string Text { get; set; } = string.Empty;
 
 		/// <summary>
-		/// Observaciones / detalle ampliado. Si está vacío, no se ofrece «Más info».
+		/// Observaciones / detalle ampliado (reserva en castellano).
 		/// </summary>
 		public string Observations { get; set; } = string.Empty;
 
-		public bool HasObservations => !string.IsNullOrWhiteSpace(Observations);
+		public bool HasObservations =>
+			!string.IsNullOrWhiteSpace(ObservationsKey) || !string.IsNullOrWhiteSpace(Observations);
 	}
 
 	/// <summary>

@@ -106,13 +106,13 @@ namespace Sapphire2026Telegram
 						}
 					});
 				});
-				mvarHubConnection.On<string, bool, string>("ReceiveBroadcastRequest1", (message, priority, filter) =>
+				mvarHubConnection.On<TelegramBroadcastRequestModel>("ReceiveBroadcastRequest1", (request) =>
 				{
 					_ = Task.Run(async () =>
 					{
 						try
 						{
-							await OnTelegramBroadcast1(message, priority, filter);
+							await OnTelegramBroadcast1(request);
 						}
 						catch (Exception ex)
 						{
@@ -120,13 +120,13 @@ namespace Sapphire2026Telegram
 						}
 					});
 				});
-				mvarHubConnection.On<string, bool, Common.UserRole[]>("ReceiveBroadcastRequest2", (message, priority, roles) =>
+				mvarHubConnection.On<TelegramBroadcastRequestModel>("ReceiveBroadcastRequest2", (request) =>
 				{
 					_ = Task.Run(async () =>
 					{
 						try
 						{
-							await OnTelegramBroadcast2(message, priority, roles);
+							await OnTelegramBroadcast2(request);
 						}
 						catch (Exception ex)
 						{
@@ -270,19 +270,25 @@ namespace Sapphire2026Telegram
 		{
 			mvarLogger.LogInformation("Mensaje confirmado por el servidor: ChatId={0}, Success={1}", chatId, success);
 		}
-		private async Task OnTelegramBroadcast1(string message, bool priority = false, string filters = "")
+		private async Task OnTelegramBroadcast1(TelegramBroadcastRequestModel? request)
 		{
-			mvarLogger.LogInformation("Transmisi�n Telegram Message:{0} Priority:{1} Filters:{2}", message, priority, filters);
-			await mvarBotSoul.BroadcastToAll(message, priority, filters);
+			if (request is null)
+				return;
+			mvarLogger.LogInformation("Transmisión Telegram Message:{0} Priority:{1} Filters:{2} Key:{3}",
+				request.Message, request.Priority, request.Filters, request.CatalogKey);
+			await mvarBotSoul.BroadcastToAll(request);
 		}
-		private async Task OnTelegramBroadcast2(string message, bool priority = false, params Common.UserRole[] roles)
+		private async Task OnTelegramBroadcast2(TelegramBroadcastRequestModel? request)
 		{
-			mvarLogger.LogInformation("Transmisi�n Telegram Message:{0} Priority:{1} Roles:{2}", message, false, roles);
-			await mvarBotSoul.BroadcastByRole(message, priority, roles);
+			if (request is null)
+				return;
+			mvarLogger.LogInformation("Transmisión Telegram Message:{0} Priority:{1} Roles:{2} Key:{3}",
+				request.Message, request.Priority, request.Roles, request.CatalogKey);
+			await mvarBotSoul.BroadcastByRole(request);
 		}
 		private async Task OnTelegramBroadcastMedia(TelegramMediaBroadcastModel? payload)
 		{
-			if (payload is null || string.IsNullOrWhiteSpace(payload.Message))
+			if (payload is null || (string.IsNullOrWhiteSpace(payload.Message) && string.IsNullOrWhiteSpace(payload.CatalogKey)))
 			{
 				mvarLogger.LogWarning("Broadcast multimedia vacío o nulo.");
 				return;

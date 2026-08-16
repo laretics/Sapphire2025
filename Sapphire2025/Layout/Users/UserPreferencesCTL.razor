@@ -1,0 +1,55 @@
+
+@implements IDisposable
+
+<div class="mb-3">
+	<p class="text-muted small mb-3">@Prefs.T("pref.language.hint")</p>
+	<label class="form-label fw-semibold">@Prefs.T("pref.language")</label>
+	<div class="d-flex flex-wrap gap-2">
+		@foreach (UiLocale locale in UiLocales.All)
+		{
+			<button type="button"
+					class="btn @(Prefs.Locale == locale ? "btn-primary" : "btn-outline-secondary")"
+					disabled="@mvarBusy"
+					@onclick="() => OnLocaleAsync(locale)">
+				@UiLocales.NativeName(locale)
+			</button>
+		}
+	</div>
+	<p class="form-text mt-3">@Prefs.T("pref.open")</p>
+	@if (!string.IsNullOrWhiteSpace(mvarNotice))
+	{
+		<div class="alert alert-success py-2 mt-2 mb-0">@mvarNotice</div>
+	}
+</div>
+
+@code {
+	private bool mvarBusy;
+	private string? mvarNotice;
+
+	protected override void OnInitialized()
+	{
+		Prefs.Changed += OnPrefsChanged;
+	}
+
+	public void Dispose()
+	{
+		Prefs.Changed -= OnPrefsChanged;
+	}
+
+	private void OnPrefsChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
+
+	private async Task OnLocaleAsync(UiLocale locale)
+	{
+		mvarBusy = true;
+		mvarNotice = null;
+		try
+		{
+			await Prefs.SetLocaleAsync(locale);
+			mvarNotice = Prefs.T("pref.saved");
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+}

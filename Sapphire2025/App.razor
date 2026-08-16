@@ -4,9 +4,9 @@
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
     <NotFound>
-        <PageTitle>Not found</PageTitle>
+        <PageTitle>@Prefs.T("page.notfound")</PageTitle>
         <LayoutView Layout="@typeof(NexusFlow)">
-            <p role="alert">Sorry, there's nothing at this address.</p>
+            <p role="alert">@Prefs.T("common.notfound")</p>
         </LayoutView>
     </NotFound>
 </Router>

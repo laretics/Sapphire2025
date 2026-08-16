@@ -47,6 +47,13 @@ namespace Sapphire2026.Data
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
+			modelBuilder.Entity<UserPreference>(entity =>
+			{
+				entity.ToTable("UserPreferences");
+				entity.HasIndex(e => new { e.UserId, e.Key }).IsUnique();
+				entity.HasIndex(e => e.UserId);
+			});
+
 			// Diamond: topologías y planes de explotación (documentos versionados).
 			modelBuilder.Entity<DiamondTopoDocument>(entity =>
 			{
@@ -272,5 +279,8 @@ namespace Sapphire2026.Data
 		public DbSet<ExpertAgentsListView> ExpertAgentsListViews { get; set; }
 		public DbSet<ExpertAgentListRecord> ExpertAgentListRecords { get; set; }
         #endregion Maquinistros
+		#region Preferencias
+		public DbSet<UserPreference> UserPreferences { get; set; }
+		#endregion
     }
 }

@@ -14,13 +14,13 @@
 @inject NavigationManager mvarNav
 @attribute [Authorize]
 
-<PageTitle>Almacén Diamond · Topologías y planes</PageTitle>
+<PageTitle>@Prefs.T("page.topostorage")</PageTitle>
 
 <div class="container-fluid topo-storage-page @(mvarBusy ? "topo-busy" : null)">
 	<div class="topo-hero d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
 		<div>
-			<h1>Almacén Diamond</h1>
-			<p>Topologías geográficas y planes de explotación (scripts) versionados en Zafiro.</p>
+			<h1>@Prefs.T("topo.title")</h1>
+			<p>@Prefs.T("topo.subtitle")</p>
 		</div>
 	</div>
 
@@ -33,18 +33,18 @@
 	}
 
 	<TabControl Classic="true" PersistenceKey="diamond-store-tabs">
-		<TabPage Text="Topologías" Key="topos">
+		<TabPage Text="@Prefs.T("topo.topologies")" Key="topos">
 			<div class="topo-toolbar mb-3 flex-wrap">
 				<button type="button" class="btn btn-primary btn-sm" @onclick="ReloadToposAsync" disabled="@mvarBusy">
-					<i class="bi bi-arrow-clockwise"></i> Actualizar
+					<i class="bi bi-arrow-clockwise"></i> @Prefs.T("common.refresh")
 				</button>
 				<label class="btn btn-success btn-sm mb-0">
-					<i class="bi bi-upload"></i> Subir topo
+					<i class="bi bi-upload"></i> @Prefs.T("topo.upload")
 					<InputFile OnChange="OnUploadTopoAsync" accept=".xml,.gz,application/xml,text/xml" style="display:none;" disabled="@mvarBusy" />
 				</label>
 				<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="DownloadSelectedTopoAsync"
 						disabled="@(mvarBusy || mvarSelectedTopo is null)">
-					<i class="bi bi-download"></i> Exportar
+					<i class="bi bi-download"></i> @Prefs.T("common.export")
 				</button>
 				<button type="button" class="btn btn-outline-warning btn-sm" @onclick="ConfirmDeleteTopoAsync"
 						disabled="@(mvarBusy || mvarSelectedTopo is null || mvarSelectedTopo is { IsActive: false } || mvarSelectedTopo is { IsLockedByPlans: true })"
@@ -221,7 +221,7 @@
 				</label>
 				<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="DownloadSelectedPlanAsync"
 						disabled="@(mvarBusy || mvarSelectedPlan is null)">
-					<i class="bi bi-download"></i> Exportar
+					<i class="bi bi-download"></i> @Prefs.T("common.export")
 				</button>
 				<button type="button" class="btn btn-outline-warning btn-sm" @onclick="ConfirmDeletePlanAsync"
 						disabled="@(mvarBusy || mvarSelectedPlan is null || mvarSelectedPlan is { IsActive: false })">
@@ -369,7 +369,7 @@
 				</button>
 				<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="DownloadSelectedPublishedAsync"
 						disabled="@(mvarBusy || mvarSelectedPublished is null)">
-					<i class="bi bi-download"></i> Exportar JSON
+					<i class="bi bi-download"></i> @Prefs.T("common.export") JSON
 				</button>
 				<button type="button" class="btn btn-outline-primary btn-sm" @onclick="OpenEditPublishedAsync"
 						disabled="@(mvarBusy || mvarSelectedPublished is null)">

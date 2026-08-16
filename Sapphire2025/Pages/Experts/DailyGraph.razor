@@ -5,14 +5,14 @@
 @inject IJSRuntime mvarJSRuntime
 @inject ExpertClient mvarExpertClient
 @inject AuthenticationClient mvarAuthClient
-<PageTitle>Gráfico diario de Tracción</PageTitle>
+<PageTitle>@Prefs.T("page.dailygraph")</PageTitle>
 <ModalDialog @ref="mvarModal" />
 
 <div class="daily-graph-page">
     <ExpertDayContext ExcelImportDayCount="4" ExcelImportFeature=true RealTimeFollowFeature=true DailySheetPrintFeature=true>
         <div class="daily-graph-tabs">
             <TabControl Classic=true PersistenceKey="dailyGraph.activeTab" RestoreToken="@CurrentDate">
-                <TabPage Text="Circulaciones">
+                <TabPage Text="@Prefs.T("daily.circulations")">
                     <Icon>
                         <GenIcon Name="UT" color="#2020A0" />
                     </Icon>
@@ -22,7 +22,7 @@
                         </div>
                     </ChildContent>
                 </TabPage>
-                <TabPage Text="Depósitos">
+                <TabPage Text="@Prefs.T("daily.depots")">
                     <Icon>
                         <GenIcon Name="Att" color="#2020A0" />
                     </Icon>
@@ -33,7 +33,7 @@
                         </div>
                     </ChildContent>
                 </TabPage>
-                <TabPage Text="Asignaciones">
+                <TabPage Text="@Prefs.T("daily.assignations")">
                     <Icon>
                         <GenIcon Name="EventDateTime" color="#2020A0"/>
                     </Icon>
@@ -43,7 +43,7 @@
                         </div>
                     </ChildContent>
                 </TabPage>
-                <TabPage Text="Vacantes">
+                <TabPage Text="@Prefs.T("daily.vacancies")">
                     <Icon>
                         <GenIcon Name="Att" Color="#2020A0"/>
                     </Icon>

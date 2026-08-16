@@ -397,6 +397,7 @@ namespace Tourmaline26.Services
 			// La misión Diamond se aplica siempre; Experience es opcional.
 			SessionConfig.Cabin.Circulation = rhs;
 			UpdatePassengerInformationMode();
+			await LogTourmalineTripStartedAsync(rhs);
 
 			if (null != rhs.Asimilation)
 			{
@@ -410,6 +411,56 @@ namespace Tourmaline26.Services
 					// Nunca tumbar el circuito Blazor por el simulador 3D.
 					mvarLogger.LogWarning(ex, "Tourmaline Experience no disponible al seleccionar circulación.");
 				}
+			}
+		}
+
+		private async Task LogTourmalineTripStartedAsync(Circulation rhs)
+		{
+			if (SessionConfig.Session is null || Guid.Empty.Equals(SessionConfig.Session.Token))
+				return;
+
+			string viaje = rhs.HasServiceNumber ? rhs.ServiceNumber : rhs.Id;
+			string dest = rhs.Asimilation?.Destination.Name ?? string.Empty;
+			string origin = rhs.Asimilation?.Origin.Name ?? string.Empty;
+			System.Text.StringBuilder extra = new System.Text.StringBuilder();
+			if (!string.IsNullOrWhiteSpace(viaje))
+			{
+				extra.Append("viaje=");
+				extra.Append(viaje.Trim());
+			}
+
+			if (!string.IsNullOrWhiteSpace(origin) || !string.IsNullOrWhiteSpace(dest))
+			{
+				if (extra.Length > 0)
+					extra.Append(' ');
+				extra.Append(origin.Trim());
+				if (!string.IsNullOrWhiteSpace(origin) && !string.IsNullOrWhiteSpace(dest))
+					extra.Append('→');
+				extra.Append(dest.Trim());
+			}
+
+			string detail = "tourmaline";
+			if (!string.IsNullOrWhiteSpace(SystemConfig.Name))
+				detail += " tren=" + SystemConfig.Name.Trim();
+			if (!Guid.Empty.Equals(SystemConfig.TrainId))
+				detail += " id=" + SystemConfig.TrainId.ToString();
+			if (extra.Length > 0)
+				detail += " " + extra;
+
+			try
+			{
+				using (IServiceScope scope = mvarServiceProvider.CreateScope())
+				{
+					AuthenticationClient client = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
+					await client.LogActivity(
+						Sapphire2025Models.Common.sessionEventType.tourmalineTripStarted,
+						detail,
+						SessionConfig.Session.Token);
+				}
+			}
+			catch (Exception ex)
+			{
+				mvarLogger.LogWarning(ex, "No se pudo registrar el inicio de viaje en el log de Sapphire.");
 			}
 		}
 
@@ -581,6 +632,11 @@ namespace Tourmaline26.Services
 			SessionModel? sesion = null;
 			modelo.userName = username;
 			modelo.password = pwd;
+			modelo.Client = "tourmaline";
+			if (!Guid.Empty.Equals(SystemConfig.TrainId))
+				modelo.TrainId = SystemConfig.TrainId.ToString();
+			if (!string.IsNullOrWhiteSpace(SystemConfig.Name))
+				modelo.TrainName = SystemConfig.Name;
 			using (IServiceScope scope = mvarServiceProvider.CreateScope())
 			{
 				AuthenticationClient auxCliente = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
@@ -658,7 +714,11 @@ namespace Tourmaline26.Services
 					AuthenticationClient auxCliente = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
 					try
 					{
-						await auxCliente.Logout(SessionConfig.Session.Token.ToString());
+						await auxCliente.Logout(
+							SessionConfig.Session.Token.ToString(),
+							client: "tourmaline",
+							trainId: Guid.Empty.Equals(SystemConfig.TrainId) ? null : SystemConfig.TrainId.ToString(),
+							trainName: SystemConfig.Name);
 					}
 					catch (Exception ex)
 					{

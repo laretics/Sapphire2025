@@ -5,27 +5,27 @@
 @inject AuthenticationClient mvarAuthClient
 @inject IntStorageService mvarInternalStorage
 
-<PageTitle>Material Móvil</PageTitle>
+<PageTitle>@Prefs.T("page.trains")</PageTitle>
 
 <div class="container-fluid py-4">
     <div class="card shadow mb-4">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">Material móvil</h4>
+            <h4 class="mb-0">@Prefs.T("page.trains")</h4>
             <button class="btn btn-outline-light" @onclick="PrintPage">
-                <i class="bi bi-printer"></i> Imprimir
+                <i class="bi bi-printer"></i> @Prefs.T("common.print")
             </button>
         </div>
         <div class="card-body">
             <!-- Filtros de búsqueda -->
             <form class="row g-3 mb-4" @onsubmit="OnSearch">
                 <div class="col-md-2">
-                    <label class="form-label">Número</label>
-                    <input class="form-control" @bind="filterTrainName" placeholder="Nombre o parte..." />
+                    <label class="form-label">@Prefs.T("common.number")</label>
+                    <input class="form-control" @bind="filterTrainName" placeholder="@Prefs.T("trainq.number.ph")" />
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Estado</label>
+                    <label class="form-label">@Prefs.T("common.status")</label>
                     <select class="form-select" @bind="filterStatus">
-                        <option value="">Todos</option>
+                        <option value="">@Prefs.T("common.all")</option>
                         @foreach (var status in Enum.GetValues<Common.TrainStatus>())
                         {
                             <option value="@status">@Common.TrainStatusToString(status)</option>
@@ -33,9 +33,9 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Lugar</label>
+                    <label class="form-label">@Prefs.T("common.place")</label>
                     <select class="form-select" @bind="filterStationName">
-                        <option value="">Todos</option>
+                        <option value="">@Prefs.T("common.all")</option>
                         @foreach (var station in mcolPlatforms.Select(p => p.StationName).Distinct())
                         {
                             <option value="@station">@station</option>
@@ -43,9 +43,9 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Usuario</label>
+                    <label class="form-label">@Prefs.T("common.user")</label>
                     <select class="form-select" @bind="filterUserId">
-                        <option value="">Todos</option>
+                        <option value="">@Prefs.T("common.all")</option>
                         @foreach (var user in Users)
                         {
                             <option value="@user.Key">@user.Value.Name</option>
@@ -54,7 +54,7 @@
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Buscar
+                        <i class="bi bi-search"></i> @Prefs.T("common.search")
                     </button>
                 </div>
             </form>
@@ -64,7 +64,7 @@
             {
                 <div class="text-center my-5">
                     <div class="spinner-border text-primary" role="status"></div>
-                    <div>Cargando resultados...</div>
+                    <div>@Prefs.T("common.loading.results")</div>
                 </div>
             }
             else if (Trains.Any())
