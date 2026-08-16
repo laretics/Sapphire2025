@@ -4,6 +4,8 @@ using Diamond.Project;
 using Microsoft.EntityFrameworkCore;
 using Sapphire2025.Storage;
 using Sapphire2025Models.Authentication;
+using Sapphire2025Models.Expert;
+using Sapphire2025Models.Expert.WorkshiftTemplates;
 using Sapphire2026.Data.Models;
 using Tourmaline26.Logic;
 using Tourmaline26.Services.CabinCache;
@@ -165,10 +167,12 @@ namespace Tourmaline26.Services
 			{
 				TourmalineContext db = scope.ServiceProvider.GetRequiredService<TourmalineContext>();
 				await db.Database.EnsureCreatedAsync();
+				await EnsureNotesMediaColumnsAsync(db);
 				try
 				{
 					_ = await db.Trains.AsNoTracking().FirstOrDefaultAsync();
 					_ = await db.LocalSystem.AsNoTracking().FirstOrDefaultAsync();
+					_ = await db.Notes.AsNoTracking().FirstOrDefaultAsync();
 					_ = await db.DiamondTopos.AsNoTracking().FirstOrDefaultAsync();
 					_ = await db.DiamondPublishedPlans.AsNoTracking().FirstOrDefaultAsync();
 				}
@@ -180,6 +184,76 @@ namespace Tourmaline26.Services
 					await db.Database.EnsureCreatedAsync();
 				}
 			}
+		}
+
+		/// <summary>
+		/// Añade columnas de nota multimedia / etiquetado si la SQLite es anterior
+		/// (EnsureCreated no altera tablas existentes).
+		/// </summary>
+		private async Task EnsureNotesMediaColumnsAsync(TourmalineContext db)
+		{
+			try
+			{
+				await db.Database.OpenConnectionAsync();
+				HashSet<string> columns = await ReadSqliteTableColumnsAsync(db, "Notes");
+				if (columns.Count == 0)
+				{
+					return;
+				}
+
+				await AddSqliteColumnIfMissingAsync(db, columns, "Notes", "MediaExtension", "TEXT");
+				await AddSqliteColumnIfMissingAsync(db, columns, "Notes", "MediaContentType", "TEXT");
+				await AddSqliteColumnIfMissingAsync(db, columns, "Notes", "ClosureTime", "TEXT");
+				await AddSqliteColumnIfMissingAsync(db, columns, "Notes", "ClosureUser", "TEXT");
+				await AddSqliteColumnIfMissingAsync(db, columns, "Notes", "IsValid", "INTEGER NOT NULL DEFAULT 0");
+				await AddSqliteColumnIfMissingAsync(db, columns, "Notes", "IsSymptom", "INTEGER NOT NULL DEFAULT 0");
+				await AddSqliteColumnIfMissingAsync(db, columns, "Notes", "SystemAffected", "INTEGER NOT NULL DEFAULT 0");
+			}
+			catch (Exception ex)
+			{
+				mvarLogger.LogWarning(ex, "No se pudieron añadir columnas multimedia a Notes.");
+			}
+			finally
+			{
+				await db.Database.CloseConnectionAsync();
+			}
+		}
+
+		private static async Task<HashSet<string>> ReadSqliteTableColumnsAsync(
+			TourmalineContext db,
+			string table)
+		{
+			HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+			System.Data.Common.DbConnection connection = db.Database.GetDbConnection();
+			await using System.Data.Common.DbCommand cmd = connection.CreateCommand();
+			cmd.CommandText = "PRAGMA table_info(" + table + ")";
+			await using System.Data.Common.DbDataReader reader = await cmd.ExecuteReaderAsync();
+			while (await reader.ReadAsync())
+			{
+				if (!reader.IsDBNull(1))
+				{
+					names.Add(reader.GetString(1));
+				}
+			}
+
+			return names;
+		}
+
+		private static async Task AddSqliteColumnIfMissingAsync(
+			TourmalineContext db,
+			HashSet<string> columns,
+			string table,
+			string column,
+			string declaration)
+		{
+			if (columns.Contains(column))
+			{
+				return;
+			}
+
+			await db.Database.ExecuteSqlRawAsync(
+				"ALTER TABLE \"" + table + "\" ADD COLUMN \"" + column + "\" " + declaration);
+			columns.Add(column);
 		}
 
 		private static bool IsSqliteSchemaMismatch(Exception ex)
@@ -532,6 +606,47 @@ namespace Tourmaline26.Services
 			return SessionConfig.Session;
 		}
 
+		/// <summary>
+		/// Intenta actualizar topología y planes publicados tras un login.
+		/// No lanza: un fallo de red no debe deshacer la sesión.
+		/// <paramref name="client"/> debe ser el <see cref="DiamondClient"/> del circuito Blazor.
+		/// </summary>
+		public async Task<DiamondSyncResult> TrySyncAfterLoginAsync(DiamondClient client)
+		{
+			if (SessionConfig.Session is null)
+			{
+				return new DiamondSyncResult
+				{
+					Success = false,
+					Message = "Sin sesión; no se sincroniza."
+				};
+			}
+
+			try
+			{
+				DiamondSyncResult result = await SyncDiamondAsync(client);
+				if (result.Success)
+				{
+					mvarLogger.LogInformation("Resincronización Diamond tras login: {Message}", result.Message);
+				}
+				else
+				{
+					mvarLogger.LogWarning("Resincronización Diamond tras login no completada: {Message}", result.Message);
+				}
+
+				return result;
+			}
+			catch (Exception ex)
+			{
+				mvarLogger.LogWarning(ex, "Fallo al resincronizar Diamond tras el login");
+				return new DiamondSyncResult
+				{
+					Success = false,
+					Message = ex.Message
+				};
+			}
+		}
+
 		public async Task UserLogout()
 		{
 			if (null != SessionConfig.Session)
@@ -553,6 +668,101 @@ namespace Tourmaline26.Services
 				}
 			}
 			SessionConfig.Session = null;
+			SessionConfig.ClearDriverShift();
+		}
+
+		/// <summary>
+		/// Si el usuario tiene turno grafiado hoy (maquinista), carga sus trenes.
+		/// Si no hay asignación, no se ofrece la lista de turno.
+		/// </summary>
+		public async Task TryLoadDriverShiftAsync(ExpertClient client)
+		{
+			if (client is null)
+			{
+				throw new ArgumentNullException(nameof(client));
+			}
+
+			SessionConfig.ClearDriverShift();
+			if (SessionConfig.Session?.User is null
+				|| Guid.Empty.Equals(SessionConfig.Session.User.guid))
+			{
+				SessionConfig.DriverShiftLoaded = true;
+				return;
+			}
+
+			Guid agentId = SessionConfig.Session.User.guid;
+			DateTime today = DateTime.Today;
+			try
+			{
+				List<AssignationContentModel>? assignations = await client.Assignations(today, 1);
+				AssignationContentModel? mine = null;
+				if (assignations is not null)
+				{
+					int i = 0;
+					while (i < assignations.Count)
+					{
+						AssignationContentModel a = assignations[i];
+						if (a.AgentId == agentId && a.Date.Date == today.Date)
+						{
+							mine = a;
+							break;
+						}
+
+						i++;
+					}
+				}
+
+				if (mine is null
+					|| mine.TD
+					|| string.IsNullOrWhiteSpace(mine.Definitive))
+				{
+					SessionConfig.DriverShiftLoaded = true;
+					return;
+				}
+
+				PlansYearSlice? slice = await client.PlansTimeSlice(today, 1);
+				WorkShiftTemplateCollectionModel? plan = slice?.GetPlan(today);
+				if (plan is null)
+				{
+					Guid planId = await client.PlanHeader(today);
+					if (!Guid.Empty.Equals(planId))
+					{
+						plan = await client.GetPlan(planId, today, onlyWork: true);
+					}
+				}
+
+				bool festive = slice is not null && slice.GetFestive(today);
+				WorkShiftTemplateModel? template = plan?.Template(mine.Definitive, today, festive);
+				if (template is AttTemplateModel att && att.Content is not null)
+				{
+					SessionConfig.DriverShiftName = mine.Definitive;
+					int c = 0;
+					while (c < att.Content.Count)
+					{
+						if (att.Content[c] is TrainWorkShiftContentModel train
+							&& !string.IsNullOrWhiteSpace(train.TrainId))
+						{
+							SessionConfig.DriverShiftTrainTokens.Add(train.TrainId.Trim());
+						}
+
+						c++;
+					}
+				}
+
+				SessionConfig.DriverShiftLoaded = true;
+				if (SessionConfig.HasDriverShiftToday)
+				{
+					mvarLogger.LogInformation(
+						"Turno grafiado de hoy «{Shift}»: {Count} tren(es)",
+						SessionConfig.DriverShiftName,
+						SessionConfig.DriverShiftTrainTokens.Count);
+				}
+			}
+			catch (Exception ex)
+			{
+				mvarLogger.LogWarning(ex, "No se pudo cargar el turno grafiado de hoy");
+				SessionConfig.DriverShiftLoaded = true;
+			}
 		}
 
 		#endregion Authentication

@@ -102,6 +102,12 @@
         await InvokeAsync(StateHasChanged);
     }
 
+    /// <summary>Tope de entradas del historial (notas + cambios) que se piden y se guardan.</summary>
+    private const int MaxFeedItems = 60;
+
+    /// <summary>No se pide ni se guarda nada anterior a esta ventana.</summary>
+    private static readonly TimeSpan HistoryWindow = TimeSpan.FromDays(62);
+
     /// <summary>
     /// Sincroniza con Zafiro vía <see cref="AeneasClient"/> (Sapphire2026Clients)
     /// y actualiza la BD SQLite local. Si falla, se muestra el almacén local.
@@ -112,53 +118,56 @@
         if (Guid.Empty == trainId)
             return;
 
+        DateTime cutoff = DateTime.Now.Subtract(HistoryWindow);
+
         try
         {
-            // Misma API que NoteChatEx en Sapphire2025: retrieveNotes + trainChangesList.
-            List<NoteModel> auxLista = await AeneasService.retrieveNotes(trainId, type: "", max: 100);
-            if (auxLista.Count > 0)
-            {
-                database.Notes.RemoveRange(database.Notes);
-                foreach (NoteModel note in auxLista)
-                {
-                    database.Notes.Add(new Note
-                    {
-                        Id = Guid.NewGuid(),
-                        Parent = note.parent,
-                        UserId = note.UserId,
-                        TimeStamp = note.TimeStamp,
-                        Text = note.Text,
-                        Type = note.Type
-                    });
-                }
-                await database.SaveChangesAsync();
-                await TourmalineService.DoAeneasSync();
-            }
+            List<NoteModel> auxLista = await AeneasService.retrieveNotes(
+                trainId,
+                type: "",
+                max: MaxFeedItems);
+            auxLista = TruncateNotes(auxLista, cutoff, MaxFeedItems);
 
-            DateTime oldest = auxLista.Count > 0
-                ? auxLista.Min(n => n.TimeStamp)
-                : DateTime.MinValue;
+            database.Notes.RemoveRange(database.Notes);
+            foreach (NoteModel note in auxLista)
+            {
+                database.Notes.Add(new Note
+                {
+                    Id = Guid.Empty.Equals(note.Id) ? Guid.NewGuid() : note.Id,
+                    Parent = note.parent,
+                    UserId = note.UserId,
+                    TimeStamp = note.TimeStamp,
+                    Text = note.Text,
+                    Type = note.Type,
+                    ClosureTime = note.ClosureTime,
+                    ClosureUser = note.ClosureUser,
+                    IsValid = note.IsValid,
+                    IsSymptom = note.IsSymptom,
+                    SystemAffected = note.SystemAffected,
+                    MediaExtension = note.MediaExtension,
+                    MediaContentType = note.MediaContentType
+                });
+            }
+            await database.SaveChangesAsync();
 
             IEnumerable<StatusChangeModel> auxChanges =
-                await AeneasService.trainChangesList(trainId, oldest);
+                await AeneasService.trainChangesList(trainId, cutoff);
+            List<StatusChangeModel> changeList = TruncateChanges(auxChanges, cutoff, MaxFeedItems);
 
-            if (auxChanges.Any())
+            database.StatusChanges.RemoveRange(database.StatusChanges);
+            foreach (StatusChangeModel change in changeList)
             {
-                database.StatusChanges.RemoveRange(database.StatusChanges);
-                foreach (StatusChangeModel change in auxChanges)
+                database.StatusChanges.Add(new StatusChange
                 {
-                    database.StatusChanges.Add(new StatusChange
-                    {
-                        Guid = change.guid,
-                        TrainId = change.trainId,
-                        TimeStamp = change.timeStamp,
-                        Operation = change.operation,
-                        UserId = change.userId
-                    });
-                }
-                await database.SaveChangesAsync();
-                await TourmalineService.DoAeneasSync();
+                    Guid = change.guid,
+                    TrainId = change.trainId,
+                    TimeStamp = change.timeStamp,
+                    Operation = change.operation,
+                    UserId = change.userId
+                });
             }
+            await database.SaveChangesAsync();
+            await TourmalineService.DoAeneasSync();
         }
         catch (Exception ex)
         {
@@ -170,18 +179,54 @@
         }
     }
 
+    private static List<NoteModel> TruncateNotes(
+        IEnumerable<NoteModel> notes,
+        DateTime cutoff,
+        int max)
+    {
+        return notes
+            .Where(n => n.TimeStamp >= cutoff)
+            .OrderByDescending(n => n.TimeStamp)
+            .Take(max)
+            .ToList();
+    }
+
+    private static List<StatusChangeModel> TruncateChanges(
+        IEnumerable<StatusChangeModel> changes,
+        DateTime cutoff,
+        int max)
+    {
+        return changes
+            .Where(c => c.timeStamp >= cutoff)
+            .OrderByDescending(c => c.timeStamp)
+            .Take(max)
+            .ToList();
+    }
+
     private List<NoteModel> GetNotesFromLocal()
     {
         List<NoteModel> result = new();
-        foreach (Note note in database.Notes.OrderByDescending(n => n.TimeStamp))
+        DateTime cutoff = DateTime.Now.Subtract(HistoryWindow);
+        foreach (Note note in database.Notes
+            .Where(n => n.TimeStamp >= cutoff)
+            .OrderByDescending(n => n.TimeStamp)
+            .Take(MaxFeedItems))
         {
             result.Add(new NoteModel
             {
+                Id = note.Id,
                 parent = note.Parent,
                 UserId = note.UserId,
                 TimeStamp = note.TimeStamp,
                 Text = note.Text,
-                Type = note.Type
+                Type = note.Type,
+                ClosureTime = note.ClosureTime,
+                ClosureUser = note.ClosureUser,
+                IsValid = note.IsValid,
+                IsSymptom = note.IsSymptom,
+                SystemAffected = note.SystemAffected,
+                MediaExtension = note.MediaExtension,
+                MediaContentType = note.MediaContentType
             });
         }
         return result;
@@ -190,7 +235,11 @@
     private List<StatusChangeModel> GetChangesFromLocal()
     {
         List<StatusChangeModel> result = new();
-        foreach (StatusChange change in database.StatusChanges.OrderByDescending(n => n.TimeStamp))
+        DateTime cutoff = DateTime.Now.Subtract(HistoryWindow);
+        foreach (StatusChange change in database.StatusChanges
+            .Where(n => n.TimeStamp >= cutoff)
+            .OrderByDescending(n => n.TimeStamp)
+            .Take(MaxFeedItems))
         {
             result.Add(new StatusChangeModel
             {
@@ -231,6 +280,7 @@
         FeedItems = items
             .OrderByDescending(x => x.TimeStamp)
             .ThenBy(x => x.sequence)
+            .Take(MaxFeedItems)
             .ToList();
     }
 }

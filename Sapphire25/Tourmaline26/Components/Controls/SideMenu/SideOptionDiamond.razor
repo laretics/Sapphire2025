@@ -1,3 +1,4 @@
+@using Diamond.Timed
 @using Microsoft.EntityFrameworkCore
 @using Sapphire2025.Storage
 @using Sapphire2025Models.Diamond
@@ -29,11 +30,39 @@
     @if (cabin is not null)
     {
         <li>Plan del día: @(string.IsNullOrEmpty(cabin.PublishedPlanName) ? "—" : cabin.PublishedPlanName)</li>
-        <li>Día: @(cabin.DayProject?.PlanningDay?.ToString() ?? "—")</li>
-        <li>Circulaciones hoy: @(cabin.DayProject?.Circulations.Count ?? 0)</li>
+        <li>Circulaciones (@ServiceDays.FormatDayOfWeek(SelectedPlanningDay)): @(cabin.DayProject?.Circulations.Count ?? 0)</li>
         <li>Misión: @(cabin.Circulation is null ? "ninguna" : (cabin.Circulation.HasServiceNumber ? cabin.Circulation.ServiceNumber : cabin.Circulation.Id))</li>
     }
 </ul>
+
+<div class="diamond-day-block mb-3">
+    <label class="form-label small text-muted mb-1" for="diamond-day-group">Día de la malla</label>
+    <div id="diamond-day-group" class="btn-group diamond-day-group w-100" role="group" aria-label="Día de la semana">
+        @foreach (DayOfWeek day in WeekDays)
+        {
+            bool selected = SelectedPlanningDay == day;
+            bool calendarToday = DateTime.Today.DayOfWeek == day;
+            <button type="button"
+                    class="btn btn-sm @(selected ? "btn-primary" : "btn-outline-primary")"
+                    aria-pressed="@(selected ? "true" : "false")"
+                    title="@(calendarToday ? ServiceDays.FormatDayOfWeek(day) + " (hoy)" : ServiceDays.FormatDayOfWeek(day))"
+                    @onclick="() => SelectDay(day)">
+                @ServiceDays.FormatDayOfWeek(day)
+                @if (calendarToday)
+                {
+                    <span class="visually-hidden"> (hoy)</span>
+                }
+            </button>
+        }
+    </div>
+    @if (cabin is not null && cabin.HasPlanningDayOverride)
+    {
+        <div class="form-text">
+            Malla de @ServiceDays.FormatDayOfWeek(SelectedPlanningDay)
+            (hoy es @ServiceDays.FormatDayOfWeek(DateTime.Today.DayOfWeek)).
+        </div>
+    }
+</div>
 
 @if (mvarBusy)
 {
@@ -92,10 +121,21 @@ else if (TourmalineService.SessionConfig.ServiceMode.Main)
             }
         </tbody>
     </table>
-    <p class="text-muted small">* Recuento del paquete; el día civil elige el Project correspondiente offline.</p>
+    <p class="text-muted small">* Recuento del paquete (7 días). La botonera elige el Project del día.</p>
 }
 
 @code {
+    private static readonly DayOfWeek[] WeekDays =
+    {
+        DayOfWeek.Monday,
+        DayOfWeek.Tuesday,
+        DayOfWeek.Wednesday,
+        DayOfWeek.Thursday,
+        DayOfWeek.Friday,
+        DayOfWeek.Saturday,
+        DayOfWeek.Sunday
+    };
+
     private bool mvarBusy;
     private string mvarStatus = string.Empty;
     private bool mvarStatusError;
@@ -103,6 +143,27 @@ else if (TourmalineService.SessionConfig.ServiceMode.Main)
     private List<DBDiamondPublishedPlanCache> mcolPlans = new List<DBDiamondPublishedPlanCache>();
 
     private Diamond.Cabin.CabinEnvironment? cabin => TourmalineService.SessionConfig.Cabin;
+
+    private DayOfWeek SelectedPlanningDay =>
+        cabin is not null ? cabin.EffectivePlanningDay : DateTime.Today.DayOfWeek;
+
+    private void SelectDay(DayOfWeek day)
+    {
+        if (cabin is null || SelectedPlanningDay == day)
+        {
+            return;
+        }
+
+        cabin.SelectPlanningDay(day);
+        int count = cabin.DayProject?.Circulations.Count ?? 0;
+        mvarStatus = string.Format(
+            "Malla de {0}: {1} circulación(es).",
+            ServiceDays.FormatDayOfWeek(day),
+            count);
+        mvarStatusError = false;
+        TourmalineService.RaiseHMIUpdate();
+        TourmalineService.RaisePassengerUpdate();
+    }
 
     protected override async Task OnInitializedAsync()
     {
