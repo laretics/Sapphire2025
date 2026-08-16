@@ -104,6 +104,40 @@ namespace Diamond.Timed
 		}
 
 		/// <summary>
+		/// Malla de solo lectura a partir de circulaciones ya materializadas
+		/// (p. ej. hidratadas desde un plan publicado para calcular cruces).
+		/// </summary>
+		public static Mesh FromCirculations(
+			IReadOnlyList<Circulation> circulations,
+			DayOfWeek? planningDay = null)
+		{
+			Mesh mesh = new Mesh();
+			mesh.PlanningDay = planningDay;
+			if (circulations is null)
+			{
+				return mesh;
+			}
+
+			int i = 0;
+			while (i < circulations.Count)
+			{
+				Circulation c = circulations[i];
+				if (c is not null)
+				{
+					mesh.AddCirculation(c);
+					if (c.Asimilation is not null && !mesh.mcolAsimilations.Contains(c.Asimilation))
+					{
+						mesh.AddAsimilation(c.Asimilation);
+					}
+				}
+
+				i++;
+			}
+
+			return mesh;
+		}
+
+		/// <summary>
 		/// Quita una circulación ya añadida (p. ej. tras <c>delete</c> del script).
 		/// </summary>
 		internal bool RemoveCirculation(Circulation circulation)

@@ -273,6 +273,8 @@ Cada búsqueda queda registrada en el log de actividad del sistema (quién consu
 Consejos:
 • Navegue por días o periodos según la vista disponible.
 • Compruebe siempre la fecha del servicio antes de firmar o solicitar cambios.
+• Si el número de tren aparece como enlace, figura en el **plan de explotación** de esa fecha (Diamond, cualquier día del año) y abre la **hoja de circulación**. Si no hay enlace, ese tren no está en el plan.
+• En la hoja, **Obs.** muestra los trenes de cruce. Debajo se indica el maquinista grafiado de cada uno. Con permiso de simulación (Expert / Root) puede abrir su cuadrante.
 • Algunas consultas de turnos ajenos o del día quedan registradas en el log de actividad.
 
 Si el cuadrante no carga datos, revise la sesión o contacte con el inspector / jefe de maquinistas."

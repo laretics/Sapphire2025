@@ -61,7 +61,10 @@
 						<th>Fecha / hora</th>
 						<th>Origen</th>
 						<th>Tren</th>
-						<th>Usuario</th>
+						@if (mvarShowUsers)
+						{
+							<th>Usuario</th>
+						}
 						<th>Detalle</th>
 						<th>Etiquetas</th>
 					</tr>
@@ -83,13 +86,16 @@
 								}
 							</td>
 							<td>@(string.IsNullOrWhiteSpace(row.TrainName) ? "—" : row.TrainName)</td>
-							<td>
-								@if (!string.IsNullOrWhiteSpace(row.UserCf))
-								{
-									<span>@row.UserCf — </span>
-								}
-								@(string.IsNullOrWhiteSpace(row.UserName) ? "—" : row.UserName)
-							</td>
+							@if (mvarShowUsers)
+							{
+								<td>
+									@if (!string.IsNullOrWhiteSpace(row.UserCf))
+									{
+										<span>@row.UserCf — </span>
+									}
+									@(string.IsNullOrWhiteSpace(row.UserName) ? "—" : row.UserName)
+								</td>
+							}
 							<td class="smallest-text">
 								@if (row.Kind == "note")
 								{
@@ -131,6 +137,7 @@
 	private int mvarTotalNotes;
 	private int mvarTotalStatusChanges;
 	private bool mvarTruncated;
+	private bool mvarShowUsers = true;
 	private bool mvarLoading = true;
 	private bool mvarReadyToPrint;
 
@@ -157,6 +164,7 @@
 			mvarTotalNotes = package.TotalNotes;
 			mvarTotalStatusChanges = package.TotalStatusChanges;
 			mvarTruncated = package.Truncated;
+			mvarShowUsers = package.ShowUsers;
 		}
 		else
 		{

@@ -256,7 +256,7 @@ namespace Sapphire2025.Storage
 			string request = date.HasValue
 				? composeCommand(
 					"publishedcurrent",
-					new requestParam("date", date.Value.ToString("o")))
+					new requestParam("date", date.Value.Date.ToString("yyyy-MM-dd")))
 				: composeCommand("publishedcurrent");
 			try
 			{

@@ -101,6 +101,12 @@
 			{
 				<div class="p-2 text-success small no-print">@mvarInfo</div>
 			}
+			@if (ChildContent is not null)
+			{
+				<div class="diamond-circ-sheet-extra no-print">
+					@ChildContent
+				</div>
+			}
 			<div class="diamond-circ-sheet-pages" @ref="mvarPrintRoot">
 				@for (int i = 0; i < mcolPageSvg.Count; i++)
 				{
@@ -188,6 +194,10 @@
 
 	[Parameter]
 	public bool CloseOnOverlayClick { get; set; } = true;
+
+	/// <summary>Panel extra del host (p. ej. maquinistas de los cruzamientos). No se imprime.</summary>
+	[Parameter]
+	public RenderFragment? ChildContent { get; set; }
 
 	protected override void OnParametersSet()
 	{

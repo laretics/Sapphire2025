@@ -146,12 +146,6 @@
                                  alt="Logotipo Zafiro"
                                  @onclick="OnAuthAction" />
                             <div class="d-md-none mt-3 d-grid gap-2">
-                                @if (IsLoggedIn)
-                                {
-                                    <a class="btn btn-outline-primary w-100" href="help">
-                                        <i class="bi bi-question-circle me-1"></i>Centro de ayuda
-                                    </a>
-                                }
                                 <button type="button"
                                         class="btn @(IsLoggedIn ? "btn-outline-secondary" : "btn-primary") w-100"
                                         @onclick="OnAuthAction">
@@ -164,15 +158,11 @@
                                 <Image Src="img/title.png"
                                        class="img-fluid d-block rounded-4 home-title-img"
                                        alt="Título" />
-
-                                <span class="badge rounded-pill bg-dark text-white position-absolute bottom-0 end-0 m-2 shadow home-version-badge">
-                                    Versión @Sapphire2025Models.Common.SapphireSoftwareVersion
-                                </span>
                             </div>
 
                             @if (mcolChanges is { Count: > 0 })
                             {
-                                <h6 class="mt-3 mb-2 text-secondary">Notas de la versión</h6>
+                                <h6 class="mt-3 mb-2 text-secondary">Notas de la versión @Sapphire2025Models.Common.SapphireSoftwareVersion</h6>
                                 <ul class="list-group list-group-flush small home-notes">
                                     @foreach (VersionChangeNote change in mcolChanges)
                                     {
@@ -184,25 +174,14 @@
                                                         @onclick="() => ShowChangeDetails(change)"
                                                         title="Más información sobre este cambio">
                                                     <i class="bi bi-info-circle"></i>
-                                                    <span class="d-none d-sm-inline"> Más info</span>
+                                                    <GenIcon Name="Info" />
                                                 </button>
                                             }
                                         </li>
                                     }
                                 </ul>
                             }
-                            else
-                            {
-                                <div class="text-muted small mt-3">Sin notas disponibles.</div>
-                            }
-
                             <div class="d-none d-md-flex flex-wrap gap-2 mt-3">
-                                @if (IsLoggedIn)
-                                {
-                                    <a class="btn btn-outline-primary" href="help">
-                                        <i class="bi bi-question-circle me-1"></i>Centro de ayuda
-                                    </a>
-                                }
                                 <button type="button"
                                         class="btn @(IsLoggedIn ? "btn-outline-secondary" : "btn-outline-primary")"
                                         @onclick="OnAuthAction">

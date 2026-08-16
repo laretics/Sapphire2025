@@ -17,7 +17,8 @@
 				<i class="bi bi-search-heart me-2"></i>Incidencias y notas
 			</h3>
 			<p class="text-muted small mb-0">
-				Consulta combinada sobre notas y cambios de estado (trenes, usuarios, fechas y etiquetas).
+				Consulta combinada sobre notas y cambios de estado
+				@(CanSeeUsersColumn ? "(trenes, usuarios, fechas y etiquetas)." : "(trenes, fechas y etiquetas).")
 			</p>
 		</div>
 		<div class="btn-group" role="group">
@@ -88,7 +89,7 @@
 				</div>
 
 				@* Trenes *@
-				<div class="col-12 col-lg-4">
+				<div class="@(FilterSideColClass)">
 					<label class="form-label">Tren</label>
 					<div class="input-group mb-1">
 						<span class="input-group-text"><i class="bi bi-train-front"></i></span>
@@ -123,7 +124,9 @@
 					</div>
 				</div>
 
-				@* Usuarios *@
+				@* Usuarios: solo Ingeniero, Inspector, Experto, Oficial o Administrador *@
+				@if (CanSeeUsersColumn)
+				{
 				<div class="col-12 col-lg-4">
 					<label class="form-label">Usuario</label>
 					<div class="input-group mb-1">
@@ -162,9 +165,10 @@
 						}
 					</div>
 				</div>
+				}
 
 				@* Tipos de nota + etiquetas *@
-				<div class="col-12 col-lg-4">
+				<div class="@(FilterSideColClass)">
 					<label class="form-label">Tipo de nota</label>
 					<div class="border rounded p-2 mb-2">
 						@foreach (NoteTypeOption opt in mcolNoteTypeOptions)
@@ -310,9 +314,12 @@
 									<th role="button" @onclick="() => SortBy(SortColumn.Train)">
 										Tren @SortIcon(SortColumn.Train)
 									</th>
-									<th role="button" @onclick="() => SortBy(SortColumn.User)">
-										Usuario @SortIcon(SortColumn.User)
-									</th>
+									@if (CanSeeUsersColumn)
+									{
+										<th role="button" @onclick="() => SortBy(SortColumn.User)">
+											Usuario @SortIcon(SortColumn.User)
+										</th>
+									}
 									<th>Detalle</th>
 									<th>Etiquetas</th>
 								</tr>
@@ -336,13 +343,16 @@
 											}
 										</td>
 										<td class="fw-semibold">@(string.IsNullOrWhiteSpace(row.TrainName) ? "—" : row.TrainName)</td>
-										<td>
-											<div class="fw-semibold">@(string.IsNullOrWhiteSpace(row.UserName) ? "—" : row.UserName)</div>
-											@if (!string.IsNullOrWhiteSpace(row.UserCf))
-											{
-												<div class="text-muted small">@row.UserCf</div>
-											}
-										</td>
+										@if (CanSeeUsersColumn)
+										{
+											<td>
+												<div class="fw-semibold">@(string.IsNullOrWhiteSpace(row.UserName) ? "—" : row.UserName)</div>
+												@if (!string.IsNullOrWhiteSpace(row.UserCf))
+												{
+													<div class="text-muted small">@row.UserCf</div>
+												}
+											</td>
+										}
 										<td>
 											@if (row.Kind == "note")
 											{
@@ -464,8 +474,20 @@
 	private SortColumn mvarSortColumn = SortColumn.Time;
 	private bool mvarSortAscending;
 	private ViewMode mvarViewMode = ViewMode.Timeline;
+	private SessionModel? mvarSession;
 
 	private bool HasResults => mvarResponse?.Items is { Count: > 0 };
+
+	/// <summary>
+	/// Columna de usuario: Ingeniero, Inspector, Experto, Oficial o Administrador (Root).
+	/// </summary>
+	private bool CanSeeUsersColumn =>
+		Utils.isOfficial(mvarSession)
+		|| Utils.isInspector(mvarSession)
+		|| Utils.isExpert(mvarSession);
+
+	private string FilterSideColClass =>
+		CanSeeUsersColumn ? "col-12 col-lg-4" : "col-12 col-lg-6";
 
 	private IEnumerable<TrainModel> FilteredTrains
 	{
@@ -515,8 +537,8 @@
 				string f = mvarClientFilter.Trim();
 				q = q.Where(r =>
 					(r.TrainName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
-					(r.UserName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
-					(r.UserCf?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
+					(CanSeeUsersColumn && (r.UserName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false)) ||
+					(CanSeeUsersColumn && (r.UserCf?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false)) ||
 					(r.Text?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
 					(r.NoteTypeName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
 					(r.OperationName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
@@ -552,12 +574,17 @@
 		mvarLoading = true;
 		try
 		{
+			mvarSession = await mvarLocalStorage.GetSessionInfo();
+
 			IEnumerable<TrainModel> trains = await mvarAeneasClient.trainsList();
 			mcolTrains = trains.OrderBy(t => t.name).ToList();
 
-			IEnumerable<UserModel>? users = await mvarAuthClient.completeUsersList();
-			if (null != users)
-				mcolUsers = users.OrderBy(u => u.CF).ThenBy(u => u.Name).ToList();
+			if (CanSeeUsersColumn)
+			{
+				IEnumerable<UserModel>? users = await mvarAuthClient.completeUsersList();
+				if (null != users)
+					mcolUsers = users.OrderBy(u => u.CF).ThenBy(u => u.Name).ToList();
+			}
 		}
 		catch (Exception ex)
 		{
@@ -706,7 +733,7 @@
 
 		if (mcolSelectedTrainIds.Count > 0)
 			request.TrainIds = mcolSelectedTrainIds.ToList();
-		if (mcolSelectedUserIds.Count > 0)
+		if (CanSeeUsersColumn && mcolSelectedUserIds.Count > 0)
 			request.UserIds = mcolSelectedUserIds.ToList();
 		if (mcolSelectedNoteTypes.Count > 0)
 			request.NoteTypes = mcolSelectedNoteTypes.ToList();
@@ -747,10 +774,13 @@
 		else
 			parts.Add("Todos los trenes");
 
-		if (mcolSelectedUserIds.Count > 0)
-			parts.Add($"{mcolSelectedUserIds.Count} usuario(s)");
-		else
-			parts.Add("Todos los usuarios");
+		if (CanSeeUsersColumn)
+		{
+			if (mcolSelectedUserIds.Count > 0)
+				parts.Add($"{mcolSelectedUserIds.Count} usuario(s)");
+			else
+				parts.Add("Todos los usuarios");
+		}
 
 		if (mcolSelectedNoteTypes.Count > 0)
 			parts.Add($"{mcolSelectedNoteTypes.Count} tipo(s) de nota");
@@ -773,7 +803,10 @@
 
 		StringBuilder sb = new StringBuilder();
 		sb.Append('\uFEFF'); // BOM UTF-8 para Excel
-		sb.AppendLine("FechaUTC;FechaLocal;Origen;TipoNota;Tren;Usuario;CF;UserId;Texto;Operacion;Estado;Valida;Sintoma;Sistema;Cierre");
+		if (CanSeeUsersColumn)
+			sb.AppendLine("FechaUTC;FechaLocal;Origen;TipoNota;Tren;Usuario;CF;UserId;Texto;Operacion;Estado;Valida;Sintoma;Sistema;Cierre");
+		else
+			sb.AppendLine("FechaUTC;FechaLocal;Origen;TipoNota;Tren;Texto;Operacion;Estado;Valida;Sintoma;Sistema;Cierre");
 
 		foreach (IncidenceQueryItem row in DisplayedItems)
 		{
@@ -783,9 +816,12 @@
 			sb.Append(Csv(row.KindLabel)).Append(';');
 			sb.Append(Csv(row.Kind == "note" ? row.NoteTypeName : string.Empty)).Append(';');
 			sb.Append(Csv(row.TrainName)).Append(';');
-			sb.Append(Csv(row.UserName)).Append(';');
-			sb.Append(Csv(row.UserCf)).Append(';');
-			sb.Append(Csv(row.UserId.ToString())).Append(';');
+			if (CanSeeUsersColumn)
+			{
+				sb.Append(Csv(row.UserName)).Append(';');
+				sb.Append(Csv(row.UserCf)).Append(';');
+				sb.Append(Csv(row.UserId.ToString())).Append(';');
+			}
 			sb.Append(Csv(row.Text)).Append(';');
 			sb.Append(Csv(row.Kind == "status" ? row.OperationName : string.Empty)).Append(';');
 			sb.Append(Csv(row.Kind == "status" ? row.StatusName : string.Empty)).Append(';');
@@ -827,7 +863,8 @@
 			GeneratedAt = DateTime.Now,
 			TotalNotes = mvarResponse.TotalNotes,
 			TotalStatusChanges = mvarResponse.TotalStatusChanges,
-			Truncated = mvarResponse.Truncated
+			Truncated = mvarResponse.Truncated,
+			ShowUsers = CanSeeUsersColumn
 		};
 		await mvarLocalStorage.SetIncidenceQueryPrintPackage(package);
 

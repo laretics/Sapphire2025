@@ -1,13 +1,23 @@
 @page "/drivers/schedules"
 @using System.Text
+@using Diamond.Controls.Rendering
+@using Diamond.Project
+@using Diamond.Timed
+@using Diamond.Topo
 @using Sapphire2025.Layout.Expert
 @using Sapphire2025Models
 @using Sapphire2025Models.Expert.WorkshiftTemplates
+@using TimedCirculation = Diamond.Timed.Circulation
+@using ProjectCirculation = Diamond.Project.Circulation
 @implements IDisposable
 @inject ExpertClient mvarExpertClient
 @inject AuthenticationClient mvarAuthClient
 @inject IntStorageService mvarIntStorage
+@inject SchedulePublishedPlanLookup mvarPlanLookup
+@inject NavigationManager mvarNav
 @inject IJSRuntime mvarJS
+
+<link rel="stylesheet" href="_content/Diamond.Controls/css/diamond-mesh.css" />
 
 <PageTitle>Mi cuadrante</PageTitle>
 <ModalDialog @ref="mvarModal" />
@@ -39,6 +49,14 @@
 							<span class="fw-semibold text-truncate">(@ViewedUser.CF) @ViewedUser.Name</span>
 							@if (IsImpersonating)
 							{
+								@if (!string.IsNullOrWhiteSpace(ViewedUser.PhoneNumber))
+								{
+									<a class="sched-user-phone"
+									   href="tel:@DigitsOnly(ViewedUser.PhoneNumber)"
+									   title="Teléfono del maquinista">
+										@Sapphire2025Models.Common.phoneString(ViewedUser.PhoneNumber)
+									</a>
+								}
 								<span class="badge bg-warning text-dark">Simulación</span>
 							}
 						</div>
@@ -355,6 +373,12 @@
 									<div class="sched-section-head">
 										<h6 class="sched-section-title">Circulaciones del turno</h6>
 										<div class="d-flex align-items-center gap-2">
+											@if (mvarPlanLookupBusy)
+											{
+												<span class="sched-plan-lookup" title="Buscando trenes en el plan de explotación vigente">
+													<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+												</span>
+											}
 											<span class="sched-section-count">@SelectedTrains.Count</span>
 											<button type="button"
 													class="btn btn-outline-success btn-sm sched-export-mini"
@@ -374,7 +398,25 @@
 												<div class="sched-train-rail" aria-hidden="true"></div>
 												<div class="sched-train-body">
 													<div class="sched-train-main">
-														<span class="sched-train-number">@train.TrainId</span>
+														@if (HasCirculationSheet(train))
+														{
+															<button type="button"
+																	class="sched-train-number sched-train-number-link"
+																	title="Abrir hoja de circulación"
+																	@onclick="() => OpenCirculationSheetAsync(train)"
+																	@onclick:stopPropagation="true">
+																@train.TrainId
+															</button>
+														}
+														else
+														{
+															<span class="sched-train-number"
+																  title="@(mvarPlanLookupBusy
+																	  ? "Comprobando el plan de explotación…"
+																	  : "Este tren no figura en el plan de explotación de esa fecha")">
+																@train.TrainId
+															</span>
+														}
 														@if (slot == SlotStatus.Current)
 														{
 															<span class="sched-pill sched-pill-live">En curso</span>
@@ -585,6 +627,56 @@
 	</div>
 }
 
+@if (mvarShowSheet && mvarSheetCirculation is not null)
+{
+	<CirculationSheetView Circulation="mvarSheetCirculation"
+						  Mesh="mvarSheetMesh"
+						  PlanName="@mvarPublishedPlanName"
+						  PlanningDay="mvarSheetPlanningDay ?? SelectedDate.DayOfWeek"
+						  OnClose="CloseCirculationSheet">
+		@if (mcolCrossingDrivers.Count > 0)
+		{
+			<div class="sched-crossing-panel">
+				<div class="sched-crossing-title">Cruzamientos · maquinista</div>
+				<ul class="sched-crossing-list">
+					@foreach (CrossingDriverRow row in mcolCrossingDrivers)
+					{
+						<li class="sched-crossing-item">
+							<span class="sched-crossing-train">@row.TrainNumber</span>
+							@if (row.HasDriver)
+							{
+								<span class="sched-crossing-driver">(@row.Cf) @row.Name</span>
+								@if (!string.IsNullOrWhiteSpace(row.Shift))
+								{
+									<span class="sched-crossing-shift">turno @row.Shift</span>
+								}
+								@if (CanViewOtherAgents && !string.IsNullOrWhiteSpace(row.Cf)
+									&& !string.Equals(row.Cf, ViewedUser?.CF, StringComparison.OrdinalIgnoreCase))
+								{
+									<button type="button"
+											class="btn btn-sm btn-outline-info sched-crossing-open"
+											title="Abrir el cuadrante de este maquinista en simulación"
+											@onclick="() => OpenCrossingDriverAsync(row.Cf!)">
+										Cuadrante
+									</button>
+								}
+								else if (string.Equals(row.Cf, ViewedUser?.CF, StringComparison.OrdinalIgnoreCase))
+								{
+									<span class="sched-crossing-you">Tú</span>
+								}
+							}
+							else
+							{
+								<span class="sched-crossing-missing">sin maquinista grafiado</span>
+							}
+						</li>
+					}
+				</ul>
+			</div>
+		}
+	</CirculationSheetView>
+}
+
 @code {
 	private const int DayHorizon = 16;
 	private const string DevCfStorageKey = "schedules.devCf";
@@ -600,6 +692,10 @@
 	[SupplyParameterFromQuery(Name = "cf")]
 	public string? CfFromQuery { get; set; }
 
+	/// <summary>Fecha civil opcional: /drivers/schedules?cf=196&amp;date=2026-08-20</summary>
+	[SupplyParameterFromQuery(Name = "date")]
+	public string? DateFromQuery { get; set; }
+
 	private ModalDialog mvarModal { get; set; } = new();
 	private Dictionary<Guid, UserModelBase>? mcolUsers;
 	private PlansYearSlice? mvarTimeSlice;
@@ -609,6 +705,18 @@
 	private List<AttWorkShiftContentModel> SelectedDepots { get; set; } = new();
 	private List<AssignationContentModel> QueryResults { get; set; } = new();
 	private List<string> ShiftSuggestions { get; set; } = new();
+	private readonly Dictionary<string, ScheduleSheetHit> mcolSheetByKey = new(StringComparer.Ordinal);
+	private int mvarLookupToken;
+	private bool mvarPlanLookupBusy;
+	private bool mvarShowSheet;
+	private TimedCirculation? mvarSheetCirculation;
+	private Mesh? mvarSheetMesh;
+	private DayOfWeek? mvarSheetPlanningDay;
+	private SchedulePublishedDaySnapshot? mvarDaySnapshot;
+	private TopoLayout? mvarPublishedTopo;
+	private string mvarPublishedPlanName = string.Empty;
+	private List<CrossingDriverRow> mcolCrossingDrivers { get; set; } = new();
+	private string? mvarAppliedQueryDate;
 
 	private UserModelBase? ViewedUser { get; set; }
 	private UserModelBase? SessionUser { get; set; }
@@ -673,6 +781,7 @@
 		mcolUsers = await mvarAuthClient.cachedUserList();
 		SessionUser = await mvarAuthClient.GetCurrentUser();
 
+		ApplyDateFromQuery();
 		await ApplyInitialViewedUserAsync();
 
 		if (null != ViewedUser)
@@ -693,10 +802,12 @@
 			return;
 
 		string q = CfFromQuery.Trim();
-		if (string.Equals(mvarAppliedQueryCf, q, StringComparison.OrdinalIgnoreCase))
+		bool dateChanged = ApplyDateFromQuery();
+		if (string.Equals(mvarAppliedQueryCf, q, StringComparison.OrdinalIgnoreCase) && !dateChanged)
 			return;
 		if (null != ViewedUser && string.Equals(ViewedUser.CF?.Trim(), q, StringComparison.OrdinalIgnoreCase)
-			&& string.Equals(mvarAppliedQueryCf, q, StringComparison.OrdinalIgnoreCase))
+			&& string.Equals(mvarAppliedQueryCf, q, StringComparison.OrdinalIgnoreCase)
+			&& !dateChanged)
 			return;
 
 		if (!ResolveViewedUserFromCf(q))
@@ -711,6 +822,24 @@
 		await LogScheduleAsync(
 			Common.sessionEventType.scheduleViewOpened,
 			$"cf={ViewedUser?.CF}|sim={IsImpersonating}|origen=query");
+	}
+
+	/// <summary>Aplica ?date=yyyy-MM-dd si es una fecha válida. True si cambió el día.</summary>
+	private bool ApplyDateFromQuery()
+	{
+		if (string.IsNullOrWhiteSpace(DateFromQuery))
+			return false;
+		if (string.Equals(mvarAppliedQueryDate, DateFromQuery, StringComparison.OrdinalIgnoreCase))
+			return false;
+		if (!DateTime.TryParse(DateFromQuery, out DateTime parsed))
+			return false;
+
+		mvarAppliedQueryDate = DateFromQuery;
+		if (mvarSelectedDate.Date == parsed.Date)
+			return false;
+		mvarSelectedDate = parsed.Date;
+		mvarQueryDate = parsed.Date;
+		return true;
 	}
 
 	private async Task ApplyInitialViewedUserAsync()
@@ -1452,6 +1581,7 @@
 		}
 
 		EnsureClockTimer();
+		_ = ResolveCirculationLinksAsync();
 
 		if (reloadIfOutside
 			&& null == SelectedRow
@@ -1462,6 +1592,279 @@
 		{
 			_ = LoadRangeAsync(day);
 		}
+	}
+
+	private static string TrainSheetKey(TrainWorkShiftContentModel train)
+		=> $"{train.TrainId ?? string.Empty}|{train.StartTime.Ticks}";
+
+	private bool HasCirculationSheet(TrainWorkShiftContentModel train)
+		=> mcolSheetByKey.ContainsKey(TrainSheetKey(train));
+
+	private async Task ResolveCirculationLinksAsync()
+	{
+		int token = ++mvarLookupToken;
+		mcolSheetByKey.Clear();
+		mvarShowSheet = false;
+		mvarSheetCirculation = null;
+
+		if (SelectedTrains.Count == 0)
+		{
+			mvarPlanLookupBusy = false;
+			mvarPublishedPlanName = string.Empty;
+			mvarDaySnapshot = null;
+			mvarSheetMesh = null;
+			return;
+		}
+
+		mvarPlanLookupBusy = true;
+		StateHasChanged();
+		try
+		{
+			SchedulePublishedDaySnapshot? snap = await mvarPlanLookup.LoadDayAsync(SelectedDate);
+			if (token != mvarLookupToken)
+				return;
+
+			if (snap is null)
+			{
+				mvarPublishedPlanName = string.Empty;
+				mvarPublishedTopo = null;
+				mvarDaySnapshot = null;
+				return;
+			}
+
+			mvarDaySnapshot = snap;
+			mvarPublishedPlanName = snap.PlanName;
+			mvarPublishedTopo = snap.Topo;
+			foreach (TrainWorkShiftContentModel train in SelectedTrains)
+			{
+				ScheduleSheetHit? hit = SchedulePublishedPlanLookup.FindCirculation(
+					snap,
+					train.TrainId,
+					train.StartTime);
+				if (hit is not null)
+					mcolSheetByKey[TrainSheetKey(train)] = hit;
+			}
+		}
+		catch
+		{
+			if (token == mvarLookupToken)
+			{
+				mvarPublishedPlanName = string.Empty;
+				mvarPublishedTopo = null;
+				mvarDaySnapshot = null;
+			}
+		}
+		finally
+		{
+			if (token == mvarLookupToken)
+			{
+				mvarPlanLookupBusy = false;
+				StateHasChanged();
+			}
+		}
+	}
+
+	private async Task OpenCirculationSheetAsync(TrainWorkShiftContentModel train)
+	{
+		if (!mcolSheetByKey.TryGetValue(TrainSheetKey(train), out ScheduleSheetHit? hit)
+			|| hit is null)
+		{
+			return;
+		}
+
+		if (mvarPublishedTopo is null || mvarDaySnapshot is null)
+		{
+			await mvarModal.show(
+				"Hoja de circulación",
+				"El tren figura en el plan de explotación, pero no hay topología cargada para generar la hoja.",
+				"Entendido",
+				"Cerrar");
+			return;
+		}
+
+		try
+		{
+			Mesh? mesh = mvarPlanLookup.GetOrBuildMesh(mvarDaySnapshot, hit.Day);
+			TimedCirculation timed = CabinCirculationHydrator.ToTimed(hit.Circulation, mvarPublishedTopo);
+			if (mesh is not null)
+			{
+				TimedCirculation? fromMesh = FindTimedInMesh(mesh, hit.Circulation);
+				if (fromMesh is not null)
+					timed = fromMesh;
+			}
+
+			mvarSheetCirculation = timed;
+			mvarSheetMesh = mesh;
+			mvarSheetPlanningDay = hit.Day;
+			mcolCrossingDrivers = await ResolveCrossingDriversAsync(timed, mesh);
+			mvarShowSheet = true;
+		}
+		catch (Exception ex)
+		{
+			mvarShowSheet = false;
+			mvarSheetCirculation = null;
+			mvarSheetMesh = null;
+			mvarSheetPlanningDay = null;
+			mcolCrossingDrivers = new List<CrossingDriverRow>();
+			await mvarModal.show(
+				"Hoja de circulación",
+				"No se pudo generar la hoja de circulación de este tren.\n\n" + ex.Message,
+				"Entendido",
+				"Cerrar");
+		}
+	}
+
+	private static TimedCirculation? FindTimedInMesh(Mesh mesh, ProjectCirculation projectCirc)
+	{
+		int i = 0;
+		while (i < mesh.Circulations.Count)
+		{
+			TimedCirculation c = mesh.Circulations[i];
+			if ((!string.IsNullOrEmpty(projectCirc.TechnicalId)
+					&& string.Equals(c.TechnicalId, projectCirc.TechnicalId, StringComparison.Ordinal))
+				|| (!string.IsNullOrEmpty(projectCirc.Id)
+					&& string.Equals(c.Id, projectCirc.Id, StringComparison.Ordinal))
+				|| (projectCirc.HasServiceNumber
+					&& c.HasServiceNumber
+					&& string.Equals(c.ServiceNumber, projectCirc.ServiceNumber, StringComparison.Ordinal)))
+			{
+				return c;
+			}
+
+			i++;
+		}
+
+		return null;
+	}
+
+	private void CloseCirculationSheet()
+	{
+		mvarShowSheet = false;
+		mvarSheetCirculation = null;
+		mvarSheetMesh = null;
+		mvarSheetPlanningDay = null;
+		mcolCrossingDrivers = new List<CrossingDriverRow>();
+	}
+
+	private async Task<List<CrossingDriverRow>> ResolveCrossingDriversAsync(
+		TimedCirculation timed,
+		Mesh? mesh)
+	{
+		List<CrossingDriverRow> rows = new();
+		HashSet<string> numbers = CollectCrossingNumbers(timed, mesh);
+		if (numbers.Count == 0)
+			return rows;
+
+		DateTime day = SelectedDate.Date;
+		List<AssignationContentModel> dayAssignations;
+		if (null != mvarTimeSlice
+			&& day >= mvarTimeSlice.InitialDate.Date
+			&& day < mvarTimeSlice.InitialDate.Date.AddDays(DayHorizon))
+		{
+			dayAssignations = mcolRangeAssignations
+				.Where(a => a.Date.Date == day)
+				.ToList();
+		}
+		else
+		{
+			dayAssignations = await mvarExpertClient.Assignations(day, 1)
+				?? new List<AssignationContentModel>();
+		}
+
+		WorkShiftTemplateCollectionModel? plan = mvarTimeSlice?.GetPlan(day);
+		bool festive = mvarTimeSlice?.GetFestive(day) ?? false;
+		Dictionary<string, CrossingDriverRow> byTrain = new(StringComparer.OrdinalIgnoreCase);
+
+		foreach (string trainNumber in numbers)
+		{
+			byTrain[trainNumber] = new CrossingDriverRow { TrainNumber = trainNumber };
+		}
+
+		foreach (AssignationContentModel assignation in dayAssignations)
+		{
+			if (string.IsNullOrWhiteSpace(assignation.Definitive) || plan is null)
+				continue;
+
+			WorkShiftTemplateModel? template = plan.Template(assignation.Definitive, day, festive);
+			if (template is not AttTemplateModel att || att.Content is null)
+				continue;
+
+			foreach (TrainWorkShiftContentModel train in att.Content.OfType<TrainWorkShiftContentModel>())
+			{
+				foreach (string trainNumber in numbers)
+				{
+					if (!TrainKeysMatch(trainNumber, train.TrainId))
+						continue;
+
+					CrossingDriverRow row = byTrain[trainNumber];
+					row.AgentId = assignation.AgentId;
+					row.Cf = GetUserCf(assignation.AgentId);
+					row.Name = GetUserName(assignation.AgentId);
+					row.Shift = assignation.Definitive;
+				}
+			}
+		}
+
+		return byTrain.Values
+			.OrderBy(r => r.TrainNumber, StringComparer.OrdinalIgnoreCase)
+			.ToList();
+	}
+
+	private static HashSet<string> CollectCrossingNumbers(TimedCirculation timed, Mesh? mesh)
+	{
+		HashSet<string> numbers = new(StringComparer.OrdinalIgnoreCase);
+		try
+		{
+			CirculationSheetDocument doc = CirculationSheetDocument.Build(timed, mesh);
+			foreach (CirculationSheetFrontier frontier in doc.Frontiers)
+			{
+				if (string.IsNullOrWhiteSpace(frontier.CrossingTrains))
+					continue;
+				foreach (string part in frontier.CrossingTrains.Split(
+					' ',
+					StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+				{
+					if (part.Length > 0)
+						numbers.Add(part);
+				}
+			}
+		}
+		catch
+		{
+		}
+
+		return numbers;
+	}
+
+	private static bool TrainKeysMatch(string crossingNumber, string? shiftTrainId)
+	{
+		if (string.IsNullOrWhiteSpace(crossingNumber) || string.IsNullOrWhiteSpace(shiftTrainId))
+			return false;
+		if (string.Equals(crossingNumber.Trim(), shiftTrainId.Trim(), StringComparison.OrdinalIgnoreCase))
+			return true;
+		int a = Sapphire2025Models.Utils.ExtractCirculationNumber(crossingNumber);
+		int b = Sapphire2025Models.Utils.ExtractCirculationNumber(shiftTrainId);
+		return a > 0 && a == b;
+	}
+
+	private async Task OpenCrossingDriverAsync(string cf)
+	{
+		if (!CanViewOtherAgents || string.IsNullOrWhiteSpace(cf))
+			return;
+
+		CloseCirculationSheet();
+		string date = SelectedDate.ToString("yyyy-MM-dd");
+		await LogScheduleAsync(
+			Common.sessionEventType.scheduleViewOpened,
+			$"cf={cf}|sim=True|origen=cruce|día={date}|desde={ViewedUser?.CF ?? "?"}");
+		mvarNav.NavigateTo($"/drivers/schedules?cf={Uri.EscapeDataString(cf.Trim())}&date={date}");
+	}
+
+	private string? GetUserCf(Guid agentId)
+	{
+		if (null != mcolUsers && mcolUsers.TryGetValue(agentId, out UserModelBase? u) && null != u)
+			return u.CF;
+		return null;
 	}
 
 	private bool IsSelectedRow(AgentDayRow row)
@@ -1592,11 +1995,28 @@
 	private static string DayName(DateTime day)
 		=> day.ToString("ddd", new System.Globalization.CultureInfo("es-ES"));
 
+	private static string DigitsOnly(string? value)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+			return string.Empty;
+		return new string(value.Where(char.IsDigit).ToArray());
+	}
+
 	private sealed class AgentDayRow
 	{
 		public DateTime Date { get; set; }
 		public AssignationContentModel? Assignation { get; set; }
 		public WorkShiftTemplateModel? Template { get; set; }
 		public bool IsToday { get; set; }
+	}
+
+	private sealed class CrossingDriverRow
+	{
+		public string TrainNumber { get; set; } = string.Empty;
+		public Guid AgentId { get; set; }
+		public string? Cf { get; set; }
+		public string? Name { get; set; }
+		public string? Shift { get; set; }
+		public bool HasDriver => AgentId != Guid.Empty;
 	}
 }
