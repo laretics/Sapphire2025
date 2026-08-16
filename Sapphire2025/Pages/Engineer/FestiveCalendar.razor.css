@@ -196,9 +196,9 @@
 
 .fes-cal-star {
 	position: absolute;
-	top: 1px;
-	right: 2px;
-	font-size: 0.48rem;
+	top: 0;
+	right: 0;
+	line-height: 0;
 	color: #d97706;
 }
 

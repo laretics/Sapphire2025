@@ -1,4 +1,5 @@
 @using System.Globalization
+@using Sapphire2025.Icons
 @using Sapphire2025Models.Diamond
 @inject DiamondClient mvarDiamond
 
@@ -6,24 +7,24 @@
 	<div class="fes-cal-toolbar">
 		<div class="fes-cal-year-nav">
 			<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => ChangeYearAsync(-1)" disabled="@mvarBusy" title="Año anterior">
-				<i class="bi bi-chevron-left"></i>
+				<GenIcon Name="Left" Size="16" />
 			</button>
 			<h2>@mvarYear</h2>
 			<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => ChangeYearAsync(1)" disabled="@mvarBusy" title="Año siguiente">
-				<i class="bi bi-chevron-right"></i>
+				<GenIcon Name="Right" Size="16" />
 			</button>
 			<button type="button" class="btn btn-outline-primary btn-sm" @onclick="GoTodayAsync" disabled="@mvarBusy">
 				Hoy
 			</button>
 		</div>
 		<div class="fes-cal-legend">
-			<span class="fes-cal-chip fes-cal-chip-festive"><i class="bi bi-star-fill"></i> Festivo</span>
+			<span class="fes-cal-chip fes-cal-chip-festive"><GenIcon Name="Star" Size="16" /> Festivo</span>
 			<span class="fes-cal-chip fes-cal-chip-weekend">Fin de semana</span>
 			<span class="fes-cal-chip fes-cal-chip-today">Hoy</span>
 			<span class="badge text-bg-warning">@mcolFestives.Count festivo(s)</span>
 		</div>
 		<button type="button" class="btn btn-primary btn-sm" @onclick="ReloadAsync" disabled="@mvarBusy">
-			<i class="bi bi-arrow-clockwise"></i> Actualizar
+			<GenIcon Name="Refresh" Size="16" /> Actualizar
 		</button>
 	</div>
 
@@ -92,7 +93,7 @@
 										<span class="fes-cal-num">@cell.Day.Day</span>
 										@if (festive)
 										{
-											<i class="bi bi-star-fill fes-cal-star" aria-hidden="true"></i>
+											<span class="fes-cal-star"><GenIcon Name="Star" Size="16" /></span>
 										}
 									</button>
 								}
@@ -117,7 +118,7 @@
 						<p class="mb-2">
 							@if (festive)
 							{
-								<span class="badge text-bg-warning"><i class="bi bi-star-fill"></i> Festivo</span>
+								<span class="badge text-bg-warning"><GenIcon Name="Star" Size="16" /> Festivo</span>
 							}
 							else if (IsWeekend(sel))
 							{

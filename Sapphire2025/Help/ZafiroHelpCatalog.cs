@@ -419,7 +419,7 @@ Es el punto de entrada para combinar la visión de personal con la del material 
 @"El menú **Diamond** agrupa la planificación de horarios:
 
 • **Explotación (Legacy)**: gestión clásica de turnos / workshifts.
-• **Almacén Diamond**: topologías, planes versionados y calendario de festivos.
+• **Almacén Diamond**: topologías, planes versionados, limitaciones temporales y calendario de festivos.
 • **Planes de Explotación**: mallas horarias del planificador Diamond / TimeNet.
 
 Flujo habitual:

@@ -6,6 +6,7 @@
 @using Diamond.Topo
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Forms
+@using Sapphire2025.Icons
 @using Sapphire2025.Layout.Generic
 @using Sapphire2025.Storage
 @using Sapphire2025Models.Diamond
@@ -36,24 +37,24 @@
 		<TabPage Text="@Prefs.T("topo.topologies")" Key="topos">
 			<div class="topo-toolbar mb-3 flex-wrap">
 				<button type="button" class="btn btn-primary btn-sm" @onclick="ReloadToposAsync" disabled="@mvarBusy">
-					<i class="bi bi-arrow-clockwise"></i> @Prefs.T("common.refresh")
+					<GenIcon Name="Refresh" Size="16" /> @Prefs.T("common.refresh")
 				</button>
 				<label class="btn btn-success btn-sm mb-0">
-					<i class="bi bi-upload"></i> @Prefs.T("topo.upload")
+					<GenIcon Name="Upload" Size="16" /> @Prefs.T("topo.upload")
 					<InputFile OnChange="OnUploadTopoAsync" accept=".xml,.gz,application/xml,text/xml" style="display:none;" disabled="@mvarBusy" />
 				</label>
 				<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="DownloadSelectedTopoAsync"
 						disabled="@(mvarBusy || mvarSelectedTopo is null)">
-					<i class="bi bi-download"></i> @Prefs.T("common.export")
+					<GenIcon Name="Download" Size="16" /> @Prefs.T("common.export")
 				</button>
 				<button type="button" class="btn btn-outline-warning btn-sm" @onclick="ConfirmDeleteTopoAsync"
 						disabled="@(mvarBusy || mvarSelectedTopo is null || mvarSelectedTopo is { IsActive: false } || mvarSelectedTopo is { IsLockedByPlans: true })"
 						title="@(mvarSelectedTopo is { IsLockedByPlans: true } ? "Hay planes que usan esta topología" : "Desactivar")">
-					<i class="bi bi-trash"></i> Eliminar
+					<GenIcon Name="Trash" Size="16" /> Eliminar
 				</button>
 				<button type="button" class="btn btn-outline-info btn-sm" @onclick="ActivateSelectedTopoAsync"
 						disabled="@(mvarBusy || mvarSelectedTopo is null || mvarSelectedTopo is { IsActive: true })">
-					<i class="bi bi-check2-circle"></i> Activar
+					<GenIcon Name="CheckBoxChecked" Size="16" /> Activar
 				</button>
 				<div class="form-check form-switch ms-2 mb-0">
 					<input class="form-check-input" type="checkbox" id="chkInactiveTopo" @bind="mvarShowInactiveTopos" @bind:after="ReloadToposAsync" />
@@ -76,7 +77,7 @@
 							else if (mcolTopos.Count == 0)
 							{
 								<div class="topo-empty-state">
-									<div class="mb-2"><i class="bi bi-geo-alt fs-3"></i></div>
+									<div class="mb-2"><GenIcon Name="Location" Size="24" /></div>
 									<div>No hay topologías. Use <strong>Subir topo</strong>.</div>
 								</div>
 							}
@@ -100,9 +101,9 @@
 											</div>
 										</div>
 										<div class="topo-item-meta">
-											<span><i class="bi bi-diagram-3"></i> @item.AxisCount ejes</span>
-											<span><i class="bi bi-building"></i> @item.StationCount est.</span>
-											<span><i class="bi bi-hdd"></i> @FormatBytes(item.ByteLength)</span>
+											<span><GenIcon Name="Bezier" Size="16" /> @item.AxisCount ejes</span>
+											<span><GenIcon Name="Home" Size="16" /> @item.StationCount est.</span>
+											<span><GenIcon Name="Edata" Size="16" /> @FormatBytes(item.ByteLength)</span>
 										</div>
 										<div class="topo-item-meta mt-1">
 											<code title="@item.Id">@ShortGuid(item.Id)</code>
@@ -129,7 +130,7 @@
 							@if (mvarSelectedTopo is null)
 							{
 								<div class="topo-empty-state">
-									<div class="mb-2"><i class="bi bi-map fs-3"></i></div>
+									<div class="mb-2"><GenIcon Name="Map" Size="24" /></div>
 									<div>Seleccione una topología del listado.</div>
 								</div>
 							}
@@ -202,7 +203,7 @@
 		<TabPage Text="Planes de explotación" Key="plans">
 			<div class="topo-toolbar mb-3 flex-wrap align-items-center">
 				<button type="button" class="btn btn-primary btn-sm" @onclick="ReloadPlansAsync" disabled="@mvarBusy">
-					<i class="bi bi-arrow-clockwise"></i> Actualizar
+					<GenIcon Name="Refresh" Size="16" /> Actualizar
 				</button>
 				<div class="d-flex align-items-center gap-2">
 					<label class="small text-muted mb-0">Topo:</label>
@@ -215,26 +216,26 @@
 					</select>
 				</div>
 				<label class="btn btn-success btn-sm mb-0 @(mvarUploadPlanTopoId == Guid.Empty ? "disabled" : null)">
-					<i class="bi bi-upload"></i> Subir plan (.ddm)
+					<GenIcon Name="Upload" Size="16" /> Subir plan (.ddm)
 					<InputFile OnChange="OnUploadPlanAsync" accept=".ddm,.txt,text/plain" style="display:none;"
 							   disabled="@(mvarBusy || mvarUploadPlanTopoId == Guid.Empty)" />
 				</label>
 				<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="DownloadSelectedPlanAsync"
 						disabled="@(mvarBusy || mvarSelectedPlan is null)">
-					<i class="bi bi-download"></i> @Prefs.T("common.export")
+					<GenIcon Name="Download" Size="16" /> @Prefs.T("common.export")
 				</button>
 				<button type="button" class="btn btn-outline-warning btn-sm" @onclick="ConfirmDeletePlanAsync"
 						disabled="@(mvarBusy || mvarSelectedPlan is null || mvarSelectedPlan is { IsActive: false })">
-					<i class="bi bi-trash"></i> Eliminar
+					<GenIcon Name="Trash" Size="16" /> Eliminar
 				</button>
 				<button type="button" class="btn btn-outline-info btn-sm" @onclick="ActivateSelectedPlanAsync"
 						disabled="@(mvarBusy || mvarSelectedPlan is null || mvarSelectedPlan is { IsActive: true })">
-					<i class="bi bi-check2-circle"></i> Activar
+					<GenIcon Name="CheckBoxChecked" Size="16" /> Activar
 				</button>
 				<button type="button" class="btn btn-warning btn-sm" @onclick="OpenPublishFromPlanAsync"
 						disabled="@(mvarBusy || mvarSelectedPlan is null || mvarSelectedPlan is { IsActive: false })"
 						title="Compilar y publicar para Tourmaline">
-					<i class="bi bi-broadcast"></i> Publicar
+					<GenIcon Name="OutboundConnect" Size="16" /> Publicar
 				</button>
 				<div class="form-check form-switch ms-2 mb-0">
 					<input class="form-check-input" type="checkbox" id="chkInactivePlan" @bind="mvarShowInactivePlans" @bind:after="ReloadPlansAsync" />
@@ -257,7 +258,7 @@
 							else if (mcolPlans.Count == 0)
 							{
 								<div class="topo-empty-state">
-									<div class="mb-2"><i class="bi bi-file-earmark-code fs-3"></i></div>
+									<div class="mb-2"><GenIcon Name="Clipboard" Size="24" /></div>
 									<div>No hay planes. Elija una topología y suba un script <code>.ddm</code>.</div>
 								</div>
 							}
@@ -275,8 +276,8 @@
 											}
 										</div>
 										<div class="topo-item-meta">
-											<span><i class="bi bi-geo"></i> @(string.IsNullOrWhiteSpace(item.TopoName) ? ShortGuid(item.TopoId) : item.TopoName)</span>
-											<span><i class="bi bi-file-text"></i> @FormatBytes(item.ScriptByteLength)</span>
+											<span><GenIcon Name="Location" Size="16" /> @(string.IsNullOrWhiteSpace(item.TopoName) ? ShortGuid(item.TopoId) : item.TopoName)</span>
+											<span><GenIcon Name="Itinerary" Size="16" /> @FormatBytes(item.ScriptByteLength)</span>
 										</div>
 										<div class="topo-item-meta mt-1">
 											<code title="@item.Id">@ShortGuid(item.Id)</code>
@@ -303,7 +304,7 @@
 							@if (mvarSelectedPlan is null)
 							{
 								<div class="topo-empty-state">
-									<div class="mb-2"><i class="bi bi-journal-code fs-3"></i></div>
+									<div class="mb-2"><GenIcon Name="Clipboard" Size="24" /></div>
 									<div>Seleccione un plan para ver su script y la topología asociada.</div>
 								</div>
 							}
@@ -339,7 +340,7 @@
 								<div class="d-flex justify-content-between align-items-center mb-2">
 									<strong class="small text-uppercase text-secondary">Script Diamond</strong>
 									<button type="button" class="btn btn-sm btn-primary" @onclick="() => OpenPlanInEditor(mvarSelectedPlan)" title="Abrir este plan en el editor de malla">
-										<i class="bi bi-diagram-3"></i> Abrir en planificador
+										<GenIcon Name="Bezier" Size="16" /> Abrir en planificador
 									</button>
 								</div>
 								<pre class="topo-script-view">@((mvarSelectedPlan.SourceScript ?? string.Empty))</pre>
@@ -348,6 +349,10 @@
 					</div>
 				</div>
 			</div>
+		</TabPage>
+
+		<TabPage Text="Limitaciones temporales" Key="templimits">
+			<TemporaryLimitsEditor />
 		</TabPage>
 
 		<TabPage Text="Festivos" Key="festives">
@@ -364,25 +369,25 @@
 			</div>
 			<div class="topo-toolbar mb-3 flex-wrap">
 				<button type="button" class="btn btn-primary btn-sm" @onclick="ReloadPublishedAsync" disabled="@mvarBusy">
-					<i class="bi bi-arrow-clockwise"></i> Actualizar
+					<GenIcon Name="Refresh" Size="16" /> Actualizar
 				</button>
 				<button type="button" class="btn btn-warning btn-sm" @onclick="OpenPublishFromPlanAsync"
 						disabled="@(mvarBusy || mvarSelectedPlan is null || mvarSelectedPlan is { IsActive: false })"
 						title="Compilar el plan de autoría seleccionado en la solapa Planes">
-					<i class="bi bi-broadcast"></i> Compilar plan seleccionado
+					<GenIcon Name="OutboundConnect" Size="16" /> Compilar plan seleccionado
 				</button>
 				<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="DownloadSelectedPublishedAsync"
 						disabled="@(mvarBusy || mvarSelectedPublished is null)">
-					<i class="bi bi-download"></i> @Prefs.T("common.export") JSON
+					<GenIcon Name="Download" Size="16" /> @Prefs.T("common.export") JSON
 				</button>
 				<button type="button" class="btn btn-outline-primary btn-sm" @onclick="OpenEditPublishedAsync"
 						disabled="@(mvarBusy || mvarSelectedPublished is null)">
-					<i class="bi bi-pencil"></i> Editar
+					<GenIcon Name="WriteNote" Size="16" /> Editar
 				</button>
 				<button type="button" class="btn btn-outline-danger btn-sm" @onclick="DeletePublishedAsync"
 						disabled="@(mvarBusy || mvarSelectedPublished is null || mvarSelectedPublished is { IsActive: true })"
 						title="Solo planes fuera de producción">
-					<i class="bi bi-trash"></i> Borrar
+					<GenIcon Name="Trash" Size="16" /> Borrar
 				</button>
 				<div class="form-check form-switch ms-2 mb-0">
 					<input class="form-check-input" type="checkbox" id="chkInactivePub" @bind="mvarShowInactivePublished" @bind:after="ReloadPublishedAsync" />
@@ -403,7 +408,7 @@
 					else if (mcolPublished.Count == 0)
 					{
 						<div class="topo-empty-state py-5">
-							<div class="mb-2"><i class="bi bi-broadcast fs-3"></i></div>
+							<div class="mb-2"><GenIcon Name="OutboundConnect" Size="24" /></div>
 							<div>No hay planes compilados. En <strong>Planes de explotación</strong>, seleccione un script y pulse
 								<strong>Publicar</strong> o use <strong>Compilar plan seleccionado</strong> aquí.</div>
 						</div>
@@ -457,10 +462,10 @@
 											</td>
 											<td class="text-end text-nowrap" @onclick:stopPropagation="true">
 												<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => { SelectPublished(item); return OpenEditPublishedAsync(); }" title="Editar">
-													<i class="bi bi-pencil"></i>
+													<GenIcon Name="WriteNote" Size="16" />
 												</button>
 												<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => { SelectPublished(item); return DownloadSelectedPublishedAsync(); }" title="JSON">
-													<i class="bi bi-download"></i>
+													<GenIcon Name="Download" Size="16" />
 												</button>
 											</td>
 										</tr>
@@ -508,7 +513,7 @@
 
 		<TabPage Text="Turnos de personal" Key="shifts" Enabled="false">
 			<div class="topo-empty-state py-5">
-				<div class="mb-2"><i class="bi bi-people fs-2 text-muted"></i></div>
+				<div class="mb-2"><GenIcon Name="People" Size="24" Color="#6c757d" /></div>
 				<p class="mb-1 fw-semibold">Turnos de personal</p>
 				<p class="text-muted small mb-0">Reservado para el planificador de turnos. Próximamente.</p>
 			</div>

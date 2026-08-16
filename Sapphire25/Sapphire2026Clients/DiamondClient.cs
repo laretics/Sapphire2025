@@ -357,6 +357,92 @@ namespace Sapphire2025.Storage
 			return list;
 		}
 
+		// ── Limitaciones temporales ───────────────────────────────────────
+
+		public async Task<IReadOnlyList<DiamondTopoAxisModel>> ListTopoAxesAsync(Guid topoId)
+		{
+			string request = composeCommand(
+				"topoaxes",
+				new requestParam("id", topoId.ToString()));
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				List<DiamondTopoAxisModel>? list =
+					await response.Content.ReadFromJsonAsync<List<DiamondTopoAxisModel>>();
+				if (list is null)
+				{
+					return Array.Empty<DiamondTopoAxisModel>();
+				}
+
+				return list;
+			}
+			catch (HttpRequestException)
+			{
+				return Array.Empty<DiamondTopoAxisModel>();
+			}
+		}
+
+		public async Task<IReadOnlyList<DiamondTemporaryLimitModel>> ListTemporaryLimitsAsync(
+			Guid topoId,
+			string? axisId = null)
+		{
+			List<requestParam> args = new List<requestParam>
+			{
+				new requestParam("topoId", topoId.ToString())
+			};
+			if (!string.IsNullOrWhiteSpace(axisId))
+			{
+				args.Add(new requestParam("axisId", axisId));
+			}
+
+			string request = composeCommand("templimits", args.ToArray());
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				List<DiamondTemporaryLimitModel>? list =
+					await response.Content.ReadFromJsonAsync<List<DiamondTemporaryLimitModel>>();
+				if (list is null)
+				{
+					return Array.Empty<DiamondTemporaryLimitModel>();
+				}
+
+				return list;
+			}
+			catch (HttpRequestException)
+			{
+				return Array.Empty<DiamondTemporaryLimitModel>();
+			}
+		}
+
+		public async Task<DiamondTemporaryLimitSaveResult?> SaveTemporaryLimitAsync(
+			DiamondTemporaryLimitSaveRequest body)
+		{
+			string json = System.Text.Json.JsonSerializer.Serialize(body);
+			try
+			{
+				HttpResponseMessage response = await sendPostRequest("savetemplimit", json);
+				return await response.Content.ReadFromJsonAsync<DiamondTemporaryLimitSaveResult>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<DiamondTemporaryLimitSaveResult?> DeleteTemporaryLimitAsync(Guid id)
+		{
+			string json = System.Text.Json.JsonSerializer.Serialize(id);
+			try
+			{
+				HttpResponseMessage response = await sendPostRequest("deletetemplimit", json);
+				return await response.Content.ReadFromJsonAsync<DiamondTemporaryLimitSaveResult>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
 		// ── Festivos ──────────────────────────────────────────────────────
 
 		public async Task<DiamondFestiveYearModel?> ListFestivesAsync(int year)

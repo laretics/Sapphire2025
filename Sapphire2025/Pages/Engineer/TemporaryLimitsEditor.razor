@@ -1,0 +1,634 @@
+@using System.Globalization
+@using Sapphire2025.Icons
+@using Sapphire2025Models.Diamond
+@inject DiamondClient mvarDiamond
+
+<div class="tl-ed">
+	<div class="tl-ed-toolbar">
+		<div class="d-flex align-items-center gap-2 flex-wrap">
+			<label class="small text-muted mb-0">Topología</label>
+			<select class="form-select form-select-sm" style="min-width:14rem;"
+					value="@mvarTopoId"
+					@onchange="OnTopoChangedAsync"
+					disabled="@mvarBusy">
+				<option value="@Guid.Empty">— elegir topología —</option>
+				@foreach (DiamondTopoHeaderModel t in mcolTopos)
+				{
+					<option value="@t.Id">@t.Name</option>
+				}
+			</select>
+			<button type="button" class="btn btn-primary btn-sm" @onclick="ReloadAsync" disabled="@(mvarBusy || mvarTopoId == Guid.Empty)">
+				<GenIcon Name="Refresh" Size="16" /> Actualizar
+			</button>
+			<button type="button" class="btn btn-success btn-sm"
+					@onclick="BeginCreate"
+					disabled="@(mvarBusy || mvarTopoId == Guid.Empty || string.IsNullOrEmpty(mvarAxisId))">
+				<GenIcon Name="AddReport" Size="16" /> Nueva limitación
+			</button>
+		</div>
+		@if (mvarSelectedAxis is not null)
+		{
+			<span class="badge text-bg-light border">
+				@mvarSelectedAxis.Id · PK @FormatPk(mvarSelectedAxis.Pk0)–@FormatPk(mvarSelectedAxis.Pkf)
+				· vmax @mvarSelectedAxis.Vmax km/h
+			</span>
+		}
+	</div>
+
+	@if (!string.IsNullOrEmpty(mvarNotice))
+	{
+		<div class="alert @(mvarNoticeOk ? "alert-success" : "alert-warning") alert-dismissible fade show py-2" role="alert">
+			@mvarNotice
+			<button type="button" class="btn-close" @onclick="() => mvarNotice = null"></button>
+		</div>
+	}
+
+	<p class="tl-ed-hint">
+		Se almacenan tramos que pueden solaparse (anidados). La tabla de abajo es lo guardado;
+		el resultado anidado muestra la V más restrictiva por PK, también cruzada con las fijas del topo.
+	</p>
+
+	@if (mvarTopoId == Guid.Empty)
+	{
+		<div class="tl-ed-empty">Elija una topología del almacén para editar sus limitaciones temporales.</div>
+	}
+	else if (mvarBusy && mcolAxes.Count == 0)
+	{
+		<div class="tl-ed-empty">
+			<div class="spinner-border text-primary mb-2"></div>
+			<div>Cargando ejes…</div>
+		</div>
+	}
+	else if (mcolAxes.Count == 0)
+	{
+		<div class="tl-ed-empty">Esta topología no tiene ejes.</div>
+	}
+	else
+	{
+		<div class="nav nav-pills tl-ed-axes mb-3">
+			@foreach (DiamondTopoAxisModel axis in mcolAxes)
+			{
+				int count = CountForAxis(axis.Id);
+				<button type="button"
+						class="nav-link @(axis.Id == mvarAxisId ? "active" : null)"
+						@onclick="() => SelectAxis(axis.Id)">
+					<strong>@axis.Id</strong>
+					@if (!string.IsNullOrWhiteSpace(axis.Name) && !string.Equals(axis.Name, axis.Id, StringComparison.Ordinal))
+					{
+						<span class="tl-ed-axis-name">@axis.Name</span>
+					}
+					<span class="badge @(axis.Id == mvarAxisId ? "text-bg-light text-primary" : "text-bg-secondary")">@count</span>
+				</button>
+			}
+		</div>
+
+		<div class="tl-ed-panel">
+			<div class="table-responsive">
+				<table class="table table-sm table-hover align-middle mb-0 tl-ed-table">
+					<thead>
+						<tr>
+							<th>PK inicio</th>
+							<th>PK fin</th>
+							<th class="text-end">V (km/h)</th>
+							<th>Vía</th>
+							<th>Motivo</th>
+							<th class="text-center">Nueva</th>
+							<th class="text-center">Señalizada</th>
+							<th>Creada</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@if (mcolCurrent.Count == 0)
+						{
+							<tr>
+								<td colspan="9" class="text-center text-muted py-4">
+									No hay limitaciones temporales en este eje.
+								</td>
+							</tr>
+						}
+						else
+						{
+							@foreach (DiamondTemporaryLimitModel row in mcolCurrent)
+							{
+								<tr @key="row.Id" class="@(row.IsNewCreation ? "tl-ed-new" : null)">
+									<td class="font-monospace">@FormatPk(row.Pk0)</td>
+									<td class="font-monospace">@FormatPk(row.Pkf)</td>
+									<td class="text-end fw-bold">@row.Speed</td>
+									<td>@TemporaryLimitLabels.TrackName(row.Track)</td>
+									<td>@TemporaryLimitLabels.ReasonName(row.Reason)</td>
+									<td class="text-center">
+										@if (row.IsNewCreation)
+										{
+											<span class="badge text-bg-warning">Sí</span>
+										}
+										else
+										{
+											<span class="text-muted">No</span>
+										}
+									</td>
+									<td class="text-center">
+										@if (row.SignaledOnTrack)
+										{
+											<GenIcon Name="CheckBoxChecked" Size="16" Color="#198754" />
+										}
+										else
+										{
+											<span class="text-muted">—</span>
+										}
+									</td>
+									<td class="small text-muted">@row.CreatedUtc.ToLocalTime().ToString("g")</td>
+									<td class="text-end text-nowrap">
+										<button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => BeginEdit(row)" disabled="@mvarBusy" title="Editar">
+											<GenIcon Name="WriteNote" Size="16" />
+										</button>
+										<button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => BeginDelete(row)" disabled="@mvarBusy" title="Eliminar">
+											<GenIcon Name="Trash" Size="16" />
+										</button>
+									</td>
+								</tr>
+							}
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<div class="tl-ed-nested mt-3">
+			<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+				<h3 class="tl-ed-nested-title mb-0">Resultado anidado</h3>
+				<div class="d-flex flex-wrap align-items-center gap-2">
+					<select class="form-select form-select-sm" style="width:auto;" @bind="mvarFlattenTrack">
+						<option value="">Todas las vías</option>
+						<option value="1">Vía 1</option>
+						<option value="2">Vía 2</option>
+					</select>
+					<div class="form-check form-switch mb-0">
+						<input class="form-check-input" type="checkbox" id="tlWithFixed" @bind="mvarIncludeFixed" />
+						<label class="form-check-label small" for="tlWithFixed">Incluir fijas del topo</label>
+					</div>
+				</div>
+			</div>
+			<div class="tl-ed-panel">
+				<div class="table-responsive">
+					<table class="table table-sm align-middle mb-0 tl-ed-table">
+						<thead>
+							<tr>
+								<th>PK inicio</th>
+								<th>PK fin</th>
+								<th class="text-end">V efectiva</th>
+							</tr>
+						</thead>
+						<tbody>
+							@if (mcolNested.Count == 0)
+							{
+								<tr>
+									<td colspan="3" class="text-center text-muted py-3">Sin cobertura de limitación en este eje.</td>
+								</tr>
+							}
+							else
+							{
+								@foreach (Diamond.Topo.SpeedLimitSpan span in mcolNested)
+								{
+									<tr>
+										<td class="font-monospace">@FormatPk(span.PK)</td>
+										<td class="font-monospace">@FormatPk(span.PKEnd)</td>
+										<td class="text-end fw-bold">@span.Speed</td>
+									</tr>
+								}
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	}
+</div>
+
+@if (mvarShowEditor)
+{
+	<div class="modal fade show d-block" tabindex="-1" style="background:rgba(15,23,42,.45);">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title">@(mvarDraft.Id.HasValue ? "Editar limitación" : "Nueva limitación") · @mvarAxisId</h5>
+					<button type="button" class="btn-close" @onclick="CloseEditor" disabled="@mvarBusy"></button>
+				</div>
+				<div class="modal-body">
+					<div class="row g-2">
+						<div class="col-6">
+							<label class="form-label small">PK inicio (m)</label>
+							<input type="number" class="form-control form-control-sm" @bind="mvarDraft.Pk0" />
+							<div class="form-text">@FormatPk(mvarDraft.Pk0)</div>
+						</div>
+						<div class="col-6">
+							<label class="form-label small">PK fin (m)</label>
+							<input type="number" class="form-control form-control-sm" @bind="mvarDraft.Pkf" />
+							<div class="form-text">@FormatPk(mvarDraft.Pkf)</div>
+						</div>
+						<div class="col-6">
+							<label class="form-label small">Velocidad (km/h)</label>
+							<input type="number" class="form-control form-control-sm" min="1" max="400" @bind="mvarDraft.Speed" />
+						</div>
+						<div class="col-6">
+							<label class="form-label small">Vía</label>
+							<select class="form-select form-select-sm" @bind="mvarDraft.Track">
+								@foreach (TemporaryLimitTrack track in Enum.GetValues<TemporaryLimitTrack>())
+								{
+									<option value="@track">@TemporaryLimitLabels.TrackName(track)</option>
+								}
+							</select>
+						</div>
+						<div class="col-12">
+							<label class="form-label small">Motivo</label>
+							<select class="form-select form-select-sm" @bind="mvarDraft.Reason">
+								@foreach (TemporaryLimitReason reason in Enum.GetValues<TemporaryLimitReason>())
+								{
+									<option value="@reason">@TemporaryLimitLabels.ReasonName(reason)</option>
+								}
+							</select>
+						</div>
+						<div class="col-6">
+							<div class="form-check form-switch mt-3">
+								<input class="form-check-input" type="checkbox" id="tlNew" @bind="mvarDraft.IsNewCreation" />
+								<label class="form-check-label" for="tlNew">Nueva creación</label>
+							</div>
+						</div>
+						<div class="col-6">
+							<div class="form-check form-switch mt-3">
+								<input class="form-check-input" type="checkbox" id="tlSig" @bind="mvarDraft.SignaledOnTrack" />
+								<label class="form-check-label" for="tlSig">Señalizada en vía</label>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-outline-secondary" @onclick="CloseEditor" disabled="@mvarBusy">Cancelar</button>
+					<button type="button" class="btn btn-primary" @onclick="SaveAsync" disabled="@mvarBusy">
+						@(mvarBusy ? "Guardando…" : "Guardar")
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+@if (mvarPendingDelete is not null)
+{
+	<div class="modal fade show d-block" tabindex="-1" style="background:rgba(15,23,42,.45);">
+		<div class="modal-dialog modal-dialog-centered modal-sm">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title">Eliminar limitación</h5>
+					<button type="button" class="btn-close" @onclick="() => mvarPendingDelete = null"></button>
+				</div>
+				<div class="modal-body small">
+					¿Eliminar @mvarPendingDelete.Speed km/h en @FormatPk(mvarPendingDelete.Pk0)–@FormatPk(mvarPendingDelete.Pkf) (@mvarPendingDelete.AxisId)?
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-outline-secondary" @onclick="() => mvarPendingDelete = null" disabled="@mvarBusy">Cancelar</button>
+					<button type="button" class="btn btn-danger" @onclick="ConfirmDeleteAsync" disabled="@mvarBusy">Eliminar</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	private readonly List<DiamondTopoHeaderModel> mcolTopos = new List<DiamondTopoHeaderModel>();
+	private readonly List<DiamondTopoAxisModel> mcolAxes = new List<DiamondTopoAxisModel>();
+	private readonly List<DiamondTemporaryLimitModel> mcolLimits = new List<DiamondTemporaryLimitModel>();
+
+	private Guid mvarTopoId = Guid.Empty;
+	private string mvarAxisId = string.Empty;
+	private bool mvarBusy;
+	private bool mvarShowEditor;
+	private string? mvarNotice;
+	private bool mvarNoticeOk;
+	private DiamondTemporaryLimitSaveRequest mvarDraft = new DiamondTemporaryLimitSaveRequest();
+	private DiamondTemporaryLimitModel? mvarPendingDelete;
+	private string mvarFlattenTrack = string.Empty;
+	private bool mvarIncludeFixed = true;
+
+	private DiamondTopoAxisModel? mvarSelectedAxis
+	{
+		get
+		{
+			int i = 0;
+			while (i < mcolAxes.Count)
+			{
+				if (string.Equals(mcolAxes[i].Id, mvarAxisId, StringComparison.Ordinal))
+				{
+					return mcolAxes[i];
+				}
+
+				i++;
+			}
+
+			return null;
+		}
+	}
+
+	private List<DiamondTemporaryLimitModel> mcolCurrent
+	{
+		get
+		{
+			return mcolLimits
+				.Where(x => string.Equals(x.AxisId, mvarAxisId, StringComparison.Ordinal))
+				.OrderBy(x => x.Pk0)
+				.ThenBy(x => x.Pkf)
+				.ToList();
+		}
+	}
+
+	private IReadOnlyList<Diamond.Topo.SpeedLimitSpan> mcolNested
+	{
+		get { return BuildNested(); }
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		try
+		{
+			IReadOnlyList<DiamondTopoHeaderModel> list = await mvarDiamond.ListToposAsync(activeOnly: true);
+			mcolTopos.Clear();
+			int i = 0;
+			while (i < list.Count)
+			{
+				mcolTopos.Add(list[i]);
+				i++;
+			}
+
+			if (mcolTopos.Count == 1)
+			{
+				mvarTopoId = mcolTopos[0].Id;
+				await ReloadAsync();
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "No se pudieron cargar las topologías: " + ex.Message;
+		}
+	}
+
+	private async Task OnTopoChangedAsync(ChangeEventArgs e)
+	{
+		Guid id;
+		if (!Guid.TryParse(Convert.ToString(e.Value), out id))
+		{
+			id = Guid.Empty;
+		}
+
+		mvarTopoId = id;
+		mvarAxisId = string.Empty;
+		mcolAxes.Clear();
+		mcolLimits.Clear();
+		if (id != Guid.Empty)
+		{
+			await ReloadAsync();
+		}
+	}
+
+	private async Task ReloadAsync()
+	{
+		if (mvarTopoId == Guid.Empty)
+		{
+			return;
+		}
+
+		mvarBusy = true;
+		mvarNotice = null;
+		try
+		{
+			IReadOnlyList<DiamondTopoAxisModel> axes = await mvarDiamond.ListTopoAxesAsync(mvarTopoId);
+			mcolAxes.Clear();
+			int i = 0;
+			while (i < axes.Count)
+			{
+				mcolAxes.Add(axes[i]);
+				i++;
+			}
+
+			if (string.IsNullOrEmpty(mvarAxisId) || mvarSelectedAxis is null)
+			{
+				mvarAxisId = mcolAxes.Count > 0 ? mcolAxes[0].Id : string.Empty;
+			}
+
+			IReadOnlyList<DiamondTemporaryLimitModel> limits = await mvarDiamond.ListTemporaryLimitsAsync(mvarTopoId);
+			mcolLimits.Clear();
+			i = 0;
+			while (i < limits.Count)
+			{
+				mcolLimits.Add(limits[i]);
+				i++;
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al cargar limitaciones: " + ex.Message;
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private void SelectAxis(string axisId)
+	{
+		mvarAxisId = axisId ?? string.Empty;
+	}
+
+	private int CountForAxis(string axisId)
+	{
+		int n = 0;
+		int i = 0;
+		while (i < mcolLimits.Count)
+		{
+			if (string.Equals(mcolLimits[i].AxisId, axisId, StringComparison.Ordinal))
+			{
+				n++;
+			}
+
+			i++;
+		}
+
+		return n;
+	}
+
+	private void BeginCreate()
+	{
+		DiamondTopoAxisModel? axis = mvarSelectedAxis;
+		mvarDraft = new DiamondTemporaryLimitSaveRequest
+		{
+			Id = null,
+			TopoId = mvarTopoId,
+			AxisId = mvarAxisId,
+			Pk0 = axis is not null ? axis.Pk0 : 0L,
+			Pkf = axis is not null ? axis.Pk0 : 0L,
+			Speed = 30,
+			Track = TemporaryLimitTrack.Both,
+			IsNewCreation = true,
+			Reason = TemporaryLimitReason.Works,
+			SignaledOnTrack = false
+		};
+		mvarShowEditor = true;
+	}
+
+	private void BeginEdit(DiamondTemporaryLimitModel row)
+	{
+		mvarDraft = new DiamondTemporaryLimitSaveRequest
+		{
+			Id = row.Id,
+			TopoId = row.TopoId,
+			AxisId = row.AxisId,
+			Pk0 = row.Pk0,
+			Pkf = row.Pkf,
+			Speed = row.Speed,
+			Track = row.Track,
+			IsNewCreation = row.IsNewCreation,
+			Reason = row.Reason,
+			SignaledOnTrack = row.SignaledOnTrack
+		};
+		mvarShowEditor = true;
+	}
+
+	private void CloseEditor()
+	{
+		mvarShowEditor = false;
+	}
+
+	private void BeginDelete(DiamondTemporaryLimitModel row)
+	{
+		mvarPendingDelete = row;
+	}
+
+	private async Task SaveAsync()
+	{
+		mvarDraft.TopoId = mvarTopoId;
+		mvarDraft.AxisId = mvarAxisId;
+		mvarBusy = true;
+		try
+		{
+			DiamondTemporaryLimitSaveResult? result = await mvarDiamond.SaveTemporaryLimitAsync(mvarDraft);
+			if (result is null || !result.Success)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = result is null ? "No se pudo contactar con el almacén." : result.Message;
+				return;
+			}
+
+			mvarNoticeOk = true;
+			mvarNotice = result.Message;
+			mvarShowEditor = false;
+			await ReloadAsync();
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "No se pudo guardar: " + ex.Message;
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task ConfirmDeleteAsync()
+	{
+		if (mvarPendingDelete is null)
+		{
+			return;
+		}
+
+		mvarBusy = true;
+		try
+		{
+			DiamondTemporaryLimitSaveResult? result = await mvarDiamond.DeleteTemporaryLimitAsync(mvarPendingDelete.Id);
+			if (result is null || !result.Success)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = result is null ? "No se pudo contactar con el almacén." : result.Message;
+				return;
+			}
+
+			mvarNoticeOk = true;
+			mvarNotice = result.Message;
+			mvarPendingDelete = null;
+			await ReloadAsync();
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "No se pudo eliminar: " + ex.Message;
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private IReadOnlyList<Diamond.Topo.SpeedLimitSpan> BuildNested()
+	{
+		List<Diamond.Topo.TemporarySpeedLimit> temps = new List<Diamond.Topo.TemporarySpeedLimit>();
+		List<DiamondTemporaryLimitModel> stored = mcolCurrent;
+		int i = 0;
+		while (i < stored.Count)
+		{
+			temps.Add(ToDomain(stored[i]));
+			i++;
+		}
+
+		Diamond.Topo.TemporaryLimitTrack? track = null;
+		if (mvarFlattenTrack == "1")
+		{
+			track = Diamond.Topo.TemporaryLimitTrack.Track1;
+		}
+		else if (mvarFlattenTrack == "2")
+		{
+			track = Diamond.Topo.TemporaryLimitTrack.Track2;
+		}
+
+		if (!mvarIncludeFixed)
+		{
+			return Diamond.Topo.SpeedLimitFlattener.FlattenTemporary(temps, track);
+		}
+
+		Diamond.Topo.SpeedLimitMap fixedMap = new Diamond.Topo.SpeedLimitMap();
+		DiamondTopoAxisModel? axis = mvarSelectedAxis;
+		if (axis is not null)
+		{
+			int f = 0;
+			while (f < axis.FixedLimits.Count)
+			{
+				DiamondSpeedSpanModel span = axis.FixedLimits[f];
+				fixedMap.Add(span.Speed, span.Pk0, span.Pkf);
+				f++;
+			}
+		}
+
+		return Diamond.Topo.SpeedLimitFlattener.FlattenCombined(fixedMap, temps, track);
+	}
+
+	private static Diamond.Topo.TemporarySpeedLimit ToDomain(DiamondTemporaryLimitModel row)
+	{
+		Diamond.Topo.TemporarySpeedLimit limit = new Diamond.Topo.TemporarySpeedLimit(row.Pk0, row.Pkf, row.Speed);
+		limit.AxisId = row.AxisId;
+		limit.Track = (Diamond.Topo.TemporaryLimitTrack)(byte)row.Track;
+		limit.IsNewCreation = row.IsNewCreation;
+		limit.Reason = (Diamond.Topo.TemporaryLimitReason)(byte)row.Reason;
+		limit.CreatedAt = row.CreatedUtc;
+		limit.SignaledOnTrack = row.SignaledOnTrack;
+		return limit;
+	}
+
+	private static string FormatPk(long pk)
+	{
+		long km = pk / 1000L;
+		long meters = Math.Abs(pk % 1000L);
+		return km.ToString(CultureInfo.InvariantCulture)
+			+ "+"
+			+ meters.ToString("D3", CultureInfo.InvariantCulture);
+	}
+}

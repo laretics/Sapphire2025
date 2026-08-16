@@ -701,6 +701,115 @@ namespace Sapphire2025Server.Controllers
 			};
 		}
 
+		// ── Limitaciones temporales de velocidad ───────────────────────────
+
+		/// <summary>Ejes de una topología (id, PK, vmax) para el editor de limitaciones.</summary>
+		[HttpGet("topoaxes")]
+		public async Task<ActionResult<IReadOnlyList<DiamondTopoAxisModel>>> ListTopoAxes([FromQuery] Guid id)
+		{
+			if (Guid.Empty.Equals(id))
+			{
+				return BadRequest("Id vacío.");
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondTopoStore topoStore = new DiamondTopoStore(almacen);
+				DiamondTopoDocument? doc = await topoStore.GetDocumentAsync(id);
+				if (doc is null)
+				{
+					return NotFound();
+				}
+
+				try
+				{
+					byte[] xmlBytes = string.Equals(doc.Format, DiamondTopoStore.FormatXmlGz, StringComparison.OrdinalIgnoreCase)
+						? Gunzip(doc.Payload)
+						: doc.Payload;
+					using (MemoryStream stream = new MemoryStream(xmlBytes, writable: false))
+					{
+						TopoLayout layout = TopoXmlSerializer.Load(stream);
+						List<DiamondTopoAxisModel> axes = new List<DiamondTopoAxisModel>(layout.Axes.Count);
+						int i = 0;
+						while (i < layout.Axes.Count)
+						{
+							Axis axis = layout.Axes[i];
+							DiamondTopoAxisModel item = new DiamondTopoAxisModel();
+							item.Id = axis.Id;
+							item.Name = string.IsNullOrWhiteSpace(axis.Name) ? axis.Id : axis.Name;
+							item.Pk0 = axis.PK;
+							item.Pkf = axis.PKEnd;
+							item.Vmax = axis.Vmax;
+							item.DefaultTrackCount = axis.DefaultTrackCount;
+							IReadOnlyList<SpeedLimitSpan> fixedSpans = axis.FixedLimits.EnumerateStored();
+							int s = 0;
+							while (s < fixedSpans.Count)
+							{
+								SpeedLimitSpan span = fixedSpans[s];
+								DiamondSpeedSpanModel stored = new DiamondSpeedSpanModel();
+								stored.Pk0 = span.PK;
+								stored.Pkf = span.PKEnd;
+								stored.Speed = span.Speed;
+								item.FixedLimits.Add(stored);
+								s++;
+							}
+
+							axes.Add(item);
+							i++;
+						}
+
+						return axes;
+					}
+				}
+				catch (Exception ex)
+				{
+					return BadRequest("No se pudo leer la topología: " + ex.Message);
+				}
+			}
+		}
+
+		[HttpGet("templimits")]
+		public async Task<IReadOnlyList<DiamondTemporaryLimitModel>> ListTemporaryLimits(
+			[FromQuery] Guid topoId,
+			[FromQuery] string? axisId = null)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondTemporaryLimitStore store = new DiamondTemporaryLimitStore(almacen);
+				return await store.ListAsync(topoId, axisId);
+			}
+		}
+
+		[HttpPost("savetemplimit")]
+		public async Task<DiamondTemporaryLimitSaveResult> SaveTemporaryLimit(
+			[FromBody] DiamondTemporaryLimitSaveRequest request)
+		{
+			if (request is null)
+			{
+				return new DiamondTemporaryLimitSaveResult
+				{
+					Success = false,
+					Message = "Petición vacía."
+				};
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondTemporaryLimitStore store = new DiamondTemporaryLimitStore(almacen);
+				return await store.SaveAsync(request);
+			}
+		}
+
+		[HttpPost("deletetemplimit")]
+		public async Task<DiamondTemporaryLimitSaveResult> DeleteTemporaryLimit([FromBody] Guid id)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondTemporaryLimitStore store = new DiamondTemporaryLimitStore(almacen);
+				return await store.DeleteAsync(id);
+			}
+		}
+
 		// ── Festivos (tabla Festives) ───────────────────────────────────────
 
 		/// <summary>Lista los festivos de un año civil (fechas ISO yyyy-MM-dd).</summary>

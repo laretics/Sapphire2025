@@ -99,6 +99,17 @@ namespace Sapphire2026.Data
 					.OnDelete(DeleteBehavior.SetNull);
 			});
 
+			modelBuilder.Entity<DiamondTemporaryLimit>(entity =>
+			{
+				entity.ToTable("DiamondTemporaryLimits");
+				entity.HasIndex(e => e.TopoId);
+				entity.HasIndex(e => new { e.TopoId, e.AxisId, e.Pk0 });
+				entity.HasOne(e => e.Topo)
+					.WithMany()
+					.HasForeignKey(e => e.TopoId)
+					.OnDelete(DeleteBehavior.Restrict);
+			});
+
 			modelBuilder.Entity<DiamondCirculationEmission>(entity =>
 			{
 				entity.ToTable("DiamondCirculationEmissions");
@@ -270,6 +281,7 @@ namespace Sapphire2026.Data
 		public DbSet<DiamondPlanDocument> DiamondPlans { get; set; }
 		public DbSet<DiamondPublishedPlanDocument> DiamondPublishedPlans { get; set; }
 		public DbSet<DiamondCirculationEmission> DiamondCirculationEmissions { get; set; }
+		public DbSet<DiamondTemporaryLimit> DiamondTemporaryLimits { get; set; }
 		#endregion
 		#region Maquinistros
 		public DbSet<WorkShiftTemplateCollection> WorkShiftTemplateCollections { get; set; }

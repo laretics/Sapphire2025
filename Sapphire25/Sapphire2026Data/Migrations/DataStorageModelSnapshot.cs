@@ -234,6 +234,53 @@ namespace Sapphire2026Data.Migrations
                     b.ToTable("DiamondPlans", (string)null);
                 });
 
+            modelBuilder.Entity("Sapphire2026.Data.Models.Diamond.DiamondTemporaryLimit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("AxisId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsNewCreation")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<long>("Pk0")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Pkf")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte>("Reason")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<bool>("SignaledOnTrack")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("Speed")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TopoId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<byte>("Track")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TopoId");
+
+                    b.HasIndex("TopoId", "AxisId", "Pk0");
+
+                    b.ToTable("DiamondTemporaryLimits", (string)null);
+                });
+
             modelBuilder.Entity("Sapphire2026.Data.Models.Diamond.DiamondPublishedPlanDocument", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1094,6 +1141,17 @@ namespace Sapphire2026Data.Migrations
                         .IsRequired();
 
                     b.Navigation("SourcePlan");
+
+                    b.Navigation("Topo");
+                });
+
+            modelBuilder.Entity("Sapphire2026.Data.Models.Diamond.DiamondTemporaryLimit", b =>
+                {
+                    b.HasOne("Sapphire2026.Data.Models.Diamond.DiamondTopoDocument", "Topo")
+                        .WithMany()
+                        .HasForeignKey("TopoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Topo");
                 });

@@ -42,6 +42,9 @@
 	border-radius: 0.55rem;
 	font-weight: 600;
 	box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
 }
 
 .topo-storage-page .topo-panel {
@@ -81,6 +84,13 @@
 	letter-spacing: 0.04em;
 	color: #64748b;
 	white-space: nowrap;
+}
+
+.topo-storage-page .topo-pub-table .btn,
+.topo-storage-page .tl-ed-table .btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .topo-storage-page .topo-pub-table tbody tr.table-primary {

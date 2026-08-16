@@ -148,6 +148,46 @@ namespace Diamond.Topo
 			mcolBySpeed.Clear();
 		}
 
+		/// <summary>
+		/// Tramos almacenados por capa (una velocidad por tramo), sin resolver anidamiento.
+		/// </summary>
+		public IReadOnlyList<SpeedLimitSpan> EnumerateStored()
+		{
+			List<SpeedLimitSpan> salida = new List<SpeedLimitSpan>();
+			foreach (KeyValuePair<int, AxisVectorFlex> pair in mcolBySpeed)
+			{
+				IReadOnlyList<Lineal<long, LongAxis>> lineals = pair.Value.Lineals;
+				int i = 0;
+				while (i < lineals.Count)
+				{
+					Lineal<long, LongAxis> piece = lineals[i];
+					salida.Add(new SpeedLimitSpan(piece.PK, piece.PKEnd, pair.Key));
+					i++;
+				}
+			}
+
+			salida.Sort(static (a, b) =>
+			{
+				int byPk = a.PK.CompareTo(b.PK);
+				if (byPk != 0)
+				{
+					return byPk;
+				}
+
+				return a.Speed.CompareTo(b.Speed);
+			});
+			return salida;
+		}
+
+		/// <summary>
+		/// Resultado anidado: tramos disjuntos [pk0, pkf) con la velocidad más restrictiva.
+		/// 80 en [10,20) + 40 en [15,17) → 80 [10,15), 40 [15,17), 80 [17,20).
+		/// </summary>
+		public IReadOnlyList<SpeedLimitSpan> Flatten()
+		{
+			return SpeedLimitFlattener.Flatten(this);
+		}
+
 		private AxisVectorFlex GetOrCreateFlex(int speed)
 		{
 			AxisVectorFlex? flex;
