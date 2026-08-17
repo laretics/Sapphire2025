@@ -37,6 +37,13 @@ namespace Sapphire2025Models
 		public static readonly SoftwareReleaseChange[] ReleaseChanges =
 		{
 			new SoftwareReleaseChange(
+				"rel.docs.title",
+				"rel.docs.body",
+				requiresReload: true,
+				UserRole.Engineer, UserRole.Expert, UserRole.Inspector,
+				UserRole.Station, UserRole.Oficial, UserRole.Root),
+
+			new SoftwareReleaseChange(
 				"rel.nav.title",
 				"rel.nav.body",
 				requiresReload: true,
