@@ -355,6 +355,45 @@ namespace Diamond.Topo
 			return axis.GetEffectiveSpeedLimit(axisPk);
 		}
 
+		/// <summary>
+		/// Limitación temporal más restrictiva en el PK de ruta, o null si no hay.
+		/// </summary>
+		public int? GetTemporarySpeedLimit(long routePk)
+		{
+			Axis? axis;
+			long axisPk;
+			if (!TryMapRouteToAxis(routePk, out axis, out axisPk) || axis is null)
+			{
+				return null;
+			}
+
+			return axis.GetTemporarySpeedLimit(axisPk);
+		}
+
+		public int? GetSpeedLimitForSheet(long routePk, bool includeTemporary)
+		{
+			Axis? axis;
+			long axisPk;
+			if (!TryMapRouteToAxis(routePk, out axis, out axisPk) || axis is null)
+			{
+				return mvarVmax > 0 ? mvarVmax : null;
+			}
+
+			return axis.GetSpeedLimitForSheet(axisPk, includeTemporary);
+		}
+
+		public TemporarySpeedLimit? FindGoverningTemporary(long routePk)
+		{
+			Axis? axis;
+			long axisPk;
+			if (!TryMapRouteToAxis(routePk, out axis, out axisPk) || axis is null)
+			{
+				return null;
+			}
+
+			return axis.FindGoverningTemporary(axisPk);
+		}
+
 		public int GetTrackCountAt(long routePk)
 		{
 			Axis? axis;

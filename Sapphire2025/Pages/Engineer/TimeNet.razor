@@ -1,5 +1,6 @@
 @page "/engineer/timenet"
 @using Diamond.Controls.Components
+@using Diamond.Controls.Rendering
 @using Diamond.Controls.Services
 @using Diamond.Timed
 @using Microsoft.AspNetCore.Authorization
@@ -58,7 +59,8 @@
 									  SaveStorePlanAsync="SaveStorePlanAsync"
 									  ListStoreToposAsync="ListStoreToposAsync"
 									  PublishStorePlanAsync="PublishStorePlanAsync"
-									  InitialStorePlanId="mvarInitialPlanId" />
+									  InitialStorePlanId="mvarInitialPlanId"
+									  RegisterCirculationEmissionAsync="RegisterEmissionFromPlannerAsync" />
 			</ChildContent>
 			<ErrorContent Context="ex">
 				<div class="alert alert-danger m-3">
@@ -98,6 +100,33 @@
 		{
 			mvarCatalogReady = true;
 		}
+	}
+
+	private async Task RegisterEmissionFromPlannerAsync(CirculationEmissionInfo emission)
+	{
+		if (emission is null)
+		{
+			return;
+		}
+
+		CirculationEmissionRegisterRequest body = new CirculationEmissionRegisterRequest
+		{
+			EmissionId = emission.EmissionId,
+			DocumentKind = emission.DocumentKind,
+			Channel = emission.Channel,
+			SealCode = emission.SealCode,
+			Payload = emission.Payload,
+			PlanOrTrain = emission.PlanOrTrain,
+			EditionLabel = emission.EditionLabel,
+			DayLabel = emission.DayLabel,
+			SheetCount = emission.SheetCount,
+			CertThumbprint = emission.CertThumbprint,
+			PdfContentHash = emission.PdfContentHash,
+			PdfCmsSignatureBase64 = emission.PdfCmsSignatureBase64,
+			QrText = emission.QrText,
+			SvgArchive = emission.SvgArchive
+		};
+		await mvarDiamond.RegisterCirculationEmissionAsync(body);
 	}
 
 	private static Guid? TryParsePlanIdFromUri(string uriString)
@@ -193,6 +222,19 @@
 			return null;
 		}
 
+		IReadOnlyList<DiamondTemporaryLimitModel> tempRows = Array.Empty<DiamondTemporaryLimitModel>();
+		if (!Guid.Empty.Equals(p.TopoId))
+		{
+			try
+			{
+				tempRows = await mvarDiamond.ListTemporaryLimitsAsync(p.TopoId);
+			}
+			catch
+			{
+				tempRows = Array.Empty<DiamondTemporaryLimitModel>();
+			}
+		}
+
 		return new MeshStorePlanDocument
 		{
 			Id = p.Id,
@@ -200,7 +242,8 @@
 			TopoId = p.TopoId,
 			TopoName = p.TopoName,
 			SourceScript = p.SourceScript ?? string.Empty,
-			SourceFileName = p.SourceFileName
+			SourceFileName = p.SourceFileName,
+			TemporaryLimits = DiamondStoreTopoCatalog.ToTopoLimits(tempRows)
 		};
 	}
 

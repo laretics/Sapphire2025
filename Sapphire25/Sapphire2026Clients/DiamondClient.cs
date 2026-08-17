@@ -443,6 +443,96 @@ namespace Sapphire2025.Storage
 			}
 		}
 
+		public async Task<DiamondConsignaGenerationStatus?> GetConsignaGenerationAsync()
+		{
+			string request = composeCommand("consignageneration");
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				return await response.Content.ReadFromJsonAsync<DiamondConsignaGenerationStatus>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<DiamondConsignaGenerationCloseResult?> CloseConsignaGenerationAsync()
+		{
+			try
+			{
+				HttpResponseMessage response = await sendPostRequest("closeconsignageneration", "{}");
+				return await response.Content.ReadFromJsonAsync<DiamondConsignaGenerationCloseResult>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<CirculationEmissionRegisterResult?> RegisterCirculationEmissionAsync(
+			CirculationEmissionRegisterRequest body)
+		{
+			if (body is null)
+			{
+				return null;
+			}
+
+			body.SessionToken = await getCurrentToken();
+			string json = System.Text.Json.JsonSerializer.Serialize(body);
+			try
+			{
+				HttpResponseMessage response = await sendPostRequest("circulation/emission", json);
+				return await response.Content.ReadFromJsonAsync<CirculationEmissionRegisterResult>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<CirculationSealVerifyResponse?> VerifyCirculationSealAsync(string sealOrQr)
+		{
+			CirculationSealVerifyRequest body = new CirculationSealVerifyRequest
+			{
+				SessionToken = await getCurrentToken(),
+				SealOrQr = sealOrQr ?? string.Empty
+			};
+			string json = System.Text.Json.JsonSerializer.Serialize(body);
+			try
+			{
+				HttpResponseMessage response = await sendPostRequest("circulation/verify", json);
+				return await response.Content.ReadFromJsonAsync<CirculationSealVerifyResponse>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<CirculationEmissionDocumentResponse?> GetCirculationDocumentAsync(string seal)
+		{
+			string request = composeCommand(
+				"circulation/document",
+				new requestParam("seal", seal ?? string.Empty));
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				CirculationEmissionDocumentResponse? doc =
+					await response.Content.ReadFromJsonAsync<CirculationEmissionDocumentResponse>();
+				if (doc is not null && !string.IsNullOrEmpty(doc.SvgArchive) && doc.SvgPages.Count == 0)
+				{
+					// El cliente WASM no referencia el empaquetador; el host desempaqueta en UI.
+				}
+
+				return doc;
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
 		// ── Festivos ──────────────────────────────────────────────────────
 
 		public async Task<DiamondFestiveYearModel?> ListFestivesAsync(int year)

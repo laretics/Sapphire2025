@@ -113,7 +113,8 @@ namespace Diamond.Controls.Rendering
 			int maxFrontiersPerHalf = CirculationSheetPager.DefaultMaxFrontiersPerPage,
 			string? editionLabel = null,
 			Plan? demandPlan = null,
-			ExploitationPlan? exploitation = null)
+			ExploitationPlan? exploitation = null,
+			bool includeTemporaryLimits = false)
 		{
 			if (mesh is null)
 			{
@@ -160,7 +161,8 @@ namespace Diamond.Controls.Rendering
 
 				ServiceDays? serviceDays = ResolveServiceDays(c, demandPlan, exploitation, mesh.PlanningDay);
 				CirculationSheetDocument doc = CirculationSheetDocument.Build(
-					c, mesh, maxFrontiersPerHalf, edition, serviceDays);
+					c, mesh, maxFrontiersPerHalf, edition, serviceDays,
+					includeTemporaryLimits: includeTemporaryLimits);
 				slots.Add(new TrainSlot(c, doc, groupKey, GroupTitle(c)));
 				gi++;
 			}

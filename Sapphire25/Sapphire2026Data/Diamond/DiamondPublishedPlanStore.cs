@@ -201,6 +201,11 @@ namespace Sapphire2026.Data.Diamond
 			// "errores duros" que el planificador UI no muestra (allí sí se aplica).
 			SfmDemoInfrastructure.Apply(layout);
 
+			DiamondTemporaryLimitStore tempStore = new DiamondTemporaryLimitStore(mvarContext);
+			IReadOnlyList<DiamondTemporaryLimitModel> tempRows =
+				await tempStore.ListAsync(topoDoc.Id, axisId: null, cancellationToken);
+			TopoTemporaryLimits.Apply(layout, DiamondTemporaryLimitStore.ToTopoLimits(tempRows));
+
 			string logical = !string.IsNullOrWhiteSpace(topoDoc.SourceFileName)
 				? TopoStorage.EnsureXmlExtension(topoDoc.SourceFileName)
 				: TopoStorage.EnsureXmlExtension(topoDoc.Name);

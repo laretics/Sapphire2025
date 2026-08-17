@@ -15,6 +15,7 @@ namespace Diamond.Topo
 		private TemporaryLimitReason mvarReason;
 		private DateTime mvarCreatedAt;
 		private bool mvarSignaledOnTrack;
+		private string mvarObservations;
 
 		public TemporarySpeedLimit()
 			: base()
@@ -25,6 +26,7 @@ namespace Diamond.Topo
 			mvarReason = TemporaryLimitReason.Other;
 			mvarCreatedAt = DateTime.UtcNow;
 			mvarSignaledOnTrack = false;
+			mvarObservations = string.Empty;
 		}
 
 		public TemporarySpeedLimit(long pk0, long pkf, int speed)
@@ -36,6 +38,7 @@ namespace Diamond.Topo
 			mvarReason = TemporaryLimitReason.Other;
 			mvarCreatedAt = DateTime.UtcNow;
 			mvarSignaledOnTrack = false;
+			mvarObservations = string.Empty;
 		}
 
 		/// <summary>Identificador del eje de la topología (p. ej. T3).</summary>
@@ -75,6 +78,13 @@ namespace Diamond.Topo
 		{
 			get { return mvarSignaledOnTrack; }
 			set { mvarSignaledOnTrack = value; }
+		}
+
+		/// <summary>Detalle opcional del motivo (sobre todo si es Otros).</summary>
+		public string Observations
+		{
+			get { return mvarObservations; }
+			set { mvarObservations = value ?? string.Empty; }
 		}
 	}
 }

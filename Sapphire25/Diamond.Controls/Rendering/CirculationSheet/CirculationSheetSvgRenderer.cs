@@ -28,8 +28,18 @@ namespace Diamond.Controls.Rendering
 			get { return SheetHeight - SheetOuterMargin * 2; }
 		}
 
-		private const double SheetOuterMargin = 10;
-		private const double PanelGutter = 12;
+		internal const double SheetOuterMargin = 10;
+		internal const double PanelGutter = 12;
+
+		internal static double HeaderQrBandHeight
+		{
+			get { return HeaderQrBandH; }
+		}
+
+		internal static double HeaderQrModuleSize
+		{
+			get { return HeaderQrSize; }
+		}
 
 		// Márgenes internos de cada mitad (página de libro).
 		private const double PanelPadL = 8;
@@ -149,13 +159,16 @@ namespace Diamond.Controls.Rendering
 		/// <summary>
 		/// Igual que <see cref="RenderAllPages(CirculationSheetDocument)"/> y devuelve
 		/// el sello/payload de documento (el mismo en todas las hojas).
+		/// Si <paramref name="official"/> es falso, no se calcula ni se dibuja sello/QR
+		/// (consulta de una ficha suelta: no es emisión).
 		/// </summary>
 		public static IReadOnlyList<string> RenderAllPages(
 			CirculationSheetDocument document,
 			out string documentSeal,
-			out string documentPayload)
+			out string documentPayload,
+			bool official = true)
 		{
-			return RenderAllPages(document, DefaultPalette, out documentSeal, out documentPayload);
+			return RenderAllPages(document, DefaultPalette, out documentSeal, out documentPayload, official);
 		}
 
 		/// <summary>
@@ -165,14 +178,15 @@ namespace Diamond.Controls.Rendering
 			CirculationSheetDocument document,
 			CirculationSheetPalette palette)
 		{
-			return RenderAllPages(document, palette, out _, out _);
+			return RenderAllPages(document, palette, out _, out _, official: false);
 		}
 
 		public static IReadOnlyList<string> RenderAllPages(
 			CirculationSheetDocument document,
 			CirculationSheetPalette palette,
 			out string documentSeal,
-			out string documentPayload)
+			out string documentPayload,
+			bool official = true)
 		{
 			if (document is null)
 			{
@@ -181,14 +195,22 @@ namespace Diamond.Controls.Rendering
 
 			IReadOnlyList<CirculationSheetPage> book = document.Pages;
 			int sheetCount = CirculationSheetPager.ComputeSheetCount(Math.Max(1, book.Count));
-			documentPayload = CirculationSheetAuthenticity.BuildDocumentPayload(
-				"ficha",
-				document.TrainNumber,
-				document.EditionLabel,
-				document.ServiceDaysLabel,
-				sheetCount,
-				document.Relation);
-			documentSeal = CirculationSheetAuthenticity.ComputeSealCode(documentPayload);
+			if (official)
+			{
+				documentPayload = CirculationSheetAuthenticity.BuildDocumentPayload(
+					"ficha",
+					document.TrainNumber,
+					document.EditionLabel,
+					document.ServiceDaysLabel,
+					sheetCount,
+					document.Relation);
+				documentSeal = CirculationSheetAuthenticity.ComputeSealCode(documentPayload);
+			}
+			else
+			{
+				documentPayload = string.Empty;
+				documentSeal = string.Empty;
+			}
 
 			List<string> sheets = new List<string>((book.Count + 1) / 2);
 			int i = 0;
@@ -387,13 +409,14 @@ namespace Diamond.Controls.Rendering
 			return sb.ToString();
 		}
 
-		private static StringBuilder BeginSheetSvg(CirculationSheetPalette palette)
+		internal static StringBuilder BeginSheetSvg(CirculationSheetPalette palette)
 		{
 			StringBuilder sb = new StringBuilder(48 * 1024);
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{F(SheetWidth)}\" height=\"{F(SheetHeight)}\" viewBox=\"0 0 {F(SheetWidth)} {F(SheetHeight)}\" preserveAspectRatio=\"xMidYMid meet\" class=\"diamond-circ-sheet-svg\">");
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<rect x=\"0\" y=\"0\" width=\"{F(SheetWidth)}\" height=\"{F(SheetHeight)}\" fill=\"{palette.Background}\"/>");
+			CirculationDocumentBranding.AppendGrayFilterDefs(sb);
 			return sb;
 		}
 
@@ -401,7 +424,7 @@ namespace Diamond.Controls.Rendering
 		/// QR a la derecha, justo bajo «Tipo …» (solo 1.ª hoja de la marcha).
 		/// Contenido = solo sello (<c>ZAFSEL:v1:{seal}</c>); ~20 % más pequeño que la franja anterior.
 		/// </summary>
-		private static void DrawHeaderQr(
+		internal static void DrawHeaderQr(
 			StringBuilder sb,
 			double tableRight,
 			double yBelowHeader,
@@ -409,6 +432,25 @@ namespace Diamond.Controls.Rendering
 			string documentPayload,
 			CirculationSheetPalette palette)
 		{
+			const double qrPad = 2.5;
+			double qx = tableRight - HeaderQrSize - qrPad;
+			double qy = yBelowHeader + (HeaderQrBandH - HeaderQrSize) * 0.5;
+			if (qy < yBelowHeader + 0.5)
+			{
+				qy = yBelowHeader + 0.5;
+			}
+
+			double logoW = CirculationDocumentBranding.HeaderLogoWidth(HeaderQrSize);
+			double logoH = CirculationDocumentBranding.HeaderLogoHeight(HeaderQrSize);
+			double lx = qx - CirculationDocumentBranding.HeaderLogoGap - logoW;
+			double ly = yBelowHeader + (HeaderQrBandH - logoH) * 0.5;
+			if (ly < yBelowHeader + 0.5)
+			{
+				ly = yBelowHeader + 0.5;
+			}
+
+			CirculationDocumentBranding.AppendImage(sb, lx, ly, logoW, logoH, grayscale: true);
+
 			if (string.IsNullOrEmpty(sealCode))
 			{
 				return;
@@ -416,16 +458,7 @@ namespace Diamond.Controls.Rendering
 
 			try
 			{
-				// Solo sello: el payload canónico no va en el QR (más legible).
 				string qrText = CirculationSheetQr.BuildQrPayload(sealCode);
-				const double qrPad = 2.5;
-				double qx = tableRight - HeaderQrSize - qrPad;
-				double qy = yBelowHeader + (HeaderQrBandH - HeaderQrSize) * 0.5;
-				if (qy < yBelowHeader + 0.5)
-				{
-					qy = yBelowHeader + 0.5;
-				}
-
 				CirculationSheetQr.AppendQrSvg(
 					sb, qx, qy, HeaderQrSize, qrText, palette.QrModule, palette.QrPaper, palette.Stroke);
 			}
@@ -435,10 +468,46 @@ namespace Diamond.Controls.Rendering
 			}
 		}
 
-		/// <summary>Ancho máximo de texto Loc./ruta dejando hueco al QR bajo Tipo.</summary>
+		/// <summary>
+		/// Cabecera común de portada (libro y consigna): franja de tipo + logotipo grande.
+		/// Devuelve la Y bajo el logo.
+		/// </summary>
+		internal static double DrawOfficialCoverHeader(
+			StringBuilder sb,
+			double contentLeft,
+			double tableRight,
+			double panelY,
+			string kindTitle,
+			CirculationSheetPalette palette)
+		{
+			double tableW = tableRight - contentLeft;
+			double y = panelY + PanelPadT;
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<rect x=\"{F(contentLeft)}\" y=\"{F(y)}\" width=\"{F(tableW)}\" height=\"{F(HeaderBandH)}\" fill=\"{palette.HeaderFill}\"/>");
+			sb.Append(Text(contentLeft + 5, y + HeaderBandH * 0.72, kindTitle, 10, "700", palette.HeaderText, "start"));
+			sb.Append(Text(tableRight - 5, y + HeaderBandH * 0.72, "Montefaro", 9, "600", palette.HeaderText, "end"));
+			y += HeaderBandH + CirculationDocumentBranding.CoverLogoGapAfterHeader;
+
+			double logoW = CirculationDocumentBranding.CoverLogoW;
+			if (logoW > tableW)
+			{
+				logoW = tableW;
+			}
+
+			double logoH = CirculationDocumentBranding.CoverLogoH;
+			double lx = contentLeft + (tableW - logoW) * 0.5;
+			CirculationDocumentBranding.AppendImage(sb, lx, y, logoW, logoH);
+			y += logoH + CirculationDocumentBranding.CoverLogoGapAfter;
+			return y;
+		}
+
+		/// <summary>Ancho máximo de texto Loc./ruta dejando hueco al QR y al logo.</summary>
 		private static int SubHeaderTextMaxChars(double tableW)
 		{
-			double qrReserve = HeaderQrSize + 12.0;
+			double qrReserve = HeaderQrSize
+				+ CirculationDocumentBranding.HeaderLogoWidth(HeaderQrSize)
+				+ CirculationDocumentBranding.HeaderLogoGap
+				+ 14.0;
 			int n = (int)((tableW - qrReserve) / 3.9);
 			if (n < 24)
 			{
@@ -453,7 +522,7 @@ namespace Diamond.Controls.Rendering
 			return n;
 		}
 
-		private static void DrawHalfSeparator(
+		internal static void DrawHalfSeparator(
 			StringBuilder sb,
 			double leftX,
 			double y0,
@@ -521,13 +590,8 @@ namespace Diamond.Controls.Rendering
 			double contentLeft = panelX + PanelPadL;
 			double tableW = Math.Min(TableWidth, panelW - PanelPadL - PanelPadR);
 			double tableRight = contentLeft + tableW;
-			double y = panelY + PanelPadT;
-
-			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{F(contentLeft)}\" y=\"{F(y)}\" width=\"{F(tableW)}\" height=\"{F(HeaderBandH)}\" fill=\"{palette.HeaderFill}\"/>");
-			sb.Append(Text(contentLeft + 5, y + HeaderBandH * 0.72, "LIBRO ITINERARIO", 10, "700", palette.HeaderText, "start"));
-			sb.Append(Text(tableRight - 5, y + HeaderBandH * 0.72, "Montefaro", 9, "600", palette.HeaderText, "end"));
-			y += HeaderBandH + 18;
+			double y = DrawOfficialCoverHeader(
+				sb, contentLeft, tableRight, panelY, "LIBRO ITINERARIO", palette);
 
 			sb.Append(Text(contentLeft + 6, y, Truncate(half.PlanName, 48), 16, "700", palette.Text, "start"));
 			y += 28;
@@ -668,7 +732,7 @@ namespace Diamond.Controls.Rendering
 			DrawPanelFooter(sb, contentLeft, tableRight, panelY, panelH, "Índice", half.PageNumber, half.PageCount, sealCode, palette);
 		}
 
-		private static void DrawPanelFooter(
+		internal static void DrawPanelFooter(
 			StringBuilder sb,
 			double contentLeft,
 			double tableRight,
@@ -772,7 +836,7 @@ namespace Diamond.Controls.Rendering
 				int maxChars = SubHeaderTextMaxChars(tableW);
 				sb.Append(Text(
 					contentLeft + 5,
-					y + SubHeaderLineH * 0.85,
+					y + SubHeaderLineH * 0.82,
 					Truncate(document.LocationLine, maxChars),
 					7,
 					"600",
@@ -780,9 +844,17 @@ namespace Diamond.Controls.Rendering
 					"start"));
 				sb.Append(Text(
 					contentLeft + 5,
-					y + SubHeaderLineH * 1.85,
-					Truncate(document.RouteLine, maxChars),
+					y + SubHeaderLineH * 1.68,
+					Truncate(document.RouteTitle, maxChars),
 					7,
+					"700",
+					palette.Text,
+					"start"));
+				sb.Append(Text(
+					contentLeft + 5,
+					y + SubHeaderLineH * 2.52,
+					Truncate(document.RouteLine, maxChars),
+					6.5,
 					"400",
 					palette.Text,
 					"start"));
@@ -1084,10 +1156,21 @@ namespace Diamond.Controls.Rendering
 			while (i < n - 1)
 			{
 				int? vmax = rows[i].OutgoingVmaxKmh;
+				bool isTemp = rows[i].OutgoingIsTemporary;
 				int j = i + 1;
-				while (j < n - 1 && SameVmax(rows[j].OutgoingVmaxKmh, vmax))
+				while (j < n - 1
+					&& SameVmax(rows[j].OutgoingVmaxKmh, vmax)
+					&& rows[j].OutgoingIsTemporary == isTemp)
 				{
 					j++;
+				}
+
+				double yFill0 = bodyTop + i * rowH;
+				double yFill1 = bodyTop + (j + 1) * rowH;
+				if (isTemp)
+				{
+					sb.Append(CultureInfo.InvariantCulture,
+						$"<rect x=\"{F(colX)}\" y=\"{F(yFill0)}\" width=\"{F(ColVmx)}\" height=\"{F(yFill1 - yFill0)}\" fill=\"{palette.TemporaryVmxFill}\"/>");
 				}
 
 				double yStart = bodyTop + (i + 0.5) * rowH;
@@ -1169,6 +1252,13 @@ namespace Diamond.Controls.Rendering
 		{
 			double midY = y0 + rowH * 0.5;
 			double textY = midY + 2.5;
+			if (row.MarkKind == CirculationSheetMarkKind.SpeedLimitChange
+				&& !string.IsNullOrEmpty(row.TemporaryReasonLabel))
+			{
+				DrawTemporaryDependency(sb, x, y0, rowH, row, palette);
+				return;
+			}
+
 			string name = Truncate(row.DependencyName, 34);
 			const double fontSize = 7.5;
 			// Borde izquierdo de la columna Com (parada comercial).
@@ -1228,6 +1318,74 @@ namespace Diamond.Controls.Rendering
 				sb.Append(CultureInfo.InvariantCulture,
 					$"<line x1=\"{F(leaderStart)}\" y1=\"{F(midY)}\" x2=\"{F(comLeft)}\" y2=\"{F(midY)}\" stroke=\"{palette.Stroke}\" stroke-width=\"0.55\" stroke-dasharray=\"1.2 1.6\"/>");
 			}
+		}
+
+		private static void DrawTemporaryDependency(
+			StringBuilder sb,
+			double x,
+			double y0,
+			double rowH,
+			CirculationSheetFrontier row,
+			CirculationSheetPalette palette)
+		{
+			const double fontSize = 6.6;
+			double maxW = ColDep - 10.0;
+			string reason = TruncateToWidth(row.TemporaryReasonLabel, fontSize, true, maxW);
+			string obs = string.IsNullOrWhiteSpace(row.TemporaryObservations)
+				? string.Empty
+				: TruncateToWidth(row.TemporaryObservations.Trim(), fontSize, false, maxW);
+
+			double midY = y0 + rowH * 0.5;
+			if (obs.Length == 0)
+			{
+				sb.Append(Text(x + 5, midY + 2.3, reason, fontSize, "700", palette.TemporaryDepText, "start"));
+			}
+			else
+			{
+				double y1 = midY - 1.4;
+				double y2 = midY + 5.6;
+				sb.Append(Text(x + 5, y1, reason, fontSize, "700", palette.TemporaryDepText, "start"));
+				sb.Append(Text(x + 5, y2, obs, fontSize, "400", palette.TemporaryDepText, "start"));
+			}
+
+			double comLeft = x + ColDep;
+			double nameEnd = x + 5 + EstimateTextWidth(
+				obs.Length > 0 && EstimateTextWidth(obs, fontSize, false) > EstimateTextWidth(reason, fontSize, true)
+					? obs
+					: reason,
+				fontSize,
+				obs.Length == 0);
+			if (nameEnd + 2.0 < comLeft - 1.0)
+			{
+				sb.Append(CultureInfo.InvariantCulture,
+					$"<line x1=\"{F(nameEnd + 2.0)}\" y1=\"{F(midY)}\" x2=\"{F(comLeft)}\" y2=\"{F(midY)}\" stroke=\"{palette.Stroke}\" stroke-width=\"0.55\" stroke-dasharray=\"1.2 1.6\"/>");
+			}
+		}
+
+		private static string TruncateToWidth(string text, double fontSize, bool bold, double maxWidth)
+		{
+			if (string.IsNullOrEmpty(text))
+			{
+				return string.Empty;
+			}
+
+			if (EstimateTextWidth(text, fontSize, bold) <= maxWidth)
+			{
+				return text;
+			}
+
+			int n = text.Length;
+			while (n > 1)
+			{
+				n--;
+				string cut = text.Substring(0, n) + "…";
+				if (EstimateTextWidth(cut, fontSize, bold) <= maxWidth)
+				{
+					return cut;
+				}
+			}
+
+			return "…";
 		}
 
 		/// <summary>
@@ -1345,7 +1503,7 @@ namespace Diamond.Controls.Rendering
 			return row.Departure ?? row.Arrival;
 		}
 
-		private static string Text(
+		internal static string Text(
 			double x, double y, string content,
 			double fontSize, string weight, string fill, string anchor)
 		{
@@ -1355,7 +1513,7 @@ namespace Diamond.Controls.Rendering
 				F(x), F(y), fill, F(fontSize), weight, anchor, XmlEscape(content));
 		}
 
-		private static string Truncate(string s, int max)
+		internal static string Truncate(string s, int max)
 		{
 			if (string.IsNullOrEmpty(s) || s.Length <= max)
 			{
@@ -1365,7 +1523,7 @@ namespace Diamond.Controls.Rendering
 			return s.Substring(0, max - 1) + "…";
 		}
 
-		private static string XmlEscape(string? s)
+		internal static string XmlEscape(string? s)
 		{
 			if (string.IsNullOrEmpty(s))
 			{
@@ -1379,7 +1537,7 @@ namespace Diamond.Controls.Rendering
 				.Replace("\"", "&quot;", StringComparison.Ordinal);
 		}
 
-		private static string F(double v)
+		internal static string F(double v)
 		{
 			return v.ToString("0.##", CultureInfo.InvariantCulture);
 		}

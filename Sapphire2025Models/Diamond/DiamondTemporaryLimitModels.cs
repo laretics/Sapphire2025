@@ -117,6 +117,8 @@ namespace Sapphire2025Models.Diamond
 		public DateTime CreatedUtc { get; set; }
 
 		public bool SignaledOnTrack { get; set; }
+
+		public string Observations { get; set; } = string.Empty;
 	}
 
 	public class DiamondTemporaryLimitSaveRequest
@@ -140,6 +142,8 @@ namespace Sapphire2025Models.Diamond
 		public TemporaryLimitReason Reason { get; set; } = TemporaryLimitReason.Other;
 
 		public bool SignaledOnTrack { get; set; }
+
+		public string Observations { get; set; } = string.Empty;
 	}
 
 	public class DiamondTemporaryLimitSaveResult

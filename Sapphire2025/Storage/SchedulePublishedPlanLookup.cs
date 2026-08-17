@@ -282,13 +282,26 @@ namespace Sapphire2025.Storage
 			}
 
 			byte[] xmlBytes = MaybeGunzip(payload);
+			TopoLayout layout;
 			using (MemoryStream stream = new MemoryStream(xmlBytes, writable: false))
 			{
-				TopoLayout layout = TopoXmlSerializer.Load(stream);
-				layout.RebuildAll();
-				mcolTopos[topoId] = layout;
-				return layout;
+				layout = TopoXmlSerializer.Load(stream);
 			}
+
+			layout.RebuildAll();
+			try
+			{
+				IReadOnlyList<DiamondTemporaryLimitModel> rows =
+					await mvarClient.ListTemporaryLimitsAsync(topoId);
+				TopoTemporaryLimits.Apply(layout, DiamondStoreTopoCatalog.ToTopoLimits(rows));
+			}
+			catch
+			{
+				// La ficha sigue con las fijas del XML si el almacén de temporales no responde.
+			}
+
+			mcolTopos[topoId] = layout;
+			return layout;
 		}
 
 		/// <summary>

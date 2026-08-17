@@ -140,6 +140,10 @@ namespace Sapphire2026Data.Migrations
                     b.Property<int>("SheetCount")
                         .HasColumnType("int");
 
+                    b.Property<string>("SvgArchive")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -250,6 +254,11 @@ namespace Sapphire2026Data.Migrations
 
                     b.Property<bool>("IsNewCreation")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Observations")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
 
                     b.Property<long>("Pk0")
                         .HasColumnType("bigint");

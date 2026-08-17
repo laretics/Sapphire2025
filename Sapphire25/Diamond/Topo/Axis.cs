@@ -15,6 +15,7 @@ namespace Diamond.Topo
 		private readonly List<StationOnAxis> mcolStations;
 		private readonly SpeedLimitMap mvarFixedLimits;
 		private readonly SpeedLimitMap mvarTemporaryLimits;
+		private readonly List<TemporarySpeedLimit> mcolTemporaryLimitRecords;
 		/// <summary>Límites de velocidad de sesión (script de malla); no se serializan en topo XML.</summary>
 		private readonly SpeedLimitMap mvarSessionLimits;
 		private readonly List<long> mcolCantonFrontiers;
@@ -38,6 +39,7 @@ namespace Diamond.Topo
 			mcolStations = new List<StationOnAxis>();
 			mvarFixedLimits = new SpeedLimitMap();
 			mvarTemporaryLimits = new SpeedLimitMap();
+			mcolTemporaryLimitRecords = new List<TemporarySpeedLimit>();
 			mvarSessionLimits = new SpeedLimitMap();
 			mcolCantonFrontiers = new List<long>();
 			mcolTrackSpans = new List<TrackSpan>();
@@ -122,6 +124,14 @@ namespace Diamond.Topo
 		public SpeedLimitMap TemporaryLimits
 		{
 			get { return mvarTemporaryLimits; }
+		}
+
+		/// <summary>
+		/// Temporales crudas (motivo y observaciones) además de la capa de V.
+		/// </summary>
+		public IReadOnlyList<TemporarySpeedLimit> TemporaryLimitRecords
+		{
+			get { return mcolTemporaryLimitRecords; }
 		}
 
 		/// <summary>
@@ -314,13 +324,85 @@ namespace Diamond.Topo
 		}
 
 		/// <summary>
+		/// Velocidad temporal más restrictiva en el PK, o null si no hay capa temporal.
+		/// </summary>
+		public int? GetTemporarySpeedLimit(long pk)
+		{
+			return mvarTemporaryLimits.GetMinSpeedAt(pk);
+		}
+
+		/// <summary>
+		/// V para ficha/libro: fijas + sesión, y temporales solo si se piden.
+		/// </summary>
+		public int? GetSpeedLimitForSheet(long pk, bool includeTemporary)
+		{
+			int? fixedSpeed = mvarFixedLimits.GetMinSpeedAt(pk);
+			int? sessionSpeed = mvarSessionLimits.GetMinSpeedAt(pk);
+			int? layered = MinSpeed(fixedSpeed, sessionSpeed);
+			if (includeTemporary)
+			{
+				layered = MinSpeed(layered, mvarTemporaryLimits.GetMinSpeedAt(pk));
+			}
+
+			if (layered.HasValue)
+			{
+				return layered;
+			}
+
+			if (mvarVmax > 0)
+			{
+				return mvarVmax;
+			}
+
+			return null;
+		}
+
+		public TemporarySpeedLimit? FindGoverningTemporary(long pk)
+		{
+			TemporarySpeedLimit? best = null;
+			int i = 0;
+			while (i < mcolTemporaryLimitRecords.Count)
+			{
+				TemporarySpeedLimit limit = mcolTemporaryLimitRecords[i];
+				long lo = limit.PK < limit.PKEnd ? limit.PK : limit.PKEnd;
+				long hi = limit.PK > limit.PKEnd ? limit.PK : limit.PKEnd;
+				if (pk >= lo && pk < hi)
+				{
+					if (best is null
+						|| limit.Speed < best.Speed
+						|| (limit.Speed == best.Speed && (hi - lo) < (best.PKEnd - best.PK)))
+					{
+						best = limit;
+					}
+				}
+
+				i++;
+			}
+
+			return best;
+		}
+
+		internal void ClearTemporaryRecords()
+		{
+			mcolTemporaryLimitRecords.Clear();
+		}
+
+		internal void AddTemporaryRecord(TemporarySpeedLimit limit)
+		{
+			if (limit is not null)
+			{
+				mcolTemporaryLimitRecords.Add(limit);
+			}
+		}
+
+		/// <summary>
 		/// Velocidad efectiva en un PK: la más restrictiva entre fijas, temporales y de sesión.
 		/// Si no hay limitación en capas, devuelve <see cref="Vmax"/> del eje cuando es &gt; 0; si no, null.
 		/// </summary>
 		public int? GetEffectiveSpeedLimit(long pk)
 		{
 			int? fixedSpeed = mvarFixedLimits.GetMinSpeedAt(pk);
-			int? temporarySpeed = mvarTemporaryLimits.GetMinSpeedAt(pk);
+			int? temporarySpeed = GetTemporarySpeedLimit(pk);
 			int? sessionSpeed = mvarSessionLimits.GetMinSpeedAt(pk);
 
 			int? layered = MinSpeed(fixedSpeed, temporarySpeed);

@@ -632,6 +632,8 @@
 						  Mesh="mvarSheetMesh"
 						  PlanName="@mvarPublishedPlanName"
 						  PlanningDay="mvarSheetPlanningDay ?? SelectedDate.DayOfWeek"
+						  Official="false"
+						  @bind-IncludeTemporaryLimits="mvarSheetComplete"
 						  OnClose="CloseCirculationSheet">
 		@if (mcolCrossingDrivers.Count > 0)
 		{
@@ -708,6 +710,8 @@
 	private int mvarLookupToken;
 	private bool mvarPlanLookupBusy;
 	private bool mvarShowSheet;
+	/// <summary>Completa (temporales) por defecto; el visor permite pasar a Normal.</summary>
+	private bool mvarSheetComplete = true;
 	private TimedCirculation? mvarSheetCirculation;
 	private Mesh? mvarSheetMesh;
 	private DayOfWeek? mvarSheetPlanningDay;

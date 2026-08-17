@@ -104,6 +104,7 @@ namespace Sapphire2026.Data
 				entity.ToTable("DiamondTemporaryLimits");
 				entity.HasIndex(e => e.TopoId);
 				entity.HasIndex(e => new { e.TopoId, e.AxisId, e.Pk0 });
+				entity.Property(e => e.Observations).HasMaxLength(500);
 				entity.HasOne(e => e.Topo)
 					.WithMany()
 					.HasForeignKey(e => e.TopoId)
@@ -117,6 +118,7 @@ namespace Sapphire2026.Data
 				entity.HasIndex(e => e.EmittedAtUtc);
 				entity.HasIndex(e => e.UserId);
 				entity.Property(e => e.PdfCmsSignatureBase64).HasColumnType("longtext");
+				entity.Property(e => e.SvgArchive).HasColumnType("longtext");
 			});
 		}
 

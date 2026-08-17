@@ -88,6 +88,8 @@ namespace Sapphire2025.Storage
 						layout = TopoXmlSerializer.Load(stream);
 					}
 
+					await ApplyTemporaryLimitsAsync(header.Id, layout, cancellationToken);
+
 					string logical = PickLogicalName(header);
 					string resolved = "zafiro:" + header.Id.ToString("N");
 					TopoStorage storage = new TopoStorage(logical, resolved, layout);
@@ -194,6 +196,53 @@ namespace Sapphire2025.Storage
 				}
 
 				TopoStorage.SetDefaultIncludeResolver(mvarResolver);
+			}
+		}
+
+		public static IReadOnlyList<TemporarySpeedLimit> ToTopoLimits(
+			IReadOnlyList<DiamondTemporaryLimitModel> rows)
+		{
+			if (rows is null || rows.Count == 0)
+			{
+				return Array.Empty<TemporarySpeedLimit>();
+			}
+
+			List<TemporarySpeedLimit> salida = new List<TemporarySpeedLimit>(rows.Count);
+			int i = 0;
+			while (i < rows.Count)
+			{
+				DiamondTemporaryLimitModel row = rows[i];
+				salida.Add(TopoTemporaryLimits.FromSpan(
+					row.AxisId,
+					row.Pk0,
+					row.Pkf,
+					row.Speed,
+					(global::Diamond.Topo.TemporaryLimitReason)(byte)row.Reason,
+					row.Observations,
+					(global::Diamond.Topo.TemporaryLimitTrack)(byte)row.Track,
+					row.IsNewCreation,
+					row.CreatedUtc));
+				i++;
+			}
+
+			return salida;
+		}
+
+		private async Task ApplyTemporaryLimitsAsync(
+			Guid topoId,
+			TopoLayout layout,
+			CancellationToken cancellationToken)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+			try
+			{
+				IReadOnlyList<DiamondTemporaryLimitModel> rows =
+					await mvarClient.ListTemporaryLimitsAsync(topoId);
+				TopoTemporaryLimits.Apply(layout, ToTopoLimits(rows));
+			}
+			catch
+			{
+				// La malla sigue con las fijas del XML si el almacén de temporales no responde.
 			}
 		}
 

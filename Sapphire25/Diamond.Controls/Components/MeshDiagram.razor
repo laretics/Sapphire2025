@@ -30,6 +30,9 @@
 			<button type="button" class="btn btn-sm mesh-icon-btn @LayerButtonClass(mvarShowSpeedStrip)" @onclick="ToggleSpeedStrip" title="Franja de velocidad">
 				<DmdIcon Name="Speedometer" Size="14" />
 			</button>
+			<button type="button" class="btn btn-sm mesh-icon-btn @LayerButtonClass(mvarShowTemporaryLimits)" @onclick="ToggleTemporaryLimits" title="Limitaciones temporales (amarillo / naranja)">
+				<span class="diamond-mesh-layer-vt">Vt</span>
+			</button>
 			<button type="button" class="btn btn-sm mesh-icon-btn @LayerButtonClass(mvarShowTrackStrip)" @onclick="ToggleTrackStrip" title="Franja de vía">
 				<DmdIcon Name="TrainTrack" Size="14" />
 			</button>
@@ -196,8 +199,7 @@
 							  ExploitationPlan="ExploitationPlan"
 							  MaxFrontiersPerPage="MaxFrontiersPerPage"
 							  OnClose="CloseCirculationSheet"
-							  OnOfficialEmission="OnOfficialEmission"
-							  OnVerifySealRemote="OnVerifySealRemote" />
+							  OnOfficialEmission="OnOfficialEmission" />
 	}
 
 	<MeshPrintView @ref="mvarPrintView"
@@ -278,10 +280,6 @@
 	[Parameter]
 	public EventCallback<CirculationEmissionInfo> OnOfficialEmission { get; set; }
 
-	/// <summary>Verificación remota de sello (API almacén / log).</summary>
-	[Parameter]
-	public EventCallback<string> OnVerifySealRemote { get; set; }
-
 	/// <summary>Plan de explotación multi-día cargado (.dmesh).</summary>
 	[Parameter]
 	public ExploitationPlan? ExploitationPlan { get; set; }
@@ -351,6 +349,7 @@
 	private bool mvarShowTrainNumbers = true;
 	private bool mvarShowConflicts = true;
 	private bool mvarShowSpeedStrip = true;
+	private bool mvarShowTemporaryLimits = true;
 	private bool mvarShowTrackStrip = true;
 	private bool mvarShowNowLine = true;
 	private MeshYScaleMode mvarYScaleMode = MeshYScaleMode.LinearPk;
@@ -626,7 +625,8 @@
 			showStationLabels: false,
 			externalStationColumn: true,
 			yScaleMode: mvarYScaleMode,
-			selectedTechnicalId: SelectedCirculation?.TechnicalId);
+			selectedTechnicalId: SelectedCirculation?.TechnicalId,
+			showTemporaryLimits: mvarShowTemporaryLimits);
 
 		if (interactive)
 		{
@@ -989,7 +989,8 @@
 			showStationLabels: false,
 			externalStationColumn: true,
 			yScaleMode: mvarYScaleMode,
-			selectedTechnicalId: null);
+			selectedTechnicalId: null,
+			showTemporaryLimits: mvarShowTemporaryLimits);
 
 		mvarPrintView.Open(
 			mvarViewT0,
@@ -1080,6 +1081,7 @@
 	private void ToggleTrainNumbers() { mvarShowTrainNumbers = !mvarShowTrainNumbers; RefreshSvg(); }
 	private void ToggleConflicts() { mvarShowConflicts = !mvarShowConflicts; RefreshSvg(); }
 	private void ToggleSpeedStrip() { mvarShowSpeedStrip = !mvarShowSpeedStrip; RefreshSvg(); }
+	private void ToggleTemporaryLimits() { mvarShowTemporaryLimits = !mvarShowTemporaryLimits; RefreshSvg(); }
 	private void ToggleTrackStrip() { mvarShowTrackStrip = !mvarShowTrackStrip; RefreshSvg(); }
 	private void ToggleNowLine()
 	{

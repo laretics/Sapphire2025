@@ -585,7 +585,7 @@ namespace Sapphire2025Server.Controllers
 				UserId = userId,
 				DocumentKind = Trunc(request.DocumentKind, 16),
 				Channel = Trunc(request.Channel, 16),
-				SealCode = Trunc(request.SealCode.Replace("SEL", string.Empty, StringComparison.OrdinalIgnoreCase).Trim(), 32),
+				SealCode = Trunc(CirculationSealText.Normalize(request.SealCode), 32),
 				Payload = Trunc(request.Payload, 1024),
 				PlanOrTrain = Trunc(request.PlanOrTrain, 200),
 				EditionLabel = Trunc(request.EditionLabel, 200),
@@ -595,6 +595,7 @@ namespace Sapphire2025Server.Controllers
 				PdfContentHash = Trunc(request.PdfContentHash, 64),
 				PdfCmsSignatureBase64 = request.PdfCmsSignatureBase64 ?? string.Empty,
 				QrText = Trunc(request.QrText, 512),
+				SvgArchive = request.SvgArchive ?? string.Empty,
 				HostPoint = Trunc(host, 255)
 			};
 
@@ -632,20 +633,7 @@ namespace Sapphire2025Server.Controllers
 				return response;
 			}
 
-			string seal = request.SealOrQr.Trim();
-			// Extraer SEL de QR ZAFSEL:v1:{seal}:{payload}
-			if (seal.StartsWith("ZAFSEL:v1:", StringComparison.OrdinalIgnoreCase))
-			{
-				string rest = seal.Substring("ZAFSEL:v1:".Length);
-				int colon = rest.IndexOf(':');
-				seal = colon > 0 ? rest.Substring(0, colon) : rest;
-			}
-
-			if (seal.StartsWith("SEL", StringComparison.OrdinalIgnoreCase))
-			{
-				seal = seal.Substring(3).Trim();
-			}
-
+			string seal = CirculationSealText.Normalize(request.SealOrQr);
 			response.SealCode = seal;
 			try
 			{
@@ -663,8 +651,10 @@ namespace Sapphire2025Server.Controllers
 
 					response.Ok = true;
 					response.FoundInRegistry = true;
-					response.Message = "Sello registrado: "
-						+ found.DocumentKind + " · " + found.Channel
+					response.HasArchive = !string.IsNullOrWhiteSpace(found.SvgArchive);
+					response.CryptographicMatch = true;
+					response.Message = "Documento auténtico y reconocido. "
+						+ KindLabel(found.DocumentKind)
 						+ " · " + found.PlanOrTrain
 						+ " · " + found.EmittedAtUtc.ToString("u");
 					response.Emission = ToModel(found);
@@ -675,6 +665,46 @@ namespace Sapphire2025Server.Controllers
 			{
 				response.Ok = false;
 				response.Message = "Error de verificación: " + ex.Message;
+				return response;
+			}
+		}
+
+		[HttpGet("circulation/document")]
+		public async Task<CirculationEmissionDocumentResponse> GetCirculationDocument(
+			[FromQuery] string? seal)
+		{
+			CirculationEmissionDocumentResponse response = new CirculationEmissionDocumentResponse();
+			string normalized = CirculationSealText.Normalize(seal);
+			if (string.IsNullOrWhiteSpace(normalized))
+			{
+				response.Ok = false;
+				response.Message = "Indica el sello.";
+				return response;
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondCirculationEmissionStore store = new DiamondCirculationEmissionStore(almacen);
+				DiamondCirculationEmission? found = await store.FindBySealAsync(normalized);
+				if (found is null)
+				{
+					response.Ok = false;
+					response.Message = "Sello no encontrado.";
+					return response;
+				}
+
+				if (string.IsNullOrWhiteSpace(found.SvgArchive))
+				{
+					response.Ok = false;
+					response.Emission = ToModel(found);
+					response.Message = "Emisión reconocida, pero no hay copia recuperable del documento.";
+					return response;
+				}
+
+				response.Ok = true;
+				response.Emission = ToModel(found);
+				response.Message = "Documento recuperado.";
+				response.SvgArchive = found.SvgArchive;
 				return response;
 			}
 		}
@@ -697,8 +727,29 @@ namespace Sapphire2025Server.Controllers
 				CertThumbprint = e.CertThumbprint,
 				PdfContentHash = e.PdfContentHash,
 				QrText = e.QrText,
-				HostPoint = e.HostPoint
+				HostPoint = e.HostPoint,
+				HasArchive = !string.IsNullOrWhiteSpace(e.SvgArchive)
 			};
+		}
+
+		private static string KindLabel(string kind)
+		{
+			if (string.Equals(kind, "libro", StringComparison.OrdinalIgnoreCase))
+			{
+				return "Libro itinerario";
+			}
+
+			if (string.Equals(kind, "ficha", StringComparison.OrdinalIgnoreCase))
+			{
+				return "Hoja de marcha";
+			}
+
+			if (string.Equals(kind, "consigna-b", StringComparison.OrdinalIgnoreCase))
+			{
+				return "Consigna serie B";
+			}
+
+			return kind ?? string.Empty;
 		}
 
 		// ── Limitaciones temporales de velocidad ───────────────────────────
@@ -807,6 +858,26 @@ namespace Sapphire2025Server.Controllers
 			{
 				DiamondTemporaryLimitStore store = new DiamondTemporaryLimitStore(almacen);
 				return await store.DeleteAsync(id);
+			}
+		}
+
+		[HttpGet("consignageneration")]
+		public async Task<DiamondConsignaGenerationStatus> GetConsignaGeneration()
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondConsignaGenerationStore store = new DiamondConsignaGenerationStore(almacen);
+				return await store.GetStatusAsync();
+			}
+		}
+
+		[HttpPost("closeconsignageneration")]
+		public async Task<DiamondConsignaGenerationCloseResult> CloseConsignaGeneration()
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondConsignaGenerationStore store = new DiamondConsignaGenerationStore(almacen);
+				return await store.CloseAsync();
 			}
 		}
 

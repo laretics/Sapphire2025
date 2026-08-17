@@ -59,6 +59,13 @@
 	flex-shrink: 0;
 }
 
+.diamond-mesh-layer-toolbar .diamond-mesh-layer-vt {
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	line-height: 1;
+}
+
 /*
   Escenario común: un único marco con aspect-ratio lógico
   (columna + plot [+ columna dcha]) / Height.
@@ -229,6 +236,23 @@
 	flex-wrap: wrap;
 	align-items: center;
 	gap: 0.4rem;
+}
+
+.diamond-circ-sheet-version .btn {
+	font-size: 0.72rem;
+	padding: 0.12rem 0.5rem;
+	line-height: 1.2;
+}
+
+.diamond-circ-sheet-version .btn-outline-secondary {
+	color: #cbd5e1;
+	border-color: #475569;
+}
+
+.diamond-circ-sheet-version .btn-dark {
+	background: #1e293b;
+	border-color: #334155;
+	color: #f8fafc;
 }
 
 .diamond-circ-sheet-max-label {

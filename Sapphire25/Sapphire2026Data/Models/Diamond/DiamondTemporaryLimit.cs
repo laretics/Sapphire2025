@@ -40,6 +40,10 @@ namespace Sapphire2026.Data.Models.Diamond
 
 		public bool SignaledOnTrack { get; set; }
 
+		/// <summary>Texto libre opcional (detalle del motivo, o descripción si es «Otros»).</summary>
+		[MaxLength(500)]
+		public string Observations { get; set; } = string.Empty;
+
 		[ForeignKey(nameof(TopoId))]
 		public DiamondTopoDocument? Topo { get; set; }
 	}

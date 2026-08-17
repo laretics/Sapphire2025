@@ -25,7 +25,34 @@
 					disabled="@(mvarBusy || mvarTopoId == Guid.Empty || string.IsNullOrEmpty(mvarAxisId))">
 				<GenIcon Name="AddReport" Size="16" /> Nueva limitación
 			</button>
+			<button type="button" class="btn btn-outline-primary btn-sm"
+					@onclick="() => mvarConfirmClose = true"
+					disabled="@(mvarBusy || mvarGeneration is null || !mvarGeneration.IsOpen)"
+					title="Cierra la generación, numera la consigna y quita la marca «nueva»">
+				<GenIcon Name="CheckBoxChecked" Size="16" /> Cerrar generación
+			</button>
 		</div>
+		@if (mvarGeneration is not null)
+		{
+			<span class="badge @(mvarGeneration.IsOpen ? "text-bg-warning" : "text-bg-light border")">
+				@if (mvarGeneration.IsOpen)
+				{
+					<text>Generación abierta · próxima @mvarGeneration.NextNumber</text>
+					@if (!string.IsNullOrEmpty(mvarGeneration.LastNumber))
+					{
+						<text> · vigente @mvarGeneration.LastNumber (bloqueada)</text>
+					}
+				}
+				else if (!string.IsNullOrEmpty(mvarGeneration.LastNumber))
+				{
+					<text>Generación cerrada · consigna vigente @mvarGeneration.LastNumber</text>
+				}
+				else
+				{
+					<text>Sin consigna emitida · la primera será @mvarGeneration.NextNumber</text>
+				}
+			</span>
+		}
 		@if (mvarSelectedAxis is not null)
 		{
 			<span class="badge text-bg-light border">
@@ -92,6 +119,7 @@
 							<th class="text-end">V (km/h)</th>
 							<th>Vía</th>
 							<th>Motivo</th>
+							<th>Observaciones</th>
 							<th class="text-center">Nueva</th>
 							<th class="text-center">Señalizada</th>
 							<th>Creada</th>
@@ -102,7 +130,7 @@
 						@if (mcolCurrent.Count == 0)
 						{
 							<tr>
-								<td colspan="9" class="text-center text-muted py-4">
+								<td colspan="10" class="text-center text-muted py-4">
 									No hay limitaciones temporales en este eje.
 								</td>
 							</tr>
@@ -117,6 +145,7 @@
 									<td class="text-end fw-bold">@row.Speed</td>
 									<td>@TemporaryLimitLabels.TrackName(row.Track)</td>
 									<td>@TemporaryLimitLabels.ReasonName(row.Reason)</td>
+									<td class="small text-muted" title="@row.Observations">@TruncateObs(row.Observations)</td>
 									<td class="text-center">
 										@if (row.IsNewCreation)
 										{
@@ -248,11 +277,17 @@
 								}
 							</select>
 						</div>
+						<div class="col-12">
+							<label class="form-label small">Observaciones <span class="text-muted fw-normal">(opcional)</span></label>
+							<textarea class="form-control form-control-sm" rows="2" maxlength="500" @bind="mvarDraft.Observations"
+									  placeholder="Detalle del motivo, o descripción si eligió Otros."></textarea>
+						</div>
 						<div class="col-6">
 							<div class="form-check form-switch mt-3">
-								<input class="form-check-input" type="checkbox" id="tlNew" @bind="mvarDraft.IsNewCreation" />
+								<input class="form-check-input" type="checkbox" id="tlNew" checked="@mvarDraft.IsNewCreation" disabled />
 								<label class="form-check-label" for="tlNew">Nueva creación</label>
 							</div>
+							<div class="form-text">Se marca sola al añadir en una generación abierta; al cerrarla pasa a no.</div>
 						</div>
 						<div class="col-6">
 							<div class="form-check form-switch mt-3">
@@ -267,6 +302,32 @@
 					<button type="button" class="btn btn-primary" @onclick="SaveAsync" disabled="@mvarBusy">
 						@(mvarBusy ? "Guardando…" : "Guardar")
 					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+@if (mvarConfirmClose)
+{
+	<div class="modal fade show d-block" tabindex="-1" style="background:rgba(15,23,42,.45);">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title">Cerrar generación</h5>
+					<button type="button" class="btn-close" @onclick="() => mvarConfirmClose = false"></button>
+				</div>
+				<div class="modal-body small">
+					Se emitirá la consigna <strong>@(mvarGeneration?.NextNumber)</strong>
+					@if (!string.IsNullOrEmpty(mvarGeneration?.LastNumber))
+					{
+						<text>, que deroga la @mvarGeneration.LastNumber y anteriores</text>
+					}
+					. Las limitaciones marcadas como nuevas dejarán de serlo.
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-outline-secondary" @onclick="() => mvarConfirmClose = false" disabled="@mvarBusy">Cancelar</button>
+					<button type="button" class="btn btn-primary" @onclick="CloseGenerationAsync" disabled="@mvarBusy">Cerrar generación</button>
 				</div>
 			</div>
 		</div>
@@ -307,6 +368,8 @@
 	private bool mvarNoticeOk;
 	private DiamondTemporaryLimitSaveRequest mvarDraft = new DiamondTemporaryLimitSaveRequest();
 	private DiamondTemporaryLimitModel? mvarPendingDelete;
+	private DiamondConsignaGenerationStatus? mvarGeneration;
+	private bool mvarConfirmClose;
 	private string mvarFlattenTrack = string.Empty;
 	private bool mvarIncludeFixed = true;
 
@@ -350,6 +413,7 @@
 	{
 		try
 		{
+			await ReloadGenerationAsync();
 			IReadOnlyList<DiamondTopoHeaderModel> list = await mvarDiamond.ListToposAsync(activeOnly: true);
 			mcolTopos.Clear();
 			int i = 0;
@@ -471,7 +535,8 @@
 			Track = TemporaryLimitTrack.Both,
 			IsNewCreation = true,
 			Reason = TemporaryLimitReason.Works,
-			SignaledOnTrack = false
+			SignaledOnTrack = false,
+			Observations = string.Empty
 		};
 		mvarShowEditor = true;
 	}
@@ -489,7 +554,8 @@
 			Track = row.Track,
 			IsNewCreation = row.IsNewCreation,
 			Reason = row.Reason,
-			SignaledOnTrack = row.SignaledOnTrack
+			SignaledOnTrack = row.SignaledOnTrack,
+			Observations = row.Observations ?? string.Empty
 		};
 		mvarShowEditor = true;
 	}
@@ -523,6 +589,7 @@
 			mvarNotice = result.Message;
 			mvarShowEditor = false;
 			await ReloadAsync();
+			await ReloadGenerationAsync();
 		}
 		catch (Exception ex)
 		{
@@ -557,11 +624,54 @@
 			mvarNotice = result.Message;
 			mvarPendingDelete = null;
 			await ReloadAsync();
+			await ReloadGenerationAsync();
 		}
 		catch (Exception ex)
 		{
 			mvarNoticeOk = false;
 			mvarNotice = "No se pudo eliminar: " + ex.Message;
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task ReloadGenerationAsync()
+	{
+		try
+		{
+			mvarGeneration = await mvarDiamond.GetConsignaGenerationAsync();
+		}
+		catch
+		{
+			mvarGeneration = null;
+		}
+	}
+
+	private async Task CloseGenerationAsync()
+	{
+		mvarBusy = true;
+		try
+		{
+			DiamondConsignaGenerationCloseResult? result = await mvarDiamond.CloseConsignaGenerationAsync();
+			if (result is null || !result.Success)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = result is null ? "No se pudo contactar con el almacén." : result.Message;
+				return;
+			}
+
+			mvarGeneration = result.Status;
+			mvarConfirmClose = false;
+			mvarNoticeOk = true;
+			mvarNotice = result.Message;
+			await ReloadAsync();
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "No se pudo cerrar la generación: " + ex.Message;
 		}
 		finally
 		{
@@ -620,7 +730,24 @@
 		limit.Reason = (Diamond.Topo.TemporaryLimitReason)(byte)row.Reason;
 		limit.CreatedAt = row.CreatedUtc;
 		limit.SignaledOnTrack = row.SignaledOnTrack;
+		limit.Observations = row.Observations ?? string.Empty;
 		return limit;
+	}
+
+	private static string TruncateObs(string? text)
+	{
+		if (string.IsNullOrWhiteSpace(text))
+		{
+			return "—";
+		}
+
+		string t = text.Trim();
+		if (t.Length <= 48)
+		{
+			return t;
+		}
+
+		return t.Substring(0, 45) + "…";
 	}
 
 	private static string FormatPk(long pk)

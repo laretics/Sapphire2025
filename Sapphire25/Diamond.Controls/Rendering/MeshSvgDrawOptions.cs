@@ -22,6 +22,7 @@ namespace Diamond.Controls.Rendering
 		private readonly string? mvarSelectedTechnicalId;
 		private readonly bool mvarPaperTheme;
 		private readonly bool mvarUseSplinePaths;
+		private readonly bool mvarShowTemporaryLimits;
 
 		public MeshSvgDrawOptions(
 			bool showCantonOccupations,
@@ -38,7 +39,8 @@ namespace Diamond.Controls.Rendering
 			MeshYScaleMode yScaleMode = MeshYScaleMode.LinearPk,
 			string? selectedTechnicalId = null,
 			bool paperTheme = false,
-			bool useSplinePaths = true)
+			bool useSplinePaths = true,
+			bool showTemporaryLimits = true)
 		{
 			mvarShowCantonOccupations = showCantonOccupations;
 			mvarShowTrainPaths = showTrainPaths;
@@ -55,6 +57,7 @@ namespace Diamond.Controls.Rendering
 			mvarSelectedTechnicalId = string.IsNullOrEmpty(selectedTechnicalId) ? null : selectedTechnicalId;
 			mvarPaperTheme = paperTheme;
 			mvarUseSplinePaths = useSplinePaths;
+			mvarShowTemporaryLimits = showTemporaryLimits;
 		}
 
 		/// <summary>Compatibilidad: capas completas por defecto.</summary>
@@ -117,7 +120,8 @@ namespace Diamond.Controls.Rendering
 			MeshYScaleMode yScaleMode = MeshYScaleMode.LinearPk,
 			string? selectedTechnicalId = null,
 			bool paperTheme = false,
-			bool useSplinePaths = true)
+			bool useSplinePaths = true,
+			bool showTemporaryLimits = true)
 		{
 			return new MeshSvgDrawOptions(
 				showCantonOccupations,
@@ -134,7 +138,8 @@ namespace Diamond.Controls.Rendering
 				yScaleMode,
 				selectedTechnicalId,
 				paperTheme,
-				useSplinePaths);
+				useSplinePaths,
+				showTemporaryLimits);
 		}
 
 		/// <summary>
@@ -158,7 +163,8 @@ namespace Diamond.Controls.Rendering
 				yScaleMode: mvarYScaleMode,
 				selectedTechnicalId: mvarSelectedTechnicalId,
 				paperTheme: mvarPaperTheme,
-				useSplinePaths: false);
+				useSplinePaths: false,
+				showTemporaryLimits: mvarShowTemporaryLimits);
 		}
 
 		public bool ShowCantonOccupations
@@ -189,6 +195,14 @@ namespace Diamond.Controls.Rendering
 		public bool ShowTrackStrip
 		{
 			get { return mvarShowTrackStrip; }
+		}
+
+		/// <summary>
+		/// Franjas y coloración de limitaciones temporales. No afecta al cálculo de la malla.
+		/// </summary>
+		public bool ShowTemporaryLimits
+		{
+			get { return mvarShowTemporaryLimits; }
 		}
 
 		public bool ShowNowLine

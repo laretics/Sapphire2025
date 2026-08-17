@@ -62,6 +62,9 @@ namespace Sapphire2026.Data.Models.Diamond
 		[MaxLength(512)]
 		public string QrText { get; set; } = string.Empty;
 
+		/// <summary>Hojas SVG empaquetadas (gzip+Base64) para reabrir el documento emitido.</summary>
+		public string SvgArchive { get; set; } = string.Empty;
+
 		/// <summary>Detalle / IP (alineado con SessionEvents.hostPoint).</summary>
 		[MaxLength(255)]
 		public string HostPoint { get; set; } = string.Empty;

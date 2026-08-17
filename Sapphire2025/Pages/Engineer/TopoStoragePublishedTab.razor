@@ -1,0 +1,628 @@
+@using Sapphire2025.Icons
+@using Sapphire2025Models.Diamond
+@inject DiamondClient mvarDiamond
+@inject IJSRuntime mvarJs
+
+@if (!string.IsNullOrEmpty(mvarNotice))
+{
+	<div class="alert @(mvarNoticeOk ? "alert-success" : "alert-warning") alert-dismissible fade show" role="alert">
+		@mvarNotice
+		<button type="button" class="btn-close" @onclick="() => mvarNotice = null"></button>
+	</div>
+}
+
+<div class="alert alert-info py-2 small mb-3">
+	Planes de explotación <strong>compilados</strong> en el servidor. El flag
+	<strong>En producción</strong> indica que trenes, SIU, enclavamientos, etc. pueden
+	descargar el paquete. Un dispositivo solo necesita el <code>topoId</code>:
+	<code>GET api/SapphireDiamond/device/topo-package?topoId=…</code>
+	(topología + planes en producción vigentes o próximos).
+</div>
+<div class="topo-toolbar mb-3 flex-wrap">
+	<button type="button" class="btn btn-primary btn-sm" @onclick="ReloadAsync" disabled="@mvarBusy">
+		<GenIcon Name="Refresh" Size="16" /> Actualizar
+	</button>
+	<div class="d-flex align-items-center gap-2">
+		<label class="small text-muted mb-0">Plan:</label>
+		<select class="form-select form-select-sm" style="min-width:14rem;" @bind="mvarCompilePlanId">
+			<option value="@Guid.Empty">— elegir plan de autoría —</option>
+			@foreach (DiamondPlanHeaderModel p in mcolAuthorshipPlans)
+			{
+				<option value="@p.Id">@p.Name</option>
+			}
+		</select>
+	</div>
+	<button type="button" class="btn btn-warning btn-sm" @onclick="OpenPublishAsync"
+			disabled="@(mvarBusy || mvarCompilePlanId == Guid.Empty)"
+			title="Compilar el plan de autoría elegido">
+		<GenIcon Name="OutboundConnect" Size="16" /> Compilar
+	</button>
+	<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="DownloadSelectedAsync"
+			disabled="@(mvarBusy || mvarSelected is null)">
+		<GenIcon Name="Download" Size="16" /> @Prefs.T("common.export") JSON
+	</button>
+	<button type="button" class="btn btn-outline-primary btn-sm" @onclick="OpenEditAsync"
+			disabled="@(mvarBusy || mvarSelected is null)">
+		<GenIcon Name="WriteNote" Size="16" /> Editar
+	</button>
+	<button type="button" class="btn btn-outline-danger btn-sm" @onclick="DeleteAsync"
+			disabled="@(mvarBusy || mvarSelected is null || mvarSelected is { IsActive: true })"
+			title="Solo planes fuera de producción">
+		<GenIcon Name="Trash" Size="16" /> Borrar
+	</button>
+	<div class="form-check form-switch ms-2 mb-0">
+		<input class="form-check-input" type="checkbox" id="chkInactivePub" @bind="mvarShowInactive" @bind:after="ReloadAsync" />
+		<label class="form-check-label small" for="chkInactivePub">Incluir fuera de producción</label>
+	</div>
+</div>
+
+<div class="topo-panel">
+	<div class="topo-panel-header">
+		<h2>Planes compilados</h2>
+		<span class="badge text-bg-primary topo-badge-soft">@mcolItems.Count</span>
+	</div>
+	<div class="topo-detail p-0">
+		@if (mvarBusy && mcolItems.Count == 0)
+		{
+			<div class="topo-empty-state py-5"><div class="spinner-border text-primary mb-2"></div><div>Cargando…</div></div>
+		}
+		else if (mcolItems.Count == 0)
+		{
+			<div class="topo-empty-state py-5">
+				<div class="mb-2"><GenIcon Name="OutboundConnect" Size="24" /></div>
+				<div>No hay planes compilados. Elija un plan de autoría y pulse <strong>Compilar</strong>,
+					o publíquelo desde <strong>Planes de explotación</strong>.</div>
+			</div>
+		}
+		else
+		{
+			<div class="table-responsive">
+				<table class="table table-sm table-hover align-middle mb-0 topo-pub-table">
+					<thead class="table-light">
+						<tr>
+							<th>Nombre</th>
+							<th>Topología</th>
+							<th>Vigencia</th>
+							<th class="text-end">Circ.</th>
+							<th>Compilado</th>
+							<th class="text-center">En producción</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						@foreach (DiamondPublishedPlanHeaderModel item in mcolItems)
+						{
+							bool selected = mvarSelected is not null && mvarSelected.Id == item.Id;
+							<tr class="@(selected ? "table-primary" : null)" @onclick="() => Select(item)" @key="item.Id" style="cursor:pointer;">
+								<td>
+									<div class="fw-semibold">@item.Name</div>
+									<code class="small text-muted">@TopoStorageHelpers.ShortGuid(item.Id)</code>
+									@if (IsCurrentForToday(item))
+									{
+										<span class="badge text-bg-success topo-badge-soft ms-1">Vigente hoy</span>
+									}
+								</td>
+								<td>
+									<div>@(string.IsNullOrWhiteSpace(item.TopoName) ? "—" : item.TopoName)</div>
+									<code class="small text-muted" title="@item.TopoContentHash">@TopoStorageHelpers.ShortHash(item.TopoContentHash)</code>
+								</td>
+								<td class="small">
+									@item.ValidFrom.ToString("d")
+									@(item.ValidTo.HasValue ? " → " + item.ValidTo.Value.ToString("d") : " → ∞")
+								</td>
+								<td class="text-end">@item.CirculationCount</td>
+								<td class="small text-muted">@item.CompiledUtc.ToLocalTime().ToString("g")</td>
+								<td class="text-center" @onclick:stopPropagation="true">
+									<div class="form-check form-switch d-inline-flex justify-content-center mb-0">
+										<input class="form-check-input" type="checkbox"
+											   checked="@item.IsActive"
+											   disabled="@mvarBusy"
+											   @onchange="e => ToggleProductionAsync(item, e)"
+											   title="Dispositivos externos descargan este paquete" />
+									</div>
+								</td>
+								<td class="text-end text-nowrap" @onclick:stopPropagation="true">
+									<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => { Select(item); return OpenEditAsync(); }" title="Editar">
+										<GenIcon Name="WriteNote" Size="16" />
+									</button>
+									<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => { Select(item); return DownloadSelectedAsync(); }" title="JSON">
+										<GenIcon Name="Download" Size="16" />
+									</button>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			@if (mvarSelected is not null)
+			{
+				<div class="border-top p-3 bg-light">
+					<div class="row g-2 small">
+						<div class="col-md-6">
+							<strong>Content hash</strong>
+							<div class="topo-hash">@mvarSelected.ContentHash</div>
+						</div>
+						<div class="col-md-6">
+							<strong>Topo content hash</strong>
+							<div class="topo-hash">@mvarSelected.TopoContentHash</div>
+						</div>
+						@if (mvarSelected.SourcePlanId.HasValue)
+						{
+							<div class="col-md-6">
+								<strong>Plan autoría</strong>
+								<div><code>@mvarSelected.SourcePlanId</code></div>
+							</div>
+						}
+						<div class="col-md-6">
+							<strong>Formato</strong>
+							<div><span class="badge text-bg-light border">@mvarSelected.Format</span> · @TopoStorageHelpers.FormatBytes(mvarSelected.ByteLength)</div>
+						</div>
+						@if (!string.IsNullOrWhiteSpace(mvarSelected.Notes))
+						{
+							<div class="col-12">
+								<strong>Notas</strong>
+								<pre class="topo-script-view mt-1 mb-0" style="max-height:8rem;">@mvarSelected.Notes</pre>
+							</div>
+						}
+					</div>
+				</div>
+			}
+		}
+	</div>
+</div>
+
+@if (mvarShowPublishModal)
+{
+	<div class="modal fade show d-block" tabindex="-1" style="background:rgba(15,23,42,.55);">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title">Compilar y publicar plan</h5>
+					<button type="button" class="btn-close" @onclick="ClosePublishModal"></button>
+				</div>
+				<div class="modal-body">
+					<p class="small text-muted">
+						Se compila el script (todos los días) y se crea un registro en la tabla de
+						<strong>planes compilados</strong>. El hash de topología queda fijado al de la topo del almacén.
+					</p>
+					<div class="mb-2">
+						<label class="form-label">Nombre</label>
+						<input class="form-control" @bind="mvarPublishName" />
+					</div>
+					<div class="mb-2">
+						<label class="form-label">Vigencia desde</label>
+						<input type="date" class="form-control" @bind="mvarPublishValidFrom" />
+					</div>
+					<div class="mb-2">
+						<label class="form-label">Vigencia hasta (opcional)</label>
+						<input type="date" class="form-control" @bind="mvarPublishValidTo" />
+					</div>
+					<div class="mb-2">
+						<label class="form-label">Notas</label>
+						<textarea class="form-control" rows="2" @bind="mvarPublishNotes"></textarea>
+					</div>
+					<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" id="chkPubProdPublished" @bind="mvarPublishInProduction" />
+						<label class="form-check-label" for="chkPubProdPublished">Poner en producción al compilar</label>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" @onclick="ClosePublishModal">Cancelar</button>
+					<button type="button" class="btn btn-warning" disabled="@mvarBusy" @onclick="ConfirmPublishAsync">
+						@(mvarBusy ? "Compilando…" : "Compilar y guardar")
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+@if (mvarShowEditModal && mvarSelected is not null)
+{
+	<div class="modal fade show d-block" tabindex="-1" style="background:rgba(15,23,42,.55);">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title">Editar publicación</h5>
+					<button type="button" class="btn-close" @onclick="CloseEditModal"></button>
+				</div>
+				<div class="modal-body">
+					<p class="small text-muted mb-2">No recompila el paquete; solo metadatos de vigencia y producción.</p>
+					<div class="mb-2">
+						<label class="form-label">Nombre</label>
+						<input class="form-control" @bind="mvarEditName" />
+					</div>
+					<div class="mb-2">
+						<label class="form-label">Vigencia desde</label>
+						<input type="date" class="form-control" @bind="mvarEditValidFrom" />
+					</div>
+					<div class="mb-2">
+						<label class="form-label">Vigencia hasta (vacío = sin fin)</label>
+						<input type="date" class="form-control" @bind="mvarEditValidTo" />
+					</div>
+					<div class="mb-2">
+						<label class="form-label">Notas</label>
+						<textarea class="form-control" rows="3" @bind="mvarEditNotes"></textarea>
+					</div>
+					<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" id="chkEditProd" @bind="mvarEditInProduction" />
+						<label class="form-check-label" for="chkEditProd">En producción</label>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" @onclick="CloseEditModal">Cancelar</button>
+					<button type="button" class="btn btn-primary" disabled="@mvarBusy" @onclick="ConfirmEditAsync">
+						@(mvarBusy ? "Guardando…" : "Guardar")
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	private readonly List<DiamondPublishedPlanHeaderModel> mcolItems = new List<DiamondPublishedPlanHeaderModel>();
+	private readonly List<DiamondPlanHeaderModel> mcolAuthorshipPlans = new List<DiamondPlanHeaderModel>();
+	private DiamondPublishedPlanHeaderModel? mvarSelected;
+	private string? mvarNotice;
+	private bool mvarNoticeOk;
+	private bool mvarBusy;
+	private bool mvarShowInactive;
+	private Guid mvarCompilePlanId = Guid.Empty;
+
+	private bool mvarShowPublishModal;
+	private Guid? mvarPublishSourcePlanId;
+	private Guid mvarPublishTopoId = Guid.Empty;
+	private string mvarPublishName = string.Empty;
+	private DateTime mvarPublishValidFrom = DateTime.Today;
+	private DateTime? mvarPublishValidTo;
+	private string mvarPublishNotes = string.Empty;
+	private bool mvarPublishInProduction = true;
+
+	private bool mvarShowEditModal;
+	private string mvarEditName = string.Empty;
+	private DateTime mvarEditValidFrom = DateTime.Today;
+	private DateTime? mvarEditValidTo;
+	private string mvarEditNotes = string.Empty;
+	private bool mvarEditInProduction;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await ReloadAsync();
+	}
+
+	private async Task ReloadAsync()
+	{
+		mvarBusy = true;
+		try
+		{
+			IReadOnlyList<DiamondPlanHeaderModel> plans = await mvarDiamond.ListPlansAsync(activeOnly: true);
+			mcolAuthorshipPlans.Clear();
+			int i = 0;
+			while (i < plans.Count)
+			{
+				mcolAuthorshipPlans.Add(plans[i]);
+				i++;
+			}
+
+			IReadOnlyList<DiamondPublishedPlanHeaderModel> list =
+				await mvarDiamond.ListPublishedPlansAsync(!mvarShowInactive);
+			mcolItems.Clear();
+			i = 0;
+			while (i < list.Count)
+			{
+				mcolItems.Add(list[i]);
+				i++;
+			}
+
+			if (mvarSelected is not null)
+			{
+				DiamondPublishedPlanHeaderModel? still = null;
+				int j = 0;
+				while (j < mcolItems.Count)
+				{
+					if (mcolItems[j].Id == mvarSelected.Id)
+					{
+						still = mcolItems[j];
+						break;
+					}
+
+					j++;
+				}
+
+				mvarSelected = still;
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "No se pudieron cargar publicaciones: " + TopoStorageHelpers.Friendly(ex);
+			mcolItems.Clear();
+			mvarSelected = null;
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private void Select(DiamondPublishedPlanHeaderModel item)
+	{
+		mvarSelected = item;
+	}
+
+	private static bool IsCurrentForToday(DiamondPublishedPlanHeaderModel item)
+	{
+		if (!item.IsActive)
+		{
+			return false;
+		}
+
+		DateTime today = DateTime.Today;
+		if (item.ValidFrom.Date > today)
+		{
+			return false;
+		}
+
+		if (item.ValidTo.HasValue && item.ValidTo.Value.Date < today)
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	private Task OpenPublishAsync()
+	{
+		DiamondPlanHeaderModel? plan = FindAuthorship(mvarCompilePlanId);
+		if (plan is null)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Elija un plan de autoría activo para compilar.";
+			return Task.CompletedTask;
+		}
+
+		mvarPublishSourcePlanId = plan.Id;
+		mvarPublishTopoId = plan.TopoId;
+		mvarPublishName = plan.Name;
+		mvarPublishValidFrom = plan.ValidFrom?.Date ?? DateTime.Today;
+		mvarPublishValidTo = null;
+		mvarPublishNotes = string.Empty;
+		mvarPublishInProduction = true;
+		mvarShowPublishModal = true;
+		return Task.CompletedTask;
+	}
+
+	private DiamondPlanHeaderModel? FindAuthorship(Guid id)
+	{
+		int i = 0;
+		while (i < mcolAuthorshipPlans.Count)
+		{
+			if (mcolAuthorshipPlans[i].Id == id)
+			{
+				return mcolAuthorshipPlans[i];
+			}
+
+			i++;
+		}
+
+		return null;
+	}
+
+	private void ClosePublishModal()
+	{
+		mvarShowPublishModal = false;
+	}
+
+	private async Task ConfirmPublishAsync()
+	{
+		if (!mvarPublishSourcePlanId.HasValue || Guid.Empty.Equals(mvarPublishTopoId))
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Falta plan o topología para publicar.";
+			return;
+		}
+
+		mvarBusy = true;
+		try
+		{
+			DiamondPublishPlanRequest req = new DiamondPublishPlanRequest
+			{
+				SourcePlanId = mvarPublishSourcePlanId,
+				TopoId = mvarPublishTopoId,
+				Name = mvarPublishName,
+				ValidFrom = mvarPublishValidFrom,
+				ValidTo = mvarPublishValidTo,
+				Notes = mvarPublishNotes,
+				InProduction = mvarPublishInProduction
+			};
+			DiamondPublishPlanResult? result = await mvarDiamond.PublishPlanAsync(req);
+			if (result is null)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "Sin respuesta al publicar.";
+				return;
+			}
+
+			mvarNoticeOk = result.Success;
+			mvarNotice = result.Message;
+			if (result.Success)
+			{
+				mvarShowPublishModal = false;
+				await ReloadAsync();
+				if (result.Header is not null)
+				{
+					mvarSelected = result.Header;
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al publicar: " + TopoStorageHelpers.Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private Task OpenEditAsync()
+	{
+		if (mvarSelected is null)
+		{
+			return Task.CompletedTask;
+		}
+
+		mvarEditName = mvarSelected.Name;
+		mvarEditValidFrom = mvarSelected.ValidFrom.Date;
+		mvarEditValidTo = mvarSelected.ValidTo?.Date;
+		mvarEditNotes = mvarSelected.Notes ?? string.Empty;
+		mvarEditInProduction = mvarSelected.IsActive;
+		mvarShowEditModal = true;
+		return Task.CompletedTask;
+	}
+
+	private void CloseEditModal()
+	{
+		mvarShowEditModal = false;
+	}
+
+	private async Task ConfirmEditAsync()
+	{
+		if (mvarSelected is null)
+		{
+			return;
+		}
+
+		mvarBusy = true;
+		try
+		{
+			DiamondPublishedPlanUpdateRequest req = new DiamondPublishedPlanUpdateRequest
+			{
+				Id = mvarSelected.Id,
+				Name = mvarEditName,
+				ValidFrom = mvarEditValidFrom,
+				ValidTo = mvarEditValidTo,
+				InProduction = mvarEditInProduction,
+				Notes = mvarEditNotes
+			};
+			DiamondPublishPlanResult? result = await mvarDiamond.UpdatePublishedPlanAsync(req);
+			mvarNoticeOk = result is not null && result.Success;
+			mvarNotice = result?.Message ?? "No se pudo actualizar.";
+			if (result is { Success: true })
+			{
+				mvarShowEditModal = false;
+				await ReloadAsync();
+				if (result.Header is not null)
+				{
+					mvarSelected = result.Header;
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al editar: " + TopoStorageHelpers.Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task ToggleProductionAsync(DiamondPublishedPlanHeaderModel item, ChangeEventArgs e)
+	{
+		bool on = e.Value is bool b && b;
+		mvarBusy = true;
+		try
+		{
+			DiamondPublishPlanResult? result = on
+				? await mvarDiamond.RepublishPlanAsync(item.Id)
+				: await mvarDiamond.UnpublishPlanAsync(item.Id);
+			mvarNoticeOk = result is not null && result.Success;
+			mvarNotice = result?.Message ?? "No se pudo cambiar el estado de producción.";
+			await ReloadAsync();
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error: " + TopoStorageHelpers.Friendly(ex);
+			await ReloadAsync();
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task DeleteAsync()
+	{
+		if (mvarSelected is null)
+		{
+			return;
+		}
+
+		if (mvarSelected.IsActive)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Retire el plan de producción antes de borrarlo.";
+			return;
+		}
+
+		mvarBusy = true;
+		try
+		{
+			DiamondPublishPlanResult? result = await mvarDiamond.DeletePublishedPlanAsync(mvarSelected.Id);
+			mvarNoticeOk = result is not null && result.Success;
+			mvarNotice = result?.Message ?? "No se pudo borrar.";
+			if (result is { Success: true })
+			{
+				mvarSelected = null;
+			}
+
+			await ReloadAsync();
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error: " + TopoStorageHelpers.Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task DownloadSelectedAsync()
+	{
+		if (mvarSelected is null)
+		{
+			return;
+		}
+
+		mvarBusy = true;
+		try
+		{
+			byte[]? payload = await mvarDiamond.DownloadPublishedContentAsync(mvarSelected.Id);
+			if (payload is null || payload.Length == 0)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "No se pudo descargar el paquete.";
+				return;
+			}
+
+			string fileName = TopoStorageHelpers.SanitizeFileName(mvarSelected.Name) + ".dpub.json";
+			await mvarJs.InvokeVoidAsync("downloadBytesFile", Convert.ToBase64String(payload), fileName, "application/json");
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al exportar: " + TopoStorageHelpers.Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+}

@@ -556,9 +556,9 @@ namespace Diamond.Controls.Rendering.CabinMesh
 				segments.Add((runFrom, end, runSpeed.Value));
 			}
 
-			string boxFill = nightMode ? "#e8e0d8" : "#6a6a6a";
-			string boxStroke = nightMode ? "#c9a27a" : "#4a4a4a";
-			string textFill = nightMode ? "#000000" : "#ffffff";
+			string boxFillFixed = nightMode ? "#e8e0d8" : "#6a6a6a";
+			string boxStrokeFixed = nightMode ? "#c9a27a" : "#4a4a4a";
+			string textFillFixed = nightMode ? "#000000" : "#ffffff";
 
 			sb.Append("<g class=\"cabin-mesh-speed-limits\">");
 			int i = 0;
@@ -583,6 +583,19 @@ namespace Diamond.Controls.Rendering.CabinMesh
 					: yTop;
 				double textY = boxY + boxH * 0.5 + 3.5;
 				double boxX = SpeedLimitLeftPx;
+
+				int? tempSpeed = view.GetTemporarySpeedLimit(mid);
+				string boxFill = boxFillFixed;
+				string boxStroke = boxStrokeFixed;
+				string textFill = textFillFixed;
+				if (tempSpeed.HasValue)
+				{
+					boxFill = TemporaryLimitMeshColors.ForSpeed(tempSpeed.Value);
+					boxStroke = tempSpeed.Value < TemporaryLimitMeshColors.SpeedThresholdKmh
+						? "#c43c00"
+						: "#b88600";
+					textFill = "#000000";
+				}
 
 				sb.Append("<rect x=\"")
 					.Append(F(boxX))

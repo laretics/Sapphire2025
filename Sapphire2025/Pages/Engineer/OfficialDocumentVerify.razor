@@ -1,0 +1,20 @@
+@page "/engineer/docverify"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<PageTitle>Verificar documentación oficial</PageTitle>
+
+<div class="container-fluid topo-storage-page">
+	<div class="topo-hero d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+		<div>
+			<h1>Verificar documentación oficial</h1>
+			<p>
+				Introduzca el sello impreso (<code>SEL …</code>) o el texto del código
+				(<code>ZAFSEL:v1:…</code>). El programa dirá si el documento es auténtico
+				y, si hay copia, podrá abrirlo en esta sesión.
+			</p>
+		</div>
+	</div>
+
+	<OfficialDocumentVerifyPanel />
+</div>

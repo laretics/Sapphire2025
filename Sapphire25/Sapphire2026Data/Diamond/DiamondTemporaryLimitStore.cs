@@ -135,9 +135,10 @@ namespace Sapphire2026.Data.Diamond
 				existing.Pkf = pkf;
 				existing.Speed = request.Speed;
 				existing.Track = (byte)request.Track;
-				existing.IsNewCreation = request.IsNewCreation;
 				existing.Reason = (byte)request.Reason;
 				existing.SignaledOnTrack = request.SignaledOnTrack;
+				existing.Observations = NormalizeObservations(request.Observations);
+				await EnsureGenerationOpenAsync(cancellationToken);
 				await mvarContext.SaveChangesAsync(cancellationToken);
 				result.Success = true;
 				result.Message = "Limitación actualizada.";
@@ -154,12 +155,14 @@ namespace Sapphire2026.Data.Diamond
 				Pkf = pkf,
 				Speed = request.Speed,
 				Track = (byte)request.Track,
-				IsNewCreation = request.IsNewCreation,
+				IsNewCreation = true,
 				Reason = (byte)request.Reason,
 				CreatedUtc = DateTime.UtcNow,
-				SignaledOnTrack = request.SignaledOnTrack
+				SignaledOnTrack = request.SignaledOnTrack,
+				Observations = NormalizeObservations(request.Observations)
 			};
 			mvarContext.DiamondTemporaryLimits.Add(created);
+			await EnsureGenerationOpenAsync(cancellationToken);
 			await mvarContext.SaveChangesAsync(cancellationToken);
 			result.Success = true;
 			result.Message = "Limitación creada.";
@@ -189,6 +192,7 @@ namespace Sapphire2026.Data.Diamond
 			}
 
 			mvarContext.DiamondTemporaryLimits.Remove(row);
+			await EnsureGenerationOpenAsync(cancellationToken);
 			await mvarContext.SaveChangesAsync(cancellationToken);
 			result.Success = true;
 			result.Message = "Limitación eliminada.";
@@ -231,6 +235,36 @@ namespace Sapphire2026.Data.Diamond
 			return null;
 		}
 
+		public static List<global::Diamond.Topo.TemporarySpeedLimit> ToTopoLimits(
+			IReadOnlyList<DiamondTemporaryLimitModel> rows)
+		{
+			if (rows is null || rows.Count == 0)
+			{
+				return new List<global::Diamond.Topo.TemporarySpeedLimit>();
+			}
+
+			List<global::Diamond.Topo.TemporarySpeedLimit> salida =
+				new List<global::Diamond.Topo.TemporarySpeedLimit>(rows.Count);
+			int i = 0;
+			while (i < rows.Count)
+			{
+				DiamondTemporaryLimitModel row = rows[i];
+				salida.Add(global::Diamond.Topo.TopoTemporaryLimits.FromSpan(
+					row.AxisId,
+					row.Pk0,
+					row.Pkf,
+					row.Speed,
+					(global::Diamond.Topo.TemporaryLimitReason)row.Reason,
+					row.Observations,
+					(global::Diamond.Topo.TemporaryLimitTrack)row.Track,
+					row.IsNewCreation,
+					row.CreatedUtc));
+				i++;
+			}
+
+			return salida;
+		}
+
 		public static DiamondTemporaryLimitModel ToModel(DiamondTemporaryLimit row)
 		{
 			return new DiamondTemporaryLimitModel
@@ -245,8 +279,31 @@ namespace Sapphire2026.Data.Diamond
 				IsNewCreation = row.IsNewCreation,
 				Reason = (TemporaryLimitReason)row.Reason,
 				CreatedUtc = row.CreatedUtc,
-				SignaledOnTrack = row.SignaledOnTrack
+				SignaledOnTrack = row.SignaledOnTrack,
+				Observations = row.Observations ?? string.Empty
 			};
+		}
+
+		private async Task EnsureGenerationOpenAsync(CancellationToken cancellationToken)
+		{
+			DiamondConsignaGenerationStore generation = new DiamondConsignaGenerationStore(mvarContext);
+			await generation.EnsureOpenAsync(cancellationToken);
+		}
+
+		private static string NormalizeObservations(string? text)
+		{
+			if (string.IsNullOrWhiteSpace(text))
+			{
+				return string.Empty;
+			}
+
+			string trimmed = text.Trim();
+			if (trimmed.Length > 500)
+			{
+				return trimmed.Substring(0, 500);
+			}
+
+			return trimmed;
 		}
 	}
 }

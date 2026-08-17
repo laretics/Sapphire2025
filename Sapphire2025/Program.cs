@@ -1,3 +1,4 @@
+using Diamond.Controls.Rendering;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Sapphire2025;
@@ -13,6 +14,9 @@ builder.Configuration.AddJsonFile("appsettings.Development.json", optional: true
 
 
 builder.Services.AddBlazorBootstrap();
+
+CirculationDocumentBranding.ApplyFromConfiguration(
+	builder.Configuration["Diamond:Documents:CompanyLogo"]);
 
 string auxApiAddress = builder.Configuration["ApiBaseAddress"] ?? "http://localhost:5031/api/";
 Console.WriteLine($"API Address for SFM: {auxApiAddress}");
