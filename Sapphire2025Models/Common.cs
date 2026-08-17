@@ -9,7 +9,7 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public static string SapphireSoftwareVersion => "26.8.16";
+		public static string SapphireSoftwareVersion => "26.8.18";
 
 		/// <summary>
 		/// Interruptor global: si es false, nunca se exige recarga aunque haya cambios con RequiresReload.
