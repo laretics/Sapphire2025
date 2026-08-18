@@ -1,0 +1,133 @@
+@namespace Diamond.Controls
+@using Diamond.Controls.Rendering
+@inject IJSRuntime Js
+
+@if (mvarReady)
+{
+	<div class="diamond-circ-sheet-overlay" @onclick="OnOverlayClick">
+		<div class="diamond-circ-sheet-dialog" @onclick:stopPropagation="true">
+			<div class="diamond-circ-sheet-toolbar no-print">
+				<span class="diamond-circ-sheet-toolbar-title">
+					<span>@mvarTitle</span>
+					@if (!string.IsNullOrEmpty(Subtitle))
+					{
+						<span> · @Subtitle</span>
+					}
+					<span class="text-muted"> · @mcolPages.Count hoja(s) A4 · SEL @SealCode</span>
+				</span>
+				<span class="diamond-circ-sheet-toolbar-actions">
+					<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="PrintAsync" @onclick:stopPropagation="true">
+						Imprimir
+					</button>
+					<button type="button" class="btn btn-sm btn-outline-light" @onclick="CloseAsync" @onclick:stopPropagation="true">
+						Cerrar
+					</button>
+				</span>
+			</div>
+			<div class="diamond-circ-sheet-pages" @ref="mvarPrintRoot">
+				@for (int i = 0; i < mcolPages.Count; i++)
+				{
+					<div class="diamond-circ-sheet-page">
+						@((MarkupString)mcolPages[i])
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	private readonly List<string> mcolPages = new List<string>();
+	private ElementReference mvarPrintRoot;
+	private bool mvarReady;
+	private string mvarTitle = "Documento oficial";
+
+	[Parameter]
+	public IReadOnlyList<string>? Pages { get; set; }
+
+	[Parameter]
+	public string SealCode { get; set; } = string.Empty;
+
+	[Parameter]
+	public string DocumentKind { get; set; } = string.Empty;
+
+	[Parameter]
+	public string Subtitle { get; set; } = string.Empty;
+
+	[Parameter]
+	public EventCallback OnClose { get; set; }
+
+	[Parameter]
+	public bool CloseOnOverlayClick { get; set; } = true;
+
+	protected override void OnParametersSet()
+	{
+		mcolPages.Clear();
+		if (Pages is not null)
+		{
+			int i = 0;
+			while (i < Pages.Count)
+			{
+				mcolPages.Add(Pages[i] ?? string.Empty);
+				i++;
+			}
+		}
+
+		mvarTitle = KindLabel(DocumentKind);
+		mvarReady = mcolPages.Count > 0;
+	}
+
+	private static string KindLabel(string kind)
+	{
+		if (string.Equals(kind, "libro", StringComparison.OrdinalIgnoreCase))
+		{
+			return "Libro itinerario";
+		}
+
+		if (string.Equals(kind, "ficha", StringComparison.OrdinalIgnoreCase))
+		{
+			return "Hoja de marcha";
+		}
+
+		if (string.Equals(kind, "consigna-b", StringComparison.OrdinalIgnoreCase))
+		{
+			return "Consigna serie B";
+		}
+
+		return string.IsNullOrEmpty(kind) ? "Documento oficial" : kind;
+	}
+
+	private async Task PrintAsync()
+	{
+		try
+		{
+			await Js.InvokeVoidAsync("diamondCircSheet.printFromRoot", mvarPrintRoot);
+		}
+		catch
+		{
+			try
+			{
+				await Js.InvokeVoidAsync("window.print");
+			}
+			catch
+			{
+			}
+		}
+	}
+
+	private async Task CloseAsync()
+	{
+		if (OnClose.HasDelegate)
+		{
+			await OnClose.InvokeAsync();
+		}
+	}
+
+	private async Task OnOverlayClick()
+	{
+		if (CloseOnOverlayClick)
+		{
+			await CloseAsync();
+		}
+	}
+}

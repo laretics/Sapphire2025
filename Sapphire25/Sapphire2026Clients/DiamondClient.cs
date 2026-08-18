@@ -256,7 +256,7 @@ namespace Sapphire2025.Storage
 			string request = date.HasValue
 				? composeCommand(
 					"publishedcurrent",
-					new requestParam("date", date.Value.ToString("o")))
+					new requestParam("date", date.Value.Date.ToString("yyyy-MM-dd")))
 				: composeCommand("publishedcurrent");
 			try
 			{
@@ -355,6 +355,235 @@ namespace Sapphire2025.Storage
 			}
 
 			return list;
+		}
+
+		// ── Limitaciones temporales ───────────────────────────────────────
+
+		public async Task<IReadOnlyList<DiamondTopoAxisModel>> ListTopoAxesAsync(Guid topoId)
+		{
+			string request = composeCommand(
+				"topoaxes",
+				new requestParam("id", topoId.ToString()));
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				List<DiamondTopoAxisModel>? list =
+					await response.Content.ReadFromJsonAsync<List<DiamondTopoAxisModel>>();
+				if (list is null)
+				{
+					return Array.Empty<DiamondTopoAxisModel>();
+				}
+
+				return list;
+			}
+			catch (HttpRequestException)
+			{
+				return Array.Empty<DiamondTopoAxisModel>();
+			}
+		}
+
+		public async Task<IReadOnlyList<DiamondTemporaryLimitModel>> ListTemporaryLimitsAsync(
+			Guid topoId,
+			string? axisId = null)
+		{
+			List<requestParam> args = new List<requestParam>
+			{
+				new requestParam("topoId", topoId.ToString())
+			};
+			if (!string.IsNullOrWhiteSpace(axisId))
+			{
+				args.Add(new requestParam("axisId", axisId));
+			}
+
+			string request = composeCommand("templimits", args.ToArray());
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				List<DiamondTemporaryLimitModel>? list =
+					await response.Content.ReadFromJsonAsync<List<DiamondTemporaryLimitModel>>();
+				if (list is null)
+				{
+					return Array.Empty<DiamondTemporaryLimitModel>();
+				}
+
+				return list;
+			}
+			catch (HttpRequestException)
+			{
+				return Array.Empty<DiamondTemporaryLimitModel>();
+			}
+		}
+
+		public async Task<DiamondTemporaryLimitSaveResult?> SaveTemporaryLimitAsync(
+			DiamondTemporaryLimitSaveRequest body)
+		{
+			string json = System.Text.Json.JsonSerializer.Serialize(body);
+			try
+			{
+				HttpResponseMessage response = await sendPostRequest("savetemplimit", json);
+				return await response.Content.ReadFromJsonAsync<DiamondTemporaryLimitSaveResult>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<DiamondTemporaryLimitSaveResult?> DeleteTemporaryLimitAsync(Guid id)
+		{
+			string json = System.Text.Json.JsonSerializer.Serialize(id);
+			try
+			{
+				HttpResponseMessage response = await sendPostRequest("deletetemplimit", json);
+				return await response.Content.ReadFromJsonAsync<DiamondTemporaryLimitSaveResult>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<DiamondConsignaGenerationStatus?> GetConsignaGenerationAsync()
+		{
+			string request = composeCommand("consignageneration");
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				return await response.Content.ReadFromJsonAsync<DiamondConsignaGenerationStatus>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<DiamondConsignaGenerationCloseResult?> CloseConsignaGenerationAsync()
+		{
+			try
+			{
+				HttpResponseMessage response = await sendPostRequest("closeconsignageneration", "{}");
+				return await response.Content.ReadFromJsonAsync<DiamondConsignaGenerationCloseResult>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<CirculationEmissionRegisterResult?> RegisterCirculationEmissionAsync(
+			CirculationEmissionRegisterRequest body)
+		{
+			if (body is null)
+			{
+				return null;
+			}
+
+			body.SessionToken = await getCurrentToken();
+			string json = System.Text.Json.JsonSerializer.Serialize(body);
+			try
+			{
+				HttpResponseMessage response = await sendPostRequest("circulation/emission", json);
+				return await response.Content.ReadFromJsonAsync<CirculationEmissionRegisterResult>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<CirculationSealVerifyResponse?> VerifyCirculationSealAsync(string sealOrQr)
+		{
+			CirculationSealVerifyRequest body = new CirculationSealVerifyRequest
+			{
+				SessionToken = await getCurrentToken(),
+				SealOrQr = sealOrQr ?? string.Empty
+			};
+			string json = System.Text.Json.JsonSerializer.Serialize(body);
+			try
+			{
+				HttpResponseMessage response = await sendPostRequest("circulation/verify", json);
+				return await response.Content.ReadFromJsonAsync<CirculationSealVerifyResponse>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<CirculationEmissionDocumentResponse?> GetCirculationDocumentAsync(string seal)
+		{
+			string request = composeCommand(
+				"circulation/document",
+				new requestParam("seal", seal ?? string.Empty));
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				CirculationEmissionDocumentResponse? doc =
+					await response.Content.ReadFromJsonAsync<CirculationEmissionDocumentResponse>();
+				if (doc is not null && !string.IsNullOrEmpty(doc.SvgArchive) && doc.SvgPages.Count == 0)
+				{
+					// El cliente WASM no referencia el empaquetador; el host desempaqueta en UI.
+				}
+
+				return doc;
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		// ── Festivos ──────────────────────────────────────────────────────
+
+		public async Task<DiamondFestiveYearModel?> ListFestivesAsync(int year)
+		{
+			string request = composeCommand(
+				"festives",
+				new requestParam("year", year.ToString()));
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				return await response.Content.ReadFromJsonAsync<DiamondFestiveYearModel>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<bool?> IsFestiveAsync(DateTime day)
+		{
+			string request = composeCommand(
+				"isfestive",
+				new requestParam("date", day.ToString("yyyy-MM-dd")));
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(request);
+				return await response.Content.ReadFromJsonAsync<bool>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+		}
+
+		public async Task<DiamondFestiveSetResult?> SetFestiveAsync(DateTime day, bool festive)
+		{
+			DiamondFestiveSetRequest body = new DiamondFestiveSetRequest
+			{
+				Date = day.ToString("yyyy-MM-dd"),
+				Festive = festive
+			};
+			string json = System.Text.Json.JsonSerializer.Serialize(body);
+			try
+			{
+				HttpResponseMessage response = await sendPostRequest("setfestive", json);
+				return await response.Content.ReadFromJsonAsync<DiamondFestiveSetResult>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
 		}
 
 		public async Task<DiamondDeviceTopoPackageModel?> GetDeviceTopoPackageAsync(

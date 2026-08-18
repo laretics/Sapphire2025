@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Sapphire2025Models.I18n;
 
 namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public static string SapphireSoftwareVersion => "26.8.15";
+		public static string SapphireSoftwareVersion => "26.8.18";
 
 		/// <summary>
 		/// Interruptor global: si es false, nunca se exige recarga aunque haya cambios con RequiresReload.
@@ -22,47 +23,56 @@ namespace Sapphire2025Models
 		/// Observations = detalle que el usuario puede abrir en un popup «Más info».
 		/// </summary>
 		/// <remarks>
-		/// Edite esta lista en cada release. Ejemplo:
+		/// Edite esta lista en cada release. El texto va por clave de catálogo (ca / es / en).
+		/// Ejemplo:
 		/// <code>
 		/// new SoftwareReleaseChange(
-		///     "Consulta de incidencias",
-		///     "Detalle largo para el popup...",
+		///     "rel.inc.title",
+		///     "rel.inc.body",
 		///     requiresReload: true,
 		///     UserRole.Mechanic, UserRole.Oficial),
-		/// new SoftwareReleaseChange("Centro de ayuda", requiresReload: false), // sin observaciones
+		/// new SoftwareReleaseChange("rel.help.title", requiresReload: false),
 		/// </code>
 		/// </remarks>
 		public static readonly SoftwareReleaseChange[] ReleaseChanges =
 		{
 			new SoftwareReleaseChange(
-				"Navegación, barra lateral y modo zen",
-				@"La cabecera de Zafiro incorpora botones de atrás y adelante propios de la aplicación (no los del navegador), para recorrer las pantallas que ha visitado en esta sesión.
+				"rel.docs.title",
+				"rel.docs.body",
+				requiresReload: true,
+				UserRole.Engineer, UserRole.Expert, UserRole.Inspector,
+				UserRole.Station, UserRole.Oficial, UserRole.Root),
 
-La barra lateral se reduce con el icono de chincheta (pinchada = fija con textos; despinchada = solo iconos y tooltip). El triángulo de la esquina ya no colapsa el menú.
-
-F11 entra en modo zen: oculta la barra lateral, la cabecera de navegación y la ayuda, y pide pantalla completa al navegador. Vuelva a pulsar F11 o Esc para salir.",
+			new SoftwareReleaseChange(
+				"rel.nav.title",
+				"rel.nav.body",
 				requiresReload: true,
 				UserRole.Anonymous, UserRole.Inspector, UserRole.Expert,
 				UserRole.Oficial, UserRole.Mechanic, UserRole.Engineer, UserRole.Station, UserRole.Root),
 
 			new SoftwareReleaseChange(
-				"Notas multimedia en el tren",
-				@"En el expediente del tren puede adjuntar fotos, vídeo o un PDF a una nota (botón Multimedia / cámara en el móvil).
-
-El archivo se guarda en el servidor y aparece en el chat de incidencias. Si falta o no se puede leer, se muestra el icono de no disponible. Hay un límite de tamaño y de archivos por usuario y día.
-
-Los avisos de Telegram de ese tren incluyen el adjunto cuando existe.",
+				"rel.media.title",
+				"rel.media.body",
 				requiresReload: true,
 				UserRole.Inspector, UserRole.Expert, UserRole.Oficial,
 				UserRole.Mechanic, UserRole.Engineer, UserRole.Station, UserRole.Root),
 
 			new SoftwareReleaseChange(
-				"Planificador de malla Diamond",
-				@"Se ha rediseñado el espacio de trabajo del planificador: las barras usan iconos, la malla y el script se pueden minimizar o ampliar por separado, y la malla admite vista a pantalla completa.
-
-Puede acoplar el script a la derecha o abajo y trabajar solo con la malla cuando lo necesite.",
+				"rel.diamond.title",
+				"rel.diamond.body",
 				requiresReload: true,
 				UserRole.Engineer, UserRole.Root),
+
+			new SoftwareReleaseChange(
+				"rel.i18n.title",
+				"rel.i18n.body",
+				requiresReload: true),
+
+			new SoftwareReleaseChange(
+				"rel.sched.title",
+				"rel.sched.body",
+				requiresReload: true,
+				UserRole.Anonymous, UserRole.Expert, UserRole.Inspector, UserRole.Root),
 		};
 
 		/// <summary>
@@ -78,30 +88,40 @@ Puede acoplar el script a la derecha o abajo y trabajar solo con la malla cuando
 		public sealed class SoftwareReleaseChange
 		{
 			/// <summary>Solo título; sin observaciones; recarga opcional; roles opcionales.</summary>
-			public SoftwareReleaseChange(string text, bool requiresReload = true, params UserRole[] roles)
-				: this(text, observations: null, requiresReload, roles)
+			public SoftwareReleaseChange(string textKey, bool requiresReload = true, params UserRole[] roles)
+				: this(textKey, observationsKey: null, requiresReload, roles)
 			{
 			}
 
-			/// <summary>Título + observaciones (popup «Más info») + recarga + roles.</summary>
-			public SoftwareReleaseChange(string text, string? observations, bool requiresReload = true, params UserRole[] roles)
+			/// <summary>Claves de catálogo (título + observaciones) + recarga + roles.</summary>
+			public SoftwareReleaseChange(string textKey, string? observationsKey, bool requiresReload = true, params UserRole[] roles)
 			{
-				Text = text ?? string.Empty;
-				Observations = observations?.Trim() ?? string.Empty;
+				TextKey = textKey ?? string.Empty;
+				ObservationsKey = observationsKey?.Trim() ?? string.Empty;
 				RequiresReload = requiresReload;
 				Roles = roles ?? Array.Empty<UserRole>();
 			}
 
-			/// <summary>Resumen corto (lista de notas de versión).</summary>
-			public string Text { get; }
+			/// <summary>Clave de catálogo del resumen corto.</summary>
+			public string TextKey { get; }
 
-			/// <summary>
-			/// Detalle ampliado mostrado en ventana emergente cuando el usuario pide más información.
-			/// Vacío = no se muestra el botón «Más info».
-			/// </summary>
-			public string Observations { get; }
+			/// <summary>Clave de catálogo del detalle (popup «Más info»). Vacío = sin detalle.</summary>
+			public string ObservationsKey { get; }
 
-			public bool HasObservations => !string.IsNullOrWhiteSpace(Observations);
+			/// <summary>Resumen en castellano (compatibilidad: Telegram, textos planos).</summary>
+			public string Text => LocalizedText(UiLocale.Spanish);
+
+			/// <summary>Detalle en castellano (compatibilidad).</summary>
+			public string Observations => LocalizedObservations(UiLocale.Spanish);
+
+			public bool HasObservations =>
+				!string.IsNullOrWhiteSpace(ObservationsKey) && UiCatalog.Has(ObservationsKey);
+
+			public string LocalizedText(UiLocale locale) =>
+				string.IsNullOrWhiteSpace(TextKey) ? string.Empty : UiCatalog.Get(locale, TextKey);
+
+			public string LocalizedObservations(UiLocale locale) =>
+				string.IsNullOrWhiteSpace(ObservationsKey) ? string.Empty : UiCatalog.Get(locale, ObservationsKey);
 
 			/// <summary>Si true y hay desfase de versión, los roles afectados deben recargar el cliente.</summary>
 			public bool RequiresReload { get; }
@@ -423,7 +443,12 @@ Puede acoplar el script a la derecha o abajo y trabajar solo con la malla cuando
 			// Consultas de incidencias / notas (Aeneas IncidenceQuery)
 			incidenceQuery = 90,               //Consulta de incidencias y notas
 			incidenceQueryExported = 91,       //Exportación CSV/Excel de la consulta
-			incidenceQueryPrinted = 92         //Impresión de la consulta
+			incidenceQueryPrinted = 92,        //Impresión de la consulta
+
+			// Cabina Tourmaline (HMI del tren)
+			tourmalineLogin = 100,             //Inicio de sesión desde Tourmaline
+			tourmalineLogout = 101,            //Cierre de sesión desde Tourmaline
+			tourmalineTripStarted = 102        //Selección de circulación / inicio de viaje
 		}
 
 		/// <summary>
@@ -476,6 +501,9 @@ Puede acoplar el script a la derecha o abajo y trabajar solo con la malla cuando
 				sessionEventType.incidenceQuery => "Consulta de incidencias",
 				sessionEventType.incidenceQueryExported => "Exportación consulta incidencias",
 				sessionEventType.incidenceQueryPrinted => "Impresión consulta incidencias",
+				sessionEventType.tourmalineLogin => "Login Tourmaline",
+				sessionEventType.tourmalineLogout => "Logout Tourmaline",
+				sessionEventType.tourmalineTripStarted => "Inicio de viaje Tourmaline",
 				_ => "¿?"
 			};
 		}

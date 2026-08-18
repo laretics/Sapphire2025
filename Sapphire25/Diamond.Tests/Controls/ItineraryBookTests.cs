@@ -70,6 +70,8 @@ namespace Diamond.Tests.Controls
 			Assert.Equal(book.PhysicalSheetCount, sheets.Count);
 			Assert.Equal(CirculationSheetPager.ComputeSheetCount(book.TotalHalfPages), sheets.Count);
 			Assert.Contains("LIBRO ITINERARIO", sheets[0], StringComparison.Ordinal);
+			Assert.Contains("diamond-doc-logo", sheets[0], StringComparison.Ordinal);
+			Assert.Contains("data:image/png;base64,", sheets[0], StringComparison.Ordinal);
 			Assert.Contains("viewBox=\"0 0 841.89 595.28\"", sheets[0], StringComparison.Ordinal);
 		}
 
@@ -160,6 +162,75 @@ namespace Diamond.Tests.Controls
 		}
 
 		[Fact]
+		public void StandaloneSheet_Unofficial_HasNoSealOrQr()
+		{
+			TopoLayout topo = TopoXmlSerializer.Load(SamplePaths.TopoSfm227);
+			SfmDemoInfrastructure.Apply(topo);
+			Plan plan = new Plan(topo);
+			plan.EnsureDefaultTrainSpecs();
+			Assert.True(plan.CompileDemand("""
+				require both ways every 60 min PMI -> MAN 06:00-10:00 as R-T3
+				  days lab
+				  stops 30s
+				""").Success);
+			Mesh mesh = new MeshPlanner(plan).Solve(DayOfWeek.Monday);
+			CirculationSheetDocument doc = CirculationSheetDocument.Build(mesh.Circulations[0], mesh, 30);
+			string unofficial = CirculationSheetSvgRenderer.RenderAllPages(
+				doc, out string seal, out string payload, official: false)[0];
+			Assert.Equal(string.Empty, seal);
+			Assert.Equal(string.Empty, payload);
+			Assert.DoesNotContain("SEL ", unofficial, StringComparison.Ordinal);
+			Assert.DoesNotContain("ZAFSEL:", unofficial, StringComparison.Ordinal);
+			Assert.DoesNotContain("diamond-circ-qr", unofficial, StringComparison.Ordinal);
+
+			string official = CirculationSheetSvgRenderer.RenderAllPages(
+				doc, out string officialSeal, out _, official: true)[0];
+			Assert.False(string.IsNullOrEmpty(officialSeal));
+			Assert.Contains("SEL " + officialSeal, official, StringComparison.Ordinal);
+			Assert.Contains("diamond-circ-qr", official, StringComparison.Ordinal);
+		}
+
+		[Fact]
+		public void CompleteBook_AddsTemporaryLimits_YellowAndReason()
+		{
+			TopoLayout topo = TopoXmlSerializer.Load(SamplePaths.TopoSfm227);
+			SfmDemoInfrastructure.Apply(topo);
+			Axis? t3 = topo.FindAxisById("T3");
+			Assert.NotNull(t3);
+			TemporarySpeedLimit temp = TopoTemporaryLimits.FromSpan(
+				"T3", 8000L, 12000L, 30, TemporaryLimitReason.Works, "Obra de vía");
+			TopoTemporaryLimits.Apply(topo, new[] { temp });
+
+			Plan plan = new Plan(topo);
+			plan.EnsureDefaultTrainSpecs();
+			Assert.True(plan.CompileDemand("""
+				require both ways every 60 min PMI -> MAN 06:00-10:00 as R-T3
+				  days lab
+				  stops 30s
+				""").Success);
+			Mesh mesh = new MeshPlanner(plan).Solve(DayOfWeek.Monday);
+			Assert.NotEmpty(mesh.Circulations);
+			Circulation c = mesh.Circulations[0];
+
+			CirculationSheetDocument normal = CirculationSheetDocument.Build(
+				c, mesh, 30, includeTemporaryLimits: false);
+			CirculationSheetDocument complete = CirculationSheetDocument.Build(
+				c, mesh, 30, includeTemporaryLimits: true);
+
+			Assert.True(complete.Frontiers.Count > normal.Frontiers.Count);
+			Assert.DoesNotContain(normal.Frontiers, f => f.OutgoingIsTemporary);
+			Assert.Contains(complete.Frontiers, f => f.OutgoingIsTemporary && f.TemporaryReasonLabel == "Obras");
+
+			string svg = CirculationSheetSvgRenderer.RenderAllPages(complete)[0];
+			Assert.Contains("#ffd400", svg, StringComparison.OrdinalIgnoreCase);
+			Assert.Contains("Obras", svg, StringComparison.Ordinal);
+			Assert.Contains("Obra de vía", svg, StringComparison.Ordinal);
+
+			string svgNormal = CirculationSheetSvgRenderer.RenderAllPages(normal)[0];
+			Assert.DoesNotContain("#ffd400", svgNormal, StringComparison.OrdinalIgnoreCase);
+		}
+
+		[Fact]
 		public void FormatCirculationLabel_Rules()
 		{
 			Assert.Equal("Laborables", ServiceDays.Laborables.FormatCirculationLabel());
@@ -209,6 +280,30 @@ namespace Diamond.Tests.Controls
 			IReadOnlyList<string> sheets = CirculationSheetSvgRenderer.RenderAllPages(doc);
 			Assert.NotEmpty(sheets);
 			Assert.Contains("viewBox=\"0 0 841.89 595.28\"", sheets[0], StringComparison.Ordinal);
+		}
+
+		[Fact]
+		public void RouteHeader_IsTwoLines_TitleThenViewPk()
+		{
+			TopoLayout topo = TopoXmlSerializer.Load(SamplePaths.TopoSfm227);
+			SfmDemoInfrastructure.Apply(topo);
+			Plan plan = new Plan(topo);
+			plan.EnsureDefaultTrainSpecs();
+			Assert.True(plan.CompileDemand("""
+				require both ways every 60 min PMI -> MAN 06:00-08:00 as R
+				  days lab
+				  stops 30s
+				""").Success);
+			Mesh mesh = new MeshPlanner(plan).Solve(DayOfWeek.Monday);
+			CirculationSheetDocument doc = CirculationSheetDocument.Build(mesh.Circulations[0], mesh, 30);
+			Assert.Contains(" - ", doc.RouteTitle, StringComparison.Ordinal);
+			Assert.False(string.IsNullOrWhiteSpace(doc.RouteLine));
+			Assert.DoesNotContain(".- ", doc.RouteTitle, StringComparison.Ordinal);
+			string svg = CirculationSheetSvgRenderer.RenderAllPages(doc)[0];
+			Assert.Contains(doc.RouteTitle, svg, StringComparison.Ordinal);
+			Assert.Contains(doc.RouteLine, svg, StringComparison.Ordinal);
+			Assert.Contains("diamond-logo-gray", svg, StringComparison.Ordinal);
+			Assert.Contains("diamond-doc-logo-gray", svg, StringComparison.Ordinal);
 		}
 	}
 }

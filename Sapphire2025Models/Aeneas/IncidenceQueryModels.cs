@@ -151,5 +151,8 @@ namespace Sapphire2025Models.Aeneas
 		public int TotalNotes { get; set; }
 		public int TotalStatusChanges { get; set; }
 		public bool Truncated { get; set; }
+
+		/// <summary>Si false, la impresión oculta la columna de usuario.</summary>
+		public bool ShowUsers { get; set; } = true;
 	}
 }

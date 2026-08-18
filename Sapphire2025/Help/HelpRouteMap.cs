@@ -78,6 +78,7 @@ namespace Sapphire2025.Help
 				return "tourmaline";
 			if (lower.StartsWith("engineer/timenet")
 				|| lower.StartsWith("engineer/topostorage")
+				|| lower.StartsWith("engineer/docverify")
 				|| lower.StartsWith("admin/manageworkshifts"))
 				return "diamond-explotacion";
 			if (lower.StartsWith("admin/myuserdossier"))

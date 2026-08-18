@@ -1,4 +1,5 @@
-﻿using Sapphire2026Telegram.Operative;
+﻿using Sapphire2025Models.I18n;
+using Sapphire2026Telegram.Operative;
 using System.Text;
 using Telegram.Bot;
 namespace Sapphire2026Telegram.Semantics
@@ -23,11 +24,22 @@ namespace Sapphire2026Telegram.Semantics
 	public class TextResponse: Response
 	{
 		private Dictionary<string, string> mcolParameters = new Dictionary<string, string>(); //Conjunto de parámetros para articular una contestación.
-		private List<string> mcolPhrases = new List<string>(); //Conjunto de diferentes formas de dar el mensaje.
+		private readonly List<(bool Catalog, string Value)> mcolPhrases = new();
 
 		public void addText(string rhs)
 		{
-			mcolPhrases.Add(rhs);
+			mcolPhrases.Add((false, rhs));
+		}
+
+		public void addCatalog(params string[] keys)
+		{
+			if (keys is null)
+				return;
+			foreach (string key in keys)
+			{
+				if (!string.IsNullOrWhiteSpace(key))
+					mcolPhrases.Add((true, key));
+			}
 		}
 		public void addKey(string key, string value)
 		{
@@ -41,13 +53,14 @@ namespace Sapphire2026Telegram.Semantics
 		/// Devuelve una de las posibles cadenas a mostrar.
 		/// </summary>
 		/// <returns>Cadena mostrada</returns>
-		protected string internalResponse()
+		protected string internalResponse(UiLocale locale)
 		{
 			int max = mcolPhrases.Count;
 			if (max < 1)
 				return string.Empty;
 			int aleatorio = Random.Shared.Next(max);
-			string frase = mcolPhrases[aleatorio];
+			(bool catalog, string value) = mcolPhrases[aleatorio];
+			string frase = catalog ? UiCatalog.Get(locale, value) : value;
 			foreach (KeyValuePair<string,string> pareja in mcolParameters)
 				frase = frase.Replace("#" + pareja.Key, pareja.Value);
 			return frase;			
@@ -56,12 +69,13 @@ namespace Sapphire2026Telegram.Semantics
 		protected virtual byte maxResponses { get => 1; } //Número máximo de respuestas que puede devolver el objeto. Por defecto es 1, pero se puede sobreescribir en las clases hijas.
 		internal override async Task Send(ITelegramBotClient client, UserContext userContext)
 		{
+			UiLocale locale = userContext?.Locale ?? UiLocale.Spanish;
 			if (BotSoul.DummyMode)
-				BotSoul.DummyResponse = internalResponse();
+				BotSoul.DummyResponse = internalResponse(locale);
 			else
 			{
 				if(userContext.TelegramId!=0)
-					await client.SendMessage(userContext.TelegramId, internalResponse());
+					await client.SendMessage(userContext.TelegramId, internalResponse(locale));
 			}	
 		}
 	}
@@ -87,10 +101,10 @@ namespace Sapphire2026Telegram.Semantics
 		{
 			mcolTable.AddRange(rows);
 		}
-		private string BuildTable()
+		private string BuildTable(UiLocale locale)
 		{
 			if (mcolTable.Count < 1 || mcolFields.Count < 1)
-				return "No hay datos para mostrar";
+				return UiCatalog.Get(locale, "tg.table.empty");
 
 			//Preparando encabezados
 			List<string> auxHeaders = mcolHeaders ?? mcolFields;
@@ -117,7 +131,7 @@ namespace Sapphire2026Telegram.Semantics
 
 		internal override async Task Send(ITelegramBotClient client, UserContext userContext)
 		{
-			string tabla = BuildTable();
+			string tabla = BuildTable(userContext?.Locale ?? UiLocale.Spanish);
 			if (BotSoul.DummyMode)
 				BotSoul.DummyResponse = tabla;
 			else
@@ -137,7 +151,7 @@ namespace Sapphire2026Telegram.Semantics
 				{
 					if(BotSoul.DummyMode)
 					{
-						BotSoul.DummyResponse = $"[Imagen {ImageUrl} ({internalResponse()}]";
+						BotSoul.DummyResponse = $"[Imagen {ImageUrl} ({internalResponse(userContext?.Locale ?? UiLocale.Spanish)}]";
 					}
 					else
 					{
@@ -148,7 +162,7 @@ namespace Sapphire2026Telegram.Semantics
 							await client.SendPhoto(
 								chatId: userContext.TelegramId,
 								photo: cadena,
-								caption: internalResponse());
+								caption: internalResponse(userContext?.Locale ?? UiLocale.Spanish));
 						}
 					}					
 				}

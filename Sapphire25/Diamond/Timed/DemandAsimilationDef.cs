@@ -14,6 +14,7 @@ namespace Diamond.Timed
 	/// </code>
 	/// El OD es <strong>dirigido</strong>: <c>PMI -&gt; MAN</c> y <c>MAN -&gt; PMI</c>
 	/// son asimilaciones distintas (pueden llevar <c>numbers</c>/<c>color</c> distintos).
+	/// <c>numbers</c> elige la serie; la paridad sigue siendo SFM (impar ↑PK, par ↓PK).
 	/// </remarks>
 	public sealed class DemandAsimilationDef
 	{

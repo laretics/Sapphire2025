@@ -162,19 +162,46 @@ namespace Diamond.Controls.Rendering
 
 			// —— Franjas V y # (solo PK de ruta visible) ——
 			SortedSet<int> speedsUsed = new SortedSet<int>();
+			List<SpeedBand> speedBands = BuildSpeedBands(view, pkMin, pkMax);
+			bool hasTemporaryBands = false;
+			int bi0 = 0;
+			while (bi0 < speedBands.Count)
+			{
+				if (speedBands[bi0].IsTemporary)
+				{
+					hasTemporaryBands = true;
+					break;
+				}
+
+				bi0++;
+			}
+
+			bool paintTemps = options.ShowTemporaryLimits && hasTemporaryBands;
+
 			if (options.ShowSpeedStrip)
 			{
-				List<SpeedBand> speedBands = BuildSpeedBands(view, pkMin, pkMax);
 				int bi = 0;
 				while (bi < speedBands.Count)
 				{
 					SpeedBand band = speedBands[bi];
-					speedsUsed.Add(band.SpeedKmh);
+					bool asTemp = paintTemps && band.IsTemporary;
+					if (!asTemp)
+					{
+						speedsUsed.Add(band.SpeedKmh);
+					}
+
+					string fill = asTemp
+						? palette.MapUiColor(TemporaryLimitMeshColors.ForSpeed(band.TemporarySpeedKmh))
+						: palette.MapUiColor(SpeedToColor(band.SpeedKmh));
+					string bandTitle = asTemp
+						? "V temporal " + band.TemporarySpeedKmh + " km/h · "
+							+ FormatPk(band.PkStart) + "–" + FormatPk(band.PkEnd)
+						: band.SpeedKmh + " km/h · " + FormatPk(band.PkStart) + "–" + FormatPk(band.PkEnd);
 					AppendPkBandRect(
 						sb, speedStripX, stripW,
 						band.PkStart, band.PkEnd, pkMin, pkMax, plotTop, plotH, yScale,
-						palette.MapUiColor(SpeedToColor(band.SpeedKmh)),
-						band.SpeedKmh + " km/h · " + FormatPk(band.PkStart) + "–" + FormatPk(band.PkEnd),
+						fill,
+						bandTitle,
 						palette);
 					bi++;
 				}
@@ -215,6 +242,12 @@ namespace Diamond.Controls.Rendering
 				$"<rect x=\"{plotLeft}\" y=\"{plotTop}\" width=\"{plotW}\" height=\"{plotH}\" fill=\"{palette.PlotBackground}\" stroke=\"{palette.PlotBorder}\"/>");
 
 			sb.Append(CultureInfo.InvariantCulture, $"<g clip-path=\"url(#{clipId})\">");
+
+			if (paintTemps)
+			{
+				DrawTemporaryLimitPlotBands(
+					sb, speedBands, pkMin, pkMax, plotLeft, plotTop, plotW, plotH, yScale, palette);
+			}
 
 			// Grid horario (según ventana visible)
 			DrawTimeGrid(sb, t0, t1, plotLeft, plotTop, plotW, plotH, palette);
@@ -280,20 +313,22 @@ namespace Diamond.Controls.Rendering
 			}
 
 			// Leyendas
+			double nextLegendTop = plotTop + 8;
 			if (options.ShowSpeedStrip)
 			{
-				DrawSpeedLegend(sb, speedsUsed, plotLeft + plotW - 8, plotTop + 8, palette);
+				DrawSpeedLegend(sb, speedsUsed, plotLeft + plotW - 8, nextLegendTop, palette);
+				nextLegendTop = nextLegendTop + 12 + Math.Max(1, speedsUsed.Count) * 14 + 16;
+			}
+
+			if (paintTemps)
+			{
+				DrawTemporaryLimitLegend(sb, plotLeft + plotW - 8, nextLegendTop, palette);
+				nextLegendTop += 58;
 			}
 
 			if (options.ShowTrackStrip)
 			{
-				double legendTop = plotTop + 8;
-				if (options.ShowSpeedStrip)
-				{
-					legendTop = plotTop + 8 + 12 + Math.Max(1, speedsUsed.Count) * 14 + 16;
-				}
-
-				DrawTrackLegend(sb, plotLeft + plotW - 8, legendTop, palette);
+				DrawTrackLegend(sb, plotLeft + plotW - 8, nextLegendTop, palette);
 			}
 
 			string title = "View " + view.Id + " · " + view.Name
@@ -1028,7 +1063,8 @@ namespace Diamond.Controls.Rendering
 			MeshYScale yScale,
 			string color,
 			string title,
-			MeshSvgPalette palette)
+			MeshSvgPalette palette,
+			string? fillOpacity = null)
 		{
 			// Intersección con ventana visible
 			long a = Math.Max(pkStart, pkMin);
@@ -1047,8 +1083,11 @@ namespace Diamond.Controls.Rendering
 				h = 0.5;
 			}
 
+			string opacityAttr = string.IsNullOrEmpty(fillOpacity)
+				? string.Empty
+				: " fill-opacity=\"" + fillOpacity + "\"";
 			sb.Append(CultureInfo.InvariantCulture,
-				$"<rect x=\"{x}\" y=\"{y}\" width=\"{width}\" height=\"{h}\" fill=\"{color}\" stroke=\"{palette.BandStroke}\" stroke-width=\"0.35\">");
+				$"<rect x=\"{x}\" y=\"{y}\" width=\"{width}\" height=\"{h}\" fill=\"{color}\"{opacityAttr} stroke=\"{palette.BandStroke}\" stroke-width=\"0.35\">");
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<title>{Escape(title)}</title>");
 			sb.Append("</rect>");
@@ -1059,22 +1098,33 @@ namespace Diamond.Controls.Rendering
 			List<SpeedBand> bands = new List<SpeedBand>();
 			long step = ChooseSampleStep(pkMin, pkMax);
 			int? currentSpeed = null;
+			int currentTemp = 0;
+			bool currentIsTemp = false;
 			long runStart = pkMin;
 			long pk = pkMin;
 
 			while (pk < pkMax)
 			{
 				int speed = view.GetEffectiveSpeedLimit(pk) ?? 0;
+				int? temp = view.GetTemporarySpeedLimit(pk);
+				bool isTemp = temp.HasValue;
+				int tempSpeed = temp ?? 0;
 				if (!currentSpeed.HasValue)
 				{
 					currentSpeed = speed;
+					currentIsTemp = isTemp;
+					currentTemp = tempSpeed;
 					runStart = pk;
 				}
-				else if (speed != currentSpeed.Value)
+				else if (speed != currentSpeed.Value
+					|| isTemp != currentIsTemp
+					|| (isTemp && tempSpeed != currentTemp))
 				{
-					bands.Add(new SpeedBand(runStart, pk, currentSpeed.Value));
+					bands.Add(new SpeedBand(runStart, pk, currentSpeed.Value, currentIsTemp, currentTemp));
 					runStart = pk;
 					currentSpeed = speed;
+					currentIsTemp = isTemp;
+					currentTemp = tempSpeed;
 				}
 
 				long next = pk + step;
@@ -1088,14 +1138,78 @@ namespace Diamond.Controls.Rendering
 
 			if (currentSpeed.HasValue)
 			{
-				bands.Add(new SpeedBand(runStart, pkMax, currentSpeed.Value));
+				bands.Add(new SpeedBand(runStart, pkMax, currentSpeed.Value, currentIsTemp, currentTemp));
 			}
 			else
 			{
-				bands.Add(new SpeedBand(pkMin, pkMax, view.Vmax > 0 ? view.Vmax : 0));
+				bands.Add(new SpeedBand(pkMin, pkMax, view.Vmax > 0 ? view.Vmax : 0, isTemporary: false, temporarySpeedKmh: 0));
 			}
 
 			return bands;
+		}
+
+		private static void DrawTemporaryLimitPlotBands(
+			StringBuilder sb,
+			List<SpeedBand> bands,
+			long pkMin,
+			long pkMax,
+			double plotLeft,
+			double plotTop,
+			double plotW,
+			double plotH,
+			MeshYScale yScale,
+			MeshSvgPalette palette)
+		{
+			sb.Append("<g class=\"mesh-temp-limits\">");
+			int i = 0;
+			while (i < bands.Count)
+			{
+				SpeedBand band = bands[i];
+				if (band.IsTemporary)
+				{
+					string fill = palette.MapUiColor(TemporaryLimitMeshColors.ForSpeed(band.TemporarySpeedKmh));
+					string title = "Limitación temporal " + band.TemporarySpeedKmh + " km/h · "
+						+ FormatPk(band.PkStart) + "–" + FormatPk(band.PkEnd);
+					AppendPkBandRect(
+						sb, plotLeft, plotW,
+						band.PkStart, band.PkEnd, pkMin, pkMax, plotTop, plotH, yScale,
+						fill,
+						title,
+						palette,
+						fillOpacity: palette.IsPaper ? "0.18" : "0.22");
+				}
+
+				i++;
+			}
+
+			sb.Append("</g>");
+		}
+
+		private static void DrawTemporaryLimitLegend(
+			StringBuilder sb,
+			double rightX,
+			double topY,
+			MeshSvgPalette palette)
+		{
+			double boxW = 92;
+			double boxH = 50;
+			double pad = 6;
+			double boxX = rightX - boxW;
+			double boxY = topY;
+			string boxOpacity = palette.IsPaper ? "0.96" : "0.88";
+
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<rect x=\"{boxX}\" y=\"{boxY}\" width=\"{boxW}\" height=\"{boxH}\" rx=\"3\" fill=\"{palette.LegendBoxFill}\" fill-opacity=\"{boxOpacity}\" stroke=\"{palette.LegendBoxStroke}\"/>");
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<text x=\"{boxX + pad}\" y=\"{boxY + pad + 9}\" fill=\"{palette.TextMuted}\" font-size=\"9\" font-family=\"Segoe UI,sans-serif\">V temporal</text>");
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<rect x=\"{boxX + pad}\" y=\"{boxY + 20}\" width=\"10\" height=\"10\" rx=\"1\" fill=\"{palette.MapUiColor(TemporaryLimitMeshColors.Yellow)}\" stroke=\"{palette.LegendBoxStroke}\"/>");
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<text x=\"{boxX + pad + 14}\" y=\"{boxY + 28}\" fill=\"{palette.TextPrimary}\" font-size=\"10\" font-family=\"Segoe UI,sans-serif\">≥ 50</text>");
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<rect x=\"{boxX + pad}\" y=\"{boxY + 32}\" width=\"10\" height=\"10\" rx=\"1\" fill=\"{palette.MapUiColor(TemporaryLimitMeshColors.FluorescentOrange)}\" stroke=\"{palette.LegendBoxStroke}\"/>");
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<text x=\"{boxX + pad + 14}\" y=\"{boxY + 40}\" fill=\"{palette.TextPrimary}\" font-size=\"10\" font-family=\"Segoe UI,sans-serif\">&lt; 50</text>");
 		}
 
 		private static List<TrackBand> BuildTrackBands(RouteView view, long pkMin, long pkMax)
@@ -1428,12 +1542,16 @@ namespace Diamond.Controls.Rendering
 			private readonly long mvarPkStart;
 			private readonly long mvarPkEnd;
 			private readonly int mvarSpeedKmh;
+			private readonly bool mvarIsTemporary;
+			private readonly int mvarTemporarySpeedKmh;
 
-			public SpeedBand(long pkStart, long pkEnd, int speedKmh)
+			public SpeedBand(long pkStart, long pkEnd, int speedKmh, bool isTemporary, int temporarySpeedKmh)
 			{
 				mvarPkStart = pkStart;
 				mvarPkEnd = pkEnd;
 				mvarSpeedKmh = speedKmh;
+				mvarIsTemporary = isTemporary;
+				mvarTemporarySpeedKmh = temporarySpeedKmh;
 			}
 
 			public long PkStart
@@ -1449,6 +1567,16 @@ namespace Diamond.Controls.Rendering
 			public int SpeedKmh
 			{
 				get { return mvarSpeedKmh; }
+			}
+
+			public bool IsTemporary
+			{
+				get { return mvarIsTemporary; }
+			}
+
+			public int TemporarySpeedKmh
+			{
+				get { return mvarTemporarySpeedKmh; }
 			}
 		}
 

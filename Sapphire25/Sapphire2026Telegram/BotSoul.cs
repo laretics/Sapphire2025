@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Sapphire2025.Storage;
 using Sapphire2025Models;
 using Sapphire2025Models.Authentication;
+using Sapphire2025Models.I18n;
+using Sapphire2025Models.Preferences;
 using Sapphire2026.Data;
 using Sapphire2026.Data.Models;
 using Sapphire2026Telegram;
@@ -23,6 +25,7 @@ namespace Sapphire2026Telegram
 		internal IConfiguration config;
 		internal IServiceProvider services; //Referencias a los servicios inyectables.
 		private Dictionary<long,BotTask> mcolTasks = new Dictionary<long, BotTask>(); //Contenedor de conversaciones activas. Las conversaciones van por ID de telegram.	
+		private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (UiLocale Locale, DateTime Expires)> mcolLocaleCache = new();
 		internal PairingQuew mvarPairingQuew = new PairingQuew();
 		internal Worker? mvarService;
 		public static string DummyResponse { get; set; } = "";
@@ -150,11 +153,17 @@ namespace Sapphire2026Telegram
 		private async Task HandleIncomingMessage(ITelegramBotClient botClient, Message message)
 		{
 			long telegramId = message.Chat.Id;
+			BotTask auxTarea = await OpenTask(telegramId);
+			if (!string.IsNullOrWhiteSpace(message.From?.LanguageCode))
+			{
+				auxTarea.userContext.HintLocale = UiLocales.Parse(message.From.LanguageCode);
+				if (!auxTarea.userContext.Paired)
+					await auxTarea.userContext.LoadLocaleAsync();
+			}
 			if (string.IsNullOrEmpty(message.Text))
-				await botClient.SendMessage(telegramId, "Error interno: Mensaje vacío");
+				await botClient.SendMessage(telegramId, UiCatalog.Get(auxTarea.userContext.Locale, "tg.empty"));
 			else
 			{
-				BotTask auxTarea = await OpenTask(telegramId);
 				await auxTarea.TextToBot(message.Text);
 				await auxTarea.ResponseFromBot();
 			}
@@ -219,7 +228,10 @@ namespace Sapphire2026Telegram
 		internal async Task EndTask(long telegramId)
 		{
 			//Elimina el diálogo porque vamos a desconectar al usuario.
-			await mvarBot.SendMessage(telegramId, "Has desconectado tu usuario de este bot.");
+			UiLocale locale = UiLocale.Spanish;
+			if (mcolTasks.TryGetValue(telegramId, out BotTask? tarea) && tarea.userContext is not null)
+				locale = tarea.userContext.Locale;
+			await mvarBot.SendMessage(telegramId, UiCatalog.Get(locale, "tg.unpair"));
 			if (mcolTasks.ContainsKey(telegramId))
 				mcolTasks.Remove(telegramId);
 		}
@@ -233,18 +245,38 @@ namespace Sapphire2026Telegram
 		/// <param name="filters">Sólo lo envía a aquellos que tengan alguno de estos parámetros en el campo "filter" de su consola Telegram
 		public async Task BroadcastToAll(string message, bool priority, string filters="")
 		{
+			await BroadcastToAll(new TelegramBroadcastRequestModel
+			{
+				Message = message,
+				Priority = priority,
+				Filters = filters
+			});
+		}
+
+		public async Task BroadcastToAll(TelegramBroadcastRequestModel request)
+		{
 			if(await GetTelegramEnabled())
 			{
-				List<UserModel> auxUsers = await BuildBroadcastRecipientsByFilter(priority, filters);
-				await Broadcast(message, auxUsers, priority);
+				List<UserModel> auxUsers = await BuildBroadcastRecipientsByFilter(request.Priority, request.Filters ?? string.Empty);
+				await Broadcast(request, auxUsers, request.Priority);
 			}
 		}
 		public async Task BroadcastByRole(string message, bool priority, Common.UserRole[] roles)
 		{
+			await BroadcastByRole(new TelegramBroadcastRequestModel
+			{
+				Message = message,
+				Priority = priority,
+				Roles = roles
+			});
+		}
+
+		public async Task BroadcastByRole(TelegramBroadcastRequestModel request)
+		{
 			if(await GetTelegramEnabled())
 			{
-				List<UserModel> auxUsers = await BuildBroadcastRecipientsByRole(priority, roles);
-				await Broadcast(message, auxUsers, priority);
+				List<UserModel> auxUsers = await BuildBroadcastRecipientsByRole(request.Priority, request.Roles?.ToArray() ?? Array.Empty<Common.UserRole>());
+				await Broadcast(request, auxUsers, request.Priority);
 			}
 		}
 
@@ -257,13 +289,13 @@ namespace Sapphire2026Telegram
 			if (string.IsNullOrWhiteSpace(payload.MediaPath) || !System.IO.File.Exists(payload.MediaPath))
 			{
 				mvarLogger.LogWarning("Adjunto de broadcast no encontrado ({Path}). Se envía sólo texto.", payload.MediaPath);
-				await Broadcast(payload.Message, auxUsers, payload.Priority);
+				await Broadcast(ToBroadcastRequest(payload), auxUsers, payload.Priority);
 				return;
 			}
 
 			await BroadcastMedia(payload, auxUsers);
 		}
-		private async Task Broadcast(string message, List<UserModel> users, bool includeOffline = false)
+		private async Task Broadcast(TelegramBroadcastRequestModel request, List<UserModel> users, bool includeOffline = false)
 		{
 			if (null == mvarBot || 0 == users.Count)
 				return;
@@ -275,8 +307,55 @@ namespace Sapphire2026Telegram
 
 			await Parallel.ForEachAsync(users, auxOptions, async (usuario, cancellationToken) =>
 			{
-				await SendBroadcastMessageToUser(usuario, message, includeOffline, cancellationToken);
+				string text = await ComposeBroadcastAsync(usuario, request.CatalogKey, request.Args, request.Message);
+				await SendBroadcastMessageToUser(usuario, text, includeOffline, cancellationToken);
 			});
+		}
+
+		private static TelegramBroadcastRequestModel ToBroadcastRequest(TelegramMediaBroadcastModel payload)
+		{
+			return new TelegramBroadcastRequestModel
+			{
+				Message = payload.Message,
+				CatalogKey = payload.CatalogKey,
+				Args = payload.Args,
+				Priority = payload.Priority,
+				Roles = payload.Roles
+			};
+		}
+
+		private async Task<string> ComposeBroadcastAsync(UserModel usuario, string? catalogKey, string[]? args, string? fallback)
+		{
+			if (string.IsNullOrWhiteSpace(catalogKey))
+				return fallback ?? string.Empty;
+			UiLocale locale = await LocaleForUserAsync(usuario);
+			return TelegramI18n.T(locale, catalogKey, args ?? Array.Empty<string>());
+		}
+
+		private async Task<UiLocale> LocaleForUserAsync(UserModel usuario)
+		{
+			string id = usuario.guid.ToString();
+			if (mcolLocaleCache.TryGetValue(id, out (UiLocale Locale, DateTime Expires) hit)
+				&& hit.Expires > DateTime.UtcNow)
+				return hit.Locale;
+
+			UiLocale locale = UiLocale.Spanish;
+			try
+			{
+				using DataStorage almacen = new DataStorage(config);
+				UserPreference? row = await almacen.UserPreferences
+					.AsNoTracking()
+					.FirstOrDefaultAsync(x => x.UserId == id && x.Key == PreferenceKeys.Locale);
+				if (!string.IsNullOrWhiteSpace(row?.Value))
+					locale = UiLocales.Parse(row.Value);
+			}
+			catch (Exception ex)
+			{
+				mvarLogger.LogDebug(ex, "No se pudo leer el idioma de {User}", usuario.Name);
+			}
+
+			mcolLocaleCache[id] = (locale, DateTime.UtcNow.AddMinutes(5));
+			return locale;
 		}
 		private async Task SendBroadcastMessageToUser(UserModel usuario, string message, bool includeOffline, CancellationToken cancellationToken)
 		{
@@ -348,10 +427,11 @@ namespace Sapphire2026Telegram
 			if (0 == usuario.TelegramId || (!payload.Priority && !usuario.TelegramEnabled) || null == mvarBot)
 				return;
 
+			string caption = await ComposeBroadcastAsync(usuario, payload.CatalogKey, payload.Args, payload.Message);
 			try
 			{
 				await WaitForBroadcastSlotAsync(cancellationToken);
-				await SendBroadcastMediaWithTimeout(usuario.TelegramId, payload, usuario.Name ?? "Unknown", cancellationToken);
+				await SendBroadcastMediaWithTimeout(usuario.TelegramId, payload, usuario.Name ?? "Unknown", cancellationToken, caption);
 			}
 			catch (Telegram.Bot.Exceptions.ApiRequestException ex) when (ex.ErrorCode == 403)
 			{
@@ -365,7 +445,7 @@ namespace Sapphire2026Telegram
 				try
 				{
 					await WaitForBroadcastSlotAsync(cancellationToken);
-					await SendBroadcastMediaWithTimeout(usuario.TelegramId, payload, usuario.Name ?? "Unknown", cancellationToken);
+					await SendBroadcastMediaWithTimeout(usuario.TelegramId, payload, usuario.Name ?? "Unknown", cancellationToken, caption);
 				}
 				catch (Telegram.Bot.Exceptions.ApiRequestException retryEx) when (retryEx.ErrorCode == 429)
 				{
@@ -385,7 +465,7 @@ namespace Sapphire2026Telegram
 				mvarLogger.LogError(ex, "Error enviando multimedia a {ChatId}. Se intenta texto.", usuario.Name);
 				try
 				{
-					await SendBroadcastMessageWithTimeout(usuario.TelegramId, payload.Message, usuario.Name ?? "Unknown", cancellationToken);
+					await SendBroadcastMessageWithTimeout(usuario.TelegramId, caption, usuario.Name ?? "Unknown", cancellationToken);
 				}
 				catch (Exception textEx)
 				{
@@ -394,10 +474,10 @@ namespace Sapphire2026Telegram
 			}
 		}
 
-		private async Task SendBroadcastMediaWithTimeout(long telegramId, TelegramMediaBroadcastModel payload, string userId, CancellationToken cancellationToken)
+		private async Task SendBroadcastMediaWithTimeout(long telegramId, TelegramMediaBroadcastModel payload, string userId, CancellationToken cancellationToken, string? captionOverride = null)
 		{
 			mvarLogger.LogDebug("Broadcast media to {TelegramId} ({UserId}) kind={Kind}", telegramId, userId, payload.MediaKind);
-			string caption = TruncateTelegramCaption(payload.Message);
+			string caption = TruncateTelegramCaption(captionOverride ?? payload.Message);
 			string fileName = string.IsNullOrWhiteSpace(payload.FileName)
 				? Path.GetFileName(payload.MediaPath)
 				: payload.FileName;

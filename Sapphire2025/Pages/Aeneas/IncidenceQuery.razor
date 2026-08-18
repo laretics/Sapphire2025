@@ -8,26 +8,26 @@
 @inject IJSRuntime mvarJS
 @inject NavigationManager mvarNavigator
 
-<PageTitle>Incidencias y notas · Consulta</PageTitle>
+<PageTitle>@Prefs.T("page.inc.query")</PageTitle>
 
 <div class="container-fluid py-3">
 	<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
 		<div>
 			<h3 class="mb-0">
-				<i class="bi bi-search-heart me-2"></i>Incidencias y notas
+				<i class="bi bi-search-heart me-2"></i>@Prefs.T("inc.title")
 			</h3>
 			<p class="text-muted small mb-0">
-				Consulta combinada sobre notas y cambios de estado (trenes, usuarios, fechas y etiquetas).
+				@(CanSeeUsersColumn ? Prefs.T("inc.subtitle.users") : Prefs.T("inc.subtitle"))
 			</p>
 		</div>
 		<div class="btn-group" role="group">
-			<button type="button" class="btn btn-outline-success" disabled="@(!HasResults || mvarLoading)" @onclick="ExportCsvAsync" title="Exportar CSV (Excel)">
+			<button type="button" class="btn btn-outline-success" disabled="@(!HasResults || mvarLoading)" @onclick="ExportCsvAsync" title="@Prefs.T("common.csv.tip")">
 				<i class="bi bi-file-earmark-spreadsheet"></i>
-				<span class="d-none d-md-inline"> CSV / Excel</span>
+				<span class="d-none d-md-inline"> @Prefs.T("common.csv")</span>
 			</button>
-			<button type="button" class="btn btn-outline-secondary" disabled="@(!HasResults || mvarLoading)" @onclick="PrintReportAsync" title="Imprimir informe">
+			<button type="button" class="btn btn-outline-secondary" disabled="@(!HasResults || mvarLoading)" @onclick="PrintReportAsync" title="@Prefs.T("common.print.tip")">
 				<i class="bi bi-printer"></i>
-				<span class="d-none d-md-inline"> Imprimir</span>
+				<span class="d-none d-md-inline"> @Prefs.T("common.print")</span>
 			</button>
 		</div>
 	</div>
@@ -36,27 +36,27 @@
 	<div class="card shadow-sm mb-3">
 		<div class="card-header bg-light d-flex flex-wrap align-items-center justify-content-between gap-2">
 			<span class="fw-semibold">
-				<i class="bi bi-funnel me-1"></i>Filtros
+				<i class="bi bi-funnel me-1"></i>@Prefs.T("common.filters")
 			</span>
-			<div class="btn-group btn-group-sm" role="group" aria-label="Rangos rápidos">
-				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(0)">Hoy</button>
-				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(7)">7 días</button>
-				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(30)">30 días</button>
-				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(90)">90 días</button>
+			<div class="btn-group btn-group-sm" role="group" aria-label="@Prefs.T("common.filters")">
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(0)">@Prefs.T("common.today")</button>
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(7)">@Prefs.T("common.days7")</button>
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(30)">@Prefs.T("common.days30")</button>
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(90)">@Prefs.T("common.days90")</button>
 			</div>
 		</div>
 		<div class="card-body">
 			<div class="row g-3">
 				<div class="col-6 col-md-3">
-					<label class="form-label" for="fromDate">Desde</label>
+					<label class="form-label" for="fromDate">@Prefs.T("common.from")</label>
 					<input id="fromDate" type="date" class="form-control" @bind="mvarFromDate" />
 				</div>
 				<div class="col-6 col-md-3">
-					<label class="form-label" for="toDate">Hasta</label>
+					<label class="form-label" for="toDate">@Prefs.T("common.to")</label>
 					<input id="toDate" type="date" class="form-control" @bind="mvarToDate" />
 				</div>
 				<div class="col-6 col-md-3">
-					<label class="form-label" for="maxRecords">Máx. por tipo</label>
+					<label class="form-label" for="maxRecords">@Prefs.T("common.maxpertype")</label>
 					<select id="maxRecords" class="form-select" @bind="mvarMaxRecords">
 						<option value="100">100</option>
 						<option value="500">500</option>
@@ -66,39 +66,39 @@
 					</select>
 				</div>
 				<div class="col-6 col-md-3">
-					<label class="form-label">Origen de datos</label>
+					<label class="form-label">@Prefs.T("inc.source")</label>
 					<div class="d-flex flex-wrap gap-3 pt-1">
 						<div class="form-check">
 							<input class="form-check-input" type="checkbox" id="incNotes" @bind="mvarIncludeNotes" />
-							<label class="form-check-label" for="incNotes">Notas</label>
+							<label class="form-check-label" for="incNotes">@Prefs.T("common.notes")</label>
 						</div>
 						<div class="form-check">
 							<input class="form-check-input" type="checkbox" id="incStatus" @bind="mvarIncludeStatus" />
-							<label class="form-check-label" for="incStatus">Cambios de estado</label>
+							<label class="form-check-label" for="incStatus">@Prefs.T("inc.statuschanges")</label>
 						</div>
 					</div>
 				</div>
 
 				<div class="col-12">
-					<label class="form-label" for="keywords">Palabras clave (notas)</label>
+					<label class="form-label" for="keywords">@Prefs.T("inc.keywords")</label>
 					<input id="keywords" type="text" class="form-control"
-						   placeholder="Separadas por espacio o coma (todas deben aparecer en el texto)"
+						   placeholder="@Prefs.T("inc.keywords.ph")"
 						   @bind="mvarKeywordsText" />
-					<div class="form-text">Solo se aplica a notas. Ejemplo: <em>puerta freno</em></div>
+					<div class="form-text">@Prefs.T("inc.keywords.hint")</div>
 				</div>
 
 				@* Trenes *@
-				<div class="col-12 col-lg-4">
-					<label class="form-label">Tren</label>
+				<div class="@(FilterSideColClass)">
+					<label class="form-label">@Prefs.T("common.train")</label>
 					<div class="input-group mb-1">
 						<span class="input-group-text"><i class="bi bi-train-front"></i></span>
-						<input type="text" class="form-control" placeholder="Filtrar por número..."
+						<input type="text" class="form-control" placeholder="@Prefs.T("inc.train.filter")"
 							   @bind="mvarTrainSearchText" @bind:event="oninput" />
 					</div>
 					<div class="border rounded p-2 filter-scroll">
 						@if (!FilteredTrains.Any())
 						{
-							<div class="text-muted small">No hay trenes que coincidan.</div>
+							<div class="text-muted small">@Prefs.T("inc.notrains")</div>
 						}
 						else
 						{
@@ -114,27 +114,29 @@
 						}
 					</div>
 					<div class="form-text">
-						Sin selección = todos.
+						@Prefs.T("common.noneselected")
 						@if (mcolSelectedTrainIds.Count > 0)
 						{
 							<span class="badge text-bg-secondary ms-1">@mcolSelectedTrainIds.Count</span>
-							<button type="button" class="btn btn-link btn-sm p-0 ms-1" @onclick="ClearTrainSelection">Limpiar</button>
+							<button type="button" class="btn btn-link btn-sm p-0 ms-1" @onclick="ClearTrainSelection">@Prefs.T("common.clear")</button>
 						}
 					</div>
 				</div>
 
-				@* Usuarios *@
+				@* Usuarios: solo Ingeniero, Inspector, Experto, Oficial o Administrador *@
+				@if (CanSeeUsersColumn)
+				{
 				<div class="col-12 col-lg-4">
-					<label class="form-label">Usuario</label>
+					<label class="form-label">@Prefs.T("common.user")</label>
 					<div class="input-group mb-1">
 						<span class="input-group-text"><i class="bi bi-search"></i></span>
-						<input type="text" class="form-control" placeholder="CF o nombre..."
+						<input type="text" class="form-control" placeholder="@Prefs.T("inc.user.filter")"
 							   @bind="mvarUserSearchText" @bind:event="oninput" />
 					</div>
 					<div class="border rounded p-2 filter-scroll">
 						@if (!FilteredUsers.Any())
 						{
-							<div class="text-muted small">No hay usuarios que coincidan.</div>
+							<div class="text-muted small">@Prefs.T("inc.nousers")</div>
 						}
 						else
 						{
@@ -154,18 +156,19 @@
 						}
 					</div>
 					<div class="form-text">
-						Sin selección = todos.
+						@Prefs.T("common.noneselected")
 						@if (mcolSelectedUserIds.Count > 0)
 						{
 							<span class="badge text-bg-secondary ms-1">@mcolSelectedUserIds.Count</span>
-							<button type="button" class="btn btn-link btn-sm p-0 ms-1" @onclick="ClearUserSelection">Limpiar</button>
+							<button type="button" class="btn btn-link btn-sm p-0 ms-1" @onclick="ClearUserSelection">@Prefs.T("common.clear")</button>
 						}
 					</div>
 				</div>
+				}
 
 				@* Tipos de nota + etiquetas *@
-				<div class="col-12 col-lg-4">
-					<label class="form-label">Tipo de nota</label>
+				<div class="@(FilterSideColClass)">
+					<label class="form-label">@Prefs.T("inc.notetype")</label>
 					<div class="border rounded p-2 mb-2">
 						@foreach (NoteTypeOption opt in mcolNoteTypeOptions)
 						{
@@ -178,27 +181,27 @@
 						}
 					</div>
 
-					<label class="form-label">Etiquetas NLP</label>
+					<label class="form-label">@Prefs.T("inc.nlptags")</label>
 					<div class="row g-2">
 						<div class="col-6">
-							<label class="form-label small mb-0" for="isValid">Válida</label>
+							<label class="form-label small mb-0" for="isValid">@Prefs.T("inc.valid")</label>
 							<select id="isValid" class="form-select form-select-sm" @bind="mvarIsValidFilter">
-								<option value="">Cualquiera</option>
-								<option value="true">Sí</option>
-								<option value="false">No</option>
+								<option value="">@Prefs.T("common.any")</option>
+								<option value="true">@Prefs.T("common.yes")</option>
+								<option value="false">@Prefs.T("common.no")</option>
 							</select>
 						</div>
 						<div class="col-6">
-							<label class="form-label small mb-0" for="isSymptom">Síntoma</label>
+							<label class="form-label small mb-0" for="isSymptom">@Prefs.T("inc.symptom")</label>
 							<select id="isSymptom" class="form-select form-select-sm" @bind="mvarIsSymptomFilter">
-								<option value="">Cualquiera</option>
-								<option value="true">Síntoma / avería</option>
-								<option value="false">Resolución</option>
+								<option value="">@Prefs.T("common.any")</option>
+								<option value="true">@Prefs.T("inc.symptom.fault")</option>
+								<option value="false">@Prefs.T("inc.resolution")</option>
 							</select>
 						</div>
 					</div>
 
-					<label class="form-label mt-2">Sistema afectado</label>
+					<label class="form-label mt-2">@Prefs.T("inc.system")</label>
 					<div class="border rounded p-2 filter-scroll-sm">
 						@foreach (SystemOption opt in mcolSystemOptions)
 						{
@@ -210,23 +213,23 @@
 							</div>
 						}
 					</div>
-					<div class="form-text">Las etiquetas y tipos solo filtran notas.</div>
+					<div class="form-text">@Prefs.T("inc.tags.hint")</div>
 				</div>
 			</div>
 		</div>
 		<div class="card-footer d-flex flex-wrap gap-2 justify-content-end bg-white">
 			<button type="button" class="btn btn-outline-secondary" @onclick="ResetFilters" disabled="@mvarLoading">
-				<i class="bi bi-x-circle"></i> Limpiar
+				<i class="bi bi-x-circle"></i> @Prefs.T("common.clear")
 			</button>
 			<button type="button" class="btn btn-primary" @onclick="SearchAsync" disabled="@mvarLoading">
 				@if (mvarLoading)
 				{
 					<span class="spinner-border spinner-border-sm me-1" role="status"></span>
-					<span>Buscando...</span>
+					<span>@Prefs.T("common.searching")</span>
 				}
 				else
 				{
-					<span><i class="bi bi-search"></i> Buscar</span>
+					<span><i class="bi bi-search"></i> @Prefs.T("common.search")</span>
 				}
 			</button>
 		</div>
@@ -244,39 +247,39 @@
 		<div class="card shadow-sm">
 			<div class="card-header bg-white d-flex flex-wrap align-items-center justify-content-between gap-2">
 				<div>
-					<span class="fw-semibold">Resultados</span>
+					<span class="fw-semibold">@Prefs.T("common.results")</span>
 					@if (mvarResponse is not null)
 					{
 						<span class="text-muted small ms-2">
-							@mvarResponse.Items.Count mostrados
+							@Prefs.T("common.shown", mvarResponse.Items.Count)
 							@if (mvarResponse.TotalMatched != mvarResponse.Items.Count)
 							{
-								<span> · @mvarResponse.TotalNotes notas / @mvarResponse.TotalStatusChanges estados (totales)</span>
+								<span>@Prefs.T("inc.totals", mvarResponse.TotalNotes, mvarResponse.TotalStatusChanges)</span>
 							}
 							else
 							{
-								<span> · @mvarResponse.TotalNotes notas · @mvarResponse.TotalStatusChanges estados</span>
+								<span>@Prefs.T("inc.counts", mvarResponse.TotalNotes, mvarResponse.TotalStatusChanges)</span>
 							}
 						</span>
 						@if (mvarResponse.Truncated)
 						{
-							<span class="badge text-bg-warning ms-2">Truncado (aumenta el máximo)</span>
+							<span class="badge text-bg-warning ms-2">@Prefs.T("common.truncated")</span>
 						}
 					}
 				</div>
 				<div class="d-flex flex-wrap align-items-center gap-2">
 					<div class="btn-group btn-group-sm" role="group">
 						<button type="button" class="btn @(mvarViewMode == ViewMode.Timeline ? "btn-primary" : "btn-outline-primary")"
-								@onclick="() => mvarViewMode = ViewMode.Timeline">Cronología</button>
+								@onclick="() => mvarViewMode = ViewMode.Timeline">@Prefs.T("inc.timeline")</button>
 						<button type="button" class="btn @(mvarViewMode == ViewMode.Notes ? "btn-primary" : "btn-outline-primary")"
-								@onclick="() => mvarViewMode = ViewMode.Notes">Notas</button>
+								@onclick="() => mvarViewMode = ViewMode.Notes">@Prefs.T("common.notes")</button>
 						<button type="button" class="btn @(mvarViewMode == ViewMode.Status ? "btn-primary" : "btn-outline-primary")"
-								@onclick="() => mvarViewMode = ViewMode.Status">Estados</button>
+								@onclick="() => mvarViewMode = ViewMode.Status">@Prefs.T("common.status")</button>
 					</div>
 					@if (HasResults)
 					{
 						<input type="text" class="form-control form-control-sm" style="max-width: 14rem;"
-							   placeholder="Filtrar en resultados..."
+							   placeholder="@Prefs.T("common.filter.results")"
 							   @bind="mvarClientFilter" @bind:event="oninput" />
 					}
 				</div>
@@ -286,13 +289,13 @@
 				{
 					<div class="text-center py-5">
 						<div class="spinner-border text-primary" role="status"></div>
-						<div class="mt-2 text-muted">Consultando el servidor...</div>
+						<div class="mt-2 text-muted">@Prefs.T("common.querying")</div>
 					</div>
 				}
 				else if (!DisplayedItems.Any())
 				{
 					<div class="alert alert-warning m-3 mb-0">
-						No hay resultados para los filtros seleccionados.
+						@Prefs.T("common.noresults")
 					</div>
 				}
 				else
@@ -302,19 +305,22 @@
 							<thead class="table-light sticky-top">
 								<tr>
 									<th role="button" @onclick="() => SortBy(SortColumn.Time)">
-										Fecha @SortIcon(SortColumn.Time)
+										@Prefs.T("common.date") @SortIcon(SortColumn.Time)
 									</th>
 									<th role="button" @onclick="() => SortBy(SortColumn.Kind)">
-										Tipo @SortIcon(SortColumn.Kind)
+										@Prefs.T("common.type") @SortIcon(SortColumn.Kind)
 									</th>
 									<th role="button" @onclick="() => SortBy(SortColumn.Train)">
-										Tren @SortIcon(SortColumn.Train)
+										@Prefs.T("common.train") @SortIcon(SortColumn.Train)
 									</th>
-									<th role="button" @onclick="() => SortBy(SortColumn.User)">
-										Usuario @SortIcon(SortColumn.User)
-									</th>
-									<th>Detalle</th>
-									<th>Etiquetas</th>
+									@if (CanSeeUsersColumn)
+									{
+										<th role="button" @onclick="() => SortBy(SortColumn.User)">
+											@Prefs.T("common.user") @SortIcon(SortColumn.User)
+										</th>
+									}
+									<th>@Prefs.T("common.details")</th>
+									<th>@Prefs.T("common.tags")</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -332,17 +338,20 @@
 											}
 											else
 											{
-												<span class="badge text-bg-secondary">Estado</span>
+												<span class="badge text-bg-secondary">@Prefs.T("common.status")</span>
 											}
 										</td>
 										<td class="fw-semibold">@(string.IsNullOrWhiteSpace(row.TrainName) ? "—" : row.TrainName)</td>
-										<td>
-											<div class="fw-semibold">@(string.IsNullOrWhiteSpace(row.UserName) ? "—" : row.UserName)</div>
-											@if (!string.IsNullOrWhiteSpace(row.UserCf))
-											{
-												<div class="text-muted small">@row.UserCf</div>
-											}
-										</td>
+										@if (CanSeeUsersColumn)
+										{
+											<td>
+												<div class="fw-semibold">@(string.IsNullOrWhiteSpace(row.UserName) ? "—" : row.UserName)</div>
+												@if (!string.IsNullOrWhiteSpace(row.UserCf))
+												{
+													<div class="text-muted small">@row.UserCf</div>
+												}
+											</td>
+										}
 										<td>
 											@if (row.Kind == "note")
 											{
@@ -350,7 +359,7 @@
 												@if (row.ClosureTime.HasValue)
 												{
 													<div class="text-muted small mt-1">
-														<i class="bi bi-check2-circle"></i> Cerrada @Utils.autoDate(row.ClosureTime)
+														<i class="bi bi-check2-circle"></i> @Prefs.T("inc.closed", Utils.autoDate(row.ClosureTime))
 													</div>
 												}
 											}
@@ -369,19 +378,19 @@
 												<div class="d-flex flex-wrap gap-1">
 													@if (row.IsValid == true)
 													{
-														<span class="badge text-bg-success">Válida</span>
+														<span class="badge text-bg-success">@Prefs.T("inc.valid")</span>
 													}
 													else if (row.IsValid == false)
 													{
-														<span class="badge text-bg-light text-dark border">No válida</span>
+														<span class="badge text-bg-light text-dark border">@Prefs.T("inc.invalid")</span>
 													}
 													@if (row.IsSymptom == true)
 													{
-														<span class="badge text-bg-danger">Síntoma</span>
+														<span class="badge text-bg-danger">@Prefs.T("inc.symptom")</span>
 													}
 													else if (row.IsSymptom == false)
 													{
-														<span class="badge text-bg-primary">Resolución</span>
+														<span class="badge text-bg-primary">@Prefs.T("inc.resolution")</span>
 													}
 													@if (row.SystemAffected is > 0)
 													{
@@ -413,7 +422,7 @@
 	{
 		<div class="alert alert-info">
 			<i class="bi bi-info-circle me-1"></i>
-			Define los filtros y pulsa <strong>Buscar</strong>. Por defecto se consultan los últimos 7 días (notas y cambios de estado).
+			@Prefs.T("inc.hint")
 		</div>
 	}
 </div>
@@ -464,8 +473,20 @@
 	private SortColumn mvarSortColumn = SortColumn.Time;
 	private bool mvarSortAscending;
 	private ViewMode mvarViewMode = ViewMode.Timeline;
+	private SessionModel? mvarSession;
 
 	private bool HasResults => mvarResponse?.Items is { Count: > 0 };
+
+	/// <summary>
+	/// Columna de usuario: Ingeniero, Inspector, Experto, Oficial o Administrador (Root).
+	/// </summary>
+	private bool CanSeeUsersColumn =>
+		Utils.isOfficial(mvarSession)
+		|| Utils.isInspector(mvarSession)
+		|| Utils.isExpert(mvarSession);
+
+	private string FilterSideColClass =>
+		CanSeeUsersColumn ? "col-12 col-lg-4" : "col-12 col-lg-6";
 
 	private IEnumerable<TrainModel> FilteredTrains
 	{
@@ -515,8 +536,8 @@
 				string f = mvarClientFilter.Trim();
 				q = q.Where(r =>
 					(r.TrainName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
-					(r.UserName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
-					(r.UserCf?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
+					(CanSeeUsersColumn && (r.UserName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false)) ||
+					(CanSeeUsersColumn && (r.UserCf?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false)) ||
 					(r.Text?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
 					(r.NoteTypeName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
 					(r.OperationName?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false) ||
@@ -552,12 +573,17 @@
 		mvarLoading = true;
 		try
 		{
+			mvarSession = await mvarLocalStorage.GetSessionInfo();
+
 			IEnumerable<TrainModel> trains = await mvarAeneasClient.trainsList();
 			mcolTrains = trains.OrderBy(t => t.name).ToList();
 
-			IEnumerable<UserModel>? users = await mvarAuthClient.completeUsersList();
-			if (null != users)
-				mcolUsers = users.OrderBy(u => u.CF).ThenBy(u => u.Name).ToList();
+			if (CanSeeUsersColumn)
+			{
+				IEnumerable<UserModel>? users = await mvarAuthClient.completeUsersList();
+				if (null != users)
+					mcolUsers = users.OrderBy(u => u.CF).ThenBy(u => u.Name).ToList();
+			}
 		}
 		catch (Exception ex)
 		{
@@ -706,7 +732,7 @@
 
 		if (mcolSelectedTrainIds.Count > 0)
 			request.TrainIds = mcolSelectedTrainIds.ToList();
-		if (mcolSelectedUserIds.Count > 0)
+		if (CanSeeUsersColumn && mcolSelectedUserIds.Count > 0)
 			request.UserIds = mcolSelectedUserIds.ToList();
 		if (mcolSelectedNoteTypes.Count > 0)
 			request.NoteTypes = mcolSelectedNoteTypes.ToList();
@@ -747,10 +773,13 @@
 		else
 			parts.Add("Todos los trenes");
 
-		if (mcolSelectedUserIds.Count > 0)
-			parts.Add($"{mcolSelectedUserIds.Count} usuario(s)");
-		else
-			parts.Add("Todos los usuarios");
+		if (CanSeeUsersColumn)
+		{
+			if (mcolSelectedUserIds.Count > 0)
+				parts.Add($"{mcolSelectedUserIds.Count} usuario(s)");
+			else
+				parts.Add("Todos los usuarios");
+		}
 
 		if (mcolSelectedNoteTypes.Count > 0)
 			parts.Add($"{mcolSelectedNoteTypes.Count} tipo(s) de nota");
@@ -773,7 +802,10 @@
 
 		StringBuilder sb = new StringBuilder();
 		sb.Append('\uFEFF'); // BOM UTF-8 para Excel
-		sb.AppendLine("FechaUTC;FechaLocal;Origen;TipoNota;Tren;Usuario;CF;UserId;Texto;Operacion;Estado;Valida;Sintoma;Sistema;Cierre");
+		if (CanSeeUsersColumn)
+			sb.AppendLine("FechaUTC;FechaLocal;Origen;TipoNota;Tren;Usuario;CF;UserId;Texto;Operacion;Estado;Valida;Sintoma;Sistema;Cierre");
+		else
+			sb.AppendLine("FechaUTC;FechaLocal;Origen;TipoNota;Tren;Texto;Operacion;Estado;Valida;Sintoma;Sistema;Cierre");
 
 		foreach (IncidenceQueryItem row in DisplayedItems)
 		{
@@ -783,9 +815,12 @@
 			sb.Append(Csv(row.KindLabel)).Append(';');
 			sb.Append(Csv(row.Kind == "note" ? row.NoteTypeName : string.Empty)).Append(';');
 			sb.Append(Csv(row.TrainName)).Append(';');
-			sb.Append(Csv(row.UserName)).Append(';');
-			sb.Append(Csv(row.UserCf)).Append(';');
-			sb.Append(Csv(row.UserId.ToString())).Append(';');
+			if (CanSeeUsersColumn)
+			{
+				sb.Append(Csv(row.UserName)).Append(';');
+				sb.Append(Csv(row.UserCf)).Append(';');
+				sb.Append(Csv(row.UserId.ToString())).Append(';');
+			}
 			sb.Append(Csv(row.Text)).Append(';');
 			sb.Append(Csv(row.Kind == "status" ? row.OperationName : string.Empty)).Append(';');
 			sb.Append(Csv(row.Kind == "status" ? row.StatusName : string.Empty)).Append(';');
@@ -827,7 +862,8 @@
 			GeneratedAt = DateTime.Now,
 			TotalNotes = mvarResponse.TotalNotes,
 			TotalStatusChanges = mvarResponse.TotalStatusChanges,
-			Truncated = mvarResponse.Truncated
+			Truncated = mvarResponse.Truncated,
+			ShowUsers = CanSeeUsersColumn
 		};
 		await mvarLocalStorage.SetIncidenceQueryPrintPackage(package);
 

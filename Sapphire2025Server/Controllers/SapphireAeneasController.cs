@@ -5,6 +5,7 @@ using Org.BouncyCastle.Crypto.Operators;
 using Sapphire2025Models;
 using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
+using Sapphire2025Models.I18n;
 using Sapphire2025Models.GMao;
 using Sapphire2025Server.Comunications;
 using Sapphire2026.Data;
@@ -356,7 +357,7 @@ namespace Sapphire2025Server.Controllers
 			{
 				try
 				{
-					await mvarHubContext.Clients.All.SendAsync("ReceiveBroadcastRequest2", request.Message, request.Priority, request.Roles.ToArray());
+					await mvarHubContext.Clients.All.SendAsync("ReceiveBroadcastRequest2", request);
 					// Sin SessionToken en el modelo: registramos host si hay, sin userId concreto.
 					// Si en el futuro el broadcast trae token, se puede asociar al actor.
 					return true;
@@ -372,26 +373,48 @@ namespace Sapphire2025Server.Controllers
 
 		private async Task<bool> SendTelegramBroadcast(string message, bool priority =false, string filters = "")
 		{
-			try
+			return await SendTelegramBroadcast(new TelegramBroadcastRequestModel
 			{
-				await mvarHubContext.Clients.All.SendAsync("ReceiveBroadcastRequest1",message,priority,filters);
-				return true;
-			}
-			catch (Exception ex)
-			{
-				return false;
-			}
+				Message = message,
+				Priority = priority,
+				Filters = filters
+			});
 		}
 		private async Task<bool> SendTelegramBroadcast(string message, bool priority = false, params Common.UserRole[] roles)
 		{
+			return await SendTelegramBroadcast(new TelegramBroadcastRequestModel
+			{
+				Message = message,
+				Priority = priority,
+				Roles = roles
+			});
+		}
+
+		private async Task<bool> SendTelegramBroadcast(string key, object?[] args, bool priority, params Common.UserRole[] roles)
+		{
+			return await SendTelegramBroadcast(new TelegramBroadcastRequestModel
+			{
+				CatalogKey = key,
+				Args = ToTelegramArgs(args),
+				Message = TelegramI18n.T(UiLocale.Spanish, key, args),
+				Priority = priority,
+				Roles = roles
+			});
+		}
+
+		private async Task<bool> SendTelegramBroadcast(TelegramBroadcastRequestModel request)
+		{
 			try
 			{
-				await mvarHubContext.Clients.All.SendAsync("ReceiveBroadcastRequest2", message, priority, roles);
+				if (request.Roles is not null)
+					await mvarHubContext.Clients.All.SendAsync("ReceiveBroadcastRequest2", request);
+				else
+					await mvarHubContext.Clients.All.SendAsync("ReceiveBroadcastRequest1", request);
 				return true;
 			}
 			catch (Exception ex)
 			{
-				mvarLogger.LogError($"TelegramBroadcast: {ex.ToString()}");
+				mvarLogger.LogError($"TelegramBroadcast: {ex}");
 				return false;
 			}
 		}
@@ -404,14 +427,53 @@ namespace Sapphire2025Server.Controllers
 			string? fileName,
 			params Common.UserRole[] roles)
 		{
+			return await SendTelegramMediaBroadcast(message, null, null, priority, mediaPath, mediaKind, fileName, roles);
+		}
+
+		private async Task<bool> SendTelegramMediaBroadcast(
+			string key,
+			object?[] args,
+			bool priority,
+			string mediaPath,
+			string mediaKind,
+			string? fileName,
+			params Common.UserRole[] roles)
+		{
+			return await SendTelegramMediaBroadcast(
+				TelegramI18n.T(UiLocale.Spanish, key, args),
+				key,
+				ToTelegramArgs(args),
+				priority,
+				mediaPath,
+				mediaKind,
+				fileName,
+				roles);
+		}
+
+		private async Task<bool> SendTelegramMediaBroadcast(
+			string message,
+			string? catalogKey,
+			string[]? args,
+			bool priority,
+			string mediaPath,
+			string mediaKind,
+			string? fileName,
+			params Common.UserRole[] roles)
+		{
 			if (string.IsNullOrWhiteSpace(mediaPath) || !System.IO.File.Exists(mediaPath))
+			{
+				if (!string.IsNullOrWhiteSpace(catalogKey))
+					return await SendTelegramBroadcast(catalogKey, args ?? Array.Empty<string>(), priority, roles);
 				return await SendTelegramBroadcast(message, priority, roles);
+			}
 
 			try
 			{
 				TelegramMediaBroadcastModel payload = new TelegramMediaBroadcastModel
 				{
 					Message = message,
+					CatalogKey = catalogKey,
+					Args = args,
 					Priority = priority,
 					Roles = roles ?? Array.Empty<Common.UserRole>(),
 					MediaPath = mediaPath,
@@ -424,16 +486,37 @@ namespace Sapphire2025Server.Controllers
 			catch (Exception ex)
 			{
 				mvarLogger.LogError(ex, "TelegramMediaBroadcast falló; se envía sólo texto.");
+				if (!string.IsNullOrWhiteSpace(catalogKey))
+					return await SendTelegramBroadcast(catalogKey, args ?? Array.Empty<string>(), priority, roles);
 				return await SendTelegramBroadcast(message, priority, roles);
 			}
 		}
 
-		private async Task NotifyTelegramWithOptionalMedia(string message, LastNoteSnapshot? media, params Common.UserRole[] roles)
+		private async Task NotifyTelegramWithOptionalMedia(string key, object?[] args, LastNoteSnapshot? media, params Common.UserRole[] roles)
 		{
 			if (null != media && media.HasMedia)
-				await SendTelegramMediaBroadcast(message, false, media.MediaPath!, media.MediaKind, media.FileName, roles);
+				await SendTelegramMediaBroadcast(key, args, false, media.MediaPath!, media.MediaKind, media.FileName, roles);
 			else
-				await SendTelegramBroadcast(message, false, roles);
+				await SendTelegramBroadcast(key, args, false, roles);
+		}
+
+		private static string[] ToTelegramArgs(object?[]? args)
+		{
+			if (args is null || args.Length == 0)
+				return Array.Empty<string>();
+			string[] salida = new string[args.Length];
+			for (int i = 0; i < args.Length; i++)
+				salida[i] = args[i]?.ToString() ?? string.Empty;
+			return salida;
+		}
+
+		private static string TelegramNoteArg(LastNoteSnapshot? snap)
+		{
+			if (snap is null)
+				return string.Empty;
+			if (!string.IsNullOrWhiteSpace(snap.TextKey))
+				return TelegramI18n.Token(snap.TextKey);
+			return snap.Text ?? string.Empty;
 		}
 
 		/// <summary>
@@ -445,53 +528,57 @@ namespace Sapphire2025Server.Controllers
 		private async Task TelegramNotify(StatusChange statusChange, Train train, IConfiguration config)
 		{
 			User? usuario = await retrieveUserStatic(statusChange.UserId,config);
-			string nombreUsuario = "un usuario desconocido";
+			string nombreUsuario = (null != usuario && !string.IsNullOrWhiteSpace(usuario.UserName))
+				? usuario.UserName
+				: TelegramI18n.Token("tg.user.unknown");
 			LastNoteSnapshot? ultimoParte = null;
-			if (null!=usuario && null!=usuario.UserName) nombreUsuario = usuario.UserName;
 			switch(statusChange.Operation)
 			{
 				case Common.OperationType.EndMaintenance:
-					await SendTelegramBroadcast(string.Format("La UT {0} acaba de reincorporarse a la circulación tras terminar {1} los trabajos planificados.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector });
+					await SendTelegramBroadcast("tg.notify.endmaint", new object[] { train.Name, nombreUsuario }, false, Common.UserRole.Inspector);
 					break;
 				case Common.OperationType.EndCorrective:					
-					await SendTelegramBroadcast(string.Format("La UT {0} acaba de reincorporarse a la circulación tras dar {1} por terminada la reparación.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector }); 
+					await SendTelegramBroadcast("tg.notify.endcorr", new object[] { train.Name, nombreUsuario }, false, Common.UserRole.Inspector);
 					break;
 				case Common.OperationType.CorrectiveRequest:
 					ultimoParte = await lastNoteSnapshotStatic(train.Guid, config);
 					await NotifyTelegramWithOptionalMedia(
-						string.Format("{1} abrió incidencia a la UT {0}: \"{2}\"", train.Name, nombreUsuario, ultimoParte.Text),
+						"tg.notify.incidence",
+						new object[] { train.Name, nombreUsuario, TelegramNoteArg(ultimoParte) },
 						ultimoParte,
 						Common.UserRole.Inspector, Common.UserRole.Expert, Common.UserRole.Oficial, Common.UserRole.Mechanic);
 					break;
 				case Common.OperationType.DiagnoseToFault:
 					ultimoParte = await lastNoteSnapshotStatic(train.Guid, config);
 					await NotifyTelegramWithOptionalMedia(
-						string.Format("{1} pide retirar el tren {0} de la circulación. \"{2}\"", train.Name, nombreUsuario, ultimoParte.Text),
+						"tg.notify.withdraw",
+						new object[] { train.Name, nombreUsuario, TelegramNoteArg(ultimoParte) },
 						ultimoParte,
 						Common.UserRole.Inspector, Common.UserRole.Station);
 					break;
 				case Common.OperationType.DiagnoseToAvailable:
 					ultimoParte = await lastNoteSnapshotStatic(train.Guid, config);
 					await NotifyTelegramWithOptionalMedia(
-						string.Format("{1} considera que la UT {0} puede seguir en servicio. La última nota es:\"{2}\"", train.Name, nombreUsuario, ultimoParte.Text),
+						"tg.notify.continue",
+						new object[] { train.Name, nombreUsuario, TelegramNoteArg(ultimoParte) },
 						ultimoParte,
 						Common.UserRole.Inspector);
 					break;
 				case Common.OperationType.BeginCorrective:
-					await SendTelegramBroadcast(string.Format("{1} ha dado entrada en taller a la UT {0} para correctivo.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Oficial, Common.UserRole.Engineer, Common.UserRole.Inspector, Common.UserRole.Station }); break;
+					await SendTelegramBroadcast("tg.notify.begincorr", new object[] { train.Name, nombreUsuario }, false, Common.UserRole.Oficial, Common.UserRole.Engineer, Common.UserRole.Inspector, Common.UserRole.Station); break;
 				case Common.OperationType.DepotRequest:
-					await SendTelegramBroadcast(string.Format("{1} solicita apartar la UT {0} para mantenimiento planificado.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector, Common.UserRole.Station }); break;
+					await SendTelegramBroadcast("tg.notify.depotreq", new object[] { train.Name, nombreUsuario }, false, Common.UserRole.Inspector, Common.UserRole.Station); break;
 				case Common.OperationType.DepotRequestAccept:
-					await SendTelegramBroadcast(string.Format("{1} acaba de apartar la UT {0} para mantenimiento planificado.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Oficial, Common.UserRole.Mechanic, Common.UserRole.Inspector, Common.UserRole.Station }); break;
+					await SendTelegramBroadcast("tg.notify.depotacc", new object[] { train.Name, nombreUsuario }, false, Common.UserRole.Oficial, Common.UserRole.Mechanic, Common.UserRole.Inspector, Common.UserRole.Station); break;
 				case Common.OperationType.MaintenanceRescue:
 				case Common.OperationType.DiferMaintenance:
-					await SendTelegramBroadcast(string.Format("{1} devuelve a la circulación la UT {0} que había solicitado taller para mantenimiento planificado.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Inspector, Common.UserRole.Station }); break;
+					await SendTelegramBroadcast("tg.notify.depotback", new object[] { train.Name, nombreUsuario }, false, Common.UserRole.Inspector, Common.UserRole.Station); break;
 				case Common.OperationType.SendToStandStill:
-					await SendTelegramBroadcast(string.Format("{1} envía la UT {0} al estado \"Stand-Still\" .", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Engineer, Common.UserRole.Oficial }); break;
+					await SendTelegramBroadcast("tg.notify.standstill", new object[] { train.Name, nombreUsuario }, false, Common.UserRole.Engineer, Common.UserRole.Oficial); break;
 				case Common.OperationType.Activate:
-					await SendTelegramBroadcast(string.Format("{1} acaba de activar la UT {0} en el sistema.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Engineer, Common.UserRole.Oficial }); break;
+					await SendTelegramBroadcast("tg.notify.activate", new object[] { train.Name, nombreUsuario }, false, Common.UserRole.Engineer, Common.UserRole.Oficial); break;
 				case Common.OperationType.RescueFromStandStill:
-					await SendTelegramBroadcast(string.Format("{1} ha reactivado la UT {0} desde el estado de Stand-Still. Ahora está asignada a taller para revisión.", train.Name, nombreUsuario), false, new Common.UserRole[] { Common.UserRole.Engineer, Common.UserRole.Oficial, Common.UserRole.Mechanic });break;
+					await SendTelegramBroadcast("tg.notify.rescue", new object[] { train.Name, nombreUsuario }, false, Common.UserRole.Engineer, Common.UserRole.Oficial, Common.UserRole.Mechanic);break;
 			}	
 		}
 

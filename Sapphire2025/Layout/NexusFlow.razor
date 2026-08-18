@@ -2,6 +2,8 @@
 @using Sapphire2025.Pages.Authentication
 @inject IntStorageService mvarClientStorage
 @inject InteractiveService mvarInteractive
+@inject UserPreferencesService mvarPrefs
+@implements IDisposable
 @inherits LayoutComponentBase
 
 <SessionWatchdog/>
@@ -17,7 +19,7 @@
                         @Sapphire2025Models.Common.SapphireSoftwareVersion
                     </small>
                 </div>
-                <button class="sidebar-pin-btn" type="button" onclick="toggleSidebar()" title="Fijar o contraer el menú" aria-label="Fijar o contraer el menú">
+                <button class="sidebar-pin-btn" type="button" onclick="toggleSidebar()" title="@mvarPrefs.T("nav.pin")" aria-label="@mvarPrefs.T("nav.pin")">
                     <span class="pin-on" aria-hidden="true">
                         <GenIcon Name="PinOn" Size="20" Color="#c8f0fa" />
                     </span>
@@ -38,7 +40,7 @@
 
         <main class="main-content">
             <div class="mobile-topbar">
-                <button type="button" class="mobile-menu-btn" onclick="openMobileSidebar()" aria-label="Abrir menú">
+                <button type="button" class="mobile-menu-btn" onclick="openMobileSidebar()" aria-label="@mvarPrefs.T("nav.open")">
                     ☰
                 </button>
                 <NavHistoryButtons CssClass="compact" IconSize="22" />
@@ -48,7 +50,7 @@
                 <NavHistoryButtons />
             </div>
             <ContextualHelpButton />
-            <button type="button" class="zen-exit" onclick="zafiroExitZen()" title="Salir de pantalla completa (F11)" aria-label="Salir de pantalla completa">
+            <button type="button" class="zen-exit" onclick="zafiroExitZen()" title="@mvarPrefs.T("nav.exitzen")" aria-label="@mvarPrefs.T("nav.exitzen")">
                 <GenIcon Name="Collapse" Size="18" Color="currentColor" />
             </button>
             <div class="container-fluid px-0 px-sm-2">
@@ -159,18 +161,24 @@
     protected async override Task OnInitializedAsync()
     {
         mvarInteractive.OnChange += HandleHasChangedSync;
+        mvarPrefs.Changed += OnPrefsChanged;
         await base.OnInitializedAsync();
+        await mvarPrefs.LoadLocalAsync();
         SessionModel? sessionInfo = await mvarClientStorage.GetSessionInfo();
         if(null!=sessionInfo)
         {
-            Session = sessionInfo;            
+            Session = sessionInfo;
+            await mvarPrefs.LoadFromServerAsync();
         }
     }
 
     public void Dispose()
     {
         mvarInteractive.OnChange -= HandleHasChangedSync;
+        mvarPrefs.Changed -= OnPrefsChanged;
     }
+
+    private void OnPrefsChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
     private void UpdateSession(SessionModel? newSession)
     {
         if (null == newSession) Session = null;
@@ -192,6 +200,8 @@
     {
 		SessionModel? auxModelo = await mvarClientStorage.GetSessionInfo();
 		UpdateSession(auxModelo);
+        if (auxModelo is not null)
+            await mvarPrefs.LoadFromServerAsync();
         StateHasChanged();
     }
 

@@ -585,7 +585,7 @@ namespace Sapphire2025Server.Controllers
 				UserId = userId,
 				DocumentKind = Trunc(request.DocumentKind, 16),
 				Channel = Trunc(request.Channel, 16),
-				SealCode = Trunc(request.SealCode.Replace("SEL", string.Empty, StringComparison.OrdinalIgnoreCase).Trim(), 32),
+				SealCode = Trunc(CirculationSealText.Normalize(request.SealCode), 32),
 				Payload = Trunc(request.Payload, 1024),
 				PlanOrTrain = Trunc(request.PlanOrTrain, 200),
 				EditionLabel = Trunc(request.EditionLabel, 200),
@@ -595,6 +595,7 @@ namespace Sapphire2025Server.Controllers
 				PdfContentHash = Trunc(request.PdfContentHash, 64),
 				PdfCmsSignatureBase64 = request.PdfCmsSignatureBase64 ?? string.Empty,
 				QrText = Trunc(request.QrText, 512),
+				SvgArchive = request.SvgArchive ?? string.Empty,
 				HostPoint = Trunc(host, 255)
 			};
 
@@ -632,20 +633,7 @@ namespace Sapphire2025Server.Controllers
 				return response;
 			}
 
-			string seal = request.SealOrQr.Trim();
-			// Extraer SEL de QR ZAFSEL:v1:{seal}:{payload}
-			if (seal.StartsWith("ZAFSEL:v1:", StringComparison.OrdinalIgnoreCase))
-			{
-				string rest = seal.Substring("ZAFSEL:v1:".Length);
-				int colon = rest.IndexOf(':');
-				seal = colon > 0 ? rest.Substring(0, colon) : rest;
-			}
-
-			if (seal.StartsWith("SEL", StringComparison.OrdinalIgnoreCase))
-			{
-				seal = seal.Substring(3).Trim();
-			}
-
+			string seal = CirculationSealText.Normalize(request.SealOrQr);
 			response.SealCode = seal;
 			try
 			{
@@ -663,8 +651,10 @@ namespace Sapphire2025Server.Controllers
 
 					response.Ok = true;
 					response.FoundInRegistry = true;
-					response.Message = "Sello registrado: "
-						+ found.DocumentKind + " · " + found.Channel
+					response.HasArchive = !string.IsNullOrWhiteSpace(found.SvgArchive);
+					response.CryptographicMatch = true;
+					response.Message = "Documento auténtico y reconocido. "
+						+ KindLabel(found.DocumentKind)
 						+ " · " + found.PlanOrTrain
 						+ " · " + found.EmittedAtUtc.ToString("u");
 					response.Emission = ToModel(found);
@@ -675,6 +665,46 @@ namespace Sapphire2025Server.Controllers
 			{
 				response.Ok = false;
 				response.Message = "Error de verificación: " + ex.Message;
+				return response;
+			}
+		}
+
+		[HttpGet("circulation/document")]
+		public async Task<CirculationEmissionDocumentResponse> GetCirculationDocument(
+			[FromQuery] string? seal)
+		{
+			CirculationEmissionDocumentResponse response = new CirculationEmissionDocumentResponse();
+			string normalized = CirculationSealText.Normalize(seal);
+			if (string.IsNullOrWhiteSpace(normalized))
+			{
+				response.Ok = false;
+				response.Message = "Indica el sello.";
+				return response;
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondCirculationEmissionStore store = new DiamondCirculationEmissionStore(almacen);
+				DiamondCirculationEmission? found = await store.FindBySealAsync(normalized);
+				if (found is null)
+				{
+					response.Ok = false;
+					response.Message = "Sello no encontrado.";
+					return response;
+				}
+
+				if (string.IsNullOrWhiteSpace(found.SvgArchive))
+				{
+					response.Ok = false;
+					response.Emission = ToModel(found);
+					response.Message = "Emisión reconocida, pero no hay copia recuperable del documento.";
+					return response;
+				}
+
+				response.Ok = true;
+				response.Emission = ToModel(found);
+				response.Message = "Documento recuperado.";
+				response.SvgArchive = found.SvgArchive;
 				return response;
 			}
 		}
@@ -697,8 +727,250 @@ namespace Sapphire2025Server.Controllers
 				CertThumbprint = e.CertThumbprint,
 				PdfContentHash = e.PdfContentHash,
 				QrText = e.QrText,
-				HostPoint = e.HostPoint
+				HostPoint = e.HostPoint,
+				HasArchive = !string.IsNullOrWhiteSpace(e.SvgArchive)
 			};
+		}
+
+		private static string KindLabel(string kind)
+		{
+			if (string.Equals(kind, "libro", StringComparison.OrdinalIgnoreCase))
+			{
+				return "Libro itinerario";
+			}
+
+			if (string.Equals(kind, "ficha", StringComparison.OrdinalIgnoreCase))
+			{
+				return "Hoja de marcha";
+			}
+
+			if (string.Equals(kind, "consigna-b", StringComparison.OrdinalIgnoreCase))
+			{
+				return "Consigna serie B";
+			}
+
+			return kind ?? string.Empty;
+		}
+
+		// ── Limitaciones temporales de velocidad ───────────────────────────
+
+		/// <summary>Ejes de una topología (id, PK, vmax) para el editor de limitaciones.</summary>
+		[HttpGet("topoaxes")]
+		public async Task<ActionResult<IReadOnlyList<DiamondTopoAxisModel>>> ListTopoAxes([FromQuery] Guid id)
+		{
+			if (Guid.Empty.Equals(id))
+			{
+				return BadRequest("Id vacío.");
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondTopoStore topoStore = new DiamondTopoStore(almacen);
+				DiamondTopoDocument? doc = await topoStore.GetDocumentAsync(id);
+				if (doc is null)
+				{
+					return NotFound();
+				}
+
+				try
+				{
+					byte[] xmlBytes = string.Equals(doc.Format, DiamondTopoStore.FormatXmlGz, StringComparison.OrdinalIgnoreCase)
+						? Gunzip(doc.Payload)
+						: doc.Payload;
+					using (MemoryStream stream = new MemoryStream(xmlBytes, writable: false))
+					{
+						TopoLayout layout = TopoXmlSerializer.Load(stream);
+						List<DiamondTopoAxisModel> axes = new List<DiamondTopoAxisModel>(layout.Axes.Count);
+						int i = 0;
+						while (i < layout.Axes.Count)
+						{
+							Axis axis = layout.Axes[i];
+							DiamondTopoAxisModel item = new DiamondTopoAxisModel();
+							item.Id = axis.Id;
+							item.Name = string.IsNullOrWhiteSpace(axis.Name) ? axis.Id : axis.Name;
+							item.Pk0 = axis.PK;
+							item.Pkf = axis.PKEnd;
+							item.Vmax = axis.Vmax;
+							item.DefaultTrackCount = axis.DefaultTrackCount;
+							IReadOnlyList<SpeedLimitSpan> fixedSpans = axis.FixedLimits.EnumerateStored();
+							int s = 0;
+							while (s < fixedSpans.Count)
+							{
+								SpeedLimitSpan span = fixedSpans[s];
+								DiamondSpeedSpanModel stored = new DiamondSpeedSpanModel();
+								stored.Pk0 = span.PK;
+								stored.Pkf = span.PKEnd;
+								stored.Speed = span.Speed;
+								item.FixedLimits.Add(stored);
+								s++;
+							}
+
+							axes.Add(item);
+							i++;
+						}
+
+						return axes;
+					}
+				}
+				catch (Exception ex)
+				{
+					return BadRequest("No se pudo leer la topología: " + ex.Message);
+				}
+			}
+		}
+
+		[HttpGet("templimits")]
+		public async Task<IReadOnlyList<DiamondTemporaryLimitModel>> ListTemporaryLimits(
+			[FromQuery] Guid topoId,
+			[FromQuery] string? axisId = null)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondTemporaryLimitStore store = new DiamondTemporaryLimitStore(almacen);
+				return await store.ListAsync(topoId, axisId);
+			}
+		}
+
+		[HttpPost("savetemplimit")]
+		public async Task<DiamondTemporaryLimitSaveResult> SaveTemporaryLimit(
+			[FromBody] DiamondTemporaryLimitSaveRequest request)
+		{
+			if (request is null)
+			{
+				return new DiamondTemporaryLimitSaveResult
+				{
+					Success = false,
+					Message = "Petición vacía."
+				};
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondTemporaryLimitStore store = new DiamondTemporaryLimitStore(almacen);
+				return await store.SaveAsync(request);
+			}
+		}
+
+		[HttpPost("deletetemplimit")]
+		public async Task<DiamondTemporaryLimitSaveResult> DeleteTemporaryLimit([FromBody] Guid id)
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondTemporaryLimitStore store = new DiamondTemporaryLimitStore(almacen);
+				return await store.DeleteAsync(id);
+			}
+		}
+
+		[HttpGet("consignageneration")]
+		public async Task<DiamondConsignaGenerationStatus> GetConsignaGeneration()
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondConsignaGenerationStore store = new DiamondConsignaGenerationStore(almacen);
+				return await store.GetStatusAsync();
+			}
+		}
+
+		[HttpPost("closeconsignageneration")]
+		public async Task<DiamondConsignaGenerationCloseResult> CloseConsignaGeneration()
+		{
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				DiamondConsignaGenerationStore store = new DiamondConsignaGenerationStore(almacen);
+				return await store.CloseAsync();
+			}
+		}
+
+		// ── Festivos (tabla Festives) ───────────────────────────────────────
+
+		/// <summary>Lista los festivos de un año civil (fechas ISO yyyy-MM-dd).</summary>
+		[HttpGet("festives")]
+		public async Task<ActionResult<DiamondFestiveYearModel>> ListFestives([FromQuery] int year)
+		{
+			int resolvedYear = year;
+			if (resolvedYear < 1900 || resolvedYear > 2200)
+			{
+				resolvedYear = DateTime.Today.Year;
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				FestiveStore store = new FestiveStore(almacen);
+				IReadOnlyList<DateTime> dates = await store.ListYearAsync(resolvedYear);
+				DiamondFestiveYearModel model = new DiamondFestiveYearModel();
+				model.Year = resolvedYear;
+				int i = 0;
+				while (i < dates.Count)
+				{
+					model.Dates.Add(FestiveStore.ToIsoDate(dates[i]));
+					i++;
+				}
+
+				return model;
+			}
+		}
+
+		/// <summary>Consulta si una fecha civil es festiva.</summary>
+		[HttpGet("isfestive")]
+		public async Task<ActionResult<bool>> IsFestive([FromQuery] string date)
+		{
+			DateTime day;
+			if (!FestiveStore.TryParseIsoDate(date, out day))
+			{
+				return BadRequest("Fecha no válida (use yyyy-MM-dd).");
+			}
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				FestiveStore store = new FestiveStore(almacen);
+				return await store.IsFestiveAsync(day);
+			}
+		}
+
+		/// <summary>Marca o desmarca un día festivo en la tabla Festives.</summary>
+		[HttpPost("setfestive")]
+		public async Task<DiamondFestiveSetResult> SetFestive([FromBody] DiamondFestiveSetRequest request)
+		{
+			DiamondFestiveSetResult result = new DiamondFestiveSetResult();
+			if (request is null)
+			{
+				result.Success = false;
+				result.Message = "Petición vacía.";
+				return result;
+			}
+
+			DateTime day;
+			if (!FestiveStore.TryParseIsoDate(request.Date, out day))
+			{
+				result.Success = false;
+				result.Message = "Fecha no válida (use yyyy-MM-dd).";
+				result.Date = request.Date ?? string.Empty;
+				return result;
+			}
+
+			try
+			{
+				using (DataStorage almacen = new DataStorage(mvarConfig))
+				{
+					FestiveStore store = new FestiveStore(almacen);
+					await store.SetAsync(day, request.Festive);
+					result.Success = true;
+					result.Date = FestiveStore.ToIsoDate(day);
+					result.Festive = request.Festive;
+					result.Message = request.Festive
+						? "Marcado como festivo."
+						: "Ya no es festivo.";
+					return result;
+				}
+			}
+			catch (Exception ex)
+			{
+				result.Success = false;
+				result.Date = FestiveStore.ToIsoDate(day);
+				result.Festive = request.Festive;
+				result.Message = "No se pudo guardar el festivo: " + ex.Message;
+				return result;
+			}
 		}
 
 		private static string Trunc(string? s, int max)

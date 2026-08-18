@@ -120,11 +120,15 @@
 	private bool IsPdf => MediaExt is "pdf";
 
 	private bool CanLabel => Utils.isOfficial(Session);
+	/// <summary>
+	/// Parte de avería (tipo 1): se puede etiquetar mientras no lo esté, aunque haya otro posterior etiquetado.
+	/// Resto de tipos: solo los posteriores a la última nota ya etiquetada.
+	/// </summary>
 	private bool ShowLabelAction =>
 		CanLabel &&
 		OnLabelRequested.HasDelegate &&
 		!Note.IsValid &&
-		Note.TimeStamp > LastValidNoteTime;
+		(Note.Type == 1 || Note.TimeStamp > LastValidNoteTime);
 	private bool ShowLabelBadge => CanLabel && Note.IsValid;
 	private async Task RequestLabelAsync()
 	{

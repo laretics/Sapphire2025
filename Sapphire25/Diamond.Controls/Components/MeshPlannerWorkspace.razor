@@ -421,7 +421,6 @@
 							 DemandPlan="mvarPlan"
 							 ExploitationPlan="mvarExploitationPlan"
 							 OnOfficialEmission="HandleCirculationEmissionAsync"
-							 OnVerifySealRemote="HandleCirculationVerifyRemoteAsync"
 							 @bind-SelectedCirculation="mvarSelectedCirculation" />
 
 				@* Inspector inferior de la malla *@
@@ -834,6 +833,7 @@
 	private bool mvarShowTrainNumbers = true;
 	private bool mvarShowConflicts = true;
 	private bool mvarShowSpeedStrip = true;
+	private bool mvarShowTemporaryLimits = true;
 	private bool mvarShowTrackStrip = true;
 	private bool mvarShowNowLine = true;
 	private TimeSpan mvarClockNow = DateTime.Now.TimeOfDay;
@@ -867,6 +867,7 @@
 	private bool mvarPublishHasValidTo;
 	private readonly List<MeshStorePlanRef> mcolStorePlans = new List<MeshStorePlanRef>();
 	private readonly List<MeshStoreTopoRef> mcolStoreTopos = new List<MeshStoreTopoRef>();
+	private IReadOnlyList<TemporarySpeedLimit>? mcolStoreTemporaryLimits;
 	private bool mvarInitialPlanLoaded;
 
 	private DateTime? mvarPublishValidToNullable
@@ -1873,6 +1874,7 @@
 		mvarStorePlanId = null;
 		mvarStoreTopoId = Guid.Empty;
 		mvarStoreTopoName = string.Empty;
+		mcolStoreTemporaryLimits = null;
 	}
 
 	private static string SanitizeIncludeToken(string name)
@@ -1973,6 +1975,7 @@
 			: (string.IsNullOrWhiteSpace(doc.Name) ? "plan.ddm" : doc.Name + ".ddm");
 		mvarFileHasHandle = false;
 		mvarTopoLabel = mvarStoreTopoName;
+		mcolStoreTemporaryLimits = doc.TemporaryLimits;
 		mcolInverseNotes.Clear();
 		mvarProject = null;
 		try
@@ -2796,6 +2799,11 @@
 				SfmDemoInfrastructure.Apply(plan.Topo);
 			}
 
+			if (mcolStoreTemporaryLimits is not null && plan.Topo is not null)
+			{
+				TopoTemporaryLimits.Apply(plan.Topo, mcolStoreTemporaryLimits);
+			}
+
 			// Si el script no trae plan "…", usar nombre de archivo o demo.
 			if (string.IsNullOrWhiteSpace(plan.Name))
 			{
@@ -3354,6 +3362,7 @@
 			showConflicts: mvarShowConflicts,
 			showSpeedStrip: mvarShowSpeedStrip,
 			showTrackStrip: mvarShowTrackStrip,
+			showTemporaryLimits: mvarShowTemporaryLimits,
 			showNowLine: mvarShowNowLine,
 			nowTime: mvarShowNowLine ? mvarClockNow : null,
 			maxPolylineSamples: interactive ? 16 : 48);
@@ -3800,44 +3809,14 @@
 				certThumbprint = emission.CertThumbprint,
 				pdfContentHash = emission.PdfContentHash,
 				pdfCmsSignatureBase64 = emission.PdfCmsSignatureBase64,
-				qrText = emission.QrText
+				qrText = emission.QrText,
+				svgArchive = emission.SvgArchive
 			};
 			await http.PostAsJsonAsync("api/SapphireDiamond/circulation/emission", body);
 		}
 		catch
 		{
 			// Sin API: el registro local JSONL ya se escribió en CirculationSheetView.
-		}
-	}
-
-	private async Task HandleCirculationVerifyRemoteAsync(string sealOrQr)
-	{
-		if (string.IsNullOrWhiteSpace(sealOrQr))
-		{
-			return;
-		}
-
-		if (LogSessionActivityAsync is not null)
-		{
-			try
-			{
-				// circulationSealVerified = 84
-				await LogSessionActivityAsync(84, "verify|" + sealOrQr.Trim());
-			}
-			catch
-			{
-			}
-		}
-
-		try
-		{
-			using HttpClient http = new HttpClient { BaseAddress = new Uri(Nav.BaseUri) };
-			await http.PostAsJsonAsync(
-				"api/SapphireDiamond/circulation/verify",
-				new { sealOrQr = sealOrQr.Trim() });
-		}
-		catch
-		{
 		}
 	}
 }

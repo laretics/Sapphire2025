@@ -30,9 +30,7 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 
 			//Petición de cancelación explícita
 			string auxTexto = text.Trim();
-			if(auxTexto.Equals("cancelar",StringComparison.OrdinalIgnoreCase) ||
-			auxTexto.Equals("salir",StringComparison.OrdinalIgnoreCase) ||
-			auxTexto.Equals("no",StringComparison.OrdinalIgnoreCase))
+			if (Sapphire2025Models.I18n.TelegramI18n.IsCancel(auxTexto))
 			{
 				this.endTheme();
 				return;
@@ -77,13 +75,12 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 			if(null==mvarConcept)
 			{
 				TextResponse auxQueryPrompt = new TextResponse();
-				auxQueryPrompt.addText("No te he entendido. ¿Puedes preguntar otra cosa?");
-				auxQueryPrompt.addText("No estoy preparado para manejar esta pregunta. Prueba con otra.");
+				auxQueryPrompt.addCatalog("tg.ask.other.1", "tg.ask.other.2");
 				await auxQueryPrompt.Send(client, mvarParent.userContext);
 			}
 			else
 			{
-				await mvarConcept.Confirmation().Send(client, mvarParent.userContext);
+				await mvarConcept.Confirmation(mvarParent.userContext?.Locale ?? Sapphire2025Models.I18n.UiLocale.Spanish).Send(client, mvarParent.userContext);
 			}
 		}
 	}

@@ -1,0 +1,592 @@
+@using System.Globalization
+@using Diamond.Controls
+@using Diamond.Controls.Rendering
+@using Diamond.Project
+@using Diamond.Timed
+@using Diamond.Topo
+@using Sapphire2025.Icons
+@using Sapphire2025.Storage
+@using Sapphire2025Models.Diamond
+@inject DiamondClient mvarDiamond
+
+<div class="alert alert-info py-2 small mb-3">
+	Documentos oficiales de la topología: el <strong>libro itinerario</strong>
+	(normal = limitaciones fijas; completo = también temporales) y la
+	<strong>consigna serie B</strong>.
+</div>
+
+<div class="topo-toolbar mb-3 flex-wrap align-items-center">
+	<div class="d-flex align-items-center gap-2">
+		<label class="small text-muted mb-0">Topología</label>
+		<select class="form-select form-select-sm" style="min-width:14rem;"
+				value="@mvarTopoId"
+				@onchange="OnTopoChangedAsync"
+				disabled="@mvarBusy">
+			<option value="@Guid.Empty">— elegir topología —</option>
+			@foreach (DiamondTopoHeaderModel t in mcolTopos)
+			{
+				<option value="@t.Id">@t.Name</option>
+			}
+		</select>
+	</div>
+	<div class="d-flex align-items-center gap-2">
+		<label class="small text-muted mb-0">Plan compilado</label>
+		<select class="form-select form-select-sm" style="min-width:14rem;"
+				value="@mvarPublishedId"
+				@onchange="OnPublishedChanged"
+				disabled="@(mvarBusy || mvarTopoId == Guid.Empty)">
+			<option value="@Guid.Empty">— elegir plan —</option>
+			@foreach (DiamondPublishedPlanHeaderModel p in mcolPublished)
+			{
+				<option value="@p.Id">@p.Name</option>
+			}
+		</select>
+	</div>
+	<div class="d-flex align-items-center gap-2">
+		<label class="small text-muted mb-0">Día</label>
+		<select class="form-select form-select-sm" style="min-width:9rem;"
+				@bind="mvarDay"
+				disabled="@(mvarBusy || mvarPublishedId == Guid.Empty)">
+			@foreach (DayOfWeek d in mcolDays)
+			{
+				<option value="@d">@DayLabel(d)</option>
+			}
+		</select>
+	</div>
+	<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ReloadAsync" disabled="@mvarBusy">
+		<GenIcon Name="Refresh" Size="16" /> Actualizar
+	</button>
+</div>
+
+@if (!string.IsNullOrEmpty(mvarNotice))
+{
+	<div class="alert @(mvarNoticeOk ? "alert-success" : "alert-warning") alert-dismissible fade show" role="alert">
+		@mvarNotice
+		<button type="button" class="btn-close" @onclick="() => mvarNotice = null"></button>
+	</div>
+}
+
+<div class="d-flex gap-2 mb-3 flex-wrap">
+	<button type="button"
+			class="btn btn-sm @(mvarDoc == DocKind.ItineraryBook ? "btn-primary" : "btn-outline-primary")"
+			@onclick="() => mvarDoc = DocKind.ItineraryBook">
+		<GenIcon Name="Itinerary" Size="16" /> Libro itinerario
+	</button>
+	<button type="button"
+			class="btn btn-sm @(mvarDoc == DocKind.ConsignaSerieB ? "btn-primary" : "btn-outline-primary")"
+			@onclick="() => mvarDoc = DocKind.ConsignaSerieB">
+		<GenIcon Name="Clipboard" Size="16" /> Consigna serie B
+	</button>
+</div>
+
+<div class="topo-panel">
+	<div class="topo-panel-header">
+		<h2>@(mvarDoc == DocKind.ItineraryBook ? "Libro itinerario" : "Consigna serie B")</h2>
+		@if (mvarSelectedTopo is not null)
+		{
+			<span class="badge text-bg-light border topo-badge-soft">@mvarSelectedTopo.Name</span>
+		}
+	</div>
+	<div class="topo-detail">
+		@if (mvarTopoId == Guid.Empty)
+		{
+			<div class="topo-empty-state">
+				<div class="mb-2"><GenIcon Name="Itinerary" Size="24" /></div>
+				<div>Seleccione una topología para trabajar con la documentación.</div>
+			</div>
+		}
+		else if (mvarDoc == DocKind.ItineraryBook)
+		{
+			<p class="text-muted small mb-3">
+				<strong>Normal</strong>: limitaciones fijas, horarios y cruzamientos.
+				<strong>Completo</strong>: lo mismo más las temporales (Max en amarillo; motivo y observaciones en rojo).
+			</p>
+			<div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+				<div class="btn-group btn-group-sm" role="group" aria-label="Versión del libro">
+					<button type="button"
+							class="btn @(mvarComplete ? "btn-outline-secondary" : "btn-dark")"
+							@onclick="() => mvarComplete = false">
+						Normal
+					</button>
+					<button type="button"
+							class="btn @(mvarComplete ? "btn-warning" : "btn-outline-secondary")"
+							@onclick="() => mvarComplete = true">
+						Completo
+					</button>
+				</div>
+				<button type="button" class="btn btn-primary btn-sm" @onclick="() => OpenBookAsync(false)"
+						disabled="@(mvarBusy || mvarPublishedId == Guid.Empty)">
+					<GenIcon Name="Eye" Size="16" /> Visualizar
+				</button>
+				<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => OpenBookAsync(true)"
+						disabled="@(mvarBusy || mvarPublishedId == Guid.Empty)">
+					<GenIcon Name="Print" Size="16" /> Imprimir
+				</button>
+			</div>
+			@if (mvarBusy)
+			{
+				<div class="text-center text-muted py-4">
+					<div class="spinner-border spinner-border-sm me-2"></div>Preparando libro…
+				</div>
+			}
+			else
+			{
+				<div class="topo-empty-state py-4">
+					<div class="mb-2"><GenIcon Name="Itinerary" Size="24" /></div>
+					<div>
+						@(mvarPublishedId == Guid.Empty
+							? "Elija un plan compilado y pulse Visualizar."
+							: "Versión " + (mvarComplete ? "completa" : "normal") + " · " + DayLabel(mvarDay) + ".")
+					</div>
+				</div>
+			}
+		}
+		else
+		{
+			<p class="text-muted small mb-3">
+				Una hoja por eje, ordenada por PK. Vía I a la izquierda, vía II a la derecha.
+				Las nuevas de la generación abierta llevan <strong>+</strong> sobre el número.
+				Al cerrar la generación en Limitaciones temporales se asigna el nº yy/xxx y se desmarca lo nuevo.
+			</p>
+			@if (mvarGeneration is not null)
+			{
+				<div class="alert @(mvarGeneration.IsOpen ? "alert-warning" : "alert-secondary") py-2 small mb-3">
+					@if (mvarGeneration.IsOpen)
+					{
+						<span>Generación abierta. La consigna vigente
+							@(string.IsNullOrEmpty(mvarGeneration.LastNumber) ? "aún no existe" : mvarGeneration.LastNumber)
+							queda bloqueada. Visualizar muestra el borrador de <strong>@mvarGeneration.NextNumber</strong>.</span>
+					}
+					else if (!string.IsNullOrEmpty(mvarGeneration.LastNumber))
+					{
+						<span>Consigna vigente <strong>@mvarGeneration.LastNumber</strong>.</span>
+					}
+					else
+					{
+						<span>Aún no hay consigna emitida. Cierre una generación en Limitaciones temporales para numerar la primera.</span>
+					}
+				</div>
+			}
+			<div class="d-flex flex-wrap gap-2 mb-3">
+				<button type="button" class="btn btn-primary btn-sm" @onclick="() => OpenConsignaAsync(false)"
+						disabled="@(mvarBusy || mvarTopoId == Guid.Empty)">
+					<GenIcon Name="Eye" Size="16" /> Visualizar
+				</button>
+				<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => OpenConsignaAsync(true)"
+						disabled="@(mvarBusy || mvarTopoId == Guid.Empty)">
+					<GenIcon Name="Print" Size="16" /> Imprimir
+				</button>
+			</div>
+			@if (mvarBusy && mvarDoc == DocKind.ConsignaSerieB)
+			{
+				<div class="text-center text-muted py-4">
+					<div class="spinner-border spinner-border-sm me-2"></div>Preparando consigna…
+				</div>
+			}
+			else
+			{
+				<div class="topo-empty-state py-4">
+					<div class="mb-2"><GenIcon Name="Clipboard" Size="24" /></div>
+					<div>Pulse Visualizar para redactar la consigna serie B de esta topología.</div>
+				</div>
+			}
+		}
+	</div>
+</div>
+
+@if (mvarShowBook && mvarMesh is not null)
+{
+	<CirculationSheetView FullBook="true"
+						  Mesh="mvarMesh"
+						  PlanName="@mvarPlanName"
+						  Notes="@mvarBookNotes"
+						  PlanningDay="mvarDay"
+						  IncludeTemporaryLimits="mvarComplete"
+						  AutoPrint="mvarAutoPrint"
+						  OnOfficialEmission="RegisterEmissionAsync"
+						  OnClose="CloseBook" />
+}
+
+@if (mvarShowConsigna && mvarConsigna is not null)
+{
+	<ConsignaSerieBView Document="mvarConsigna"
+						AutoPrint="mvarAutoPrint"
+						OnOfficialEmission="RegisterEmissionAsync"
+						OnClose="CloseConsigna" />
+}
+
+@code {
+	private enum DocKind
+	{
+		ItineraryBook,
+		ConsignaSerieB
+	}
+
+	private readonly List<DiamondTopoHeaderModel> mcolTopos = new List<DiamondTopoHeaderModel>();
+	private readonly List<DiamondPublishedPlanHeaderModel> mcolPublished = new List<DiamondPublishedPlanHeaderModel>();
+	private readonly List<DayOfWeek> mcolDays = new List<DayOfWeek>
+	{
+		DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
+		DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday
+	};
+
+	private Guid mvarTopoId = Guid.Empty;
+	private Guid mvarPublishedId = Guid.Empty;
+	private DiamondTopoHeaderModel? mvarSelectedTopo;
+	private DocKind mvarDoc = DocKind.ItineraryBook;
+	private bool mvarComplete;
+	private DayOfWeek mvarDay = DayOfWeek.Monday;
+	private bool mvarBusy;
+	private string? mvarNotice;
+	private bool mvarNoticeOk;
+
+	private bool mvarShowBook;
+	private bool mvarAutoPrint;
+	private Mesh? mvarMesh;
+	private string mvarPlanName = string.Empty;
+	private string? mvarBookNotes;
+	private bool mvarShowConsigna;
+	private ConsignaSerieBDocument? mvarConsigna;
+	private DiamondConsignaGenerationStatus? mvarGeneration;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await ReloadAsync();
+	}
+
+	private async Task ReloadAsync()
+	{
+		mvarBusy = true;
+		try
+		{
+			IReadOnlyList<DiamondTopoHeaderModel> topos = await mvarDiamond.ListToposAsync(activeOnly: true);
+			mcolTopos.Clear();
+			int i = 0;
+			while (i < topos.Count)
+			{
+				mcolTopos.Add(topos[i]);
+				i++;
+			}
+
+			await LoadPublishedForTopoAsync();
+			mvarSelectedTopo = FindTopo(mvarTopoId);
+			try
+			{
+				mvarGeneration = await mvarDiamond.GetConsignaGenerationAsync();
+			}
+			catch
+			{
+				mvarGeneration = null;
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "No se pudo cargar el catálogo: " + TopoStorageHelpers.Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task OnTopoChangedAsync(ChangeEventArgs e)
+	{
+		string raw = e.Value?.ToString() ?? string.Empty;
+		if (!Guid.TryParse(raw, out Guid id))
+		{
+			id = Guid.Empty;
+		}
+
+		mvarTopoId = id;
+		mvarPublishedId = Guid.Empty;
+		mvarSelectedTopo = FindTopo(id);
+		await LoadPublishedForTopoAsync();
+	}
+
+	private void OnPublishedChanged(ChangeEventArgs e)
+	{
+		string raw = e.Value?.ToString() ?? string.Empty;
+		if (!Guid.TryParse(raw, out Guid id))
+		{
+			id = Guid.Empty;
+		}
+
+		mvarPublishedId = id;
+	}
+
+	private async Task LoadPublishedForTopoAsync()
+	{
+		mcolPublished.Clear();
+		if (mvarTopoId == Guid.Empty)
+		{
+			return;
+		}
+
+		IReadOnlyList<DiamondPublishedPlanHeaderModel> list = await mvarDiamond.ListPublishedPlansAsync(activeOnly: true);
+		int i = 0;
+		while (i < list.Count)
+		{
+			if (list[i].TopoId == mvarTopoId)
+			{
+				mcolPublished.Add(list[i]);
+			}
+
+			i++;
+		}
+	}
+
+	private DiamondTopoHeaderModel? FindTopo(Guid id)
+	{
+		int i = 0;
+		while (i < mcolTopos.Count)
+		{
+			if (mcolTopos[i].Id == id)
+			{
+				return mcolTopos[i];
+			}
+
+			i++;
+		}
+
+		return null;
+	}
+
+	private async Task OpenBookAsync(bool print)
+	{
+		if (mvarPublishedId == Guid.Empty || mvarSelectedTopo is null)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Elija topología y plan compilado.";
+			return;
+		}
+
+		mvarBusy = true;
+		mvarNotice = null;
+		try
+		{
+			byte[]? topoPayload = await mvarDiamond.DownloadTopoContentAsync(mvarSelectedTopo.Id);
+			if (topoPayload is null || topoPayload.Length == 0)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "No se pudo descargar la topología.";
+				return;
+			}
+
+			byte[] xmlBytes = await TopoStorageHelpers.MaterializeXmlAsync(topoPayload, mvarSelectedTopo.Format);
+			TopoLayout layout;
+			using (MemoryStream ms = new MemoryStream(xmlBytes, writable: false))
+			{
+				layout = TopoXmlSerializer.Load(ms);
+			}
+
+			SfmDemoInfrastructure.Apply(layout);
+			IReadOnlyList<DiamondTemporaryLimitModel> temps =
+				await mvarDiamond.ListTemporaryLimitsAsync(mvarSelectedTopo.Id);
+			TopoTemporaryLimits.Apply(layout, DiamondStoreTopoCatalog.ToTopoLimits(temps));
+
+			byte[]? pubPayload = await mvarDiamond.DownloadPublishedContentAsync(mvarPublishedId);
+			if (pubPayload is null || pubPayload.Length == 0)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "No se pudo descargar el plan compilado.";
+				return;
+			}
+
+			PublishedProjectPackage package = PublishedProjectPackage.FromUtf8Json(pubPayload);
+			PublishedDayDto? dayDto = FindDay(package, mvarDay);
+			if (dayDto is null)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "El paquete no tiene el día " + DayLabel(mvarDay) + ".";
+				return;
+			}
+
+			Project project = PublishedProjectPackage.ToProject(dayDto);
+			mvarMesh = CabinCirculationHydrator.ToMesh(project, layout);
+			if (mvarMesh.Circulations.Count == 0)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "Ese día no tiene circulaciones en el plan compilado.";
+				mvarMesh = null;
+				return;
+			}
+
+			DiamondPublishedPlanHeaderModel? header = FindPublished(mvarPublishedId);
+			mvarPlanName = header is not null ? header.Name : package.Name;
+			if (mvarComplete)
+			{
+				mvarPlanName += " · completo";
+			}
+
+			mvarBookNotes = header?.Notes;
+			mvarAutoPrint = print;
+			mvarShowBook = true;
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al generar el libro: " + TopoStorageHelpers.Friendly(ex);
+			mvarMesh = null;
+			mvarShowBook = false;
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private void CloseBook()
+	{
+		mvarShowBook = false;
+		mvarAutoPrint = false;
+	}
+
+	private async Task RegisterEmissionAsync(CirculationEmissionInfo emission)
+	{
+		if (emission is null)
+		{
+			return;
+		}
+
+		CirculationEmissionRegisterRequest body = new CirculationEmissionRegisterRequest
+		{
+			EmissionId = emission.EmissionId,
+			DocumentKind = emission.DocumentKind,
+			Channel = emission.Channel,
+			SealCode = emission.SealCode,
+			Payload = emission.Payload,
+			PlanOrTrain = emission.PlanOrTrain,
+			EditionLabel = emission.EditionLabel,
+			DayLabel = emission.DayLabel,
+			SheetCount = emission.SheetCount,
+			CertThumbprint = emission.CertThumbprint,
+			PdfContentHash = emission.PdfContentHash,
+			PdfCmsSignatureBase64 = emission.PdfCmsSignatureBase64,
+			QrText = emission.QrText,
+			SvgArchive = emission.SvgArchive
+		};
+		await mvarDiamond.RegisterCirculationEmissionAsync(body);
+	}
+
+	private async Task OpenConsignaAsync(bool print)
+	{
+		if (mvarSelectedTopo is null)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Elija una topología.";
+			return;
+		}
+
+		mvarBusy = true;
+		mvarNotice = null;
+		try
+		{
+			byte[]? topoPayload = await mvarDiamond.DownloadTopoContentAsync(mvarSelectedTopo.Id);
+			if (topoPayload is null || topoPayload.Length == 0)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "No se pudo descargar la topología.";
+				return;
+			}
+
+			byte[] xmlBytes = await TopoStorageHelpers.MaterializeXmlAsync(topoPayload, mvarSelectedTopo.Format);
+			TopoLayout layout;
+			using (MemoryStream ms = new MemoryStream(xmlBytes, writable: false))
+			{
+				layout = TopoXmlSerializer.Load(ms);
+			}
+
+			IReadOnlyList<DiamondTemporaryLimitModel> temps =
+				await mvarDiamond.ListTemporaryLimitsAsync(mvarSelectedTopo.Id);
+			IReadOnlyList<TemporarySpeedLimit> limits = DiamondStoreTopoCatalog.ToTopoLimits(temps);
+			try
+			{
+				mvarGeneration = await mvarDiamond.GetConsignaGenerationAsync();
+			}
+			catch
+			{
+				mvarGeneration = null;
+			}
+
+			string number = mvarGeneration is null
+				? string.Empty
+				: mvarGeneration.NumberForDocument;
+			string repeal = mvarGeneration is null
+				? string.Empty
+				: mvarGeneration.RepealNumber;
+			mvarConsigna = ConsignaSerieBDocument.Build(
+				layout,
+				limits,
+				mvarSelectedTopo.Name,
+				consignaNumber: string.IsNullOrEmpty(number) ? null : number,
+				previousNumber: string.IsNullOrEmpty(repeal) ? null : repeal);
+			mvarAutoPrint = print;
+			mvarShowConsigna = true;
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al generar la consigna: " + TopoStorageHelpers.Friendly(ex);
+			mvarConsigna = null;
+			mvarShowConsigna = false;
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private void CloseConsigna()
+	{
+		mvarShowConsigna = false;
+		mvarAutoPrint = false;
+	}
+
+	private static PublishedDayDto? FindDay(PublishedProjectPackage package, DayOfWeek day)
+	{
+		int i = 0;
+		while (i < package.Days.Count)
+		{
+			if (package.Days[i].Day == day)
+			{
+				return package.Days[i];
+			}
+
+			i++;
+		}
+
+		return package.Days.Count > 0 ? package.Days[0] : null;
+	}
+
+	private DiamondPublishedPlanHeaderModel? FindPublished(Guid id)
+	{
+		int i = 0;
+		while (i < mcolPublished.Count)
+		{
+			if (mcolPublished[i].Id == id)
+			{
+				return mcolPublished[i];
+			}
+
+			i++;
+		}
+
+		return null;
+	}
+
+	private static string DayLabel(DayOfWeek day)
+	{
+		switch (day)
+		{
+			case DayOfWeek.Monday: return "Lunes";
+			case DayOfWeek.Tuesday: return "Martes";
+			case DayOfWeek.Wednesday: return "Miércoles";
+			case DayOfWeek.Thursday: return "Jueves";
+			case DayOfWeek.Friday: return "Viernes";
+			case DayOfWeek.Saturday: return "Sábado";
+			case DayOfWeek.Sunday: return "Domingo";
+			default: return day.ToString();
+		}
+	}
+}

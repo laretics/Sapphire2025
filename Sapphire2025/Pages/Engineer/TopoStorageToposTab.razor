@@ -1,0 +1,499 @@
+@using System.IO.Compression
+@using System.Text
+@using Diamond.Topo
+@using Sapphire2025.Icons
+@using Sapphire2025.Layout.Generic
+@using Sapphire2025Models.Diamond
+@inject DiamondClient mvarDiamond
+@inject IJSRuntime mvarJs
+
+@if (!string.IsNullOrEmpty(mvarNotice))
+{
+	<div class="alert @(mvarNoticeOk ? "alert-success" : "alert-warning") alert-dismissible fade show" role="alert">
+		@mvarNotice
+		<button type="button" class="btn-close" @onclick="() => mvarNotice = null"></button>
+	</div>
+}
+
+<div class="topo-toolbar mb-3 flex-wrap">
+	<button type="button" class="btn btn-primary btn-sm" @onclick="ReloadAsync" disabled="@mvarBusy">
+		<GenIcon Name="Refresh" Size="16" /> @Prefs.T("common.refresh")
+	</button>
+	<label class="btn btn-success btn-sm mb-0">
+		<GenIcon Name="Upload" Size="16" /> @Prefs.T("topo.upload")
+		<InputFile OnChange="OnUploadAsync" accept=".xml,.gz,application/xml,text/xml" style="display:none;" disabled="@mvarBusy" />
+	</label>
+	<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="DownloadSelectedAsync"
+			disabled="@(mvarBusy || mvarSelected is null)">
+		<GenIcon Name="Download" Size="16" /> @Prefs.T("common.export")
+	</button>
+	<button type="button" class="btn btn-outline-warning btn-sm" @onclick="ConfirmDeleteAsync"
+			disabled="@(mvarBusy || mvarSelected is null || mvarSelected is { IsActive: false } || mvarSelected is { IsLockedByPlans: true })"
+			title="@(mvarSelected is { IsLockedByPlans: true } ? "Hay planes que usan esta topología" : "Desactivar")">
+		<GenIcon Name="Trash" Size="16" /> Eliminar
+	</button>
+	<button type="button" class="btn btn-outline-info btn-sm" @onclick="ActivateSelectedAsync"
+			disabled="@(mvarBusy || mvarSelected is null || mvarSelected is { IsActive: true })">
+		<GenIcon Name="CheckBoxChecked" Size="16" /> Activar
+	</button>
+	<div class="form-check form-switch ms-2 mb-0">
+		<input class="form-check-input" type="checkbox" id="chkInactiveTopo" @bind="mvarShowInactive" @bind:after="ReloadAsync" />
+		<label class="form-check-label small" for="chkInactiveTopo">Incluir inactivas</label>
+	</div>
+</div>
+
+<div class="row g-3">
+	<div class="col-12 col-lg-4">
+		<div class="topo-panel">
+			<div class="topo-panel-header">
+				<h2>Topologías</h2>
+				<span class="badge text-bg-primary topo-badge-soft">@mcolItems.Count</span>
+			</div>
+			<div class="topo-list">
+				@if (mvarBusy && mcolItems.Count == 0)
+				{
+					<div class="topo-empty-state"><div class="spinner-border text-primary mb-2"></div><div>Cargando…</div></div>
+				}
+				else if (mcolItems.Count == 0)
+				{
+					<div class="topo-empty-state">
+						<div class="mb-2"><GenIcon Name="Location" Size="24" /></div>
+						<div>No hay topologías. Use <strong>Subir topo</strong>.</div>
+					</div>
+				}
+				else
+				{
+					@foreach (DiamondTopoHeaderModel item in mcolItems)
+					{
+						bool selected = mvarSelected is not null && mvarSelected.Id == item.Id;
+						<div class="topo-item @(selected ? "active" : null)" @onclick="() => SelectAsync(item)" @key="item.Id">
+							<div class="d-flex justify-content-between align-items-start gap-2">
+								<p class="topo-item-title">@item.Name</p>
+								<div class="d-flex gap-1">
+									@if (item.IsLockedByPlans)
+									{
+										<span class="badge text-bg-warning topo-badge-soft" title="Planes activos">@item.ReferencingPlanCount plan(es)</span>
+									}
+									@if (!item.IsActive)
+									{
+										<span class="badge text-bg-secondary topo-badge-soft">Inactiva</span>
+									}
+								</div>
+							</div>
+							<div class="topo-item-meta">
+								<span><GenIcon Name="Bezier" Size="16" /> @item.AxisCount ejes</span>
+								<span><GenIcon Name="Home" Size="16" /> @item.StationCount est.</span>
+								<span><GenIcon Name="Edata" Size="16" /> @TopoStorageHelpers.FormatBytes(item.ByteLength)</span>
+							</div>
+							<div class="topo-item-meta mt-1">
+								<code title="@item.Id">@TopoStorageHelpers.ShortGuid(item.Id)</code>
+								<span class="text-muted">@item.CreatedUtc.ToLocalTime().ToString("g")</span>
+							</div>
+						</div>
+					}
+				}
+			</div>
+		</div>
+	</div>
+	<div class="col-12 col-lg-8">
+		<div class="topo-panel">
+			<div class="topo-panel-header">
+				<h2>Detalle topología</h2>
+				@if (mvarSelected is not null)
+				{
+					<span class="badge @(mvarSelected.IsActive ? "text-bg-success" : "text-bg-secondary") topo-badge-soft">
+						@(mvarSelected.IsActive ? "Activa" : "Inactiva")
+					</span>
+				}
+			</div>
+			<div class="topo-detail">
+				@if (mvarSelected is null)
+				{
+					<div class="topo-empty-state">
+						<div class="mb-2"><GenIcon Name="Map" Size="24" /></div>
+						<div>Seleccione una topología del listado.</div>
+					</div>
+				}
+				else
+				{
+					@if (mvarSelected.IsLockedByPlans)
+					{
+						<div class="alert alert-warning py-2 small">
+							Esta topología está <strong>bloqueada</strong>: @mvarSelected.ReferencingPlanCount plan(es) de explotación activos la referencian.
+							No se puede desactivar hasta reasignar o desactivar esos planes.
+						</div>
+					}
+					<dl class="topo-kv">
+						<dt>Nombre</dt><dd>@mvarSelected.Name</dd>
+						<dt>Id</dt><dd><code>@mvarSelected.Id</code></dd>
+						<dt>Layout Id</dt><dd>@(string.IsNullOrWhiteSpace(mvarSelected.LayoutId) ? "—" : mvarSelected.LayoutId)</dd>
+						<dt>Autor</dt><dd>@(string.IsNullOrWhiteSpace(mvarSelected.Author) ? "—" : mvarSelected.Author)</dd>
+						<dt>Fichero</dt><dd>@(string.IsNullOrWhiteSpace(mvarSelected.SourceFileName) ? "—" : mvarSelected.SourceFileName)</dd>
+						<dt>Formato</dt><dd><span class="badge text-bg-light border">@mvarSelected.Format</span> · @TopoStorageHelpers.FormatBytes(mvarSelected.ByteLength)</dd>
+						<dt>Content hash</dt><dd class="topo-hash">@mvarSelected.ContentHash</dd>
+						<dt>Huella estructural</dt><dd class="topo-hash">@mvarSelected.StructuralHash</dd>
+						<dt>Planes</dt><dd>@mvarSelected.ReferencingPlanCount activos</dd>
+						<dt>Alta</dt><dd>@mvarSelected.CreatedUtc.ToLocalTime().ToString("G")</dd>
+					</dl>
+
+					@if (mvarLoadingLayout)
+					{
+						<div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2"></div>Cargando geometría…</div>
+					}
+					else if (!string.IsNullOrEmpty(mvarLayoutError))
+					{
+						<div class="alert alert-danger py-2">@mvarLayoutError</div>
+					}
+					else if (mvarLayout is not null)
+					{
+						<div class="d-flex justify-content-between align-items-center mb-2">
+							<strong class="small text-uppercase text-secondary">Mapa de red</strong>
+							<span class="small text-muted">@mvarLayout.Axes.Count ejes · @mvarLayout.Stations.Count estaciones</span>
+						</div>
+						<div class="topo-map-wrap">
+							@if (string.IsNullOrEmpty(mvarMapSvg))
+							{
+								<div class="topo-map-empty">Sin vértices geográficos dibujables.</div>
+							}
+							else
+							{
+								@((MarkupString)mvarMapSvg)
+							}
+						</div>
+						@if (mcolLegend.Count > 0)
+						{
+							<div class="topo-legend">
+								@foreach (TopoStorageMapBuilder.LegendItem leg in mcolLegend)
+								{
+									<span class="topo-legend-item">
+										<span class="topo-legend-swatch" style="background:@leg.Color"></span>
+										@leg.Label
+									</span>
+								}
+							</div>
+						}
+					}
+				}
+			</div>
+		</div>
+	</div>
+</div>
+
+<ModalDialog @ref="mvarDeleteModal" OnClose="OnDeleteModalClose" />
+
+@code {
+	private readonly List<DiamondTopoHeaderModel> mcolItems = new List<DiamondTopoHeaderModel>();
+	private readonly List<TopoStorageMapBuilder.LegendItem> mcolLegend = new List<TopoStorageMapBuilder.LegendItem>();
+	private DiamondTopoHeaderModel? mvarSelected;
+	private TopoLayout? mvarLayout;
+	private string? mvarMapSvg;
+	private string? mvarLayoutError;
+	private string? mvarNotice;
+	private bool mvarNoticeOk;
+	private bool mvarBusy;
+	private bool mvarLoadingLayout;
+	private bool mvarShowInactive;
+	private ModalDialog? mvarDeleteModal;
+	private Guid mvarPendingDeleteId = Guid.Empty;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await ReloadAsync();
+	}
+
+	private async Task ReloadAsync()
+	{
+		mvarBusy = true;
+		try
+		{
+			IReadOnlyList<DiamondTopoHeaderModel> list = await mvarDiamond.ListToposAsync(!mvarShowInactive);
+			mcolItems.Clear();
+			int i = 0;
+			while (i < list.Count)
+			{
+				mcolItems.Add(list[i]);
+				i++;
+			}
+
+			if (mvarSelected is not null)
+			{
+				DiamondTopoHeaderModel? still = Find(mvarSelected.Id);
+				if (still is null)
+				{
+					ClearSelection();
+				}
+				else
+				{
+					mvarSelected = still;
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "No se pudo cargar topologías: " + TopoStorageHelpers.Friendly(ex);
+			mcolItems.Clear();
+			ClearSelection();
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private DiamondTopoHeaderModel? Find(Guid id)
+	{
+		int i = 0;
+		while (i < mcolItems.Count)
+		{
+			if (mcolItems[i].Id == id)
+			{
+				return mcolItems[i];
+			}
+
+			i++;
+		}
+
+		return null;
+	}
+
+	private async Task SelectAsync(DiamondTopoHeaderModel item)
+	{
+		if (mvarSelected is not null && mvarSelected.Id == item.Id && mvarLayout is not null)
+		{
+			return;
+		}
+
+		mvarSelected = item;
+		mvarLayout = null;
+		mvarMapSvg = null;
+		mvarLayoutError = null;
+		mcolLegend.Clear();
+		mvarLoadingLayout = true;
+		StateHasChanged();
+
+		try
+		{
+			byte[]? payload = await mvarDiamond.DownloadTopoContentAsync(item.Id);
+			if (payload is null || payload.Length == 0)
+			{
+				mvarLayoutError = "No se pudo descargar el documento.";
+				return;
+			}
+
+			byte[] xmlBytes = await MaterializeXmlAsync(payload, item.Format);
+			using (MemoryStream stream = new MemoryStream(xmlBytes, writable: false))
+			{
+				mvarLayout = TopoXmlSerializer.Load(stream);
+			}
+
+			mvarMapSvg = TopoStorageMapBuilder.Build(mvarLayout, mcolLegend);
+		}
+		catch (Exception ex)
+		{
+			mvarLayoutError = "Error al interpretar la topología: " + TopoStorageHelpers.Friendly(ex);
+			mvarLayout = null;
+			mvarMapSvg = null;
+		}
+		finally
+		{
+			mvarLoadingLayout = false;
+		}
+	}
+
+	private async Task OnUploadAsync(InputFileChangeEventArgs e)
+	{
+		IBrowserFile? file = e.File;
+		if (file is null)
+		{
+			return;
+		}
+
+		mvarBusy = true;
+		mvarNotice = null;
+		try
+		{
+			const long max = 8L * 1024L * 1024L;
+			await using Stream stream = file.OpenReadStream(max);
+			using MemoryStream ms = new MemoryStream();
+			await stream.CopyToAsync(ms);
+			DiamondTopoUploadResult? result = await mvarDiamond.UploadTopoAsync(ms.ToArray(), file.Name);
+			if (result is null)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "Sin respuesta del servidor al subir la topología.";
+				return;
+			}
+
+			mvarNoticeOk = result.Success;
+			mvarNotice = string.IsNullOrWhiteSpace(result.Message)
+				? (result.Success ? "Topología almacenada." : "Rechazada.")
+				: result.Message;
+			if (result.Success)
+			{
+				await ReloadAsync();
+				if (result.Header is not null)
+				{
+					DiamondTopoHeaderModel? match = Find(result.Header.Id);
+					if (match is not null)
+					{
+						await SelectAsync(match);
+					}
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al subir topo: " + TopoStorageHelpers.Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task DownloadSelectedAsync()
+	{
+		if (mvarSelected is null)
+		{
+			return;
+		}
+
+		mvarBusy = true;
+		try
+		{
+			byte[]? payload = await mvarDiamond.DownloadTopoContentAsync(mvarSelected.Id);
+			if (payload is null || payload.Length == 0)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "No se pudo descargar.";
+				return;
+			}
+
+			string fileName = string.IsNullOrWhiteSpace(mvarSelected.SourceFileName)
+				? TopoStorageHelpers.SanitizeFileName(mvarSelected.Name) + ".xml"
+				: mvarSelected.SourceFileName;
+			string mime = string.Equals(mvarSelected.Format, "xml-gz", StringComparison.OrdinalIgnoreCase)
+				? "application/gzip"
+				: "application/xml";
+			await mvarJs.InvokeVoidAsync("downloadBytesFile", Convert.ToBase64String(payload), fileName, mime);
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al exportar: " + TopoStorageHelpers.Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task ConfirmDeleteAsync()
+	{
+		if (mvarSelected is null || mvarDeleteModal is null)
+		{
+			return;
+		}
+
+		if (mvarSelected.IsLockedByPlans)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "No se puede eliminar: hay planes activos que usan esta topología.";
+			return;
+		}
+
+		mvarPendingDeleteId = mvarSelected.Id;
+		await mvarDeleteModal.show(
+			"Desactivar topología",
+			string.Format("¿Desactivar «{0}»? El documento permanece en BD (baja lógica).", mvarSelected.Name),
+			"Desactivar",
+			"Cancelar");
+	}
+
+	private async Task OnDeleteModalClose(bool confirmed)
+	{
+		if (!confirmed || Guid.Empty.Equals(mvarPendingDeleteId))
+		{
+			mvarPendingDeleteId = Guid.Empty;
+			return;
+		}
+
+		Guid id = mvarPendingDeleteId;
+		mvarPendingDeleteId = Guid.Empty;
+		mvarBusy = true;
+		try
+		{
+			DiamondTopoUploadResult? result = await mvarDiamond.DeleteTopoAsync(id);
+			mvarNoticeOk = result is not null && result.Success;
+			mvarNotice = result?.Message ?? "No se pudo desactivar la topología.";
+			await ReloadAsync();
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al desactivar: " + TopoStorageHelpers.Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task ActivateSelectedAsync()
+	{
+		if (mvarSelected is null)
+		{
+			return;
+		}
+
+		mvarBusy = true;
+		try
+		{
+			DiamondTopoUploadResult? result = await mvarDiamond.ActivateTopoAsync(mvarSelected.Id);
+			mvarNoticeOk = result is not null && result.Success;
+			mvarNotice = result?.Message ?? "No se pudo activar.";
+			Guid id = mvarSelected.Id;
+			await ReloadAsync();
+			DiamondTopoHeaderModel? match = Find(id);
+			if (match is not null)
+			{
+				await SelectAsync(match);
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "Error al activar topo: " + TopoStorageHelpers.Friendly(ex);
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private void ClearSelection()
+	{
+		mvarSelected = null;
+		mvarLayout = null;
+		mvarMapSvg = null;
+		mvarLayoutError = null;
+		mcolLegend.Clear();
+	}
+
+	private static async Task<byte[]> MaterializeXmlAsync(byte[] payload, string format)
+	{
+		if (string.Equals(format, "xml-gz", StringComparison.OrdinalIgnoreCase)
+			|| (payload.Length >= 2 && payload[0] == 0x1f && payload[1] == 0x8b))
+		{
+			using MemoryStream input = new MemoryStream(payload, writable: false);
+			using GZipStream gzip = new GZipStream(input, CompressionMode.Decompress);
+			using MemoryStream output = new MemoryStream();
+			await gzip.CopyToAsync(output);
+			return output.ToArray();
+		}
+
+		return payload;
+	}
+}

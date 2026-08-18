@@ -2,6 +2,7 @@
 using Sapphire2025.Storage;
 using Sapphire2025Models;
 using Sapphire2025Models.Authentication;
+using Sapphire2025Models.I18n;
 using Sapphire2026.Data;
 using Sapphire2026Telegram.Operative;
 using Telegram.Bot;
@@ -38,11 +39,14 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 		{
 			mvarFirstError = false;
 			mvarFirstResponse.ImageUrl = "PairingScreen.png";
-			mvarFirstResponse.addText("Hola. Soy el bot de Zafiro. No te has identificado todavía. Antes de acceder al servicio desde tu cuenta de Telegram necesito que generes una clave pulsando el botón de la página \"YO\" del panel izquierdo de la aplicación y me la envíes.");
-			mvarFirstResponse.addText("Hola. Soy el bot de Zafiro. Parece que todavía no te tengo en la base de datos. Para que podamos comunicarnos tienes que generar una clave pulsando el botón de la página \"YO\" del panel izquierdo de la aplicación y me la envíes.");
 			mvarSecondResponse.ImageUrl = "PairingScreen.png";
-			mvarSecondResponse.addText("El código que me has enviado parece incorrecto. Antes de acceder al servicio desde tu cuenta de Telegram necesito que generes una clave pulsando el botón de la página \"YO\" del panel izquierdo de la aplicación y me la envíes.");
-			mvarSecondResponse.addText("El código que acabas de teclear no es válido. Todavía no te tengo en la base de datos. Para que podamos comunicarnos tienes que generar una clave pulsando el botón de la página \"YO\" del panel izquierdo de la aplicación y me la envíes.");
+		}
+
+		private void PreparePairingPhrases(ImageResponse target, string key1, string key2, UiLocale locale)
+		{
+			string me = UiCatalog.Get(locale, "nav.me");
+			target.addText(TelegramI18n.T(locale, key1, me));
+			target.addText(TelegramI18n.T(locale, key2, me));
 		}
         internal override async Task InternalPreprocess()
         {		
@@ -61,10 +65,19 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 		internal override async Task InternalResponseFromBot(ITelegramBotClient client)
 		{
 			//Saludo para el emparejamiento.
+			UiLocale locale = mvarParent.userContext?.Locale ?? UiLocale.Spanish;
 			if(mvarFirstError)
+			{
+				mvarSecondResponse = new ImageResponse { ImageUrl = "PairingScreen.png" };
+				PreparePairingPhrases(mvarSecondResponse, "tg.pair.bad.1", "tg.pair.bad.2", locale);
 				await mvarSecondResponse.Send(client, mvarParent.userContext);
+			}
 			else
+			{
+				mvarFirstResponse = new ImageResponse { ImageUrl = "PairingScreen.png" };
+				PreparePairingPhrases(mvarFirstResponse, "tg.pair.first.1", "tg.pair.first.2", locale);
 				await mvarFirstResponse.Send(client, mvarParent.userContext);
+			}
 		}
 		internal override async Task InternalTextToBot(string text)
 		{

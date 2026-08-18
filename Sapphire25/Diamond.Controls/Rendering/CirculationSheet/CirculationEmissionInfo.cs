@@ -46,6 +46,9 @@ namespace Diamond.Controls.Rendering
 
 		/// <summary>Texto QR embebido en las hojas.</summary>
 		public string QrText { get; set; } = string.Empty;
+
+		/// <summary>Hojas SVG empaquetadas para reabrir el documento emitido.</summary>
+		public string SvgArchive { get; set; } = string.Empty;
 	}
 
 	/// <summary>Resultado de verificación de sello en UI.</summary>

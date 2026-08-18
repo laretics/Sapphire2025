@@ -1,22 +1,22 @@
 ﻿@page "/communication"
 @inject AuthenticationClient AuthClient
 @inject AeneasClient AeneasClient
-<PageTitle>Comunicación</PageTitle>
+<PageTitle>@Prefs.T("page.comm")</PageTitle>
 
 <div class="container py-4">
-    <h2 class="mb-4">Gestión de Mensajes</h2>
+    <h2 class="mb-4">@Prefs.T("comm.messages")</h2>
     <EditForm Model="@this" OnValidSubmit="SaveMessages">
         <div class="mb-4">
-            <label class="form-label fw-semibold" for="msgPreLogin">Mensaje antes de iniciar sesión</label>
+            <label class="form-label fw-semibold" for="msgPreLogin">@Prefs.T("comm.pre")</label>
             <textarea id="msgPreLogin" class="form-control" rows="3" @bind="mvarMessagePreLogin"></textarea>
-            <div class="form-text">Este mensaje se muestra a todos los usuarios antes de iniciar sesión.</div>
+            <div class="form-text">@Prefs.T("comm.pre.hint")</div>
         </div>
         <div class="mb-4">
-            <label class="form-label fw-semibold" for="msgPostLogin">Mensaje después de iniciar sesión</label>
+            <label class="form-label fw-semibold" for="msgPostLogin">@Prefs.T("comm.post")</label>
             <textarea id="msgPostLogin" class="form-control" rows="3" @bind="mvarMessagePostLogin"></textarea>
-            <div class="form-text">Este mensaje se muestra a todos los usuarios después de iniciar sesión.</div>
+            <div class="form-text">@Prefs.T("comm.post.hint")</div>
         </div>
-        <button type="submit" class="btn btn-primary mb-4">Guardar mensajes</button>
+        <button type="submit" class="btn btn-primary mb-4">@Prefs.T("comm.save")</button>
         @if (!string.IsNullOrEmpty(EstadoGuardado))
         {
             <div class="alert alert-success mt-2">@EstadoGuardado</div>
@@ -26,13 +26,13 @@
     <hr class="my-5" />
 
     <div class="mb-4">
-        <label class="form-label fw-semibold" for="msgTelegram">Mensaje inmediato por Telegram</label>
+        <label class="form-label fw-semibold" for="msgTelegram">@Prefs.T("comm.telegram")</label>
         <textarea id="msgTelegram" class="form-control" rows="2" @bind="MensajeTelegram"></textarea>
         <div class="form-text text-warning">
             <i class="bi bi-exclamation-triangle-fill"></i>
-            Este mensaje se enviará inmediatamente por Telegram y <b>no se almacenará</b> en la base de datos.
+            @Prefs.T("comm.telegram.hint")
         </div>
-        <button class="btn btn-success mt-2" @onclick="EnviarTelegram">Enviar por Telegram</button>
+        <button class="btn btn-success mt-2" @onclick="EnviarTelegram">@Prefs.T("comm.telegram.send")</button>
         @if (!string.IsNullOrEmpty(EstadoTelegram))
         {
             <div class="alert alert-info mt-2">@EstadoTelegram</div>
@@ -65,7 +65,7 @@
             await AuthClient.SetRegisterValue("prelogms", mvarMessagePreLogin);
         if (null != mvarMessagePostLogin)
             await AuthClient.SetRegisterValue("postlogms", mvarMessagePostLogin);
-        EstadoGuardado = "Mensajes guardados correctamente.";
+        EstadoGuardado = Prefs.T("comm.saved");
     }
 
     private async Task EnviarTelegram()

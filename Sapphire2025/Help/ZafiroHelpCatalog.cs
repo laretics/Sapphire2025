@@ -273,6 +273,8 @@ Cada búsqueda queda registrada en el log de actividad del sistema (quién consu
 Consejos:
 • Navegue por días o periodos según la vista disponible.
 • Compruebe siempre la fecha del servicio antes de firmar o solicitar cambios.
+• Si el número de tren aparece como enlace, figura en el **plan de explotación** de esa fecha (Diamond, cualquier día del año) y abre la **hoja de circulación**. Si no hay enlace, ese tren no está en el plan.
+• En la hoja, **Obs.** muestra los trenes de cruce. Debajo se indica el maquinista grafiado de cada uno. Con permiso de simulación (Expert / Root) puede abrir su cuadrante.
 • Algunas consultas de turnos ajenos o del día quedan registradas en el log de actividad.
 
 Si el cuadrante no carga datos, revise la sesión o contacte con el inspector / jefe de maquinistas."
@@ -412,18 +414,19 @@ Es el punto de entrada para combinar la visión de personal con la del material 
 					Route = "submenu/diamond",
 					Roles = diamondRoles,
 					Summary = "Almacén de topologías, mallas y planes de explotación.",
-					Keywords = new[] { "diamond", "timenet", "malla", "topología", "plan", "explotación" },
+					Keywords = new[] { "diamond", "timenet", "malla", "topología", "plan", "explotación", "festivo", "festivos", "calendario" },
 					Body =
 @"El menú **Diamond** agrupa la planificación de horarios:
 
 • **Explotación (Legacy)**: gestión clásica de turnos / workshifts.
-• **Almacén Diamond**: topologías y planes versionados.
+• **Almacén Diamond**: topologías, planes versionados, limitaciones temporales y calendario de festivos.
 • **Planes de Explotación**: mallas horarias del planificador Diamond / TimeNet.
 
 Flujo habitual:
 1. Mantener la topología correcta en el almacén.
-2. Editar o importar el plan de explotación.
-3. Publicar / validar según el procedimiento de su área.
+2. Marcar los días festivos del año en la solapa **Festivos** (calendario; se guarda en la tabla `Festives`).
+3. Editar o importar el plan de explotación.
+4. Publicar / validar según el procedimiento de su área.
 
 Los cambios de topología o borrados relevantes pueden quedar auditados en el registro de eventos."
 				},

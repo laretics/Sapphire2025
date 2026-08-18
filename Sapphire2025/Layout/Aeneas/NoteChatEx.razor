@@ -145,8 +145,9 @@
 	{
 		if (mvarLabelDialog is null)
 			return;
+		// Los partes de avería (tipo 1) siguen pudiendo etiquetarse después.
 		bool hasOlderUnlabeled = mcolNotes is not null &&
-			mcolNotes.Any(n => !n.IsValid && n.Id != note.Id && n.TimeStamp > mvarLastValidNoteTime && n.TimeStamp < note.TimeStamp);
+			mcolNotes.Any(n => !n.IsValid && n.Type != 1 && n.Id != note.Id && n.TimeStamp > mvarLastValidNoteTime && n.TimeStamp < note.TimeStamp);
 		await mvarLabelDialog.ShowAsync(note, hasOlderUnlabeled);
 	}
 

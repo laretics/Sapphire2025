@@ -8,9 +8,9 @@
             <div class="card-body">
                 <h5 class="card-title fw-bold text-dark mb-2 custom-title">@Agents[n]</h5>
                 <p class="card-text text-muted custom-comment">
-                    Gráfico de Maquinistas.
+                    @Prefs.T("card.driversgraph.desc")
                 </p>
-                <a href="@($"/monthGraph/{encodedName}")" class="btn btn-outline-primary w-100">Abrir</a>
+                <a href="@($"/monthGraph/{encodedName}")" class="btn btn-outline-primary w-100">@Prefs.T("menu.open")</a>
             </div>
         </div>
     }

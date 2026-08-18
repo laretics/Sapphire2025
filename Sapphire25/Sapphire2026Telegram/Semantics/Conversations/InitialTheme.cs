@@ -21,21 +21,14 @@ namespace Sapphire2026Telegram.Semantics.Conversations
 			if(mvarError)
 			{
 				TextResponse equivocado = new TextResponse();
-				equivocado.addText("No he entendido lo que quieres decir. ¿Quieres abrir un parte de avería o de incidencia?");
-				equivocado.addText("Por favor escribe o habla más claro. ¿Te gustaría conocer el estado de los trenes disponibles?");
-				equivocado.addText("Estoy aprendiendo versión a versión. De momento no soy capaz de entender lo que acabas de decirme. Puedo abrir partes de incidencias, mostrar informes de un tren o mostrar históricos de uso.");
-				equivocado.addText("¿Perdón? ¿Qué querías decirme?");
-				equivocado.addText("¿Puedes repetir con otras palabras?");
-				//equivocado.addText(mvarErrorText);
+				equivocado.addCatalog("tg.err.1", "tg.err.2", "tg.err.3", "tg.err.4", "tg.err.5");
 				await equivocado.Send(client, mvarParent.userContext);
 				mvarError = false;
 			}
 			else
 			{
 				TextResponse auxPrompt = new TextResponse();
-				auxPrompt.addText("Hola #username. ¿Qué te gustaría hacer?");
-				auxPrompt.addText("Bienvenido #username. Dime qué quieres de mí.");
-				auxPrompt.addText("¿Qué tal #username? Cuéntame qué puedo hacer por ti.");				
+				auxPrompt.addCatalog("tg.hello.1", "tg.hello.2", "tg.hello.3");
 				if(null!=mvarParent.userContext)
 				{
 					auxPrompt.addKey("username", mvarParent.userContext.Name);

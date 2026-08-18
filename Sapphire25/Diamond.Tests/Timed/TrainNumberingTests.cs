@@ -185,6 +185,43 @@ namespace Diamond.Tests.Timed
 		}
 
 		[Fact]
+		public void DirectedAsim_NumbersPattern_StillOddAscendingEvenDescending()
+		{
+			Plan plan = CreatePlanWithCorridor(doubleTrack: true);
+			plan.DemandScript = """
+				asim A -> B numbers 48##
+				asim B -> A numbers 48##
+				require both ways every 60 min A -> B 06:00-10:00 as R1
+				""";
+			Assert.True(plan.CompileDemand().Success);
+
+			Mesh mesh = new MeshPlanner(plan).Solve();
+			List<Circulation> ascending = mesh.Circulations
+				.Where(c => TrainNumbering.IsNetworkAscendingForNumbering(c))
+				.OrderBy(c => c.Departure)
+				.ToList();
+			List<Circulation> descending = mesh.Circulations
+				.Where(c => !TrainNumbering.IsNetworkAscendingForNumbering(c))
+				.OrderBy(c => c.Departure)
+				.ToList();
+
+			Assert.NotEmpty(ascending);
+			Assert.NotEmpty(descending);
+			Assert.All(ascending, c =>
+			{
+				int n = int.Parse(c.ServiceNumber, CultureInfo.InvariantCulture);
+				Assert.Equal(48, n / 100);
+				Assert.Equal(1, n % 2);
+			});
+			Assert.All(descending, c =>
+			{
+				int n = int.Parse(c.ServiceNumber, CultureInfo.InvariantCulture);
+				Assert.Equal(48, n / 100);
+				Assert.Equal(0, n % 2);
+			});
+		}
+
+		[Fact]
 		public void PalmaSpb_MultiAxis_OddTowardSpb_EvenTowardPmi()
 		{
 			// Corredor multi-eje: cada OD tiene Sense=Increasing en su vista propia;

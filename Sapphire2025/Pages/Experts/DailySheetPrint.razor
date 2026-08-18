@@ -6,10 +6,10 @@
 @inject IJSRuntime mvarJSRuntime
 @inject IntStorageService mvarLocalStorage
 
-<PageTitle>Hoja del día · @mvarCurrentDate.ToString("dd/MM/yyyy")</PageTitle>
+<PageTitle>@Prefs.T("page.dailysheet", mvarCurrentDate.ToString("dd/MM/yyyy"))</PageTitle>
 
 <div class="dsp-toolbar no-print">
-	<button type="button" class="btn btn-primary btn-sm" @onclick="PrintNow">Imprimir</button>
+	<button type="button" class="btn btn-primary btn-sm" @onclick="PrintNow">@Prefs.T("common.print")</button>
 	<span class="text-muted small ms-2">Diseñada para una sola página A4 apaisada.</span>
 </div>
 

@@ -1,0 +1,210 @@
+@namespace Diamond.Controls
+@using Diamond.Controls.Rendering
+@inject IJSRuntime Js
+
+@if (mvarReady)
+{
+	<div class="diamond-circ-sheet-overlay" @onclick="OnOverlayClick">
+		<div class="diamond-circ-sheet-dialog" @onclick:stopPropagation="true">
+			<div class="diamond-circ-sheet-toolbar no-print">
+				<span class="diamond-circ-sheet-toolbar-title">
+					<span>Consigna serie B</span>
+					@if (!string.IsNullOrEmpty(mvarTitle))
+					{
+						<span> · @mvarTitle</span>
+					}
+					<span class="text-muted"> · @mcolPageSvg.Count hoja(s) A4</span>
+				</span>
+				<span class="diamond-circ-sheet-toolbar-actions">
+					<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="PrintAsync" @onclick:stopPropagation="true">
+						Imprimir
+					</button>
+					<button type="button" class="btn btn-sm btn-outline-light" @onclick="CloseAsync" @onclick:stopPropagation="true">
+						Cerrar
+					</button>
+				</span>
+			</div>
+			@if (!string.IsNullOrEmpty(mvarError))
+			{
+				<div class="p-3 text-danger">@mvarError</div>
+			}
+			@if (!string.IsNullOrEmpty(mvarInfo))
+			{
+				<div class="p-2 text-success small no-print">@mvarInfo</div>
+			}
+			<div class="diamond-circ-sheet-pages" @ref="mvarPrintRoot">
+				@for (int i = 0; i < mcolPageSvg.Count; i++)
+				{
+					<div class="diamond-circ-sheet-page">
+						@((MarkupString)mcolPageSvg[i])
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	private readonly List<string> mcolPageSvg = new List<string>();
+	private ElementReference mvarPrintRoot;
+	private bool mvarReady;
+	private string mvarTitle = string.Empty;
+	private string? mvarError;
+	private string? mvarInfo;
+	private string mvarRebuildKey = string.Empty;
+
+	[Parameter]
+	public ConsignaSerieBDocument? Document { get; set; }
+
+	[Parameter]
+	public EventCallback OnClose { get; set; }
+
+	[Parameter]
+	public bool CloseOnOverlayClick { get; set; } = true;
+
+	[Parameter]
+	public bool AutoPrint { get; set; }
+
+	[Parameter]
+	public EventCallback<CirculationEmissionInfo> OnOfficialEmission { get; set; }
+
+	protected override void OnParametersSet()
+	{
+		string key = Document is null
+			? "-"
+			: Document.TopoName + "|" + Document.Pages.Count.ToString() + "|" + Document.EntryCount.ToString();
+		if (!mvarReady || !string.Equals(key, mvarRebuildKey, StringComparison.Ordinal))
+		{
+			mvarRebuildKey = key;
+			Rebuild();
+			if (AutoPrint && mvarReady && string.IsNullOrEmpty(mvarError))
+			{
+				_ = InvokeAsync(PrintAsync);
+			}
+		}
+	}
+
+	private void Rebuild()
+	{
+		mcolPageSvg.Clear();
+		mvarReady = false;
+		mvarError = null;
+		mvarTitle = string.Empty;
+		if (Document is null)
+		{
+			mvarError = "No hay consigna para mostrar.";
+			mvarReady = true;
+			return;
+		}
+
+		try
+		{
+			mvarTitle = Document.TopoName;
+			IReadOnlyList<string> sheets = ConsignaSerieBSvgRenderer.RenderAllPages(
+				Document, out string seal, out string payload);
+			int i = 0;
+			while (i < sheets.Count)
+			{
+				mcolPageSvg.Add(sheets[i]);
+				i++;
+			}
+
+			mvarReady = true;
+			_ = InvokeAsync(() => RegisterEmissionAsync("view", seal, payload));
+		}
+		catch (Exception ex)
+		{
+			mvarError = "Error al generar: " + ex.Message;
+			mvarReady = true;
+		}
+	}
+
+	private async Task RegisterEmissionAsync(string channel, string seal, string payload)
+	{
+		if (Document is null || string.IsNullOrEmpty(seal))
+		{
+			return;
+		}
+
+		CirculationEmissionInfo emission = new CirculationEmissionInfo
+		{
+			DocumentKind = "consigna-b",
+			Channel = channel,
+			SealCode = seal,
+			Payload = payload,
+			PlanOrTrain = Document.CoverTitle,
+			EditionLabel = Document.EditionLabel,
+			DayLabel = Document.DateLabel,
+			SheetCount = mcolPageSvg.Count,
+			QrText = CirculationSheetQr.BuildQrPayload(seal),
+			SvgArchive = CirculationEmissionArchive.Pack(mcolPageSvg)
+		};
+		try
+		{
+			CirculationEmissionRegistry.Append(emission);
+		}
+		catch
+		{
+		}
+
+		if (OnOfficialEmission.HasDelegate)
+		{
+			try
+			{
+				await OnOfficialEmission.InvokeAsync(emission);
+			}
+			catch
+			{
+			}
+		}
+	}
+
+	private async Task PrintAsync()
+	{
+		mvarInfo = null;
+		if (Document is not null)
+		{
+			IReadOnlyList<string> sheets = ConsignaSerieBSvgRenderer.RenderAllPages(
+				Document, out string seal, out string payload);
+			await RegisterEmissionAsync("print", seal, payload);
+		}
+
+		try
+		{
+			await Js.InvokeVoidAsync("diamondCircSheet.printFromRoot", mvarPrintRoot);
+		}
+		catch
+		{
+			try
+			{
+				await Js.InvokeVoidAsync("diamondCircSheet.print", mcolPageSvg.ToArray());
+			}
+			catch
+			{
+				try
+				{
+					await Js.InvokeVoidAsync("window.print");
+				}
+				catch
+				{
+				}
+			}
+		}
+	}
+
+	private async Task CloseAsync()
+	{
+		if (OnClose.HasDelegate)
+		{
+			await OnClose.InvokeAsync();
+		}
+	}
+
+	private async Task OnOverlayClick()
+	{
+		if (CloseOnOverlayClick)
+		{
+			await CloseAsync();
+		}
+	}
+}

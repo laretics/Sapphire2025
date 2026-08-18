@@ -2,8 +2,8 @@
 @using Sapphire2025Models.Expert.WorkshiftTemplates
 @inject ExpertClient mvarExpertClient
 @inject AuthenticationClient mvarAuthClient
-<PageTitle>Situación Actual</PageTitle>
-<h3>Situación actual</h3>
+<PageTitle>@Prefs.T("page.instantsnap")</PageTitle>
+<h3>@Prefs.T("page.instantsnap")</h3>
 
 @code {
     private Dictionary<Guid, UserModelBase>? mcolUsers;

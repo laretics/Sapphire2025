@@ -6,6 +6,8 @@ using System.Net;
 
 using Sapphire2025Models.Authentication;
 using Sapphire2025Models;
+using Sapphire2025Models.Preferences;
+using Sapphire2025Models.I18n;
 using Sapphire2025Server.Comunications;
 using Microsoft.AspNetCore.SignalR;
 using Org.BouncyCastle.Crypto.Operators;
@@ -77,9 +79,11 @@ namespace Sapphire2025Server.Controllers
 
 			IReadOnlyList<Common.SoftwareReleaseChange> applicable = Common.GetReleaseChangesFor(roles);
 			salida.Changes = applicable
-				.Where(c => !string.IsNullOrWhiteSpace(c.Text))
+				.Where(c => !string.IsNullOrWhiteSpace(c.TextKey) || !string.IsNullOrWhiteSpace(c.Text))
 				.Select(c => new VersionChangeNote
 				{
+					TextKey = c.TextKey,
+					ObservationsKey = c.ObservationsKey,
 					Text = c.Text,
 					Observations = c.Observations ?? string.Empty
 				})
@@ -190,9 +194,19 @@ namespace Sapphire2025Server.Controllers
 						}
 						//Como este inicio de sesión ha salido bien, ponemos a cero 
 						auxUser.AccessFailedCount = 0;
-						//Registra la entrada
-						await addLoginRecord(auxUser.Id,
-							Common.sessionEventType.login, auxDireccion.ToString());		
+						//Registra la entrada (Tourmaline incluye unidad).
+						string ip = auxDireccion?.ToString() ?? string.Empty;
+						if (IsTourmalineClient(input.Client))
+						{
+							await addLoginRecord(
+								auxUser.Id,
+								Common.sessionEventType.tourmalineLogin,
+								ComposeTourmalineHostPoint(input.TrainName, input.TrainId, null, ip));
+						}
+						else
+						{
+							await addLoginRecord(auxUser.Id, Common.sessionEventType.login, ip);
+						}
 					}
 					else
 					{
@@ -303,13 +317,12 @@ namespace Sapphire2025Server.Controllers
 		
 
 		[HttpPut("logout")]
-		public async Task<bool> LogoutRequest(BasicRequestModel? request)
+		public async Task<bool> LogoutRequest(LogoutRequestModel? request)
 		{
 			//Se envía una petición con el token suministrado para dar
-			//de baja la sesión.
+			//de baja la sesión. LogoutRequestModel es compatible con BasicRequestModel.
 			bool salida = false;
 			string auxHostPoint = string.Empty;
-			//BasicRequestModel? auxQuestion = JsonSerializer.Deserialize<BasicRequestModel?>(question);
 			if(null!=request)
 			{
 				if (null != HttpContext.Connection)
@@ -332,8 +345,17 @@ namespace Sapphire2025Server.Controllers
 
 						almacen.RemoveRange(auxColSesiones);
 
-						//Marco el log.
-						await addLoginRecord(auxSesion.UserId, Common.sessionEventType.logout, auxHostPoint);
+						if (IsTourmalineClient(request.Client))
+						{
+							await addLoginRecord(
+								auxSesion.UserId,
+								Common.sessionEventType.tourmalineLogout,
+								ComposeTourmalineHostPoint(request.TrainName, request.TrainId, null, auxHostPoint));
+						}
+						else
+						{
+							await addLoginRecord(auxSesion.UserId, Common.sessionEventType.logout, auxHostPoint);
+						}
 
 						salida = true;
 
@@ -949,7 +971,8 @@ namespace Sapphire2025Server.Controllers
 				|| eventType == Common.sessionEventType.circulationSealVerified
 				|| eventType == Common.sessionEventType.incidenceQuery
 				|| eventType == Common.sessionEventType.incidenceQueryExported
-				|| eventType == Common.sessionEventType.incidenceQueryPrinted;
+				|| eventType == Common.sessionEventType.incidenceQueryPrinted
+				|| eventType == Common.sessionEventType.tourmalineTripStarted;
 		}
 
 		/// <summary>
@@ -1064,6 +1087,129 @@ namespace Sapphire2025Server.Controllers
 				}
 			}
 			return salida;
+		}
+
+		[HttpPut("userpreferences")]
+		public async Task<UserPreferencesModel> GetUserPreferences(UserPreferencesQueryRequest? request)
+		{
+			UserPreferencesModel salida = new UserPreferencesModel();
+			if (request is null || Guid.Empty.Equals(request.SessionToken))
+				return salida;
+
+			string? ownerId = await resolvePreferenceOwnerId(request.SessionToken, request.TargetUserId);
+			if (string.IsNullOrWhiteSpace(ownerId))
+				return salida;
+
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				List<UserPreference> rows = await almacen.UserPreferences
+					.AsNoTracking()
+					.Where(x => x.UserId == ownerId)
+					.OrderBy(x => x.Key)
+					.ToListAsync();
+				foreach (UserPreference row in rows)
+				{
+					salida.Items.Add(new UserPreferenceItem { Key = row.Key, Value = row.Value });
+					if (row.UpdatedUtc > salida.UpdatedUtc)
+						salida.UpdatedUtc = row.UpdatedUtc;
+				}
+			}
+
+			return salida;
+		}
+
+		[HttpPut("setuserpreferences")]
+		public async Task<UserPreferencesModel> SetUserPreferences(UserPreferencesSaveRequest? request)
+		{
+			UserPreferencesModel salida = new UserPreferencesModel();
+			if (request is null || Guid.Empty.Equals(request.SessionToken) || request.Items is null)
+				return salida;
+
+			string? ownerId = await resolvePreferenceOwnerId(request.SessionToken, request.TargetUserId);
+			if (string.IsNullOrWhiteSpace(ownerId))
+				return salida;
+
+			DateTime now = DateTime.UtcNow;
+			using (DataStorage almacen = new DataStorage(mvarConfig))
+			{
+				List<UserPreference> existing = await almacen.UserPreferences
+					.Where(x => x.UserId == ownerId)
+					.ToListAsync();
+
+				foreach (UserPreferenceItem item in request.Items)
+				{
+					if (string.IsNullOrWhiteSpace(item.Key))
+						continue;
+					string key = item.Key.Trim();
+					if (key.Length > 64)
+						key = key.Substring(0, 64);
+					string value = SanitizePreferenceValue(key, item.Value);
+					if (value.Length > 1024)
+						value = value.Substring(0, 1024);
+
+					UserPreference? row = existing.FirstOrDefault(
+						x => string.Equals(x.Key, key, StringComparison.OrdinalIgnoreCase));
+					if (row is null)
+					{
+						row = new UserPreference
+						{
+							Id = Guid.NewGuid(),
+							UserId = ownerId,
+							Key = key,
+							Value = value,
+							UpdatedUtc = now
+						};
+						almacen.UserPreferences.Add(row);
+						existing.Add(row);
+					}
+					else
+					{
+						row.Value = value;
+						row.UpdatedUtc = now;
+					}
+				}
+
+				await almacen.SaveChangesAsync();
+
+				foreach (UserPreference row in existing.OrderBy(x => x.Key))
+				{
+					salida.Items.Add(new UserPreferenceItem { Key = row.Key, Value = row.Value });
+					if (row.UpdatedUtc > salida.UpdatedUtc)
+						salida.UpdatedUtc = row.UpdatedUtc;
+				}
+			}
+
+			return salida;
+		}
+
+		/// <summary>
+		/// El usuario de la sesión, o (si es Root) el usuario indicado en TargetUserId.
+		/// </summary>
+		private async Task<string?> resolvePreferenceOwnerId(Guid sessionToken, Guid targetUserId)
+		{
+			User? actor = await retrieveSessionUser(sessionToken);
+			if (actor is null || string.IsNullOrWhiteSpace(actor.Id))
+				return null;
+
+			if (Guid.Empty.Equals(targetUserId)
+				|| string.Equals(actor.Id, targetUserId.ToString(), StringComparison.OrdinalIgnoreCase))
+				return actor.Id;
+
+			if (!await hasBasicPermission(sessionToken, Common.UserRole.Root))
+				return null;
+
+			User? target = await userById(targetUserId.ToString());
+			if (target is null || string.IsNullOrWhiteSpace(target.Id))
+				return null;
+			return target.Id;
+		}
+
+		private static string SanitizePreferenceValue(string key, string? raw)
+		{
+			string value = raw ?? string.Empty;
+			if (string.Equals(key, PreferenceKeys.Locale, StringComparison.OrdinalIgnoreCase))
+				return UiLocales.ToCode(UiLocales.Parse(value));
+			return value;
 		}
 
 		internal async Task<List<uint>> retrieveUserRoles(Guid userId)

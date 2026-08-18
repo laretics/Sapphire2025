@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sapphire2025Models.Diamond;
 using Sapphire2026.Data.Models.Diamond;
 
 namespace Sapphire2026.Data.Diamond
@@ -41,19 +42,14 @@ namespace Sapphire2026.Data.Diamond
 			string sealCode,
 			CancellationToken cancellationToken = default)
 		{
-			string seal = (sealCode ?? string.Empty).Trim();
-			if (seal.StartsWith("SEL", StringComparison.OrdinalIgnoreCase))
-			{
-				seal = seal.Substring(3).Trim();
-			}
-
+			string seal = CirculationSealText.Normalize(sealCode);
 			if (seal.Length == 0)
 			{
 				return Task.FromResult<DiamondCirculationEmission?>(null);
 			}
 
 			return mvarDb.DiamondCirculationEmissions.AsNoTracking()
-				.Where(e => e.SealCode == seal)
+				.Where(e => e.SealCode.ToLower() == seal)
 				.OrderByDescending(e => e.EmittedAtUtc)
 				.FirstOrDefaultAsync(cancellationToken);
 		}

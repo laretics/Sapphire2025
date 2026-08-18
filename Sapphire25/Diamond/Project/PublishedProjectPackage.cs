@@ -267,6 +267,86 @@ namespace Diamond.Project
 			return dto;
 		}
 
+		public static Project ToProject(PublishedDayDto day)
+		{
+			if (day is null)
+			{
+				throw new ArgumentNullException(nameof(day));
+			}
+
+			Project project = new Project();
+			project.Id = day.Id ?? string.Empty;
+			project.Name = day.Name ?? string.Empty;
+			project.PlanningDay = day.Day;
+			project.CompiledUtc = day.CompiledUtc;
+
+			Dictionary<string, Asimilation> asims = new Dictionary<string, Asimilation>(StringComparer.Ordinal);
+			int ai = 0;
+			while (ai < day.Asimilations.Count)
+			{
+				PublishedAsimilationDto ad = day.Asimilations[ai];
+				List<Call> calls = new List<Call>(ad.Calls.Count);
+				int ci = 0;
+				while (ci < ad.Calls.Count)
+				{
+					PublishedCallDto c = ad.Calls[ci];
+					calls.Add(new Call(
+						new StationInfo(c.StationId, c.StationName, c.StationAvr),
+						c.Pk,
+						TimeSpan.FromSeconds(c.ArrivalSeconds),
+						TimeSpan.FromSeconds(c.DepartureSeconds),
+						TimeSpan.FromSeconds(c.DwellSeconds),
+						c.IsOrigin,
+						c.IsDestination,
+						c.CommercialStop));
+					ci++;
+				}
+
+				Asimilation asim = new Asimilation(
+					ad.Id,
+					new StationInfo(ad.OriginId, ad.OriginName, ad.OriginAvr),
+					new StationInfo(ad.DestinationId, ad.DestinationName, ad.DestinationAvr),
+					(CirculationSense)ad.Sense,
+					ad.ViewId,
+					ad.PathSignature,
+					ad.FleetId,
+					TimeSpan.FromSeconds(ad.TotalSeconds),
+					calls);
+				project.AddAsimilation(asim);
+				if (!string.IsNullOrEmpty(asim.Id))
+				{
+					asims[asim.Id] = asim;
+				}
+
+				ai++;
+			}
+
+			int pi = 0;
+			while (pi < day.Circulations.Count)
+			{
+				PublishedCirculationDto cd = day.Circulations[pi];
+				Asimilation? asim;
+				if (!asims.TryGetValue(cd.AsimilationId ?? string.Empty, out asim) || asim is null)
+				{
+					pi++;
+					continue;
+				}
+
+				Circulation circ = new Circulation(
+					cd.Id,
+					cd.TechnicalId,
+					cd.DemandId,
+					cd.ServiceNumber,
+					TimeSpan.FromSeconds(cd.DepartureSeconds),
+					cd.Color,
+					asim);
+				project.AddCirculation(circ);
+				pi++;
+			}
+
+			return project;
+		}
+
 		private sealed class ReferenceEqualityComparer : IEqualityComparer<Asimilation>
 		{
 			public static readonly ReferenceEqualityComparer Instance = new ReferenceEqualityComparer();

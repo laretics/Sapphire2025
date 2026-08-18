@@ -11,9 +11,9 @@
 		<div class="card train-dossier-loading-card">
 			<img src="img/ZafiroTheme.jpg" class="card-img-top" alt="Zafiro">
 			<div class="card-body">
-				<h5 class="card-title">Cargando</h5>
+				<h5 class="card-title">@Prefs.T("dossier.loading")</h5>
 				<div class="spinner-grow"></div>
-				<p class="card-text">Cargando datos...</p>
+				<p class="card-text">@Prefs.T("dossier.loading.data")</p>
 			</div>
 		</div>
 	</div>
@@ -31,27 +31,27 @@ else
 
 					<div class="train-dossier-tabs">
 						<TabControl>
-							<TabPage Text="General">
+							<TabPage Text="@Prefs.T("dossier.general")">
 								<div class="train-dossier-tab-pane">
 									<NoteChatEx Parent="@mvarTrain.id" NoteType="2" MaxLines="@MaxLinesPerChat" />
 								</div>
 							</TabPage>
-							<TabPage Text="Chat">
+							<TabPage Text="@Prefs.T("dossier.chat")">
 								<div class="train-dossier-tab-pane">
 									<NoteChat Parent="@mvarTrain.id" NoteType="2" MaxLines="@MaxLinesPerChat" />
 								</div>
 							</TabPage>
-							<TabPage Text="Historial">
+							<TabPage Text="@Prefs.T("dossier.history")">
 								<div class="table-responsive train-dossier-table-pane">
 									<StatusChangesTable StatusChanges="mcolChanges" />
 								</div>
 							</TabPage>
-							<TabPage Text="Actuaciones">
+							<TabPage Text="@Prefs.T("dossier.works")">
 								<div class="table-responsive train-dossier-table-pane">
 									<WorkOrdersTable />
 								</div>
 							</TabPage>
-							<TabPage Text="Limpieza">
+							<TabPage Text="@Prefs.T("dossier.cleaning")">
 								
 							</TabPage>					
 						</TabControl>

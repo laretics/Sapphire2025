@@ -7,24 +7,24 @@
 @inject IJSRuntime mvarJS
 @inject NavigationManager mvarNavigator
 
-<PageTitle>Eventos · Zafiro Log</PageTitle>
+<PageTitle>@Prefs.T("page.log.events")</PageTitle>
 
 <div class="container-fluid py-3">
 	<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
 		<div>
 			<h3 class="mb-0">
-				<i class="bi bi-journal-text me-2"></i>Registro de eventos
+				<i class="bi bi-journal-text me-2"></i>@Prefs.T("log.title")
 			</h3>
-			<p class="text-muted small mb-0">Consulta avanzada de actividad del sistema (SessionEvents)</p>
+			<p class="text-muted small mb-0">@Prefs.T("log.subtitle")</p>
 		</div>
 		<div class="btn-group" role="group">
-			<button type="button" class="btn btn-outline-success" disabled="@(!HasResults || mvarLoading)" @onclick="ExportCsvAsync" title="Exportar CSV (Excel)">
+			<button type="button" class="btn btn-outline-success" disabled="@(!HasResults || mvarLoading)" @onclick="ExportCsvAsync" title="@Prefs.T("common.csv.tip")">
 				<i class="bi bi-file-earmark-spreadsheet"></i>
-				<span class="d-none d-md-inline"> CSV / Excel</span>
+				<span class="d-none d-md-inline"> @Prefs.T("common.csv")</span>
 			</button>
-			<button type="button" class="btn btn-outline-secondary" disabled="@(!HasResults || mvarLoading)" @onclick="PrintReportAsync" title="Imprimir informe">
+			<button type="button" class="btn btn-outline-secondary" disabled="@(!HasResults || mvarLoading)" @onclick="PrintReportAsync" title="@Prefs.T("common.print.tip")">
 				<i class="bi bi-printer"></i>
-				<span class="d-none d-md-inline"> Imprimir</span>
+				<span class="d-none d-md-inline"> @Prefs.T("common.print")</span>
 			</button>
 		</div>
 	</div>
@@ -33,27 +33,27 @@
 	<div class="card shadow-sm mb-3">
 		<div class="card-header bg-light d-flex flex-wrap align-items-center justify-content-between gap-2">
 			<span class="fw-semibold">
-				<i class="bi bi-funnel me-1"></i>Filtros
+				<i class="bi bi-funnel me-1"></i>@Prefs.T("common.filters")
 			</span>
-			<div class="btn-group btn-group-sm" role="group" aria-label="Rangos rápidos">
-				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(0)">Hoy</button>
-				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(7)">7 días</button>
-				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(30)">30 días</button>
-				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(90)">90 días</button>
+			<div class="btn-group btn-group-sm" role="group" aria-label="@Prefs.T("common.filters")">
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(0)">@Prefs.T("common.today")</button>
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(7)">@Prefs.T("common.days7")</button>
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(30)">@Prefs.T("common.days30")</button>
+				<button type="button" class="btn btn-outline-primary" @onclick="() => ApplyQuickRange(90)">@Prefs.T("common.days90")</button>
 			</div>
 		</div>
 		<div class="card-body">
 			<div class="row g-3">
 				<div class="col-12 col-md-3">
-					<label class="form-label" for="fromDate">Desde</label>
+					<label class="form-label" for="fromDate">@Prefs.T("common.from")</label>
 					<input id="fromDate" type="date" class="form-control" @bind="mvarFromDate" />
 				</div>
 				<div class="col-12 col-md-3">
-					<label class="form-label" for="toDate">Hasta</label>
+					<label class="form-label" for="toDate">@Prefs.T("common.to")</label>
 					<input id="toDate" type="date" class="form-control" @bind="mvarToDate" />
 				</div>
 				<div class="col-12 col-md-3">
-					<label class="form-label" for="maxRecords">Máx. registros</label>
+					<label class="form-label" for="maxRecords">@Prefs.T("common.maxrecords")</label>
 					<select id="maxRecords" class="form-select" @bind="mvarMaxRecords">
 						<option value="100">100</option>
 						<option value="500">500</option>
@@ -63,20 +63,20 @@
 					</select>
 				</div>
 				<div class="col-12 col-md-3">
-					<label class="form-label" for="hostFilter">Origen / IP contiene</label>
-					<input id="hostFilter" type="text" class="form-control" placeholder="p.ej. 192.168 o telegram" @bind="mvarHostContains" />
+					<label class="form-label" for="hostFilter">@Prefs.T("log.host")</label>
+					<input id="hostFilter" type="text" class="form-control" placeholder="@Prefs.T("log.host.ph")" @bind="mvarHostContains" />
 				</div>
 
 				<div class="col-12 col-lg-6">
-					<label class="form-label">Usuario</label>
+					<label class="form-label">@Prefs.T("common.user")</label>
 					<div class="input-group mb-1">
 						<span class="input-group-text"><i class="bi bi-search"></i></span>
-						<input type="text" class="form-control" placeholder="Filtrar lista por CF o nombre..." @bind="mvarUserSearchText" @bind:event="oninput" />
+						<input type="text" class="form-control" placeholder="@Prefs.T("log.user.filter")" @bind="mvarUserSearchText" @bind:event="oninput" />
 					</div>
 					<div class="border rounded p-2" style="max-height: 12rem; overflow-y: auto;">
 						@if (!FilteredUsers.Any())
 						{
-							<div class="text-muted small">No hay usuarios que coincidan.</div>
+							<div class="text-muted small">@Prefs.T("inc.nousers")</div>
 						}
 						else
 						{
@@ -96,21 +96,21 @@
 						}
 					</div>
 					<div class="form-text">
-						Sin selección = todos los usuarios.
+						@Prefs.T("log.noneselected")
 						@if (mcolSelectedUserIds.Count > 0)
 						{
-							<span class="badge text-bg-secondary ms-1">@mcolSelectedUserIds.Count seleccionados</span>
-							<button type="button" class="btn btn-link btn-sm p-0 ms-1" @onclick="ClearUserSelection">Limpiar</button>
+							<span class="badge text-bg-secondary ms-1">@Prefs.T("log.selected", mcolSelectedUserIds.Count)</span>
+							<button type="button" class="btn btn-link btn-sm p-0 ms-1" @onclick="ClearUserSelection">@Prefs.T("common.clear")</button>
 						}
 					</div>
 				</div>
 
 				<div class="col-12 col-lg-6">
-					<label class="form-label">Tipos de evento</label>
+					<label class="form-label">@Prefs.T("log.eventtypes")</label>
 					<div class="border rounded p-2" style="max-height: 12rem; overflow-y: auto;">
 						<div class="d-flex gap-2 mb-2">
-							<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="SelectAllEventTypes">Todos</button>
-							<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearEventTypes">Ninguno</button>
+							<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="SelectAllEventTypes">@Prefs.T("common.all")</button>
+							<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearEventTypes">@Prefs.T("common.none")</button>
 						</div>
 						@foreach (EventTypeOption opt in mcolEventTypeOptions)
 						{
@@ -128,11 +128,11 @@
 					<div class="form-text">
 						@if (mcolSelectedEventTypes.Count == 0 || mcolSelectedEventTypes.Count == mcolEventTypeOptions.Count)
 						{
-							<span>Sin filtro de tipo (todos).</span>
+							<span>@Prefs.T("log.nofilter")</span>
 						}
 						else
 						{
-							<span class="badge text-bg-info">@mcolSelectedEventTypes.Count tipos</span>
+							<span class="badge text-bg-info">@Prefs.T("log.ntypes", mcolSelectedEventTypes.Count)</span>
 						}
 					</div>
 				</div>
@@ -140,17 +140,17 @@
 		</div>
 		<div class="card-footer d-flex flex-wrap gap-2 justify-content-end bg-white">
 			<button type="button" class="btn btn-outline-secondary" @onclick="ResetFilters" disabled="@mvarLoading">
-				<i class="bi bi-x-circle"></i> Limpiar
+				<i class="bi bi-x-circle"></i> @Prefs.T("common.clear")
 			</button>
 			<button type="button" class="btn btn-primary" @onclick="SearchAsync" disabled="@mvarLoading">
 				@if (mvarLoading)
 				{
 					<span class="spinner-border spinner-border-sm me-1" role="status"></span>
-					<span>Buscando...</span>
+					<span>@Prefs.T("common.searching")</span>
 				}
 				else
 				{
-					<span><i class="bi bi-search"></i> Buscar</span>
+					<span><i class="bi bi-search"></i> @Prefs.T("common.search")</span>
 				}
 			</button>
 		</div>
@@ -169,26 +169,26 @@
 		<div class="card shadow-sm">
 			<div class="card-header bg-white d-flex flex-wrap align-items-center justify-content-between gap-2">
 				<div>
-					<span class="fw-semibold">Resultados</span>
+					<span class="fw-semibold">@Prefs.T("common.results")</span>
 					@if (mvarResponse is not null)
 					{
 						<span class="text-muted small ms-2">
-							@mvarResponse.Records.Count mostrados
+							@Prefs.T("common.shown", mvarResponse.Records.Count)
 							@if (mvarResponse.TotalMatched != mvarResponse.Records.Count)
 							{
-								<span> de @mvarResponse.TotalMatched coincidencias</span>
+								<span>@Prefs.T("log.shownof", mvarResponse.TotalMatched)</span>
 							}
 						</span>
 						@if (mvarResponse.Truncated)
 						{
-							<span class="badge text-bg-warning ms-2">Truncado (aumenta el máximo)</span>
+							<span class="badge text-bg-warning ms-2">@Prefs.T("common.truncated")</span>
 						}
 					}
 				</div>
 				@if (HasResults)
 				{
 					<input type="text" class="form-control form-control-sm" style="max-width: 16rem;"
-						   placeholder="Filtrar en resultados..."
+						   placeholder="@Prefs.T("common.filter.results")"
 						   @bind="mvarClientFilter" @bind:event="oninput" />
 				}
 			</div>
@@ -197,13 +197,13 @@
 				{
 					<div class="text-center py-5">
 						<div class="spinner-border text-primary" role="status"></div>
-						<div class="mt-2 text-muted">Consultando el servidor...</div>
+						<div class="mt-2 text-muted">@Prefs.T("common.querying")</div>
 					</div>
 				}
 				else if (!HasResults)
 				{
 					<div class="alert alert-warning m-3 mb-0">
-						No hay eventos para los filtros seleccionados.
+						@Prefs.T("log.none")
 					</div>
 				}
 				else
@@ -213,16 +213,16 @@
 							<thead class="table-light sticky-top">
 								<tr>
 									<th role="button" @onclick="() => SortBy(SortColumn.Time)">
-										Fecha / hora @SortIcon(SortColumn.Time)
+										@Prefs.T("common.datetime") @SortIcon(SortColumn.Time)
 									</th>
 									<th role="button" @onclick="() => SortBy(SortColumn.User)">
-										Usuario @SortIcon(SortColumn.User)
+										@Prefs.T("common.user") @SortIcon(SortColumn.User)
 									</th>
 									<th role="button" @onclick="() => SortBy(SortColumn.Type)">
-										Evento @SortIcon(SortColumn.Type)
+										@Prefs.T("common.event") @SortIcon(SortColumn.Type)
 									</th>
 									<th role="button" @onclick="() => SortBy(SortColumn.Host)">
-										Origen @SortIcon(SortColumn.Host)
+										@Prefs.T("common.origin") @SortIcon(SortColumn.Host)
 									</th>
 								</tr>
 							</thead>

@@ -1,9 +1,10 @@
 ﻿@page "/admin/myuserdossier"
 @inject IntStorageService mvarLocalStorage
 @inject AuthenticationClient mvarAuthClient
+
 @if(null==mvarUser)
 {
-	<ErrorTab Description="Usuario no encontrado" Instructions="Compruebe la base de datos" />	
+	<ErrorTab Description="@Prefs.T("me.notfound")" Instructions="@Prefs.T("me.notfound.hint")" />
 }
 else
 {
@@ -13,35 +14,35 @@ else
 				<div class="card-body">
 					<h5 class="card-title mb-1">@mvarUser.Name</h5>
 					<div class="card-text text-muted d-flex flex-row gap-4 mb-0" style="white-space:nowrap;">
-						<span>CF: @mvarUser.CF</span>
+						<span>@Prefs.T("me.cf"): @mvarUser.CF</span>
 						@if (!string.IsNullOrEmpty(mvarUser.Email))
 						{
-							<span>Email: @mvarUser.Email</span>
+							<span>@Prefs.T("me.email"): @mvarUser.Email</span>
 						}
 						@if (!string.IsNullOrEmpty(mvarUser.PhoneNumber))
 						{
-							<span>Teléfono: @mvarUser.PhoneNumber</span>
+							<span>@Prefs.T("me.phone"): @mvarUser.PhoneNumber</span>
 						}
 						@if (!string.IsNullOrEmpty(mvarUser.ShortPhoneNumber))
 						{
-							<span>Extensión: @mvarUser.ShortPhoneNumber</span>
+							<span>@Prefs.T("me.ext"): @mvarUser.ShortPhoneNumber</span>
 						}
 						<span>
-							Estado:
+							@Prefs.T("me.status"):
 							@if (mvarUser.UserEnabled)
 							{
-								<span class="text-success">Activo</span>
+								<span class="text-success">@Prefs.T("me.active")</span>
 							}
 							else
 							{
-								<span class="text-danger">Desactivado</span>
+								<span class="text-danger">@Prefs.T("me.disabled")</span>
 							}
 						</span>
 					</div>
 				</div>
 			</div>
 			<TabControl Classic=true>
-				<TabPage Text="Info">
+				<TabPage Text="@Prefs.T("me.info")">
 					<Icon>
 						<Sapphire2025.Icons.Headers.User color="#2020A0" />
 					</Icon>
@@ -49,7 +50,15 @@ else
 						<Sapphire2025.Layout.Users.UserActivityCTL UserId="@mvarUserId" />
 					</ChildContent>
 				</TabPage>
-				<TabPage Text="Telegram">
+				<TabPage Text="@Prefs.T("pref.title")">
+					<Icon>
+						<Sapphire2025.Icons.Headers.User color="#2020A0" />
+					</Icon>
+					<ChildContent>
+						<Sapphire2025.Layout.Users.UserPreferencesCTL />
+					</ChildContent>
+				</TabPage>
+				<TabPage Text="@Prefs.T("me.telegram")">
 					<Icon>
 						<Sapphire2025.Icons.Fields.Telegram color="#2020A0" />
 					</Icon>

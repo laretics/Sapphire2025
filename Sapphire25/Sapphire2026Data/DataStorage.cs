@@ -47,6 +47,13 @@ namespace Sapphire2026.Data
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
+			modelBuilder.Entity<UserPreference>(entity =>
+			{
+				entity.ToTable("UserPreferences");
+				entity.HasIndex(e => new { e.UserId, e.Key }).IsUnique();
+				entity.HasIndex(e => e.UserId);
+			});
+
 			// Diamond: topologías y planes de explotación (documentos versionados).
 			modelBuilder.Entity<DiamondTopoDocument>(entity =>
 			{
@@ -92,6 +99,18 @@ namespace Sapphire2026.Data
 					.OnDelete(DeleteBehavior.SetNull);
 			});
 
+			modelBuilder.Entity<DiamondTemporaryLimit>(entity =>
+			{
+				entity.ToTable("DiamondTemporaryLimits");
+				entity.HasIndex(e => e.TopoId);
+				entity.HasIndex(e => new { e.TopoId, e.AxisId, e.Pk0 });
+				entity.Property(e => e.Observations).HasMaxLength(500);
+				entity.HasOne(e => e.Topo)
+					.WithMany()
+					.HasForeignKey(e => e.TopoId)
+					.OnDelete(DeleteBehavior.Restrict);
+			});
+
 			modelBuilder.Entity<DiamondCirculationEmission>(entity =>
 			{
 				entity.ToTable("DiamondCirculationEmissions");
@@ -99,6 +118,7 @@ namespace Sapphire2026.Data
 				entity.HasIndex(e => e.EmittedAtUtc);
 				entity.HasIndex(e => e.UserId);
 				entity.Property(e => e.PdfCmsSignatureBase64).HasColumnType("longtext");
+				entity.Property(e => e.SvgArchive).HasColumnType("longtext");
 			});
 		}
 
@@ -263,6 +283,7 @@ namespace Sapphire2026.Data
 		public DbSet<DiamondPlanDocument> DiamondPlans { get; set; }
 		public DbSet<DiamondPublishedPlanDocument> DiamondPublishedPlans { get; set; }
 		public DbSet<DiamondCirculationEmission> DiamondCirculationEmissions { get; set; }
+		public DbSet<DiamondTemporaryLimit> DiamondTemporaryLimits { get; set; }
 		#endregion
 		#region Maquinistros
 		public DbSet<WorkShiftTemplateCollection> WorkShiftTemplateCollections { get; set; }
@@ -272,5 +293,8 @@ namespace Sapphire2026.Data
 		public DbSet<ExpertAgentsListView> ExpertAgentsListViews { get; set; }
 		public DbSet<ExpertAgentListRecord> ExpertAgentListRecords { get; set; }
         #endregion Maquinistros
+		#region Preferencias
+		public DbSet<UserPreference> UserPreferences { get; set; }
+		#endregion
     }
 }

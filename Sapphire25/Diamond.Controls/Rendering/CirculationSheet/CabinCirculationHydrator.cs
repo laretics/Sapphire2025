@@ -4,6 +4,7 @@ using Diamond.Motion;
 using Diamond.Timed;
 using Diamond.Topo;
 using ProjectCirculation = Diamond.Project.Circulation;
+using ProjectModel = Diamond.Project.Project;
 using ProjectStationInfo = Diamond.Project.StationInfo;
 using ProjectTimedCall = Diamond.Project.TimedCall;
 using MotionAsimilation = Diamond.Motion.Asimilation;
@@ -23,6 +24,44 @@ namespace Diamond.Controls.Rendering
 			string id = string.IsNullOrWhiteSpace(fleetId) ? "sfm-8100" : fleetId.Trim();
 			string name = string.IsNullOrWhiteSpace(fleetId) ? "CAF 8100" : fleetId.Trim();
 			return new TrainSpecs(id, name, 0.8, 0.7, 100.0);
+		}
+
+		/// <summary>
+		/// Hidrata todas las circulaciones del proyecto del día a una malla Timed
+		/// para cruces (Obs.) de la hoja de circulación.
+		/// </summary>
+		public static Mesh ToMesh(
+			ProjectModel project,
+			TopoLayout topo,
+			TrainSpecs? specs = null)
+		{
+			if (project is null)
+			{
+				throw new ArgumentNullException(nameof(project));
+			}
+
+			if (topo is null)
+			{
+				throw new ArgumentNullException(nameof(topo));
+			}
+
+			List<TimedCirculation> timed = new List<TimedCirculation>(project.Circulations.Count);
+			int i = 0;
+			while (i < project.Circulations.Count)
+			{
+				try
+				{
+					timed.Add(ToTimed(project.Circulations[i], topo, specs));
+				}
+				catch
+				{
+					// Una circulación irresoluble no debe tumbar los cruces del resto.
+				}
+
+				i++;
+			}
+
+			return Mesh.FromCirculations(timed, project.PlanningDay);
 		}
 
 		public static TimedCirculation ToTimed(

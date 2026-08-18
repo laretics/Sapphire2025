@@ -12,6 +12,8 @@ namespace Diamond.Controls.Rendering
 			string headerFill,
 			string headerText,
 			string vmxFill,
+			string temporaryVmxFill,
+			string temporaryDepText,
 			string subHeaderFill,
 			string mutedStroke,
 			string indexGroupFill,
@@ -24,6 +26,8 @@ namespace Diamond.Controls.Rendering
 			HeaderFill = headerFill;
 			HeaderText = headerText;
 			VmxFill = vmxFill;
+			TemporaryVmxFill = temporaryVmxFill;
+			TemporaryDepText = temporaryDepText;
 			SubHeaderFill = subHeaderFill;
 			MutedStroke = mutedStroke;
 			IndexGroupFill = indexGroupFill;
@@ -48,6 +52,12 @@ namespace Diamond.Controls.Rendering
 
 		/// <summary>Fondo de la columna Max.</summary>
 		public string VmxFill { get; }
+
+		/// <summary>Fondo de Max cuando el tramo es limitación temporal.</summary>
+		public string TemporaryVmxFill { get; }
+
+		/// <summary>Texto de motivo/observaciones de temporal en Dependencia.</summary>
+		public string TemporaryDepText { get; }
 
 		/// <summary>Franja Loc./ruta bajo el título.</summary>
 		public string SubHeaderFill { get; }
@@ -76,6 +86,8 @@ namespace Diamond.Controls.Rendering
 					headerFill: "#747474",
 					headerText: "#fff",
 					vmxFill: "#e8e8e8",
+					temporaryVmxFill: "#ffd400",
+					temporaryDepText: "#c00000",
 					subHeaderFill: "#f5f5f5",
 					mutedStroke: "#ccc",
 					indexGroupFill: "#eee",
@@ -96,6 +108,8 @@ namespace Diamond.Controls.Rendering
 					headerFill: "#123a6b",
 					headerText: "#ffffff",
 					vmxFill: "#d6e4f0",
+					temporaryVmxFill: "#ffd400",
+					temporaryDepText: "#c00000",
 					subHeaderFill: "#eef3f8",
 					mutedStroke: "#3a5a8a",
 					indexGroupFill: "#dce6f2",
@@ -116,6 +130,8 @@ namespace Diamond.Controls.Rendering
 					headerFill: "#2a1c12",
 					headerText: "#e07070",
 					vmxFill: "#1a120c",
+					temporaryVmxFill: "#5a3d00",
+					temporaryDepText: "#ff6b6b",
 					subHeaderFill: "#120c08",
 					mutedStroke: "#8a7058",
 					indexGroupFill: "#1a120c",

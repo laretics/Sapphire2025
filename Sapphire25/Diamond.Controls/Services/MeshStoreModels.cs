@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Diamond.Topo;
 
 namespace Diamond.Controls.Services
 {
@@ -35,6 +36,10 @@ namespace Diamond.Controls.Services
 		public string SourceScript { get; set; } = string.Empty;
 
 		public string SourceFileName { get; set; } = string.Empty;
+
+		/// <summary>Temporales del topo del plan (para pintarlas y aplicarlas en la malla).</summary>
+		public IReadOnlyList<TemporarySpeedLimit> TemporaryLimits { get; set; } =
+			Array.Empty<TemporarySpeedLimit>();
 	}
 
 	/// <summary>Topología del almacén (selector al crear/guardar plan).</summary>

@@ -1,3 +1,4 @@
+using Diamond.Controls.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Sapphire2025.Storage;
 using Sapphire2026Clients;
@@ -26,6 +27,10 @@ builder.Services.AddHttpContextAccessor();
 
 // Misma base que Sapphire2025 / Sapphire2026Clients (controladores en /api/sapphireaeneas, etc.).
 // Ojo: no usar .../tourmaline/ — los clientes componen rutas relativas tipo "sapphireaeneas/getnotes".
+CirculationDocumentBranding.ApplyFromConfiguration(
+	builder.Configuration["Diamond:Documents:CompanyLogo"],
+	builder.Environment.WebRootPath);
+
 string auxApiAddress = builder.Configuration["ApiBaseAddress"] ?? "https://material.trensfm.com:5031/api/";
 if (!auxApiAddress.EndsWith('/'))
     auxApiAddress += "/";
@@ -45,6 +50,7 @@ builder.Services.AddScoped<AuthenticationClient>();
 builder.Services.AddScoped<AeneasClient>();
 builder.Services.AddScoped<ExpertClient>();
 builder.Services.AddScoped<DiamondClient>();
+builder.Services.AddScoped<UserPreferencesService>();
 builder.Services.AddSingleton<Tourmaline26.Services.CabinCache.DiamondLocalCache>();
 builder.Services.AddHostedService<MediaMTXService>();
 // Proxy RTSP → MJPEG nativo (sin MediaMTX en el camino de visualización HMI).

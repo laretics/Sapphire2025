@@ -69,68 +69,36 @@ namespace Sapphire2026Telegram.Semantics.Concepts
 		/// Devuelve la enumeración del tren o trenes que contiene este concepto
 		/// </summary>
 		/// <returns></returns>
-		internal string TrainVerbose(bool female = false, bool acusative = false)
+		internal string TrainVerbose(Sapphire2025Models.I18n.UiLocale locale, bool female = false, bool acusative = false)
 		{
 			if(mcolTrains.Count<1)
 			{
 				if(female)
-				{
-					if (acusative)
-						return "a ninguna unidad";
-					else
-						return "ninguna unidad";
-				}
-				else
-				{
-					if (acusative)
-						return "a ningún tren";
-					else
-						return "ningún tren";
-				}
+					return Sapphire2025Models.I18n.TelegramI18n.T(locale, acusative ? "tg.train.none.f.acc" : "tg.train.none.f");
+				return Sapphire2025Models.I18n.TelegramI18n.T(locale, acusative ? "tg.train.none.m.acc" : "tg.train.none.m");
 			}
-			else if(1==mcolTrains.Count)
+			if(1==mcolTrains.Count)
 			{
+				string name = mcolTrains.First().name;
 				if(female)
-				{
-					if(acusative)
-						return string.Format("a la unidad {0}",mcolTrains.First().name);
-					else
-						return string.Format("la unidad {0}", mcolTrains.First().name);
-				}
-				else
-				{
-					if (acusative)
-						return string.Format("al tren {0}", mcolTrains.First().name);
-					else
-						return string.Format("el tren {0}", mcolTrains.First().name);
-				}
+					return Sapphire2025Models.I18n.TelegramI18n.T(locale, acusative ? "tg.train.one.f.acc" : "tg.train.one.f", name);
+				return Sapphire2025Models.I18n.TelegramI18n.T(locale, acusative ? "tg.train.one.m.acc" : "tg.train.one.m", name);
 			}
-			else
-			{
-				if (female)
-				{
-					if (acusative)
-						return string.Format("a las unidades {0}", TrainEnumeration());
-					else
-						return string.Format("las unidades {0}", TrainEnumeration());
-				}
-				else
-				{
-					if (acusative)
-						return string.Format("a los trenes {0}", TrainEnumeration());
-					else
-						return string.Format("los trenes {0}", TrainEnumeration());
-				}
-			}
+
+			string list = TrainEnumeration(locale);
+			if (female)
+				return Sapphire2025Models.I18n.TelegramI18n.T(locale, acusative ? "tg.train.many.f.acc" : "tg.train.many.f", list);
+			return Sapphire2025Models.I18n.TelegramI18n.T(locale, acusative ? "tg.train.many.m.acc" : "tg.train.many.m", list);
 		}
 
-		private string TrainEnumeration()
+		private string TrainEnumeration(Sapphire2025Models.I18n.UiLocale locale)
 		{
 			StringBuilder salida = new StringBuilder();
+			string conj = Sapphire2025Models.I18n.UiCatalog.Get(locale, "tg.train.and");
 			foreach (var item in mcolTrains)
 			{
 				if (item == mcolTrains.Last())
-					salida.Append("y ");
+					salida.Append(conj);
 				else if (item != mcolTrains.First())
 					salida.Append(", ");
 

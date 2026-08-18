@@ -24,7 +24,7 @@
                 {
                     <div class="text-center my-5">
                         <div class="spinner-border text-primary" role="status"></div>
-                        <div>Cargando datos...</div>
+                        <div>@Prefs.T("timesnap.loading")</div>
                     </div>
                 }
                 else if (trains.Any())
@@ -48,7 +48,7 @@
                 }
                 else
                 {
-                    <div class="alert alert-info mt-4">No hay datos para el filtro seleccionado.</div>
+                    <div class="alert alert-info mt-4">@Prefs.T("timesnap.empty")</div>
                 }
             </TimeSnapSelector>
         </div>
@@ -93,14 +93,14 @@
     {
         System.Text.StringBuilder salida = new System.Text.StringBuilder();
         if ("lines" == page)
-            salida.Append("Disponibilidad de flota");
+            salida.Append(Prefs.T("timesnap.fleet"));
         else if ("avail" == page)
-            salida.Append("Inmovilización por Preventivos");
+            salida.Append(Prefs.T("timesnap.preventive"));
 
         if (trains.Count > 1)
-            salida.AppendFormat(" ({0} trenes)", trains.Count);
+            salida.Append(Prefs.T("timesnap.ntrains", trains.Count));
         else if (trains.Count > 0)
-            salida.AppendFormat("Tren {0})", trains.First().name);
+            salida.Append(Prefs.T("timesnap.train", trains.First().name));
 
         return salida.ToString();
     }

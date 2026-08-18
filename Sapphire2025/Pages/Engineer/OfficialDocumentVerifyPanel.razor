@@ -1,0 +1,211 @@
+@using Diamond.Controls
+@using Diamond.Controls.Rendering
+@using Sapphire2025.Icons
+@using Sapphire2025.Storage
+@using Sapphire2025Models.Diamond
+@inject DiamondClient mvarDiamond
+
+<div class="card shadow-sm border-0 mb-3">
+	<div class="card-body">
+		<label class="form-label">Sello o texto del QR</label>
+		<div class="d-flex flex-wrap gap-2 align-items-start">
+			<input type="text"
+				   class="form-control"
+				   style="min-width:18rem;max-width:36rem"
+				   placeholder="SEL a1b2c3d4e5f6  ·  o  ZAFSEL:v1:…"
+				   @bind="mvarInput"
+				   @bind:event="oninput"
+				   @onkeydown="OnInputKey"
+				   disabled="@mvarBusy" />
+			<button type="button" class="btn btn-primary" @onclick="VerifyAsync" disabled="@(mvarBusy || string.IsNullOrWhiteSpace(mvarInput))">
+				<GenIcon Name="CheckBoxChecked" Size="16" /> Comprobar
+			</button>
+		</div>
+		<div class="form-text">No hace falta el documento original: el sello identifica la emisión oficial.</div>
+	</div>
+</div>
+
+@if (mvarBusy)
+{
+	<div class="text-muted py-3">
+		<div class="spinner-border spinner-border-sm me-2"></div>Comprobando…
+	</div>
+}
+else if (mvarResult is not null)
+{
+	<div class="alert @(mvarResult.Ok ? "alert-success" : "alert-danger")">
+		<div class="fw-bold mb-1">@(mvarResult.Ok ? "Auténtico y reconocido" : "No reconocido")</div>
+		<div>@mvarResult.Message</div>
+		@if (mvarResult.Emission is not null)
+		{
+			<div class="small mt-2">
+				<div>Tipo: @KindLabel(mvarResult.Emission.DocumentKind)</div>
+				<div>Título: @mvarResult.Emission.PlanOrTrain</div>
+				@if (!string.IsNullOrEmpty(mvarResult.Emission.DayLabel))
+				{
+					<div>Día / fecha: @mvarResult.Emission.DayLabel</div>
+				}
+				<div>Canal: @mvarResult.Emission.Channel · Hojas: @mvarResult.Emission.SheetCount</div>
+				<div>Emitido: @mvarResult.Emission.EmittedAtUtc.ToLocalTime().ToString("g")</div>
+				<div>Sello: <code>SEL @mvarResult.Emission.SealCode</code></div>
+			</div>
+		}
+		@if (mvarResult.Ok && mvarResult.HasArchive)
+		{
+			<div class="mt-3">
+				<button type="button" class="btn btn-outline-primary btn-sm" @onclick="OpenAsync" disabled="@mvarBusy">
+					<GenIcon Name="Eye" Size="16" /> Abrir documento
+				</button>
+			</div>
+		}
+		else if (mvarResult.Ok && !mvarResult.HasArchive)
+		{
+			<div class="small text-muted mt-2">
+				La emisión está reconocida, pero no hay copia recuperable (anterior a este registro).
+			</div>
+		}
+	</div>
+}
+
+@if (!string.IsNullOrEmpty(mvarOpenError))
+{
+	<div class="alert alert-warning">@mvarOpenError</div>
+}
+
+@if (mvarShowDoc && mcolOpenPages.Count > 0)
+{
+	<OfficialDocumentArchiveView Pages="mcolOpenPages"
+								 SealCode="@mvarOpenSeal"
+								 DocumentKind="@mvarOpenKind"
+								 Subtitle="@mvarOpenSubtitle"
+								 OnClose="CloseDoc" />
+}
+
+@code {
+	private string mvarInput = string.Empty;
+	private bool mvarBusy;
+	private CirculationSealVerifyResponse? mvarResult;
+	private string? mvarOpenError;
+	private bool mvarShowDoc;
+	private readonly List<string> mcolOpenPages = new List<string>();
+	private string mvarOpenSeal = string.Empty;
+	private string mvarOpenKind = string.Empty;
+	private string mvarOpenSubtitle = string.Empty;
+
+	private async Task OnInputKey(KeyboardEventArgs e)
+	{
+		if (e.Key == "Enter" && !mvarBusy && !string.IsNullOrWhiteSpace(mvarInput))
+		{
+			await VerifyAsync();
+		}
+	}
+
+	private async Task VerifyAsync()
+	{
+		mvarBusy = true;
+		mvarOpenError = null;
+		mvarResult = null;
+		try
+		{
+			CirculationSealVerifyResponse? result = await mvarDiamond.VerifyCirculationSealAsync(mvarInput.Trim());
+			if (result is null)
+			{
+				mvarResult = new CirculationSealVerifyResponse
+				{
+					Ok = false,
+					Message = "No se pudo contactar con el almacén."
+				};
+				return;
+			}
+
+			mvarResult = result;
+		}
+		catch (Exception ex)
+		{
+			mvarResult = new CirculationSealVerifyResponse
+			{
+				Ok = false,
+				Message = "Error al comprobar: " + ex.Message
+			};
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task OpenAsync()
+	{
+		if (mvarResult is null || string.IsNullOrEmpty(mvarResult.SealCode))
+		{
+			return;
+		}
+
+		mvarBusy = true;
+		mvarOpenError = null;
+		try
+		{
+			CirculationEmissionDocumentResponse? doc = await mvarDiamond.GetCirculationDocumentAsync(mvarResult.SealCode);
+			if (doc is null || !doc.Ok)
+			{
+				mvarOpenError = doc is null
+					? "No se pudo recuperar el documento."
+					: doc.Message;
+				return;
+			}
+
+			IReadOnlyList<string> pages = CirculationEmissionArchive.Unpack(doc.SvgArchive);
+			if (pages.Count == 0)
+			{
+				mvarOpenError = "La copia recuperable está vacía o no se pudo leer.";
+				return;
+			}
+
+			mcolOpenPages.Clear();
+			int i = 0;
+			while (i < pages.Count)
+			{
+				mcolOpenPages.Add(pages[i]);
+				i++;
+			}
+
+			mvarOpenSeal = doc.Emission?.SealCode ?? mvarResult.SealCode;
+			mvarOpenKind = doc.Emission?.DocumentKind ?? string.Empty;
+			mvarOpenSubtitle = doc.Emission?.PlanOrTrain ?? string.Empty;
+			mvarShowDoc = true;
+		}
+		catch (Exception ex)
+		{
+			mvarOpenError = "Error al abrir: " + ex.Message;
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private void CloseDoc()
+	{
+		mvarShowDoc = false;
+	}
+
+	private static string KindLabel(string kind)
+	{
+		if (string.Equals(kind, "libro", StringComparison.OrdinalIgnoreCase))
+		{
+			return "Libro itinerario";
+		}
+
+		if (string.Equals(kind, "ficha", StringComparison.OrdinalIgnoreCase))
+		{
+			return "Hoja de marcha";
+		}
+
+		if (string.Equals(kind, "consigna-b", StringComparison.OrdinalIgnoreCase))
+		{
+			return "Consigna serie B";
+		}
+
+		return kind ?? "—";
+	}
+}

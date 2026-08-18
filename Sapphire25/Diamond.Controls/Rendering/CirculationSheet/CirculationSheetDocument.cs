@@ -19,6 +19,7 @@ namespace Diamond.Controls.Rendering
 		private readonly string mvarRelation;
 		private readonly string mvarMaterialType;
 		private readonly string mvarLocationLine;
+		private readonly string mvarRouteTitle;
 		private readonly string mvarRouteLine;
 		private readonly string mvarMarchId;
 		private readonly string mvarEditionLabel;
@@ -34,6 +35,7 @@ namespace Diamond.Controls.Rendering
 			string relation,
 			string materialType,
 			string locationLine,
+			string routeTitle,
 			string routeLine,
 			string marchId,
 			string editionLabel,
@@ -48,6 +50,7 @@ namespace Diamond.Controls.Rendering
 			mvarRelation = relation;
 			mvarMaterialType = materialType;
 			mvarLocationLine = locationLine;
+			mvarRouteTitle = routeTitle ?? string.Empty;
 			mvarRouteLine = routeLine ?? string.Empty;
 			mvarMarchId = marchId;
 			mvarEditionLabel = editionLabel;
@@ -95,10 +98,13 @@ namespace Diamond.Controls.Rendering
 			get { return mvarLocationLine; }
 		}
 
-		/// <summary>
-		/// Línea de ruta (antiguo contenido de Loc. con vista y relación OD).
-		/// Solo 1.ª hoja, debajo de la locomotora.
-		/// </summary>
+		/// <summary>Recorrido en claro (p. ej. «Palma - Sa Pobla»). 1.ª hoja.</summary>
+		public string RouteTitle
+		{
+			get { return mvarRouteTitle; }
+		}
+
+		/// <summary>PK / firma de la vista (antes al inicio de la línea única). 1.ª hoja.</summary>
 		public string RouteLine
 		{
 			get { return mvarRouteLine; }
@@ -141,9 +147,16 @@ namespace Diamond.Controls.Rendering
 			Circulation circulation,
 			int maxFrontiersPerPage = CirculationSheetPager.DefaultMaxFrontiersPerPage,
 			string? editionLabel = null,
-			ServiceDays? serviceDays = null)
+			ServiceDays? serviceDays = null,
+			bool includeTemporaryLimits = false)
 		{
-			return Build(circulation, mesh: null, maxFrontiersPerPage, editionLabel, serviceDays);
+			return Build(
+				circulation,
+				mesh: null,
+				maxFrontiersPerPage,
+				editionLabel,
+				serviceDays,
+				includeTemporaryLimits: includeTemporaryLimits);
 		}
 
 		/// <param name="mesh">
@@ -163,7 +176,8 @@ namespace Diamond.Controls.Rendering
 			int maxFrontiersPerPage = CirculationSheetPager.DefaultMaxFrontiersPerPage,
 			string? editionLabel = null,
 			ServiceDays? serviceDays = null,
-			TrainSpecs? specs = null)
+			TrainSpecs? specs = null,
+			bool includeTemporaryLimits = false)
 		{
 			if (circulation is null)
 			{
@@ -182,7 +196,8 @@ namespace Diamond.Controls.Rendering
 				maxFrontiersPerPage,
 				editionLabel,
 				serviceDays,
-				scheduledTimes: circulation);
+				scheduledTimes: circulation,
+				includeTemporaryLimits: includeTemporaryLimits);
 		}
 
 		public static CirculationSheetDocument Build(
@@ -191,7 +206,8 @@ namespace Diamond.Controls.Rendering
 			int maxFrontiersPerPage = CirculationSheetPager.DefaultMaxFrontiersPerPage,
 			string? editionLabel = null,
 			ServiceDays? serviceDays = null,
-			ProjectCirculation? scheduledTimes = null)
+			ProjectCirculation? scheduledTimes = null,
+			bool includeTemporaryLimits = false)
 		{
 			if (circulation is null)
 			{
@@ -213,10 +229,11 @@ namespace Diamond.Controls.Rendering
 				: string.Empty;
 			string trainTitle = string.Empty;
 			string relation = originName + " a " + destName;
-			// Loc. = locomotora/material (nombre, a, b). Ruta = antigua línea Loc. (vista + OD).
+			// Loc. = locomotora/material. Recorrido y PK de vista en dos líneas.
 			// Tipo = techo de velocidad del material en todas las hojas ("Tipo 100").
 			string locationLine = FormatLocomotiveLine(asim.Specs);
-			string routeLine = FormatRouteLine(view, relation);
+			string routeTitle = FormatRouteTitle(originName, destName);
+			string routeLine = FormatRoutePkLine(view);
 			string material = FormatMaterialTypeLabel(asim.Specs);
 			// No exponer Id técnico de planificación (C12-R-T3…).
 			string marchId = string.Empty;
@@ -235,7 +252,7 @@ namespace Diamond.Controls.Rendering
 			}
 
 			List<CirculationSheetFrontier> frontiers = BuildFrontiers(
-				circulation, asim, view, originPk, destPk, increasing, scheduledTimes);
+				circulation, asim, view, originPk, destPk, increasing, scheduledTimes, includeTemporaryLimits);
 			if (mesh is not null)
 			{
 				frontiers = AttachCrossings(frontiers, circulation, view, mesh);
@@ -250,6 +267,7 @@ namespace Diamond.Controls.Rendering
 				relation,
 				material,
 				locationLine,
+				routeTitle,
 				routeLine,
 				marchId,
 				edition,
@@ -282,19 +300,35 @@ namespace Diamond.Controls.Rendering
 			return "Loc. " + name + "  a " + a + "  b " + b;
 		}
 
+		/// <summary>Nombre del recorrido: «Palma - Sa Pobla».</summary>
+		public static string FormatRouteTitle(string originName, string destName)
+		{
+			string o = string.IsNullOrWhiteSpace(originName) ? "—" : originName.Trim();
+			string d = string.IsNullOrWhiteSpace(destName) ? "—" : destName.Trim();
+			return o + " - " + d;
+		}
+
 		/// <summary>
-		/// Ruta: mismos datos que el antiguo Loc. (id de vista / ejes + relación OD),
-		/// en mayúsculas y compacto para lectura.
+		/// PK / firma de la vista (el texto que antes iba al comienzo de la línea única).
 		/// </summary>
+		public static string FormatRoutePkLine(RouteView view)
+		{
+			if (view is null || string.IsNullOrWhiteSpace(view.Id))
+			{
+				return "—";
+			}
+
+			return view.Id.Trim();
+		}
+
+		/// <summary>Compat: «vista.- relación» en una sola línea.</summary>
 		public static string FormatRouteLine(RouteView view, string relation)
 		{
-			string viewId = view is null || string.IsNullOrWhiteSpace(view.Id)
-				? "—"
-				: view.Id.Trim();
+			string pk = FormatRoutePkLine(view);
 			string rel = string.IsNullOrWhiteSpace(relation)
 				? "—"
-				: relation.Trim().ToUpperInvariant();
-			return viewId + ".- " + rel;
+				: relation.Trim();
+			return pk + ".- " + rel;
 		}
 
 		/// <summary>Cabecera derecha: "Tipo 100" con vmax del material redondeado a entero.</summary>
@@ -551,7 +585,8 @@ namespace Diamond.Controls.Rendering
 			long originPk,
 			long destPk,
 			bool increasing,
-			ProjectCirculation? scheduledTimes)
+			ProjectCirculation? scheduledTimes,
+			bool includeTemporaryLimits)
 		{
 			// —— Paradas comerciales (dwell) ——
 			HashSet<long> commercialPk = new HashSet<long>();
@@ -600,7 +635,7 @@ namespace Diamond.Controls.Rendering
 				asc.Add(pk);
 			}
 
-			CollectSpeedFrontiersOnPath(view, originPk, destPk, increasing, asc);
+			CollectSpeedFrontiersOnPath(view, originPk, destPk, increasing, asc, includeTemporaryLimits);
 
 			List<long> orderedPk = new List<long>(asc);
 			if (!increasing)
@@ -657,6 +692,24 @@ namespace Diamond.Controls.Rendering
 					depName = "PK " + FormatStationKm(displayPk);
 				}
 
+				bool outgoingTemp = false;
+				string tempReason = string.Empty;
+				string tempObs = string.Empty;
+				if (includeTemporaryLimits && i < orderedPk.Count - 1)
+				{
+					long samplePk = MidPk(pk, orderedPk[i + 1]);
+					TemporarySpeedLimit? gov = view.FindGoverningTemporary(samplePk);
+					if (gov is not null)
+					{
+						outgoingTemp = true;
+						if (kind == CirculationSheetMarkKind.SpeedLimitChange)
+						{
+							tempReason = TemporaryLimitReasonText.Label(gov.Reason);
+							tempObs = gov.Observations ?? string.Empty;
+						}
+					}
+				}
+
 				bool commercial = commercialPk.Contains(pk) && st is not null;
 				TimeSpan dwell = TimeSpan.Zero;
 				if (commercial)
@@ -700,7 +753,7 @@ namespace Diamond.Controls.Rendering
 					long nextPk = orderedPk[i + 1];
 					long samplePk = MidPk(pk, nextPk);
 					outTracks = view.GetTrackCountAt(samplePk);
-					outVmax = view.GetEffectiveSpeedLimit(samplePk);
+					outVmax = view.GetSpeedLimitForSheet(samplePk, includeTemporaryLimits);
 					if (!outVmax.HasValue && asim.Specs is not null)
 					{
 						outVmax = (int)Math.Round(asim.Specs.MaxSpeedKmh);
@@ -745,7 +798,10 @@ namespace Diamond.Controls.Rendering
 					outgoingTrackCount: outTracks,
 					outgoingVmaxKmh: outVmax,
 					grantedToNext: granted,
-					axisId: axisId));
+					axisId: axisId,
+					outgoingIsTemporary: outgoingTemp,
+					temporaryReasonLabel: tempReason,
+					temporaryObservations: tempObs));
 
 				i++;
 			}
@@ -949,7 +1005,8 @@ namespace Diamond.Controls.Rendering
 			long originPk,
 			long destPk,
 			bool increasing,
-			SortedSet<long> set)
+			SortedSet<long> set,
+			bool includeTemporary)
 		{
 			long lo = Math.Min(originPk, destPk);
 			long hi = Math.Max(originPk, destPk);
@@ -958,7 +1015,11 @@ namespace Diamond.Controls.Rendering
 			{
 				RouteLeg leg = view.Legs[li];
 				CollectSpeedMap(view, leg.Axis, leg.Axis.FixedLimits, lo, hi, set);
-				CollectSpeedMap(view, leg.Axis, leg.Axis.TemporaryLimits, lo, hi, set);
+				if (includeTemporary)
+				{
+					CollectSpeedMap(view, leg.Axis, leg.Axis.TemporaryLimits, lo, hi, set);
+				}
+
 				CollectSpeedMap(view, leg.Axis, leg.Axis.SessionLimits, lo, hi, set);
 				li++;
 			}

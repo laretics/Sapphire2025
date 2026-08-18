@@ -135,6 +135,7 @@ namespace Diamond.Controls.Rendering
 				showConflicts: screenOptions.ShowConflicts,
 				showSpeedStrip: screenOptions.ShowSpeedStrip,
 				showTrackStrip: screenOptions.ShowTrackStrip,
+				showTemporaryLimits: screenOptions.ShowTemporaryLimits,
 				showNowLine: false,
 				nowTime: null,
 				maxPolylineSamples: 160,

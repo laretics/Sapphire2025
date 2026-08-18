@@ -39,6 +39,9 @@ namespace Diamond.Controls.Rendering
 		private readonly string mvarCrossingTrains;
 		/// <summary>Id del eje físico (p. ej. T3, T2) al que pertenece este PK.</summary>
 		private readonly string mvarAxisId;
+		private readonly bool mvarOutgoingIsTemporary;
+		private readonly string mvarTemporaryReasonLabel;
+		private readonly string mvarTemporaryObservations;
 
 		public CirculationSheetFrontier(
 			long routePk,
@@ -55,7 +58,10 @@ namespace Diamond.Controls.Rendering
 			int? outgoingVmaxKmh,
 			TimeSpan? grantedToNext,
 			string? crossingTrains = null,
-			string? axisId = null)
+			string? axisId = null,
+			bool outgoingIsTemporary = false,
+			string? temporaryReasonLabel = null,
+			string? temporaryObservations = null)
 		{
 			mvarRoutePk = routePk;
 			mvarStationKm = stationKm ?? string.Empty;
@@ -72,6 +78,9 @@ namespace Diamond.Controls.Rendering
 			mvarGrantedToNext = grantedToNext;
 			mvarCrossingTrains = crossingTrains ?? string.Empty;
 			mvarAxisId = axisId ?? string.Empty;
+			mvarOutgoingIsTemporary = outgoingIsTemporary;
+			mvarTemporaryReasonLabel = temporaryReasonLabel ?? string.Empty;
+			mvarTemporaryObservations = temporaryObservations ?? string.Empty;
 		}
 
 		public CirculationSheetFrontier WithCrossingTrains(string? crossingTrains)
@@ -91,7 +100,10 @@ namespace Diamond.Controls.Rendering
 				mvarOutgoingVmaxKmh,
 				mvarGrantedToNext,
 				crossingTrains,
-				mvarAxisId);
+				mvarAxisId,
+				mvarOutgoingIsTemporary,
+				mvarTemporaryReasonLabel,
+				mvarTemporaryObservations);
 		}
 
 		public long RoutePk
@@ -179,6 +191,22 @@ namespace Diamond.Controls.Rendering
 		public string CrossingTrains
 		{
 			get { return mvarCrossingTrains; }
+		}
+
+		/// <summary>El tramo saliente está gobernado por una limitación temporal.</summary>
+		public bool OutgoingIsTemporary
+		{
+			get { return mvarOutgoingIsTemporary; }
+		}
+
+		public string TemporaryReasonLabel
+		{
+			get { return mvarTemporaryReasonLabel; }
+		}
+
+		public string TemporaryObservations
+		{
+			get { return mvarTemporaryObservations; }
 		}
 	}
 }

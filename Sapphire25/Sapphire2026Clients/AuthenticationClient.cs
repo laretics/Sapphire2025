@@ -2,6 +2,7 @@
 //using Sapphire2025.Icons.Roles;
 using Sapphire2025Models;
 using Sapphire2025Models.Authentication;
+using Sapphire2025Models.Preferences;
 using Sapphire2026Clients;
 using System.Diagnostics;
 using System.Linq.Expressions;
@@ -89,9 +90,11 @@ namespace Sapphire2025.Storage
 			}
 
 			salida.Changes = Common.GetReleaseChangesFor(roles)
-				.Where(c => !string.IsNullOrWhiteSpace(c.Text))
+				.Where(c => !string.IsNullOrWhiteSpace(c.TextKey) || !string.IsNullOrWhiteSpace(c.Text))
 				.Select(c => new VersionChangeNote
 				{
+					TextKey = c.TextKey,
+					ObservationsKey = c.ObservationsKey,
 					Text = c.Text,
 					Observations = c.Observations ?? string.Empty
 				})
@@ -219,15 +222,24 @@ namespace Sapphire2025.Storage
             return response;
         }
 
-        public async Task<bool> Logout(string tokenId)
+        public async Task<bool> Logout(
+			string tokenId,
+			string? client = null,
+			string? trainId = null,
+			string? trainName = null)
         {
             try
             {
-                //string request = composeCommand(
-                //    "logout",
-                //    new requestParam("tokenid", tokenId));
+				Guid token = await mvarIntStorage.getToken();
+				if (Guid.Empty.Equals(token) && Guid.TryParse(tokenId, out Guid parsed))
+					token = parsed;
 
-                BasicRequestModel question = new BasicRequestModel(await mvarIntStorage.getToken());
+				LogoutRequestModel question = new LogoutRequestModel(token)
+				{
+					Client = client,
+					TrainId = trainId,
+					TrainName = trainName
+				};
 				string request = JsonSerializer.Serialize(question);
 				HttpResponseMessage respuesta = await sendPutRequest("logout",request);
                 
@@ -520,6 +532,53 @@ namespace Sapphire2025.Storage
             return false;
         }
 
+		public async Task<UserPreferencesModel?> GetUserPreferencesAsync(Guid? targetUserId = null)
+		{
+			try
+			{
+				UserPreferencesQueryRequest request = new UserPreferencesQueryRequest
+				{
+					SessionToken = await getCurrentToken(),
+					TargetUserId = targetUserId ?? Guid.Empty
+				};
+				if (Guid.Empty.Equals(request.SessionToken))
+					return null;
+				string json = JsonSerializer.Serialize(request);
+				HttpResponseMessage response = await sendPutRequest("userpreferences", json);
+				if (response.IsSuccessStatusCode)
+					return await response.Content.ReadFromJsonAsync<UserPreferencesModel>();
+			}
+			catch
+			{
+			}
+
+			return null;
+		}
+
+		public async Task<UserPreferencesModel?> SetUserPreferencesAsync(IEnumerable<UserPreferenceItem> items, Guid? targetUserId = null)
+		{
+			try
+			{
+				UserPreferencesSaveRequest request = new UserPreferencesSaveRequest
+				{
+					SessionToken = await getCurrentToken(),
+					TargetUserId = targetUserId ?? Guid.Empty,
+					Items = items?.ToList() ?? new List<UserPreferenceItem>()
+				};
+				if (Guid.Empty.Equals(request.SessionToken))
+					return null;
+				string json = JsonSerializer.Serialize(request);
+				HttpResponseMessage response = await sendPutRequest("setuserpreferences", json);
+				if (response.IsSuccessStatusCode)
+					return await response.Content.ReadFromJsonAsync<UserPreferencesModel>();
+			}
+			catch
+			{
+			}
+
+			return null;
+		}
+
         public async Task<UserActivityModel?> getUserActivity(Guid tokenId, Guid userId, int maxRecords=0)
         {
 			UserActivityRequest peticion = new UserActivityRequest();
@@ -557,13 +616,20 @@ namespace Sapphire2025.Storage
 		/// Registra un evento de actividad del usuario actual (cuadrante, etc.).
 		/// Fallos de red se ignoran para no bloquear la UI.
 		/// </summary>
-		public async Task<bool> LogActivity(Common.sessionEventType eventType, string? detail = null)
+		public async Task<bool> LogActivity(
+			Common.sessionEventType eventType,
+			string? detail = null,
+			Guid? sessionToken = null)
 		{
 			try
 			{
+				Guid token = sessionToken ?? Guid.Empty;
+				if (Guid.Empty.Equals(token))
+					token = await getCurrentToken();
+
 				SessionEventLogRequest request = new SessionEventLogRequest
 				{
-					SessionToken = await getCurrentToken(),
+					SessionToken = token,
 					EventType = (byte)eventType,
 					Detail = detail
 				};

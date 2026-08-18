@@ -1,0 +1,84 @@
+.tl-ed {
+	--tl-ink: #0f172a;
+	--tl-muted: #64748b;
+	--tl-line: #e2e8f0;
+}
+
+.tl-ed-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem 1rem;
+	margin-bottom: 0.75rem;
+}
+
+.tl-ed-hint {
+	font-size: 0.88rem;
+	color: var(--tl-muted);
+	margin-bottom: 0.85rem;
+}
+
+.tl-ed-empty {
+	text-align: center;
+	color: var(--tl-muted);
+	padding: 2.5rem 1rem;
+	background: #fff;
+	border: 1px dashed var(--tl-line);
+	border-radius: 0.85rem;
+}
+
+.tl-ed-axes {
+	gap: 0.35rem;
+	flex-wrap: wrap;
+}
+
+.tl-ed-axes .nav-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	border: 1px solid var(--tl-line);
+	color: var(--tl-ink);
+	background: #fff;
+}
+
+.tl-ed-axes .nav-link.active {
+	background: #0f172a;
+	border-color: #0f172a;
+	color: #fff;
+}
+
+.tl-ed-axis-name {
+	font-size: 0.78rem;
+	opacity: 0.75;
+	font-weight: 500;
+}
+
+.tl-ed-panel {
+	background: #fff;
+	border: 1px solid var(--tl-line);
+	border-radius: 0.85rem;
+	overflow: hidden;
+	box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
+}
+
+.tl-ed-table thead th {
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #64748b;
+	background: #f8fafc;
+	white-space: nowrap;
+}
+
+.tl-ed-table tbody tr.tl-ed-new {
+	background: #fffbeb;
+}
+
+.tl-ed-nested-title {
+	font-size: 0.82rem;
+	font-weight: 800;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #64748b;
+}
