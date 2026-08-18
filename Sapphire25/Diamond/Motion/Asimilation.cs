@@ -683,7 +683,9 @@ namespace Diamond.Motion
 
 		private double ResolveLimitMs(long routePk)
 		{
-			int? limitKmh = mvarView.GetEffectiveSpeedLimit(routePk);
+			// Tasado: fijas + sesión. Las temporales se muestran en ficha/malla
+			// pero se recuperan en marcha, no se suman al perfil de tiempos.
+			int? limitKmh = mvarView.GetScheduledSpeedLimit(routePk);
 			double kmh;
 			if (limitKmh.HasValue)
 			{

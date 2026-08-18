@@ -68,7 +68,8 @@ namespace Diamond.Topo
 			string? observations = null,
 			TemporaryLimitTrack track = TemporaryLimitTrack.Both,
 			bool isNewCreation = false,
-			DateTime? createdAt = null)
+			DateTime? createdAt = null,
+			bool signaledOnTrack = true)
 		{
 			TemporarySpeedLimit limit = new TemporarySpeedLimit(pk0, pkf, speed);
 			limit.AxisId = axisId ?? string.Empty;
@@ -76,6 +77,7 @@ namespace Diamond.Topo
 			limit.Observations = observations ?? string.Empty;
 			limit.Track = track;
 			limit.IsNewCreation = isNewCreation;
+			limit.SignaledOnTrack = signaledOnTrack;
 			if (createdAt.HasValue)
 			{
 				limit.CreatedAt = createdAt.Value;

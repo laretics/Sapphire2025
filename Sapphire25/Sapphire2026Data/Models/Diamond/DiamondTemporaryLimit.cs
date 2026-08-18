@@ -38,7 +38,7 @@ namespace Sapphire2026.Data.Models.Diamond
 
 		public DateTime CreatedUtc { get; set; }
 
-		public bool SignaledOnTrack { get; set; }
+		public bool SignaledOnTrack { get; set; } = true;
 
 		/// <summary>Texto libre opcional (detalle del motivo, o descripción si es «Otros»).</summary>
 		[MaxLength(500)]

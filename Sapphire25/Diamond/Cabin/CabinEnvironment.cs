@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Diamond.Timed;
 using Diamond.Topo;
 using ProjectCirculation = Diamond.Project.Circulation;
 using ProjectModel = Diamond.Project.Project;
@@ -219,6 +220,15 @@ namespace Diamond.Cabin
 			PublishedPlanName = publishedPlanName ?? string.Empty;
 			PublishedValidFrom = validFrom;
 			PublishedValidTo = validTo;
+			if (topo is not null)
+			{
+				// Misma infraestructura que el planificador / publicación:
+				// cantones en estaciones principales y doble vía Palma–Enllaç en T3.
+				// El XML de topo no serializa spans de vía; sin esto la hoja de
+				// circulación del maquinista marca todo el recorrido como vía única.
+				SfmDemoInfrastructure.Apply(topo);
+			}
+
 			RefreshDayProject();
 		}
 

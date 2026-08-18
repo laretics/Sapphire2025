@@ -356,9 +356,17 @@ namespace Diamond.Topo
 		}
 
 		/// <summary>
+		/// V tasada (fijas + sesión). Sin temporales: no se recuperan en malla ni en ficha.
+		/// </summary>
+		public int? GetScheduledSpeedLimit(long routePk)
+		{
+			return GetSpeedLimitForSheet(routePk, includeTemporary: false);
+		}
+
+		/// <summary>
 		/// Limitación temporal más restrictiva en el PK de ruta, o null si no hay.
 		/// </summary>
-		public int? GetTemporarySpeedLimit(long routePk)
+		public int? GetTemporarySpeedLimit(long routePk, TemporaryLimitTrack? track = null)
 		{
 			Axis? axis;
 			long axisPk;
@@ -367,10 +375,13 @@ namespace Diamond.Topo
 				return null;
 			}
 
-			return axis.GetTemporarySpeedLimit(axisPk);
+			return axis.GetTemporarySpeedLimit(axisPk, track);
 		}
 
-		public int? GetSpeedLimitForSheet(long routePk, bool includeTemporary)
+		public int? GetSpeedLimitForSheet(
+			long routePk,
+			bool includeTemporary,
+			TemporaryLimitTrack? temporaryTrack = null)
 		{
 			Axis? axis;
 			long axisPk;
@@ -379,10 +390,12 @@ namespace Diamond.Topo
 				return mvarVmax > 0 ? mvarVmax : null;
 			}
 
-			return axis.GetSpeedLimitForSheet(axisPk, includeTemporary);
+			return axis.GetSpeedLimitForSheet(axisPk, includeTemporary, temporaryTrack);
 		}
 
-		public TemporarySpeedLimit? FindGoverningTemporary(long routePk)
+		public TemporarySpeedLimit? FindGoverningTemporary(
+			long routePk,
+			TemporaryLimitTrack? track = null)
 		{
 			Axis? axis;
 			long axisPk;
@@ -391,7 +404,7 @@ namespace Diamond.Topo
 				return null;
 			}
 
-			return axis.FindGoverningTemporary(axisPk);
+			return axis.FindGoverningTemporary(axisPk, track);
 		}
 
 		public int GetTrackCountAt(long routePk)

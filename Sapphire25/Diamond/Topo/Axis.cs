@@ -325,23 +325,47 @@ namespace Diamond.Topo
 
 		/// <summary>
 		/// Velocidad temporal más restrictiva en el PK, o null si no hay capa temporal.
+		/// <paramref name="track"/> filtra vía (incluye <see cref="TemporaryLimitTrack.Both"/>).
 		/// </summary>
-		public int? GetTemporarySpeedLimit(long pk)
+		public int? GetTemporarySpeedLimit(long pk, TemporaryLimitTrack? track = null)
 		{
-			return mvarTemporaryLimits.GetMinSpeedAt(pk);
+			if (!track.HasValue)
+			{
+				return mvarTemporaryLimits.GetMinSpeedAt(pk);
+			}
+
+			int? min = null;
+			int i = 0;
+			while (i < mcolTemporaryLimitRecords.Count)
+			{
+				TemporarySpeedLimit limit = mcolTemporaryLimitRecords[i];
+				if (TemporaryLimitSheetFilter.ContainsPk(limit, pk)
+					&& SpeedLimitFlattener.AppliesToTrack(limit.Track, track))
+				{
+					min = MinSpeed(min, limit.Speed);
+				}
+
+				i++;
+			}
+
+			return min;
 		}
 
 		/// <summary>
 		/// V para ficha/libro: fijas + sesión, y temporales solo si se piden.
+		/// <paramref name="temporaryTrack"/> restringe las temporales a esa vía (y ambas).
 		/// </summary>
-		public int? GetSpeedLimitForSheet(long pk, bool includeTemporary)
+		public int? GetSpeedLimitForSheet(
+			long pk,
+			bool includeTemporary,
+			TemporaryLimitTrack? temporaryTrack = null)
 		{
 			int? fixedSpeed = mvarFixedLimits.GetMinSpeedAt(pk);
 			int? sessionSpeed = mvarSessionLimits.GetMinSpeedAt(pk);
 			int? layered = MinSpeed(fixedSpeed, sessionSpeed);
 			if (includeTemporary)
 			{
-				layered = MinSpeed(layered, mvarTemporaryLimits.GetMinSpeedAt(pk));
+				layered = MinSpeed(layered, GetTemporarySpeedLimit(pk, temporaryTrack));
 			}
 
 			if (layered.HasValue)
@@ -357,23 +381,29 @@ namespace Diamond.Topo
 			return null;
 		}
 
-		public TemporarySpeedLimit? FindGoverningTemporary(long pk)
+		public TemporarySpeedLimit? FindGoverningTemporary(
+			long pk,
+			TemporaryLimitTrack? track = null)
 		{
 			TemporarySpeedLimit? best = null;
 			int i = 0;
 			while (i < mcolTemporaryLimitRecords.Count)
 			{
 				TemporarySpeedLimit limit = mcolTemporaryLimitRecords[i];
+				if (!TemporaryLimitSheetFilter.ContainsPk(limit, pk)
+					|| !SpeedLimitFlattener.AppliesToTrack(limit.Track, track))
+				{
+					i++;
+					continue;
+				}
+
 				long lo = limit.PK < limit.PKEnd ? limit.PK : limit.PKEnd;
 				long hi = limit.PK > limit.PKEnd ? limit.PK : limit.PKEnd;
-				if (pk >= lo && pk < hi)
+				if (best is null
+					|| limit.Speed < best.Speed
+					|| (limit.Speed == best.Speed && (hi - lo) < Math.Abs(best.PKEnd - best.PK)))
 				{
-					if (best is null
-						|| limit.Speed < best.Speed
-						|| (limit.Speed == best.Speed && (hi - lo) < (best.PKEnd - best.PK)))
-					{
-						best = limit;
-					}
+					best = limit;
 				}
 
 				i++;

@@ -25,7 +25,7 @@ namespace Diamond.Topo
 			mvarIsNewCreation = true;
 			mvarReason = TemporaryLimitReason.Other;
 			mvarCreatedAt = DateTime.UtcNow;
-			mvarSignaledOnTrack = false;
+			mvarSignaledOnTrack = true;
 			mvarObservations = string.Empty;
 		}
 
@@ -37,7 +37,7 @@ namespace Diamond.Topo
 			mvarIsNewCreation = true;
 			mvarReason = TemporaryLimitReason.Other;
 			mvarCreatedAt = DateTime.UtcNow;
-			mvarSignaledOnTrack = false;
+			mvarSignaledOnTrack = true;
 			mvarObservations = string.Empty;
 		}
 

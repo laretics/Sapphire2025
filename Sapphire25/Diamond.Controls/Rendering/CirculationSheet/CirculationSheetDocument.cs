@@ -251,8 +251,17 @@ namespace Diamond.Controls.Rendering
 				daysLabel = ServiceDays.FromDayOfWeekMask(mesh.PlanningDay.Value).FormatCirculationLabel();
 			}
 
+			bool ascending = TrainNumbering.IsNetworkAscendingForNumbering(circulation);
 			List<CirculationSheetFrontier> frontiers = BuildFrontiers(
-				circulation, asim, view, originPk, destPk, increasing, scheduledTimes, includeTemporaryLimits);
+				circulation,
+				asim,
+				view,
+				originPk,
+				destPk,
+				increasing,
+				scheduledTimes,
+				includeTemporaryLimits,
+				ascending);
 			if (mesh is not null)
 			{
 				frontiers = AttachCrossings(frontiers, circulation, view, mesh);
@@ -586,7 +595,8 @@ namespace Diamond.Controls.Rendering
 			long destPk,
 			bool increasing,
 			ProjectCirculation? scheduledTimes,
-			bool includeTemporaryLimits)
+			bool includeTemporaryLimits,
+			bool ascending)
 		{
 			// —— Paradas comerciales (dwell) ——
 			HashSet<long> commercialPk = new HashSet<long>();
@@ -635,7 +645,8 @@ namespace Diamond.Controls.Rendering
 				asc.Add(pk);
 			}
 
-			CollectSpeedFrontiersOnPath(view, originPk, destPk, increasing, asc, includeTemporaryLimits);
+			CollectSpeedFrontiersOnPath(
+				view, originPk, destPk, increasing, asc, includeTemporaryLimits, ascending);
 
 			List<long> orderedPk = new List<long>(asc);
 			if (!increasing)
@@ -693,15 +704,20 @@ namespace Diamond.Controls.Rendering
 				}
 
 				bool outgoingTemp = false;
+				bool outgoingUnsignaled = false;
 				string tempReason = string.Empty;
 				string tempObs = string.Empty;
+				TemporaryLimitTrack? tempTrack = null;
 				if (includeTemporaryLimits && i < orderedPk.Count - 1)
 				{
 					long samplePk = MidPk(pk, orderedPk[i + 1]);
-					TemporarySpeedLimit? gov = view.FindGoverningTemporary(samplePk);
+					int tracks = view.GetTrackCountAt(samplePk);
+					tempTrack = TemporaryLimitSheetFilter.TrackForTrain(ascending, tracks);
+					TemporarySpeedLimit? gov = view.FindGoverningTemporary(samplePk, tempTrack);
 					if (gov is not null)
 					{
 						outgoingTemp = true;
+						outgoingUnsignaled = !gov.SignaledOnTrack;
 						if (kind == CirculationSheetMarkKind.SpeedLimitChange)
 						{
 							tempReason = TemporaryLimitReasonText.Label(gov.Reason);
@@ -753,7 +769,12 @@ namespace Diamond.Controls.Rendering
 					long nextPk = orderedPk[i + 1];
 					long samplePk = MidPk(pk, nextPk);
 					outTracks = view.GetTrackCountAt(samplePk);
-					outVmax = view.GetSpeedLimitForSheet(samplePk, includeTemporaryLimits);
+					if (!tempTrack.HasValue && includeTemporaryLimits)
+					{
+						tempTrack = TemporaryLimitSheetFilter.TrackForTrain(ascending, outTracks.Value);
+					}
+
+					outVmax = view.GetSpeedLimitForSheet(samplePk, includeTemporaryLimits, tempTrack);
 					if (!outVmax.HasValue && asim.Specs is not null)
 					{
 						outVmax = (int)Math.Round(asim.Specs.MaxSpeedKmh);
@@ -801,7 +822,8 @@ namespace Diamond.Controls.Rendering
 					axisId: axisId,
 					outgoingIsTemporary: outgoingTemp,
 					temporaryReasonLabel: tempReason,
-					temporaryObservations: tempObs));
+					temporaryObservations: tempObs,
+					outgoingTemporaryUnsignaled: outgoingUnsignaled));
 
 				i++;
 			}
@@ -1006,7 +1028,8 @@ namespace Diamond.Controls.Rendering
 			long destPk,
 			bool increasing,
 			SortedSet<long> set,
-			bool includeTemporary)
+			bool includeTemporary,
+			bool ascending)
 		{
 			long lo = Math.Min(originPk, destPk);
 			long hi = Math.Max(originPk, destPk);
@@ -1017,11 +1040,156 @@ namespace Diamond.Controls.Rendering
 				CollectSpeedMap(view, leg.Axis, leg.Axis.FixedLimits, lo, hi, set);
 				if (includeTemporary)
 				{
-					CollectSpeedMap(view, leg.Axis, leg.Axis.TemporaryLimits, lo, hi, set);
+					CollectApplicableTemporaryFrontiers(view, leg.Axis, lo, hi, set, ascending);
+					CollectTrackCountChangeFrontiers(view, leg.Axis, lo, hi, set);
 				}
 
 				CollectSpeedMap(view, leg.Axis, leg.Axis.SessionLimits, lo, hi, set);
 				li++;
+			}
+		}
+
+		private static void CollectApplicableTemporaryFrontiers(
+			RouteView view,
+			Axis axis,
+			long pkMin,
+			long pkMax,
+			SortedSet<long> set,
+			bool ascending)
+		{
+			int i = 0;
+			while (i < axis.TemporaryLimitRecords.Count)
+			{
+				TemporarySpeedLimit limit = axis.TemporaryLimitRecords[i];
+				i++;
+				if (!TemporaryAppliesOnPath(limit, view, axis, pkMin, pkMax, ascending))
+				{
+					continue;
+				}
+
+				AddMappedAxisPk(view, axis, limit.PK, pkMin, pkMax, set);
+				AddMappedAxisPk(view, axis, limit.PKEnd, pkMin, pkMax, set);
+			}
+		}
+
+		private static bool TemporaryAppliesOnPath(
+			TemporarySpeedLimit limit,
+			RouteView view,
+			Axis axis,
+			long routeLo,
+			long routeHi,
+			bool ascending)
+		{
+			long a0 = limit.PK < limit.PKEnd ? limit.PK : limit.PKEnd;
+			long a1 = limit.PK > limit.PKEnd ? limit.PK : limit.PKEnd;
+			if (a1 <= a0)
+			{
+				return false;
+			}
+
+			List<long> samples = new List<long>();
+			samples.Add(a0);
+			samples.Add(a0 + ((a1 - a0) / 2));
+			samples.Add(a1 - 1);
+			AddSpanCuts(axis.TrackSpans, a0, a1, samples);
+			AddSpanCuts(axis.SessionTrackSpans, a0, a1, samples);
+
+			int i = 0;
+			while (i < samples.Count)
+			{
+				long axisPk = samples[i];
+				i++;
+				long routePk;
+				if (!view.TryMapAxisToRoute(axis, axisPk, out routePk))
+				{
+					continue;
+				}
+
+				if (routePk < routeLo || routePk > routeHi)
+				{
+					continue;
+				}
+
+				int tracks = axis.GetTrackCountAt(axisPk);
+				if (TemporaryLimitSheetFilter.Applies(limit, ascending, tracks))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		private static void CollectTrackCountChangeFrontiers(
+			RouteView view,
+			Axis axis,
+			long pkMin,
+			long pkMax,
+			SortedSet<long> set)
+		{
+			AddSpanCutsMapped(view, axis, axis.TrackSpans, pkMin, pkMax, set);
+			AddSpanCutsMapped(view, axis, axis.SessionTrackSpans, pkMin, pkMax, set);
+		}
+
+		private static void AddSpanCuts(
+			IReadOnlyList<TrackSpan> spans,
+			long axisLo,
+			long axisHi,
+			List<long> samples)
+		{
+			int i = 0;
+			while (i < spans.Count)
+			{
+				TrackSpan span = spans[i];
+				i++;
+				if (span.Pk0 >= axisLo && span.Pk0 < axisHi)
+				{
+					samples.Add(span.Pk0);
+				}
+
+				if (span.Pkf > axisLo && span.Pkf <= axisHi)
+				{
+					samples.Add(span.Pkf);
+					if (span.Pkf - 1 >= axisLo)
+					{
+						samples.Add(span.Pkf - 1);
+					}
+				}
+			}
+		}
+
+		private static void AddSpanCutsMapped(
+			RouteView view,
+			Axis axis,
+			IReadOnlyList<TrackSpan> spans,
+			long pkMin,
+			long pkMax,
+			SortedSet<long> set)
+		{
+			int i = 0;
+			while (i < spans.Count)
+			{
+				TrackSpan span = spans[i];
+				i++;
+				AddMappedAxisPk(view, axis, span.Pk0, pkMin, pkMax, set);
+				AddMappedAxisPk(view, axis, span.Pkf, pkMin, pkMax, set);
+			}
+		}
+
+		private static void AddMappedAxisPk(
+			RouteView view,
+			Axis axis,
+			long axisPk,
+			long pkMin,
+			long pkMax,
+			SortedSet<long> set)
+		{
+			long routePk;
+			if (view.TryMapAxisToRoute(axis, axisPk, out routePk)
+				&& routePk >= pkMin
+				&& routePk <= pkMax)
+			{
+				set.Add(routePk);
 			}
 		}
 

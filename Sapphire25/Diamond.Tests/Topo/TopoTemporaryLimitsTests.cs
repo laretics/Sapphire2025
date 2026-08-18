@@ -49,5 +49,17 @@ namespace Diamond.Tests.Topo
 			Assert.Null(t3.GetTemporarySpeedLimit(100L));
 			Assert.Equal(0, t3.TemporaryLimits.SpeedCount);
 		}
+
+		[Fact]
+		public void FromSpan_KeepsUnsignaledFlag()
+		{
+			TemporarySpeedLimit unsigned = TopoTemporaryLimits.FromSpan(
+				"T3", 1000L, 2000L, 40,
+				signaledOnTrack: false);
+			Assert.False(unsigned.SignaledOnTrack);
+
+			TemporarySpeedLimit signed = TopoTemporaryLimits.FromSpan("T3", 1000L, 2000L, 40);
+			Assert.True(signed.SignaledOnTrack);
+		}
 	}
 }

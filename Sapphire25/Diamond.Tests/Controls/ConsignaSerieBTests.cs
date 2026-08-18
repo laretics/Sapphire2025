@@ -61,8 +61,8 @@ namespace Diamond.Tests.Controls
 			Assert.Contains("data:image/png;base64,", sheets[0], StringComparison.Ordinal);
 			Assert.Contains("Consigna Serie B nº XX  (17/08/2026)", sheets[0], StringComparison.Ordinal);
 			Assert.DoesNotContain("Deroga Consigna", sheets[0], StringComparison.Ordinal);
-			Assert.Contains("↓ Vía II", sheets[0], StringComparison.Ordinal);
-			Assert.Contains("Vía I ↑", sheets[0], StringComparison.Ordinal);
+			Assert.Contains("↑ Vía II", sheets[0], StringComparison.Ordinal);
+			Assert.Contains("Vía I ↓", sheets[0], StringComparison.Ordinal);
 			Assert.Contains("Obras", sheets[0], StringComparison.Ordinal);
 			Assert.Contains("Obra puente", sheets[0], StringComparison.Ordinal);
 			Assert.Contains(">+</text>", sheets[0], StringComparison.Ordinal);
@@ -70,6 +70,24 @@ namespace Diamond.Tests.Controls
 			Assert.Contains("Palma–Manacor", sheets[0], StringComparison.Ordinal);
 			Assert.DoesNotContain("1 de 1", sheets[0], StringComparison.Ordinal);
 			Assert.DoesNotContain("T.C.", sheets[0], StringComparison.Ordinal);
+			Assert.DoesNotContain(CirculationSheetSvgRenderer.UnsignaledWarningClass, sheets[0], StringComparison.Ordinal);
+		}
+
+		[Fact]
+		public void Render_UnsignaledLimit_DrawsWarningTriangle()
+		{
+			TopoLayout layout = BuildAxisWithStations();
+			List<TemporarySpeedLimit> temps = new List<TemporarySpeedLimit>
+			{
+				TopoTemporaryLimits.FromSpan(
+					"T3", 2000L, 3500L, 40, TemporaryLimitReason.Works, "Obra puente",
+					TemporaryLimitTrack.Both, isNewCreation: true, createdAt: null, signaledOnTrack: false)
+			};
+
+			ConsignaSerieBDocument doc = ConsignaSerieBDocument.Build(layout, temps, "SFM");
+			string svg = ConsignaSerieBSvgRenderer.RenderAllPages(doc)[0];
+			Assert.Contains(CirculationSheetSvgRenderer.UnsignaledWarningClass, svg, StringComparison.Ordinal);
+			Assert.Contains("No señalizada en vía", svg, StringComparison.Ordinal);
 		}
 
 		[Fact]
@@ -112,6 +130,65 @@ namespace Diamond.Tests.Controls
 			Assert.DoesNotContain("Deroga Consigna", sheets[0], StringComparison.Ordinal);
 			Assert.DoesNotContain("Palma–Manacor", sheets[0], StringComparison.Ordinal);
 			Assert.DoesNotContain("Vía II", sheets[0], StringComparison.Ordinal);
+			Assert.DoesNotContain("diamond-consigna-legend", sheets[0], StringComparison.Ordinal);
+			Assert.DoesNotContain("Leyenda", sheets[0], StringComparison.Ordinal);
+		}
+
+		[Fact]
+		public void CoverLegend_ShowsOnlyPresentSymbols()
+		{
+			TopoLayout layout = BuildAxisWithStations();
+
+			ConsignaSerieBDocument onlyHigh = ConsignaSerieBDocument.Build(
+				layout,
+				new[]
+				{
+					TopoTemporaryLimits.FromSpan(
+						"T3", 2000L, 3000L, 80, TemporaryLimitReason.Works, null)
+				},
+				"SFM");
+			Assert.True(onlyHigh.CoverLegend.ShowHighSpeed);
+			Assert.False(onlyHigh.CoverLegend.ShowLowSpeed);
+			Assert.False(onlyHigh.CoverLegend.ShowUnsignaled);
+			Assert.Equal(1, onlyHigh.CoverLegend.ItemCount);
+			string highSvg = ConsignaSerieBSvgRenderer.RenderAllPages(onlyHigh)[0];
+			Assert.Contains("diamond-consigna-legend", highSvg, StringComparison.Ordinal);
+			Assert.Contains("Limitación superior a 50 km/h", highSvg, StringComparison.Ordinal);
+			Assert.DoesNotContain("Limitación igual o inferior a 50 km/h", highSvg, StringComparison.Ordinal);
+			Assert.DoesNotContain("Limitación no señalizada en vía", highSvg, StringComparison.Ordinal);
+
+			ConsignaSerieBDocument onlyLow = ConsignaSerieBDocument.Build(
+				layout,
+				new[]
+				{
+					TopoTemporaryLimits.FromSpan(
+						"T3", 2000L, 3000L, 40, TemporaryLimitReason.Works, null)
+				},
+				"SFM");
+			Assert.False(onlyLow.CoverLegend.ShowHighSpeed);
+			Assert.True(onlyLow.CoverLegend.ShowLowSpeed);
+			Assert.False(onlyLow.CoverLegend.ShowUnsignaled);
+			string lowSvg = ConsignaSerieBSvgRenderer.RenderAllPages(onlyLow)[0];
+			Assert.Contains("Limitación igual o inferior a 50 km/h", lowSvg, StringComparison.Ordinal);
+			Assert.DoesNotContain("Limitación superior a 50 km/h", lowSvg, StringComparison.Ordinal);
+
+			ConsignaSerieBDocument allThree = ConsignaSerieBDocument.Build(
+				layout,
+				new[]
+				{
+					TopoTemporaryLimits.FromSpan(
+						"T3", 2000L, 2500L, 80, TemporaryLimitReason.Works, null),
+					TopoTemporaryLimits.FromSpan(
+						"T3", 2600L, 3000L, 40, TemporaryLimitReason.Geometry, null,
+						TemporaryLimitTrack.Both, isNewCreation: false, createdAt: null, signaledOnTrack: false)
+				},
+				"SFM");
+			Assert.Equal(3, allThree.CoverLegend.ItemCount);
+			string allSvg = ConsignaSerieBSvgRenderer.RenderAllPages(allThree)[0];
+			Assert.Contains("Limitación superior a 50 km/h", allSvg, StringComparison.Ordinal);
+			Assert.Contains("Limitación igual o inferior a 50 km/h", allSvg, StringComparison.Ordinal);
+			Assert.Contains("Limitación no señalizada en vía", allSvg, StringComparison.Ordinal);
+			Assert.Contains(CirculationSheetSvgRenderer.UnsignaledWarningClass, allSvg, StringComparison.Ordinal);
 		}
 
 		[Fact]

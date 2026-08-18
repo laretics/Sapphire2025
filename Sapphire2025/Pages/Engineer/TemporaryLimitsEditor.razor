@@ -292,7 +292,7 @@
 						<div class="col-6">
 							<div class="form-check form-switch mt-3">
 								<input class="form-check-input" type="checkbox" id="tlSig" @bind="mvarDraft.SignaledOnTrack" />
-								<label class="form-check-label" for="tlSig">Señalizada en vía</label>
+								<label class="form-check-label text-body" for="tlSig">Señalizada en vía</label>
 							</div>
 						</div>
 					</div>
@@ -535,7 +535,7 @@
 			Track = TemporaryLimitTrack.Both,
 			IsNewCreation = true,
 			Reason = TemporaryLimitReason.Works,
-			SignaledOnTrack = false,
+			SignaledOnTrack = true,
 			Observations = string.Empty
 		};
 		mvarShowEditor = true;

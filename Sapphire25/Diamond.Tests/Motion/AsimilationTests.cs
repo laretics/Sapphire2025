@@ -118,6 +118,27 @@ namespace Diamond.Tests.Motion
 				new Asimilation(axis, TrainSpecs.DefaultModel, a, a));
 		}
 
+		[Fact]
+		public void TemporaryLimits_DoNotChangeMarchTime()
+		{
+			Axis axis = CreateStraightAxis(0L, 10000L, 100);
+			StationOnAxis origin = Place("A", 0L);
+			StationOnAxis dest = Place("B", 10000L);
+			Asimilation withoutTemp = new Asimilation(axis, TrainSpecs.DefaultModel, origin, dest);
+			TimeSpan tasado = withoutTemp.TotalTime;
+
+			TopoLayout layout = new TopoLayout();
+			layout.AddAxis(axis);
+			TopoTemporaryLimits.Apply(
+				layout,
+				new[] { TopoTemporaryLimits.FromSpan("TEST", 2000L, 8000L, 20) });
+			Assert.Equal(20, axis.GetEffectiveSpeedLimit(4000L));
+			Assert.Equal(100, RouteView.FromAxis(axis).GetScheduledSpeedLimit(4000L));
+
+			Asimilation withTemp = new Asimilation(axis, TrainSpecs.DefaultModel, origin, dest);
+			Assert.Equal(tasado.TotalSeconds, withTemp.TotalTime.TotalSeconds, 3);
+		}
+
 		private static Axis CreateStraightAxis(long pkStart, long pkEnd, int vmax)
 		{
 			Axis axis = new Axis();
