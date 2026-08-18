@@ -61,6 +61,11 @@ namespace Tourmaline26.Services
         private const int ExperienceMaxSpeedKmh = 200;
         /// <summary>Estado anterior de MVB ZeroSpeed (null = aún no leído).</summary>
         private bool? mvarPrevMvbZeroSpeed;
+        /// <summary>Dead-reckoning por odómetro MVB mientras no hay GPS.</summary>
+        private readonly OdometerDeadReckoning mvarOdoReckoning = new OdometerDeadReckoning();
+        private bool? mvarPrevDoorsOpen;
+        private string? mvarOdoCirculationId;
+        private DateTime mvarLastDummyOdoUpdate = DateTime.MinValue;
 
         // --- Cámara automática Tourmaline Experience ---
         /// <summary>0=&lt;10 lateral, 1=10–49 drone, 2=50–69 cenital, 3=≥70 rotación.</summary>
@@ -356,25 +361,152 @@ namespace Tourmaline26.Services
         private async Task<bool> PoolLinearLocation()
         {
             await Task.CompletedTask;
-            if (null == mvarTourmaline.SessionConfig.CurrentGPSData)
-                return false;
             if (null == mvarTourmaline.SessionConfig.Cabin)
                 return false;
             CabinEnvironment cabin = mvarTourmaline.SessionConfig.Cabin;
-            if (null == cabin.Topo)
+
+            if (HasValidGpsLocation(mvarTourmaline.SessionConfig))
+            {
+                if (null == cabin.Topo)
+                    return false;
+                if (mvarOdoReckoning.Armed)
+                {
+                    mvarOdoReckoning.Disarm();
+                    mvarPrevDoorsOpen = null;
+                    mvarLogger.LogInformation("Localización: GPS recuperado; se deja de usar el odómetro MVB");
+                }
+
+                GPSData gps = mvarTourmaline.SessionConfig.CurrentGPSData!;
+                // MissionAxes se actualizan al asignar Circulation en CabinEnvironment.
+                if (cabin.LinearLocation.TryLocateBySatellite(
+                    cabin.Topo,
+                    gps.Latitude,
+                    gps.Longitude))
+                {
+                    cabin.ApplyLinearLocation();
+                    return true;
+                }
+                return false;
+            }
+
+            return UpdatePositionFromOdometer(cabin);
+        }
+
+        /// <summary>
+        /// Sin GPS: avanza el PK con el odómetro MVB. Al abrir puertas, alinea el PK
+        /// con la siguiente estación comercial de la ruta y reinicia el origen.
+        /// </summary>
+        private bool UpdatePositionFromOdometer(CabinEnvironment cabin)
+        {
+            SessionConfiguration session = mvarTourmaline.SessionConfig;
+            MVBData? mvb = session.CurrentMVBData;
+            if (null == mvb
+                || (!session.ServiceMode.MVBEnabled && !session.ServiceMode.MVBDummy))
+            {
+                return false;
+            }
+
+            Circulation? circulation = cabin.Circulation;
+            string? circulationId = circulation?.Id;
+            if (!string.Equals(mvarOdoCirculationId, circulationId, StringComparison.Ordinal))
+            {
+                mvarOdoReckoning.Disarm();
+                mvarPrevDoorsOpen = null;
+                mvarOdoCirculationId = circulationId;
+            }
+
+            long? startPk = ResolveOdometerStartPk(cabin);
+            if (startPk is null)
                 return false;
 
-            GPSData gps = mvarTourmaline.SessionConfig.CurrentGPSData;
-            // MissionAxes se actualizan al asignar Circulation en CabinEnvironment.
-            if (cabin.LinearLocation.TryLocateBySatellite(
-                cabin.Topo,
-                gps.Latitude,
-                gps.Longitude))
+            if (!mvarOdoReckoning.Armed)
             {
-                cabin.ApplyLinearLocation();
-                return true;
+                mvarOdoReckoning.Arm(mvb.Odometer, startPk.Value);
+                mvarLogger.LogInformation(
+                    "Localización: sin GPS, odómetro MVB={Odo} desde PK={Pk}",
+                    mvb.Odometer,
+                    startPk.Value);
             }
-            return false;
+
+            bool pkIncreasing = cabin.Asimilation is null
+                || cabin.Asimilation.Sense != Diamond.Motion.CirculationSense.DecreasingPk;
+            long projectedPk = mvarOdoReckoning.Project(mvb.Odometer, pkIncreasing);
+            cabin.ApplyOdometerPk(projectedPk);
+
+            bool doorsOpen = mvb.LeftDoors || mvb.RightDoors;
+            bool openedNow = mvarPrevDoorsOpen == false && doorsOpen;
+            mvarPrevDoorsOpen = doorsOpen;
+
+            if (openedNow && circulation is not null)
+            {
+                TimedCall? snap = ResolveDoorSnapCall(cabin, circulation, mvarOdoReckoning.OriginPk);
+                if (snap is not null)
+                {
+                    cabin.ApplyOdometerPk(snap.Pk);
+                    mvarOdoReckoning.Resync(mvb.Odometer, snap.Pk);
+                    mvarLogger.LogInformation(
+                        "Localización: puertas abiertas → PK estación {Station} ({Pk}), odómetro={Odo}",
+                        snap.Station.Name,
+                        snap.Pk,
+                        mvb.Odometer);
+                }
+            }
+
+            return true;
+        }
+
+        private static long? ResolveOdometerStartPk(CabinEnvironment cabin)
+        {
+            if (cabin.LinearLocation.PKRef >= 0)
+                return cabin.LinearLocation.PKRef;
+
+            Circulation? circulation = cabin.Circulation;
+            if (circulation is not null && circulation.Calls.Count > 0)
+                return circulation.Calls[0].Pk;
+
+            return null;
+        }
+
+        /// <summary>
+        /// Estación a la que alinear al abrir puertas: la actual si no es el origen
+        /// del tramo, o la siguiente comercial por delante de ese origen.
+        /// </summary>
+        private static TimedCall? ResolveDoorSnapCall(
+            CabinEnvironment cabin,
+            Circulation circulation,
+            long segmentOriginPk)
+        {
+            if (cabin.CurrentStation is not null)
+            {
+                TimedCall? atStop = FindCallByStationId(circulation, cabin.CurrentStation.Id);
+                if (atStop is not null && atStop.Pk != segmentOriginPk)
+                    return atStop;
+            }
+
+            if (Math.Abs(cabin.PK - segmentOriginPk) >= 50)
+            {
+                IReadOnlyList<TimedCall> ahead = CabinItinerary.RemainingCommercialCalls(
+                    circulation,
+                    segmentOriginPk,
+                    includeCurrentStation: false);
+                if (ahead.Count > 0)
+                    return ahead[0];
+            }
+
+            return null;
+        }
+
+        private static TimedCall? FindCallByStationId(Circulation circulation, string stationId)
+        {
+            int i = 0;
+            while (i < circulation.Calls.Count)
+            {
+                TimedCall call = circulation.Calls[i];
+                if (string.Equals(call.Station.Id, stationId, StringComparison.Ordinal))
+                    return call;
+                i++;
+            }
+            return null;
         }
         private void CheckMVB()
         {
@@ -398,8 +530,24 @@ namespace Tourmaline26.Services
                 mvarTourmaline.SessionConfig.CurrentMVBData.SimulateLoops();
             }
 
+            AdvanceDummyOdometer(mvarTourmaline.SessionConfig.CurrentMVBData);
             mvarTourmaline.SessionConfig.MVBLastUpdate = DateTime.Now;
         }
+        private void AdvanceDummyOdometer(MVBData mvb)
+        {
+            DateTime now = DateTime.UtcNow;
+            if (mvarLastDummyOdoUpdate != DateTime.MinValue)
+            {
+                double dt = (now - mvarLastDummyOdoUpdate).TotalSeconds;
+                if (dt > 0 && dt < 2.0)
+                {
+                    double meters = mvb.Speed * (1000.0 / 3600.0) * dt;
+                    mvb.Odometer += (int)Math.Round(meters);
+                }
+            }
+            mvarLastDummyOdoUpdate = now;
+        }
+
         private void RefreshRealMVB()
         {
             MVB8100Data? data = mvarMVBService.CurrentData;
@@ -458,25 +606,55 @@ namespace Tourmaline26.Services
         /// <returns></returns>
         private async Task<bool> PoolLedPanels()
         {
-            if(mvarTourmaline.SessionConfig.MainSwitches.TeleindicatorsEnabled && mvarTourmaline.SessionConfig.MainSwitches.PASEnabled)
+            if (!mvarTourmaline.SessionConfig.MainSwitches.TeleindicatorsEnabled)
             {
-                CabinEnvironment? auxTn = mvarTourmaline.SessionConfig.Cabin;
-                if(null!=auxTn)
+                await mvarLedService.Cls();
+                return false;
+            }
+
+            if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Forbidden)
+            {
+                await LedPanelsShowOutOfService();
+                return false;
+            }
+
+            if (!mvarTourmaline.SessionConfig.MainSwitches.PASEnabled)
+            {
+                await mvarLedService.Cls();
+                return false;
+            }
+
+            CabinEnvironment? auxTn = mvarTourmaline.SessionConfig.Cabin;
+            if(null!=auxTn)
+            {
+                if (null != auxTn.Circulation && null != auxTn.Asimilation)
                 {
-                    if (null != auxTn.Circulation && null!= auxTn.CurrentStation)
-                    {
-                        if (null != auxTn.Asimilation)
-                            await LedPanelsStation(auxTn.CurrentStation.Name, auxTn.Asimilation.Destination.Name);
-                    }
+                    StationInfo? current = auxTn.CurrentStation;
+                    StationInfo origin = auxTn.Asimilation.Origin;
+                    bool atOrigin = current is not null
+                        && string.Equals(current.Id, origin.Id, StringComparison.Ordinal);
+                    bool beginOfTrip = mvarTourmaline.SessionConfig.InformationMode
+                        == Enums.PassengerInformationMode.BeginOfTrip;
+
+                    // En origen acabamos de elegir destino: no anunciar esa estación como próxima.
+                    if (atOrigin || beginOfTrip)
+                        await LedPanelsShowDestination();
+                    else if (current is not null)
+                        await LedPanelsStation(current.Name, auxTn.Asimilation.Destination.Name);
                     else
                         await LedPanelsShowInfo(auxTn.Circulation);
                 }
-            }
-            else
-            {
-                await mvarLedService.Cls();    
+                else
+                    await LedPanelsShowInfo(auxTn.Circulation);
             }
             return false;
+        }
+
+        private async Task LedPanelsShowOutOfService()
+        {
+            string message = OutOfServiceDisplay.Combined;
+            await mvarLedService.Print(true, message, true);
+            await mvarLedService.Print(false, message, true);
         }
         
         private async Task LedPanelsStation(string currentStation, string currentDestination)
@@ -515,9 +693,9 @@ namespace Tourmaline26.Services
                     string cadenaSpeed = "";
                     if (null != mvarTourmaline.SessionConfig.CurrentWeather)
                         cadenaTemp = string.Format(CultureInfo.InvariantCulture, "   {0}ºC", mvarTourmaline.SessionConfig.CurrentWeather.Temperature2m);
-                    int auxSpeed = Math.Min(mvarTourmaline.SessionConfig.CurrentSpeed, 100);
+                    int auxSpeed = Math.Clamp(mvarTourmaline.SessionConfig.CurrentSpeed, 0, 100);
                     if (auxSpeed > 40)
-                        cadenaSpeed = $"   {auxSpeed}Km/h";
+                        cadenaSpeed = $"   {auxSpeed}km/h";
                     string auxMensaje = $"{DateTime.Now:t}{cadenaTemp}{cadenaSpeed}";
                     await mvarLedService.Print(true, auxMensaje, false);
                     //Fuera muestran el número de tren.
@@ -542,16 +720,11 @@ namespace Tourmaline26.Services
                 mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route)
             {
                 Asimilation asimila = enviro.Asimilation;
-                if (null != asimila)
-                {
-                    string auxMensaje = $"Tren amb destinació {asimila.Destination.Name}";
-                    await mvarLedService.Print(true,auxMensaje,true);
-                }
-                else
-                    await LedPanelsShowInfo(null); 
+                bool updateExternal = mvarTourmaline.SessionConfig.MainSwitches.ExternalTeleindicatorsEnabled;
+                await mvarLedService.PrintDestination(asimila.Destination.Name, updateExternal);
             }
             else
-                await LedPanelsShowInfo(null);
+                await LedPanelsShowInfo(enviro?.Circulation);
         }
         
         /// <summary>
@@ -625,7 +798,7 @@ namespace Tourmaline26.Services
         /// <summary>
         /// Modo normal (no Demo): el tren de Tourmaline Experience sigue al tren real.
         /// <list type="bullet">
-        /// <item>Sin GPS válido (antena, túnel…): velocidad del sim = MVB, sin corrección PK.</item>
+        /// <item>Sin GPS válido (antena, túnel…): PK por odómetro MVB; el sim usa MVB si aún no hay PK.</item>
         /// <item>PK real: GPS → <see cref="LinearLocation.TryLocateBySatellite"/> (ya en el bucle).</item>
         /// <item>PK simulado: lat/lon de telemetría TE → mismo algoritmo.</item>
         /// <item>Velocidad base: MVB / emulación MVB (<see cref="SessionConfiguration.CurrentSpeed"/>).</item>
@@ -646,9 +819,9 @@ namespace Tourmaline26.Services
                 return;
             }
 
-            // Sin ubicación GPS válida no hay PK fiable: el simulado copia la velocidad MVB.
-            // Evita corregir contra un PK antiguo (p. ej. al entrar en un túnel).
-            if (!HasValidGpsLocation(session))
+            // Sin GPS ni PK de odómetro no hay referencia de ruta: el simulado copia la velocidad MVB.
+            if (!HasValidGpsLocation(session)
+                && session.LinearLocation.Source != LinearLocationSource.Odometer)
             {
                 ApplyMvbOnlyExperienceSpeed(session, "MVB-noGPS");
                 return;

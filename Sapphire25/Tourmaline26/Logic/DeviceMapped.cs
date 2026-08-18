@@ -17,6 +17,23 @@ namespace Tourmaline26.Logic
         public Enums.CameraType CameraType { get; private set; } = Enums.CameraType.None;
         public Enums.CameraCodec CameraCodec { get; private set; } = Enums.CameraCodec.None;
         public string PublicId { get; private set; } = "Coche 1"; //Esto es lo que se muestra en público en el panel.
+
+        /// <summary>
+        /// Número de coche que se anuncia en el panel (dígitos de <see cref="PublicId"/>).
+        /// </summary>
+        public string PublicCoachNumber
+        {
+            get
+            {
+                string id = PublicId ?? string.Empty;
+                int i = id.Length - 1;
+                while (i >= 0 && char.IsDigit(id[i]))
+                    i--;
+                if (i < id.Length - 1)
+                    return id.Substring(i + 1);
+                return string.IsNullOrWhiteSpace(id) ? "0" : id;
+            }
+        }
         public void SetParameters(string? address, 
             string? type, string? coach, string? side,string? headerSize, string? lines, string? publicId)
         {

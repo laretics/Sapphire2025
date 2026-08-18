@@ -7,7 +7,27 @@
 <div class="panel-root">
     @if(null!=mvarTourmaline.SessionConfig)
     {        
-        @if(InformationMode==Enums.PassengerInformationMode.Default)
+        @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Forbidden)
+        {
+            <div class="panel-header" style="height:@(HeaderSize)vh;">
+                <span class="train-number"></span>
+                <span class="panel-time">@CurrentTime</span>
+                <div class="destination">@OutOfServiceDisplay.Catalan</div>
+            </div>
+            <div class="panel-body">
+                <div class="journey-splash journey-splash--oos">
+                    <div class="journey-splash-kicker">Serveis Ferroviaris de Mallorca</div>
+                    <div class="oos-line oos-line--ca">@OutOfServiceDisplay.Catalan</div>
+                    <div class="oos-line oos-line--es">@OutOfServiceDisplay.Spanish</div>
+                    <div class="oos-line oos-line--en">@OutOfServiceDisplay.English</div>
+                </div>
+                @if (ActiveAnnouncement is not null)
+                {
+                    <PopupInformation Info="ActiveAnnouncement" />
+                }
+            </div>
+        }
+        else if(InformationMode==Enums.PassengerInformationMode.Default)
         {
             <div class="panel-body centered-image-panel">
                 <img class="centered-image" src="/img/81pic1.png"/>
@@ -47,7 +67,7 @@
                 {
                     <span class="train-number"></span>
                     <span class="panel-time">@CurrentTime</span>
-                    <div class="destination">Sense servei</div>
+                    <div class="destination">@OutOfServiceDisplay.Catalan</div>
                 }
                 @if (null != mvarTourmaline.SessionConfig.CurrentWeather)
                 {
@@ -56,10 +76,10 @@
                         <img src="@OpenMeteoClient.GetWeatherIconUrl(mvarTourmaline.SessionConfig.CurrentWeather.WeatherCode)" />
                     </div>
                 }
-                @if (mvarTourmaline.SessionConfig.CurrentSpeed > 40)
+                @if (DisplaySpeedKmh > 40)
                 {
                     <div class="current-speed">
-                        @($"{mvarTourmaline.SessionConfig.CurrentSpeed}Km/h")
+                        @($"{DisplaySpeedKmh}km/h")
                     </div>
                 }
 
@@ -196,6 +216,7 @@
             or Enums.PassengerInformationMode.NextStopsList;
 
     private string CurrentTime => mvarTourmaline.SessionConfig.Cabin?.ClockNow.ToString("HH:mm") ?? DateTime.Now.ToString("HH:mm");
+    private int DisplaySpeedKmh => Math.Clamp(mvarTourmaline.SessionConfig.CurrentSpeed, 0, 100);
     private int Lines => (null==Device)?7:Device.Lines;
     private int HeaderSize => (null == Device) ? 100 : Device.HeaderSize;
 

@@ -254,6 +254,41 @@
 	color: #198754;
 }
 
+.journey-splash--oos {
+	background:
+		radial-gradient(ellipse 80% 55% at 50% 0%, rgba(180, 83, 9, 0.18), transparent 70%),
+		linear-gradient(165deg, #1c1917 0%, #292524 50%, #1c1917 100%);
+	border: 1px solid rgba(245, 158, 11, 0.28);
+	font-family: var(--passenger-type);
+	gap: 2.2vh;
+}
+
+.journey-splash--oos .journey-splash-kicker {
+	color: #fbbf24;
+}
+
+.oos-line {
+	font-family: var(--passenger-type);
+	font-weight: 700;
+	line-height: 1.08;
+	letter-spacing: -0.02em;
+	color: #fafaf9;
+	max-width: 96%;
+}
+
+.oos-line--ca {
+	font-size: clamp(5.5vw, 8.5vw, 10.5vw);
+}
+
+.oos-line--es {
+	font-size: clamp(4.6vw, 7vw, 8.8vw);
+}
+
+.oos-line--en {
+	font-size: clamp(4vw, 6.2vw, 7.8vw);
+	color: #e7e5e4;
+}
+
 /* Compatibilidad por si queda alguna referencia antigua */
 .farewell-panel {
 	display: flex;
@@ -305,10 +340,10 @@
 	height: 100%;
 }
 
-/* Aclarar / suavizar el paisaje para que no compita con el texto */
+/* Paisaje más oscuro: el texto negro de la tabla necesita fondo estable */
 .route-stops-bg ::deep .simulator-stream-canvas,
 .route-stops-bg ::deep .simulator-stream-img {
-	filter: blur(10px) brightness(1.15) saturate(0.85) contrast(0.92);
+	filter: blur(10px) brightness(0.82) saturate(0.8) contrast(0.95);
 	transform: scale(1.08);
 }
 
@@ -316,18 +351,12 @@
 	position: absolute;
 	inset: 0;
 	z-index: 1;
-	/* Veladura clara + viñeta inferior para anclar la tabla */
 	background:
 		linear-gradient(
 			180deg,
-			rgba(248, 250, 252, 0.55) 0%,
-			rgba(248, 250, 252, 0.38) 40%,
-			rgba(15, 23, 42, 0.22) 100%
-		),
-		radial-gradient(
-			ellipse 90% 70% at 20% 50%,
-			rgba(255, 255, 255, 0.35) 0%,
-			transparent 65%
+			rgba(226, 232, 240, 0.62) 0%,
+			rgba(203, 213, 225, 0.48) 45%,
+			rgba(148, 163, 184, 0.4) 100%
 		);
 	pointer-events: none;
 }

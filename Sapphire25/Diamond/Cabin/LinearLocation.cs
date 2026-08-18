@@ -101,6 +101,16 @@ namespace Diamond.Cabin
 			LastProjectionDistanceMeters = 0.0;
 		}
 
+		/// <summary>
+		/// Actualiza el PK de ruta por odómetro. Conserva el eje de la última fijación GPS/manual.
+		/// </summary>
+		public void SetOdometer(long pk)
+		{
+			PKRef = pk;
+			Source = LinearLocationSource.Odometer;
+			LastOdometerUpdate = DateTime.Now;
+		}
+
 		public void Clear()
 		{
 			Axis = null;

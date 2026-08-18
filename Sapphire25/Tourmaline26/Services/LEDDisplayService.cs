@@ -14,6 +14,7 @@ namespace Tourmaline26.Services
     public class LEDDisplayService
     {
         internal string mvarLastMessage = string.Empty; //Último mensaje enviado.
+        private readonly Dictionary<string, string> mcolLastByDevice = new Dictionary<string, string>();
         internal LedPanelController mvarController { get; private set; }
         internal List<DeviceMapped> mcolPanels { get; private set; }
         public LEDDisplayService(LedPanelController controller)
@@ -32,9 +33,10 @@ namespace Tourmaline26.Services
 
         public async Task ClearAsync(bool force = false)
         {
-            if(mvarLastMessage.Length>0 || force)
+            if(mvarLastMessage.Length>0 || mcolLastByDevice.Count > 0 || force)
             {
                 mvarLastMessage = string.Empty;
+                mcolLastByDevice.Clear();
                 foreach (DeviceMapped auxDevice in mcolPanels)
                     await mvarController.ClearAsync(auxDevice.Address);
             }
@@ -51,24 +53,44 @@ namespace Tourmaline26.Services
 
         public async Task Print(bool inside, string message, bool scroll = true, Alignment alignment = Alignment.Center)
         {
-            if(mvarLastMessage!=message)
+            await Print(inside, _ => message, scroll, alignment);
+        }
+
+        public async Task Print(bool inside, Func<DeviceMapped, string> messageForDevice, bool scroll = true, Alignment alignment = Alignment.Center)
+        {
+            foreach (DeviceMapped auxDevice in mcolPanels)
             {
-                //await Cls();
-                foreach (DeviceMapped auxDevice in mcolPanels)
-                {
-                    if(auxDevice.HeaderSize<1)
-                    {
-                        if(inside)
-                            await mvarController.Print(auxDevice.Address, message, scroll, alignment);
-                    }
-                    else
-                    {
-                        if (!inside)
-                            await mvarController.Print(auxDevice.Address, message, scroll, alignment);
-                    }                                        
-                }                    
+                bool deviceInside = auxDevice.HeaderSize < 1;
+                if (deviceInside != inside)
+                    continue;
+
+                string message = messageForDevice(auxDevice);
+                string key = DeviceKey(auxDevice, inside);
+                if (mcolLastByDevice.TryGetValue(key, out string? last) && last == message)
+                    continue;
+
+                await mvarController.Print(auxDevice.Address, message, scroll, alignment);
+                mcolLastByDevice[key] = message;
                 mvarLastMessage = message;
             }
+        }
+
+        /// <summary>
+        /// Interior: destino + número de coche de cada panel. Exterior: solo el destino.
+        /// </summary>
+        public async Task PrintDestination(string destinationName, bool updateExternal)
+        {
+            await Print(
+                true,
+                device => $"Tren amb destinació a {destinationName}. Cotxo {device.PublicCoachNumber}",
+                true);
+            if (updateExternal)
+                await Print(false, destinationName, false);
+        }
+
+        private static string DeviceKey(DeviceMapped device, bool inside)
+        {
+            return string.Concat(device.Address.ToString(), inside ? "|in" : "|out");
         }
         public async Task Draw(bool inside, string bitmapId, bool scroll = false, Alignment alignment = Alignment.Center)
         {
@@ -95,11 +117,12 @@ namespace Tourmaline26.Services
 
         public async Task Cls()
         {
-            if(mvarLastMessage.Length>0)
+            if(mvarLastMessage.Length>0 || mcolLastByDevice.Count > 0)
             {
                 foreach (DeviceMapped auxDevice in mcolPanels)
                     await mvarController.Cls(auxDevice.Address);
                 mvarLastMessage = string.Empty;
+                mcolLastByDevice.Clear();
             }
         }
     }
