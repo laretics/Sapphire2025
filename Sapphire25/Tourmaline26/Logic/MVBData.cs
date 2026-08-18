@@ -170,7 +170,7 @@
 			(Cabin == Habilitation.M1 || Cabin == Habilitation.M2) && //Existe una cabina habilitada.
 			!(Handler == HandlerPosition.EmergencyBrake) && //No se ha pulsado la seta ni el manipulador en freno de emergencia.
 			(Inverter != InverterPosition.Iddle) && //El inversor debe estar con alguna marcha seleccionada.
-			(ZeroSpeed || DoorsLoop); //Las puertas no se han quedado abiertas a más de 3Km/h.
+			(ZeroSpeed || DoorsLoop); //Las puertas no se han quedado abiertas a más de 3 km/h.
 		}
 		public bool OpenLoop { get => !TractionLoop || !DoorsLoop || !BrakeLoop; }
 		public bool PassengerLight

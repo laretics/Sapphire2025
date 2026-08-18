@@ -2,8 +2,9 @@
 
 .nst-root {
 	--nst-ink: #0f172a;
-	--nst-muted: #64748b;
-	--nst-soft: #94a3b8;
+	--nst-muted: #334155;
+	--nst-soft: #1e293b;
+	font-family: var(--passenger-type);
 	--nst-line: rgba(15, 23, 42, 0.08);
 	--nst-sfm: #004f8d;
 	--nst-sfm-deep: #0b3d91;

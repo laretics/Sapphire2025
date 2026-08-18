@@ -253,6 +253,15 @@ namespace Diamond.Cabin
 			}
 		}
 
+		/// <summary>
+		/// Actualiza el PK de ruta por odómetro MVB (sin GPS).
+		/// </summary>
+		public void ApplyOdometerPk(long pk)
+		{
+			LinearLocation.SetOdometer(pk);
+			PK = pk;
+		}
+
 		public IReadOnlyList<ProjectCirculation> SearchCirculations(string? query)
 		{
 			if (DayProject is null || string.IsNullOrWhiteSpace(query))

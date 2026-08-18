@@ -397,7 +397,6 @@ namespace Tourmaline26.Services
 			// La misión Diamond se aplica siempre; Experience es opcional.
 			SessionConfig.Cabin.Circulation = rhs;
 			UpdatePassengerInformationMode();
-			await LogTourmalineTripStartedAsync(rhs);
 
 			if (null != rhs.Asimilation)
 			{
@@ -462,6 +461,20 @@ namespace Tourmaline26.Services
 			{
 				mvarLogger.LogWarning(ex, "No se pudo registrar el inicio de viaje en el log de Sapphire.");
 			}
+		}
+
+		private async Task AnnounceDestinationOnLedPanels(Circulation circulation)
+		{
+			if (null == circulation.Asimilation)
+				return;
+			if (!SessionConfig.MainSwitches.TeleindicatorsEnabled
+				|| !SessionConfig.MainSwitches.PASEnabled
+				|| SessionConfig.InformationLevel != Enums.InformationLevel.Route)
+				return;
+
+			await mvarLedDisplayService.PrintDestination(
+				circulation.Asimilation.Destination.Name,
+				SessionConfig.MainSwitches.ExternalTeleindicatorsEnabled);
 		}
 
 		public void UpdatePassengerInformationMode()
