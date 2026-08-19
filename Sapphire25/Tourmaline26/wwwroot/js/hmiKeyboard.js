@@ -9,8 +9,13 @@
                 key === "ArrowUp" ||
                 key === "ArrowDown" ||
                 key === "ArrowLeft" ||
-                key === "ArrowRight"
+                key === "ArrowRight" ||
+                key === "F7" ||
+                key === "F8"
             ) {
+                if (key === "F7" || key === "F8") {
+                    e.preventDefault();
+                }
                 dotNetHelper.invokeMethodAsync('HandleKey', key);
             }
         }

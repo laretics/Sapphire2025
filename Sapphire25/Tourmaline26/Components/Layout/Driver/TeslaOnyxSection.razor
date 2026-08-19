@@ -128,7 +128,7 @@
     {
         get
         {
-            if (mvarConfig.ServiceMode.DemoMode)
+            if (mvarConfig.ServiceMode.DemoMode || mvarConfig.ServiceMode.RouteSimulation)
                 return true;
 
             if (null == mvarConfig.CurrentMVBData)

@@ -6,39 +6,18 @@
 
 <div class="nst-root">
     @* ── Cabecera: próxima estación ─────────────────────────────────────── *@
-    <section class="nst-hero" aria-label="Propera estació">
+    <section class="nst-hero" aria-label="Estació">
         <div class="nst-hero-glow" aria-hidden="true"></div>
-        <div class="nst-kicker">
-            <span class="nst-kicker-dot" aria-hidden="true"></span>
-            Propera estació
-        </div>
         <h1 class="nst-station">@(DisplayStationName)</h1>
         <div class="nst-rule" aria-hidden="true"></div>
     </section>
 
     @* ── Pie: salidas / correspondencias ────────────────────────────────── *@
-    <section class="nst-board" aria-label="Propers sortides">
-        <header class="nst-board-head">
-            <span class="nst-board-title">Propers sortides</span>
-            <div class="nst-live @(mvarSfm.IsConnected ? "nst-live--on" : "nst-live--off")"
-                 title="@(mvarSfm.IsConnected ? "En viu" : "Sense connexió")">
-                <span class="nst-live-pip" aria-hidden="true"></span>
-                @(mvarSfm.IsConnected ? "EN VIU" : "OFF")
-            </div>
-        </header>
-
+    <section class="nst-board" aria-label="Correspondències">
         @if (FilteredDepartures.Count > 0)
         {
             <div class="nst-table-wrap">
                 <table class="nst-table">
-                    <thead>
-                        <tr>
-                            <th class="nst-col-time">Hora</th>
-                            <th class="nst-col-line">Línia</th>
-                            <th class="nst-col-dest">Destinació</th>
-                            <th class="nst-col-plat">Andana</th>
-                        </tr>
-                    </thead>
                     <tbody>
                         @foreach (SfmDeparture dep in FilteredDepartures)
                         {

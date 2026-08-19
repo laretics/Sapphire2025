@@ -4,9 +4,11 @@
 @using Sapphire2025Models.Diamond
 @using Tourmaline26.Services.CabinCache
 @using Tourmaline26.Services.LocalDataModel
+@implements IDisposable
 @inject TourmalineService TourmalineService
 @inject DiamondLocalCache DiamondCache
 @inject DiamondClient DiamondClient
+@inject RouteSimulationService RouteSim
 
 <h2>Diamond</h2>
 
@@ -124,6 +126,39 @@ else if (TourmalineService.SessionConfig.ServiceMode.Main)
     <p class="text-muted small">* Recuento del paquete (7 días). La botonera elige el Project del día.</p>
 }
 
+@if (TourmalineService.SessionConfig.ServiceMode.Main)
+{
+    <div class="route-sim mt-4">
+        <h3>Simulador de ruta</h3>
+        <p class="small mb-2">
+            Recorre la misión cargada con los tiempos de la malla (paradas + velocidad media de cada tramo).
+            No necesita Tourmaline Experience.
+        </p>
+        <p class="mb-2">
+            <span class="badge @RouteSimBadgeClass">@RouteSim.State</span>
+            <span class="ms-1">@RouteSim.Status</span>
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button"
+                    class="btn btn-primary"
+                    disabled="@(!HasCirculation)"
+                    @onclick="StartRouteSim">
+                Iniciar / reanudar (F7)
+            </button>
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    disabled="@(RouteSim.State != RouteSimulationService.SimState.Running)"
+                    @onclick="PauseRouteSim">
+                Pausar (F8)
+            </button>
+        </div>
+        @if (!HasCirculation)
+        {
+            <div class="form-text">Elige una circulación en el buscador de destino.</div>
+        }
+    </div>
+}
+
 @code {
     private static readonly DayOfWeek[] WeekDays =
     {
@@ -143,6 +178,15 @@ else if (TourmalineService.SessionConfig.ServiceMode.Main)
     private List<DBDiamondPublishedPlanCache> mcolPlans = new List<DBDiamondPublishedPlanCache>();
 
     private Diamond.Cabin.CabinEnvironment? cabin => TourmalineService.SessionConfig.Cabin;
+
+    private bool HasCirculation => cabin?.Circulation is not null;
+
+    private string RouteSimBadgeClass => RouteSim.State switch
+    {
+        RouteSimulationService.SimState.Running => "text-bg-success",
+        RouteSimulationService.SimState.Paused => "text-bg-warning",
+        _ => "text-bg-secondary"
+    };
 
     private DayOfWeek SelectedPlanningDay =>
         cabin is not null ? cabin.EffectivePlanningDay : DateTime.Today.DayOfWeek;
@@ -169,7 +213,31 @@ else if (TourmalineService.SessionConfig.ServiceMode.Main)
     {
         await TourmalineService.EnsureInitialized();
         await RefreshMetaAsync();
+        TourmalineService.HMIUpdateRequested += OnHmiRefresh;
         await base.OnInitializedAsync();
+    }
+
+    public void Dispose()
+    {
+        TourmalineService.HMIUpdateRequested -= OnHmiRefresh;
+    }
+
+    private void OnHmiRefresh(object? sender, EventArgs e)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void StartRouteSim()
+    {
+        RouteSim.StartOrResume();
+        TourmalineService.RaiseHMIUpdate();
+        TourmalineService.RaisePassengerUpdate();
+    }
+
+    private void PauseRouteSim()
+    {
+        RouteSim.Pause();
+        TourmalineService.RaiseHMIUpdate();
     }
 
     private async Task RefreshMetaAsync()

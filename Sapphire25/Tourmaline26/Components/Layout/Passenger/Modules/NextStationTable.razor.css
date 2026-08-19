@@ -32,7 +32,7 @@
 	align-items: center;
 	justify-content: center;
 	text-align: center;
-	padding: 1.2vh 2.5vw 1.1vh 2.5vw;
+	padding: 1.8vh 2.5vw 1.4vh 2.5vw;
 	border-radius: 1.1vw;
 	background:
 		radial-gradient(ellipse 70% 90% at 50% 0%, rgba(0, 79, 141, 0.14), transparent 70%),
@@ -75,10 +75,10 @@
 
 .nst-station {
 	position: relative;
-	margin: 0.45vh 0 0 0;
+	margin: 0;
 	padding: 0 1.5vw;
 	max-width: 98%;
-	font-size: clamp(4.8vw, 7.2vw, 9vw);
+	font-size: clamp(5.4vw, 8.2vw, 10.5vw);
 	font-weight: 800;
 	line-height: 1.05;
 	letter-spacing: -0.03em;
@@ -184,7 +184,7 @@
 	flex: 1 1 auto;
 	min-height: 0;
 	overflow: hidden;
-	padding: 0 1vw 0.6vh 1vw;
+	padding: 0.8vh 1.2vw 0.8vh 1.2vw;
 }
 
 .nst-table {

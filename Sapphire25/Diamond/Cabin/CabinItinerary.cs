@@ -165,6 +165,50 @@ namespace Diamond.Cabin
 			return map;
 		}
 
+		/// <summary>PK de ruta de la estación de origen de la circulación.</summary>
+		public static long? OriginRoutePk(ProjectCirculation? circulation)
+		{
+			if (circulation is null || circulation.Calls.Count == 0)
+			{
+				return null;
+			}
+
+			int i = 0;
+			while (i < circulation.Calls.Count)
+			{
+				if (circulation.Calls[i].IsOrigin)
+				{
+					return circulation.Calls[i].Pk;
+				}
+
+				i++;
+			}
+
+			return circulation.Calls[0].Pk;
+		}
+
+		/// <summary>PK de ruta de la estación de destino de la circulación.</summary>
+		public static long? DestinationRoutePk(ProjectCirculation? circulation)
+		{
+			if (circulation is null || circulation.Calls.Count == 0)
+			{
+				return null;
+			}
+
+			int i = circulation.Calls.Count - 1;
+			while (i >= 0)
+			{
+				if (circulation.Calls[i].IsDestination)
+				{
+					return circulation.Calls[i].Pk;
+				}
+
+				i--;
+			}
+
+			return circulation.Calls[circulation.Calls.Count - 1].Pk;
+		}
+
 		public static bool IsCommercial(ProjectTimedCall call)
 		{
 			if (call is null)

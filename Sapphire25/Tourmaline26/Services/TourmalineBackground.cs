@@ -19,6 +19,7 @@ namespace Tourmaline26.Services
         private readonly MVBService mvarMVBService;
         private readonly LEDDisplayService mvarLedService;
         private readonly MeteoService mvarMeteoService;
+        private readonly RouteSimulationService mvarRouteSim;
         /// <summary>
         /// Flag para indicar al sistema que han terminado de cargar los datos.
         /// </summary>        
@@ -97,7 +98,8 @@ namespace Tourmaline26.Services
             MVBService mvbService,
             GPSService gpsService,
             LEDDisplayService displayService,
-            MeteoService meteoService)
+            MeteoService meteoService,
+            RouteSimulationService routeSim)
         {
             mvarLogger = logger;
             mvarTourmaline = tourmalineService;
@@ -107,6 +109,7 @@ namespace Tourmaline26.Services
             mvarGPSService = gpsService;
             mvarMeteoService = meteoService;
             mvarLedService = displayService;
+            mvarRouteSim = routeSim;
 
             mvarTourmaline.SessionConfig.ServiceMode.MVBEnabledChanged += enabled =>
             {
@@ -229,7 +232,7 @@ namespace Tourmaline26.Services
                     {
                         mvarLogger.LogDebug("Pool Led Teleindicators");
                         mvarLedPanelsTask = PoolLedPanels();
-                        auxLastPanelsUpdate = DateTime.Now.AddSeconds(4);
+                        auxLastPanelsUpdate = DateTime.Now.AddSeconds(1);
                     }
 
                     if(auxLastPassengerLanguageChange<DateTime.Now)
@@ -253,6 +256,7 @@ namespace Tourmaline26.Services
                     }
                     CalculateTelemetry();
                     UpdateDemoSpeed();
+                    mvarRouteSim.Tick();
                     UpdateExperienceSpeedSync();
                     UpdateStationLeaveFromMvb();
                     UpdateExperienceCamera();
@@ -297,6 +301,12 @@ namespace Tourmaline26.Services
         }
         private async Task<bool> PoolGPS()
         {
+            if (mvarTourmaline.SessionConfig.ServiceMode.RouteSimulation)
+            {
+                await Task.CompletedTask;
+                return mvarTourmaline.SessionConfig.GPSOK;
+            }
+
             if(mvarTourmaline.SessionConfig.ServiceMode.GPSDummy)
             {
                 //En modo Dummy obtenemos la posición usando la API Rest de Tourmaline Experience
@@ -363,6 +373,8 @@ namespace Tourmaline26.Services
             await Task.CompletedTask;
             if (null == mvarTourmaline.SessionConfig.Cabin)
                 return false;
+            if (mvarTourmaline.SessionConfig.ServiceMode.RouteSimulation)
+                return true;
             CabinEnvironment cabin = mvarTourmaline.SessionConfig.Cabin;
 
             if (HasValidGpsLocation(mvarTourmaline.SessionConfig))
@@ -629,20 +641,28 @@ namespace Tourmaline26.Services
             {
                 if (null != auxTn.Circulation && null != auxTn.Asimilation)
                 {
-                    StationInfo? current = auxTn.CurrentStation;
-                    StationInfo origin = auxTn.Asimilation.Origin;
-                    bool atOrigin = current is not null
-                        && string.Equals(current.Id, origin.Id, StringComparison.Ordinal);
-                    bool beginOfTrip = mvarTourmaline.SessionConfig.InformationMode
-                        == Enums.PassengerInformationMode.BeginOfTrip;
-
-                    // En origen acabamos de elegir destino: no anunciar esa estación como próxima.
-                    if (atOrigin || beginOfTrip)
-                        await LedPanelsShowDestination();
-                    else if (current is not null)
-                        await LedPanelsStation(current.Name, auxTn.Asimilation.Destination.Name);
-                    else
-                        await LedPanelsShowInfo(auxTn.Circulation);
+                    // Misma cadencia que los TFT: cada modo de monitor tiene su texto LED.
+                    switch (mvarTourmaline.SessionConfig.InformationMode)
+                    {
+                        case Enums.PassengerInformationMode.NextStopsList:
+                            await LedPanelsShowInfo(auxTn.Circulation);
+                            break;
+                        case Enums.PassengerInformationMode.Cruise:
+                        case Enums.PassengerInformationMode.NextStopInfo:
+                            if (mvarTourmaline.SessionConfig.CurrentSpeed > 0)
+                            {
+                                string next = NextStationForLed(auxTn);
+                                await LedPanelsStation(next, auxTn.Asimilation.Destination.Name);
+                            }
+                            else
+                            {
+                                await LedPanelsShowDestination();
+                            }
+                            break;
+                        default:
+                            await LedPanelsShowDestination();
+                            break;
+                    }
                 }
                 else
                     await LedPanelsShowInfo(auxTn.Circulation);
@@ -661,6 +681,24 @@ namespace Tourmaline26.Services
         {
             await mvarLedService.Print(true,$"Propera estació {currentStation}",true);
             await mvarLedService.Print(false, currentDestination, false);
+        }
+
+        private static string NextStationForLed(CabinEnvironment cabin)
+        {
+            if (cabin.CurrentStation is not null
+                && !string.IsNullOrWhiteSpace(cabin.CurrentStation.Name))
+            {
+                return cabin.CurrentStation.Name;
+            }
+
+            IReadOnlyList<Diamond.Project.TimedCall> remaining = cabin.RemainingCalls;
+            if (remaining.Count > 0 && remaining[0].Station is not null)
+                return remaining[0].Station.Name;
+
+            if (cabin.Asimilation is not null)
+                return cabin.Asimilation.Destination.Name;
+
+            return string.Empty;
         }
         private async Task LedPanelsShowInfo(Circulation? auxCirc)
         {
@@ -751,7 +789,7 @@ namespace Tourmaline26.Services
         private void UpdateDemoSpeed()
         {
             SessionConfiguration session = mvarTourmaline.SessionConfig;
-            if (!session.ServiceMode.DemoMode)
+            if (!session.ServiceMode.DemoMode || session.ServiceMode.RouteSimulation)
             {
                 mvarLastDemoSpeedUpdate = DateTime.MinValue;
                 mvarLastDemoSpeedSent = int.MinValue;
@@ -812,8 +850,8 @@ namespace Tourmaline26.Services
         {
             SessionConfiguration session = mvarTourmaline.SessionConfig;
 
-            // Demo tiene su propia rampa; no mezclar.
-            if (session.ServiceMode.DemoMode)
+            // Demo / simulador de ruta tienen su propia velocidad; no mezclar.
+            if (session.ServiceMode.DemoMode || session.ServiceMode.RouteSimulation)
             {
                 mvarLastExperienceSpeedSent = int.MinValue;
                 return;
@@ -1012,8 +1050,8 @@ namespace Tourmaline26.Services
                 return;
             }
 
-            // Demo: basta con haber estado parado y volver a moverse.
-            if (session.ServiceMode.DemoMode)
+            // Demo / simulador de ruta: basta con haber estado parado y volver a moverse.
+            if (session.ServiceMode.DemoMode || session.ServiceMode.RouteSimulation)
             {
                 bool zeroSpeed = session.CurrentSpeed <= 0;
                 if (mvarPrevMvbZeroSpeed == true && !zeroSpeed)

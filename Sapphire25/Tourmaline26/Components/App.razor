@@ -9,6 +9,7 @@
     <link href="@Assets["css/bootstrap.min.css"]" rel="stylesheet" />
     <link rel="stylesheet" href="_content/Diamond.Controls/css/cabin-mesh.css" />
     <link rel="stylesheet" href="_content/Diamond.Controls/css/diamond-mesh.css" />
+    <link rel="stylesheet" href="maps/sfm/css/maplibre-gl.css" />
     <ImportMap />
     @* HMI: sin prerender estático (evita JS interop / localStorage en render SSR). *@
     <HeadOutlet @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
@@ -20,5 +21,7 @@
     <script src="js/hmiKeyboard.js"></script>
     <script src="js/ORTSReceiver.js"></script>
     <script src="js/popupInformation.js"></script>
+    <script src="maps/sfm/js/maplibre-gl.js"></script>
+    <script src="maps/sfm/js/sfm-map.js"></script>
 </body>
 </html>

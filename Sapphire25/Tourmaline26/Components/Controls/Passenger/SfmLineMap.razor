@@ -1,0 +1,158 @@
+@inject IJSRuntime JS
+@inject TourmalineService Tourmaline
+@implements IAsyncDisposable
+
+<div @ref="mvarHost"
+     class="sfm-line-map @(Overlay ? "sfm-line-map--overlay" : "sfm-line-map--full")"
+     style="@(Overlay
+         ? "position:absolute;right:1.2vw;bottom:1.6vh;width:50%;height:50%;z-index:6;pointer-events:none;min-width:160px;min-height:160px;"
+         : null)"></div>
+
+@code {
+    /// <summary>True: isla opaca sobre el stream. False: mapa a pantalla completa.</summary>
+    [Parameter] public bool Overlay { get; set; } = true;
+
+    private ElementReference mvarHost;
+    private bool mvarReady;
+    private bool mvarDisposed;
+    private double mvarLastLat = double.NaN;
+    private double mvarLastLon = double.NaN;
+    private bool mvarLastHadTrain;
+    private int mvarLastSpeed = int.MinValue;
+
+    protected override void OnInitialized()
+    {
+        Tourmaline.PassengerUpdateRequested += OnPassengerUpdate;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (mvarDisposed || !firstRender)
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("SfmMap.create", mvarHost, new
+            {
+                mode = Overlay ? "overlay" : "page",
+                baseUrl = "/maps/sfm/"
+            });
+            await JS.InvokeVoidAsync("SfmMap.resize", mvarHost);
+            mvarReady = true;
+            await PushTrainAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (JSException ex)
+        {
+            Console.WriteLine("SfmLineMap: " + ex.Message);
+        }
+    }
+
+    private void OnPassengerUpdate(object? sender, EventArgs e)
+    {
+        _ = InvokeAsync(PushTrainAsync);
+    }
+
+    private async Task PushTrainAsync()
+    {
+        if (!mvarReady || mvarDisposed)
+            return;
+
+        try
+        {
+            if (!TryGetTrainPoint(out double lat, out double lon))
+            {
+                if (mvarLastHadTrain)
+                {
+                    await JS.InvokeVoidAsync("SfmMap.clearTrain", mvarHost);
+                    mvarLastHadTrain = false;
+                    mvarLastLat = double.NaN;
+                    mvarLastLon = double.NaN;
+                    mvarLastSpeed = int.MinValue;
+                }
+                return;
+            }
+
+            int speed = Tourmaline.SessionConfig.CurrentSpeed;
+            if (mvarLastHadTrain
+                && Math.Abs(lat - mvarLastLat) < 1e-6
+                && Math.Abs(lon - mvarLastLon) < 1e-6
+                && Math.Abs(speed - mvarLastSpeed) < 4)
+            {
+                return;
+            }
+
+            await JS.InvokeVoidAsync("SfmMap.setTrainPosition", mvarHost, lat, lon, new
+            {
+                follow = true,
+                speed
+            });
+            mvarLastLat = lat;
+            mvarLastLon = lon;
+            mvarLastSpeed = speed;
+            mvarLastHadTrain = true;
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private bool TryGetTrainPoint(out double lat, out double lon)
+    {
+        lat = 0;
+        lon = 0;
+        GPSData? gps = Tourmaline.SessionConfig.CurrentGPSData;
+        if (gps is not null && gps.IsValid)
+        {
+            lat = gps.Latitude;
+            lon = gps.Longitude;
+            return true;
+        }
+
+        CabinEnvironment? cabin = Tourmaline.SessionConfig.Cabin;
+        if (cabin is null)
+            return false;
+
+        Axis? axis = cabin.LinearLocation.Axis;
+        if (axis is null || cabin.LinearLocation.PKRef < 0)
+            return false;
+
+        GeoPoint point = axis.LocationFromPK(cabin.LinearLocation.PKRef);
+        if (point.Latitude == 0 && point.Longitude == 0)
+            return false;
+
+        lat = point.Latitude;
+        lon = point.Longitude;
+        return true;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (mvarDisposed)
+            return;
+
+        mvarDisposed = true;
+        Tourmaline.PassengerUpdateRequested -= OnPassengerUpdate;
+        if (!mvarReady)
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("SfmMap.destroy", mvarHost);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (JSException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+}

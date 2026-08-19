@@ -83,6 +83,10 @@ namespace AppSettingsEditor.Models.Tourmaline
 
         [Display(Name = "GPS", Description = "Configuración del puerto GPS")]
         public GpsConfig Gps { get; set; } = new();
+
+        [Display(Name = "Distancia de bienvenida (m)",
+            Description = "Metros desde el PK de origen durante los que se muestra la pantalla de bienvenida")]
+        public int WelcomeDistanceMeters { get; set; } = 150;
     }
 
     public class GpsConfig

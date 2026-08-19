@@ -56,6 +56,7 @@ builder.Services.AddHostedService<MediaMTXService>();
 // Proxy RTSP → MJPEG nativo (sin MediaMTX en el camino de visualización HMI).
 builder.Services.AddSingleton<CameraStreamService>();
 builder.Services.AddSingleton<GPSService>();
+builder.Services.AddSingleton<RouteSimulationService>();
 builder.Services.AddHttpClient<LedPanelController>();
 builder.Services.AddSingleton<LEDDisplayService>();
 builder.Services.AddSingleton<MeteoService>();

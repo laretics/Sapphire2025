@@ -26,5 +26,11 @@ namespace Tourmaline26.Logic
 		public int? SfmPanelDefaultStation { get; set; }
 		public string DefaultLocation { get; set; } = "39.57634918310896,2.6546805667305313"; //Ubicación por defecto (para extraer Meteo).
 
+		/// <summary>
+		/// Distancia recorrida desde el PK de origen (m) durante la cual se muestra
+		/// la pantalla de bienvenida. Por defecto 150.
+		/// </summary>
+		public int WelcomeDistanceMeters { get; set; } = 150;
+
 	}
 }

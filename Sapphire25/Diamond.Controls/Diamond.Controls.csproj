@@ -34,8 +34,7 @@
     <Content Include="Samples\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="..\..\Sapphire2025\wwwroot\img\sfmImg.png"
-                      Link="Resources\sfmImg.png"
+    <EmbeddedResource Include="Resources\sfmImg.png"
                       LogicalName="Diamond.Controls.sfmImg.png" />
   </ItemGroup>
 

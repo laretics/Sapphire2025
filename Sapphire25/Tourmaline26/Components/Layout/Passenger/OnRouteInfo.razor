@@ -1,9 +1,11 @@
+@using System.Globalization
 @using Tourmaline26.Components.Images
 @using Tourmaline26.Components.Layout.Passenger.Modules
 @using Tourmaline26.Components.Controls
 @using Tourmaline26.Components.Controls.Passenger
 @using Tourmaline26.Services.OpenMeteo
 @inject TourmalineService mvarTourmaline
+@implements IDisposable
 <div class="panel-root">
     @if(null!=mvarTourmaline.SessionConfig)
     {        
@@ -30,7 +32,7 @@
         else if(InformationMode==Enums.PassengerInformationMode.Default)
         {
             <div class="panel-body centered-image-panel">
-                <img class="centered-image" src="/img/81pic1.png"/>
+                <img class="centered-image" src="/img/TrenCoso.jpg"/>
                 @* Anuncio solo sobre panel-body (no cubre cabecera; aquí no hay header). *@
                 @if (ActiveAnnouncement is not null)
                 {
@@ -88,73 +90,78 @@
             <div class="panel-body @(IsStreamFillBody ? "panel-body-fill" : null)">
                 @if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route && Circulation != null)
                 {
-                    @if (InformationMode == Enums.PassengerInformationMode.BeginOfTrip)
-                    {
-                        <div class="journey-splash journey-splash--welcome">
-                            <div class="journey-splash-kicker">Serveis Ferroviaris de Mallorca</div>
-                            <div class="journey-splash-title">Benvinguts a bord</div>
-                            <div class="journey-splash-rule" aria-hidden="true"></div>
-                            <div class="journey-splash-lead">
-                                Aquest tren us porta fins a
-                            </div>
-                            <div class="journey-splash-highlight">@DestinationName</div>
-                            @if (!string.IsNullOrWhiteSpace(OriginStationName))
+                    <div class="route-live-stage">
+                        <div class="route-live-stream @(StreamBlurred ? "route-live-stream--blur" : null)"
+                             aria-hidden="true">
+                            <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr"
+                                             Blur="StreamBlurred" />
+                            @if (StreamBlurred)
                             {
-                                <div class="journey-splash-meta">
-                                    <span class="journey-splash-meta-label">Sortida des de</span>
-                                    <span class="journey-splash-meta-value">@OriginStationName</span>
+                                <div class="route-live-stream-veil"></div>
+                            }
+                        </div>
+                        <div class="route-live-map @(InformationMode == Enums.PassengerInformationMode.Cruise ? null : "route-live-map--hidden")">
+                            <SfmLineMap Overlay="true" />
+                        </div>
+                        @if (InformationMode == Enums.PassengerInformationMode.Cruise)
+                        {
+                            <div class="cruise-next">
+                                <div class="cruise-next-name">@CruiseNextStationName</div>
+                                @if (!string.IsNullOrEmpty(CruiseNextDistanceLabel))
+                                {
+                                    <div class="cruise-next-dist">@CruiseNextDistanceLabel</div>
+                                }
+                            </div>
+                        }
+
+                        @if (InformationMode == Enums.PassengerInformationMode.BeginOfTrip)
+                        {
+                            <div class="route-live-fg">
+                                <div class="journey-splash journey-splash--welcome">
+                                    <div class="journey-splash-title">Benvinguts a bord</div>
+                                    <div class="journey-splash-rule" aria-hidden="true"></div>
+                                    <div class="journey-splash-footer">Bona ruta i bon viatge!</div>
+                                    <img class="journey-splash-logo"
+                                         src="img/sfm-logo.svg"
+                                         alt="SFM" />
                                 </div>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(TrainServiceName))
-                            {
-                                <div class="journey-splash-chip">@TrainServiceName</div>
-                            }
-                            <div class="journey-splash-footer">Bona ruta i bon viatge!</div>
-                        </div>
-                    }
-                    else if (InformationMode == Enums.PassengerInformationMode.NextStopInfo)
-                    {
-                        <NextStationTable NextStationName="@NextStationName"
-                                          TrainDestinationName="@DestinationName"
-                                          MaxDepartures="@Math.Max(10, Lines + 4)" />
-                    }
-                    else if (InformationMode == Enums.PassengerInformationMode.Cruise)
-                    {
-                        <div class="cruise-stream">
-                            <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr" />
-                        </div>
-                    }
-                    else if (InformationMode == Enums.PassengerInformationMode.EndOfTrip)
-                    {
-                        <div class="journey-splash journey-splash--farewell">
-                            <div class="journey-splash-kicker">Heu arribat al destí</div>
-                            <div class="journey-splash-title">Gràcies per viatjar amb noltros</div>
-                            <div class="journey-splash-rule" aria-hidden="true"></div>
-                            <div class="journey-splash-lead">Estació final</div>
-                            <div class="journey-splash-highlight">@FinalStationName</div>
-                            @if (!string.IsNullOrWhiteSpace(TrainServiceName))
-                            {
-                                <div class="journey-splash-chip">@TrainServiceName</div>
-                            }
-                            <div class="journey-splash-footer">Fins aviat · Serveis Ferroviaris de Mallorca</div>
-                        </div>
-                    }
-                    else // Lista de paradas: paisaje TE de fondo + tabla encima.
-                    {
-                        <div class="route-stops-stage">
-                            <div class="route-stops-bg" aria-hidden="true">
-                                <SimulatorStream StreamHost="@mvarTourmaline.SystemConfig.TExperienceStr"
-                                                 Blur="true" />
-                                <div class="route-stops-bg-veil"></div>
                             </div>
-                            <div class="route-stops-fg">
+                        }
+                        else if (InformationMode == Enums.PassengerInformationMode.NextStopInfo)
+                        {
+                            <div class="route-live-fg">
+                                <NextStationTable NextStationName="@NextStationName"
+                                                  TrainDestinationName="@DestinationName"
+                                                  MaxDepartures="@Lines" />
+                            </div>
+                        }
+                        else if (InformationMode == Enums.PassengerInformationMode.EndOfTrip)
+                        {
+                            <div class="route-live-fg">
+                                <div class="journey-splash journey-splash--farewell">
+                                    <div class="journey-splash-kicker">Heu arribat al destí</div>
+                                    <div class="journey-splash-title">Gràcies per viatjar amb noltros</div>
+                                    <div class="journey-splash-rule" aria-hidden="true"></div>
+                                    <div class="journey-splash-lead">Estació final</div>
+                                    <div class="journey-splash-highlight">@FinalStationName</div>
+                                    @if (!string.IsNullOrWhiteSpace(TrainServiceName))
+                                    {
+                                        <div class="journey-splash-chip">@TrainServiceName</div>
+                                    }
+                                    <div class="journey-splash-footer">Fins aviat · Serveis Ferroviaris de Mallorca</div>
+                                </div>
+                            </div>
+                        }
+                        else if (InformationMode != Enums.PassengerInformationMode.Cruise)
+                        {
+                            <div class="route-live-fg route-live-fg--stops">
                                 <StationsTable Session="@mvarTourmaline.SessionConfig"
                                                Rows="@Lines"
                                                ShowEstimatedTimes="true"
                                                OverlayOnVideo="true" />
                             </div>
-                        </div>
-                    }
+                        }
+                    </div>
                 }
 
                 @* Anuncio solo sobre panel-body; la cabecera (hora, destino…) sigue visible. *@
@@ -210,10 +217,14 @@
     }
     private Enums.PassengerInformationMode InformationMode  {get => mvarTourmaline.SessionConfig.InformationMode;}
 
-    /// <summary>Cuerpo a pantalla completa (sin padding gris) para stream o lista sobre vídeo.</summary>
+    /// <summary>Cuerpo a pantalla completa cuando hay misión: el stream/fallback y el mapa viven detrás.</summary>
     private bool IsStreamFillBody =>
-        InformationMode is Enums.PassengerInformationMode.Cruise
-            or Enums.PassengerInformationMode.NextStopsList;
+        mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route
+        && Circulation is not null;
+
+    /// <summary>Desenfoca el paisaje en modos con texto encima; Crucero lo deja nítido.</summary>
+    private bool StreamBlurred =>
+        InformationMode != Enums.PassengerInformationMode.Cruise;
 
     private string CurrentTime => mvarTourmaline.SessionConfig.Cabin?.ClockNow.ToString("HH:mm") ?? DateTime.Now.ToString("HH:mm");
     private int DisplaySpeedKmh => Math.Clamp(mvarTourmaline.SessionConfig.CurrentSpeed, 0, 100);
@@ -224,6 +235,82 @@
         Circulation is null
             ? string.Empty
             : (Circulation.HasServiceNumber ? Circulation.ServiceNumber : Circulation.Id);
+
+    private string CruiseNextStationName
+    {
+        get
+        {
+            Diamond.Project.TimedCall? next = CruiseNextCall;
+            if (next is not null)
+                return next.Station.Name;
+            return NextStationName;
+        }
+    }
+
+    private string CruiseNextDistanceLabel
+    {
+        get
+        {
+            CabinEnvironment? cabin = mvarTourmaline.SessionConfig.Cabin;
+            Diamond.Project.TimedCall? next = CruiseNextCall;
+            if (cabin is null || next is null)
+                return string.Empty;
+
+            long meters = Math.Abs(cabin.PK - next.Pk);
+            if (meters > 1000)
+            {
+                double km = meters / 1000.0;
+                return string.Format(CultureInfo.GetCultureInfo("ca-ES"), "{0:0.#} km", km);
+            }
+
+            return string.Format(CultureInfo.InvariantCulture, "{0} m", meters);
+        }
+    }
+
+    private Diamond.Project.TimedCall? CruiseNextCall
+    {
+        get
+        {
+            CabinEnvironment? cabin = mvarTourmaline.SessionConfig.Cabin;
+            if (cabin is null || Circulation is null)
+                return null;
+
+            if (cabin.CurrentStation is not null)
+            {
+                string id = cabin.CurrentStation.Id;
+                int i = 0;
+                while (i < Circulation.Calls.Count)
+                {
+                    Diamond.Project.TimedCall call = Circulation.Calls[i];
+                    if (CabinItinerary.IsCommercial(call)
+                        && string.Equals(call.Station.Id, id, StringComparison.Ordinal))
+                    {
+                        return call;
+                    }
+
+                    i++;
+                }
+            }
+
+            IReadOnlyList<Diamond.Project.TimedCall> remaining = cabin.RemainingCalls;
+            if (remaining.Count > 0)
+                return remaining[0];
+
+            long? destPk = CabinItinerary.DestinationRoutePk(Circulation);
+            if (!destPk.HasValue)
+                return null;
+
+            int j = Circulation.Calls.Count - 1;
+            while (j >= 0)
+            {
+                if (Circulation.Calls[j].Pk == destPk.Value)
+                    return Circulation.Calls[j];
+                j--;
+            }
+
+            return null;
+        }
+    }
 
     /// <summary>Estación de llegada / parada actual (modo Arriv).</summary>
     private string NextStationName =>

@@ -233,6 +233,15 @@ namespace Diamond.Cabin
 		}
 
 		/// <summary>
+		/// Olvida las estaciones ya abandonadas (p. ej. al reiniciar un simulador de ruta).
+		/// </summary>
+		public void ResetStationProgress()
+		{
+			mcolLeftStationIds.Clear();
+			RefreshCurrentStation();
+		}
+
+		/// <summary>
 		/// Actualiza PK desde la localización lineal (p. ej. tras GPS).
 		/// </summary>
 		public void ApplyLinearLocation()

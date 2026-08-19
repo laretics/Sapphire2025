@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SFM — mapa de red</title>
+  <link rel="stylesheet" href="css/maplibre-gl.css" />
+  <link rel="stylesheet" href="css/sfm-map.css" />
+</head>
+<body>
+  <div id="system_map"></div>
+  <div class="sfm-legend" aria-hidden="true">
+    <span style="background:#FF9933">M1</span>
+    <span style="background:#BBE6AA">T1</span>
+    <span style="background:#AFD9F1">T2</span>
+    <span style="background:#FBEB82">T3</span>
+  </div>
+  <div id="sfm-status" class="sfm-status" hidden></div>
+  <script src="js/maplibre-gl.js"></script>
+  <script src="js/sfm-map.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const overlay = params.has('overlay');
+    if (overlay) {
+      document.body.classList.add('sfm-overlay-preview');
+    }
+    SfmMap.create({
+      container: 'system_map',
+      mode: overlay ? 'overlay' : 'page',
+      offline: params.has('offline') || overlay
+    }).then(function () {
+      if (overlay) {
+        SfmMap.setTrainPosition(39.576, 2.653);
+      }
+    });
+  </script>
+</body>
+</html>

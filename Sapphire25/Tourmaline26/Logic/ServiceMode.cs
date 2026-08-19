@@ -29,6 +29,7 @@
                 {
                     // Al salir de servicio: demo y dummies no deben quedar "latentes".
                     ClearDemoAndDummies();
+                    RouteSimulation = false;
                     mvarServiceKeyboard = false;
                     mvarCaret = false;
                 }
@@ -100,6 +101,12 @@
             get => mvarMain && mvarCaret;
             set => mvarCaret = value;
         }
+
+        /// <summary>
+        /// Simulador de ruta activo (en marcha o en pausa). Alimenta PK/GPS/velocidad
+        /// desde la malla, sin Tourmaline Experience.
+        /// </summary>
+        public bool RouteSimulation { get; set; }
 
         /// <summary>Monitor de viajeros en el HMI (ajuste con una sola pantalla).</summary>
         public bool PassengerScreenOnHMI { get; set; }

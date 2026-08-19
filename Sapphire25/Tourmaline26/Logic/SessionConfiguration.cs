@@ -46,7 +46,7 @@ namespace Tourmaline26.Logic
 		{
 			get
 			{
-				if (ServiceMode.DemoMode)
+				if (ServiceMode.DemoMode || ServiceMode.RouteSimulation)
 					return SimulatedSpeed;
 
 				if ((ServiceMode.MVBEnabled || ServiceMode.MVBDummy) && null != CurrentMVBData)

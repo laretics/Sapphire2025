@@ -1,0 +1,30 @@
+.sfm-line-map {
+	width: 100%;
+	height: 100%;
+	background: transparent;
+}
+
+.sfm-line-map--overlay {
+	position: absolute;
+	right: 1.2vw;
+	bottom: 1.6vh;
+	width: 50%;
+	height: 50%;
+	z-index: 6;
+	pointer-events: none;
+	background: transparent;
+}
+
+.sfm-line-map--full {
+	min-height: 40vh;
+}
+
+.sfm-line-map ::deep .maplibregl-map,
+.sfm-line-map ::deep .maplibregl-canvas-container,
+.sfm-line-map ::deep .maplibregl-canvas {
+	background: transparent !important;
+}
+
+.sfm-line-map--overlay ::deep .maplibregl-control-container {
+	display: none;
+}

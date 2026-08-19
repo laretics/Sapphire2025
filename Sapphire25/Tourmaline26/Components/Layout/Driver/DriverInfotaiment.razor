@@ -78,6 +78,8 @@
     [Inject]
     private TourmalineService mvarTourmaline{ get; set; }=default!;
     [Inject]
+    private RouteSimulationService mvarRouteSim { get; set; } = default!;
+    [Inject]
     private UserPreferencesService Prefs { get; set; } = default!;
     [CascadingParameter]
     public bool NightMode{ get; set; }
@@ -356,6 +358,16 @@
     [JSInvokable]
     public async Task HandleKey(string key)
     {
+        if (mvarTourmaline.SessionConfig.ServiceMode.Main
+            && (key == "F7" || key == "F8"))
+        {
+            if (key == "F7")
+                mvarRouteSim.StartOrResume();
+            else
+                mvarRouteSim.Pause();
+            return;
+        }
+
         // DemoMode reutiliza el teclado de servicio para consignar límite y velocidad objetivo.
         if (mvarTourmaline.SessionConfig.ServiceMode.ServiceKeyboard
             || mvarTourmaline.SessionConfig.ServiceMode.DemoMode)

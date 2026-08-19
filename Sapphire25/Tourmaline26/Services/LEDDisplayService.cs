@@ -82,7 +82,7 @@ namespace Tourmaline26.Services
         {
             await Print(
                 true,
-                device => $"Tren amb destinació a {destinationName}. Cotxo {device.PublicCoachNumber}",
+                device => $"Tren amb destinació {destinationName}. Cotxe {device.PublicCoachNumber}",
                 true);
             if (updateExternal)
                 await Print(false, destinationName, false);

@@ -491,7 +491,9 @@ namespace Tourmaline26.Services
 				return;
 			}
 
-			if (session.ServiceMode.Main && !session.ServiceMode.DemoMode)
+			if (session.ServiceMode.Main
+				&& !session.ServiceMode.DemoMode
+				&& !session.ServiceMode.RouteSimulation)
 				return;
 
 			session.PreviewArrivalStation = null;
@@ -500,7 +502,23 @@ namespace Tourmaline26.Services
 			StationInfo? currentStation = cabin!.CurrentStation;
 			Asimilation? asim = cabin.Asimilation;
 
-			if (null == currentStation)
+			int welcomeMeters = SystemConfig.WelcomeDistanceMeters;
+			if (welcomeMeters < 0)
+				welcomeMeters = 0;
+
+			long? originPk = CabinItinerary.OriginRoutePk(circulation);
+			long? destPk = CabinItinerary.DestinationRoutePk(circulation);
+			bool nearOrigin = originPk.HasValue
+				&& Math.Abs(cabin.PK - originPk.Value) < welcomeMeters;
+			bool nearDestination = destPk.HasValue
+				&& (!originPk.HasValue || destPk.Value != originPk.Value)
+				&& Math.Abs(cabin.PK - destPk.Value) < CabinItinerary.DefaultStationAreaMeters;
+
+			if (nearOrigin && !nearDestination)
+			{
+				next = Enums.PassengerInformationMode.BeginOfTrip;
+			}
+			else if (null == currentStation)
 			{
 				next = session.CurrentSpeed < 60
 					? Enums.PassengerInformationMode.NextStopsList
@@ -520,7 +538,9 @@ namespace Tourmaline26.Services
 				}
 				else if (null != originStation && sameStation(currentStation, originStation))
 				{
-					next = Enums.PassengerInformationMode.BeginOfTrip;
+					next = session.CurrentSpeed < 60
+						? Enums.PassengerInformationMode.NextStopsList
+						: Enums.PassengerInformationMode.Cruise;
 				}
 				else
 				{
