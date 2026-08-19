@@ -46,6 +46,12 @@ namespace Diamond.Controls.Rendering
 		public const double CoverTitleH = 28.0;
 		public const double CoverDateH = 18.0;
 		public const double CoverIndexGap = 14.0;
+		public const double LegendTitleH = 12.0;
+		public const double LegendRowH = 15.0;
+		public const double LegendSampleW = 22.0;
+		public const double LegendSampleH = 11.0;
+		public const int LegendHighExampleKmh = 80;
+		public const int LegendLowExampleKmh = 40;
 		public const double IndexColHeaderH = 15.0;
 		public const double IndexRowH = 14.0;
 
@@ -73,15 +79,31 @@ namespace Diamond.Controls.Rendering
 
 		public static int CoverIndexCapacity()
 		{
+			return CoverIndexCapacity(0);
+		}
+
+		public static int CoverIndexCapacity(int legendItemCount)
+		{
 			double panelH = CirculationSheetSvgRenderer.PageHeight;
 			double used = PanelPadT + HeaderBandH
 				+ CirculationDocumentBranding.CoverLogoGapAfterHeader
 				+ CirculationDocumentBranding.CoverLogoH
 				+ CirculationDocumentBranding.CoverLogoGapAfter
 				+ CoverTitleH
-				+ CoverDateH + CoverIndexGap + IndexColHeaderH + FooterReserve;
+				+ CoverDateH + CoverIndexGap + IndexColHeaderH + FooterReserve
+				+ LegendHeight(legendItemCount);
 			int n = (int)((panelH - used) / IndexRowH);
 			return n < 4 ? 4 : n;
+		}
+
+		public static double LegendHeight(int itemCount)
+		{
+			if (itemCount <= 0)
+			{
+				return 0;
+			}
+
+			return LegendTitleH + (itemCount * LegendRowH) + 8.0;
 		}
 
 		public static int IndexPageCapacity()
@@ -414,8 +436,15 @@ namespace Diamond.Controls.Rendering
 
 		public static List<ConsignaSerieBPage> AssembleBook(IReadOnlyList<ConsignaSerieBPage> content)
 		{
+			return AssembleBook(content, 0);
+		}
+
+		public static List<ConsignaSerieBPage> AssembleBook(
+			IReadOnlyList<ConsignaSerieBPage> content,
+			int legendItemCount)
+		{
 			IReadOnlyList<ConsignaSerieBPage> axisPages = AssignAxisSheets(content);
-			int coverCap = CoverIndexCapacity();
+			int coverCap = CoverIndexCapacity(legendItemCount);
 			int indexCap = IndexPageCapacity();
 			int extraIndex = 0;
 			if (axisPages.Count > coverCap)

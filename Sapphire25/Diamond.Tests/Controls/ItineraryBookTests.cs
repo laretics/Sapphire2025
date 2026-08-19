@@ -228,6 +228,36 @@ namespace Diamond.Tests.Controls
 
 			string svgNormal = CirculationSheetSvgRenderer.RenderAllPages(normal)[0];
 			Assert.DoesNotContain("#ffd400", svgNormal, StringComparison.OrdinalIgnoreCase);
+			Assert.DoesNotContain(CirculationSheetSvgRenderer.UnsignaledWarningClass, svg, StringComparison.Ordinal);
+		}
+
+		[Fact]
+		public void CompleteSheet_UnsignaledTemporary_DrawsRedWarningTriangle()
+		{
+			TopoLayout topo = TopoXmlSerializer.Load(SamplePaths.TopoSfm227);
+			SfmDemoInfrastructure.Apply(topo);
+			TemporarySpeedLimit temp = TopoTemporaryLimits.FromSpan(
+				"T3", 8000L, 12000L, 30, TemporaryLimitReason.Works, "Sin señal",
+				TemporaryLimitTrack.Both, isNewCreation: false, createdAt: null, signaledOnTrack: false);
+			TopoTemporaryLimits.Apply(topo, new[] { temp });
+
+			Plan plan = new Plan(topo);
+			plan.EnsureDefaultTrainSpecs();
+			Assert.True(plan.CompileDemand("""
+				require both ways every 60 min PMI -> MAN 06:00-10:00 as R-T3
+				  days lab
+				  stops 30s
+				""").Success);
+			Mesh mesh = new MeshPlanner(plan).Solve(DayOfWeek.Monday);
+			Circulation c = mesh.Circulations[0];
+			CirculationSheetDocument complete = CirculationSheetDocument.Build(
+				c, mesh, 30, includeTemporaryLimits: true);
+			Assert.Contains(complete.Frontiers, f => f.OutgoingTemporaryUnsignaled);
+
+			string svg = CirculationSheetSvgRenderer.RenderAllPages(complete)[0];
+			Assert.Contains(CirculationSheetSvgRenderer.UnsignaledWarningClass, svg, StringComparison.Ordinal);
+			Assert.Contains(CirculationSheetSvgRenderer.UnsignaledWarningRed, svg, StringComparison.Ordinal);
+			Assert.Contains("No señalizada en vía", svg, StringComparison.Ordinal);
 		}
 
 		[Fact]

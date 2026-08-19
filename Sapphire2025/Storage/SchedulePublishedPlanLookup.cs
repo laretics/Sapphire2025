@@ -289,6 +289,10 @@ namespace Sapphire2025.Storage
 			}
 
 			layout.RebuildAll();
+			// Misma infraestructura que el planificador / cabina: sin esto la
+			// ficha del cuadrante ve todo el T3+T2 como BAU y pierde temporales
+			// de vía 2 en tramos BAB.
+			SfmDemoInfrastructure.Apply(layout);
 			try
 			{
 				IReadOnlyList<DiamondTemporaryLimitModel> rows =

@@ -139,12 +139,100 @@ namespace Diamond.Controls.Rendering
 				y += 14;
 			}
 
+			y = DrawCoverLegend(sb, document.CoverLegend, contentL, y, palette);
+
 			y += ConsignaSerieBLayout.CoverIndexGap;
 			DrawIndexTable(sb, page, contentL, contentR, y, palette);
 
 			CirculationSheetSvgRenderer.DrawPanelFooter(
 				sb, contentL, contentR, panelY, panelH, document.EditionLabel,
 				page.PageNumber, page.PageCount, sealCode, palette);
+		}
+
+		private static double DrawCoverLegend(
+			StringBuilder sb,
+			ConsignaSerieBCoverLegend legend,
+			double contentL,
+			double y,
+			CirculationSheetPalette palette)
+		{
+			if (legend.ItemCount <= 0)
+			{
+				return y;
+			}
+
+			y += 6;
+			sb.Append("<g class=\"diamond-consigna-legend\">");
+			sb.Append(CirculationSheetSvgRenderer.Text(
+				contentL + 6, y + 9, "Leyenda", 8, "700", palette.Text, "start"));
+			y += ConsignaSerieBLayout.LegendTitleH;
+
+			if (legend.ShowHighSpeed)
+			{
+				DrawLegendSpeedRow(
+					sb, contentL, y,
+					ConsignaSerieBLayout.LegendHighExampleKmh,
+					"Limitación superior a 50 km/h",
+					palette);
+				y += ConsignaSerieBLayout.LegendRowH;
+			}
+
+			if (legend.ShowLowSpeed)
+			{
+				DrawLegendSpeedRow(
+					sb, contentL, y,
+					ConsignaSerieBLayout.LegendLowExampleKmh,
+					"Limitación igual o inferior a 50 km/h",
+					palette);
+				y += ConsignaSerieBLayout.LegendRowH;
+			}
+
+			if (legend.ShowUnsignaled)
+			{
+				double iconY = y + (ConsignaSerieBLayout.LegendRowH
+					- CirculationSheetSvgRenderer.UnsignaledWarningSize) * 0.5;
+				CirculationSheetSvgRenderer.DrawUnsignaledWarning(
+					sb,
+					contentL + 6,
+					iconY,
+					CirculationSheetSvgRenderer.UnsignaledWarningSize,
+					palette.Text);
+				sb.Append(CirculationSheetSvgRenderer.Text(
+					contentL + 6 + CirculationSheetSvgRenderer.UnsignaledWarningSize + 5,
+					y + ConsignaSerieBLayout.LegendRowH * 0.72,
+					"Limitación no señalizada en vía",
+					7, "400", palette.Text, "start"));
+				y += ConsignaSerieBLayout.LegendRowH;
+			}
+
+			sb.Append("</g>");
+			return y + 4;
+		}
+
+		private static void DrawLegendSpeedRow(
+			StringBuilder sb,
+			double contentL,
+			double y,
+			int speed,
+			string caption,
+			CirculationSheetPalette palette)
+		{
+			double boxW = ConsignaSerieBLayout.LegendSampleW;
+			double boxH = ConsignaSerieBLayout.LegendSampleH;
+			double boxY = y + (ConsignaSerieBLayout.LegendRowH - boxH) * 0.5;
+			DrawVShade(sb, contentL + 6, boxY, boxH, speed);
+			string vFill = speed <= ConsignaSerieBLayout.VShadeThresholdKmh
+				? ConsignaSerieBLayout.VTextLow
+				: ConsignaSerieBLayout.VTextHigh;
+			sb.Append(CirculationSheetSvgRenderer.Text(
+				contentL + 6 + boxW * 0.5,
+				boxY + boxH * 0.78,
+				speed.ToString(CultureInfo.InvariantCulture),
+				7, "700", vFill, "middle"));
+			sb.Append(CirculationSheetSvgRenderer.Text(
+				contentL + 6 + boxW + 5,
+				y + ConsignaSerieBLayout.LegendRowH * 0.72,
+				caption, 7, "400", palette.Text, "start"));
 		}
 
 		private static void DrawIndex(
@@ -281,12 +369,12 @@ namespace Diamond.Controls.Rendering
 				numX, y + 15, "Nº", 6, "700", palette.Text, "middle"));
 			sb.Append(CirculationSheetSvgRenderer.Text(
 				xKmL + (ConsignaSerieBLayout.ColKm + ConsignaSerieBLayout.ColV) * 0.5,
-				y + 10, "↓ Vía II", 6.5, "700", palette.HeaderText, "middle"));
+				y + 10, "↑ Vía II", 6.5, "700", palette.HeaderText, "middle"));
 			sb.Append(CirculationSheetSvgRenderer.Text(
 				xSt + colCenter * 0.5, y + 10, "Estaciones", 6.5, "700", palette.HeaderText, "middle"));
 			sb.Append(CirculationSheetSvgRenderer.Text(
 				xVR + (ConsignaSerieBLayout.ColV + ConsignaSerieBLayout.ColKm) * 0.5,
-				y + 10, "Vía I ↑", 6.5, "700", palette.HeaderText, "middle"));
+				y + 10, "Vía I ↓", 6.5, "700", palette.HeaderText, "middle"));
 			sb.Append(CirculationSheetSvgRenderer.Text(
 				xKmL + ConsignaSerieBLayout.ColKm * 0.5, y + 20, "Km", 6, "600", palette.HeaderText, "middle"));
 			sb.Append(CirculationSheetSvgRenderer.Text(
@@ -408,7 +496,18 @@ namespace Diamond.Controls.Rendering
 			}
 
 			double textX = xSt + 4;
-			double maxW = colCenter - 8;
+			if (!entry.Limit.SignaledOnTrack)
+			{
+				CirculationSheetSvgRenderer.DrawUnsignaledWarning(
+					sb,
+					textX,
+					y0 + ConsignaSerieBLayout.LimitPadY,
+					CirculationSheetSvgRenderer.UnsignaledWarningSize,
+					palette.Text);
+				textX += CirculationSheetSvgRenderer.UnsignaledWarningSize + 1.8;
+			}
+
+			double maxW = colCenter - (textX - xSt) - 4;
 			double ty = y0 + ConsignaSerieBLayout.LimitPadY + ConsignaSerieBLayout.LineH * 0.82;
 			List<string> reasonLines = ConsignaSerieBLayout.WrapLines(
 				entry.ReasonLabel, ConsignaSerieBLayout.ReasonFont, true, maxW);

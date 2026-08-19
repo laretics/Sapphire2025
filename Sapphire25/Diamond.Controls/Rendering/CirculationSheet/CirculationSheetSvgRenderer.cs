@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Sapphire2025Models;
 
 namespace Diamond.Controls.Rendering
 {
@@ -47,7 +48,7 @@ namespace Diamond.Controls.Rendering
 		private const double PanelPadT = 8;
 		private const double PanelPadB = 16; // pie
 
-		// Vía | PK | Max | Dependencia | Com | Hora | Conc. | Obs.
+		// Bloq. | PK | Max | Dependencia | Com | Hora | Conc. | Obs.
 		// Ancho total ~390 pt para caber en media A4 apaisada.
 		private const double ColVia = 30;
 		private const double ColStKm = 32;
@@ -932,7 +933,7 @@ namespace Diamond.Controls.Rendering
 			sb.Append(CultureInfo.InvariantCulture,
 				$"<rect x=\"{F(left)}\" y=\"{F(y)}\" width=\"{F(tableW)}\" height=\"{F(h)}\" fill=\"{palette.HeaderFill}\"/>");
 			double x = left;
-			HeaderCell(sb, x, y, h, ColVia, "Vía", palette);
+			HeaderCell(sb, x, y, h, ColVia, "Bloq.", palette);
 			x += ColVia;
 			HeaderCell(sb, x, y, h, ColStKm, "PK", palette);
 			x += ColStKm;
@@ -1121,7 +1122,7 @@ namespace Diamond.Controls.Rendering
 
 				double y0 = bodyTop + i * rowH;
 				double y1 = bodyTop + (j + 1) * rowH;
-				string label = isDouble ? "Doble" : "Única";
+				string label = isDouble ? "BAB" : "BAU";
 				double cx = tableLeft + ColVia * 0.5;
 				double cy = (y0 + y1) * 0.5;
 				sb.Append(CultureInfo.InvariantCulture,
@@ -1165,16 +1166,15 @@ namespace Diamond.Controls.Rendering
 					j++;
 				}
 
-				double yFill0 = bodyTop + i * rowH;
-				double yFill1 = bodyTop + (j + 1) * rowH;
-				if (isTemp)
-				{
-					sb.Append(CultureInfo.InvariantCulture,
-						$"<rect x=\"{F(colX)}\" y=\"{F(yFill0)}\" width=\"{F(ColVmx)}\" height=\"{F(yFill1 - yFill0)}\" fill=\"{palette.TemporaryVmxFill}\"/>");
-				}
-
+				// Max va desfasado (tramo entre fronteras): el amarillo solo
+				// entre las mitades de las filas, no tapa el Max de arriba/abajo.
 				double yStart = bodyTop + (i + 0.5) * rowH;
 				double yEnd = bodyTop + (j + 0.5) * rowH;
+				if (isTemp && yEnd > yStart)
+				{
+					sb.Append(CultureInfo.InvariantCulture,
+						$"<rect x=\"{F(colX)}\" y=\"{F(yStart)}\" width=\"{F(ColVmx)}\" height=\"{F(yEnd - yStart)}\" fill=\"{palette.TemporaryVmxFill}\"/>");
+				}
 				double cy = (yStart + yEnd) * 0.5;
 				if (vmax.HasValue)
 				{
@@ -1310,6 +1310,14 @@ namespace Diamond.Controls.Rendering
 				nameEndX = x + 5 + EstimateTextWidth(name, plainFont, bold: false);
 			}
 
+			if (row.OutgoingTemporaryUnsignaled)
+			{
+				DrawUnsignaledWarning(
+					sb, nameEndX + 1.5, y0 + (rowH - UnsignaledWarningSize) * 0.5,
+					UnsignaledWarningSize, UnsignaledWarningRed);
+				nameEndX += UnsignaledWarningSize + 2.0;
+			}
+
 			// Línea de puntos Renfe: del final del nombre al borde izquierdo de Com,
 			// para alinear la fila sin división horizontal continua.
 			double leaderStart = nameEndX + 2.0;
@@ -1329,7 +1337,16 @@ namespace Diamond.Controls.Rendering
 			CirculationSheetPalette palette)
 		{
 			const double fontSize = 6.6;
-			double maxW = ColDep - 10.0;
+			double textX = x + 5;
+			if (row.OutgoingTemporaryUnsignaled)
+			{
+				DrawUnsignaledWarning(
+					sb, textX, y0 + (rowH - UnsignaledWarningSize) * 0.5,
+					UnsignaledWarningSize, UnsignaledWarningRed);
+				textX += UnsignaledWarningSize + 1.6;
+			}
+
+			double maxW = ColDep - (textX - x) - 5.0;
 			string reason = TruncateToWidth(row.TemporaryReasonLabel, fontSize, true, maxW);
 			string obs = string.IsNullOrWhiteSpace(row.TemporaryObservations)
 				? string.Empty
@@ -1338,18 +1355,18 @@ namespace Diamond.Controls.Rendering
 			double midY = y0 + rowH * 0.5;
 			if (obs.Length == 0)
 			{
-				sb.Append(Text(x + 5, midY + 2.3, reason, fontSize, "700", palette.TemporaryDepText, "start"));
+				sb.Append(Text(textX, midY + 2.3, reason, fontSize, "700", palette.TemporaryDepText, "start"));
 			}
 			else
 			{
 				double y1 = midY - 1.4;
 				double y2 = midY + 5.6;
-				sb.Append(Text(x + 5, y1, reason, fontSize, "700", palette.TemporaryDepText, "start"));
-				sb.Append(Text(x + 5, y2, obs, fontSize, "400", palette.TemporaryDepText, "start"));
+				sb.Append(Text(textX, y1, reason, fontSize, "700", palette.TemporaryDepText, "start"));
+				sb.Append(Text(textX, y2, obs, fontSize, "400", palette.TemporaryDepText, "start"));
 			}
 
 			double comLeft = x + ColDep;
-			double nameEnd = x + 5 + EstimateTextWidth(
+			double nameEnd = textX + EstimateTextWidth(
 				obs.Length > 0 && EstimateTextWidth(obs, fontSize, false) > EstimateTextWidth(reason, fontSize, true)
 					? obs
 					: reason,
@@ -1501,6 +1518,58 @@ namespace Diamond.Controls.Rendering
 			}
 
 			return row.Departure ?? row.Arrival;
+		}
+
+		public const double UnsignaledWarningSize = 8.2;
+		public const string UnsignaledWarningRed = "#c00000";
+		public const string UnsignaledWarningClass = "diamond-unsignaled-warning";
+
+		/// <summary>
+		/// Triángulo de aviso de <see cref="GenIcoSource"/> («Warning»)
+		/// para limitaciones temporales no señalizadas en vía.
+		/// </summary>
+		internal static void DrawUnsignaledWarning(
+			StringBuilder sb,
+			double x,
+			double y,
+			double size,
+			string fill)
+		{
+			if (sb is null)
+			{
+				return;
+			}
+
+			GenIcoSource.IconData? icon = GenIcoSource.Get("Warning");
+			if (icon is null || string.IsNullOrEmpty(icon.Path))
+			{
+				return;
+			}
+
+			double vx = 0;
+			double vy = 0;
+			double vw = size;
+			string[] box = icon.ViewBox.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+			if (box.Length >= 4)
+			{
+				double.TryParse(box[0], NumberStyles.Float, CultureInfo.InvariantCulture, out vx);
+				double.TryParse(box[1], NumberStyles.Float, CultureInfo.InvariantCulture, out vy);
+				double.TryParse(box[2], NumberStyles.Float, CultureInfo.InvariantCulture, out vw);
+			}
+
+			if (vw <= 0)
+			{
+				vw = 960;
+			}
+
+			double scale = size / vw;
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<g class=\"{UnsignaledWarningClass}\" transform=\"translate({F(x)} {F(y)}) scale({F(scale)}) translate({F(-vx)} {F(-vy)})\">");
+			sb.Append("<title>No señalizada en vía</title>");
+			string rule = icon.UseFillRule ? " fill-rule=\"evenodd\"" : string.Empty;
+			sb.Append(CultureInfo.InvariantCulture,
+				$"<path d=\"{icon.Path}\"{rule} fill=\"{fill}\"/>");
+			sb.Append("</g>");
 		}
 
 		internal static string Text(

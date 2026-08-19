@@ -221,7 +221,8 @@ namespace Sapphire2025.Storage
 					row.Observations,
 					(global::Diamond.Topo.TemporaryLimitTrack)(byte)row.Track,
 					row.IsNewCreation,
-					row.CreatedUtc));
+					row.CreatedUtc,
+					row.SignaledOnTrack));
 				i++;
 			}
 

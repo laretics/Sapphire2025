@@ -258,7 +258,8 @@ namespace Sapphire2026.Data.Diamond
 					row.Observations,
 					(global::Diamond.Topo.TemporaryLimitTrack)row.Track,
 					row.IsNewCreation,
-					row.CreatedUtc));
+					row.CreatedUtc,
+					row.SignaledOnTrack));
 				i++;
 			}
 

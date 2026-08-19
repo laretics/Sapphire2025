@@ -42,6 +42,7 @@ namespace Diamond.Controls.Rendering
 		private readonly bool mvarOutgoingIsTemporary;
 		private readonly string mvarTemporaryReasonLabel;
 		private readonly string mvarTemporaryObservations;
+		private readonly bool mvarOutgoingTemporaryUnsignaled;
 
 		public CirculationSheetFrontier(
 			long routePk,
@@ -61,7 +62,8 @@ namespace Diamond.Controls.Rendering
 			string? axisId = null,
 			bool outgoingIsTemporary = false,
 			string? temporaryReasonLabel = null,
-			string? temporaryObservations = null)
+			string? temporaryObservations = null,
+			bool outgoingTemporaryUnsignaled = false)
 		{
 			mvarRoutePk = routePk;
 			mvarStationKm = stationKm ?? string.Empty;
@@ -81,6 +83,7 @@ namespace Diamond.Controls.Rendering
 			mvarOutgoingIsTemporary = outgoingIsTemporary;
 			mvarTemporaryReasonLabel = temporaryReasonLabel ?? string.Empty;
 			mvarTemporaryObservations = temporaryObservations ?? string.Empty;
+			mvarOutgoingTemporaryUnsignaled = outgoingTemporaryUnsignaled;
 		}
 
 		public CirculationSheetFrontier WithCrossingTrains(string? crossingTrains)
@@ -103,7 +106,8 @@ namespace Diamond.Controls.Rendering
 				mvarAxisId,
 				mvarOutgoingIsTemporary,
 				mvarTemporaryReasonLabel,
-				mvarTemporaryObservations);
+				mvarTemporaryObservations,
+				mvarOutgoingTemporaryUnsignaled);
 		}
 
 		public long RoutePk
@@ -207,6 +211,12 @@ namespace Diamond.Controls.Rendering
 		public string TemporaryObservations
 		{
 			get { return mvarTemporaryObservations; }
+		}
+
+		/// <summary>Limitación temporal saliente no señalizada en vía.</summary>
+		public bool OutgoingTemporaryUnsignaled
+		{
+			get { return mvarOutgoingTemporaryUnsignaled; }
 		}
 	}
 }

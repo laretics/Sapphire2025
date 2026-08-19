@@ -20,7 +20,7 @@ namespace Diamond.Tests.Topo
 			limit.AxisId = "T3";
 			limit.Track = TemporaryLimitTrack.Track1;
 			limit.Reason = TemporaryLimitReason.Works;
-			limit.SignaledOnTrack = true;
+			Assert.True(limit.SignaledOnTrack);
 
 			Assert.Equal(1200L, limit.PK);
 			Assert.Equal(44800L, limit.PKEnd);
@@ -29,7 +29,7 @@ namespace Diamond.Tests.Topo
 			Assert.Equal(TemporaryLimitTrack.Track1, limit.Track);
 			Assert.True(limit.IsNewCreation);
 			Assert.Equal(TemporaryLimitReason.Works, limit.Reason);
-			Assert.True(limit.SignaledOnTrack);
+			Assert.True(limit.SignaledOnTrack, "por defecto señalizada en vía");
 		}
 	}
 }

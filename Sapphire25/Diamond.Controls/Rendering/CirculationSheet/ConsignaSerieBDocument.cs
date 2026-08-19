@@ -5,7 +5,7 @@ namespace Diamond.Controls.Rendering
 {
 	/// <summary>
 	/// Consigna serie B: limitaciones temporales por eje, numeradas al redactar.
-	/// Vía II a la izquierda (↓); vía I a la derecha (↑); ambas si aplica a las dos.
+	/// Vía II a la izquierda (↑); vía I a la derecha (↓); ambas si aplica a las dos.
 	/// </summary>
 	public sealed class ConsignaSerieBDocument
 	{
@@ -19,6 +19,7 @@ namespace Diamond.Controls.Rendering
 		private readonly IReadOnlyList<ConsignaSerieBAxisSection> mcolAxes;
 		private readonly IReadOnlyList<ConsignaSerieBPage> mcolPages;
 		private readonly IReadOnlyList<ConsignaSerieBIndexEntry> mcolIndex;
+		private readonly ConsignaSerieBCoverLegend mvarLegend;
 
 		private ConsignaSerieBDocument(
 			string topoName,
@@ -28,7 +29,8 @@ namespace Diamond.Controls.Rendering
 			string previousNumber,
 			IReadOnlyList<ConsignaSerieBAxisSection> axes,
 			IReadOnlyList<ConsignaSerieBPage> pages,
-			IReadOnlyList<ConsignaSerieBIndexEntry> index)
+			IReadOnlyList<ConsignaSerieBIndexEntry> index,
+			ConsignaSerieBCoverLegend legend)
 		{
 			mvarTopoName = topoName ?? string.Empty;
 			mvarEditionLabel = editionLabel ?? string.Empty;
@@ -40,6 +42,7 @@ namespace Diamond.Controls.Rendering
 			mcolAxes = axes;
 			mcolPages = pages;
 			mcolIndex = index;
+			mvarLegend = legend;
 		}
 
 		public string TopoName
@@ -107,6 +110,11 @@ namespace Diamond.Controls.Rendering
 		public IReadOnlyList<ConsignaSerieBIndexEntry> Index
 		{
 			get { return mcolIndex; }
+		}
+
+		public ConsignaSerieBCoverLegend CoverLegend
+		{
+			get { return mvarLegend; }
 		}
 
 		public int EntryCount
@@ -208,8 +216,9 @@ namespace Diamond.Controls.Rendering
 				ai++;
 			}
 
+			ConsignaSerieBCoverLegend legend = ConsignaSerieBCoverLegend.FromAxes(sections);
 			List<ConsignaSerieBPage> content = ConsignaSerieBLayout.PaginateByHeight(sections);
-			List<ConsignaSerieBPage> pages = ConsignaSerieBLayout.AssembleBook(content);
+			List<ConsignaSerieBPage> pages = ConsignaSerieBLayout.AssembleBook(content, legend.ItemCount);
 			List<ConsignaSerieBIndexEntry> index = new List<ConsignaSerieBIndexEntry>();
 			int pi = 0;
 			while (pi < pages.Count)
@@ -229,7 +238,7 @@ namespace Diamond.Controls.Rendering
 			return new ConsignaSerieBDocument(
 				name, edition, number, dateLabel,
 				previousNumber ?? string.Empty,
-				sections, pages, index);
+				sections, pages, index, legend);
 		}
 
 		private static List<ConsignaSerieBBlock> BuildBlocks(IReadOnlyList<ConsignaSerieBEntry> entries)
@@ -719,6 +728,108 @@ namespace Diamond.Controls.Rendering
 					+ " de "
 					+ mvarAxisSheetCount.ToString(CultureInfo.InvariantCulture);
 			}
+		}
+	}
+
+	/// <summary>
+	/// Símbolos de la leyenda de portada: 0 a 3, según lo que haya en el documento.
+	/// </summary>
+	public readonly struct ConsignaSerieBCoverLegend
+	{
+		private readonly bool mvarHighSpeed;
+		private readonly bool mvarLowSpeed;
+		private readonly bool mvarUnsignaled;
+
+		public ConsignaSerieBCoverLegend(bool highSpeed, bool lowSpeed, bool unsignaled)
+		{
+			mvarHighSpeed = highSpeed;
+			mvarLowSpeed = lowSpeed;
+			mvarUnsignaled = unsignaled;
+		}
+
+		public bool ShowHighSpeed
+		{
+			get { return mvarHighSpeed; }
+		}
+
+		public bool ShowLowSpeed
+		{
+			get { return mvarLowSpeed; }
+		}
+
+		public bool ShowUnsignaled
+		{
+			get { return mvarUnsignaled; }
+		}
+
+		public int ItemCount
+		{
+			get
+			{
+				int n = 0;
+				if (mvarHighSpeed)
+				{
+					n++;
+				}
+
+				if (mvarLowSpeed)
+				{
+					n++;
+				}
+
+				if (mvarUnsignaled)
+				{
+					n++;
+				}
+
+				return n;
+			}
+		}
+
+		public static ConsignaSerieBCoverLegend FromAxes(IReadOnlyList<ConsignaSerieBAxisSection> axes)
+		{
+			bool high = false;
+			bool low = false;
+			bool unsignaled = false;
+			if (axes is null)
+			{
+				return new ConsignaSerieBCoverLegend(false, false, false);
+			}
+
+			int ai = 0;
+			while (ai < axes.Count)
+			{
+				IReadOnlyList<ConsignaSerieBEntry> entries = axes[ai].Entries;
+				int ei = 0;
+				while (ei < entries.Count)
+				{
+					TemporarySpeedLimit limit = entries[ei].Limit;
+					if (limit.Speed > ConsignaSerieBLayout.VShadeThresholdKmh)
+					{
+						high = true;
+					}
+					else
+					{
+						low = true;
+					}
+
+					if (!limit.SignaledOnTrack)
+					{
+						unsignaled = true;
+					}
+
+					if (high && low && unsignaled)
+					{
+						return new ConsignaSerieBCoverLegend(true, true, true);
+					}
+
+					ei++;
+				}
+
+				ai++;
+			}
+
+			return new ConsignaSerieBCoverLegend(high, low, unsignaled);
 		}
 	}
 
