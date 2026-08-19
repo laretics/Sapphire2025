@@ -343,6 +343,33 @@
 	font-weight: 600;
 }
 
+.nst-plat--bus {
+	color: #fff;
+	background: #8b3a3a;
+	border-color: transparent;
+	padding: 0.28vh 0.5vw;
+	box-shadow:
+		inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+		0 1px 4px rgba(15, 23, 42, 0.1);
+}
+
+.nst-plat--emt {
+	color: #fff;
+	background: #007fff;
+	border-color: transparent;
+	padding: 0.28vh 0.5vw;
+	box-shadow:
+		inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+		0 1px 4px rgba(15, 23, 42, 0.1);
+}
+
+.nst-plat--bus ::deep svg,
+.nst-plat--emt ::deep svg {
+	display: block;
+	width: clamp(1.55vw, 2vw, 2.45vw);
+	height: clamp(1.55vw, 2vw, 2.45vw);
+}
+
 .nst-plat-old {
 	display: inline;
 	margin-left: 0.4vw;

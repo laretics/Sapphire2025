@@ -8,6 +8,8 @@ using Tourmaline26.Services;
 using Tourmaline26.Services.Armandito;
 using Tourmaline26.Services.Cameras;
 using Tourmaline26.Services.Logging;
+using Tourmaline26.Services.Catalog;
+using Tourmaline26.Services.Correspondence;
 using Tourmaline26.Services.SfmInfo;
 using Tourmaline26.Services.TourmalineExperience;
 
@@ -98,6 +100,36 @@ builder.Services.AddHttpClient(SfmDeparturesService.HttpClientName, client =>
 });
 builder.Services.AddSingleton<SfmDeparturesService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<SfmDeparturesService>());
+builder.Services.AddSingleton<PlacesCatalog>();
+
+builder.Services.AddHttpClient(TibDeparturesService.HttpClientName, client =>
+{
+    string tibUrl = builder.Configuration["SystemConfiguration:TibBaseUrl"] ?? "https://www.tib.org";
+    client.BaseAddress = new Uri(tibUrl.EndsWith("/") ? tibUrl : tibUrl + "/");
+    client.Timeout = TimeSpan.FromSeconds(20);
+    client.DefaultRequestHeaders.Accept.Add(
+        new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "Mozilla/5.0 (compatible; Tourmaline26; +https://www.tib.org)");
+});
+builder.Services.AddSingleton<TibDeparturesService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<TibDeparturesService>());
+
+builder.Services.AddHttpClient(EmtDeparturesService.HttpClientName, client =>
+{
+    string emtUrl = builder.Configuration["SystemConfiguration:EmtBaseUrl"] ?? "https://www.emtpalma.cat/maas/api/v1";
+    client.BaseAddress = new Uri(emtUrl.EndsWith("/") ? emtUrl : emtUrl + "/");
+    client.Timeout = TimeSpan.FromSeconds(20);
+    client.DefaultRequestHeaders.Accept.Add(
+        new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "Mozilla/5.0 (compatible; Tourmaline26; +https://www.emtpalma.cat)");
+    client.DefaultRequestHeaders.TryAddWithoutValidation("Origin", "https://www.emtpalma.cat");
+    client.DefaultRequestHeaders.Referrer = new Uri("https://www.emtpalma.cat/");
+});
+builder.Services.AddSingleton<EmtDeparturesService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<EmtDeparturesService>());
+builder.Services.AddSingleton<CorrespondenceBoardService>();
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();

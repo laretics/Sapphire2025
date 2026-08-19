@@ -127,29 +127,13 @@
                                 </div>
                             </div>
                         }
-                        else if (InformationMode == Enums.PassengerInformationMode.NextStopInfo)
+                        else if (InformationMode == Enums.PassengerInformationMode.NextStopInfo
+                            || InformationMode == Enums.PassengerInformationMode.EndOfTrip)
                         {
                             <div class="route-live-fg">
                                 <NextStationTable NextStationName="@NextStationName"
                                                   TrainDestinationName="@DestinationName"
                                                   MaxDepartures="@Lines" />
-                            </div>
-                        }
-                        else if (InformationMode == Enums.PassengerInformationMode.EndOfTrip)
-                        {
-                            <div class="route-live-fg">
-                                <div class="journey-splash journey-splash--farewell">
-                                    <div class="journey-splash-kicker">Heu arribat al destí</div>
-                                    <div class="journey-splash-title">Gràcies per viatjar amb noltros</div>
-                                    <div class="journey-splash-rule" aria-hidden="true"></div>
-                                    <div class="journey-splash-lead">Estació final</div>
-                                    <div class="journey-splash-highlight">@FinalStationName</div>
-                                    @if (!string.IsNullOrWhiteSpace(TrainServiceName))
-                                    {
-                                        <div class="journey-splash-chip">@TrainServiceName</div>
-                                    }
-                                    <div class="journey-splash-footer">Fins aviat · Serveis Ferroviaris de Mallorca</div>
-                                </div>
                             </div>
                         }
                         else if (InformationMode != Enums.PassengerInformationMode.Cruise)
@@ -319,10 +303,6 @@
         ?? Circulation?.Asimilation.Destination.Name
         ?? "—";
 
-    /// <summary>Destino final del trayecto (modo End / bienvenida).</summary>
-    private string FinalStationName =>
-        DestinationName;
-
     private string DestinationName =>
         mvarTourmaline.SessionConfig.Cabin?.Asimilation?.Destination.Name
         ?? Circulation?.Asimilation.Destination.Name
@@ -333,16 +313,6 @@
         ?? Circulation?.Asimilation.Origin.Name
         ?? string.Empty;
 
-    private string TrainServiceName
-    {
-        get
-        {
-            if (null == Circulation)
-                return string.Empty;
-            string name = DisplayServiceName.Trim();
-            return string.IsNullOrEmpty(name) ? string.Empty : $"Tren {name}";
-        }
-    }
     private void OnChangeRequest(object? sender, EventArgs e)
     {
         InvokeAsync(StateHasChanged);

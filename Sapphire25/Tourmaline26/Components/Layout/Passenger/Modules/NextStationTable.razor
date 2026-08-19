@@ -1,8 +1,7 @@
 @using System.Globalization
-@using System.Text
-@using Tourmaline26.Services.SfmInfo
+@using Tourmaline26.Services.Correspondence
 @implements IDisposable
-@inject SfmDeparturesService mvarSfm
+@inject CorrespondenceBoardService mvarBoard
 
 <div class="nst-root">
     @* ── Cabecera: próxima estación ─────────────────────────────────────── *@
@@ -19,9 +18,12 @@
             <div class="nst-table-wrap">
                 <table class="nst-table">
                     <tbody>
-                        @foreach (SfmDeparture dep in FilteredDepartures)
+                        @foreach (ConnectionDeparture dep in FilteredDepartures)
                         {
                             <tr class="@(dep.PlatformChanged ? "nst-row--alert" : null)">
+                                @{
+                                    string lineBg = LineColor(dep);
+                                }
                                 <td class="nst-col-time">
                                     <span class="nst-time">@FormatTime(dep)</span>
                                     @if (HasDelayHint(dep))
@@ -30,9 +32,6 @@
                                     }
                                 </td>
                                 <td class="nst-col-line">
-                                    @{
-                                        string lineBg = LineColor(dep);
-                                    }
                                     <span class="nst-line"
                                           style="--line-color: @lineBg; color: @ContrastInk(lineBg)">
                                         @(string.IsNullOrWhiteSpace(dep.LineSymbol) ? "—" : dep.LineSymbol)
@@ -40,16 +39,23 @@
                                 </td>
                                 <td class="nst-col-dest">
                                     <span class="nst-dest">@dep.DestinationName</span>
-                                    @{
-                                        string? notice = PrimaryNotice(dep);
-                                    }
-                                    @if (!string.IsNullOrEmpty(notice))
+                                    @if (!string.IsNullOrEmpty(dep.Notice))
                                     {
-                                        <span class="nst-notice">@notice</span>
+                                        <span class="nst-notice">@dep.Notice</span>
                                     }
                                 </td>
                                 <td class="nst-col-plat">
-                                    @if (dep.Platform.HasValue)
+                                    @if (dep.IsBus)
+                                    {
+                                        string platClass = dep.Mode == ConnectionMode.Emt
+                                            ? "nst-plat nst-plat--emt"
+                                            : "nst-plat nst-plat--bus";
+                                        string platTitle = dep.Mode == ConnectionMode.Emt ? "EMT" : "Autobús";
+                                        <span class="@platClass" title="@platTitle">
+                                            <ColorIcon Name="Bus" Size="22" Color="#ffffff" />
+                                        </span>
+                                    }
+                                    else if (dep.Platform.HasValue)
                                     {
                                         <span class="nst-plat @(dep.PlatformChanged ? "nst-plat--changed" : null)">
                                             @dep.Platform
@@ -73,12 +79,12 @@
         else
         {
             <div class="nst-empty">
-                @if (!string.IsNullOrWhiteSpace(mvarSfm.LastError))
+                @if (!string.IsNullOrWhiteSpace(mvarBoard.CombinedError) && FilteredDepartures.Count == 0 && !mvarBoard.IsSfmConnected)
                 {
                     <span class="nst-empty-title">Informació temporalment no disponible</span>
                     <span class="nst-empty-sub">Tornarem a intentar-ho automàticament</span>
                 }
-                else if (!mvarSfm.IsConnected || mvarResolvedStation is null)
+                else if (!mvarBoard.IsSfmConnected && mvarBoard.CurrentPlace is null)
                 {
                     <span class="nst-empty-title">Carregant sortides…</span>
                     <span class="nst-empty-sub">Connectant amb el panell d'estació</span>
@@ -105,184 +111,46 @@
     [Parameter]
     public int MaxDepartures { get; set; } = 10;
 
-    private SfmStation? mvarResolvedStation;
-    private string? mvarLastSubscribedKey;
-    private List<SfmDeparture> mvarFiltered = new();
+    private string DisplayStationName
+    {
+        get
+        {
+            string fromBoard = mvarBoard.DisplayStationName;
+            if (!string.IsNullOrWhiteSpace(fromBoard))
+                return fromBoard;
+            return string.IsNullOrWhiteSpace(NextStationName) ? "—" : NextStationName.Trim();
+        }
+    }
 
-    private string DisplayStationName =>
-        !string.IsNullOrWhiteSpace(NextStationName)
-            ? NextStationName.Trim()
-            : (mvarResolvedStation?.Name ?? "—");
-
-    private IReadOnlyList<SfmDeparture> FilteredDepartures => mvarFiltered;
+    private IReadOnlyList<ConnectionDeparture> FilteredDepartures => mvarBoard.Upcoming;
 
     protected override void OnInitialized()
     {
-        mvarSfm.Updated += OnSfmUpdated;
-        Rebuild();
+        mvarBoard.Updated += OnBoardUpdated;
+        PushContext();
     }
 
     protected override void OnParametersSet()
     {
-        EnsureStationSubscription();
-        Rebuild();
+        PushContext();
     }
 
     public void Dispose()
     {
-        mvarSfm.Updated -= OnSfmUpdated;
+        mvarBoard.Updated -= OnBoardUpdated;
     }
 
-    private void OnSfmUpdated(object? sender, EventArgs e)
+    private void OnBoardUpdated(object? sender, EventArgs e)
     {
-        _ = InvokeAsync(() =>
-        {
-            EnsureStationSubscription();
-            Rebuild();
-            StateHasChanged();
-        });
+        _ = InvokeAsync(StateHasChanged);
     }
 
-    private void EnsureStationSubscription()
+    private void PushContext()
     {
-        mvarResolvedStation = ResolveStation(NextStationName);
-        if (mvarResolvedStation is null)
-            return;
-
-        string key = mvarResolvedStation.Code.ToString(CultureInfo.InvariantCulture);
-        if (string.Equals(mvarLastSubscribedKey, key, StringComparison.Ordinal))
-            return;
-
-        mvarSfm.SetStation(mvarResolvedStation.Code);
-        mvarLastSubscribedKey = key;
+        mvarBoard.SetContext(NextStationName, TrainDestinationName, MaxDepartures);
     }
 
-    private void Rebuild()
-    {
-        IEnumerable<SfmDeparture> query = mvarSfm.Departures ?? Array.Empty<SfmDeparture>();
-
-        // Solo salidas de la estación que estamos anunciando (si ya hay snapshot).
-        if (mvarResolvedStation is not null &&
-            mvarSfm.Snapshot.StationCode == mvarResolvedStation.Code)
-        {
-            // ok
-        }
-
-        query = query.Where(d => !IsSameStation(d.DestinationName, TrainDestinationName));
-
-        // Orden por hora estimada / programada.
-        query = query
-            .OrderBy(d => d.EstimatedTimeLocal == DateTime.MinValue ? d.DepartureTimeLocal : d.EstimatedTimeLocal)
-            .ThenBy(d => d.ServiceName);
-
-        int take = MaxDepartures > 0 ? MaxDepartures : 10;
-        mvarFiltered = query.Take(take).ToList();
-    }
-
-    private SfmStation? ResolveStation(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            return null;
-
-        SfmStation? direct = mvarSfm.FindStationByName(name);
-        if (direct is not null)
-            return direct;
-
-        string needle = NormalizeStation(name);
-        if (needle.Length < 2)
-            return null;
-
-        SfmStation? best = null;
-        int bestScore = 0;
-        foreach (SfmStation s in mvarSfm.Stations)
-        {
-            string cand = NormalizeStation(s.Name);
-            string abbr = NormalizeStation(s.Abbreviation);
-            int score = 0;
-            if (cand == needle || abbr == needle)
-                score = 100;
-            else if (cand.StartsWith(needle, StringComparison.Ordinal) || needle.StartsWith(cand, StringComparison.Ordinal))
-                score = 80;
-            else if (needle.Length >= 4 && cand.Contains(needle, StringComparison.Ordinal))
-                score = 60;
-            else if (cand.Length >= 4 && needle.Contains(cand, StringComparison.Ordinal))
-                score = 50;
-
-            if (score > bestScore)
-            {
-                bestScore = score;
-                best = s;
-            }
-        }
-
-        return bestScore >= 50 ? best : null;
-    }
-
-    private static bool IsSameStation(string? a, string? b)
-    {
-        if (string.IsNullOrWhiteSpace(a) || string.IsNullOrWhiteSpace(b))
-            return false;
-
-        string na = NormalizeStation(a);
-        string nb = NormalizeStation(b);
-        if (na.Length == 0 || nb.Length == 0)
-            return false;
-        if (na == nb)
-            return true;
-
-        string shorter = na.Length <= nb.Length ? na : nb;
-        string longer = na.Length <= nb.Length ? nb : na;
-        // Evitar falsos positivos con prefijos cortos ("son", "sa"…).
-        return shorter.Length >= 4 && longer.Contains(shorter, StringComparison.Ordinal);
-    }
-
-    private static string NormalizeStation(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return string.Empty;
-
-        string s = value.Trim().ToLowerInvariant();
-        s = RemoveDiacritics(s);
-        s = s.Replace("estacio", " ", StringComparison.Ordinal)
-             .Replace("estacion", " ", StringComparison.Ordinal)
-             .Replace("station", " ", StringComparison.Ordinal);
-
-        // "palma int" / "palma intermodal" → núcleo
-        if (s.EndsWith(" int", StringComparison.Ordinal))
-            s = s[..^4];
-        s = s.Replace(" intermodal", " ", StringComparison.Ordinal);
-
-        var sb = new StringBuilder(s.Length);
-        bool space = false;
-        foreach (char c in s)
-        {
-            if (char.IsLetterOrDigit(c))
-            {
-                sb.Append(c);
-                space = false;
-            }
-            else if (!space)
-            {
-                sb.Append(' ');
-                space = true;
-            }
-        }
-        return sb.ToString().Trim();
-    }
-
-    private static string RemoveDiacritics(string text)
-    {
-        string normalized = text.Normalize(NormalizationForm.FormD);
-        var sb = new StringBuilder(normalized.Length);
-        foreach (char c in normalized)
-        {
-            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
-                sb.Append(c);
-        }
-        return sb.ToString().Normalize(NormalizationForm.FormC);
-    }
-
-    private static string FormatTime(SfmDeparture dep)
+    private static string FormatTime(ConnectionDeparture dep)
     {
         DateTime t = dep.DepartureTimeLocal != DateTime.MinValue
             ? dep.DepartureTimeLocal
@@ -290,24 +158,23 @@
         return t == DateTime.MinValue ? "—" : t.ToString("HH:mm");
     }
 
-    private static bool HasDelayHint(SfmDeparture dep)
+    private static bool HasDelayHint(ConnectionDeparture dep)
     {
         if (dep.DepartureTimeLocal == DateTime.MinValue || dep.EstimatedTimeLocal == DateTime.MinValue)
             return false;
         return Math.Abs((dep.EstimatedTimeLocal - dep.DepartureTimeLocal).TotalMinutes) >= 1;
     }
 
-    private static string FormatEta(SfmDeparture dep) =>
+    private static string FormatEta(ConnectionDeparture dep) =>
         dep.EstimatedTimeLocal == DateTime.MinValue
             ? string.Empty
             : dep.EstimatedTimeLocal.ToString("HH:mm");
 
-    private static string LineColor(SfmDeparture dep)
+    private static string LineColor(ConnectionDeparture dep)
     {
         if (!string.IsNullOrWhiteSpace(dep.LineColorHex) && dep.LineColorHex.StartsWith('#'))
             return dep.LineColorHex;
 
-        // Fallback si el catálogo de líneas aún no ha llegado por socket.
         return dep.LineSymbol switch
         {
             "T1" => "#BC2A6A",
@@ -315,17 +182,17 @@
             "T3" => "#FBCE07",
             "M1" => "#FF9900",
             "M2" => "#FF9933",
-            _ => "#004F8D"
+            _ => dep.Mode == ConnectionMode.Emt ? "#00AEEF"
+                : dep.Mode == ConnectionMode.Bus ? "#CE0000"
+                : "#004F8D"
         };
     }
 
-    /// <summary>Texto blanco o casi negro según luminancia del color de línea.</summary>
     private static string ContrastInk(string hex)
     {
         if (!TryParseHexColor(hex, out int r, out int g, out int b))
             return "#ffffff";
 
-        // Luminancia relativa aproximada (sRGB).
         double luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
         return luminance > 0.62 ? "#1a1a1a" : "#ffffff";
     }
@@ -343,16 +210,5 @@
         return int.TryParse(hex.AsSpan(0, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out r)
             && int.TryParse(hex.AsSpan(2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out g)
             && int.TryParse(hex.AsSpan(4, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out b);
-    }
-
-    private static string? PrimaryNotice(SfmDeparture dep)
-    {
-        // Preferimos castellano (600); si no, catalán (601); si no, inglés (602).
-        SfmLocalizedText? pick =
-            dep.InfoMessages.FirstOrDefault(m => m.LanguageCode == 600) ??
-            dep.InfoMessages.FirstOrDefault(m => m.LanguageCode == 601) ??
-            dep.InfoMessages.FirstOrDefault();
-
-        return string.IsNullOrWhiteSpace(pick?.Text) ? null : pick!.Text.Trim();
     }
 }

@@ -246,13 +246,6 @@
 	padding-bottom: 16vh;
 }
 
-.journey-splash--farewell {
-	background:
-		radial-gradient(ellipse 80% 60% at 50% 100%, rgba(25, 135, 84, 0.14), transparent 70%),
-		linear-gradient(165deg, #f8fafc 0%, #ecfdf5 45%, #f5f5f5 100%);
-	border: 1px solid rgba(25, 135, 84, 0.12);
-}
-
 .journey-splash-kicker {
 	font-size: clamp(1.8vw, 2.4vw, 3vw);
 	font-weight: 600;
@@ -263,10 +256,6 @@
 
 .journey-splash--welcome .journey-splash-kicker {
 	color: #0d47a1;
-}
-
-.journey-splash--farewell .journey-splash-kicker {
-	color: #146c43;
 }
 
 .journey-splash-title {
@@ -285,10 +274,6 @@
 	border-radius: 999px;
 	margin: 0.8vh 0 0.4vh 0;
 	background: linear-gradient(90deg, transparent, #0d6efd, transparent);
-}
-
-.journey-splash--farewell .journey-splash-rule {
-	background: linear-gradient(90deg, transparent, #198754, transparent);
 }
 
 .journey-splash-lead {
@@ -314,10 +299,6 @@
 
 .journey-splash--welcome .journey-splash-highlight {
 	color: #0b3d91;
-}
-
-.journey-splash--farewell .journey-splash-highlight {
-	color: #0f5132;
 }
 
 .journey-splash-meta {
@@ -374,10 +355,6 @@
 	opacity: 0.78;
 	pointer-events: none;
 	z-index: 7;
-}
-
-.journey-splash--farewell .journey-splash-footer {
-	color: #198754;
 }
 
 .journey-splash--oos {

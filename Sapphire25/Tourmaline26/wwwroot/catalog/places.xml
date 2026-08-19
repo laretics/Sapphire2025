@@ -1,0 +1,558 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Catálogo de lugares Tourmaline (estaciones SFM + destinos de bus de enlace).
+
+  No forma parte del topo Diamond. Identidad de vía: keys/@avr y diamond/@id.
+  Panel SFM (info.trensfm.com): keys/@sfm = cod_ubicacion.
+  TIB: correspondence/stop/@code y, en destinos de bus, keys/@tibName.
+
+  names/@led          teleindicador LED (ASCII, corto, sin tildes)
+  names/@teleindicator  teleindicador interior / TFT de salón
+  names/@tft          panel de viajero (NextStationTable y similares)
+  names/@canonical    nombre de referencia
+
+  announce/clip[@role=enum]   locución en enumeración, no es la última
+  announce/clip[@role=final]  última de la enumeración, o sola
+  Un solo idioma. Los .wav viven en wwwroot/catalog/announce/.
+
+  correspondence/@entity:
+    ctmr4 = TIB interurbano (stop/@code = código de parada TIB)
+    emt   = EMT Palma urbana (stop/@code = stopCode MaaS /timestr)
+  Si no hay <line>, se toman todas las líneas de esa parada.
+  Paradas TIB de 3 dígitos (301, 212…) son el tren en la red TIB, no buses de enlace.
+  EMT: paradas a ≤100 m; si no hay ninguna, se sube a ≤220 m (coords Diamond).
+  Palma Intermodal: sólo A1 al Aeropuerto (no se vuelcan el resto de dársenas EMT).
+-->
+<places version="1">
+
+  <!-- ═══════════════ T1 / T2 / T3 ═══════════════ -->
+
+  <place id="palma" kind="rail">
+    <keys avr="PMI" sfm="1">
+      <diamond id="01" />
+      <diamond id="40" />
+    </keys>
+    <names canonical="Palma" led="PALMA" teleindicator="Palma" tft="Palma" />
+    <announce>
+      <clip role="enum" file="catalog/announce/palma.enum.wav" />
+      <clip role="final" file="catalog/announce/palma.final.wav" />
+    </announce>
+    <!-- Estació Intermodal: muchas líneas interurbanas (TIB 2026-08). Sin &lt;line&gt; = todas. -->
+    <correspondence entity="ctmr4">
+      <stop code="40036" name="Estació Intermodal" />
+    </correspondence>
+    <!-- EMT: sólo A1 Aeroport (72 m). El resto de dársenas Intermodal se omiten a propósito. -->
+    <correspondence entity="emt">
+      <stop code="598" name="pl. d'Espanya - Estació Intermodal">
+        <line code="A1" />
+      </stop>
+    </correspondence>
+  </place>
+
+  <place id="jacint-verdaguer" kind="rail">
+    <keys avr="jcv" sfm="2">
+      <diamond id="02" />
+      <diamond id="41" />
+    </keys>
+    <names canonical="Jacint Verdaguer" led="J.VERDAGUER" teleindicator="Jacint Verdaguer" tft="Jacint Verdaguer" />
+    <announce>
+      <clip role="enum" file="catalog/announce/jacint-verdaguer.enum.wav" />
+      <clip role="final" file="catalog/announce/jacint-verdaguer.final.wav" />
+    </announce>
+    <!-- EMT ≤100 m: 12 m y 54 m (andén metro, ambos sentidos). -->
+    <correspondence entity="emt">
+      <stop code="723" name="Metro Jacint Verdaguer" />
+      <stop code="973" name="Metro Jacint Verdaguer" />
+    </correspondence>
+  </place>
+
+  <place id="son-costa" kind="rail">
+    <keys avr="COS" sfm="3">
+      <diamond id="03" />
+      <diamond id="42" />
+    </keys>
+    <names canonical="Son Costa" led="SON COSTA" teleindicator="Son Costa" tft="Son Costa" />
+    <announce>
+      <clip role="enum" file="catalog/announce/son-costa.enum.wav" />
+      <clip role="final" file="catalog/announce/son-costa.final.wav" />
+    </announce>
+    <!-- EMT ≤220 m: 124 m y 133 m. -->
+    <correspondence entity="emt">
+      <stop code="561" name="Parc de Son Costa" />
+      <stop code="583" name="Parc de Son Costa" />
+    </correspondence>
+  </place>
+
+  <place id="son-fuster" kind="rail">
+    <keys avr="FUS" sfm="4">
+      <diamond id="04" />
+    </keys>
+    <names canonical="Son Fuster" led="SON FUSTER" teleindicator="Son Fuster" tft="Son Fuster" />
+    <announce>
+      <clip role="enum" file="catalog/announce/son-fuster.enum.wav" />
+      <clip role="final" file="catalog/announce/son-fuster.final.wav" />
+    </announce>
+    <!-- EMT ≤220 m: 182 m. -->
+    <correspondence entity="emt">
+      <stop code="1122" name="Aragó - Son Fuster" />
+    </correspondence>
+  </place>
+
+  <place id="son-cladera" kind="rail">
+    <keys avr="cla" sfm="30">
+      <diamond id="05" />
+    </keys>
+    <names canonical="Son Cladera" led="SON CLADERA" teleindicator="Son Cladera" tft="Son Cladera" />
+    <announce>
+      <clip role="enum" file="catalog/announce/son-cladera.enum.wav" />
+      <clip role="final" file="catalog/announce/son-cladera.final.wav" />
+    </announce>
+  </place>
+
+  <place id="son-rullan" kind="rail">
+    <keys avr="RLL">
+      <diamond id="06" />
+    </keys>
+    <names canonical="Son Rullán" led="SON RULLAN" teleindicator="Son Rullán" tft="Son Rullán" />
+    <announce>
+      <clip role="enum" file="catalog/announce/son-rullan.enum.wav" />
+      <clip role="final" file="catalog/announce/son-rullan.final.wav" />
+    </announce>
+    <!-- EMT ≤220 m: 121 m. -->
+    <correspondence entity="emt">
+      <stop code="1108" name="Centre de Salut de Son Rutlan" />
+    </correspondence>
+  </place>
+
+  <place id="verge-de-lluc" kind="rail">
+    <keys avr="llc" sfm="6">
+      <diamond id="07" />
+    </keys>
+    <names canonical="Verge de Lluc" led="VERGE DE LLUC" teleindicator="Verge de Lluc" tft="Verge de Lluc" />
+    <announce>
+      <clip role="enum" file="catalog/announce/verge-de-lluc.enum.wav" />
+      <clip role="final" file="catalog/announce/verge-de-lluc.final.wav" />
+    </announce>
+    <!-- EMT ≤220 m: 181 m y 201 m. -->
+    <correspondence entity="emt">
+      <stop code="37" name="Aragó - Verge de Lluc" />
+      <stop code="124" name="Aragó - Verge de Lluc" />
+    </correspondence>
+  </place>
+
+  <place id="pont-dinca" kind="rail">
+    <keys avr="pdi" sfm="7">
+      <diamond id="08" />
+    </keys>
+    <names canonical="Pont d'Inca" led="PONT D'INCA" teleindicator="Pont d'Inca" tft="Pont d'Inca" />
+    <announce>
+      <clip role="enum" file="catalog/announce/pont-dinca.enum.wav" />
+      <clip role="final" file="catalog/announce/pont-dinca.final.wav" />
+    </announce>
+    <!-- EMT ≤220 m: 119 m y 124 m. -->
+    <correspondence entity="emt">
+      <stop code="36" name="Antoni Maura - Cabana" />
+      <stop code="125" name="Antoni Maura - Cabana" />
+    </correspondence>
+  </place>
+
+  <place id="pont-dinca-nou" kind="rail">
+    <keys avr="pdn" sfm="8">
+      <diamond id="09" />
+    </keys>
+    <names canonical="Pont d'Inca Nou" led="PONT INCA NOU" teleindicator="Pont d'Inca Nou" tft="Pont d'Inca Nou" />
+    <announce>
+      <clip role="enum" file="catalog/announce/pont-dinca-nou.enum.wav" />
+      <clip role="final" file="catalog/announce/pont-dinca-nou.final.wav" />
+    </announce>
+  </place>
+
+  <place id="poligon-marratxi" kind="rail">
+    <keys avr="pol" sfm="9">
+      <diamond id="10" />
+    </keys>
+    <names canonical="Polígon de Marratxí" led="POL. MARRATXI" teleindicator="Polígon Marratxí" tft="Polígon de Marratxí" />
+    <announce>
+      <clip role="enum" file="catalog/announce/poligon-marratxi.enum.wav" />
+      <clip role="final" file="catalog/announce/poligon-marratxi.final.wav" />
+    </announce>
+  </place>
+
+  <place id="marratxi" kind="rail">
+    <keys avr="MTX" sfm="10">
+      <diamond id="11" />
+    </keys>
+    <names canonical="Marratxí" led="MARRATXI" teleindicator="Marratxí" tft="Marratxí" />
+    <announce>
+      <clip role="enum" file="catalog/announce/marratxi.enum.wav" />
+      <clip role="final" file="catalog/announce/marratxi.final.wav" />
+    </announce>
+    <correspondence entity="ctmr4">
+      <stop code="36042" name="Estació Marratxí">
+        <line code="341" />
+      </stop>
+    </correspondence>
+  </place>
+
+  <place id="es-caulls" kind="rail">
+    <keys avr="caü" sfm="11">
+      <diamond id="12" />
+    </keys>
+    <names canonical="Es Caülls" led="ES CAULLS" teleindicator="Es Caülls" tft="Es Caülls" />
+    <announce>
+      <clip role="enum" file="catalog/announce/es-caulls.enum.wav" />
+      <clip role="final" file="catalog/announce/es-caulls.final.wav" />
+    </announce>
+  </place>
+
+  <place id="santa-maria" kind="rail">
+    <keys avr="STM" sfm="12">
+      <diamond id="13" />
+    </keys>
+    <names canonical="Santa Maria" led="SANTA MARIA" teleindicator="Santa Maria" tft="Santa Maria" />
+    <announce>
+      <clip role="enum" file="catalog/announce/santa-maria.enum.wav" />
+      <clip role="final" file="catalog/announce/santa-maria.final.wav" />
+    </announce>
+  </place>
+
+  <place id="consell-alaro" kind="rail">
+    <keys avr="CON" sfm="13">
+      <diamond id="14" />
+    </keys>
+    <names canonical="Consell-Alaró" led="CONSELL-ALARO" teleindicator="Consell-Alaró" tft="Consell-Alaró" />
+    <announce>
+      <clip role="enum" file="catalog/announce/consell-alaro.enum.wav" />
+      <clip role="final" file="catalog/announce/consell-alaro.final.wav" />
+    </announce>
+    <correspondence entity="ctmr4">
+      <stop code="16008" name="Estació Alaró/Consell">
+        <line code="342" />
+        <line code="331" />
+      </stop>
+    </correspondence>
+  </place>
+
+  <place id="binissalem" kind="rail">
+    <keys avr="BIN" sfm="14">
+      <diamond id="15" />
+    </keys>
+    <names canonical="Binissalem" led="BINISSALEM" teleindicator="Binissalem" tft="Binissalem" />
+    <announce>
+      <clip role="enum" file="catalog/announce/binissalem.enum.wav" />
+      <clip role="final" file="catalog/announce/binissalem.final.wav" />
+    </announce>
+  </place>
+
+  <place id="lloseta" kind="rail">
+    <keys avr="lls" sfm="15">
+      <diamond id="16" />
+    </keys>
+    <names canonical="Lloseta" led="LLOSETA" teleindicator="Lloseta" tft="Lloseta" />
+    <announce>
+      <clip role="enum" file="catalog/announce/lloseta.enum.wav" />
+      <clip role="final" file="catalog/announce/lloseta.final.wav" />
+    </announce>
+  </place>
+
+  <place id="inca" kind="rail">
+    <keys avr="INC" sfm="16">
+      <diamond id="17" />
+    </keys>
+    <names canonical="Inca" led="INCA" teleindicator="Inca" tft="Inca" />
+    <announce>
+      <clip role="enum" file="catalog/announce/inca.enum.wav" />
+      <clip role="final" file="catalog/announce/inca.final.wav" />
+    </announce>
+    <correspondence entity="ctmr4">
+      <stop code="27001" name="Estació d'autobusos">
+        <line code="304" />
+        <line code="311" />
+        <line code="312" />
+        <line code="313" />
+        <line code="314" />
+      </stop>
+    </correspondence>
+  </place>
+
+  <place id="constancia" kind="rail">
+    <keys avr="ico" sfm="31">
+      <diamond id="18" />
+    </keys>
+    <names canonical="Constància" led="CONSTANCIA" teleindicator="Constància" tft="Constància" />
+    <announce>
+      <clip role="enum" file="catalog/announce/constancia.enum.wav" />
+      <clip role="final" file="catalog/announce/constancia.final.wav" />
+    </announce>
+  </place>
+
+  <place id="enllac" kind="rail">
+    <keys avr="ELÇ" sfm="17">
+      <diamond id="19" />
+      <diamond id="30" />
+    </keys>
+    <names canonical="Enllaç" led="ENLLAC" teleindicator="Enllaç" tft="Enllaç" />
+    <announce>
+      <clip role="enum" file="catalog/announce/enllac.enum.wav" />
+      <clip role="final" file="catalog/announce/enllac.final.wav" />
+    </announce>
+  </place>
+
+  <place id="sineu" kind="rail">
+    <keys avr="SIN" sfm="21">
+      <diamond id="20" />
+    </keys>
+    <names canonical="Sineu" led="SINEU" teleindicator="Sineu" tft="Sineu" />
+    <announce>
+      <clip role="enum" file="catalog/announce/sineu.enum.wav" />
+      <clip role="final" file="catalog/announce/sineu.final.wav" />
+    </announce>
+    <correspondence entity="ctmr4">
+      <stop code="60005" name="Estació Sineu">
+        <line code="432" />
+        <line code="441" />
+        <line code="442" />
+      </stop>
+    </correspondence>
+  </place>
+
+  <place id="sant-joan" kind="rail">
+    <keys avr="sjn">
+      <diamond id="21" />
+    </keys>
+    <names canonical="Sant Joan" led="SANT JOAN" teleindicator="Sant Joan" tft="Sant Joan" />
+    <announce>
+      <clip role="enum" file="catalog/announce/sant-joan.enum.wav" />
+      <clip role="final" file="catalog/announce/sant-joan.final.wav" />
+    </announce>
+  </place>
+
+  <place id="paet-sant-joan" kind="technical">
+    <keys avr="PSJ">
+      <diamond id="22" />
+    </keys>
+    <names canonical="Paet Sant Joan" led="PAET SJ" teleindicator="Paet SJ" tft="Paet Sant Joan" />
+    <announce>
+      <clip role="enum" file="catalog/announce/paet-sant-joan.enum.wav" />
+      <clip role="final" file="catalog/announce/paet-sant-joan.final.wav" />
+    </announce>
+  </place>
+
+  <place id="petra" kind="rail">
+    <keys avr="PET" sfm="23">
+      <diamond id="23" />
+    </keys>
+    <names canonical="Petra" led="PETRA" teleindicator="Petra" tft="Petra" />
+    <announce>
+      <clip role="enum" file="catalog/announce/petra.enum.wav" />
+      <clip role="final" file="catalog/announce/petra.final.wav" />
+    </announce>
+  </place>
+
+  <place id="manacor" kind="rail">
+    <keys avr="MAN" sfm="24">
+      <diamond id="24" />
+    </keys>
+    <names canonical="Manacor" led="MANACOR" teleindicator="Manacor" tft="Manacor" />
+    <announce>
+      <clip role="enum" file="catalog/announce/manacor.enum.wav" />
+      <clip role="final" file="catalog/announce/manacor.final.wav" />
+    </announce>
+    <!-- Tres dársenas TIB junto a la estación de tren. -->
+    <correspondence entity="ctmr4">
+      <stop code="33044" name="Estació de tren 1">
+        <line code="401" />
+        <line code="501" />
+        <line code="A42" />
+      </stop>
+      <stop code="33089" name="Estació de tren 2">
+        <line code="411" />
+        <line code="412" />
+        <line code="A43" />
+      </stop>
+      <stop code="33090" name="Estació de tren 3">
+        <line code="416" />
+        <line code="417" />
+      </stop>
+    </correspondence>
+  </place>
+
+  <place id="llubi" kind="rail">
+    <keys avr="LLB" sfm="18">
+      <diamond id="31" />
+    </keys>
+    <names canonical="Llubí" led="LLUBI" teleindicator="Llubí" tft="Llubí" />
+    <announce>
+      <clip role="enum" file="catalog/announce/llubi.enum.wav" />
+      <clip role="final" file="catalog/announce/llubi.final.wav" />
+    </announce>
+  </place>
+
+  <place id="muro" kind="rail">
+    <keys avr="mur" sfm="19">
+      <diamond id="32" />
+    </keys>
+    <names canonical="Muro" led="MURO" teleindicator="Muro" tft="Muro" />
+    <announce>
+      <clip role="enum" file="catalog/announce/muro.enum.wav" />
+      <clip role="final" file="catalog/announce/muro.final.wav" />
+    </announce>
+  </place>
+
+  <place id="sa-pobla" kind="rail">
+    <keys avr="SPB" sfm="20">
+      <diamond id="33" />
+    </keys>
+    <names canonical="Sa Pobla" led="SA POBLA" teleindicator="Sa Pobla" tft="Sa Pobla" />
+    <announce>
+      <clip role="enum" file="catalog/announce/sa-pobla.enum.wav" />
+      <clip role="final" file="catalog/announce/sa-pobla.final.wav" />
+    </announce>
+    <correspondence entity="ctmr4">
+      <stop code="44013" name="Estació Sa Pobla 1">
+        <line code="315" />
+      </stop>
+      <stop code="44012" name="Estació Sa Pobla 2">
+        <line code="315" />
+      </stop>
+    </correspondence>
+  </place>
+
+  <place id="desvio" kind="technical">
+    <keys avr="DEÇ">
+      <diamond id="34" />
+    </keys>
+    <names canonical="Desvío" led="DESVIO" teleindicator="Desvío" tft="Desvío" />
+    <announce>
+      <clip role="enum" file="catalog/announce/desvio.enum.wav" />
+      <clip role="final" file="catalog/announce/desvio.final.wav" />
+    </announce>
+  </place>
+
+  <!-- ═══════════════ M1 (solo metro, si no están ya arriba) ═══════════════ -->
+
+  <place id="son-fuster-vell" kind="rail">
+    <keys avr="SFV" sfm="54">
+      <diamond id="43" />
+    </keys>
+    <names canonical="Son Fuster Vell" led="S.FUSTER VELL" teleindicator="Son Fuster Vell" tft="Son Fuster Vell" />
+    <announce>
+      <clip role="enum" file="catalog/announce/son-fuster-vell.enum.wav" />
+      <clip role="final" file="catalog/announce/son-fuster-vell.final.wav" />
+    </announce>
+    <!-- EMT ≤100 m: 42 m y 49 m. -->
+    <correspondence entity="emt">
+      <stop code="1180" name="Metro Son Fuster Vell" />
+      <stop code="1182" name="Metro Son Fuster Vell" />
+    </correspondence>
+  </place>
+
+  <place id="son-castello" kind="rail">
+    <keys avr="CAS" sfm="55">
+      <diamond id="44" />
+    </keys>
+    <names canonical="Son Castelló" led="SON CASTELLO" teleindicator="Son Castelló" tft="Son Castelló" />
+    <announce>
+      <clip role="enum" file="catalog/announce/son-castello.enum.wav" />
+      <clip role="final" file="catalog/announce/son-castello.final.wav" />
+    </announce>
+    <!-- EMT ≤100 m: 90 m. -->
+    <correspondence entity="emt">
+      <stop code="1033" name="Metro Son Castelló" />
+    </correspondence>
+  </place>
+
+  <place id="gran-via-asima" kind="rail">
+    <keys avr="ASM" sfm="56">
+      <diamond id="45" />
+    </keys>
+    <names canonical="Gran Via Asima" led="G.V. ASIMA" teleindicator="G.V. Asima" tft="Gran Via Asima" />
+    <announce>
+      <clip role="enum" file="catalog/announce/gran-via-asima.enum.wav" />
+      <clip role="final" file="catalog/announce/gran-via-asima.final.wav" />
+    </announce>
+    <!-- EMT ≤100 m: 13 m y 14 m. -->
+    <correspondence entity="emt">
+      <stop code="1128" name="Metro Gran Via Asima" />
+      <stop code="1096" name="Metro Gran Via Asima" />
+    </correspondence>
+  </place>
+
+  <place id="cami-dels-reis" kind="rail">
+    <keys avr="REI" sfm="57">
+      <diamond id="46" />
+    </keys>
+    <names canonical="Camí dels Reis" led="CAMI DELS REIS" teleindicator="Camí dels Reis" tft="Camí dels Reis" />
+    <announce>
+      <clip role="enum" file="catalog/announce/cami-dels-reis.enum.wav" />
+      <clip role="final" file="catalog/announce/cami-dels-reis.final.wav" />
+    </announce>
+    <!-- EMT ≤100 m: 10 m y 22 m. -->
+    <correspondence entity="emt">
+      <stop code="1034" name="Metro camí dels Reis" />
+      <stop code="263" name="Metro Camí dels Reis" />
+    </correspondence>
+  </place>
+
+  <place id="son-sardina" kind="rail">
+    <keys avr="SAR" sfm="58">
+      <diamond id="47" />
+    </keys>
+    <names canonical="Son Sardina" led="SON SARDINA" teleindicator="Son Sardina" tft="Son Sardina" />
+    <announce>
+      <clip role="enum" file="catalog/announce/son-sardina.enum.wav" />
+      <clip role="final" file="catalog/announce/son-sardina.final.wav" />
+    </announce>
+  </place>
+
+  <place id="uib" kind="rail">
+    <keys avr="UIB" sfm="59">
+      <diamond id="48" />
+    </keys>
+    <names canonical="UIB" led="UIB" teleindicator="UIB" tft="UIB" />
+    <announce>
+      <clip role="enum" file="catalog/announce/uib.enum.wav" />
+      <clip role="final" file="catalog/announce/uib.final.wav" />
+    </announce>
+    <correspondence entity="ctmr4">
+      <stop code="40059" name="UIB - Estació de metro">
+        <line code="202" />
+        <line code="203" />
+      </stop>
+    </correspondence>
+    <!-- EMT ≤100 m: 36 m (andén metro). -->
+    <correspondence entity="emt">
+      <stop code="1369" name="Metro UIB" />
+    </correspondence>
+  </place>
+
+  <!-- ═══════════════ Destinos de bus (no son estación SFM) ═══════════════ -->
+
+  <place id="alaro" kind="bus">
+    <keys tibName="Alaró" />
+    <names canonical="Alaró" led="ALARO" teleindicator="Alaró" tft="Alaró" />
+    <announce>
+      <clip role="enum" file="catalog/announce/alaro.enum.wav" />
+      <clip role="final" file="catalog/announce/alaro.final.wav" />
+    </announce>
+  </place>
+
+  <place id="consell" kind="bus">
+    <keys tibName="Consell" />
+    <names canonical="Consell" led="CONSELL" teleindicator="Consell" tft="Consell" />
+    <announce>
+      <clip role="enum" file="catalog/announce/consell.enum.wav" />
+      <clip role="final" file="catalog/announce/consell.final.wav" />
+    </announce>
+  </place>
+
+  <place id="orient" kind="bus">
+    <keys tibName="Orient" />
+    <names canonical="Orient" led="ORIENT" teleindicator="Orient" tft="Orient" />
+    <announce>
+      <clip role="enum" file="catalog/announce/orient.enum.wav" />
+      <clip role="final" file="catalog/announce/orient.final.wav" />
+    </announce>
+  </place>
+
+</places>

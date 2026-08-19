@@ -359,12 +359,14 @@
     public async Task HandleKey(string key)
     {
         if (mvarTourmaline.SessionConfig.ServiceMode.Main
-            && (key == "F7" || key == "F8"))
+            && (key == "F7" || key == "F8" || key == "F9"))
         {
             if (key == "F7")
                 mvarRouteSim.StartOrResume();
-            else
+            else if (key == "F8")
                 mvarRouteSim.Pause();
+            else
+                mvarRouteSim.JumpToLastMeters();
             return;
         }
 

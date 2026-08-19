@@ -151,6 +151,12 @@ else if (TourmalineService.SessionConfig.ServiceMode.Main)
                     @onclick="PauseRouteSim">
                 Pausar (F8)
             </button>
+            <button type="button"
+                    class="btn btn-outline-primary"
+                    disabled="@(!HasCirculation)"
+                    @onclick="JumpRouteSimTail">
+                Últimos 2 km (F9)
+            </button>
         </div>
         @if (!HasCirculation)
         {
@@ -238,6 +244,13 @@ else if (TourmalineService.SessionConfig.ServiceMode.Main)
     {
         RouteSim.Pause();
         TourmalineService.RaiseHMIUpdate();
+    }
+
+    private void JumpRouteSimTail()
+    {
+        RouteSim.JumpToLastMeters();
+        TourmalineService.RaiseHMIUpdate();
+        TourmalineService.RaisePassengerUpdate();
     }
 
     private async Task RefreshMetaAsync()

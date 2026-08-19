@@ -36,6 +36,10 @@ namespace Tourmaline26.Services
 		/// </summary>
 		private const double LongHopMeters = 1000.0;
 		private const double LongHopCruiseKmh = 70.0;
+		/// <summary>En simulación todas las paradas duran esto, da igual el dwell de malla.</summary>
+		private const double SimDwellSeconds = 15.0;
+		/// <summary>Salto F9: metros finales del trayecto.</summary>
+		public const long JumpTailMeters = 2000;
 
 		public RouteSimulationService(
 			TourmalineService tourmaline,
@@ -142,6 +146,49 @@ namespace Tourmaline26.Services
 			}
 		}
 
+		/// <summary>
+		/// Coloca el tren a <paramref name="remainingMeters"/> del destino
+		/// (por defecto 2000 m) y deja la simulación en marcha.
+		/// </summary>
+		public string JumpToLastMeters(long remainingMeters = JumpTailMeters)
+		{
+			lock (mvarLock)
+			{
+				string? ready = EnsureCirculationUnlocked();
+				if (ready is not null)
+					return ready;
+
+				SessionConfiguration session = mvarTourmaline.SessionConfig;
+				CabinEnvironment cabin = session.Cabin!;
+				Circulation circulation = cabin.Circulation!;
+
+				if (!TryElapsedForRemainingMeters(circulation, remainingMeters, out TimeSpan elapsed, out long routePk))
+					return SetStatus("No se pudo calcular el tramo final.");
+
+				if (!EnsureViewUnlocked(cabin, circulation))
+					return SetStatus("No hay topología o vista de ruta.");
+
+				mvarCirculationId = circulation.Id;
+				mvarElapsed = elapsed;
+				mvarLastTickUtc = DateTime.UtcNow;
+				mvarDwelling = false;
+				mvarState = SimState.Running;
+				session.ServiceMode.RouteSimulation = true;
+				cabin.ResetStationProgress();
+				session.InformationMode = Enums.PassengerInformationMode.NextStopInfo;
+
+				ApplyPoseUnlocked(session, cabin, circulation, mvarElapsed);
+				mvarLogger.LogInformation(
+					"Simulador de ruta: salto a {Meters} m del destino (PK {Pk}, t={Elapsed})",
+					remainingMeters,
+					routePk,
+					FormatElapsed(elapsed));
+				mvarTourmaline.RaisePassengerUpdate();
+				mvarTourmaline.RaiseHMIUpdate();
+				return SetStatus($"Salto a {remainingMeters} m del destino (PK {routePk}).");
+			}
+		}
+
 		public void Stop()
 		{
 			lock (mvarLock)
@@ -184,9 +231,7 @@ namespace Tourmaline26.Services
 					dt = 0.5;
 
 				mvarElapsed += TimeSpan.FromSeconds(dt);
-				TimeSpan tripEnd = circulation.Arrival - circulation.Departure;
-				if (tripEnd < TimeSpan.Zero)
-					tripEnd = TimeSpan.Zero;
+				TimeSpan tripEnd = SimTripDuration(circulation);
 
 				bool finished = false;
 				if (mvarElapsed > tripEnd)
@@ -260,6 +305,29 @@ namespace Tourmaline26.Services
 			session.GPSOK = true;
 		}
 
+		private static TimeSpan ScheduledRun(TimedCall here, TimedCall next)
+		{
+			TimeSpan run = next.Arrival - here.Departure;
+			return run < TimeSpan.Zero ? TimeSpan.Zero : run;
+		}
+
+		private static TimeSpan SimTripDuration(Circulation circulation)
+		{
+			IReadOnlyList<TimedCall> calls = circulation.Calls;
+			if (calls.Count == 0)
+				return TimeSpan.Zero;
+
+			double seconds = SimDwellSeconds * calls.Count;
+			int i = 0;
+			while (i < calls.Count - 1)
+			{
+				seconds += ScheduledRun(calls[i], calls[i + 1]).TotalSeconds;
+				i++;
+			}
+
+			return TimeSpan.FromSeconds(seconds);
+		}
+
 		private static void ResolvePose(
 			Circulation circulation,
 			TimeSpan elapsed,
@@ -268,10 +336,10 @@ namespace Tourmaline26.Services
 			out string place)
 		{
 			IReadOnlyList<TimedCall> calls = circulation.Calls;
-			TimeSpan origin = circulation.Departure;
 			int last = calls.Count - 1;
+			double t = elapsed.TotalSeconds;
 
-			if (elapsed <= TimeSpan.Zero)
+			if (t <= 0 || last < 1)
 			{
 				routePk = calls[0].Pk;
 				speedKmh = 0;
@@ -279,16 +347,14 @@ namespace Tourmaline26.Services
 				return;
 			}
 
+			double clock = 0;
 			int i = 0;
 			while (i < last)
 			{
 				TimedCall here = calls[i];
 				TimedCall next = calls[i + 1];
-				TimeSpan arriveHere = here.Arrival - origin;
-				TimeSpan departHere = here.Departure - origin;
-				TimeSpan arriveNext = next.Arrival - origin;
-
-				if (elapsed < arriveHere)
+				double dwellEnd = clock + SimDwellSeconds;
+				if (t < dwellEnd)
 				{
 					routePk = here.Pk;
 					speedKmh = 0;
@@ -296,18 +362,11 @@ namespace Tourmaline26.Services
 					return;
 				}
 
-				if (elapsed < departHere)
+				double run = ScheduledRun(here, next).TotalSeconds;
+				double runEnd = dwellEnd + run;
+				if (t < runEnd)
 				{
-					routePk = here.Pk;
-					speedKmh = 0;
-					place = here.Station.DisplayCode;
-					return;
-				}
-
-				if (elapsed < arriveNext)
-				{
-					double run = (arriveNext - departHere).TotalSeconds;
-					double u = run <= 0.05 ? 1.0 : (elapsed - departHere).TotalSeconds / run;
+					double u = run <= 0.05 ? 1.0 : (t - dwellEnd) / run;
 					if (u < 0) u = 0;
 					if (u > 1) u = 1;
 					routePk = here.Pk + (long)Math.Round(u * (next.Pk - here.Pk));
@@ -319,12 +378,115 @@ namespace Tourmaline26.Services
 					return;
 				}
 
+				clock = runEnd;
 				i++;
 			}
 
 			routePk = calls[last].Pk;
 			speedKmh = 0;
 			place = calls[last].Station.DisplayCode;
+		}
+
+		private string? EnsureCirculationUnlocked()
+		{
+			SessionConfiguration session = mvarTourmaline.SessionConfig;
+			if (!session.ServiceMode.Main)
+				return SetStatus("Solo en modo servicio.");
+
+			CabinEnvironment? cabin = session.Cabin;
+			Circulation? circulation = cabin?.Circulation;
+			if (cabin is null || circulation is null || circulation.Calls.Count < 2)
+				return SetStatus("Carga una circulación (misión Diamond).");
+			if (cabin.Topo is null)
+				return SetStatus("No hay topología cargada.");
+			return null;
+		}
+
+		private bool EnsureViewUnlocked(CabinEnvironment cabin, Circulation circulation)
+		{
+			if (mvarView is not null
+				&& string.Equals(mvarCirculationId, circulation.Id, StringComparison.Ordinal))
+			{
+				return true;
+			}
+
+			if (cabin.Topo is null)
+				return false;
+
+			Asimilation asim = circulation.Asimilation;
+			mvarView = RouteViewResolver.TryForCabinCirculation(
+				cabin.Topo,
+				asim.ViewId,
+				asim.PathSignature,
+				asim.Origin.Id,
+				asim.Destination.Id,
+				asim.Origin.Avr,
+				asim.Destination.Avr);
+			return mvarView is not null;
+		}
+
+		private static bool TryElapsedForRemainingMeters(
+			Circulation circulation,
+			long remainingMeters,
+			out TimeSpan elapsed,
+			out long routePk)
+		{
+			IReadOnlyList<TimedCall> calls = circulation.Calls;
+			int last = calls.Count - 1;
+			elapsed = TimeSpan.Zero;
+			routePk = calls[0].Pk;
+			if (last < 1)
+				return false;
+
+			long destPk = CabinItinerary.DestinationRoutePk(circulation) ?? calls[last].Pk;
+			long originPk = CabinItinerary.OriginRoutePk(circulation) ?? calls[0].Pk;
+			long trip = Math.Abs(destPk - originPk);
+			long remain = remainingMeters < 0 ? 0 : remainingMeters;
+			if (remain > trip)
+				remain = trip;
+
+			int sense = destPk >= originPk ? 1 : -1;
+			long targetPk = destPk - sense * remain;
+			if (targetPk == destPk && trip > 0)
+				targetPk = destPk - sense;
+
+			double clock = 0;
+			int i = 0;
+			while (i < last)
+			{
+				TimedCall here = calls[i];
+				TimedCall next = calls[i + 1];
+				clock += SimDwellSeconds;
+				long a = here.Pk;
+				long b = next.Pk;
+				long lo = Math.Min(a, b);
+				long hi = Math.Max(a, b);
+				bool onHop = targetPk >= lo && targetPk <= hi;
+				double run = ScheduledRun(here, next).TotalSeconds;
+				if (!onHop)
+				{
+					clock += run;
+					i++;
+					continue;
+				}
+
+				double span = b - a;
+				double u = Math.Abs(span) < 1.0 ? 1.0 : (targetPk - a) / span;
+				if (u < 0) u = 0;
+				if (u > 1) u = 1;
+				if (u == 0 && i < last)
+					u = 0.02;
+
+				elapsed = TimeSpan.FromSeconds(clock + u * run);
+				routePk = a + (long)Math.Round(u * span);
+				return true;
+			}
+
+			elapsed = SimTripDuration(circulation) - TimeSpan.FromSeconds(SimDwellSeconds);
+			if (elapsed < TimeSpan.Zero)
+				elapsed = TimeSpan.Zero;
+			routePk = destPk;
+			return true;
 		}
 
 		private void StopUnlocked(string status)

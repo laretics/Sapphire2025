@@ -24,6 +24,14 @@ namespace Tourmaline26.Logic
 		public string SfmPanelUrl { get; set; } = "https://info.trensfm.com";
 		/// <summary>Estación inicial opcional (<c>cod_ubicacion</c>) para el panel de salidas.</summary>
 		public int? SfmPanelDefaultStation { get; set; }
+		/// <summary>Portal TIB (salidas de bus de enlace).</summary>
+		public string TibBaseUrl { get; set; } = "https://www.tib.org";
+		public string TibEntity { get; set; } = "ctmr4";
+		public int TibGroupId { get; set; } = 20124;
+		public int TibPollSeconds { get; set; } = 30;
+		/// <summary>API MaaS EMT Palma (salidas urbanas de enlace).</summary>
+		public string EmtBaseUrl { get; set; } = "https://www.emtpalma.cat/maas/api/v1";
+		public int EmtPollSeconds { get; set; } = 20;
 		public string DefaultLocation { get; set; } = "39.57634918310896,2.6546805667305313"; //Ubicación por defecto (para extraer Meteo).
 
 		/// <summary>
