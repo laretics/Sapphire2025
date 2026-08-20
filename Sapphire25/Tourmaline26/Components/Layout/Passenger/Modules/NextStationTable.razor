@@ -25,10 +25,13 @@
                                     string lineBg = LineColor(dep);
                                 }
                                 <td class="nst-col-time">
-                                    <span class="nst-time">@FormatTime(dep)</span>
+                                    @{
+                                        bool soon = IsImminent(dep);
+                                    }
+                                    <span class="nst-time @(soon ? "nst-time--soon" : null)">@FormatTime(dep)</span>
                                     @if (HasDelayHint(dep))
                                     {
-                                        <span class="nst-eta">@FormatEta(dep)</span>
+                                        <span class="nst-eta @(soon ? "nst-eta--soon" : null)">@FormatEta(dep)</span>
                                     }
                                 </td>
                                 <td class="nst-col-line">
@@ -103,7 +106,10 @@
     [Parameter]
     public string? NextStationName { get; set; }
 
-    /// <summary>Destino final de este tren: se excluyen salidas hacia el mismo destino.</summary>
+    /// <summary>
+    /// Destino final de este tren. Se excluyen trenes y buses que terminen
+    /// ahí o en la estación anunciada (no son un enlace).
+    /// </summary>
     [Parameter]
     public string? TrainDestinationName { get; set; }
 
@@ -156,6 +162,22 @@
             ? dep.DepartureTimeLocal
             : dep.EstimatedTimeLocal;
         return t == DateTime.MinValue ? "—" : t.ToString("HH:mm");
+    }
+
+    /// <summary>True si faltan 5 minutos o menos para la salida efectiva.</summary>
+    private static bool IsImminent(ConnectionDeparture dep)
+    {
+        DateTime t = dep.SortTime;
+        if (t == default || t == DateTime.MinValue)
+            return false;
+
+        DateTime local = t.Kind switch
+        {
+            DateTimeKind.Utc => t.ToLocalTime(),
+            DateTimeKind.Local => t,
+            _ => DateTime.SpecifyKind(t, DateTimeKind.Local)
+        };
+        return local - DateTime.Now <= TimeSpan.FromMinutes(5);
     }
 
     private static bool HasDelayHint(ConnectionDeparture dep)

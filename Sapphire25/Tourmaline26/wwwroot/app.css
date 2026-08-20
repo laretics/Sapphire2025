@@ -103,6 +103,9 @@ h1:focus {
     --onyx-speed-neutral: #bfc6f7;
     --onyx-speed-cyphers:#222;
     --onyx-speed-units:#444;
+    --onyx-delay-late: #e53935;
+    --onyx-delay-early: #1565c0;
+    --onyx-delay-zero: #888888;
     --overlay-text:#101010;
 }
 
@@ -121,6 +124,9 @@ h1:focus {
     --onyx-speed-neutral: #605050;
     --onyx-speed-cyphers: #622;
     --onyx-speed-units: #422;
+    --onyx-delay-late: #e07070;
+    --onyx-delay-early: #7aa2d8;
+    --onyx-delay-zero: #665555;
     --overlay-text: #622;
 }
 

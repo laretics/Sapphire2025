@@ -11,14 +11,26 @@
     top: 0;
     left: 0;
     right: 0;
-    padding: 8px 12px;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.75), transparent);
+    padding: 4px 6px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.65), transparent);
     color: white;
-    font-size: 0.95rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 6px;
     z-index: 10;
+    pointer-events: none;
+}
+
+.camera-name {
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    min-width: 0;
 }
 
 .camera-video {
@@ -46,15 +58,28 @@
 }
 
 .status-indicator {
-    padding: 4px 10px;
-    border-radius: 16px;
-    font-size: 0.82rem;
-    font-weight: 600;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 50%;
+}
+
+.status-indicator ::deep svg {
+    display: block;
 }
 
 .status-connecting {
     background: #f0ad4e;
     color: #000;
+}
+
+.status-connecting ::deep svg {
+    animation: cam-status-spin 1s linear infinite;
+    transform-origin: 50% 50%;
 }
 
 .status-live {
@@ -65,4 +90,8 @@
 .status-error {
     background: #dc3545;
     color: white;
+}
+
+@keyframes cam-status-spin {
+    to { transform: rotate(360deg); }
 }

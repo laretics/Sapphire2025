@@ -8,11 +8,17 @@
 	position: absolute;
 	right: 1.2vw;
 	bottom: 1.6vh;
-	width: 50%;
-	height: 50%;
+	width: min(44vh, 40vw);
+	height: min(44vh, 40vw);
+	min-width: 160px;
+	min-height: 160px;
 	z-index: 6;
 	pointer-events: none;
 	background: transparent;
+	overflow: hidden;
+	border-radius: 50%;
+	clip-path: circle(50% at 50% 50%);
+	opacity: 0.82;
 }
 
 .sfm-line-map--full {
@@ -23,6 +29,13 @@
 .sfm-line-map ::deep .maplibregl-canvas-container,
 .sfm-line-map ::deep .maplibregl-canvas {
 	background: transparent !important;
+}
+
+.sfm-line-map--overlay ::deep .maplibregl-map,
+.sfm-line-map--overlay ::deep .maplibregl-canvas-container,
+.sfm-line-map--overlay ::deep .maplibregl-canvas {
+	border-radius: 50%;
+	overflow: hidden;
 }
 
 .sfm-line-map--overlay ::deep .maplibregl-control-container {

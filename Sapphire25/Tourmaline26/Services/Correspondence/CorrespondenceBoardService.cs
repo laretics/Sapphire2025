@@ -8,6 +8,8 @@ namespace Tourmaline26.Services.Correspondence
 	/// Compone la lista de enlaces de una estación: trenes SFM + buses TIB/EMT,
 	/// ordenados por hora de salida, sin expediciones ya pasadas.
 	/// Los buses (TIB o EMT) con menos de un minuto de margen no se anuncian.
+	/// Tampoco se anuncian servicios que terminen en la estación anunciada
+	/// ni en el destino de este tren (no son un enlace útil).
 	/// </summary>
 	public sealed class CorrespondenceBoardService : IDisposable
 	{
@@ -71,6 +73,24 @@ namespace Tourmaline26.Services.Correspondence
 			get { lock (mvarLock) return mcolUpcoming; }
 		}
 
+		/// <summary>Buses (TIB o EMT) que caben en la tabla anunciada.</summary>
+		public int AnnouncedBusCount
+		{
+			get
+			{
+				lock (mvarLock)
+				{
+					int n = 0;
+					foreach (ConnectionDeparture row in mcolUpcoming)
+					{
+						if (row.IsBus)
+							n++;
+					}
+					return n;
+				}
+			}
+		}
+
 		public bool IsSfmConnected => mvarSfm.IsConnected;
 
 		public string CombinedError
@@ -90,7 +110,8 @@ namespace Tourmaline26.Services.Correspondence
 
 		/// <summary>
 		/// Fija la estación anunciada y, opcionalmente, un destino a excluir
-		/// (normalmente el destino de este tren).
+		/// (normalmente el destino de este tren). Se omiten trenes y buses
+		/// que terminen en esa estación o en ese destino.
 		/// </summary>
 		public void SetContext(string? stationName, string? excludeDestination, int maxDepartures)
 		{
@@ -172,12 +193,14 @@ namespace Tourmaline26.Services.Correspondence
 			Place? place;
 			SfmStation? sfmStation;
 			string? exclude;
+			string? stationName;
 			int take;
 			lock (mvarLock)
 			{
 				place = mvarPlace;
 				sfmStation = mvarSfmStation;
 				exclude = mvarExcludeDestination;
+				stationName = mvarStationName;
 				take = mvarMaxDepartures;
 			}
 
@@ -189,7 +212,7 @@ namespace Tourmaline26.Services.Correspondence
 				foreach (SfmDeparture dep in mvarSfm.Departures)
 				{
 					ConnectionDeparture row = MapTrain(dep);
-					if (!IsUsable(row, now, exclude))
+					if (!IsUsable(row, now, exclude, place, stationName))
 						continue;
 					rows.Add(row);
 				}
@@ -208,7 +231,7 @@ namespace Tourmaline26.Services.Correspondence
 							continue;
 
 						ConnectionDeparture row = MapTibBus(bus);
-						if (!IsUsable(row, now, exclude))
+						if (!IsUsable(row, now, exclude, place, stationName))
 							continue;
 						rows.Add(row);
 					}
@@ -224,7 +247,7 @@ namespace Tourmaline26.Services.Correspondence
 							continue;
 
 						ConnectionDeparture row = MapEmtBus(bus);
-						if (!IsUsable(row, now, exclude))
+						if (!IsUsable(row, now, exclude, place, stationName))
 							continue;
 						rows.Add(row);
 					}
@@ -366,7 +389,12 @@ namespace Tourmaline26.Services.Correspondence
 				.ToList();
 		}
 
-		private bool IsUsable(ConnectionDeparture row, DateTime now, string? excludeDestination)
+		private bool IsUsable(
+			ConnectionDeparture row,
+			DateTime now,
+			string? excludeDestination,
+			Place? place,
+			string? stationName)
 		{
 			if (row.SortTime == default || row.SortTime == DateTime.MinValue)
 				return false;
@@ -383,9 +411,40 @@ namespace Tourmaline26.Services.Correspondence
 				return false;
 			}
 
-			if (row.Mode == ConnectionMode.Train && SameDestination(row.DestinationName, excludeDestination))
+			if (TerminatesHere(row.DestinationName, excludeDestination, place, stationName))
 				return false;
 			return true;
+		}
+
+		/// <summary>
+		/// True si el servicio termina en el destino de este tren o en la
+		/// estación a la que nos dirigimos (p. ej. un TIB que acaba en Manacor).
+		/// </summary>
+		private bool TerminatesHere(
+			string destination,
+			string? excludeDestination,
+			Place? place,
+			string? stationName)
+		{
+			if (SameDestination(destination, excludeDestination))
+				return true;
+			if (SameDestination(destination, stationName))
+				return true;
+			if (place is null)
+				return false;
+
+			Place? destPlace = mvarPlaces.FindByDisplayName(destination)
+				?? mvarPlaces.FindByTibName(destination);
+			if (destPlace is not null)
+				return string.Equals(destPlace.Id, place.Id, StringComparison.OrdinalIgnoreCase);
+
+			string destNorm = PlaceNameText.Normalize(destination);
+			if (destNorm.Length == 0)
+				return false;
+			return destNorm == PlaceNameText.Normalize(place.Names.Canonical)
+				|| destNorm == PlaceNameText.Normalize(place.Names.Tft)
+				|| destNorm == PlaceNameText.Normalize(place.Names.Teleindicator)
+				|| destNorm == PlaceNameText.Normalize(place.TibName);
 		}
 
 		private static DateTime ToLocal(DateTime value)

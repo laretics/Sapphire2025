@@ -267,6 +267,10 @@
 	line-height: 1.05;
 }
 
+.nst-time--soon {
+	color: #dc2626;
+}
+
 .nst-eta {
 	display: inline;
 	margin-left: 0.4vw;
@@ -274,6 +278,10 @@
 	font-weight: 700;
 	font-variant-numeric: tabular-nums;
 	color: var(--nst-alert);
+}
+
+.nst-eta--soon {
+	color: #dc2626;
 }
 
 .nst-line {

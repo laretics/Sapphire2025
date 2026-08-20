@@ -1,7 +1,7 @@
 /* global maplibregl */
 /* Mapa de red SFM. Dos modos:
    - page: clon de horarios (Positron + teselas).
-   - overlay: isla opaca, mar transparente, punto del tren. */
+   - overlay: recorte circular, isla ligeramente translúcida, mar transparente. */
 
 (function (global) {
   'use strict';
@@ -231,7 +231,7 @@
       source: 'sfm-island',
       paint: {
         'fill-color': ISLAND_FILL,
-        'fill-opacity': 1
+        'fill-opacity': 0.72
       }
     });
     addContextRoadLayers(map);
@@ -242,7 +242,7 @@
       paint: {
         'line-color': ISLAND_STROKE,
         'line-width': 2.2,
-        'line-opacity': 1
+        'line-opacity': 0.85
       },
       layout: {
         'line-join': 'round',
@@ -775,8 +775,11 @@
       if (!overlay) {
         setupHover(map);
       }
+      const overlayPad = Math.round(
+        Math.min(container.clientWidth, container.clientHeight) * 0.16
+      );
       map.fitBounds(bounds, {
-        padding: overlay ? 10 : 40,
+        padding: overlay ? Math.max(24, overlayPad) : 40,
         duration: 0
       });
       if (instance.pendingTrain) {

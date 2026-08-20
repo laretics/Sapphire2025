@@ -78,17 +78,44 @@
 }
 
 .cabin-itinerary-host--night {
-	--it-paper: #000000;
+	/* Mismo fondo que teslapanel.night / malla + velocímetro (#181c20). */
+	--it-paper: #181c20;
 	--it-text: #e07070;
 	--it-stroke: #c9a27a;
 	--it-muted: #8a7058;
-	--it-header: #2a1c12;
+	--it-header: #2a2226;
 	--it-header-text: #e07070;
-	--it-vmx: #1a120c;
+	--it-vmx: #1e1a1c;
 	--it-here: rgba(201, 162, 122, 0.22);
 	--it-here-strong: rgba(224, 112, 112, 0.28);
 	--it-here-mark: #e07070;
 	--it-rail: #6a5040;
+	color-scheme: dark;
+	scrollbar-width: thin;
+	scrollbar-color: #a01818 #121416;
+}
+
+.cabin-itinerary-host--night::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+
+.cabin-itinerary-host--night::-webkit-scrollbar-track {
+	background: #121416;
+}
+
+.cabin-itinerary-host--night::-webkit-scrollbar-thumb {
+	background: #8a1414;
+	border-radius: 6px;
+	border: 2px solid #121416;
+}
+
+.cabin-itinerary-host--night::-webkit-scrollbar-thumb:hover {
+	background: #c42020;
+}
+
+.cabin-itinerary-host--night::-webkit-scrollbar-corner {
+	background: #121416;
 }
 
 .cabin-itinerary-error {

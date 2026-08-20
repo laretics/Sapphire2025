@@ -191,12 +191,16 @@
 	position: absolute;
 	right: 1.2vw;
 	bottom: 1.6vh;
-	width: 50%;
-	height: 50%;
+	width: min(44vh, 40vw);
+	height: min(44vh, 40vw);
 	min-width: 160px;
 	min-height: 160px;
 	z-index: 6;
 	pointer-events: none;
+	overflow: hidden;
+	border-radius: 50%;
+	clip-path: circle(50% at 50% 50%);
+	opacity: 0.82;
 }
 
 .route-live-fg {

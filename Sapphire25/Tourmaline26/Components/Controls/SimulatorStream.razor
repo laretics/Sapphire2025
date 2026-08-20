@@ -34,10 +34,16 @@
     private DotNetObjectReference<SimulatorStream>? mvarDotNetRef;
 
     /// <summary>
-    /// Backoff entre reintentos (ms). Tras el último valor se mantiene constante.
-    /// Reintentos ilimitados: el stream se recupera solo cuando el origen vuelva.
+    /// Backoff entre reintentos (ms). Corto a propósito: el fallback de
+    /// TourmalineBack no debe quedarse segundos en pantalla.
     /// </summary>
-    private static readonly int[] BackoffMs = { 1000, 2000, 3000, 5000, 8000, 10000 };
+    private static readonly int[] BackoffMs = { 80, 150, 250, 400 };
+
+    /// <summary>
+    /// Fallos seguidos antes de tapar el último frame con el fallback.
+    /// Un glitch de 1–2 reconexiones no debe mostrar TourmalineBack.
+    /// </summary>
+    private const int FallbackAfterFailures = 3;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -118,19 +124,15 @@
         mvarReconnecting = true;
         try
         {
-            // Sin vídeo: mostrar fallback de inmediato
-            if (StreamDisponible)
+            reintentos++;
+            // Si ya había vídeo, dejar el último frame en el canvas unos
+            // reintentos; el fallback solo sale si el origen no vuelve.
+            if (StreamDisponible && reintentos >= FallbackAfterFailures)
             {
                 StreamDisponible = false;
                 await InvokeAsync(StateHasChanged);
             }
-            else
-            {
-                // Asegurar que la UI refleja el estado aunque ya estuviera en false
-                await InvokeAsync(StateHasChanged);
-            }
 
-            reintentos++;
             int delay = BackoffMs[Math.Min(reintentos - 1, BackoffMs.Length - 1)];
             Console.WriteLine($"SimulatorStream: reconexión #{reintentos} en {delay} ms…");
 

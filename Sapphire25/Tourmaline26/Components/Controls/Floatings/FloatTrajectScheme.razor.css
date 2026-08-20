@@ -1,11 +1,137 @@
-﻿.floating-traject-card {
+.floating-traject-card {
+	--fts-accent: #1565c0;
+	--fts-sched: #90caf9;
+	--fts-track: #e4e7ec;
+	--fts-ink: #1a1a1a;
+	--fts-muted: #6b7280;
 	position: absolute;
 	top: 528px;
 	left: 16px;
 	width: 300px;
-	height: 150px;
 	border-radius: 16px;
-	box-shadow: 0 4px 24px rgba(0,0,0,0.15);
-	padding: 16px 18px 12px 18px;
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+	padding: 14px 16px 12px 16px;
 	z-index: 100;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.floating-traject-card.night {
+	--fts-accent: #c45a5a;
+	--fts-sched: #6a3a3a;
+	--fts-track: #2a2426;
+	--fts-ink: #e8c8c8;
+	--fts-muted: #a08080;
+}
+
+.fts-top {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.fts-eta {
+	font-weight: 800;
+	font-size: 1.35rem;
+	letter-spacing: -0.03em;
+	font-variant-numeric: tabular-nums;
+	color: var(--fts-ink);
+	line-height: 1;
+}
+
+.fts-remain {
+	flex: 1 1 auto;
+	text-align: center;
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: var(--fts-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.fts-pct {
+	--pct: 0;
+	flex: 0 0 auto;
+	width: 2.55rem;
+	height: 2.55rem;
+	border-radius: 50%;
+	background: conic-gradient(var(--fts-accent) calc(var(--pct) * 1%), var(--fts-track) 0);
+	display: grid;
+	place-items: center;
+	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.fts-pct-inner {
+	width: 1.95rem;
+	height: 1.95rem;
+	border-radius: 50%;
+	background: #fff;
+	display: grid;
+	place-items: center;
+	font-size: 0.68rem;
+	font-weight: 800;
+	color: var(--fts-ink);
+	font-variant-numeric: tabular-nums;
+}
+
+.floating-traject-card.night .fts-pct-inner {
+	background-color: #181c20;
+}
+
+.fts-route {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.fts-origin {
+	flex: 0 1 72px;
+	min-width: 0;
+	font-size: 0.82rem;
+	font-weight: 700;
+	color: var(--fts-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.fts-bars {
+	flex: 1 1 auto;
+	position: relative;
+	height: 12px;
+	border-radius: 999px;
+	background: var(--fts-track);
+	overflow: hidden;
+	box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.fts-bar {
+	position: absolute;
+	left: 0;
+	border-radius: 999px;
+	transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fts-bar--sched {
+	top: 0;
+	height: 12px;
+	background: linear-gradient(90deg, var(--fts-sched), var(--fts-accent));
+	opacity: 0.88;
+}
+
+.fts-bar--real {
+	top: 3.5px;
+	height: 5px;
+	background: var(--fts-accent);
+	box-shadow: 0 0 6px rgba(21, 101, 192, 0.35);
+}
+
+.floating-traject-card.night .fts-bar--real {
+	box-shadow: 0 0 6px rgba(196, 90, 90, 0.4);
+}
+
+.fts-end {
+	width: 100%;
+	font-weight: 600;
 }

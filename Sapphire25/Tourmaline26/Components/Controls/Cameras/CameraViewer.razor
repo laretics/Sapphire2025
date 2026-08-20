@@ -2,12 +2,16 @@
   Visor de cámara: consume el proxy MJPEG nativo de Tourmaline
   (/api/cameras/{id}/mjpeg) — sin MediaMTX ni HLS.
 *@
+@using Tourmaline26.Services.Cameras
 @implements IDisposable
+@inject CameraStreamService CameraStreams
 
 <div class="camera-viewer">
     <div class="camera-overlay">
-        <span>@CameraName</span>
-        <span class="status-indicator @StatusClass">@StatusMessage</span>
+        <span class="camera-name" title="@CameraName">@CameraName</span>
+        <span class="status-indicator @StatusClass" title="@StatusMessage" aria-label="@StatusMessage">
+            <ColorIcon Name="@StatusIcon" Size="18" Color="currentColor" />
+        </span>
     </div>
 
     <div class="video-container">
@@ -21,8 +25,8 @@
         }
         else
         {
-            <div class="fallback-overlay">
-                <div>Sin cámara asignada</div>
+            <div class="fallback-overlay" title="Sin cámara asignada">
+                <ColorIcon Name="CCTV" Size="40" Color="#666666" />
             </div>
         }
     </div>
@@ -42,43 +46,71 @@
 
     private string StatusMessage { get; set; } = "Conectando…";
     private string StatusClass { get; set; } = "status-connecting";
+    private string StatusIcon { get; set; } = "Refresh";
     private int mvarCacheBust;
-    private System.Threading.Timer? mvarRetryTimer;
+    private DateTime mvarLastReloadUtc = DateTime.MinValue;
+    private System.Threading.Timer? mvarWatchdog;
 
     private string MjpegUrl =>
         CameraId < 0
             ? string.Empty
             : $"/api/cameras/{CameraId}/mjpeg?v={mvarCacheBust}";
 
+    protected override void OnInitialized()
+    {
+        mvarWatchdog = new System.Threading.Timer(
+            _ => _ = InvokeAsync(WatchdogTick),
+            null,
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(5));
+    }
+
     private void OnImageLoaded()
     {
         StatusMessage = "En vivo";
         StatusClass = "status-live";
-        mvarRetryTimer?.Dispose();
-        mvarRetryTimer = null;
+        StatusIcon = "Eye";
     }
 
     private void OnImageError()
     {
         StatusMessage = "Sin señal";
         StatusClass = "status-error";
-        // Reintento suave: cambia query para forzar recarga del <img>.
-        mvarRetryTimer?.Dispose();
-        mvarRetryTimer = new System.Threading.Timer(_ =>
-        {
-            _ = InvokeAsync(() =>
-            {
-                mvarCacheBust++;
-                StatusMessage = "Reconectando…";
-                StatusClass = "status-connecting";
-                StateHasChanged();
-            });
-        }, null, TimeSpan.FromSeconds(3), Timeout.InfiniteTimeSpan);
+        StatusIcon = "MediaOff";
+        KickStream();
+    }
+
+    private void WatchdogTick()
+    {
+        if (CameraId < 0)
+            return;
+
+        DateTime? last = CameraStreams.GetLastFrameUtc(CameraId);
+        bool stale = last.HasValue
+            && (DateTime.UtcNow - last.Value).TotalSeconds >= 12;
+        if (!stale)
+            return;
+
+        KickStream();
+    }
+
+    private void KickStream()
+    {
+        if ((DateTime.UtcNow - mvarLastReloadUtc).TotalSeconds < 8)
+            return;
+
+        mvarLastReloadUtc = DateTime.UtcNow;
+        CameraStreams.ForceRestart(CameraId);
+        mvarCacheBust++;
+        StatusMessage = "Reconectando…";
+        StatusClass = "status-connecting";
+        StatusIcon = "Refresh";
+        StateHasChanged();
     }
 
     public void Dispose()
     {
-        mvarRetryTimer?.Dispose();
-        mvarRetryTimer = null;
+        mvarWatchdog?.Dispose();
+        mvarWatchdog = null;
     }
 }

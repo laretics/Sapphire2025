@@ -3,13 +3,10 @@
 @implements IAsyncDisposable
 
 <div @ref="mvarHost"
-     class="sfm-line-map @(Overlay ? "sfm-line-map--overlay" : "sfm-line-map--full")"
-     style="@(Overlay
-         ? "position:absolute;right:1.2vw;bottom:1.6vh;width:50%;height:50%;z-index:6;pointer-events:none;min-width:160px;min-height:160px;"
-         : null)"></div>
+     class="sfm-line-map @(Overlay ? "sfm-line-map--overlay" : "sfm-line-map--full")"></div>
 
 @code {
-    /// <summary>True: isla opaca sobre el stream. False: mapa a pantalla completa.</summary>
+    /// <summary>True: recorte circular sobre el stream. False: mapa a pantalla completa.</summary>
     [Parameter] public bool Overlay { get; set; } = true;
 
     private ElementReference mvarHost;

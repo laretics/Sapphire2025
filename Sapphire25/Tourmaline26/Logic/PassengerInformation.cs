@@ -17,10 +17,24 @@ namespace Tourmaline26.Logic
         /// <summary>Descripción interna del mensaje (no se muestra en el popup).</summary>
         public string Comment { get; set; } = "Descripción de este mensaje";
 
+        /// <summary>Importancia media: el anuncio sustituye el LED interior.</summary>
+        public const byte MediumImportance = 128;
+
+        /// <summary>Importancia alta: el anuncio sustituye LED interior y exterior.</summary>
+        public const byte HighImportance = 201;
+
         /// <summary>
         /// Tamaño relativo del popup: 0 = no visible, 255 = toda la superficie.
+        /// En LED: ≥ <see cref="MediumImportance"/> interior;
+        /// ≥ <see cref="HighImportance"/> interior y exterior.
         /// </summary>
         public byte Importance { get; set; } = 128;
+
+        /// <summary>El anuncio activo debe pintarse en el LED interior.</summary>
+        public bool ShowsOnInteriorLed => Importance >= MediumImportance;
+
+        /// <summary>El anuncio activo debe pintarse también en el LED exterior.</summary>
+        public bool ShowsOnExteriorLed => Importance >= HighImportance;
 
         /// <summary>
         /// Clave de icono para <c>ColorIcon</c>. Null o vacío = sin icono.

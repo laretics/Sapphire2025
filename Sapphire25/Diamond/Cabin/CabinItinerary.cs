@@ -230,6 +230,167 @@ namespace Diamond.Cabin
 		}
 
 		/// <summary>
+		/// Demora en el PK actual: hora de ahora menos la hora teórica en ese punto.
+		/// Positivo = retraso; negativo = adelanto. Durante la parada programada, 0.
+		/// </summary>
+		public static TimeSpan DelayAtRoutePk(
+			ProjectCirculation? circulation,
+			long routePk,
+			DateTime now)
+		{
+			if (circulation is null || circulation.Calls.Count == 0)
+			{
+				return TimeSpan.Zero;
+			}
+
+			TimeSpan tod = now.TimeOfDay;
+			int i = 0;
+			while (i < circulation.Calls.Count)
+			{
+				ProjectTimedCall call = circulation.Calls[i];
+				if (Math.Abs(call.Pk - routePk) <= DefaultStationAreaMeters)
+				{
+					if (tod >= call.Arrival && tod <= call.Departure)
+						return TimeSpan.Zero;
+					if (tod < call.Arrival)
+						return WrapHalfDay(tod - call.Arrival);
+					return WrapHalfDay(tod - call.Departure);
+				}
+
+				i++;
+			}
+
+			TimeSpan? theoretical = TheoreticalTimeAtPk(circulation, routePk);
+			if (!theoretical.HasValue)
+				return TimeSpan.Zero;
+			return WrapHalfDay(tod - theoretical.Value);
+		}
+
+		/// <summary>Hora teórica (reloj civil del día) en un PK de ruta, interpolada entre llamadas.</summary>
+		public static TimeSpan? TheoreticalTimeAtPk(ProjectCirculation circulation, long routePk)
+		{
+			if (circulation is null || circulation.Calls.Count == 0)
+				return null;
+
+			IReadOnlyList<ProjectTimedCall> calls = circulation.Calls;
+			bool increasing = circulation.Asimilation.Sense == CirculationSense.IncreasingPk;
+			ProjectTimedCall first = calls[0];
+			ProjectTimedCall last = calls[calls.Count - 1];
+
+			if (increasing)
+			{
+				if (routePk <= first.Pk)
+					return first.Arrival;
+				if (routePk >= last.Pk)
+					return last.Arrival;
+			}
+			else
+			{
+				if (routePk >= first.Pk)
+					return first.Arrival;
+				if (routePk <= last.Pk)
+					return last.Arrival;
+			}
+
+			int i = 0;
+			while (i < calls.Count - 1)
+			{
+				ProjectTimedCall a = calls[i];
+				ProjectTimedCall b = calls[i + 1];
+				bool inSegment = increasing
+					? routePk >= a.Pk && routePk <= b.Pk
+					: routePk <= a.Pk && routePk >= b.Pk;
+				if (!inSegment)
+				{
+					i++;
+					continue;
+				}
+
+				long span = b.Pk - a.Pk;
+				if (span == 0)
+					return a.Departure;
+
+				double t = (double)(routePk - a.Pk) / span;
+				if (t < 0)
+					t = 0;
+				if (t > 1)
+					t = 1;
+				long ticks = a.Departure.Ticks + (long)((b.Arrival.Ticks - a.Departure.Ticks) * t);
+				return TimeSpan.FromTicks(ticks);
+			}
+
+			return last.Arrival;
+		}
+
+		/// <summary>PK en el que el tren debería estar a la hora dada según malla.</summary>
+		public static long? ScheduledPkAtTime(ProjectCirculation? circulation, TimeSpan now)
+		{
+			if (circulation is null || circulation.Calls.Count == 0)
+				return null;
+
+			IReadOnlyList<ProjectTimedCall> calls = circulation.Calls;
+			if (now <= calls[0].Departure)
+				return calls[0].Pk;
+			if (now >= calls[calls.Count - 1].Arrival)
+				return calls[calls.Count - 1].Pk;
+
+			int i = 0;
+			while (i < calls.Count - 1)
+			{
+				ProjectTimedCall a = calls[i];
+				ProjectTimedCall b = calls[i + 1];
+				if (now <= a.Departure)
+					return a.Pk;
+
+				if (now <= b.Arrival)
+				{
+					double spanSec = (b.Arrival - a.Departure).TotalSeconds;
+					if (spanSec <= 0)
+						return a.Pk;
+					double t = (now - a.Departure).TotalSeconds / spanSec;
+					if (t < 0)
+						t = 0;
+					if (t > 1)
+						t = 1;
+					return a.Pk + (long)((b.Pk - a.Pk) * t);
+				}
+
+				i++;
+			}
+
+			return calls[calls.Count - 1].Pk;
+		}
+
+		/// <summary>Progreso espacial 0..1 entre origen y destino de ruta.</summary>
+		public static double SpatialProgress(ProjectCirculation? circulation, long routePk)
+		{
+			if (circulation is null)
+				return 0;
+			long? origin = OriginRoutePk(circulation);
+			long? dest = DestinationRoutePk(circulation);
+			if (!origin.HasValue || !dest.HasValue)
+				return 0;
+			long span = dest.Value - origin.Value;
+			if (span == 0)
+				return routePk == dest.Value ? 1 : 0;
+			double t = (double)(routePk - origin.Value) / span;
+			if (t < 0)
+				return 0;
+			if (t > 1)
+				return 1;
+			return t;
+		}
+
+		private static TimeSpan WrapHalfDay(TimeSpan delta)
+		{
+			if (delta > TimeSpan.FromHours(12))
+				return delta - TimeSpan.FromDays(1);
+			if (delta < TimeSpan.FromHours(-12))
+				return delta + TimeSpan.FromDays(1);
+			return delta;
+		}
+
+		/// <summary>
 		/// Ejes de la topología implicados por el ViewId de la asimilación (p. ej. "T3" o "T3+T2").
 		/// </summary>
 		public static IReadOnlyList<AxisRef> ResolveMissionAxisIds(string? viewId)

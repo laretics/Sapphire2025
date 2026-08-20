@@ -118,13 +118,13 @@ namespace Diamond.Controls.Rendering
 			}
 		}
 
-		/// <summary>Cabina, modo noche: trazos marrón claro, letras rojo suave, fondo negro.</summary>
+		/// <summary>Cabina, modo noche: trazos marrón claro, letras rojo suave, fondo como teslapanel.night.</summary>
 		public static CirculationSheetPalette CabinNight
 		{
 			get
 			{
 				return new CirculationSheetPalette(
-					background: "#000000",
+					background: "#181c20",
 					text: "#e07070",
 					stroke: "#c9a27a",
 					headerFill: "#2a1c12",

@@ -1,43 +1,164 @@
-﻿@using Tourmaline26.Components.Images
+@using System.Globalization
+@using Diamond.Cabin
+@using Tourmaline26.Components.Images
 @using Tourmaline26.Logic
+@inject TourmalineService Tourmaline
+@implements IDisposable
+
 <div class="floating-traject-card shadow @panelClass">
-    <div class="d-flex justify-content-between align-items-center mb-1">
-        <span class="fw-bold fs-5">14:05</span>
-        <span class="mx-2 text-secondary">10 min</span>
-        <span class="mx-2 text-secondary">4,8 km</span>
-        <span class="d-flex align-items-center mx-2">
-            <i class="bi bi-battery-half me-1"></i>
-            <span class="text-secondary">69%</span>
+    <div class="fts-top">
+        <span class="fts-eta" title="Arribada estimada">@EtaLabel</span>
+        <span class="fts-remain" title="Distància pendent">@RemainingLabel</span>
+        <span class="fts-pct" style="--pct: @ProgressPercent;" title="Recorregut">
+            <span class="fts-pct-inner">@ProgressPercent.ToString(CultureInfo.InvariantCulture)%</span>
         </span>
     </div>
-    <div class="d-flex align-items-center mb-1">
-        <span class="fw-semibold text-secondary" style="min-width: 60px;">Casa</span>
-        <div class="flex-grow-1 position-relative mx-2">
-            <div class="progress" style="height: 4px; background: #e0e0e0;">
-                <div class="progress-bar" style="width: 60%; background: #2196f3;"></div>
-            </div>
-            <span class="position-absolute" style="left: 60%; top: -8px; color: #e53935;">&#9654;</span>
+
+    <div class="fts-route">
+        <span class="fts-origin" title="@OriginName">@OriginName</span>
+        <div class="fts-bars" role="img" aria-label="Progrés del trajecte">
+            <div class="fts-bar fts-bar--sched" style="width: @ScheduledWidth;"></div>
+            <div class="fts-bar fts-bar--real" style="width: @ActualWidth;"></div>
         </div>
     </div>
-    <div class="d-flex justify-content-between align-items-center mt-2">
-        <button class="btn btn-outline-secondary w-100" onclick="@onTerminateCirculation">@Prefs.T("tm.end")</button>
-        <span class="ms-2 text-secondary" style="font-size: 1.5rem;">&#8942;</span>
-    </div>
+
+    <button class="btn btn-outline-secondary fts-end" onclick="@onTerminateCirculation">@Prefs.T("tm.end")</button>
 </div>
+
 @code {
     [Inject] public UserPreferencesService Prefs { get; set; } = default!;
     [CascadingParameter]
     public bool NightMode { get; set; }
-    [CascadingParameter]
-    public string? mvarSearchString { get; set; }
-    [CascadingParameter]
-    SessionConfiguration? Environment { get; set; }
     [Parameter]
-    public EventCallback OnTerminateCirculationRequest{ get; set; }
-    private string panelClass
+    public EventCallback OnTerminateCirculationRequest { get; set; }
+
+    private static readonly CultureInfo Catalan = CultureInfo.GetCultureInfo("ca-ES");
+
+    private string panelClass =>
+        string.Format("floating-panel {0}", NightMode ? "night" : "day");
+
+    private CabinEnvironment? Cabin => Tourmaline.SessionConfig.Cabin;
+
+    private Diamond.Project.Circulation? Circulation => Cabin?.Circulation;
+
+    protected override void OnInitialized()
     {
-        get => string.Format("floating-panel {0}", NightMode ? "night" : "day");
+        Tourmaline.HMIUpdateRequested += OnHmi;
     }
+
+    public void Dispose()
+    {
+        Tourmaline.HMIUpdateRequested -= OnHmi;
+    }
+
+    private void OnHmi(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string OriginName
+    {
+        get
+        {
+            string name = Circulation?.Asimilation?.Origin.Name ?? string.Empty;
+            return string.IsNullOrWhiteSpace(name) ? "—" : name;
+        }
+    }
+
+    private TimeSpan Delay => Cabin?.CurrentDelay ?? TimeSpan.Zero;
+
+    private string EtaLabel
+    {
+        get
+        {
+            Diamond.Project.Circulation? cir = Circulation;
+            if (cir is null)
+                return "—";
+
+            TimeSpan destArrival = DestinationArrival(cir);
+            TimeSpan eta = destArrival;
+            if (Delay.Ticks > 0)
+                eta = destArrival + Delay;
+
+            if (eta < TimeSpan.Zero)
+                eta += TimeSpan.FromDays(1);
+            if (eta >= TimeSpan.FromDays(1))
+                eta -= TimeSpan.FromDays(1);
+
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "{0:00}:{1:00}",
+                (int)eta.TotalHours % 24,
+                eta.Minutes);
+        }
+    }
+
+    private string RemainingLabel
+    {
+        get
+        {
+            Diamond.Project.Circulation? cir = Circulation;
+            CabinEnvironment? cabin = Cabin;
+            if (cir is null || cabin is null)
+                return "—";
+
+            long? destPk = CabinItinerary.DestinationRoutePk(cir);
+            if (!destPk.HasValue)
+                return "—";
+
+            long meters = Math.Abs(destPk.Value - cabin.PK);
+            double km = meters / 1000.0;
+            return string.Format(Catalan, "{0:0.0} km", km);
+        }
+    }
+
+    private int ProgressPercent
+    {
+        get
+        {
+            CabinEnvironment? cabin = Cabin;
+            if (cabin is null)
+                return 0;
+            double t = CabinItinerary.SpatialProgress(Circulation, cabin.PK);
+            return (int)Math.Round(t * 100.0);
+        }
+    }
+
+    private string ActualWidth => ProgressPercent.ToString(CultureInfo.InvariantCulture) + "%";
+
+    private string ScheduledWidth
+    {
+        get
+        {
+            CabinEnvironment? cabin = Cabin;
+            Diamond.Project.Circulation? cir = Circulation;
+            if (cabin is null || cir is null)
+                return "0%";
+
+            long? schedPk = CabinItinerary.ScheduledPkAtTime(cir, cabin.ClockNow.TimeOfDay);
+            if (!schedPk.HasValue)
+                return "0%";
+
+            double t = CabinItinerary.SpatialProgress(cir, schedPk.Value);
+            int pct = (int)Math.Round(t * 100.0);
+            return pct.ToString(CultureInfo.InvariantCulture) + "%";
+        }
+    }
+
+    private static TimeSpan DestinationArrival(Diamond.Project.Circulation cir)
+    {
+        IReadOnlyList<Diamond.Project.TimedCall> calls = cir.Calls;
+        int i = calls.Count - 1;
+        while (i >= 0)
+        {
+            if (calls[i].IsDestination)
+                return calls[i].Arrival;
+            i--;
+        }
+
+        return calls.Count > 0 ? calls[calls.Count - 1].Arrival : TimeSpan.Zero;
+    }
+
     private async Task onTerminateCirculation()
     {
         await OnTerminateCirculationRequest.InvokeAsync();

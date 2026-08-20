@@ -68,19 +68,43 @@ namespace Tourmaline26.Logic
 			Forbidden=2 //Tren no admite viajeros
 		}
         /// <summary>
-        /// Las pantallas TFT y los paneles de todo el tren deben dar la misma información en el
-        /// mismo momento. Para asegurarnos de ello, tendremos una variable en SessionConfiguration
-        /// de este tipo enumerado.
+        /// Las pantallas TFT y los paneles LED de todo el tren siguen el mismo modo
+        /// (<see cref="SessionConfiguration.InformationMode"/>). El LED no tiene
+        /// estado propio: <see cref="PassengerLedMapping"/> traduce cada valor.
         /// </summary>
         public enum PassengerInformationMode : byte
         {
-            Default=0,          //Mostramos el destino y la información de viaje resumida.
-            BeginOfTrip=1,      //Trayecto no iniciado. Información antes de la salida.
-            NextStopsList=2,    //Lista de las próximas estaciones.
-            NextStopInfo=3,     //Correspondencias e información de la próxima estación.
-            Cruise=4,           //Tren viajando a velocidad de crucero
-            EndOfTrip=5         //Trayecto finalizado. Tren en destino
+            Default = 0,        // TFT: imagen de tren. LED: destino y coche.
+            BeginOfTrip = 1,    // TFT: bienvenida. LED int: destino y coche. LED ext: destino.
+            NextStopsList = 2,  // TFT: lista de próximas estaciones. LED int: hora/temp/vel. LED ext: número de tren.
+            NextStopInfo = 3,   // TFT: cartel de correspondencias. LED int: próxima estación (destino y coche si parado en destino). LED ext: destino.
+            Cruise = 4,         // TFT: stream Experience + mapa. LED int: hora/temp/vel. LED ext: número de tren (destino si parado en estación).
+            EndOfTrip = 5       // TFT: mismo cartel de llegada. LED int: próxima estación, o destino y coche si parado en destino. LED ext: destino.
+        }
 
+        /// <summary>
+        /// Contenido del teleindicador interior, derivado de
+        /// <see cref="PassengerInformationMode"/>.
+        /// </summary>
+        public enum PassengerLedKind : byte
+        {
+            Blank = 0,
+            OutOfService = 1,
+            DestinationAndCar = 2,
+            ClockWeatherSpeed = 3,
+            NextStation = 4
+        }
+
+        /// <summary>
+        /// Contenido del teleindicador exterior: destino (bienvenida,
+        /// correspondencias o parado en estación) o número de tren.
+        /// </summary>
+        public enum PassengerLedExteriorKind : byte
+        {
+            Blank = 0,
+            OutOfService = 1,
+            Destination = 2,
+            TrainNumber = 3
         }
 
         /// <summary>

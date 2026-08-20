@@ -3,8 +3,6 @@ using Diamond.Project;
 using Tourmaline26.Logic;
 using Tourmaline26.Services.Armandito;
 using Tourmaline26.Services.TourmalineExperience;
-using System.Globalization;
-using BlazorBootstrap;
 
 namespace Tourmaline26.Services
 {
@@ -33,9 +31,6 @@ namespace Tourmaline26.Services
         private Task<bool>? mvarLocationTask;
         private Task<bool>? mvarLedPanelsTask;
         private Task<bool>? mvarMeteoTask; //Proceso de meteorología.
-
-        private byte mvarScreen; //Pantalla a mostrar ahora.
-        private DateTime mvarNextScreenChange = DateTime.MinValue; //Próximo cambio de pantalla
 
         /// <summary>Última velocidad enviada al simulador en DemoMode (evita spam de API).</summary>
         private int mvarLastDemoSpeedSent = int.MinValue;
@@ -161,14 +156,6 @@ namespace Tourmaline26.Services
                 {
                     CheckMVB();
 
-                    if(mvarNextScreenChange<DateTime.Now)
-                    {
-                        mvarScreen++;
-                        if (mvarScreen > 1) mvarScreen = 0;
-                        mvarNextScreenChange = DateTime.Now.AddSeconds(40);
-                        mvarLogger.LogDebug($"Screen change to {mvarScreen}");
-                    }
-
                     //Destrucción de tasks en ejecución
                     if (null != mvarGpsTask && mvarGpsTask.IsCompleted)
                     {
@@ -247,6 +234,10 @@ namespace Tourmaline26.Services
                         mvarLogger.LogDebug("Setting clock");
                         CabinEnvironment cabin = mvarTourmaline.SessionConfig.Cabin;
                         cabin.ClockNow = DateTime.Now;
+                        cabin.CurrentDelay = CabinItinerary.DelayAtRoutePk(
+                            cabin.Circulation,
+                            cabin.PK,
+                            cabin.ClockNow);
                         if (mvarLastDate.Day != DateTime.Today.Day)
                         {
                             mvarLogger.LogDebug("Today is changed");
@@ -613,156 +604,12 @@ namespace Tourmaline26.Services
         }
 
         /// <summary>
-        /// Actualiza los teleindicadores LED
+        /// Actualiza los teleindicadores LED según el mismo modo que los TFT.
         /// </summary>
-        /// <returns></returns>
         private async Task<bool> PoolLedPanels()
         {
-            if (!mvarTourmaline.SessionConfig.MainSwitches.TeleindicatorsEnabled)
-            {
-                await mvarLedService.Cls();
-                return false;
-            }
-
-            if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Forbidden)
-            {
-                await LedPanelsShowOutOfService();
-                return false;
-            }
-
-            if (!mvarTourmaline.SessionConfig.MainSwitches.PASEnabled)
-            {
-                await mvarLedService.Cls();
-                return false;
-            }
-
-            CabinEnvironment? auxTn = mvarTourmaline.SessionConfig.Cabin;
-            if(null!=auxTn)
-            {
-                if (null != auxTn.Circulation && null != auxTn.Asimilation)
-                {
-                    // Misma cadencia que los TFT: cada modo de monitor tiene su texto LED.
-                    switch (mvarTourmaline.SessionConfig.InformationMode)
-                    {
-                        case Enums.PassengerInformationMode.NextStopsList:
-                            await LedPanelsShowInfo(auxTn.Circulation);
-                            break;
-                        case Enums.PassengerInformationMode.Cruise:
-                        case Enums.PassengerInformationMode.NextStopInfo:
-                            if (mvarTourmaline.SessionConfig.CurrentSpeed > 0)
-                            {
-                                string next = NextStationForLed(auxTn);
-                                await LedPanelsStation(next, auxTn.Asimilation.Destination.Name);
-                            }
-                            else
-                            {
-                                await LedPanelsShowDestination();
-                            }
-                            break;
-                        default:
-                            await LedPanelsShowDestination();
-                            break;
-                    }
-                }
-                else
-                    await LedPanelsShowInfo(auxTn.Circulation);
-            }
+            await mvarLedService.RenderPassengerAsync(mvarTourmaline.SessionConfig);
             return false;
-        }
-
-        private async Task LedPanelsShowOutOfService()
-        {
-            string message = OutOfServiceDisplay.Combined;
-            await mvarLedService.Print(true, message, true);
-            await mvarLedService.Print(false, message, true);
-        }
-        
-        private async Task LedPanelsStation(string currentStation, string currentDestination)
-        {
-            await mvarLedService.Print(true,$"Propera estació {currentStation}",true);
-            await mvarLedService.Print(false, currentDestination, false);
-        }
-
-        private static string NextStationForLed(CabinEnvironment cabin)
-        {
-            if (cabin.CurrentStation is not null
-                && !string.IsNullOrWhiteSpace(cabin.CurrentStation.Name))
-            {
-                return cabin.CurrentStation.Name;
-            }
-
-            IReadOnlyList<Diamond.Project.TimedCall> remaining = cabin.RemainingCalls;
-            if (remaining.Count > 0 && remaining[0].Station is not null)
-                return remaining[0].Station.Name;
-
-            if (cabin.Asimilation is not null)
-                return cabin.Asimilation.Destination.Name;
-
-            return string.Empty;
-        }
-        private async Task LedPanelsShowInfo(Circulation? auxCirc)
-        {
-            bool externalPriority = false;
-            if(null==mvarTourmaline.SessionConfig)
-            {
-                //Si no tengo sessionConfig sólo puedo anunciar la hora.
-                await mvarLedService.Print(true, $"{DateTime.Now:t}", false,Alignment.Center);
-                await mvarLedService.Print(false, "S F M",false,Alignment.Center);
-            }
-            else
-            {
-                if(mvarTourmaline.SessionConfig.PassengerAnnouncementEnabled &&
-                    null!=mvarTourmaline.SessionConfig.PassengerAnnouncement &&
-                    mvarTourmaline.SessionConfig.PassengerAnnouncement.Importance>127)
-                {
-                    //Anuncio a los viajeros activado
-                    string auxCadenaTotal = mvarTourmaline.SessionConfig.PassengerAnnouncement.MessageText.Replace("|", "   ");
-                    await mvarLedService.Print(true, auxCadenaTotal);
-                    if (mvarTourmaline.SessionConfig.PassengerAnnouncement.Importance > 200)
-                    {
-                        externalPriority = true;
-                        await mvarLedService.Print(false, mvarTourmaline.SessionConfig.PassengerAnnouncement.MessageText);
-                    }                       
-                }
-                else
-                {
-                    //Dentro muestran la hora actual.
-                    string cadenaTemp = "";
-                    string cadenaSpeed = "";
-                    if (null != mvarTourmaline.SessionConfig.CurrentWeather)
-                        cadenaTemp = string.Format(CultureInfo.InvariantCulture, "   {0}ºC", mvarTourmaline.SessionConfig.CurrentWeather.Temperature2m);
-                    int auxSpeed = Math.Clamp(mvarTourmaline.SessionConfig.CurrentSpeed, 0, 100);
-                    if (auxSpeed > 40)
-                        cadenaSpeed = $"   {auxSpeed}km/h";
-                    string auxMensaje = $"{DateTime.Now:t}{cadenaTemp}{cadenaSpeed}";
-                    await mvarLedService.Print(true, auxMensaje, false);
-                    //Fuera muestran el número de tren.
-                }
-            }
-            if(!externalPriority)
-            {
-                if (null == auxCirc)
-                    await mvarLedService.Print(false, " ", false);
-                else
-                {
-                    string label = auxCirc.HasServiceNumber ? auxCirc.ServiceNumber : auxCirc.Id;
-                    await mvarLedService.Print(false, label, false);
-                }
-            }
-        }
-        private async Task LedPanelsShowDestination()
-        {
-            CabinEnvironment? enviro = mvarTourmaline.SessionConfig.Cabin;
-            if (null != enviro &&
-                null != enviro.Asimilation && 
-                mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Route)
-            {
-                Asimilation asimila = enviro.Asimilation;
-                bool updateExternal = mvarTourmaline.SessionConfig.MainSwitches.ExternalTeleindicatorsEnabled;
-                await mvarLedService.PrintDestination(asimila.Destination.Name, updateExternal);
-            }
-            else
-                await LedPanelsShowInfo(enviro?.Circulation);
         }
         
         /// <summary>

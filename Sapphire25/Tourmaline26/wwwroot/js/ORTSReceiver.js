@@ -11,8 +11,8 @@ window._ortsReceiver = window._ortsReceiver || {
     reconnectTimer: null
 };
 
-const STALL_MS = 4000;       // Sin frames durante este tiempo => reconectar
-const CONNECT_TIMEOUT_MS = 5000; // Sin primer frame => error
+const STALL_MS = 1500;         // Sin frames => reconectar (antes 4 s: fallback eterno)
+const CONNECT_TIMEOUT_MS = 1200; // Sin primer frame => error (antes 5 s)
 
 function _ortsClearTimers() {
     const r = window._ortsReceiver;

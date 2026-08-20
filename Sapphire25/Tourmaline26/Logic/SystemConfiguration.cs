@@ -6,8 +6,8 @@ namespace Tourmaline26.Logic
 	/// </summary>
 	public class SystemConfiguration
 	{
-		public string Version  => "V1.11B"; //Versión de este programa.
-		public DateTime Release => new DateTime(2026,8,18);
+		public string Version  => "V1.12B"; //Versión de este programa.
+		public DateTime Release => new DateTime(2026,8,20);
 		public Guid TrainId { get; set; } //Guid de este material móvil según Zafiro.
         public string Name { get; set; } = "Tren";
 		public DateTime LastRelease { get; set; } //Fecha de la última instalación de hardware.
@@ -39,6 +39,16 @@ namespace Tourmaline26.Logic
 		/// la pantalla de bienvenida. Por defecto 150.
 		/// </summary>
 		public int WelcomeDistanceMeters { get; set; } = 150;
+
+		/// <summary>
+		/// Antelación base (m) para el cartel de correspondencias / próxima estación.
+		/// </summary>
+		public int CorrespondenceBaseMeters { get; set; } = 300;
+
+		/// <summary>
+		/// Metros extra de antelación por cada bus anunciado en la tabla.
+		/// </summary>
+		public int CorrespondenceMetersPerBus { get; set; } = 100;
 
 	}
 }

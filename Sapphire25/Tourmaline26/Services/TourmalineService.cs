@@ -9,6 +9,7 @@ using Sapphire2025Models.Expert.WorkshiftTemplates;
 using Sapphire2026.Data.Models;
 using Tourmaline26.Logic;
 using Tourmaline26.Services.CabinCache;
+using Tourmaline26.Services.Correspondence;
 using Tourmaline26.Services.LocalDataModel;
 using Tourmaline26.Services.TourmalineExperience;
 
@@ -28,6 +29,7 @@ namespace Tourmaline26.Services
 		private LEDDisplayService mvarLedDisplayService;
 		private TourmalineExperienceService mvarTourmalineExperienceService;
 		private DiamondLocalCache mvarDiamondCache;
+		private CorrespondenceBoardService mvarCorrespondenceBoard;
 
 		/// <summary>Guid de topología configurado en appsettings (Diamond:TopoId).</summary>
 		public Guid ConfiguredTopoId { get; private set; }
@@ -44,7 +46,8 @@ namespace Tourmaline26.Services
 			ILogger<TourmalineService> logger,
 			LEDDisplayService ledDisplayService,
 			TourmalineExperienceService tourmalineExperience,
-			DiamondLocalCache diamondCache)
+			DiamondLocalCache diamondCache,
+			CorrespondenceBoardService correspondenceBoard)
 		{
 			mvarSessionConfig = new SessionConfiguration();
 			SystemConfig = new SystemConfiguration();
@@ -54,6 +57,7 @@ namespace Tourmaline26.Services
 			mvarLedDisplayService = ledDisplayService;
 			mvarTourmalineExperienceService = tourmalineExperience;
 			mvarDiamondCache = diamondCache;
+			mvarCorrespondenceBoard = correspondenceBoard;
 			mvarSessionConfig.Cabin = new CabinEnvironment();
 		}
 
@@ -463,44 +467,39 @@ namespace Tourmaline26.Services
 			}
 		}
 
-		private async Task AnnounceDestinationOnLedPanels(Circulation circulation)
-		{
-			if (null == circulation.Asimilation)
-				return;
-			if (!SessionConfig.MainSwitches.TeleindicatorsEnabled
-				|| !SessionConfig.MainSwitches.PASEnabled
-				|| SessionConfig.InformationLevel != Enums.InformationLevel.Route)
-				return;
-
-			await mvarLedDisplayService.PrintDestination(
-				circulation.Asimilation.Destination.Name,
-				SessionConfig.MainSwitches.ExternalTeleindicatorsEnabled);
-		}
-
 		public void UpdatePassengerInformationMode()
 		{
 			SessionConfiguration session = mvarSessionConfig;
 			CabinEnvironment? cabin = session.Cabin;
 			Circulation? circulation = cabin?.Circulation;
 
-			if (null == circulation)
+			if (null == circulation || cabin is null)
 			{
 				session.PreviewArrivalStation = null;
+				mvarCorrespondenceBoard.SetContext(null, null, PassengerTftLines());
 				if (session.InformationMode != Enums.PassengerInformationMode.Default)
 					session.InformationMode = Enums.PassengerInformationMode.Default;
 				return;
 			}
+
+			TimedCall? announced = ResolveAnnouncedCall(cabin, circulation);
+			string? destName = cabin.Asimilation?.Destination.Name
+				?? circulation.Asimilation?.Destination.Name;
+			mvarCorrespondenceBoard.SetContext(
+				announced?.Station.Name,
+				destName,
+				PassengerTftLines());
 
 			if (session.ServiceMode.Main
 				&& !session.ServiceMode.DemoMode
 				&& !session.ServiceMode.RouteSimulation)
 				return;
 
-			session.PreviewArrivalStation = null;
-
 			Enums.PassengerInformationMode next;
-			StationInfo? currentStation = cabin!.CurrentStation;
+			StationInfo? currentStation = cabin.CurrentStation;
 			Asimilation? asim = cabin.Asimilation;
+			StationInfo? lastStation = asim?.Destination;
+			StationInfo? originStation = asim?.Origin;
 
 			int welcomeMeters = SystemConfig.WelcomeDistanceMeters;
 			if (welcomeMeters < 0)
@@ -514,66 +513,117 @@ namespace Tourmaline26.Services
 				&& (!originPk.HasValue || destPk.Value != originPk.Value)
 				&& Math.Abs(cabin.PK - destPk.Value) < CabinItinerary.DefaultStationAreaMeters;
 
+			bool sameStation(StationInfo? a, StationInfo? b) =>
+				a is not null
+				&& b is not null
+				&& string.Equals(a.Id, b.Id, StringComparison.Ordinal);
+
+			int lookahead = CorrespondenceLookaheadMeters();
+			long remainingMeters = announced is null
+				? long.MaxValue
+				: Math.Abs(cabin.PK - announced.Pk);
+			bool withinLookahead = announced is not null && remainingMeters <= lookahead;
+
+			StationInfo? preview = null;
+
 			if (nearOrigin && !nearDestination)
 			{
 				next = Enums.PassengerInformationMode.BeginOfTrip;
 			}
-			else if (null == currentStation)
+			else if (currentStation is not null && sameStation(currentStation, lastStation))
 			{
-				next = session.CurrentSpeed < 60
+				next = Enums.PassengerInformationMode.EndOfTrip;
+			}
+			else if (currentStation is not null && sameStation(currentStation, originStation))
+			{
+				next = InMotionSlow(session)
 					? Enums.PassengerInformationMode.NextStopsList
 					: Enums.PassengerInformationMode.Cruise;
 			}
+			else if (IsTechnicalStop(circulation, currentStation))
+			{
+				next = InMotionSlow(session)
+					? Enums.PassengerInformationMode.NextStopsList
+					: Enums.PassengerInformationMode.Cruise;
+			}
+			else if (withinLookahead)
+			{
+				next = Enums.PassengerInformationMode.NextStopInfo;
+				if (currentStation is null && announced is not null)
+					preview = announced.Station;
+			}
 			else
 			{
-				StationInfo? lastStation = asim?.Destination;
-				StationInfo? originStation = asim?.Origin;
-
-				bool sameStation(StationInfo a, StationInfo b) =>
-					string.Equals(a.Id, b.Id, StringComparison.Ordinal);
-
-				if (null != lastStation && sameStation(currentStation, lastStation))
-				{
-					next = Enums.PassengerInformationMode.EndOfTrip;
-				}
-				else if (null != originStation && sameStation(currentStation, originStation))
-				{
-					next = session.CurrentSpeed < 60
-						? Enums.PassengerInformationMode.NextStopsList
-						: Enums.PassengerInformationMode.Cruise;
-				}
-				else
-				{
-					// Parada intermedia: si el dwell de la call actual es técnico, tratar como en ruta.
-					TimedCall? atStop = null;
-					int i = 0;
-					while (i < circulation.Calls.Count)
-					{
-						if (string.Equals(circulation.Calls[i].Station.Id, currentStation.Id, StringComparison.Ordinal))
-						{
-							atStop = circulation.Calls[i];
-							break;
-						}
-						i++;
-					}
-
-					if (atStop is not null
-						&& !atStop.IsDestination
-						&& !CabinItinerary.IsCommercial(atStop))
-					{
-						next = session.CurrentSpeed < 60
-							? Enums.PassengerInformationMode.NextStopsList
-							: Enums.PassengerInformationMode.Cruise;
-					}
-					else
-					{
-						next = Enums.PassengerInformationMode.NextStopInfo;
-					}
-				}
+				next = InMotionSlow(session)
+					? Enums.PassengerInformationMode.NextStopsList
+					: Enums.PassengerInformationMode.Cruise;
 			}
 
+			session.PreviewArrivalStation = preview;
 			if (session.InformationMode != next)
 				session.InformationMode = next;
+		}
+
+		private static bool InMotionSlow(SessionConfiguration session) =>
+			session.CurrentSpeed < 60;
+
+		private int CorrespondenceLookaheadMeters()
+		{
+			int baseMeters = SystemConfig.CorrespondenceBaseMeters;
+			if (baseMeters < 0)
+				baseMeters = 0;
+			int perBus = SystemConfig.CorrespondenceMetersPerBus;
+			if (perBus < 0)
+				perBus = 0;
+			return baseMeters + perBus * mvarCorrespondenceBoard.AnnouncedBusCount;
+		}
+
+		private int PassengerTftLines()
+		{
+			int take = 0;
+			foreach (DeviceMapped device in Devices)
+			{
+				if (device.Type != Enums.DeviceType.TFT)
+					continue;
+				if (device.Lines > take)
+					take = device.Lines;
+			}
+			return take > 0 ? take : 7;
+		}
+
+		private static TimedCall? ResolveAnnouncedCall(CabinEnvironment cabin, Circulation circulation)
+		{
+			TimedCall? atStop = FindCallAtStation(circulation, cabin.CurrentStation);
+			if (atStop is not null && CabinItinerary.IsCommercial(atStop))
+				return atStop;
+
+			IReadOnlyList<TimedCall> remaining = CabinItinerary.RemainingCommercialCalls(
+				circulation,
+				cabin.PK,
+				includeCurrentStation: false);
+			return remaining.Count > 0 ? remaining[0] : null;
+		}
+
+		private static TimedCall? FindCallAtStation(Circulation circulation, StationInfo? station)
+		{
+			if (station is null)
+				return null;
+			int i = 0;
+			while (i < circulation.Calls.Count)
+			{
+				if (string.Equals(circulation.Calls[i].Station.Id, station.Id, StringComparison.Ordinal))
+					return circulation.Calls[i];
+				i++;
+			}
+			return null;
+		}
+
+		private static bool IsTechnicalStop(Circulation circulation, StationInfo? station)
+		{
+			TimedCall? atStop = FindCallAtStation(circulation, station);
+			return atStop is not null
+				&& !atStop.IsDestination
+				&& !CabinItinerary.IsCommercial(atStop);
 		}
 
 		private async Task RecallTourmalineExperience(Asimilation asimilation)
