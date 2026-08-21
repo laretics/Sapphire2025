@@ -6,8 +6,8 @@ namespace Tourmaline26.Logic
 	/// </summary>
 	public class SystemConfiguration
 	{
-		public string Version  => "V1.12B"; //Versión de este programa.
-		public DateTime Release => new DateTime(2026,8,20);
+		public string Version  => "V1.13B"; //Versión de este programa.
+		public DateTime Release => new DateTime(2026,8,21);
 		public Guid TrainId { get; set; } //Guid de este material móvil según Zafiro.
         public string Name { get; set; } = "Tren";
 		public DateTime LastRelease { get; set; } //Fecha de la última instalación de hardware.

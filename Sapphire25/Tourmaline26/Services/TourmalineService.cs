@@ -476,7 +476,10 @@ namespace Tourmaline26.Services
 			if (null == circulation || cabin is null)
 			{
 				session.PreviewArrivalStation = null;
-				mvarCorrespondenceBoard.SetContext(null, null, PassengerTftLines());
+				mvarCorrespondenceBoard.SetContext(
+					stationName: null,
+					excludeDestination: null,
+					maxDepartures: PassengerTftLines());
 				if (session.InformationMode != Enums.PassengerInformationMode.Default)
 					session.InformationMode = Enums.PassengerInformationMode.Default;
 				return;
@@ -486,7 +489,7 @@ namespace Tourmaline26.Services
 			string? destName = cabin.Asimilation?.Destination.Name
 				?? circulation.Asimilation?.Destination.Name;
 			mvarCorrespondenceBoard.SetContext(
-				announced?.Station.Name,
+				announced?.Station,
 				destName,
 				PassengerTftLines());
 

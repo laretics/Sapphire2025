@@ -128,7 +128,10 @@ builder.Services.AddHttpClient(EmtDeparturesService.HttpClientName, client =>
         "Mozilla/5.0 (compatible; Tourmaline26; +https://www.emtpalma.cat)");
     client.DefaultRequestHeaders.TryAddWithoutValidation("Origin", "https://www.emtpalma.cat");
     client.DefaultRequestHeaders.Referrer = new Uri("https://www.emtpalma.cat/");
-});
+    client.DefaultRequestVersion = System.Net.HttpVersion.Version11;
+    client.DefaultVersionPolicy = System.Net.Http.HttpVersionPolicy.RequestVersionOrLower;
+})
+.ConfigurePrimaryHttpMessageHandler(OutboundHttp.CreateHandler);
 builder.Services.AddSingleton<EmtDeparturesService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<EmtDeparturesService>());
 builder.Services.AddSingleton<CorrespondenceBoardService>();
@@ -138,6 +141,8 @@ builder.Logging.AddConsole();
 builder.Logging.AddProvider(new TourmalineLogger(Path.Combine(AppContext.BaseDirectory, "Logs")));
 
 var app = builder.Build();
+
+OutboundHttp.Configure(app.Environment.ContentRootPath, app.Services.GetRequiredService<ILoggerFactory>());
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("API Address for SFM: {ApiAddress}", auxApiAddress);

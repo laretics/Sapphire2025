@@ -1,7 +1,7 @@
 ﻿@using System.Globalization
 @inject TourmalineService Tourmaline
-<div class="ratio ratio-1x1">
-    <svg viewBox="0 0 200 200" width="100%" height="100%" style="background: transparent;">
+<div class="ratio ratio-1x1 onyx-speedo @(IsOverspeed ? "onyx-speedo-overspeed" : "")">
+    <svg viewBox="0 0 200 200" width="100%" height="100%" overflow="visible" style="background: transparent;">
         <defs>
             <filter id="halo" x="-50%" y="-50%" width="200%" height="200%">
                 <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#7d8ae6" flood-opacity="0.7" />
@@ -31,21 +31,22 @@
                   stroke-width="3" 
                   />
 
-            <!-- Rayas radiales: velocidad actual con degradado -->
+            <!-- Rayas radiales: velocidad actual (rojo / glow si excede Vmax). -->
+            <g class="onyx-speedo-current-ticks">
             @{
                 var ticks = GetCurrentSpeedTicks().ToList();
                 int total = ticks.Count;
                 for (int i = 0; i < total; i++)
                 {
                     var tick = ticks[i];
-                    // Degradado de azul claro a azul oscuro
                     <line x1="@tick.X1.ToString(CultureInfo.InvariantCulture)"
                       y1="@tick.Y1.ToString(CultureInfo.InvariantCulture)"
                       x2="@tick.X2.ToString(CultureInfo.InvariantCulture)"
                       y2="@tick.Y2.ToString(CultureInfo.InvariantCulture)"
-                          stroke="var(--onyx-speed-current)" stroke-width="5" />
+                          stroke="@CurrentSpeedStroke" stroke-width="5" />
                 }
             }
+            </g>
             <!-- Arco interior: velocidad neutral -->
             <path d="@NeutralSpeedPath"
                   fill="none"
@@ -53,20 +54,22 @@
                   stroke-width="5"
                   filter="url(#halo)" />
         </g>
-        <!-- Velocidad actual (negro, centrado) -->
+        <!-- Velocidad actual (centrado; rojo / glow si excede Vmax). -->
         <text x="100" y="100"
+              class="onyx-speedo-cyphers"
               text-anchor="middle"
               dominant-baseline="middle"
               font-size="53"
               font-family="Segoe UI, Arial, sans-serif"
-              fill="var(--onyx-speed-cyphers)">
+              fill="@CurrentSpeedCypherFill">
             @ScreenCurrentSpeed.ToString()
         </text>
         <text x="100" y="135"
+              class="onyx-speedo-cyphers"
               text-anchor="middle"
               font-size="16"
               font-family="Segoe UI, Arial, sans-serif"
-              fill="var(--onyx-speed-units)">
+              fill="@CurrentSpeedUnitFill">
             km/h
         </text>
 
@@ -183,6 +186,17 @@
     // ------------------------------------------------------------------
     // Resto de tus métodos (sin cambios, solo usamos las variables Screen*)
     // ------------------------------------------------------------------
+    private bool IsOverspeed => ScreenMaxSpeed > 0 && ScreenCurrentSpeed > ScreenMaxSpeed;
+
+    private string CurrentSpeedStroke =>
+        IsOverspeed ? "var(--onyx-speed-overspeed)" : "var(--onyx-speed-current)";
+
+    private string CurrentSpeedCypherFill =>
+        IsOverspeed ? "var(--onyx-speed-overspeed)" : "var(--onyx-speed-cyphers)";
+
+    private string CurrentSpeedUnitFill =>
+        IsOverspeed ? "var(--onyx-speed-overspeed)" : "var(--onyx-speed-units)";
+
     private string MaxSpeedPath => DescribeArc(100, 100, 86, 0, SpeedToAngle(ScreenMaxSpeed));
     private string NeutralSpeedPath => DescribeArc(100, 100, 66, 0, SpeedToAngle(ScreenNeutralSpeed));
 

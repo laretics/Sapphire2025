@@ -3,6 +3,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Hosting;
+using Tourmaline26.Services.Catalog;
 
 namespace Tourmaline26.Services.Correspondence
 {
@@ -352,7 +353,7 @@ namespace Tourmaline26.Services.Correspondence
 
 		private static TibDeparture Map(string stopCode, TibDepartureDto dto)
 		{
-			string dest = FirstNonEmpty(dto.Ni, dto.Etn, dto.Snam);
+			string dest = PlaceNameText.CleanTransitHeadsign(FirstNonEmpty(dto.Ni, dto.Etn, dto.Snam));
 			return new TibDeparture
 			{
 				StopCode = stopCode,

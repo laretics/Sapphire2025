@@ -80,6 +80,12 @@
 	[Parameter]
 	public int ActiveTrainVmaxKmh { get; set; }
 
+	/// <summary>
+	/// Velocidad actual (km/h). La línea de tendencia sólo se dibuja si es &gt; 5.
+	/// </summary>
+	[Parameter]
+	public double CurrentSpeedKmh { get; set; }
+
 	protected override void OnParametersSet()
 	{
 		Rebuild();
@@ -127,7 +133,8 @@
 				ActiveCirculation,
 				NightMode,
 				trainVmax,
-				Topo);
+				Topo,
+				CurrentSpeedKmh);
 
 			mvarSvg = result.SvgMarkup;
 			mcolHits = result.Hits;

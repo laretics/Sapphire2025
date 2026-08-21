@@ -174,7 +174,7 @@ namespace Tourmaline26.Services.Catalog
 				}
 			}
 
-			return bestScore >= 50 ? best : null;
+			return bestScore >= 95 ? best : null;
 		}
 
 		private static int ScoreName(string needle, string? candidate)
@@ -184,12 +184,8 @@ namespace Tourmaline26.Services.Catalog
 				return 0;
 			if (cand == needle)
 				return 100;
-			if (cand.StartsWith(needle, StringComparison.Ordinal) || needle.StartsWith(cand, StringComparison.Ordinal))
-				return 80;
-			if (needle.Length >= 4 && cand.Contains(needle, StringComparison.Ordinal))
-				return 60;
-			if (cand.Length >= 4 && needle.Contains(cand, StringComparison.Ordinal))
-				return 50;
+			if (PlaceNameText.SameDistinctiveTokens(cand, needle))
+				return 95;
 			return 0;
 		}
 

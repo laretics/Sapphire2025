@@ -1,0 +1,32 @@
+{
+  "hosts": {
+    "info.trensfm.com": {
+      "addresses": [
+        "213.99.47.36"
+      ],
+      "lastSuccess": "213.99.47.36",
+      "updatedUtc": "2026-08-21T00:00:00Z"
+    },
+    "www.tib.org": {
+      "addresses": [
+        "85.62.90.188"
+      ],
+      "lastSuccess": "85.62.90.188",
+      "updatedUtc": "2026-08-21T00:00:00Z"
+    },
+    "www.emtpalma.cat": {
+      "addresses": [
+        "15.237.152.252"
+      ],
+      "lastSuccess": "15.237.152.252",
+      "updatedUtc": "2026-08-21T00:00:00Z"
+    },
+    "emtpalma.cat": {
+      "addresses": [
+        "15.237.152.252"
+      ],
+      "lastSuccess": "15.237.152.252",
+      "updatedUtc": "2026-08-21T00:00:00Z"
+    }
+  }
+}

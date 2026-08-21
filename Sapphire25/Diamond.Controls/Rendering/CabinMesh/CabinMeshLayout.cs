@@ -22,6 +22,11 @@ namespace Diamond.Controls.Rendering.CabinMesh
 		/// <summary>Minutos a la derecha (futuro): media hora siguiente.</summary>
 		public const double FutureMinutes = 30.0;
 
+		/// <summary>
+		/// Umbral de la línea de tendencia (km/h). Por debajo no se dibuja.
+		/// </summary>
+		public const double TrendMinSpeedKmh = 5.0;
+
 		private readonly double mvarWidth;
 		private readonly double mvarHeight;
 		private readonly long mvarPkCenter;
@@ -192,6 +197,60 @@ namespace Diamond.Controls.Rendering.CabinMesh
 		{
 			double t = x / mvarWidth;
 			return TimeMinSeconds + t * (TimeMaxSeconds - TimeMinSeconds);
+		}
+
+		/// <summary>
+		/// Rayo de tendencia a velocidad constante: nace en (ahora, PK tren)
+		/// y sale a la derecha. Recorta al borde superior (4 km adelante)
+		/// o al borde derecho (media hora). Falso si v ≤ umbral.
+		/// La pendiente en pantalla es proporcional a la velocidad: la
+		/// intersección con la horizontal de la siguiente estación es la
+		/// hora de llegada si se mantiene esa velocidad.
+		/// </summary>
+		public bool TryGetTrendLine(
+			double speedKmh,
+			out double x0,
+			out double y0,
+			out double x1,
+			out double y1)
+		{
+			x0 = XFromTimeSeconds(mvarNowSeconds);
+			y0 = mvarTrainY;
+			x1 = x0;
+			y1 = y0;
+			if (speedKmh <= TrendMinSpeedKmh)
+			{
+				return false;
+			}
+
+			double vMs = speedKmh * (1000.0 / 3600.0);
+			if (vMs < 1e-6)
+			{
+				return false;
+			}
+
+			double dtTop = AheadMeters / vMs;
+			double dtRight = FutureMinutes * 60.0;
+			double dt = dtTop < dtRight ? dtTop : dtRight;
+			double forward = vMs * dt;
+			if (forward > AheadMeters)
+			{
+				forward = AheadMeters;
+			}
+
+			x1 = XFromTimeSeconds(mvarNowSeconds + dt);
+			y1 = mvarTrainY * (1.0 - forward / AheadMeters);
+			if (x1 > mvarWidth)
+			{
+				x1 = mvarWidth;
+			}
+
+			if (y1 < 0.0)
+			{
+				y1 = 0.0;
+			}
+
+			return true;
 		}
 
 		public long RoutePkFromY(double y)

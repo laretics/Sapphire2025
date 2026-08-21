@@ -19,7 +19,7 @@ namespace Tourmaline26.Services.Correspondence
 		public string DestinationName { get; init; } = string.Empty;
 		/// <summary>Clave GenIco que acompaña o sustituye el nombre en TFT.</summary>
 		public string? DestinationIcon { get; init; }
-		/// <summary>True = el TFT muestra sólo el icono (el nombre sigue usándose para filtros).</summary>
+		/// <summary>True = el TFT muestra sólo el icono. Puerto y aeropuerto siempre van con el texto original.</summary>
 		public bool DestinationIconReplacesText { get; init; }
 		public string ServiceName { get; init; } = string.Empty;
 		public long TripId { get; init; }

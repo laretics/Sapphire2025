@@ -62,6 +62,10 @@ namespace Tourmaline26.Services
         private bool? mvarPrevDoorsOpen;
         private string? mvarOdoCirculationId;
         private DateTime mvarLastDummyOdoUpdate = DateTime.MinValue;
+        /// <summary>Flanco de salida de Demo / simulador de ruta (para devolver TE al tren real).</summary>
+        private bool mvarWasAnySimulation;
+        /// <summary>Tras ExitSim: un ciclo sin sync PK para no pisar el SetSpeed(0).</summary>
+        private bool mvarSkipExperienceSyncOnce;
 
         // --- Cámara automática Tourmaline Experience ---
         /// <summary>0=&lt;10 lateral, 1=10–49 drone, 2=50–69 cenital, 3=≥70 rotación.</summary>
@@ -248,6 +252,7 @@ namespace Tourmaline26.Services
                     CalculateTelemetry();
                     UpdateDemoSpeed();
                     mvarRouteSim.Tick();
+                    RestoreNormalAfterSimulation();
                     UpdateExperienceSpeedSync();
                     UpdateStationLeaveFromMvb();
                     UpdateExperienceCamera();
@@ -629,6 +634,27 @@ namespace Tourmaline26.Services
 		}
 
         /// <summary>
+        /// Al abandonar Demo o el simulador de ruta: TE a 0 km/h. El ciclo
+        /// siguiente retoma el seguimiento del tren real (MVB/GPS).
+        /// </summary>
+        private void RestoreNormalAfterSimulation()
+        {
+            SessionConfiguration session = mvarTourmaline.SessionConfig;
+            bool now = session.ServiceMode.AnySimulation;
+            if (mvarWasAnySimulation && !now)
+            {
+                mvarLastDemoSpeedSent = int.MinValue;
+                mvarLastExperienceSpeedSent = 0;
+                mvarLastDemoSpeedUpdate = DateTime.MinValue;
+                mvarSkipExperienceSyncOnce = true;
+                mvarDemoSetSpeedTask = SendExperienceSpeedAsync(0, "ExitSim");
+                mvarLogger.LogInformation("Simulación abandonada: TE a 0 km/h; el siguiente ciclo sigue al tren real.");
+            }
+
+            mvarWasAnySimulation = now;
+        }
+
+        /// <summary>
         /// En DemoMode, acerca <see cref="SessionConfiguration.SimulatedSpeed"/> a
         /// <see cref="SessionConfiguration.CurrentNeutralSpeed"/> y reenvía la
         /// velocidad actual al simulador (Tourmaline Experience).
@@ -701,6 +727,12 @@ namespace Tourmaline26.Services
             if (session.ServiceMode.DemoMode || session.ServiceMode.RouteSimulation)
             {
                 mvarLastExperienceSpeedSent = int.MinValue;
+                return;
+            }
+
+            if (mvarSkipExperienceSyncOnce)
+            {
+                mvarSkipExperienceSyncOnce = false;
                 return;
             }
 

@@ -1,8 +1,23 @@
 @using Tourmaline26.Components.Images
 @using Tourmaline26.Services.OpenMeteo
+@using Tourmaline26.Services.SfmInfo
+@implements IDisposable
+@inject SfmDeparturesService SfmPanel
 <div class="tesla-top-right-bar">
     @if(null!=mvarConfig)
     {
+        @if (mvarConfig.ServiceMode.AnySimulation)
+        {
+            <span class="sim-mode-flag" title="Modo simulado" aria-label="Modo simulado">
+                <ColorIcon Name="Science" Size="24" Color="#d4891a" Glow="true" GlowColor="#e8b04a" />
+            </span>
+        }
+        @if (ShowSfmSemaphore)
+        {
+            <span class="sfm-semaforo" title="@SfmSemaphoreTitle" aria-label="@SfmSemaphoreTitle">
+                <ColorIcon Name="CircleSolid" Size="22" Color="@SfmSemaphoreColor" Glow="true" GlowColor="@SfmSemaphoreColor" />
+            </span>
+        }
         @if(null!=mvarConfig.CurrentWeather)
         {
             <span><b>@(mvarConfig.CurrentWeather.Temperature2m)ºC</b></span>
@@ -48,4 +63,54 @@
 @code {
     [CascadingParameter]
     public SessionConfiguration? mvarConfig{get;set;}
+
+    protected override void OnInitialized()
+    {
+        SfmPanel.Updated += OnSfmUpdated;
+    }
+
+    public void Dispose()
+    {
+        SfmPanel.Updated -= OnSfmUpdated;
+    }
+
+    private void OnSfmUpdated(object? sender, EventArgs e)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>Sólo si hay lectura viva del panel SFM.</summary>
+    private bool ShowSfmSemaphore
+    {
+        get
+        {
+            if (!SfmPanel.IsConnected)
+                return false;
+            SfmPanelSnapshot snap = SfmPanel.Snapshot;
+            if (snap.StationCode <= 0 || snap.UpdatedUtc <= DateTime.MinValue)
+                return false;
+            int state = snap.PanelState;
+            return state >= 0 && state <= 3;
+        }
+    }
+
+    private int SfmPanelState => SfmPanel.Snapshot.PanelState;
+
+    private string SfmSemaphoreColor => SfmPanelState switch
+    {
+        0 => "#22c55e",
+        1 => "#eab308",
+        2 => "#f97316",
+        3 => "#dc2626",
+        _ => "#888888"
+    };
+
+    private string SfmSemaphoreTitle => SfmPanelState switch
+    {
+        0 => "Servicio correcto",
+        1 => "Retrasos superiores a 15 minutos",
+        2 => "Restricciones importantes en la línea",
+        3 => "Servicio interrumpido",
+        _ => "Estado SFM desconocido"
+    };
 }

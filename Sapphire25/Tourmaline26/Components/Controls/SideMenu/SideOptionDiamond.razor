@@ -126,13 +126,23 @@ else if (TourmalineService.SessionConfig.ServiceMode.Main)
     <p class="text-muted small">* Recuento del paquete (7 días). La botonera elige el Project del día.</p>
 }
 
-@if (TourmalineService.SessionConfig.ServiceMode.Main)
+@if (TourmalineService.SessionConfig.ServiceMode.Main
+    && !TourmalineService.SessionConfig.ServiceMode.DemoMode)
+{
+    <div class="route-sim mt-4">
+        <h3>Simulador de ruta</h3>
+        <p class="form-text mb-0">
+            Activa Demo (modo servicio) para F2–F5: iniciar, pausar, saltar y volver a modo real.
+        </p>
+    </div>
+}
+else if (TourmalineService.SessionConfig.ServiceMode.RouteSimKeysEnabled)
 {
     <div class="route-sim mt-4">
         <h3>Simulador de ruta</h3>
         <p class="small mb-2">
             Recorre la misión cargada con los tiempos de la malla (paradas + velocidad media de cada tramo).
-            No necesita Tourmaline Experience.
+            F3 inicia / reanuda, F4 pausa, F5 últimos 2 km, F2 vuelve a MVB/GPS reales.
         </p>
         <p class="mb-2">
             <span class="badge @RouteSimBadgeClass">@RouteSim.State</span>
@@ -143,19 +153,25 @@ else if (TourmalineService.SessionConfig.ServiceMode.Main)
                     class="btn btn-primary"
                     disabled="@(!HasCirculation)"
                     @onclick="StartRouteSim">
-                Iniciar / reanudar (F7)
+                Iniciar / reanudar (F3)
             </button>
             <button type="button"
                     class="btn btn-outline-secondary"
                     disabled="@(RouteSim.State != RouteSimulationService.SimState.Running)"
                     @onclick="PauseRouteSim">
-                Pausar (F8)
+                Pausar (F4)
             </button>
             <button type="button"
                     class="btn btn-outline-primary"
                     disabled="@(!HasCirculation)"
                     @onclick="JumpRouteSimTail">
-                Últimos 2 km (F9)
+                Últimos 2 km (F5)
+            </button>
+            <button type="button"
+                    class="btn btn-outline-danger"
+                    disabled="@(!SimulationActive)"
+                    @onclick="AbandonSimulation">
+                Modo real (F2)
             </button>
         </div>
         @if (!HasCirculation)
@@ -186,6 +202,10 @@ else if (TourmalineService.SessionConfig.ServiceMode.Main)
     private Diamond.Cabin.CabinEnvironment? cabin => TourmalineService.SessionConfig.Cabin;
 
     private bool HasCirculation => cabin?.Circulation is not null;
+
+    private bool SimulationActive =>
+        RouteSim.IsActive
+        || TourmalineService.SessionConfig.ServiceMode.AnySimulation;
 
     private string RouteSimBadgeClass => RouteSim.State switch
     {
@@ -249,6 +269,13 @@ else if (TourmalineService.SessionConfig.ServiceMode.Main)
     private void JumpRouteSimTail()
     {
         RouteSim.JumpToLastMeters();
+        TourmalineService.RaiseHMIUpdate();
+        TourmalineService.RaisePassengerUpdate();
+    }
+
+    private void AbandonSimulation()
+    {
+        RouteSim.Abandon();
         TourmalineService.RaiseHMIUpdate();
         TourmalineService.RaisePassengerUpdate();
     }

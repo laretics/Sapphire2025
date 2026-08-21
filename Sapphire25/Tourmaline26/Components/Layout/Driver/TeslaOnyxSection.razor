@@ -18,6 +18,7 @@
                            ClockNow="@(cabin?.ClockNow ?? DateTime.Now)"
                            NightMode="@NightMode"
                            ActiveTrainVmaxKmh="@ActiveTrainVmax"
+                           CurrentSpeedKmh="@(Tourmaline.SessionConfig.CurrentSpeed)"
                            CirculationPicked="OnCirculationPicked" />
         </div>
 

@@ -358,12 +358,14 @@
     [JSInvokable]
     public async Task HandleKey(string key)
     {
-        if (mvarTourmaline.SessionConfig.ServiceMode.Main
-            && (key == "F7" || key == "F8" || key == "F9"))
+        if (mvarTourmaline.SessionConfig.ServiceMode.RouteSimKeysEnabled
+            && (key == "F2" || key == "F3" || key == "F4" || key == "F5"))
         {
-            if (key == "F7")
+            if (key == "F2")
+                mvarRouteSim.Abandon();
+            else if (key == "F3")
                 mvarRouteSim.StartOrResume();
-            else if (key == "F8")
+            else if (key == "F4")
                 mvarRouteSim.Pause();
             else
                 mvarRouteSim.JumpToLastMeters();

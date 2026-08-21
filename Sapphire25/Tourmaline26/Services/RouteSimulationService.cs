@@ -38,7 +38,7 @@ namespace Tourmaline26.Services
 		private const double LongHopCruiseKmh = 70.0;
 		/// <summary>En simulación todas las paradas duran esto, da igual el dwell de malla.</summary>
 		private const double SimDwellSeconds = 15.0;
-		/// <summary>Salto F9: metros finales del trayecto.</summary>
+		/// <summary>Salto F5: metros finales del trayecto.</summary>
 		public const long JumpTailMeters = 2000;
 
 		public RouteSimulationService(
@@ -78,8 +78,8 @@ namespace Tourmaline26.Services
 			lock (mvarLock)
 			{
 				SessionConfiguration session = mvarTourmaline.SessionConfig;
-				if (!session.ServiceMode.Main)
-					return SetStatus("Solo en modo servicio.");
+				if (!session.ServiceMode.RouteSimKeysEnabled)
+					return SetStatus("Activa Demo en modo servicio.");
 
 				CabinEnvironment? cabin = session.Cabin;
 				Circulation? circulation = cabin?.Circulation;
@@ -197,15 +197,44 @@ namespace Tourmaline26.Services
 			}
 		}
 
+		/// <summary>
+		/// Sale de cualquier simulación (ruta F3–F5 y Demo 3/4) y deja MVB/GPS reales.
+		/// </summary>
+		public string Abandon()
+		{
+			lock (mvarLock)
+			{
+				SessionConfiguration session = mvarTourmaline.SessionConfig;
+				bool any = mvarState != SimState.Stopped
+					|| session.ServiceMode.AnySimulation
+					|| session.SimulatedSpeed != 0
+					|| session.CurrentNeutralSpeed != 0;
+
+				StopUnlocked("Modo real.");
+				session.ServiceMode.DemoMode = false;
+				RestoreLiveTelemetry(session);
+
+				if (!any)
+					return SetStatus("Ya en modo real.");
+
+				mvarLogger.LogInformation("Simulación abandonada; vuelta a MVB/GPS reales.");
+				mvarTourmaline.RaisePassengerUpdate();
+				mvarTourmaline.RaiseHMIUpdate();
+				return SetStatus("Modo real (MVB/GPS).");
+			}
+		}
+
 		public void Tick()
 		{
 			lock (mvarLock)
 			{
 				SessionConfiguration session = mvarTourmaline.SessionConfig;
-				if (!session.ServiceMode.Main)
+				if (!session.ServiceMode.RouteSimKeysEnabled)
 				{
 					if (mvarState != SimState.Stopped)
-						StopUnlocked("Modo servicio desactivado.");
+						StopUnlocked(session.ServiceMode.Main
+							? "Demo desactivado."
+							: "Modo servicio desactivado.");
 					return;
 				}
 
@@ -246,7 +275,7 @@ namespace Tourmaline26.Services
 				{
 					mvarState = SimState.Paused;
 					mvarLastTickUtc = DateTime.MinValue;
-					SetStatus("Fin de trayecto (F7 para repetir).");
+					SetStatus("Fin de trayecto (F3 para repetir).");
 				}
 			}
 		}
@@ -390,8 +419,8 @@ namespace Tourmaline26.Services
 		private string? EnsureCirculationUnlocked()
 		{
 			SessionConfiguration session = mvarTourmaline.SessionConfig;
-			if (!session.ServiceMode.Main)
-				return SetStatus("Solo en modo servicio.");
+			if (!session.ServiceMode.RouteSimKeysEnabled)
+				return SetStatus("Activa Demo en modo servicio.");
 
 			CabinEnvironment? cabin = session.Cabin;
 			Circulation? circulation = cabin?.Circulation;
@@ -498,7 +527,21 @@ namespace Tourmaline26.Services
 			mvarLastTickUtc = DateTime.MinValue;
 			mvarDwelling = false;
 			mvarTourmaline.SessionConfig.ServiceMode.RouteSimulation = false;
+			mvarTourmaline.SessionConfig.SimulatedSpeed = 0;
 			SetStatus(status);
+		}
+
+		/// <summary>
+		/// Deja de inyectar velocidad simulada. El dummy MVB residual se tira
+		/// para que el bus real vuelva a rellenar (si no, CurrentSpeed seguiría
+		/// leyendo el último valor de demo).
+		/// </summary>
+		private static void RestoreLiveTelemetry(SessionConfiguration session)
+		{
+			session.SimulatedSpeed = 0;
+			session.CurrentNeutralSpeed = 0;
+			if (!session.ServiceMode.MVBDummy)
+				session.CurrentMVBData = null;
 		}
 
 		private string SetStatus(string status)

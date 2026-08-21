@@ -103,6 +103,8 @@ h1:focus {
     --onyx-speed-neutral: #bfc6f7;
     --onyx-speed-cyphers:#222;
     --onyx-speed-units:#444;
+    --onyx-speed-overspeed: #e00000;
+    --onyx-speed-overspeed-glow: #ff1a1a;
     --onyx-delay-late: #e53935;
     --onyx-delay-early: #1565c0;
     --onyx-delay-zero: #888888;
@@ -124,10 +126,44 @@ h1:focus {
     --onyx-speed-neutral: #605050;
     --onyx-speed-cyphers: #622;
     --onyx-speed-units: #422;
+    --onyx-speed-overspeed: #ff8a8a;
+    --onyx-speed-overspeed-glow: #ff2d2d;
     --onyx-delay-late: #e07070;
     --onyx-delay-early: #7aa2d8;
     --onyx-delay-zero: #665555;
     --overlay-text: #622;
+}
+
+/* Exceso de Vmax: de día el trazo pasa a rojo fuerte (variables).
+   De noche el tema ya es rojo, así que el aviso es un glow (núcleo claro + bloom). */
+.night .onyx-speedo-overspeed .onyx-speedo-current-ticks,
+.night .onyx-speedo-overspeed .onyx-speedo-cyphers {
+    filter:
+        drop-shadow(0 0 1.2px #fff)
+        drop-shadow(0 0 4px var(--onyx-speed-overspeed-glow))
+        drop-shadow(0 0 10px var(--onyx-speed-overspeed-glow));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .night .onyx-speedo-overspeed .onyx-speedo-current-ticks,
+    .night .onyx-speedo-overspeed .onyx-speedo-cyphers {
+        animation: onyx-speedo-night-glow 1.15s ease-in-out infinite;
+    }
+}
+
+@keyframes onyx-speedo-night-glow {
+    0%, 100% {
+        filter:
+            drop-shadow(0 0 1px #ffd0d0)
+            drop-shadow(0 0 4px var(--onyx-speed-overspeed-glow))
+            drop-shadow(0 0 8px var(--onyx-speed-overspeed-glow));
+    }
+    50% {
+        filter:
+            drop-shadow(0 0 2px #fff)
+            drop-shadow(0 0 8px var(--onyx-speed-overspeed-glow))
+            drop-shadow(0 0 18px var(--onyx-speed-overspeed-glow));
+    }
 }
 
 .btn.btn-transparent {

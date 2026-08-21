@@ -1,4 +1,5 @@
 using System.Globalization;
+using Diamond.Project;
 using Tourmaline26.Services.Catalog;
 using Tourmaline26.Services.SfmInfo;
 
@@ -23,6 +24,7 @@ namespace Tourmaline26.Services.Correspondence
 		private readonly object mvarLock = new();
 
 		private string? mvarStationName;
+		private StationInfo? mvarStationHint;
 		private string? mvarExcludeDestination;
 		private int mvarMaxDepartures = 10;
 		private Place? mvarPlace;
@@ -115,12 +117,29 @@ namespace Tourmaline26.Services.Correspondence
 		/// </summary>
 		public void SetContext(string? stationName, string? excludeDestination, int maxDepartures)
 		{
+			SetContext(stationName, excludeDestination, maxDepartures, stationHint: null);
+		}
+
+		public void SetContext(StationInfo? station, string? excludeDestination, int maxDepartures)
+		{
+			SetContext(station?.Name, excludeDestination, maxDepartures, station);
+		}
+
+		private void SetContext(
+			string? stationName,
+			string? excludeDestination,
+			int maxDepartures,
+			StationInfo? stationHint)
+		{
 			int take = maxDepartures > 0 ? maxDepartures : 10;
 			bool resubscribe;
 			lock (mvarLock)
 			{
-				resubscribe = !string.Equals(mvarStationName, stationName, StringComparison.Ordinal);
+				resubscribe = !string.Equals(mvarStationName, stationName, StringComparison.Ordinal)
+					|| !string.Equals(mvarStationHint?.Id, stationHint?.Id, StringComparison.Ordinal)
+					|| !string.Equals(mvarStationHint?.Avr, stationHint?.Avr, StringComparison.OrdinalIgnoreCase);
 				mvarStationName = stationName;
+				mvarStationHint = stationHint;
 				mvarExcludeDestination = excludeDestination;
 				mvarMaxDepartures = take;
 			}
@@ -146,10 +165,14 @@ namespace Tourmaline26.Services.Correspondence
 		private void ApplySubscriptions()
 		{
 			string? stationName;
+			StationInfo? hint;
 			lock (mvarLock)
+			{
 				stationName = mvarStationName;
+				hint = mvarStationHint;
+			}
 
-			Place? place = ResolvePlace(stationName);
+			Place? place = ResolvePlace(stationName, hint);
 			SfmStation? sfmStation = ResolveSfmStation(stationName, place);
 
 			if (place is null && sfmStation is not null)
@@ -271,7 +294,7 @@ namespace Tourmaline26.Services.Correspondence
 		private ConnectionDeparture MapTrain(SfmDeparture dep)
 		{
 			string dest = ResolveDisplayName(dep.DestinationCode, dep.DestinationName);
-			DestLook look = LookupDestination(dest);
+			DestLook look = LookupDestination(dest, keepOriginalName: false);
 			string? notice = PrimaryNotice(dep);
 			return new ConnectionDeparture
 			{
@@ -294,7 +317,7 @@ namespace Tourmaline26.Services.Correspondence
 
 		private ConnectionDeparture MapTibBus(TibDeparture dep, TibStopRef stop)
 		{
-			DestLook look = LookupDestination(dep.DestinationName);
+			DestLook look = LookupDestination(dep.DestinationName, keepOriginalName: true);
 			return new ConnectionDeparture
 			{
 				Mode = ConnectionMode.Bus,
@@ -316,7 +339,7 @@ namespace Tourmaline26.Services.Correspondence
 
 		private ConnectionDeparture MapEmtBus(EmtDeparture dep)
 		{
-			DestLook look = LookupDestination(dep.DestinationName);
+			DestLook look = LookupDestination(dep.DestinationName, keepOriginalName: true);
 			return new ConnectionDeparture
 			{
 				Mode = ConnectionMode.Emt,
@@ -336,17 +359,61 @@ namespace Tourmaline26.Services.Correspondence
 			};
 		}
 
-		private DestLook LookupDestination(string? dest)
+		private DestLook LookupDestination(string? dest, bool keepOriginalName)
 		{
-			string raw = (dest ?? string.Empty).Trim();
-			Place? destPlace = mvarPlaces.FindByTibName(raw) ?? mvarPlaces.FindByDisplayName(raw);
-			string name = destPlace is not null && !string.IsNullOrWhiteSpace(destPlace.Names.Tft)
-				? destPlace.Names.Tft
-				: raw;
+			string raw = PlaceNameText.CleanTransitHeadsign((dest ?? string.Empty).Trim());
+			Place? destPlace = mvarPlaces.FindByTibName(raw);
+			if (destPlace is null)
+			{
+				Place? fuzzy = mvarPlaces.FindByDisplayName(raw);
+				// Un bus a Consell/Alaró no es la estación SFM Consell-Alaró.
+				if (fuzzy is not null && !(keepOriginalName && fuzzy.Kind == "rail"))
+					destPlace = fuzzy;
+			}
+
+			string name;
+			if (keepOriginalName)
+			{
+				if (destPlace is not null
+					&& destPlace.Kind != "rail"
+					&& !string.IsNullOrWhiteSpace(destPlace.Names.Tft))
+				{
+					name = destPlace.Names.Tft;
+				}
+				else
+				{
+					name = raw;
+				}
+			}
+			else if (destPlace is not null && !string.IsNullOrWhiteSpace(destPlace.Names.Tft))
+			{
+				name = destPlace.Names.Tft;
+			}
+			else
+			{
+				name = raw;
+			}
+
 			string? icon = destPlace is not null && destPlace.Names.Icon.Length > 0
 				? destPlace.Names.Icon
 				: null;
 			bool replace = destPlace is not null && destPlace.Names.IconMode == PlaceIconMode.Replace;
+
+			if (PlaceNameText.IsAirportWord(raw))
+			{
+				icon ??= "Airport";
+				replace = false;
+				if (keepOriginalName)
+					name = raw;
+			}
+			else if (PlaceNameText.IsPortWord(raw))
+			{
+				icon ??= "Ferry";
+				replace = false;
+				if (keepOriginalName)
+					name = raw;
+			}
+
 			return new DestLook(name, icon, replace);
 		}
 
@@ -468,12 +535,17 @@ namespace Tourmaline26.Services.Correspondence
 			if (place is null)
 				return false;
 
-			Place? destPlace = mvarPlaces.FindByDisplayName(destination)
-				?? mvarPlaces.FindByTibName(destination);
+			string cleaned = PlaceNameText.CleanTransitHeadsign(destination);
+			Place? destPlace = mvarPlaces.FindByTibName(cleaned)
+				?? mvarPlaces.FindByDisplayName(cleaned);
 			if (destPlace is not null)
+			{
+				if (destPlace.Kind == "bus" && place.Kind == "rail")
+					return false;
 				return string.Equals(destPlace.Id, place.Id, StringComparison.OrdinalIgnoreCase);
+			}
 
-			string destNorm = PlaceNameText.Normalize(destination);
+			string destNorm = PlaceNameText.Normalize(cleaned);
 			if (destNorm.Length == 0)
 				return false;
 			return destNorm == PlaceNameText.Normalize(place.Names.Canonical)
@@ -515,13 +587,21 @@ namespace Tourmaline26.Services.Correspondence
 				row.DestinationName);
 		}
 
-		private Place? ResolvePlace(string? stationName)
+		private Place? ResolvePlace(string? stationName, StationInfo? hint)
 		{
+			if (hint is not null)
+			{
+				Place? keyed = mvarPlaces.Find(hint);
+				if (keyed is not null)
+					return keyed;
+			}
+
 			if (string.IsNullOrWhiteSpace(stationName))
 				return null;
-			return mvarPlaces.FindByDisplayName(stationName)
+			return mvarPlaces.FindByDiamondId(stationName)
 				?? mvarPlaces.FindByAvr(stationName)
-				?? mvarPlaces.FindByDiamondId(stationName);
+				?? mvarPlaces.FindById(stationName)
+				?? mvarPlaces.FindByDisplayName(stationName);
 		}
 
 		private SfmStation? ResolveSfmStation(string? stationName, Place? place)
@@ -553,12 +633,8 @@ namespace Tourmaline26.Services.Correspondence
 				int score = 0;
 				if (cand == needle || abbr == needle)
 					score = 100;
-				else if (cand.StartsWith(needle, StringComparison.Ordinal) || needle.StartsWith(cand, StringComparison.Ordinal))
-					score = 80;
-				else if (needle.Length >= 4 && cand.Contains(needle, StringComparison.Ordinal))
-					score = 60;
-				else if (cand.Length >= 4 && needle.Contains(cand, StringComparison.Ordinal))
-					score = 50;
+				else if (PlaceNameText.SameDistinctiveTokens(cand, needle))
+					score = 95;
 
 				if (score > bestScore)
 				{
@@ -567,7 +643,7 @@ namespace Tourmaline26.Services.Correspondence
 				}
 			}
 
-			return bestScore >= 50 ? best : null;
+			return bestScore >= 95 ? best : null;
 		}
 
 		private static string? PrimaryNotice(SfmDeparture dep)

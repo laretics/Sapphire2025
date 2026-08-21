@@ -10,11 +10,12 @@
                 key === "ArrowDown" ||
                 key === "ArrowLeft" ||
                 key === "ArrowRight" ||
-                key === "F7" ||
-                key === "F8" ||
-                key === "F9"
+                key === "F2" ||
+                key === "F3" ||
+                key === "F4" ||
+                key === "F5"
             ) {
-                if (key === "F7" || key === "F8" || key === "F9") {
+                if (key === "F2" || key === "F3" || key === "F4" || key === "F5") {
                     e.preventDefault();
                 }
                 dotNetHelper.invokeMethodAsync('HandleKey', key);

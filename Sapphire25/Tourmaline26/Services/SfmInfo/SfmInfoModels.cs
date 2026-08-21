@@ -68,7 +68,11 @@ namespace Tourmaline26.Services.SfmInfo
         public int StationCode { get; init; }
         public string StationName { get; init; } = string.Empty;
         public DateTime? ServerClockLocal { get; init; }
-        /// <summary>0 verde … 3 rojo (semáforo del panel).</summary>
+        /// <summary>
+        /// Semáforo del panel SFM:
+        /// 0 verde (servicio correcto), 1 amarillo (retrasos &gt; 15 min),
+        /// 2 naranja (restricciones importantes), 3 rojo (servicio interrumpido).
+        /// </summary>
         public int PanelState { get; init; }
         public DateTime UpdatedUtc { get; init; }
         public IReadOnlyList<SfmDeparture> Departures { get; init; } = Array.Empty<SfmDeparture>();

@@ -97,7 +97,8 @@
     <correspondence entity="emt">
       <stop code="723" name="Metro Jacint Verdaguer" />
       <stop code="973" name="Metro Jacint Verdaguer" />
-    </correspondence>
+	  <stop code="296" name="Eusebi Estada - Pont des Tren" />
+	</correspondence>
   </place>
 
   <place id="son-costa" kind="rail">
@@ -152,10 +153,6 @@
       <clip role="enum" file="catalog/announce/son-rullan.enum.wav" />
       <clip role="final" file="catalog/announce/son-rullan.final.wav" />
     </announce>
-    <!-- EMT ≤220 m: 121 m. -->
-    <correspondence entity="emt">
-      <stop code="1108" name="Centre de Salut de Son Rutlan" />
-    </correspondence>
   </place>
 
   <place id="verge-de-lluc" kind="rail">
@@ -169,6 +166,7 @@
     </announce>
     <!-- EMT ≤220 m: 181 m y 201 m. -->
     <correspondence entity="emt">
+	  <stop code="1108" name="Centre de Salut de Son Rutlan" />
       <stop code="37" name="Aragó - Verge de Lluc" />
       <stop code="124" name="Aragó - Verge de Lluc" />
     </correspondence>
@@ -199,6 +197,9 @@
       <clip role="enum" file="catalog/announce/pont-dinca-nou.enum.wav" />
       <clip role="final" file="catalog/announce/pont-dinca-nou.final.wav" />
     </announce>
+	<correspondence entity="emt">
+		<stop code="35" name="Antoni Maura - Farinera" />
+	</correspondence>	  
   </place>
 
   <place id="poligon-marratxi" kind="rail">
@@ -259,6 +260,7 @@
       <clip role="enum" file="catalog/announce/consell-alaro.enum.wav" />
       <clip role="final" file="catalog/announce/consell-alaro.final.wav" />
     </announce>
+    <!-- Lanzadera 342: Estació → Alaró y Estació → Consell (pueblos, no la estación). 331: Orient (festivos). -->
     <correspondence entity="ctmr4">
       <stop code="16008" name="Estació Alaró/Consell">
         <line code="342" />
@@ -318,6 +320,17 @@
       <clip role="enum" file="catalog/announce/constancia.enum.wav" />
       <clip role="final" file="catalog/announce/constancia.final.wav" />
     </announce>
+	<correspondence entity="ctmr4">
+		<stop code="27014" name="Inca Llevant 1">
+			<line code="301" />
+			<line code="302" />
+			<line code="304" />
+			<line code="312" />
+			<line code="314" />
+			<line code="316" />
+			<line code="A32" />
+		</stop>
+	</correspondence>
   </place>
 
   <place id="enllac" kind="rail">
@@ -393,7 +406,7 @@
       <clip role="final" file="catalog/announce/manacor.final.wav" />
     </announce>
     <!-- Tres dársenas TIB junto a la estación de tren. -->
-    <correspondence entity="ctmr4">
+	<correspondence entity="ctmr4">
       <stop code="33044" name="Estació de tren 1" bay="1">
         <line code="401" />
         <line code="501" />
@@ -591,7 +604,7 @@
 
   <place id="aeroport" kind="bus">
     <keys tibName="Aeroport" />
-    <names canonical="Aeroport" led="AEROPORT" teleindicator="Aeroport" tft="Aeroport" icon="Airport" iconMode="replace" />
+    <names canonical="Aeroport" led="AEROPORT" teleindicator="Aeroport" tft="Aeroport" icon="Airport" iconMode="prefix" />
     <announce>
       <clip role="enum" file="catalog/announce/aeroport.enum.wav" />
       <clip role="final" file="catalog/announce/aeroport.final.wav" />
@@ -600,7 +613,7 @@
 
   <place id="port" kind="bus">
     <keys tibName="Dic de l'Oest" />
-    <names canonical="Dic de l'Oest" led="PORT" teleindicator="Port" tft="Port" icon="Ferry" iconMode="replace" />
+    <names canonical="Dic de l'Oest" led="PORT" teleindicator="Port" tft="Port" icon="Ferry" iconMode="prefix" />
     <announce>
       <clip role="enum" file="catalog/announce/port.enum.wav" />
       <clip role="final" file="catalog/announce/port.final.wav" />

@@ -108,6 +108,14 @@
         /// </summary>
         public bool RouteSimulation { get; set; }
 
+        /// <summary>Demo (teclas 3/4 → Experience) o simulador de ruta (F3–F5).</summary>
+        public bool AnySimulation => DemoMode || RouteSimulation;
+
+        /// <summary>
+        /// Teclas F2–F5 del simulador de ruta: sólo en modo servicio con Demo activo.
+        /// </summary>
+        public bool RouteSimKeysEnabled => Main && DemoMode;
+
         /// <summary>Monitor de viajeros en el HMI (ajuste con una sola pantalla).</summary>
         public bool PassengerScreenOnHMI { get; set; }
 

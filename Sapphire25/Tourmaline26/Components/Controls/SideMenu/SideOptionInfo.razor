@@ -1,5 +1,6 @@
 ﻿@using Tourmaline26.Components.Controls.Generical
 @inject TourmalineService TourmalineService
+@inject RouteSimulationService RouteSim
 <img src="img/81pic1.png"
      alt="Imagen informativa"
      class="img-fluid rounded shadow mx-auto d-block my-4"
@@ -16,6 +17,10 @@
     </ul>
     <Switch Label="Demo" Value="@TourmalineService.SessionConfig.ServiceMode.DemoMode"
             ValueChanged="@((bool v) => SetDemoMode(v))" />
+    <p class="form-text mb-2">
+        Demo: teclas 3/4 rampa a Tourmaline Experience.
+        Con Demo activo, F3–F5 simulador de ruta; F2 o desactivar Demo: modo real.
+    </p>
 }
 <Switch Label="Modo de Servicio" Value="@TourmalineService.SessionConfig.ServiceMode.Main"
         ValueChanged="@((bool v) => SetServiceMode(v))" />
@@ -28,18 +33,26 @@
     }
     private void SetServiceMode(bool value)
     {
-        // Al desactivar servicio, ServiceMode limpia Demo/MVBDummy/GPSDummy.
+        if (!value)
+            RouteSim.Abandon();
         TourmalineService.SessionConfig.ServiceMode.Main = value;
         TourmalineService.RaiseHMIUpdate();
     }
     private void SetDemoMode(bool value)
     {
-        // Demo enciende/apaga MVBDummy y GPSDummy de forma explícita.
-        TourmalineService.SessionConfig.ServiceMode.DemoMode = value;
-        if (value && TourmalineService.SessionConfig.CurrentMVBData is null)
+        if (value)
         {
-            TourmalineService.SessionConfig.CurrentMVBData = new MVBData();
-            TourmalineService.SessionConfig.CurrentMVBData.SimulateLoops();
+            RouteSim.Stop();
+            TourmalineService.SessionConfig.ServiceMode.DemoMode = true;
+            if (TourmalineService.SessionConfig.CurrentMVBData is null)
+            {
+                TourmalineService.SessionConfig.CurrentMVBData = new MVBData();
+                TourmalineService.SessionConfig.CurrentMVBData.SimulateLoops();
+            }
+        }
+        else
+        {
+            RouteSim.Abandon();
         }
         TourmalineService.RaiseHMIUpdate();
     }

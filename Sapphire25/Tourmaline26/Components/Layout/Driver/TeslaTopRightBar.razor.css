@@ -17,3 +17,10 @@
         font-weight: bold;
         letter-spacing: 0.1em;        
     }
+
+    .tesla-top-right-bar .sim-mode-flag,
+    .tesla-top-right-bar .sfm-semaforo {
+        display: inline-flex;
+        align-items: center;
+        line-height: 0;
+    }

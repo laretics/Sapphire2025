@@ -44,6 +44,9 @@ namespace Diamond.Controls.Rendering.CabinMesh
 		/// Techo del tren activo (km/h). Limitaciones ≥ este valor no se dibujan.
 		/// 0 = sin filtro (p. ej. sin tren seleccionado).
 		/// </param>
+		/// <param name="currentSpeedKmh">
+		/// Velocidad actual (km/h). La línea de tendencia sólo se dibuja si es &gt; 5.
+		/// </param>
 		public static Result Build(
 			CabinMeshLayout layout,
 			CabinMeshPalette palette,
@@ -52,7 +55,8 @@ namespace Diamond.Controls.Rendering.CabinMesh
 			Circulation? active,
 			bool nightMode,
 			int activeTrainVmaxKmh = 0,
-			TopoLayout? topo = null)
+			TopoLayout? topo = null,
+			double currentSpeedKmh = 0)
 		{
 			StringBuilder sb = new StringBuilder(8192);
 			List<HitSegment> hits = new List<HitSegment>();
@@ -90,7 +94,8 @@ namespace Diamond.Controls.Rendering.CabinMesh
 				.Append("</mask>")
 				.Append("</defs>");
 
-			// Capas: tiempo → estaciones (fade H) → PK hectométricos → límites V → trenes → ahora.
+			// Capas: tiempo → estaciones (fade H) → PK hectométricos → límites V → trenes
+			// → PK tren (fade H) → ahora → tendencia → marcador.
 			AppendTimeGrid(sb, layout, palette);
 			if (view is not null)
 			{
@@ -154,8 +159,22 @@ namespace Diamond.Controls.Rendering.CabinMesh
 				}
 			}
 
-			// Línea de “ahora” (centro X).
 			double nowX = layout.XFromTimeSeconds(layout.NowSeconds);
+
+			// PK del tren: horizontal a TrainY, mismos extremos difuminados que las estaciones.
+			sb.Append("<g class=\"cabin-mesh-train-pk\" mask=\"url(#cabinMeshHMask)\">")
+				.Append("<line x1=\"0\" y1=\"")
+				.Append(F(layout.TrainY))
+				.Append("\" x2=\"")
+				.Append(w)
+				.Append("\" y2=\"")
+				.Append(F(layout.TrainY))
+				.Append("\" stroke=\"")
+				.Append(palette.NowLine)
+				.Append("\" stroke-width=\"1.8\" opacity=\"0.8\"/>")
+				.Append("</g>");
+
+			// Línea de “ahora” (centro X).
 			sb.Append("<line class=\"cabin-mesh-now\" x1=\"")
 				.Append(F(nowX))
 				.Append("\" y1=\"0\" x2=\"")
@@ -166,7 +185,9 @@ namespace Diamond.Controls.Rendering.CabinMesh
 				.Append(palette.NowLine)
 				.Append("\" stroke-width=\"1.5\" stroke-dasharray=\"4 3\" opacity=\"0.85\"/>");
 
-			// Marcador de posición del tren (centro geométrico del control en Y=TrainY).
+			AppendTrendLine(sb, layout, palette, currentSpeedKmh);
+
+			// Marcador de posición del tren (intersección ahora × PK).
 			sb.Append("<circle class=\"cabin-mesh-train-pos\" cx=\"")
 				.Append(F(nowX))
 				.Append("\" cy=\"")
@@ -292,6 +313,39 @@ namespace Diamond.Controls.Rendering.CabinMesh
 			}
 
 			return set;
+		}
+
+		/// <summary>
+		/// Línea de tendencia: punto-raya-punto desde (ahora, PK tren) a la derecha.
+		/// Pendiente ∝ velocidad actual. Sólo si v &gt; 5 km/h.
+		/// </summary>
+		private static void AppendTrendLine(
+			StringBuilder sb,
+			CabinMeshLayout layout,
+			CabinMeshPalette palette,
+			double currentSpeedKmh)
+		{
+			double x0;
+			double y0;
+			double x1;
+			double y1;
+			if (!layout.TryGetTrendLine(currentSpeedKmh, out x0, out y0, out x1, out y1))
+			{
+				return;
+			}
+
+			sb.Append("<line class=\"cabin-mesh-trend\" x1=\"")
+				.Append(F(x0))
+				.Append("\" y1=\"")
+				.Append(F(y0))
+				.Append("\" x2=\"")
+				.Append(F(x1))
+				.Append("\" y2=\"")
+				.Append(F(y1))
+				.Append("\" stroke=\"")
+				.Append(palette.NowLine)
+				.Append("\" stroke-width=\"1.7\" stroke-linecap=\"round\" ")
+				.Append("stroke-dasharray=\"2 5 10 5\" opacity=\"0.9\"/>");
 		}
 
 		private static void AppendTimeGrid(StringBuilder sb, CabinMeshLayout layout, CabinMeshPalette palette)
