@@ -1,7 +1,8 @@
 @using System.Globalization
 @using Tourmaline26.Services.Correspondence
-@implements IDisposable
+@implements IAsyncDisposable
 @inject CorrespondenceBoardService mvarBoard
+@inject IJSRuntime JS
 
 <div class="nst-root">
     @* ── Cabecera: próxima estación ─────────────────────────────────────── *@
@@ -12,7 +13,7 @@
     </section>
 
     @* ── Pie: salidas / correspondencias ────────────────────────────────── *@
-    <section class="nst-board" aria-label="Correspondències">
+    <section class="nst-board" aria-label="Correspondències" @ref="mvarWrap">
         @if (FilteredDepartures.Count > 0)
         {
             <div class="nst-table-wrap">
@@ -34,6 +35,11 @@
                                         <span class="nst-eta @(soon ? "nst-eta--soon" : null)">@FormatEta(dep)</span>
                                     }
                                 </td>
+                                <td class="nst-col-op">
+                                    <img src="@OperatorLogo(dep)"
+                                         alt="@OperatorTitle(dep)"
+                                         class="nst-op-logo @OperatorLogoClass(dep)" />
+                                </td>
                                 <td class="nst-col-line">
                                     <span class="nst-line"
                                           style="--line-color: @lineBg; color: @ContrastInk(lineBg)">
@@ -41,24 +47,29 @@
                                     </span>
                                 </td>
                                 <td class="nst-col-dest">
-                                    <span class="nst-dest">@dep.DestinationName</span>
+                                    <span class="nst-dest" title="@dep.DestinationName">
+                                        @if (!string.IsNullOrEmpty(dep.DestinationIcon))
+                                        {
+                                            <span class="nst-dest-icon" aria-hidden="true">
+                                                <ColorIcon Name="@dep.DestinationIcon" Size="28" Color="currentColor" />
+                                            </span>
+                                        }
+                                        @if (string.IsNullOrEmpty(dep.DestinationIcon) || !dep.DestinationIconReplacesText)
+                                        {
+                                            <span class="nst-dest-text">@dep.DestinationName</span>
+                                        }
+                                    </span>
                                     @if (!string.IsNullOrEmpty(dep.Notice))
                                     {
                                         <span class="nst-notice">@dep.Notice</span>
                                     }
                                 </td>
                                 <td class="nst-col-plat">
-                                    @if (dep.IsBus)
+                                    @if (dep.Mode == ConnectionMode.Bus && dep.Platform.HasValue)
                                     {
-                                        string platClass = dep.Mode == ConnectionMode.Emt
-                                            ? "nst-plat nst-plat--emt"
-                                            : "nst-plat nst-plat--bus";
-                                        string platTitle = dep.Mode == ConnectionMode.Emt ? "EMT" : "Autobús";
-                                        <span class="@platClass" title="@platTitle">
-                                            <ColorIcon Name="Bus" Size="22" Color="#ffffff" />
-                                        </span>
+                                        <span class="nst-plat nst-plat--bus" title="Dàrsena">@dep.Platform</span>
                                     }
-                                    else if (dep.Platform.HasValue)
+                                    else if (dep.Mode == ConnectionMode.Train && dep.Platform.HasValue)
                                     {
                                         <span class="nst-plat @(dep.PlatformChanged ? "nst-plat--changed" : null)">
                                             @dep.Platform
@@ -67,10 +78,6 @@
                                         {
                                             <span class="nst-plat-old" title="Andana original">@dep.OriginalPlatform</span>
                                         }
-                                    }
-                                    else
-                                    {
-                                        <span class="nst-plat nst-plat--empty">—</span>
                                     }
                                 </td>
                             </tr>
@@ -113,9 +120,13 @@
     [Parameter]
     public string? TrainDestinationName { get; set; }
 
-    /// <summary>Máximo de filas de salidas a mostrar.</summary>
+    /// <summary>Tope de filas; el panel usa las que quepan enteras en el hueco.</summary>
     [Parameter]
-    public int MaxDepartures { get; set; } = 10;
+    public int MaxDepartures { get; set; } = 20;
+
+    private ElementReference mvarWrap;
+    private DotNetObjectReference<NextStationTable>? mvarJs;
+    private int mvarFitCount;
 
     private string DisplayStationName
     {
@@ -141,9 +152,52 @@
         PushContext();
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         mvarBoard.Updated -= OnBoardUpdated;
+        try
+        {
+            await JS.InvokeVoidAsync("NstTable.dispose", mvarWrap);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+
+        mvarJs?.Dispose();
+        mvarJs = null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                mvarJs = DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("NstTable.observe", mvarWrap, mvarJs);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("NstTable.layout", mvarWrap);
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    [JSInvokable]
+    public void OnTableFit(int rows)
+    {
+        int next = Math.Clamp(rows, 1, MaxDepartures > 0 ? MaxDepartures : 20);
+        if (next == mvarFitCount)
+            return;
+        mvarFitCount = next;
+        PushContext();
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private void OnBoardUpdated(object? sender, EventArgs e)
@@ -153,7 +207,8 @@
 
     private void PushContext()
     {
-        mvarBoard.SetContext(NextStationName, TrainDestinationName, MaxDepartures);
+        int take = mvarFitCount > 0 ? mvarFitCount : (MaxDepartures > 0 ? MaxDepartures : 20);
+        mvarBoard.SetContext(NextStationName, TrainDestinationName, take);
     }
 
     private static string FormatTime(ConnectionDeparture dep)
@@ -191,6 +246,30 @@
         dep.EstimatedTimeLocal == DateTime.MinValue
             ? string.Empty
             : dep.EstimatedTimeLocal.ToString("HH:mm");
+
+    private static string OperatorLogo(ConnectionDeparture dep) =>
+        dep.Mode switch
+        {
+            ConnectionMode.Emt => "/img/correspondence/EmtPalma.png",
+            ConnectionMode.Bus => "/img/correspondence/Tib_logo.png",
+            _ => "/img/sfm-logo.svg"
+        };
+
+    private static string OperatorLogoClass(ConnectionDeparture dep) =>
+        dep.Mode switch
+        {
+            ConnectionMode.Emt => "nst-op-logo--emt",
+            ConnectionMode.Bus => "nst-op-logo--tib",
+            _ => "nst-op-logo--sfm"
+        };
+
+    private static string OperatorTitle(ConnectionDeparture dep) =>
+        dep.Mode switch
+        {
+            ConnectionMode.Emt => "EMT Palma",
+            ConnectionMode.Bus => "TIB",
+            _ => "SFM"
+        };
 
     private static string LineColor(ConnectionDeparture dep)
     {

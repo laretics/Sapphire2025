@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -106,7 +107,11 @@ namespace Tourmaline26.Services.SfmInfo
         private async Task<string> GetAsync(string? sid, CancellationToken cancellationToken)
         {
             string url = BuildUrl(sid);
-            using HttpResponseMessage response = await mvarHttp.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Version = HttpVersion.Version11;
+            req.VersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+            req.Headers.TryAddWithoutValidation("Accept", "*/*");
+            using HttpResponseMessage response = await mvarHttp.SendAsync(req, cancellationToken).ConfigureAwait(false);
             string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
                 throw new HttpRequestException($"Socket.IO GET {response.StatusCode}: {Truncate(body)}");
@@ -122,7 +127,13 @@ namespace Tourmaline26.Services.SfmInfo
             using var content = new StringContent(body, Encoding.UTF8);
             content.Headers.ContentType = new MediaTypeHeaderValue("text/plain") { CharSet = "UTF-8" };
 
-            using HttpResponseMessage response = await mvarHttp.PostAsync(url, content, cancellationToken).ConfigureAwait(false);
+            using var req = new HttpRequestMessage(HttpMethod.Post, url);
+            req.Version = HttpVersion.Version11;
+            req.VersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+            req.Headers.TryAddWithoutValidation("Accept", "*/*");
+            req.Content = content;
+
+            using HttpResponseMessage response = await mvarHttp.SendAsync(req, cancellationToken).ConfigureAwait(false);
             string responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
                 throw new HttpRequestException($"Socket.IO POST {response.StatusCode}: {Truncate(responseBody)}");

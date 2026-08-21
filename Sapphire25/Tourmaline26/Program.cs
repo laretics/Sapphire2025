@@ -10,6 +10,7 @@ using Tourmaline26.Services.Cameras;
 using Tourmaline26.Services.Logging;
 using Tourmaline26.Services.Catalog;
 using Tourmaline26.Services.Correspondence;
+using Tourmaline26.Services.Http;
 using Tourmaline26.Services.SfmInfo;
 using Tourmaline26.Services.TourmalineExperience;
 
@@ -93,11 +94,11 @@ builder.Services.AddHttpClient(SfmDeparturesService.HttpClientName, client =>
 {
     string panelUrl = builder.Configuration["SystemConfiguration:SfmPanelUrl"] ?? "https://info.trensfm.com";
     client.BaseAddress = new Uri(panelUrl.EndsWith("/") ? panelUrl : panelUrl + "/");
-    // Long-poll de Engine.IO puede quedar abierto ~20–25 s.
-    client.Timeout = TimeSpan.FromSeconds(60);
-    client.DefaultRequestHeaders.Accept.Add(
-        new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-});
+    // Long-poll de Engine.IO puede quedar abierto ~20–25 s; el tren a veces es lento.
+    client.Timeout = TimeSpan.FromSeconds(90);
+    OutboundHttp.ApplyBrowserDefaults(client, panelUrl);
+})
+.ConfigurePrimaryHttpMessageHandler(OutboundHttp.CreateHandler);
 builder.Services.AddSingleton<SfmDeparturesService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<SfmDeparturesService>());
 builder.Services.AddSingleton<PlacesCatalog>();
@@ -106,12 +107,13 @@ builder.Services.AddHttpClient(TibDeparturesService.HttpClientName, client =>
 {
     string tibUrl = builder.Configuration["SystemConfiguration:TibBaseUrl"] ?? "https://www.tib.org";
     client.BaseAddress = new Uri(tibUrl.EndsWith("/") ? tibUrl : tibUrl + "/");
-    client.Timeout = TimeSpan.FromSeconds(20);
+    client.Timeout = TimeSpan.FromSeconds(45);
     client.DefaultRequestHeaders.Accept.Add(
         new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-    client.DefaultRequestHeaders.UserAgent.ParseAdd(
-        "Mozilla/5.0 (compatible; Tourmaline26; +https://www.tib.org)");
-});
+    client.DefaultRequestHeaders.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
+    OutboundHttp.ApplyBrowserDefaults(client, tibUrl);
+})
+.ConfigurePrimaryHttpMessageHandler(OutboundHttp.CreateHandler);
 builder.Services.AddSingleton<TibDeparturesService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<TibDeparturesService>());
 

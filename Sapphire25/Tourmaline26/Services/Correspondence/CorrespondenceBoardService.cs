@@ -230,7 +230,7 @@ namespace Tourmaline26.Services.Correspondence
 						if (!LineAllowed(stop, bus.LineCode))
 							continue;
 
-						ConnectionDeparture row = MapTibBus(bus);
+						ConnectionDeparture row = MapTibBus(bus, stop);
 						if (!IsUsable(row, now, exclude, place, stationName))
 							continue;
 						rows.Add(row);
@@ -271,6 +271,7 @@ namespace Tourmaline26.Services.Correspondence
 		private ConnectionDeparture MapTrain(SfmDeparture dep)
 		{
 			string dest = ResolveDisplayName(dep.DestinationCode, dep.DestinationName);
+			DestLook look = LookupDestination(dest);
 			string? notice = PrimaryNotice(dep);
 			return new ConnectionDeparture
 			{
@@ -280,6 +281,8 @@ namespace Tourmaline26.Services.Correspondence
 				LineSymbol = string.IsNullOrWhiteSpace(dep.LineSymbol) ? "—" : dep.LineSymbol,
 				LineColorHex = string.IsNullOrWhiteSpace(dep.LineColorHex) ? "#004F8D" : dep.LineColorHex,
 				DestinationName = dest,
+				DestinationIcon = look.Icon,
+				DestinationIconReplacesText = look.ReplaceText,
 				ServiceName = dep.ServiceName,
 				TripId = dep.ServicePlanCode,
 				Platform = dep.Platform,
@@ -289,9 +292,9 @@ namespace Tourmaline26.Services.Correspondence
 			};
 		}
 
-		private ConnectionDeparture MapTibBus(TibDeparture dep)
+		private ConnectionDeparture MapTibBus(TibDeparture dep, TibStopRef stop)
 		{
-			string dest = ResolveBusDestination(dep.DestinationName);
+			DestLook look = LookupDestination(dep.DestinationName);
 			return new ConnectionDeparture
 			{
 				Mode = ConnectionMode.Bus,
@@ -299,10 +302,12 @@ namespace Tourmaline26.Services.Correspondence
 				EstimatedTimeLocal = DateTime.MinValue,
 				LineSymbol = string.IsNullOrWhiteSpace(dep.LineCode) ? "—" : dep.LineCode,
 				LineColorHex = dep.LineColorHex,
-				DestinationName = dest,
+				DestinationName = look.Name,
+				DestinationIcon = look.Icon,
+				DestinationIconReplacesText = look.ReplaceText,
 				ServiceName = dep.TripId.ToString(CultureInfo.InvariantCulture),
 				TripId = dep.TripId,
-				Platform = null,
+				Platform = stop.BayFor(dep.LineCode),
 				OriginalPlatform = null,
 				PlatformChanged = false,
 				Notice = null
@@ -311,7 +316,7 @@ namespace Tourmaline26.Services.Correspondence
 
 		private ConnectionDeparture MapEmtBus(EmtDeparture dep)
 		{
-			string dest = ResolveBusDestination(dep.DestinationName);
+			DestLook look = LookupDestination(dep.DestinationName);
 			return new ConnectionDeparture
 			{
 				Mode = ConnectionMode.Emt,
@@ -319,7 +324,9 @@ namespace Tourmaline26.Services.Correspondence
 				EstimatedTimeLocal = DateTime.MinValue,
 				LineSymbol = string.IsNullOrWhiteSpace(dep.LineCode) ? "—" : dep.LineCode,
 				LineColorHex = dep.LineColorHex,
-				DestinationName = dest,
+				DestinationName = look.Name,
+				DestinationIcon = look.Icon,
+				DestinationIconReplacesText = look.ReplaceText,
 				ServiceName = string.Concat(dep.StopCode, ":", dep.LineCode),
 				TripId = 0,
 				Platform = null,
@@ -329,18 +336,46 @@ namespace Tourmaline26.Services.Correspondence
 			};
 		}
 
-		private string ResolveBusDestination(string dest)
+		private DestLook LookupDestination(string? dest)
 		{
-			Place? destPlace = mvarPlaces.FindByTibName(dest) ?? mvarPlaces.FindByDisplayName(dest);
-			if (destPlace is not null && !string.IsNullOrWhiteSpace(destPlace.Names.Tft))
-				return destPlace.Names.Tft;
-			return dest ?? string.Empty;
+			string raw = (dest ?? string.Empty).Trim();
+			Place? destPlace = mvarPlaces.FindByTibName(raw) ?? mvarPlaces.FindByDisplayName(raw);
+			string name = destPlace is not null && !string.IsNullOrWhiteSpace(destPlace.Names.Tft)
+				? destPlace.Names.Tft
+				: raw;
+			string? icon = destPlace is not null && destPlace.Names.Icon.Length > 0
+				? destPlace.Names.Icon
+				: null;
+			bool replace = destPlace is not null && destPlace.Names.IconMode == PlaceIconMode.Replace;
+			return new DestLook(name, icon, replace);
 		}
+
+		private readonly record struct DestLook(string Name, string? Icon, bool ReplaceText);
 
 		private static bool LineAllowed(TibStopRef stop, string lineCode)
 		{
-			return stop.Lines.Count == 0
-				|| stop.Lines.Contains(lineCode, StringComparer.OrdinalIgnoreCase);
+			if (stop.Lines.Count == 0)
+				return true;
+			if (stop.Lines.Contains(lineCode, StringComparer.OrdinalIgnoreCase))
+				return true;
+
+			string compact = CompactLine(lineCode);
+			foreach (string allowed in stop.Lines)
+			{
+				if (string.Equals(CompactLine(allowed), compact, StringComparison.OrdinalIgnoreCase))
+					return true;
+			}
+			return false;
+		}
+
+		private static string CompactLine(string? line)
+		{
+			if (string.IsNullOrWhiteSpace(line))
+				return string.Empty;
+			string s = line.Trim();
+			if (s.StartsWith("L", StringComparison.OrdinalIgnoreCase) && s.Length > 1)
+				s = s[1..];
+			return s;
 		}
 
 		private string ResolveDisplayName(int sfmCode, string fallback)

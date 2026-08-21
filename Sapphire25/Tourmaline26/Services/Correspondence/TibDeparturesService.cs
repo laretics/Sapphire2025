@@ -1,5 +1,5 @@
 using System.Globalization;
-using System.Net.Http.Json;
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Hosting;
@@ -209,16 +209,8 @@ namespace Tourmaline26.Services.Correspondence
 				string url = $"o/manager/stop-code/{Uri.EscapeDataString(stop)}/departures/{Uri.EscapeDataString(mvarEntity)}?res=20&groupId={mvarGroupId}";
 				try
 				{
-					List<TibDepartureDto>? dto = await http
-						.GetFromJsonAsync<List<TibDepartureDto>>(url, JsonOptions, cancellationToken)
+					List<TibDeparture> mapped = await FetchStopAsync(http, stop, url, cancellationToken)
 						.ConfigureAwait(false);
-
-					var mapped = new List<TibDeparture>();
-					if (dto is not null)
-					{
-						foreach (TibDepartureDto item in dto)
-							mapped.Add(Map(stop, item));
-					}
 
 					lock (mvarLock)
 					{
@@ -243,6 +235,119 @@ namespace Tourmaline26.Services.Correspondence
 				mvarLastError = errors.Count == 0 ? string.Empty : string.Join("; ", errors);
 
 			RaiseUpdated();
+		}
+
+		private async Task<List<TibDeparture>> FetchStopAsync(
+			HttpClient http,
+			string stop,
+			string url,
+			CancellationToken cancellationToken)
+		{
+			const int maxAttempts = 3;
+			Exception? last = null;
+
+			for (int attempt = 1; attempt <= maxAttempts; attempt++)
+			{
+				try
+				{
+					using var req = new HttpRequestMessage(HttpMethod.Get, url);
+					req.Version = HttpVersion.Version11;
+					req.VersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+
+					using HttpResponseMessage resp = await http
+						.SendAsync(req, cancellationToken)
+						.ConfigureAwait(false);
+					string body = await resp.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+					if (resp.StatusCode == HttpStatusCode.Forbidden
+						|| resp.StatusCode == HttpStatusCode.Unauthorized
+						|| (int)resp.StatusCode == 429
+						|| (int)resp.StatusCode >= 500)
+					{
+						mvarLogger.LogWarning(
+							"TibDepartures: {Stop} HTTP {Status} intento {Attempt}/{Max}: {Body}",
+							stop,
+							(int)resp.StatusCode,
+							attempt,
+							maxAttempts,
+							Truncate(body));
+						last = new HttpRequestException($"HTTP {(int)resp.StatusCode} en parada {stop}");
+						if (attempt < maxAttempts)
+						{
+							await Task.Delay(TimeSpan.FromSeconds(attempt), cancellationToken).ConfigureAwait(false);
+							continue;
+						}
+
+						throw last;
+					}
+
+					if (!resp.IsSuccessStatusCode)
+					{
+						throw new HttpRequestException($"HTTP {(int)resp.StatusCode} en parada {stop}: {Truncate(body)}");
+					}
+
+					List<TibDepartureDto>? dto;
+					try
+					{
+						dto = JsonSerializer.Deserialize<List<TibDepartureDto>>(body, JsonOptions);
+					}
+					catch (JsonException ex)
+					{
+						throw new InvalidOperationException(
+							$"TIB no devolvió JSON en {stop}: {Truncate(body)}",
+							ex);
+					}
+
+					var mapped = new List<TibDeparture>();
+					int unparsed = 0;
+					if (dto is not null)
+					{
+						foreach (TibDepartureDto item in dto)
+						{
+							TibDeparture row = Map(stop, item);
+							if (row.DepartureTimeLocal == DateTime.MinValue)
+								unparsed++;
+							mapped.Add(row);
+						}
+					}
+
+					if (unparsed > 0)
+					{
+						mvarLogger.LogWarning(
+							"TibDepartures: {Stop} {Unparsed}/{Total} salidas sin hora parseable.",
+							stop,
+							unparsed,
+							mapped.Count);
+					}
+
+					return mapped;
+				}
+				catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+				{
+					throw;
+				}
+				catch (Exception ex) when (attempt < maxAttempts && ex is not InvalidOperationException)
+				{
+					last = ex;
+					mvarLogger.LogWarning(
+						ex,
+						"TibDepartures: {Stop} intento {Attempt}/{Max} falló, se reintenta.",
+						stop,
+						attempt,
+						maxAttempts);
+					await Task.Delay(TimeSpan.FromSeconds(attempt), cancellationToken).ConfigureAwait(false);
+				}
+			}
+
+			throw last ?? new InvalidOperationException($"TIB: sin respuesta para {stop}.");
+		}
+
+		private static string Truncate(string? value, int max = 180)
+		{
+			if (string.IsNullOrEmpty(value))
+				return string.Empty;
+			string flat = value.Replace('\r', ' ').Replace('\n', ' ').Trim();
+			return flat.Length <= max ? flat : flat[..max] + "…";
 		}
 
 		private static TibDeparture Map(string stopCode, TibDepartureDto dto)
@@ -275,9 +380,26 @@ namespace Tourmaline26.Services.Correspondence
 		{
 			if (string.IsNullOrWhiteSpace(value))
 				return DateTime.MinValue;
-			if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out DateTime t))
-				return t.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(t, DateTimeKind.Local) : t;
+
+			string text = value.Trim();
+			var styles = DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeLocal;
+			if (DateTime.TryParse(text, CultureInfo.InvariantCulture, styles, out DateTime invariant))
+				return EnsureLocal(invariant);
+			if (DateTime.TryParse(text, CultureInfo.GetCultureInfo("es-ES"), styles, out DateTime spanish))
+				return EnsureLocal(spanish);
+			if (DateTime.TryParse(text, CultureInfo.CurrentCulture, styles, out DateTime current))
+				return EnsureLocal(current);
 			return DateTime.MinValue;
+		}
+
+		private static DateTime EnsureLocal(DateTime value)
+		{
+			return value.Kind switch
+			{
+				DateTimeKind.Utc => value.ToLocalTime(),
+				DateTimeKind.Local => value,
+				_ => DateTime.SpecifyKind(value, DateTimeKind.Local)
+			};
 		}
 
 		private static string NormalizeHex(string? color)

@@ -2,8 +2,10 @@
 @inject TourmalineService Tourmaline
 @implements IAsyncDisposable
 
-<div @ref="mvarHost"
-     class="sfm-line-map @(Overlay ? "sfm-line-map--overlay" : "sfm-line-map--full")"></div>
+<div class="sfm-line-map-shell @(Overlay ? "sfm-line-map-shell--overlay" : "sfm-line-map-shell--full")">
+    <div @ref="mvarHost"
+         class="sfm-line-map @(Overlay ? "sfm-line-map--overlay" : "sfm-line-map--full")"></div>
+</div>
 
 @code {
     /// <summary>True: recorte circular sobre el stream. False: mapa a pantalla completa.</summary>

@@ -30,9 +30,28 @@
 	display: flex;
 	align-items: center;
 	gap: 1.5vw;
-	white-space: nowrap;
+	min-width: 0;
+	overflow: visible;
+}
+
+.train-number-icon {
+	flex-shrink: 0;
+	display: inline-flex;
+	line-height: 0;
+	overflow: visible;
+}
+
+.train-number-icon--moving {
+	filter:
+		drop-shadow(0 0 3px #88aacc)
+		drop-shadow(0 0 8px rgba(136, 170, 204, 0.85));
+}
+
+.train-number-text {
+	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .panel-time {
@@ -187,20 +206,16 @@
 	font-variant-numeric: tabular-nums;
 }
 
-.route-live-stage ::deep .sfm-line-map--overlay {
+.route-live-stage ::deep .sfm-line-map-shell--overlay {
 	position: absolute;
-	right: 1.2vw;
-	bottom: 1.6vh;
+	right: 1.8vw;
+	bottom: 2.2vh;
 	width: min(44vh, 40vw);
 	height: min(44vh, 40vw);
 	min-width: 160px;
 	min-height: 160px;
 	z-index: 6;
 	pointer-events: none;
-	overflow: hidden;
-	border-radius: 50%;
-	clip-path: circle(50% at 50% 50%);
-	opacity: 0.82;
 }
 
 .route-live-fg {

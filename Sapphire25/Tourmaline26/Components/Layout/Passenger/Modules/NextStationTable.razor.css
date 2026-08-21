@@ -189,7 +189,7 @@
 
 .nst-table {
 	width: 100%;
-	height: 100%;
+	height: auto;
 	border-collapse: collapse;
 	table-layout: fixed;
 }
@@ -237,19 +237,23 @@
 }
 
 .nst-col-time {
-	width: 15%;
-}
-
-.nst-col-line {
 	width: 13%;
 }
 
+.nst-col-op {
+	width: 16%;
+}
+
+.nst-col-line {
+	width: 12%;
+}
+
 .nst-col-dest {
-	width: 54%;
+	width: 43%;
 }
 
 .nst-col-plat {
-	width: 18%;
+	width: 16%;
 	text-align: right;
 }
 
@@ -259,7 +263,7 @@
 
 .nst-time {
 	display: block;
-	font-size: clamp(2vw, 2.55vw, 3.1vw);
+	font-size: clamp(2.3vw, 2.93vw, 3.57vw);
 	font-weight: 800;
 	font-variant-numeric: tabular-nums;
 	color: var(--nst-ink);
@@ -274,7 +278,7 @@
 .nst-eta {
 	display: inline;
 	margin-left: 0.4vw;
-	font-size: clamp(1.15vw, 1.4vw, 1.7vw);
+	font-size: clamp(1.32vw, 1.61vw, 1.96vw);
 	font-weight: 700;
 	font-variant-numeric: tabular-nums;
 	color: var(--nst-alert);
@@ -291,7 +295,7 @@
 	min-width: 3.2em;
 	padding: 0.28vh 0.55vw;
 	border-radius: 0.45vw;
-	font-size: clamp(1.45vw, 1.85vw, 2.25vw);
+	font-size: clamp(1.67vw, 2.13vw, 2.59vw);
 	font-weight: 800;
 	letter-spacing: 0.02em;
 	color: #fff;
@@ -302,8 +306,10 @@
 }
 
 .nst-dest {
-	display: block;
-	font-size: clamp(1.85vw, 2.35vw, 2.85vw);
+	display: flex;
+	align-items: center;
+	gap: 0.5vw;
+	font-size: clamp(2.13vw, 2.7vw, 3.28vw);
 	font-weight: 700;
 	color: var(--nst-ink);
 	line-height: 1.12;
@@ -312,10 +318,31 @@
 	text-overflow: ellipsis;
 }
 
+.nst-dest-text {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.nst-dest-icon {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.nst-dest-icon ::deep svg {
+	display: block;
+	width: clamp(2.42vw, 3.11vw, 3.8vw);
+	height: clamp(2.42vw, 3.11vw, 3.8vw);
+}
+
 .nst-notice {
 	display: block;
 	margin-top: 0.12vh;
-	font-size: clamp(1.1vw, 1.35vw, 1.6vw);
+	font-size: clamp(1.27vw, 1.55vw, 1.84vw);
 	font-weight: 600;
 	color: var(--nst-alert);
 	white-space: nowrap;
@@ -330,7 +357,7 @@
 	min-width: 1.9em;
 	padding: 0.22vh 0.55vw;
 	border-radius: 0.4vw;
-	font-size: clamp(1.85vw, 2.35vw, 2.85vw);
+	font-size: clamp(2.13vw, 2.7vw, 3.28vw);
 	font-weight: 800;
 	font-variant-numeric: tabular-nums;
 	color: var(--nst-sfm-deep);
@@ -351,6 +378,31 @@
 	font-weight: 600;
 }
 
+.nst-op-logo {
+	display: block;
+	width: auto;
+	height: auto;
+	max-width: 7.2vw;
+	max-height: clamp(2.3vw, 2.93vw, 3.57vw);
+	object-fit: contain;
+	object-position: left center;
+}
+
+.nst-op-logo--emt {
+	max-width: 5.2vw;
+	max-height: clamp(2.3vw, 2.99vw, 3.68vw);
+}
+
+.nst-op-logo--tib {
+	max-width: 6.4vw;
+	max-height: clamp(2.13vw, 2.7vw, 3.34vw);
+}
+
+.nst-op-logo--sfm {
+	max-width: 5.8vw;
+	max-height: clamp(2.13vw, 2.76vw, 3.39vw);
+}
+
 .nst-plat--bus {
 	color: #fff;
 	background: #8b3a3a;
@@ -362,26 +414,19 @@
 }
 
 .nst-plat--emt {
-	color: #fff;
 	background: #007fff;
-	border-color: transparent;
-	padding: 0.28vh 0.5vw;
-	box-shadow:
-		inset 0 -1px 0 rgba(0, 0, 0, 0.12),
-		0 1px 4px rgba(15, 23, 42, 0.1);
 }
 
-.nst-plat--bus ::deep svg,
-.nst-plat--emt ::deep svg {
+.nst-plat--bus ::deep svg {
 	display: block;
-	width: clamp(1.55vw, 2vw, 2.45vw);
-	height: clamp(1.55vw, 2vw, 2.45vw);
+	width: clamp(1.78vw, 2.3vw, 2.82vw);
+	height: clamp(1.78vw, 2.3vw, 2.82vw);
 }
 
 .nst-plat-old {
 	display: inline;
 	margin-left: 0.4vw;
-	font-size: clamp(1.05vw, 1.3vw, 1.55vw);
+	font-size: clamp(1.21vw, 1.5vw, 1.78vw);
 	font-weight: 600;
 	color: var(--nst-soft);
 	text-decoration: line-through;

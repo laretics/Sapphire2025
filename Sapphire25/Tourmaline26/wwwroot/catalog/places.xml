@@ -10,6 +10,8 @@
   names/@teleindicator  teleindicador interior / TFT de salón
   names/@tft          panel de viajero (NextStationTable y similares)
   names/@canonical    nombre de referencia
+  names/@icon         clave GenIco que sustituye o acompaña el nombre en TFT
+  names/@iconMode     replace = sólo el icono; prefix = icono + texto (por defecto si hay @icon)
 
   announce/clip[@role=enum]   locución en enumeración, no es la última
   announce/clip[@role=final]  última de la enumeración, o sola
@@ -19,9 +21,12 @@
     ctmr4 = TIB interurbano (stop/@code = código de parada TIB)
     emt   = EMT Palma urbana (stop/@code = stopCode MaaS /timestr)
   Si no hay <line>, se toman todas las líneas de esa parada.
+  stop/@bay o line/@bay o dock/@bay = dársena TIB (entero). dock no filtra líneas.
   Paradas TIB de 3 dígitos (301, 212…) son el tren en la red TIB, no buses de enlace.
   EMT: paradas a ≤100 m; si no hay ninguna, se sube a ≤220 m (coords Diamond).
-  Palma Intermodal: sólo A1 al Aeropuerto (no se vuelcan el resto de dársenas EMT).
+  Palma Intermodal: EMT A1 al Aeropuerto (598) y línea 1 al puerto / Dic de l'Oest (219).
+  No se vuelcan el resto de dársenas EMT. A1 sentido ciudad (1078, Palma pg. Mallorca) no entra.
+  Dársenas Palma: aviso TIB 22/07/2026 (si una línea usa varias, se anota la principal).
 -->
 <places version="1">
 
@@ -32,19 +37,48 @@
       <diamond id="01" />
       <diamond id="40" />
     </keys>
-    <names canonical="Palma" led="PALMA" teleindicator="Palma" tft="Palma" />
+    <names canonical="Palma" led="Palma, Plaça d'Espanya, estació intermodal." teleindicator="Palma" tft="Palma Int." />
     <announce>
       <clip role="enum" file="catalog/announce/palma.enum.wav" />
       <clip role="final" file="catalog/announce/palma.final.wav" />
     </announce>
-    <!-- Estació Intermodal: muchas líneas interurbanas (TIB 2026-08). Sin &lt;line&gt; = todas. -->
+    <!-- Estació Intermodal: todas las líneas TIB. Dársenas: aviso 22/07/2026. -->
     <correspondence entity="ctmr4">
-      <stop code="40036" name="Estació Intermodal" />
+      <stop code="40036" name="Estació Intermodal">
+        <dock line="101" bay="9" />
+        <dock line="102" bay="8" />
+        <dock line="103" bay="12" />
+        <dock line="104" bay="2" />
+        <dock line="105" bay="6" />
+        <dock line="106" bay="1" />
+        <dock line="107" bay="11" />
+        <dock line="108" bay="3" />
+        <dock line="201" bay="18" />
+        <dock line="202" bay="5" />
+        <dock line="203" bay="15" />
+        <dock line="204" bay="29" />
+        <dock line="205" bay="13" />
+        <dock line="301" bay="7" />
+        <dock line="302" bay="14" />
+        <dock line="303" bay="28" />
+        <dock line="304" bay="18" />
+        <dock line="401" bay="26" />
+        <dock line="403" bay="27" />
+        <dock line="411e" bay="24" />
+        <dock line="501" bay="20" />
+        <dock line="501e" bay="21" />
+        <dock line="504" bay="23" />
+        <dock line="508" bay="22" />
+        <dock line="515e" bay="19" />
+      </stop>
     </correspondence>
-    <!-- EMT: sólo A1 Aeroport (72 m). El resto de dársenas Intermodal se omiten a propósito. -->
+    <!-- EMT: A1 Aeroport (598) y línea 1 Dic de l'Oest / Port (219, 34 m). -->
     <correspondence entity="emt">
       <stop code="598" name="pl. d'Espanya - Estació Intermodal">
         <line code="A1" />
+      </stop>
+      <stop code="219" name="pl. d'Espanya - Estació Intermodal">
+        <line code="1" />
       </stop>
     </correspondence>
   </place>
@@ -54,7 +88,7 @@
       <diamond id="02" />
       <diamond id="41" />
     </keys>
-    <names canonical="Jacint Verdaguer" led="J.VERDAGUER" teleindicator="Jacint Verdaguer" tft="Jacint Verdaguer" />
+    <names canonical="Jacint Verdaguer" led="Jacint Verdaguer" teleindicator="Jacint Verdaguer" tft="J. Verdaguer" />
     <announce>
       <clip role="enum" file="catalog/announce/jacint-verdaguer.enum.wav" />
       <clip role="final" file="catalog/announce/jacint-verdaguer.final.wav" />
@@ -71,7 +105,7 @@
       <diamond id="03" />
       <diamond id="42" />
     </keys>
-    <names canonical="Son Costa" led="SON COSTA" teleindicator="Son Costa" tft="Son Costa" />
+    <names canonical="Son Costa" led="Son Costa - Son Fortesa" teleindicator="Son Costa" tft="Son Costa" />
     <announce>
       <clip role="enum" file="catalog/announce/son-costa.enum.wav" />
       <clip role="final" file="catalog/announce/son-costa.final.wav" />
@@ -87,7 +121,7 @@
     <keys avr="FUS" sfm="4">
       <diamond id="04" />
     </keys>
-    <names canonical="Son Fuster" led="SON FUSTER" teleindicator="Son Fuster" tft="Son Fuster" />
+    <names canonical="Son Fuster" led="Son Fuster" teleindicator="Son Fuster" tft="Son Fuster" />
     <announce>
       <clip role="enum" file="catalog/announce/son-fuster.enum.wav" />
       <clip role="final" file="catalog/announce/son-fuster.final.wav" />
@@ -102,7 +136,7 @@
     <keys avr="cla" sfm="30">
       <diamond id="05" />
     </keys>
-    <names canonical="Son Cladera" led="SON CLADERA" teleindicator="Son Cladera" tft="Son Cladera" />
+    <names canonical="Son Cladera" led="Son Cladera - Es Vivero" teleindicator="Son Cladera" tft="Son Cladera" />
     <announce>
       <clip role="enum" file="catalog/announce/son-cladera.enum.wav" />
       <clip role="final" file="catalog/announce/son-cladera.final.wav" />
@@ -128,7 +162,7 @@
     <keys avr="llc" sfm="6">
       <diamond id="07" />
     </keys>
-    <names canonical="Verge de Lluc" led="VERGE DE LLUC" teleindicator="Verge de Lluc" tft="Verge de Lluc" />
+    <names canonical="Verge de Lluc" led="Verge de Lluc" teleindicator="Verge de Lluc" tft="Verge de Lluc" />
     <announce>
       <clip role="enum" file="catalog/announce/verge-de-lluc.enum.wav" />
       <clip role="final" file="catalog/announce/verge-de-lluc.final.wav" />
@@ -144,7 +178,7 @@
     <keys avr="pdi" sfm="7">
       <diamond id="08" />
     </keys>
-    <names canonical="Pont d'Inca" led="PONT D'INCA" teleindicator="Pont d'Inca" tft="Pont d'Inca" />
+    <names canonical="Pont d'Inca" led="Pont d'Inca" teleindicator="Pont d'Inca" tft="Pont d'Inca" />
     <announce>
       <clip role="enum" file="catalog/announce/pont-dinca.enum.wav" />
       <clip role="final" file="catalog/announce/pont-dinca.final.wav" />
@@ -160,7 +194,7 @@
     <keys avr="pdn" sfm="8">
       <diamond id="09" />
     </keys>
-    <names canonical="Pont d'Inca Nou" led="PONT INCA NOU" teleindicator="Pont d'Inca Nou" tft="Pont d'Inca Nou" />
+    <names canonical="Pont d'Inca Nou" led="Pont d'Inca Nou" teleindicator="Pont d'Inca Nou" tft="P. d'Inca Nou" />
     <announce>
       <clip role="enum" file="catalog/announce/pont-dinca-nou.enum.wav" />
       <clip role="final" file="catalog/announce/pont-dinca-nou.final.wav" />
@@ -171,7 +205,7 @@
     <keys avr="pol" sfm="9">
       <diamond id="10" />
     </keys>
-    <names canonical="Polígon de Marratxí" led="POL. MARRATXI" teleindicator="Polígon Marratxí" tft="Polígon de Marratxí" />
+    <names canonical="Polígon de Marratxí" led="Poligon de Marratxí" teleindicator="Polígon Marratxí" tft="Plg Marratxí" />
     <announce>
       <clip role="enum" file="catalog/announce/poligon-marratxi.enum.wav" />
       <clip role="final" file="catalog/announce/poligon-marratxi.final.wav" />
@@ -182,7 +216,7 @@
     <keys avr="MTX" sfm="10">
       <diamond id="11" />
     </keys>
-    <names canonical="Marratxí" led="MARRATXI" teleindicator="Marratxí" tft="Marratxí" />
+    <names canonical="Marratxí" led="Marratxí" teleindicator="Marratxí" tft="Marratxí" />
     <announce>
       <clip role="enum" file="catalog/announce/marratxi.enum.wav" />
       <clip role="final" file="catalog/announce/marratxi.final.wav" />
@@ -198,7 +232,7 @@
     <keys avr="caü" sfm="11">
       <diamond id="12" />
     </keys>
-    <names canonical="Es Caülls" led="ES CAULLS" teleindicator="Es Caülls" tft="Es Caülls" />
+    <names canonical="Es Caülls" led="Es Caülls" teleindicator="Es Caülls" tft="Es Caülls" />
     <announce>
       <clip role="enum" file="catalog/announce/es-caulls.enum.wav" />
       <clip role="final" file="catalog/announce/es-caulls.final.wav" />
@@ -209,7 +243,7 @@
     <keys avr="STM" sfm="12">
       <diamond id="13" />
     </keys>
-    <names canonical="Santa Maria" led="SANTA MARIA" teleindicator="Santa Maria" tft="Santa Maria" />
+    <names canonical="Santa Maria" led="Santa Maria" teleindicator="Santa Maria" tft="Santa Maria" />
     <announce>
       <clip role="enum" file="catalog/announce/santa-maria.enum.wav" />
       <clip role="final" file="catalog/announce/santa-maria.final.wav" />
@@ -220,7 +254,7 @@
     <keys avr="CON" sfm="13">
       <diamond id="14" />
     </keys>
-    <names canonical="Consell-Alaró" led="CONSELL-ALARO" teleindicator="Consell-Alaró" tft="Consell-Alaró" />
+    <names canonical="Consell-Alaró" led="Consell-Alaró" teleindicator="Consell-Alaró" tft="Consell-Alaró" />
     <announce>
       <clip role="enum" file="catalog/announce/consell-alaro.enum.wav" />
       <clip role="final" file="catalog/announce/consell-alaro.final.wav" />
@@ -237,7 +271,7 @@
     <keys avr="BIN" sfm="14">
       <diamond id="15" />
     </keys>
-    <names canonical="Binissalem" led="BINISSALEM" teleindicator="Binissalem" tft="Binissalem" />
+    <names canonical="Binissalem" led="Binnisalem" teleindicator="Binnisalem" tft="Binnisalem" />
     <announce>
       <clip role="enum" file="catalog/announce/binissalem.enum.wav" />
       <clip role="final" file="catalog/announce/binissalem.final.wav" />
@@ -248,7 +282,7 @@
     <keys avr="lls" sfm="15">
       <diamond id="16" />
     </keys>
-    <names canonical="Lloseta" led="LLOSETA" teleindicator="Lloseta" tft="Lloseta" />
+    <names canonical="Lloseta" led="Lloseta" teleindicator="Lloseta" tft="Lloseta" />
     <announce>
       <clip role="enum" file="catalog/announce/lloseta.enum.wav" />
       <clip role="final" file="catalog/announce/lloseta.final.wav" />
@@ -259,7 +293,7 @@
     <keys avr="INC" sfm="16">
       <diamond id="17" />
     </keys>
-    <names canonical="Inca" led="INCA" teleindicator="Inca" tft="Inca" />
+    <names canonical="Inca" led="Inca Centre" teleindicator="Inca" tft="Inca" />
     <announce>
       <clip role="enum" file="catalog/announce/inca.enum.wav" />
       <clip role="final" file="catalog/announce/inca.final.wav" />
@@ -279,7 +313,7 @@
     <keys avr="ico" sfm="31">
       <diamond id="18" />
     </keys>
-    <names canonical="Constància" led="CONSTANCIA" teleindicator="Constància" tft="Constància" />
+    <names canonical="Constància" led="Inca - Constància - Hospital" teleindicator="Constància" tft="Constància" />
     <announce>
       <clip role="enum" file="catalog/announce/constancia.enum.wav" />
       <clip role="final" file="catalog/announce/constancia.final.wav" />
@@ -291,7 +325,7 @@
       <diamond id="19" />
       <diamond id="30" />
     </keys>
-    <names canonical="Enllaç" led="ENLLAC" teleindicator="Enllaç" tft="Enllaç" />
+    <names canonical="Enllaç" led="El Enllaç" teleindicator="Enllaç" tft="Enllaç" />
     <announce>
       <clip role="enum" file="catalog/announce/enllac.enum.wav" />
       <clip role="final" file="catalog/announce/enllac.final.wav" />
@@ -302,7 +336,7 @@
     <keys avr="SIN" sfm="21">
       <diamond id="20" />
     </keys>
-    <names canonical="Sineu" led="SINEU" teleindicator="Sineu" tft="Sineu" />
+    <names canonical="Sineu" led="Sineu" teleindicator="Sineu" tft="Sineu" />
     <announce>
       <clip role="enum" file="catalog/announce/sineu.enum.wav" />
       <clip role="final" file="catalog/announce/sineu.final.wav" />
@@ -360,17 +394,17 @@
     </announce>
     <!-- Tres dársenas TIB junto a la estación de tren. -->
     <correspondence entity="ctmr4">
-      <stop code="33044" name="Estació de tren 1">
+      <stop code="33044" name="Estació de tren 1" bay="1">
         <line code="401" />
         <line code="501" />
         <line code="A42" />
       </stop>
-      <stop code="33089" name="Estació de tren 2">
+      <stop code="33089" name="Estació de tren 2" bay="2">
         <line code="411" />
         <line code="412" />
         <line code="A43" />
       </stop>
-      <stop code="33090" name="Estació de tren 3">
+      <stop code="33090" name="Estació de tren 3" bay="3">
         <line code="416" />
         <line code="417" />
       </stop>
@@ -409,10 +443,10 @@
       <clip role="final" file="catalog/announce/sa-pobla.final.wav" />
     </announce>
     <correspondence entity="ctmr4">
-      <stop code="44013" name="Estació Sa Pobla 1">
+      <stop code="44013" name="Estació Sa Pobla 1" bay="1">
         <line code="315" />
       </stop>
-      <stop code="44012" name="Estació Sa Pobla 2">
+      <stop code="44012" name="Estació Sa Pobla 2" bay="2">
         <line code="315" />
       </stop>
     </correspondence>
@@ -552,6 +586,24 @@
     <announce>
       <clip role="enum" file="catalog/announce/orient.enum.wav" />
       <clip role="final" file="catalog/announce/orient.final.wav" />
+    </announce>
+  </place>
+
+  <place id="aeroport" kind="bus">
+    <keys tibName="Aeroport" />
+    <names canonical="Aeroport" led="AEROPORT" teleindicator="Aeroport" tft="Aeroport" icon="Airport" iconMode="replace" />
+    <announce>
+      <clip role="enum" file="catalog/announce/aeroport.enum.wav" />
+      <clip role="final" file="catalog/announce/aeroport.final.wav" />
+    </announce>
+  </place>
+
+  <place id="port" kind="bus">
+    <keys tibName="Dic de l'Oest" />
+    <names canonical="Dic de l'Oest" led="PORT" teleindicator="Port" tft="Port" icon="Ferry" iconMode="replace" />
+    <announce>
+      <clip role="enum" file="catalog/announce/port.enum.wav" />
+      <clip role="final" file="catalog/announce/port.final.wav" />
     </announce>
   </place>
 

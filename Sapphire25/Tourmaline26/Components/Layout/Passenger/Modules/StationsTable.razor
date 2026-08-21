@@ -1,7 +1,9 @@
 @using Diamond.Cabin
+@using Tourmaline26.Services.Catalog
 @using ProjectCirculation = Diamond.Project.Circulation
 @using ProjectStationInfo = Diamond.Project.StationInfo
 @using ProjectTimedCall = Diamond.Project.TimedCall
+@inject PlacesCatalog Places
 <div class="route-box @(OverlayOnVideo ? "route-box--overlay" : null)">
     <div class="route-title">Pròximes aturades</div>
     <table class="route-table">
@@ -19,11 +21,11 @@
                             @if (!string.IsNullOrEmpty(mcolItinerary[index].Station?.Avr)
                                  && mcolItinerary[index].Station!.Avr == mcolItinerary[index].Station.Avr.ToUpperInvariant())
                             {
-                                <td class="stop-name-high">@mcolItinerary[index].Station?.Name</td>
+                                <td class="stop-name-high">@TftName(mcolItinerary[index].Station)</td>
                             }
                             else
                             {
-                                <td class="stop-name">@mcolItinerary[index].Station?.Name</td>
+                                <td class="stop-name">@TftName(mcolItinerary[index].Station)</td>
                             }
                             @if (ShowEstimatedTimes && mcolItinerary[index].Arrival.Ticks > 0)
                             {
@@ -132,6 +134,9 @@
 
         mcolItinerary = result.ToArray();
     }
+
+    private string TftName(ProjectStationInfo? station) =>
+        Places.NameFor(PlaceNameChannel.Tft, station);
 
     private struct RowContent
     {

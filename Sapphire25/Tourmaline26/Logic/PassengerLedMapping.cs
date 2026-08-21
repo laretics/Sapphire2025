@@ -138,34 +138,33 @@ namespace Tourmaline26.Logic
 		}
 
 		/// <summary>Misma estación que el cartel TFT de correspondencias.</summary>
-		public static string NextStationName(SessionConfiguration session)
+		public static StationInfo? NextStation(SessionConfiguration session)
 		{
-			if (session.PreviewArrivalStation is not null
-				&& !string.IsNullOrWhiteSpace(session.PreviewArrivalStation.Name))
-			{
-				return session.PreviewArrivalStation.Name;
-			}
+			if (session.PreviewArrivalStation is not null)
+				return session.PreviewArrivalStation;
 
 			CabinEnvironment? cabin = session.Cabin;
-			if (cabin?.CurrentStation is not null
-				&& !string.IsNullOrWhiteSpace(cabin.CurrentStation.Name))
-			{
-				return cabin.CurrentStation.Name;
-			}
+			if (cabin?.CurrentStation is not null)
+				return cabin.CurrentStation;
 
 			IReadOnlyList<TimedCall>? remaining = cabin?.RemainingCalls;
-			if (remaining is not null && remaining.Count > 0 && remaining[0].Station is not null)
-				return remaining[0].Station.Name;
+			if (remaining is not null && remaining.Count > 0)
+				return remaining[0].Station;
 
-			return cabin?.Asimilation?.Destination.Name ?? string.Empty;
+			return cabin?.Asimilation?.Destination;
 		}
 
-		public static string DestinationName(SessionConfiguration session)
+		public static StationInfo? DestinationStation(SessionConfiguration session)
 		{
-			return session.Cabin?.Asimilation?.Destination.Name
-				?? session.Cabin?.Circulation?.Asimilation?.Destination.Name
-				?? string.Empty;
+			return session.Cabin?.Asimilation?.Destination
+				?? session.Cabin?.Circulation?.Asimilation?.Destination;
 		}
+
+		public static string NextStationName(SessionConfiguration session) =>
+			NextStation(session)?.Name ?? string.Empty;
+
+		public static string DestinationName(SessionConfiguration session) =>
+			DestinationStation(session)?.Name ?? string.Empty;
 
 		public static string TrainNumber(SessionConfiguration session)
 		{

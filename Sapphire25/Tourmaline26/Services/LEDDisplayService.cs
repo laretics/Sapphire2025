@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using BlazorBootstrap;
 using Tourmaline26.Logic;
+using Tourmaline26.Services.Catalog;
 
 namespace Tourmaline26.Services
 {
@@ -12,11 +13,13 @@ namespace Tourmaline26.Services
     {
         internal string mvarLastMessage = string.Empty; //Último mensaje enviado.
         private readonly Dictionary<string, string> mcolLastByDevice = new Dictionary<string, string>();
+        private readonly PlacesCatalog mvarPlaces;
         internal LedPanelController mvarController { get; private set; }
         internal List<DeviceMapped> mcolPanels { get; private set; }
-        public LEDDisplayService(LedPanelController controller)
+        public LEDDisplayService(LedPanelController controller, PlacesCatalog places)
         {
             mvarController = controller;
+            mvarPlaces = places;
             mcolPanels = new List<DeviceMapped>();          
         }
         internal void Init(List<DeviceMapped> devices)
@@ -130,7 +133,7 @@ namespace Tourmaline26.Services
                     await ShowClockWeatherSpeed(session);
                     return;
                 case Enums.PassengerLedKind.NextStation:
-                    string next = PassengerLedMapping.NextStationName(session);
+                    string next = LedName(PassengerLedMapping.NextStation(session));
                     if (string.IsNullOrWhiteSpace(next))
                     {
                         await ShowDestinationAndCar(session);
@@ -154,7 +157,7 @@ namespace Tourmaline26.Services
                     await Print(false, OutOfServiceDisplay.Combined, true);
                     return;
                 case Enums.PassengerLedExteriorKind.Destination:
-                    string dest = PassengerLedMapping.DestinationName(session);
+                    string dest = LedName(PassengerLedMapping.DestinationStation(session));
                     if (!string.IsNullOrWhiteSpace(dest))
                     {
                         await Print(false, dest, false);
@@ -174,9 +177,12 @@ namespace Tourmaline26.Services
             await Print(false, string.IsNullOrWhiteSpace(number) ? " " : number, false);
         }
 
+        private string LedName(Diamond.Project.StationInfo? station) =>
+            mvarPlaces.NameFor(PlaceNameChannel.Led, station);
+
         private async Task ShowDestinationAndCar(SessionConfiguration session)
         {
-            string dest = PassengerLedMapping.DestinationName(session);
+            string dest = LedName(PassengerLedMapping.DestinationStation(session));
             if (string.IsNullOrWhiteSpace(dest)
                 || session.InformationLevel != Enums.InformationLevel.Route)
             {

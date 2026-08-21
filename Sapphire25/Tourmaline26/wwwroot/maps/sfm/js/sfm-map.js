@@ -1,7 +1,7 @@
 /* global maplibregl */
 /* Mapa de red SFM. Dos modos:
    - page: clon de horarios (Positron + teselas).
-   - overlay: recorte circular, isla ligeramente translúcida, mar transparente. */
+   - overlay: recorte circular, isla más opaca, mar transparente, toponimia grande. */
 
 (function (global) {
   'use strict';
@@ -231,18 +231,33 @@
       source: 'sfm-island',
       paint: {
         'fill-color': ISLAND_FILL,
-        'fill-opacity': 0.72
+        'fill-opacity': 0.92
       }
     });
     addContextRoadLayers(map);
+    map.addLayer({
+      id: 'sfm-island-outline-light',
+      type: 'line',
+      source: 'sfm-island',
+      paint: {
+        'line-color': '#ffffff',
+        'line-width': 5.5,
+        'line-opacity': 0.88,
+        'line-blur': 0.35
+      },
+      layout: {
+        'line-join': 'round',
+        'line-cap': 'round'
+      }
+    });
     map.addLayer({
       id: 'sfm-island-outline',
       type: 'line',
       source: 'sfm-island',
       paint: {
         'line-color': ISLAND_STROKE,
-        'line-width': 2.2,
-        'line-opacity': 0.85
+        'line-width': 3.4,
+        'line-opacity': 1
       },
       layout: {
         'line-join': 'round',
@@ -284,7 +299,7 @@
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': '#ffffff',
-        'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 6, 1.2, 12, 4]
+        'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 6, 1.5, 12, 4.6]
       }
     });
 
@@ -301,8 +316,8 @@
       ],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': '#cfd6dc',
-        'line-width': ['interpolate', ['exponential', 1.3], ['zoom'], 8, 0.8, 12, 2.4]
+        'line-color': '#b7c2cb',
+        'line-width': ['interpolate', ['exponential', 1.3], ['zoom'], 8, 1.05, 12, 2.9]
       }
     });
   }
@@ -330,16 +345,16 @@
       layout: {
         'text-field': nameField,
         'text-font': ['Noto Sans Bold'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 6, 11, 11, 16],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 6, 16, 11, 24],
         'text-anchor': 'center',
         'text-padding': 2,
         'text-max-width': 8
       },
       paint: {
-        'text-color': '#1e293b',
-        'text-halo-color': '#f8fafc',
-        'text-halo-width': 1.4,
-        'text-halo-blur': 0.4
+        'text-color': '#0f172a',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 2.4,
+        'text-halo-blur': 0.35
       }
     });
 
@@ -348,20 +363,20 @@
       type: 'symbol',
       source: 'openmaptiles',
       'source-layer': 'place',
-      minzoom: 8,
+      minzoom: 7,
       filter: ['==', ['get', 'class'], 'town'],
       layout: {
         'text-field': nameField,
-        'text-font': ['Noto Sans Regular'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 8, 10, 12, 14],
+        'text-font': ['Noto Sans Bold'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 8, 13, 12, 18],
         'text-anchor': 'center',
         'text-padding': 2,
         'text-max-width': 8
       },
       paint: {
-        'text-color': '#334155',
-        'text-halo-color': '#f8fafc',
-        'text-halo-width': 1.3,
+        'text-color': '#1e293b',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 2.2,
         'text-halo-blur': 0.3
       }
     });
@@ -371,20 +386,20 @@
       type: 'symbol',
       source: 'openmaptiles',
       'source-layer': 'place',
-      minzoom: 10,
+      minzoom: 9,
       filter: ['==', ['get', 'class'], 'village'],
       layout: {
         'text-field': nameField,
-        'text-font': ['Noto Sans Regular'],
-        'text-size': 11,
+        'text-font': ['Noto Sans Bold'],
+        'text-size': 14,
         'text-anchor': 'center',
         'text-padding': 2,
         'text-max-width': 8
       },
       paint: {
-        'text-color': '#475569',
-        'text-halo-color': '#f8fafc',
-        'text-halo-width': 1.2
+        'text-color': '#334155',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 2
       }
     });
   }
@@ -397,15 +412,15 @@
   function addRouteLayers(map, geojson, overlay) {
     const beforeId = overlay ? undefined : firstLabelLayerId(map);
     const shadowWidth = overlay
-      ? 7
+      ? 8
       : { base: 12, stops: [[14, 20], [18, 42]] };
     const outlineWidth = overlay
-      ? 5
+      ? 5.6
       : { base: 8, stops: [[14, 12], [18, 32]] };
     const routeWidth = overlay
-      ? 2.8
+      ? 3.2
       : { base: 4, stops: [[14, 6], [18, 16]] };
-    const stopRadius = overlay ? 3.2 : { base: 1.75, stops: [[12, 4], [22, 100]] };
+    const stopRadius = overlay ? 3.6 : { base: 1.75, stops: [[12, 4], [22, 100]] };
     const stopOpacity = overlay
       ? 1
       : ['interpolate', ['linear'], ['zoom'], 13, 0, 13.5, 1];
@@ -467,7 +482,7 @@
         'circle-color': '#fff',
         'circle-radius': stopRadius,
         'circle-stroke-color': '#3F4A5C',
-        'circle-stroke-width': overlay ? 1.2 : 2,
+        'circle-stroke-width': overlay ? 1.6 : 2,
         'circle-opacity': stopOpacity,
         'circle-stroke-opacity': stopOpacity
       },
@@ -481,13 +496,13 @@
       layout: {
         'symbol-placement': 'line',
         'text-field': ['get', 'route_short_name'],
-        'text-size': overlay ? 12 : 14,
+        'text-size': overlay ? 15 : 14,
         'text-font': ['Noto Sans Regular'],
         'symbol-spacing': overlay ? 80 : 250
       },
       paint: {
         'text-color': '#000000',
-        'text-halo-width': 2,
+        'text-halo-width': overlay ? 2.6 : 2,
         'text-halo-color': '#ffffff'
       },
       filter: ['has', 'route_short_name']

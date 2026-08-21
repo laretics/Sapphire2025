@@ -1,3 +1,30 @@
+.sfm-line-map-shell {
+	width: 100%;
+	height: 100%;
+}
+
+/* El filtro va en el cascarón (sin clip) para que el glow siga el alpha
+   de isla ∩ círculo, no un halo redondo sobre el mar transparente. */
+.sfm-line-map-shell--overlay {
+	position: absolute;
+	right: 1.8vw;
+	bottom: 2.2vh;
+	width: min(44vh, 40vw);
+	height: min(44vh, 40vw);
+	min-width: 160px;
+	min-height: 160px;
+	z-index: 6;
+	pointer-events: none;
+	overflow: visible;
+	isolation: isolate;
+	filter:
+		drop-shadow(0 0 0.6px #fff)
+		drop-shadow(0 0 1.15px #0b1220)
+		drop-shadow(0 0 3px rgba(255, 255, 255, 0.9))
+		drop-shadow(0 0 5px rgba(0, 0, 0, 0.72))
+		drop-shadow(0 4px 10px rgba(0, 0, 0, 0.42));
+}
+
 .sfm-line-map {
 	width: 100%;
 	height: 100%;
@@ -5,20 +32,11 @@
 }
 
 .sfm-line-map--overlay {
-	position: absolute;
-	right: 1.2vw;
-	bottom: 1.6vh;
-	width: min(44vh, 40vw);
-	height: min(44vh, 40vw);
-	min-width: 160px;
-	min-height: 160px;
-	z-index: 6;
-	pointer-events: none;
-	background: transparent;
+	position: relative;
 	overflow: hidden;
 	border-radius: 50%;
 	clip-path: circle(50% at 50% 50%);
-	opacity: 0.82;
+	background: transparent;
 }
 
 .sfm-line-map--full {
@@ -34,8 +52,7 @@
 .sfm-line-map--overlay ::deep .maplibregl-map,
 .sfm-line-map--overlay ::deep .maplibregl-canvas-container,
 .sfm-line-map--overlay ::deep .maplibregl-canvas {
-	border-radius: 50%;
-	overflow: hidden;
+	background: transparent !important;
 }
 
 .sfm-line-map--overlay ::deep .maplibregl-control-container {

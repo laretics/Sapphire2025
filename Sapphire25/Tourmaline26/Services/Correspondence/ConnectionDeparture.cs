@@ -17,6 +17,10 @@ namespace Tourmaline26.Services.Correspondence
 		public string LineSymbol { get; init; } = string.Empty;
 		public string LineColorHex { get; init; } = "#888888";
 		public string DestinationName { get; init; } = string.Empty;
+		/// <summary>Clave GenIco que acompaña o sustituye el nombre en TFT.</summary>
+		public string? DestinationIcon { get; init; }
+		/// <summary>True = el TFT muestra sólo el icono (el nombre sigue usándose para filtros).</summary>
+		public bool DestinationIconReplacesText { get; init; }
 		public string ServiceName { get; init; } = string.Empty;
 		public long TripId { get; init; }
 		public int? Platform { get; init; }

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
@@ -32,6 +33,8 @@ namespace Tourmaline26.Services.SfmInfo
         private SfmPanelSnapshot mvarSnapshot = new();
         private bool mvarCatalogLoaded;
         private string mvarLastError = string.Empty;
+        private CancellationTokenSource? mvarSessionWake;
+        private int mvarBackoffSeconds = 5;
 
         /// <summary>Se dispara cuando cambian salidas, reloj o estado del panel.</summary>
         public event EventHandler? Updated;
@@ -105,6 +108,14 @@ namespace Tourmaline26.Services.SfmInfo
             }
 
             mvarLogger.LogInformation("SfmDepartures: estación solicitada {Station}", stationCode);
+            try
+            {
+                mvarSessionWake?.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // El long-poll recicla el CTS.
+            }
         }
 
         /// <summary>Deja de pedir salidas (la conexión puede seguir viva para re-suscribir).</summary>
@@ -122,8 +133,19 @@ namespace Tourmaline26.Services.SfmInfo
         public async Task RefreshCatalogAsync(CancellationToken cancellationToken = default)
         {
             HttpClient http = mvarHttpClientFactory.CreateClient(HttpClientName);
-            List<SfmUbicacionDto>? ubicaciones = await http
-                .GetFromJsonAsync<List<SfmUbicacionDto>>("sapi/ivi_ubicacion", JsonOptions, cancellationToken)
+            using var req = new HttpRequestMessage(HttpMethod.Get, "sapi/ivi_ubicacion");
+            req.Version = HttpVersion.Version11;
+            req.Headers.Accept.ParseAdd("application/json");
+            using HttpResponseMessage resp = await http.SendAsync(req, cancellationToken).ConfigureAwait(false);
+            if (!resp.IsSuccessStatusCode)
+            {
+                string body = await resp.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                throw new HttpRequestException(
+                    $"Catálogo SFM HTTP {(int)resp.StatusCode}: {Truncate(body)}");
+            }
+
+            List<SfmUbicacionDto>? ubicaciones = await resp.Content
+                .ReadFromJsonAsync<List<SfmUbicacionDto>>(JsonOptions, cancellationToken)
                 .ConfigureAwait(false);
 
             if (ubicaciones is null)
@@ -176,9 +198,21 @@ namespace Tourmaline26.Services.SfmInfo
                 try
                 {
                     if (!mvarCatalogLoaded)
-                        await RefreshCatalogAsync(stoppingToken).ConfigureAwait(false);
+                    {
+                        try
+                        {
+                            await RefreshCatalogAsync(stoppingToken).ConfigureAwait(false);
+                        }
+                        catch (Exception catalogEx) when (catalogEx is not OperationCanceledException)
+                        {
+                            mvarLogger.LogWarning(
+                                catalogEx,
+                                "SfmDepartures: catálogo REST no disponible; se sigue con Socket.IO.");
+                        }
+                    }
 
                     await RunSessionAsync(stoppingToken).ConfigureAwait(false);
+                    mvarBackoffSeconds = 5;
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
@@ -188,11 +222,13 @@ namespace Tourmaline26.Services.SfmInfo
                 {
                     IsConnected = false;
                     LastError = ex.Message;
-                    mvarLogger.LogWarning(ex, "SfmDepartures: sesión interrumpida. Reintento en 5 s.");
+                    int delay = mvarBackoffSeconds;
+                    mvarBackoffSeconds = Math.Min(30, mvarBackoffSeconds * 2);
+                    mvarLogger.LogWarning(ex, "SfmDepartures: sesión interrumpida. Reintento en {Delay} s.", delay);
                     RaiseUpdated();
                     try
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(false);
+                        await Task.Delay(TimeSpan.FromSeconds(delay), stoppingToken).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                     {
@@ -236,7 +272,28 @@ namespace Tourmaline26.Services.SfmInfo
                     mvarLogger.LogInformation("SfmDepartures: suscrito a estación {Station}", station);
                 }
 
-                IReadOnlyList<SfmSocketEvent> events = await socket.PollAsync(stoppingToken).ConfigureAwait(false);
+                using var wake = new CancellationTokenSource();
+                lock (mvarLock)
+                    mvarSessionWake = wake;
+                IReadOnlyList<SfmSocketEvent> events;
+                try
+                {
+                    using var linked = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, wake.Token);
+                    events = await socket.PollAsync(linked.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)
+                {
+                    continue;
+                }
+                finally
+                {
+                    lock (mvarLock)
+                    {
+                        if (ReferenceEquals(mvarSessionWake, wake))
+                            mvarSessionWake = null;
+                    }
+                }
+
                 foreach (SfmSocketEvent ev in events)
                     HandleEvent(ev);
             }
@@ -439,6 +496,14 @@ namespace Tourmaline26.Services.SfmInfo
             if (epochMs <= 0)
                 return null;
             return DateTimeOffset.FromUnixTimeMilliseconds(epochMs).LocalDateTime;
+        }
+
+        private static string Truncate(string? value, int max = 180)
+        {
+            if (string.IsNullOrEmpty(value))
+                return string.Empty;
+            string flat = value.Replace('\r', ' ').Replace('\n', ' ').Trim();
+            return flat.Length <= max ? flat : flat[..max] + "…";
         }
 
         private static string ColorToHex(int packedRgb)

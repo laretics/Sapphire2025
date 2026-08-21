@@ -3,8 +3,10 @@
 @using Tourmaline26.Components.Layout.Passenger.Modules
 @using Tourmaline26.Components.Controls
 @using Tourmaline26.Components.Controls.Passenger
+@using Tourmaline26.Services.Catalog
 @using Tourmaline26.Services.OpenMeteo
 @inject TourmalineService mvarTourmaline
+@inject PlacesCatalog Places
 @implements IDisposable
 <div class="panel-root">
     @if(null!=mvarTourmaline.SessionConfig)
@@ -47,16 +49,18 @@
                 null != Circulation && null != Circulation.Asimilation)
                 {
                     <span class="train-number">
-                        <ColorIcon Name="Train"
-                                   Color="@(Circulation.HasColor ? Circulation.Color : "#336699")"
-                                   Size="72"
-                                   Glow="false"
-                                   GlowColor="#88aacc" />
-                        @DisplayServiceName destinació
+                        <span class="train-number-icon @(TrainMoving ? "train-number-icon--moving" : null)">
+                            <ColorIcon Name="Train"
+                                       Color="@(Circulation.HasColor ? Circulation.Color : "#336699")"
+                                       Size="72"
+                                       Glow="@TrainMoving"
+                                       GlowColor="#88aacc" />
+                        </span>
+                        <span class="train-number-text">@DisplayServiceName destinació</span>
                     </span>
                     <span class="panel-time">@CurrentTime</span>
                     <div class="destination">
-                        @Circulation.Asimilation.Destination.Name
+                        @DestinationName
                     </div>
                 }
                 else if (mvarTourmaline.SessionConfig.InformationLevel == Enums.InformationLevel.Disabled)
@@ -132,8 +136,7 @@
                         {
                             <div class="route-live-fg">
                                 <NextStationTable NextStationName="@NextStationName"
-                                                  TrainDestinationName="@DestinationName"
-                                                  MaxDepartures="@Lines" />
+                                                  TrainDestinationName="@DestinationName" />
                             </div>
                         }
                         else if (InformationMode != Enums.PassengerInformationMode.Cruise)
@@ -212,6 +215,11 @@
 
     private string CurrentTime => mvarTourmaline.SessionConfig.Cabin?.ClockNow.ToString("HH:mm") ?? DateTime.Now.ToString("HH:mm");
     private int DisplaySpeedKmh => Math.Clamp(mvarTourmaline.SessionConfig.CurrentSpeed, 0, 100);
+
+    /// <summary>
+    /// Glow del logo mientras hay velocidad de sesión (MVB, dummy o simulación).
+    /// </summary>
+    private bool TrainMoving => mvarTourmaline.SessionConfig.CurrentSpeed != 0;
     private int Lines => (null==Device)?7:Device.Lines;
     private int HeaderSize => (null == Device) ? 100 : Device.HeaderSize;
 
@@ -226,7 +234,7 @@
         {
             Diamond.Project.TimedCall? next = CruiseNextCall;
             if (next is not null)
-                return next.Station.Name;
+                return TftName(next.Station);
             return NextStationName;
         }
     }
@@ -298,20 +306,25 @@
 
     /// <summary>Estación de llegada / parada actual (modo Arriv).</summary>
     private string NextStationName =>
-        mvarTourmaline.SessionConfig.PreviewArrivalStation?.Name
-        ?? mvarTourmaline.SessionConfig.Cabin?.CurrentStation?.Name
-        ?? Circulation?.Asimilation.Destination.Name
-        ?? "—";
+        TftName(
+            mvarTourmaline.SessionConfig.PreviewArrivalStation
+                ?? mvarTourmaline.SessionConfig.Cabin?.CurrentStation
+                ?? Circulation?.Asimilation.Destination,
+            "—");
 
     private string DestinationName =>
-        mvarTourmaline.SessionConfig.Cabin?.Asimilation?.Destination.Name
-        ?? Circulation?.Asimilation.Destination.Name
-        ?? "—";
+        TftName(
+            mvarTourmaline.SessionConfig.Cabin?.Asimilation?.Destination
+                ?? Circulation?.Asimilation.Destination,
+            "—");
 
     private string OriginStationName =>
-        mvarTourmaline.SessionConfig.Cabin?.Asimilation?.Origin.Name
-        ?? Circulation?.Asimilation.Origin.Name
-        ?? string.Empty;
+        TftName(
+            mvarTourmaline.SessionConfig.Cabin?.Asimilation?.Origin
+                ?? Circulation?.Asimilation.Origin);
+
+    private string TftName(Diamond.Project.StationInfo? station, string? fallback = null) =>
+        Places.NameFor(PlaceNameChannel.Tft, station, fallback);
 
     private void OnChangeRequest(object? sender, EventArgs e)
     {
