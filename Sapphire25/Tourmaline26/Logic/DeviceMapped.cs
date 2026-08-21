@@ -37,10 +37,11 @@ namespace Tourmaline26.Logic
         public void SetParameters(string? address, 
             string? type, string? coach, string? side,string? headerSize, string? lines, string? publicId)
         {
-            Address = IPAddress.Parse(address??"0.0.0.0");
-            Type = (Enums.DeviceType)Enum.Parse(typeof(Enums.DeviceType), type??"Led");
-            Coach = (Enums.CoachEnum)Enum.Parse(typeof(Enums.CoachEnum), coach??"?");
-            Side = (Enums.Orientation)Enum.Parse(typeof(Enums.Orientation), side??"Forward");
+            Address = ClientAddress.Normalize(IPAddress.Parse(address ?? "0.0.0.0"))
+                ?? new IPAddress(0);
+            Type = (Enums.DeviceType)Enum.Parse(typeof(Enums.DeviceType), type ?? "Led", ignoreCase: true);
+            Coach = (Enums.CoachEnum)Enum.Parse(typeof(Enums.CoachEnum), coach ?? "?", ignoreCase: true);
+            Side = (Enums.Orientation)Enum.Parse(typeof(Enums.Orientation), side ?? "Forward", ignoreCase: true);
             int auxSize = 0;
             int auxLines = 0;
             if (int.TryParse(headerSize ?? "0", out auxSize))
@@ -51,8 +52,8 @@ namespace Tourmaline26.Logic
         }
         public void SetCameraParameters(string cameraType, string cameraCodec)
         {
-            CameraType = (Enums.CameraType)Enum.Parse(typeof(Enums.CameraType), cameraType);
-            CameraCodec = (Enums.CameraCodec)Enum.Parse(typeof(Enums.CameraCodec), cameraCodec);
+            CameraType = (Enums.CameraType)Enum.Parse(typeof(Enums.CameraType), cameraType, ignoreCase: true);
+            CameraCodec = (Enums.CameraCodec)Enum.Parse(typeof(Enums.CameraCodec), cameraCodec, ignoreCase: true);
         }
     }
 }

@@ -67,6 +67,15 @@ namespace Tourmaline26.Services
         /// <summary>Tras ExitSim: un ciclo sin sync PK para no pisar el SetSpeed(0).</summary>
         private bool mvarSkipExperienceSyncOnce;
 
+        /// <summary>Keep-alive del token Sapphire (sliding expiry ~4 h en servidor).</summary>
+        private Task? mvarSessionPingTask;
+        private DateTime mvarLastSessionPingUtc = DateTime.MinValue;
+        private static readonly TimeSpan SessionPingInterval = TimeSpan.FromMinutes(2);
+        /// <summary>Cabina deshabilitada desde (UTC). Null si hay cabina o no hay sesión.</summary>
+        private DateTime? mvarCabOffSinceUtc;
+        private Task? mvarShutdownLogoutTask;
+        private const int CabOffLogoutSeconds = 300;
+
         // --- Cámara automática Tourmaline Experience ---
         /// <summary>0=&lt;10 lateral, 1=10–49 drone, 2=50–69 cenital, 3=≥70 rotación.</summary>
         private int mvarLastCameraSpeedBand = -1;
@@ -186,6 +195,10 @@ namespace Tourmaline26.Services
                         mvarLedPanelsTask = null;
                     if (null != mvarArmanditoTask && mvarArmanditoTask.IsCompleted)
                         mvarArmanditoTask = null;
+                    if (null != mvarSessionPingTask && mvarSessionPingTask.IsCompleted)
+                        mvarSessionPingTask = null;
+                    if (null != mvarShutdownLogoutTask && mvarShutdownLogoutTask.IsCompleted)
+                        mvarShutdownLogoutTask = null;
 
                     //Arranque de tasks
                     if (null==mvarGpsTask)
@@ -250,6 +263,8 @@ namespace Tourmaline26.Services
                         }
                     }
                     CalculateTelemetry();
+                    KeepSapphireSession();
+                    DetectCabShutdown();
                     UpdateDemoSpeed();
                     mvarRouteSim.Tick();
                     RestoreNormalAfterSimulation();
@@ -279,6 +294,105 @@ namespace Tourmaline26.Services
                 { }                               
             }
             mvarLogger.LogInformation("Stopped!");
+        }
+
+        public override async Task StopAsync(CancellationToken cancellationToken)
+        {
+            await LogoutSapphire("apagado de Tourmaline");
+            await base.StopAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// Renueva el timeout de Sapphire cada 2 minutos mientras hay sesión de cabina.
+        /// </summary>
+        private void KeepSapphireSession()
+        {
+            if (null == mvarTourmaline.SessionConfig.Session)
+                return;
+            if (null != mvarSessionPingTask)
+                return;
+            if (DateTime.UtcNow - mvarLastSessionPingUtc < SessionPingInterval)
+                return;
+
+            mvarLastSessionPingUtc = DateTime.UtcNow;
+            mvarSessionPingTask = KeepSapphireSessionAsync();
+        }
+
+        private async Task KeepSapphireSessionAsync()
+        {
+            try
+            {
+                await mvarTourmaline.KeepSessionAliveAsync();
+            }
+            catch (Exception ex)
+            {
+                mvarLogger.LogWarning(ex, "Keep-alive de sesión Sapphire interrumpido");
+            }
+        }
+
+        /// <summary>
+        /// Cabina deshabilitada varios minutos = fin de servicio / apagado: extingue la sesión.
+        /// El cambio de cabina breve no llega al umbral.
+        /// </summary>
+        private void DetectCabShutdown()
+        {
+            if (null != mvarShutdownLogoutTask)
+                return;
+            if (null == mvarTourmaline.SessionConfig.Session)
+            {
+                mvarCabOffSinceUtc = null;
+                return;
+            }
+
+            ServiceMode mode = mvarTourmaline.SessionConfig.ServiceMode;
+            if (mode.MVBDummy || !mode.MVBEnabled)
+            {
+                mvarCabOffSinceUtc = null;
+                return;
+            }
+
+            MVBData? mvb = mvarTourmaline.SessionConfig.CurrentMVBData;
+            if (null == mvb)
+                return;
+
+            bool cabOn = mvb.Cabin == MVBData.Habilitation.M1
+                || mvb.Cabin == MVBData.Habilitation.M2;
+            if (cabOn)
+            {
+                mvarCabOffSinceUtc = null;
+                return;
+            }
+
+            DateTime now = DateTime.UtcNow;
+            if (mvarCabOffSinceUtc is null)
+            {
+                mvarCabOffSinceUtc = now;
+                return;
+            }
+
+            if ((now - mvarCabOffSinceUtc.Value).TotalSeconds < CabOffLogoutSeconds)
+                return;
+
+            mvarShutdownLogoutTask = LogoutSapphire("cabina deshabilitada");
+        }
+
+        private async Task LogoutSapphire(string reason)
+        {
+            if (null == mvarTourmaline.SessionConfig.Session)
+                return;
+            try
+            {
+                mvarLogger.LogInformation("Extinguiendo sesión Sapphire ({Reason})", reason);
+                await mvarTourmaline.UserLogout();
+            }
+            catch (Exception ex)
+            {
+                mvarLogger.LogWarning(ex, "No se pudo extinguir la sesión Sapphire ({Reason})", reason);
+            }
+            finally
+            {
+                mvarCabOffSinceUtc = null;
+            }
         }
         private async Task<bool> PoolMeteo()
         {

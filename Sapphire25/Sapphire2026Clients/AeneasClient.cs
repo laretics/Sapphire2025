@@ -188,10 +188,10 @@ namespace Sapphire2025.Storage
 		/// <summary>
 		/// Registra un nuevo valor de odómetro para el tren (histórico + valor actual).
 		/// </summary>
-		public async Task<bool> setOdometer(Guid trainId, long odometer)
+		public async Task<bool> setOdometer(Guid trainId, long odometer, string? client = null)
 		{
 			Guid auxToken = await getCurrentToken();
-			OdometrySetRequestModel request = new OdometrySetRequestModel(auxToken, trainId, odometer);
+			OdometrySetRequestModel request = new OdometrySetRequestModel(auxToken, trainId, odometer, client);
 			string jsonData = System.Text.Json.JsonSerializer.Serialize(request);
 			HttpResponseMessage respuesta = await sendPostRequest("setodometer", jsonData);
 			if (respuesta.IsSuccessStatusCode)

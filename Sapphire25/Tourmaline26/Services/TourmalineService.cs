@@ -3,6 +3,7 @@ using Diamond.Cabin;
 using Diamond.Project;
 using Microsoft.EntityFrameworkCore;
 using Sapphire2025.Storage;
+using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
 using Sapphire2025Models.Expert;
 using Sapphire2025Models.Expert.WorkshiftTemplates;
@@ -95,6 +96,8 @@ namespace Tourmaline26.Services
 		private async Task auxInitDevices(IConfiguration config)
 		{
 			IConfigurationSection section = config.GetSection("Devices");
+			if (!section.GetChildren().Any())
+				section = config.GetSection("SystemConfiguration:Devices");
 			int deviceCount = 0;
 			foreach (IConfigurationSection deviceSection in section.GetChildren())
 			{
@@ -417,6 +420,74 @@ namespace Tourmaline26.Services
 			}
 		}
 
+		public async Task TerminateActiveCirculationAsync()
+		{
+			if (null != SessionConfig.Cabin)
+				SessionConfig.Cabin.Circulation = null;
+			UpdatePassengerInformationMode();
+			try
+			{
+				await RecallEndTourmalineExperience();
+			}
+			catch (Exception ex)
+			{
+				mvarLogger.LogWarning(ex, "No se pudo detener Experience al cerrar la circulación.");
+			}
+		}
+
+		/// <summary>
+		/// Cierra la circulación en curso (si hay) y arranca la del número de tren del cuadrante.
+		/// </summary>
+		public async Task<bool> StartCirculationFromTrainTokenAsync(string? trainId, TimeSpan? startTime = null)
+		{
+			if (string.IsNullOrWhiteSpace(trainId) || SessionConfig.Cabin is null)
+				return false;
+
+			IReadOnlyList<Circulation> matches = SessionConfig.Cabin.CirculationsForShiftTokens(
+				new[] { trainId.Trim() },
+				null);
+			if (matches.Count == 0)
+			{
+				mvarLogger.LogWarning("No hay circulación {Train} en el plan publicado de hoy.", trainId);
+				return false;
+			}
+
+			Circulation chosen = matches[0];
+			if (startTime.HasValue && matches.Count > 1)
+			{
+				TimeSpan want = startTime.Value;
+				int best = 0;
+				double bestDiff = double.MaxValue;
+				int i = 0;
+				while (i < matches.Count)
+				{
+					double diff = Math.Abs((matches[i].Departure - want).TotalMinutes);
+					if (diff < bestDiff)
+					{
+						bestDiff = diff;
+						best = i;
+					}
+
+					i++;
+				}
+
+				chosen = matches[best];
+			}
+
+			Circulation? current = SessionConfig.Cabin.Circulation;
+			if (current is not null
+				&& string.Equals(current.Id, chosen.Id, StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+
+			await TerminateActiveCirculationAsync();
+			await DoCirculationSelect(chosen);
+			RaiseHMIUpdate();
+			RaisePassengerUpdate();
+			return true;
+		}
+
 		private async Task LogTourmalineTripStartedAsync(Circulation rhs)
 		{
 			if (SessionConfig.Session is null || Guid.Empty.Equals(SessionConfig.Session.Token))
@@ -478,8 +549,7 @@ namespace Tourmaline26.Services
 				session.PreviewArrivalStation = null;
 				mvarCorrespondenceBoard.SetContext(
 					stationName: null,
-					excludeDestination: null,
-					maxDepartures: PassengerTftLines());
+					excludeDestination: null);
 				if (session.InformationMode != Enums.PassengerInformationMode.Default)
 					session.InformationMode = Enums.PassengerInformationMode.Default;
 				return;
@@ -490,8 +560,7 @@ namespace Tourmaline26.Services
 				?? circulation.Asimilation?.Destination.Name;
 			mvarCorrespondenceBoard.SetContext(
 				announced?.Station,
-				destName,
-				PassengerTftLines());
+				destName);
 
 			if (session.ServiceMode.Main
 				&& !session.ServiceMode.DemoMode
@@ -579,19 +648,6 @@ namespace Tourmaline26.Services
 			if (perBus < 0)
 				perBus = 0;
 			return baseMeters + perBus * mvarCorrespondenceBoard.AnnouncedBusCount;
-		}
-
-		private int PassengerTftLines()
-		{
-			int take = 0;
-			foreach (DeviceMapped device in Devices)
-			{
-				if (device.Type != Enums.DeviceType.TFT)
-					continue;
-				if (device.Lines > take)
-					take = device.Lines;
-			}
-			return take > 0 ? take : 7;
 		}
 
 		private static TimedCall? ResolveAnnouncedCall(CabinEnvironment cabin, Circulation circulation)
@@ -714,6 +770,9 @@ namespace Tourmaline26.Services
 
 		public async Task<SessionModel?> UserLogin(string username, string pwd)
 		{
+			if (null != SessionConfig.Session)
+				await UserLogout();
+
 			UserLoginModel modelo = new UserLoginModel();
 			SessionModel? sesion = null;
 			modelo.userName = username;
@@ -726,6 +785,7 @@ namespace Tourmaline26.Services
 			using (IServiceScope scope = mvarServiceProvider.CreateScope())
 			{
 				AuthenticationClient auxCliente = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
+				IntStorageService storage = scope.ServiceProvider.GetRequiredService<IntStorageService>();
 				try
 				{
 					mvarLogger.LogInformation("Enviando credenciales para inicio de sesión de {User}", username);
@@ -735,17 +795,159 @@ namespace Tourmaline26.Services
 				{
 					mvarLogger.LogError("Fallo técnico en inicio de sesión de {User}: {Symptoms}", username, ex.Message);
 				}
-			}
-			if (null != sesion)
-			{
-				foreach (Sapphire2025Models.Common.UserRole rol in sesion.Roles)
+
+				if (null != sesion)
 				{
-					mvarLogger.LogInformation("Usuario {User} tiene rol {Role}", username, rol.ToString());
-					sesion.User.CredentialKey |= (byte)rol;
+					foreach (Sapphire2025Models.Common.UserRole rol in sesion.Roles)
+					{
+						mvarLogger.LogInformation("Usuario {User} tiene rol {Role}", username, rol.ToString());
+						sesion.User.CredentialKey |= (byte)rol;
+					}
+				}
+
+				try
+				{
+					await storage.SetSessionInfo(sesion);
+				}
+				catch (Exception ex)
+				{
+					mvarLogger.LogWarning(ex, "No se pudo persistir la sesión local de {User}", username);
 				}
 			}
 			SessionConfig.Session = sesion;
 			return SessionConfig.Session;
+		}
+
+		/// <summary>
+		/// Sliding expiry contra Sapphire. El tren llama esto en segundo plano
+		/// para que el token no caduque a las 4 h de inactividad.
+		/// </summary>
+		public async Task KeepSessionAliveAsync()
+		{
+			SessionModel? session = SessionConfig.Session;
+			if (null == session || Guid.Empty.Equals(session.Token))
+				return;
+
+			using (IServiceScope scope = mvarServiceProvider.CreateScope())
+			{
+				AuthenticationClient client = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
+				IntStorageService storage = scope.ServiceProvider.GetRequiredService<IntStorageService>();
+				try
+				{
+					bool ok = await client.SessionPingAsync();
+					if (ok)
+					{
+						SessionModel? stored = await storage.GetSessionInfo();
+						if (null != stored)
+							session.ExpiryUtc = stored.ExpiryUtc;
+					}
+					else
+					{
+						mvarLogger.LogWarning(
+							"Keep-alive de sesión Sapphire no confirmado para {User}",
+							session.User?.Name ?? session.Token.ToString());
+					}
+				}
+				catch (Exception ex)
+				{
+					mvarLogger.LogWarning(ex, "Fallo en keep-alive de sesión Sapphire");
+				}
+			}
+		}
+
+		/// <summary>
+		/// Tras un login correcto, registra el odómetro MVB en Sapphire si el bus está vivo
+		/// y el valor ha cambiado respecto al último guardado.
+		/// No lanza: un fallo no debe deshacer la sesión.
+		/// </summary>
+		public async Task TryReportOdometerAfterLoginAsync()
+		{
+			if (SessionConfig.Session is null)
+				return;
+			if (Guid.Empty.Equals(SystemConfig.TrainId))
+			{
+				mvarLogger.LogDebug("Odómetro: sin TrainId, no se envía a Sapphire.");
+				return;
+			}
+
+			ServiceMode mode = SessionConfig.ServiceMode;
+			if (!mode.MVBEnabled || mode.MVBDummy)
+			{
+				mvarLogger.LogInformation("Odómetro: MVB no activo, no se envía a Sapphire.");
+				return;
+			}
+
+			MVBData? mvb = SessionConfig.CurrentMVBData;
+			if (null == mvb)
+			{
+				mvarLogger.LogInformation("Odómetro: sin lectura MVB, no se envía a Sapphire.");
+				return;
+			}
+
+			if (SessionConfig.MVBLastUpdate == DateTime.MinValue
+				|| (DateTime.Now - SessionConfig.MVBLastUpdate).TotalSeconds > 15)
+			{
+				mvarLogger.LogInformation("Odómetro: lectura MVB no reciente, no se envía a Sapphire.");
+				return;
+			}
+
+			long current = mvb.Odometer;
+			if (current <= 0)
+			{
+				mvarLogger.LogInformation("Odómetro: lectura {Value} no válida, no se envía.", current);
+				return;
+			}
+
+			using (IServiceScope scope = mvarServiceProvider.CreateScope())
+			{
+				AeneasClient client = scope.ServiceProvider.GetRequiredService<AeneasClient>();
+				try
+				{
+					TrainModel? train = await client.train(SystemConfig.TrainId.ToString());
+					if (train is null)
+					{
+						mvarLogger.LogWarning("Odómetro: Sapphire no devolvió el tren {TrainId}.", SystemConfig.TrainId);
+						return;
+					}
+
+					if (train.LastOdometer == current)
+					{
+						mvarLogger.LogInformation(
+							"Odómetro: {Value} ya está registrado en Sapphire, no se reenvía.",
+							current);
+						return;
+					}
+
+					if (current < train.LastOdometer)
+					{
+						mvarLogger.LogWarning(
+							"Odómetro MVB {Current} es menor que el de Sapphire {Last}; no se envía.",
+							current,
+							train.LastOdometer);
+						return;
+					}
+
+					bool ok = await client.setOdometer(SystemConfig.TrainId, current, client: "tourmaline");
+					if (ok)
+					{
+						mvarLogger.LogInformation(
+							"Odómetro {Value} enviado a Sapphire (anterior {Last}).",
+							current,
+							train.LastOdometer);
+					}
+					else
+					{
+						mvarLogger.LogWarning(
+							"Sapphire rechazó el odómetro {Value} del tren {Train}.",
+							current,
+							SystemConfig.Name);
+					}
+				}
+				catch (Exception ex)
+				{
+					mvarLogger.LogWarning(ex, "No se pudo enviar el odómetro a Sapphire tras el login.");
+				}
+			}
 		}
 
 		/// <summary>
@@ -791,17 +993,18 @@ namespace Tourmaline26.Services
 
 		public async Task UserLogout()
 		{
-			if (null != SessionConfig.Session)
+			SessionModel? session = SessionConfig.Session;
+			if (null != session)
 			{
 				mvarLogger.LogInformation("Cierre de sesión de {User}",
-				SessionConfig.Session.User.Name);
+				session.User.Name);
 				using (IServiceScope scope = mvarServiceProvider.CreateScope())
 				{
 					AuthenticationClient auxCliente = scope.ServiceProvider.GetRequiredService<AuthenticationClient>();
 					try
 					{
 						await auxCliente.Logout(
-							SessionConfig.Session.Token.ToString(),
+							session.Token.ToString(),
 							client: "tourmaline",
 							trainId: Guid.Empty.Equals(SystemConfig.TrainId) ? null : SystemConfig.TrainId.ToString(),
 							trainName: SystemConfig.Name);
@@ -809,12 +1012,24 @@ namespace Tourmaline26.Services
 					catch (Exception ex)
 					{
 						mvarLogger.LogError("Fallo técnico en cierre de sesión de {User}: {Symptoms}",
-						SessionConfig.Session.User.Name, ex.Message);
+						session.User.Name, ex.Message);
 					}
 				}
 			}
 			SessionConfig.Session = null;
 			SessionConfig.ClearDriverShift();
+			try
+			{
+				using (IServiceScope scope = mvarServiceProvider.CreateScope())
+				{
+					IntStorageService storage = scope.ServiceProvider.GetRequiredService<IntStorageService>();
+					await storage.SetSessionInfo(null);
+				}
+			}
+			catch (Exception ex)
+			{
+				mvarLogger.LogWarning(ex, "No se pudo borrar la sesión local al cerrar");
+			}
 		}
 
 		/// <summary>

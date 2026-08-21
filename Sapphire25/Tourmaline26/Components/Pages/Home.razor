@@ -1,15 +1,38 @@
 ﻿@page "/"
+@using System.Net
 @using Tourmaline26.Components.Controls
 @using Tourmaline26.Components.Layout.Passenger
 @using Tourmaline26.Components.Layout.Driver
 @inject TourmalineService TourmalineService
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@inject IConfiguration Config
 <PageTitle>Tourmaline</PageTitle>
 <CascadingValue Value="@UpdateView">
 @if (device is null)
 {
-    <h3>Dispositivo no reconocido</h3>
-    <p>IP detectada: @clientIp</p>
+    <div style="padding:2rem;font-family:sans-serif;max-width:42rem;">
+        <h3>Dispositivo no reconocido</h3>
+        <p>IP detectada: <strong>@(string.IsNullOrWhiteSpace(clientIp) ? "(vacía)" : clientIp)</strong></p>
+        <p>Tourmaline identifica la pantalla por la IP <em>de este ordenador</em> (quien abre el navegador), no por la URL a la que se conecta.</p>
+        @if (TourmalineService.Devices.Count == 0)
+        {
+            <p><strong>No hay dispositivos cargados</strong> en appsettings (sección <code>Devices</code>).</p>
+        }
+        else
+        {
+            <p>IPs configuradas:</p>
+            <ul>
+                @foreach (DeviceMapped d in TourmalineService.Devices)
+                {
+                    <li><code>@ClientAddress.ToDisplay(d.Address)</code> — @d.Type / @d.PublicId</li>
+                }
+            </ul>
+        }
+        @if (Config.GetValue("DetailedErrors", false))
+        {
+            <p>Forzar dispositivo (solo diagnóstico): <code>?as=192.168.0.40</code></p>
+        }
+    </div>
 }
 else
 {
@@ -31,6 +54,12 @@ else
 </CascadingValue>
 
 @code {
+    [CascadingParameter(Name = "ClientIp")]
+    public string? ClientIpFromHost { get; set; }
+
+    [SupplyParameterFromQuery(Name = "as")]
+    public string? AsIp { get; set; }
+
     private DeviceMapped? device;
     private string? clientIp;
 
@@ -47,11 +76,28 @@ else
 
     protected override void OnInitialized()
     {
-        // Obtener la IP del cliente
-        clientIp = HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
-        // if (!string.IsNullOrEmpty(clientIp))
-        //     device = DeviceMapService.Devices[0];
-        // else
-            device = TourmalineService.Devices.FirstOrDefault(d => d.Address.ToString() == clientIp);
+        IPAddress? remote = null;
+
+        if (Config.GetValue("DetailedErrors", false)
+            && ClientAddress.TryParse(AsIp, out IPAddress? forced)
+            && forced is not null)
+        {
+            remote = forced;
+        }
+
+        if (remote is null)
+            ClientAddress.TryParse(ClientIpFromHost, out remote);
+
+        if (remote is null)
+            remote = ClientAddress.Normalize(
+                HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress);
+
+        clientIp = ClientAddress.ToDisplay(remote);
+        if (string.IsNullOrWhiteSpace(clientIp) && !string.IsNullOrWhiteSpace(ClientIpFromHost))
+            clientIp = ClientIpFromHost;
+
+        device = TourmalineService.Devices.ByAddress(remote);
+        if (device is null && ClientAddress.TryParse(clientIp, out IPAddress? parsed) && parsed is not null)
+            device = TourmalineService.Devices.ByAddress(parsed);
     }
 }

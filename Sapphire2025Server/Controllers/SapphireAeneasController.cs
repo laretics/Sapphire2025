@@ -614,7 +614,8 @@ namespace Sapphire2025Server.Controllers
 
 		/// <summary>
 		/// Registra un nuevo valor de odómetro (histórico + caché en el tren).
-		/// Solo Root, Oficial o Mecánico. El valor debe ser >= al último registrado.
+		/// Taller (Root, Oficial, Mecánico) desde Zafiro; cabina Tourmaline con sesión válida.
+		/// El valor debe ser &gt;= al último registrado.
 		/// </summary>
 		[HttpPost("setodometer")]
 		public async Task<bool> SetOdometer([FromBody] OdometrySetRequestModel request)
@@ -622,14 +623,14 @@ namespace Sapphire2025Server.Controllers
 			if (request is null || request.TrainId == Guid.Empty)
 				return false;
 
+			User? actor = await retrieveSessionUser(request.SessionToken);
 			bool allowed =
 				await hasBasicPermission(request, Common.UserRole.Root) ||
 				await hasBasicPermission(request, Common.UserRole.Oficial) ||
-				await hasBasicPermission(request, Common.UserRole.Mechanic);
+				await hasBasicPermission(request, Common.UserRole.Mechanic) ||
+				(IsTourmalineClient(request.Client) && null != actor);
 			if (!allowed)
 				return false;
-
-			User? actor = await retrieveSessionUser(request.SessionToken);
 
 			using (DataStorage almacen = new DataStorage(mvarConfig))
 			{

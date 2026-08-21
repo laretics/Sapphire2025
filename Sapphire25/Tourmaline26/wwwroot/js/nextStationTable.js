@@ -19,6 +19,9 @@ window.NstTable = {
 	},
 
 	layout: function (el) {
+		const rec = this._obs.get(el);
+		if (rec)
+			rec.last = -1;
 		this._run(el);
 	},
 
@@ -48,16 +51,19 @@ window.NstTable = {
 		const wrap = root.classList && root.classList.contains("nst-table-wrap")
 			? root
 			: root.querySelector(".nst-table-wrap");
+		const board = root.querySelector ? (root.querySelector(".nst-board") || root) : root;
 		if (!wrap)
 			return 0;
-		const avail = wrap.clientHeight;
+		// El wrap se encoge al contenido: medir el tablero (hueco real), no la tabla.
+		const avail = Math.max(
+			board.clientHeight || 0,
+			root.clientHeight || 0);
 		const row = wrap.querySelector("tbody tr");
-		if (!row || avail <= 0)
+		if (avail <= 0)
 			return 0;
-		const h = row.getBoundingClientRect().height;
-		if (h < 8)
-			return 0;
-		return Math.max(1, Math.floor((avail + 0.25) / h));
+		const h = row ? row.getBoundingClientRect().height : 0;
+		const rowH = h >= 8 ? h : Math.max(36, avail * 0.08);
+		return Math.max(1, Math.floor((avail + 0.25) / rowH));
 	},
 
 	_fitDestinations: function (root) {

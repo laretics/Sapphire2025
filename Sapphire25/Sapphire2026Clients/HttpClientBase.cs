@@ -1,7 +1,9 @@
-﻿using Sapphire2025Models.Authentication;
+﻿using Sapphire2025Models;
+using Sapphire2025Models.Authentication;
 using Sapphire2026Clients;
-using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 
 namespace Sapphire2025.Storage
 {
@@ -143,10 +145,43 @@ namespace Sapphire2025.Storage
 			//Sin sesión tenemos un usuario anónimo o con la sesión sin iniciar. No es una caducidad.
 			if(null==session || Guid.Empty == session.Token) return;
 
-			if(await mvarIntStorage.IsSessionExpiredLocally())
+			if(!await mvarIntStorage.IsSessionExpiredLocally())
+				return;
+
+			// Reloj local vencido: renovar en el servidor en lugar de tumbar la consulta.
+			// Si el ping falla (red del tren, etc.) se deja pasar la petición; el servidor decide.
+			await TryRefreshSessionExpiry(session.Token);
+		}
+
+		/// <summary>
+		/// Sliding expiry: el servidor alarga <c>Expiry</c> y devolvemos el nuevo instante al almacén local.
+		/// </summary>
+		internal async Task<bool> TryRefreshSessionExpiry(Guid token)
+		{
+			if (Guid.Empty.Equals(token) || null == mvarIntStorage)
+				return false;
+
+			try
 			{
-				mvarSessionService.NotifyExpired();
-				throw new SessionExpiredException();
+				BasicRequestModel request = new BasicRequestModel(token);
+				string json = JsonSerializer.Serialize(request);
+				HttpContent body = new StringContent(json, Encoding.UTF8, "application/json");
+				HttpResponseMessage response = await mvarClient.PutAsync(
+					"sapphireauthentication/sessionping",
+					body);
+				if (!response.IsSuccessStatusCode)
+					return false;
+
+				SessionPingResponse? ping = await response.Content.ReadFromJsonAsync<SessionPingResponse>();
+				if (null == ping || !ping.IsValid)
+					return false;
+
+				await mvarIntStorage.UpdateSessionExpiry(ping.ExpiryUtc);
+				return true;
+			}
+			catch
+			{
+				return false;
 			}
 		}
 

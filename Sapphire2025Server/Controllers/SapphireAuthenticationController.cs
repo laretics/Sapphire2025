@@ -156,6 +156,30 @@ namespace Sapphire2025Server.Controllers
 					if (almacen.authenticate(auxUser, input.password))
 					{
 						//El usuario ha sido admitido.
+						string ip = auxDireccion?.ToString() ?? string.Empty;
+
+						// Login desde el tren: una sola sesión viva. Cierra el resto
+						// (otro dispositivo, navegador, HMI previo) para que el token
+						// de cabina no quede invalidado en silencio.
+						if (IsTourmalineClient(input.Client))
+						{
+							List<ActiveSessionModel> previous = await almacen.ActiveSessions
+								.Where(x => x.UserId == auxUser.Id)
+								.ToListAsync();
+							if (previous.Count > 0)
+							{
+								almacen.ActiveSessions.RemoveRange(previous);
+								await addLoginRecord(
+									auxUser.Id,
+									Common.sessionEventType.logout,
+									ComposeTourmalineHostPoint(
+										input.TrainName,
+										input.TrainId,
+										$"kick={previous.Count}",
+										ip));
+							}
+						}
+
 						ActiveSessionModel newSession = new ActiveSessionModel();
 						newSession.Id = Guid.NewGuid();
 						newSession.UserId = auxUser.Id;
@@ -195,7 +219,6 @@ namespace Sapphire2025Server.Controllers
 						//Como este inicio de sesión ha salido bien, ponemos a cero 
 						auxUser.AccessFailedCount = 0;
 						//Registra la entrada (Tourmaline incluye unidad).
-						string ip = auxDireccion?.ToString() ?? string.Empty;
 						if (IsTourmalineClient(input.Client))
 						{
 							await addLoginRecord(

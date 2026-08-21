@@ -4,16 +4,18 @@
 @inject CorrespondenceBoardService mvarBoard
 @inject IJSRuntime JS
 
-<div class="nst-root">
-    @* ── Cabecera: próxima estación ─────────────────────────────────────── *@
-    <section class="nst-hero" aria-label="Estació">
-        <div class="nst-hero-glow" aria-hidden="true"></div>
-        <h1 class="nst-station">@(DisplayStationName)</h1>
-        <div class="nst-rule" aria-hidden="true"></div>
-    </section>
+<div class="nst-root @(HideStationHero ? "nst-root--final" : null)" @ref="mvarWrap">
+    @if (!HideStationHero)
+    {
+        <section class="nst-hero" aria-label="Estació">
+            <div class="nst-hero-glow" aria-hidden="true"></div>
+            <h1 class="nst-station">@(DisplayStationName)</h1>
+            <div class="nst-rule" aria-hidden="true"></div>
+        </section>
+    }
 
     @* ── Pie: salidas / correspondencias ────────────────────────────────── *@
-    <section class="nst-board" aria-label="Correspondències" @ref="mvarWrap">
+    <section class="nst-board" aria-label="Correspondències">
         @if (FilteredDepartures.Count > 0)
         {
             <div class="nst-table-wrap">
@@ -120,13 +122,23 @@
     [Parameter]
     public string? TrainDestinationName { get; set; }
 
+    /// <summary>
+    /// Sin cartel de nombre de estación (próxima = destino): el tablero ocupa todo el alto.
+    /// </summary>
+    [Parameter]
+    public bool HideStationHero { get; set; }
+
     /// <summary>Tope de filas; el panel usa las que quepan enteras en el hueco.</summary>
     [Parameter]
     public int MaxDepartures { get; set; } = 20;
 
+    /// <summary>Filas extra al quitar el cartel de estación (próxima = destino).</summary>
+    private const int ExtraDeparturesWithoutHero = 4;
+
     private ElementReference mvarWrap;
     private DotNetObjectReference<NextStationTable>? mvarJs;
     private int mvarFitCount;
+    private bool mvarLastHideHero;
 
     private string DisplayStationName
     {
@@ -144,11 +156,18 @@
     protected override void OnInitialized()
     {
         mvarBoard.Updated += OnBoardUpdated;
+        mvarLastHideHero = HideStationHero;
         PushContext();
     }
 
     protected override void OnParametersSet()
     {
+        if (HideStationHero != mvarLastHideHero)
+        {
+            mvarLastHideHero = HideStationHero;
+            mvarFitCount = 0;
+        }
+
         PushContext();
     }
 
@@ -192,8 +211,11 @@
     [JSInvokable]
     public void OnTableFit(int rows)
     {
-        int next = Math.Clamp(rows, 1, MaxDepartures > 0 ? MaxDepartures : 20);
+        int next = Math.Clamp(rows, 1, DepartureCap);
+        // El wrap se encoge al contenido: no recortar el tope si el tablero pide más filas.
         if (next == mvarFitCount)
+            return;
+        if (HideStationHero && mvarFitCount > 0 && next < mvarFitCount)
             return;
         mvarFitCount = next;
         PushContext();
@@ -205,9 +227,14 @@
         _ = InvokeAsync(StateHasChanged);
     }
 
+    private int DepartureCap =>
+        (MaxDepartures > 0 ? MaxDepartures : 20)
+        + (HideStationHero ? ExtraDeparturesWithoutHero : 0);
+
     private void PushContext()
     {
-        int take = mvarFitCount > 0 ? mvarFitCount : (MaxDepartures > 0 ? MaxDepartures : 20);
+        int take = mvarFitCount > 0 ? mvarFitCount : DepartureCap;
+        take = Math.Clamp(take, 1, DepartureCap);
         mvarBoard.SetContext(NextStationName, TrainDestinationName, take);
     }
 
@@ -219,7 +246,7 @@
         return t == DateTime.MinValue ? "—" : t.ToString("HH:mm");
     }
 
-    /// <summary>True si faltan 5 minutos o menos para la salida efectiva.</summary>
+    /// <summary>True si faltan 6 minutos o menos para la salida efectiva.</summary>
     private static bool IsImminent(ConnectionDeparture dep)
     {
         DateTime t = dep.SortTime;
@@ -232,7 +259,7 @@
             DateTimeKind.Local => t,
             _ => DateTime.SpecifyKind(t, DateTimeKind.Local)
         };
-        return local - DateTime.Now <= TimeSpan.FromMinutes(5);
+        return local - DateTime.Now <= TimeSpan.FromMinutes(6);
     }
 
     private static bool HasDelayHint(ConnectionDeparture dep)

@@ -77,10 +77,50 @@
       <stop code="598" name="pl. d'Espanya - Estació Intermodal">
         <line code="A1" />
       </stop>
-      <stop code="219" name="pl. d'Espanya - Estació Intermodal">
-        <line code="1" />
+	  <stop code="455" name="pl. d'Espanya - Estació Intermodal">
+		  <line code="23" />
+		  <line code="25" />
+		  <line code="35" />
+		  <line code="N1" />
+		  <line code="N2" />
+		  <line code="N3" />
+		  <line code="N4" />
       </stop>
-    </correspondence>
+		<stop code="2" name="pl. d'Espanya - Estació Intermodal">
+			<line code="6" />
+			<line code="7" />
+			<line code="8" />
+		</stop>
+		<stop code="219" name="pl. d'Espanya - Estació Intermodal">
+            <line code="1" />
+			<line code="3" />
+			<line code="4" />
+			<line code="N1" />
+			<line code="N2" />
+			<line code="N3" />
+			<line code="N4" />
+		</stop>
+		<stop code="295" name="pl. d'Espanya - Estació Intermodal">
+			<line code="5" />
+			<line code="46" />
+			<line code="47" />
+		</stop>
+		<stop code="1078" name="pl. d'Espanya - Estació Intermodal">
+			<line code="A1" />
+			<line code="CC" />
+			<line code="16" />
+			<line code="19" />
+			<line code="33" />
+		</stop>
+		<stop code="390" name="pl. d'Espanya - Estació Intermodal">
+			<line code="7" />
+			<line code="12" />
+			<line code="19" />
+			<line code="24" />
+			<line code="46" />
+			<line code="47" />
+		</stop>
+	</correspondence>
   </place>
 
   <place id="jacint-verdaguer" kind="rail">
@@ -233,7 +273,7 @@
     <keys avr="caü" sfm="11">
       <diamond id="12" />
     </keys>
-    <names canonical="Es Caülls" led="Es Caülls" teleindicator="Es Caülls" tft="Es Caülls" />
+    <names canonical="Es Caülls" led="Es Caülls - Festival Park" teleindicator="Es Caülls" tft="Es Caülls" />
     <announce>
       <clip role="enum" file="catalog/announce/es-caulls.enum.wav" />
       <clip role="final" file="catalog/announce/es-caulls.final.wav" />
@@ -273,7 +313,7 @@
     <keys avr="BIN" sfm="14">
       <diamond id="15" />
     </keys>
-    <names canonical="Binissalem" led="Binnisalem" teleindicator="Binnisalem" tft="Binnisalem" />
+    <names canonical="Binissalem" led="Binissalem" teleindicator="Binissalem" tft="Binissalem" />
     <announce>
       <clip role="enum" file="catalog/announce/binissalem.enum.wav" />
       <clip role="final" file="catalog/announce/binissalem.final.wav" />

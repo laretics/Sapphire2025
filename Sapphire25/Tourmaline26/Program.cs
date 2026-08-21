@@ -47,7 +47,10 @@ options.UseSqlite("Data Source=tourmaline.db"));
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBaseUri });
 
-builder.Services.AddScoped<IntStorageService>();
+// Una sola sesión de cabina para todos los circuitos y el keep-alive de fondo.
+// Sin JS: el HMI no comparte localStorage con Zafiro WASM y el token debe
+// sobrevivir a reconexiones del circuito Blazor.
+builder.Services.AddSingleton<IntStorageService>(_ => new IntStorageService());
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<AuthenticationClient>();
 builder.Services.AddScoped<AeneasClient>();

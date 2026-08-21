@@ -1,0 +1,679 @@
+@using Sapphire2025.Storage
+@using Sapphire2025Models.Authentication
+@using Sapphire2025Models.Expert
+@using Sapphire2025Models.Expert.WorkshiftTemplates
+@using System.Globalization
+@inject TourmalineService Tourmaline
+@inject ExpertClient Expert
+@inject AuthenticationClient Auth
+@inject ILogger<DriverSchedulePanel> Logger
+@implements IDisposable
+
+<FloatRightContainer>
+    <div class="sched-hmi @(NightMode ? "night" : "day")">
+        @if (mvarLoading)
+        {
+            <div class="sched-hmi-status">@mvarLoadingText</div>
+        }
+        else if (null == ViewedUser)
+        {
+            <div class="sched-hmi-status">Seleccione un maquinista.</div>
+        }
+        else
+        {
+            <header class="sched-dev-bar">
+                <div class="sched-dev-row">
+                    <div class="sched-hmi-title">
+                        <span>Cuadrante</span>
+                        <span class="sched-hmi-range">@RangeLabel</span>
+                    </div>
+                    @if (CanPickDriver)
+                    {
+                        <label class="sched-hmi-combo">
+                            <span class="sched-dev-label">Maquinista</span>
+                            <select class="sched-touch-input" value="@mvarSelectedDriverId" @onchange="OnDriverChanged">
+                                @foreach (UserModelBase driver in DriverOptions)
+                                {
+                                    <option value="@driver.guid">(@driver.CF) @driver.Name</option>
+                                }
+                            </select>
+                        </label>
+                    }
+                    else
+                    {
+                        <div class="sched-user-chip">
+                            <span class="fw-semibold">(@ViewedUser.CF) @ViewedUser.Name</span>
+                        </div>
+                    }
+                </div>
+            </header>
+
+            @if (!string.IsNullOrWhiteSpace(mvarActionMessage))
+            {
+                <div class="sched-live-hint">@mvarActionMessage</div>
+            }
+
+            <div class="sched-grid">
+                <aside class="sched-panel sched-panel-left">
+                    <div class="sched-day-cards">
+                    @foreach (AgentDayRow row in AgentRows)
+                    {
+                        <button type="button"
+                                class="sched-day-card @(IsSelectedRow(row) ? "selected" : null) @(row.IsToday ? "today" : null)"
+                                @onclick="() => SelectDay(row.Date)">
+                            <div class="sched-day-card-date">
+                                <span class="sched-day-card-dow">@DayName(row.Date)</span>
+                                <span class="sched-day-card-num">@row.Date.ToString("dd")</span>
+                                <span class="sched-day-card-mon">@row.Date.ToString("MMM", CultureEs)</span>
+                            </div>
+                            <div class="sched-day-card-body">
+                                @if (null != row.Assignation)
+                                {
+                                    <span class="sched-shift-badge" style="@GetTemplateStyle(row.Template, row.Assignation.TD)">
+                                        @(row.Assignation.Definitive ?? "—")
+                                    </span>
+                                    @if (row.Assignation.TD)
+                                    {
+                                        <span class="badge text-bg-success">TD</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </div>
+                            <span class="sched-day-card-chevron" aria-hidden="true">›</span>
+                        </button>
+                    }
+                    </div>
+                </aside>
+
+                <section class="sched-panel sched-panel-center">
+                    @if (null == SelectedRow)
+                    {
+                        <div class="sched-empty-state">
+                            <div class="sched-empty-icon" aria-hidden="true">◎</div>
+                            <p class="text-muted small mb-0">Elija un día del cuadrante.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="sched-day-hero">
+                            <div class="sched-day-hero-top">
+                                <div class="sched-day-hero-text">
+                                    <span class="sched-day-kicker">Jornada</span>
+                                    <span class="sched-day-title">@SelectedDate.ToString("dddd d MMMM yyyy", CultureEs)</span>
+                                </div>
+                                @if (null != SelectedRow.Assignation)
+                                {
+                                    <span class="sched-shift-badge sched-shift-badge-lg sched-shift-badge-glow"
+                                          style="@GetTemplateStyle(SelectedRow.Template, SelectedRow.Assignation.TD)">
+                                        @(SelectedRow.Assignation.Definitive ?? "—")
+                                    </span>
+                                }
+                            </div>
+                            @if (SelectedRow.Template is AttTemplateModel selAtt)
+                            {
+                                <div class="sched-day-hero-meta">
+                                    <span class="sched-meta-chip">
+                                        <span class="sched-meta-chip-label">Horario</span>
+                                        <span class="sched-meta-chip-value">
+                                            @Utils.autoInterval(selAtt.StartTime, true)–@Utils.autoInterval(selAtt.EndTime, true)
+                                        </span>
+                                    </span>
+                                    <span class="sched-meta-chip">
+                                        <span class="sched-meta-chip-label">Duración</span>
+                                        <span class="sched-meta-chip-value">@Utils.autoInterval(selAtt.Duration, false)</span>
+                                    </span>
+                                    @if (SelectedTrains.Count > 0)
+                                    {
+                                        <span class="sched-meta-chip">
+                                            <span class="sched-meta-chip-label">Trenes</span>
+                                            <span class="sched-meta-chip-value">@SelectedTrains.Count</span>
+                                        </span>
+                                    }
+                                </div>
+                            }
+                            else if (null != SelectedRow.Assignation)
+                            {
+                                <div class="sched-day-hero-hint">Sin horario en plantilla.</div>
+                            }
+                            else
+                            {
+                                <div class="sched-day-hero-hint">Sin turno este día.</div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(FormatAssignationNote(SelectedRow.Assignation?.Comment)))
+                            {
+                                <div class="sched-jm-note mt-2">
+                                    <span class="sched-jm-note-label">Nota</span>
+                                    <span class="sched-jm-note-text">@FormatAssignationNote(SelectedRow.Assignation?.Comment)</span>
+                                </div>
+                            }
+                            @if (IsSelectedDayTimelineActive)
+                            {
+                                <div class="sched-live-hint mt-2">
+                                    <span class="sched-live-dot" aria-hidden="true"></span>
+                                    En curso · @DateTime.Now.ToString("HH:mm")
+                                </div>
+                            }
+                        </div>
+
+                        @if (SelectedTrains.Count == 0 && SelectedDepots.Count == 0)
+                        {
+                            <div class="sched-empty-state mt-2">
+                                <p class="text-muted small mb-0">No hay circulaciones en este turno.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            @if (SelectedTrains.Count > 0)
+                            {
+                                <div class="sched-section">
+                                    <div class="sched-section-head">
+                                        <h6 class="sched-section-title">Circulaciones</h6>
+                                        <span class="sched-section-count">@SelectedTrains.Count</span>
+                                    </div>
+                                    <div class="sched-content-list">
+                                    @foreach (TrainWorkShiftContentModel train in SelectedTrains)
+                                    {
+                                        SlotStatus slot = GetSlotStatus(train.StartTime, train.EndTime);
+                                        <button type="button"
+                                                class="sched-train-card @SlotCss(slot) @(IsActiveTrain(train) ? "is-running" : null)"
+                                                style="@GetTrainColorStyle(train)"
+                                                @onclick="() => StartTrainAsync(train)">
+                                            <div class="sched-train-rail" aria-hidden="true"></div>
+                                            <div class="sched-train-body">
+                                                <div class="sched-train-main">
+                                                    <span class="sched-train-number sched-train-number-link">@train.TrainId</span>
+                                                    @if (slot == SlotStatus.Current)
+                                                    {
+                                                        <span class="sched-pill sched-pill-live">Ahora</span>
+                                                    }
+                                                    else if (slot == SlotStatus.Past)
+                                                    {
+                                                        <span class="sched-pill sched-pill-done">Hecho</span>
+                                                    }
+                                                    @if (train.Discrectional)
+                                                    {
+                                                        <span class="sched-pill sched-pill-optional">Opcional</span>
+                                                    }
+                                                </div>
+                                                <div class="sched-train-time">
+                                                    <span class="sched-time-start">@Utils.autoInterval(train.StartTime, true)</span>
+                                                    <span class="sched-time-sep" aria-hidden="true">→</span>
+                                                    <span class="sched-time-end">@Utils.autoInterval(train.EndTime, true)</span>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    }
+                                    </div>
+                                </div>
+                            }
+                            @if (SelectedDepots.Count > 0)
+                            {
+                                <div class="sched-section">
+                                    <div class="sched-section-head">
+                                        <h6 class="sched-section-title">Depósitos</h6>
+                                        <span class="sched-section-count">@SelectedDepots.Count</span>
+                                    </div>
+                                    <div class="sched-content-list">
+                                    @foreach (AttWorkShiftContentModel depot in SelectedDepots)
+                                    {
+                                        SlotStatus slot = GetSlotStatus(depot.StartTime, depot.EndTime);
+                                        <div class="sched-depot-card @(depot.Foreign ? "is-foreign" : null) @SlotCss(slot)">
+                                            <div class="sched-depot-icon" aria-hidden="true">▣</div>
+                                            <div class="sched-depot-body">
+                                                <div class="sched-depot-time">
+                                                    @Utils.autoInterval(depot.StartTime, true)–@Utils.autoInterval(depot.EndTime, true)
+                                                </div>
+                                                <div class="sched-depot-meta">
+                                                    <span>@Utils.autoInterval(depot.Duration, false)</span>
+                                                    @if (slot == SlotStatus.Current)
+                                                    {
+                                                        <span class="sched-pill sched-pill-live">Ahora</span>
+                                                    }
+                                                    else if (slot == SlotStatus.Past)
+                                                    {
+                                                        <span class="sched-pill sched-pill-done">Hecho</span>
+                                                    }
+                                                    @if (depot.Foreign)
+                                                    {
+                                                        <span class="sched-pill sched-pill-foreign">Fuera</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="sched-pill sched-pill-depot">Depósito</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    </div>
+                                </div>
+                            }
+                        }
+                    }
+                </section>
+
+                <section class="sched-panel sched-panel-right">
+                    <div class="sched-section-head">
+                        <h6 class="sched-section-title">Consultas</h6>
+                    </div>
+                    <div class="small text-muted mb-2">¿Quién hace el turno?</div>
+                    <div class="sched-query-row">
+                        <input type="date" class="form-control form-control-sm sched-touch-input" @bind="mvarQueryDate" @bind:format="yyyy-MM-dd" />
+                        <input type="text" class="form-control form-control-sm sched-touch-input" placeholder="Turno" @bind="mvarQueryShift" />
+                        <button type="button" class="btn btn-primary btn-sm sched-touch-btn" @onclick="QueryShiftAsync">Buscar</button>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(mvarQueryError))
+                    {
+                        <div class="alert alert-warning py-2 small mt-2">@mvarQueryError</div>
+                    }
+                    @if (mvarQueryRan)
+                    {
+                        @if (QueryResults.Count == 0)
+                        {
+                            <div class="text-muted small mt-2">Nadie grafiado en ese turno.</div>
+                        }
+                        else
+                        {
+                            <ul class="sched-query-list">
+                                @foreach (AssignationContentModel hit in QueryResults)
+                                {
+                                    <li class="sched-query-item">
+                                        <div class="sched-query-item-main">
+                                            <div class="fw-semibold">@GetUserDisplay(hit.AgentId)</div>
+                                            <div class="small text-muted">@(hit.Definitive ?? "")</div>
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    }
+                </section>
+            </div>
+        }
+    </div>
+</FloatRightContainer>
+
+@code {
+    [CascadingParameter] public bool NightMode { get; set; }
+
+    private const int DayHorizon = 16;
+    private static readonly CultureInfo CultureEs = new("es-ES");
+
+    private enum SlotStatus { Future, Current, Past }
+
+    private Dictionary<Guid, UserModelBase> mcolUsers = new();
+    private PlansYearSlice? mvarTimeSlice;
+    private List<AssignationContentModel> mcolRangeAssignations = new();
+    private List<AgentDayRow> AgentRows { get; set; } = new();
+    private List<TrainWorkShiftContentModel> SelectedTrains { get; set; } = new();
+    private List<AttWorkShiftContentModel> SelectedDepots { get; set; } = new();
+    private List<AssignationContentModel> QueryResults { get; set; } = new();
+    private List<UserModelBase> DriverOptions { get; set; } = new();
+
+    private UserModelBase? ViewedUser { get; set; }
+    private SessionModel? mvarSession;
+    private AgentDayRow? SelectedRow { get; set; }
+
+    private bool mvarLoading = true;
+    private string mvarLoadingText = "Cargando cuadrante…";
+    private string? mvarActionMessage;
+    private Guid mvarSelectedDriverId;
+    private DateTime mvarSelectedDate = DateTime.Today;
+    private DateTime mvarQueryDate = DateTime.Today;
+    private string mvarQueryShift = string.Empty;
+    private string? mvarQueryError;
+    private bool mvarQueryRan;
+    private System.Threading.Timer? mvarClockTimer;
+
+    private DateTime SelectedDate => mvarSelectedDate;
+
+    private bool CanPickDriver
+    {
+        get
+        {
+            if (mvarSession is null) return false;
+            return Utils.isRoot(mvarSession)
+                || Utils.isExpert(mvarSession)
+                || Utils.isEngineer(mvarSession);
+        }
+    }
+
+    private string RangeLabel =>
+        null == mvarTimeSlice
+            ? string.Empty
+            : $"{mvarTimeSlice.InitialDate:dd/MM} – {mvarTimeSlice.InitialDate.AddDays(DayHorizon - 1):dd/MM}";
+
+    private bool IsSelectedDayTimelineActive
+        => SelectedDate.Date == DateTime.Today
+            && (SelectedTrains.Count > 0 || SelectedDepots.Count > 0);
+
+    protected override async Task OnInitializedAsync()
+    {
+        mvarSession = Tourmaline.SessionConfig.Session;
+        if (mvarSession?.User is null)
+        {
+            mvarLoading = false;
+            return;
+        }
+
+        mvarLoadingText = "Cargando usuarios…";
+        try
+        {
+            Dictionary<Guid, UserModelBase>? remote = await Auth.cachedUserList();
+            if (null != remote && remote.Count > 0)
+                mcolUsers = remote;
+            else if (null != Tourmaline.SessionConfig.ColUsers)
+                mcolUsers = new Dictionary<Guid, UserModelBase>(Tourmaline.SessionConfig.ColUsers);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Cuadrante: no se pudo cargar la lista de usuarios");
+            if (null != Tourmaline.SessionConfig.ColUsers)
+                mcolUsers = new Dictionary<Guid, UserModelBase>(Tourmaline.SessionConfig.ColUsers);
+        }
+
+        ViewedUser = mvarSession.User;
+        mvarSelectedDriverId = ViewedUser.guid;
+        await LoadRangeAsync(DateTime.Today);
+        await Auth.LogActivity(
+            Common.sessionEventType.scheduleViewOpened,
+            $"cf={ViewedUser.CF}|origen=tourmaline");
+    }
+
+    public void Dispose()
+    {
+        mvarClockTimer?.Dispose();
+        mvarClockTimer = null;
+    }
+
+    private async Task OnDriverChanged(ChangeEventArgs e)
+    {
+        if (e.Value is not string text || !Guid.TryParse(text, out Guid id))
+            return;
+        await ChangeDriverAsync(id);
+    }
+
+    private async Task ChangeDriverAsync(Guid id)
+    {
+        mvarSelectedDriverId = id;
+        if (mcolUsers.TryGetValue(id, out UserModelBase? user))
+            ViewedUser = user;
+        else
+            ViewedUser = DriverOptions.FirstOrDefault(d => d.guid == id) ?? ViewedUser;
+
+        await LoadRangeAsync(mvarSelectedDate == default ? DateTime.Today : mvarSelectedDate);
+        await Auth.LogActivity(
+            Common.sessionEventType.scheduleViewOpened,
+            $"cf={ViewedUser?.CF}|sim=True|origen=tourmaline-combo");
+    }
+
+    private async Task LoadRangeAsync(DateTime anchorDate)
+    {
+        if (null == ViewedUser) return;
+
+        mvarLoading = true;
+        mvarLoadingText = "Cargando asignaciones…";
+        await InvokeAsync(StateHasChanged);
+
+        DateTime rangeStart = anchorDate.Date;
+        try
+        {
+            mvarTimeSlice = await Expert.PlansTimeSlice(rangeStart, DayHorizon);
+            List<AssignationContentModel>? all = await Expert.Assignations(rangeStart, DayHorizon);
+            mcolRangeAssignations = all ?? new List<AssignationContentModel>();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Cuadrante: fallo al cargar asignaciones");
+            mcolRangeAssignations = new List<AssignationContentModel>();
+            mvarActionMessage = "No se pudo cargar el cuadrante de Sapphire.";
+        }
+
+        BuildDriverOptions();
+        BuildAgentRows(rangeStart);
+        SelectDayInternal(mvarSelectedDate.Date);
+        if (null == SelectedRow && AgentRows.Count > 0)
+            SelectDayInternal(AgentRows[0].Date);
+
+        mvarLoading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void BuildDriverOptions()
+    {
+        Dictionary<Guid, UserModelBase> options = new();
+        foreach (AssignationContentModel a in mcolRangeAssignations)
+        {
+            if (Guid.Empty.Equals(a.AgentId) || options.ContainsKey(a.AgentId))
+                continue;
+            if (mcolUsers.TryGetValue(a.AgentId, out UserModelBase? known))
+                options[a.AgentId] = known;
+            else
+                options[a.AgentId] = new UserModelBase { guid = a.AgentId, CF = "?", Name = "Maquinista" };
+        }
+
+        if (null != mvarSession?.User && !options.ContainsKey(mvarSession.User.guid))
+            options[mvarSession.User.guid] = mvarSession.User;
+
+        DriverOptions = options.Values
+            .OrderBy(u => u.CF, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(u => u.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private void BuildAgentRows(DateTime rangeStart)
+    {
+        AgentRows = new List<AgentDayRow>();
+        if (null == ViewedUser || null == mvarTimeSlice) return;
+
+        Dictionary<DateTime, AssignationContentModel> byDay = mcolRangeAssignations
+            .Where(a => a.AgentId == ViewedUser.guid)
+            .GroupBy(a => a.Date.Date)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        for (int i = 0; i < DayHorizon; i++)
+        {
+            DateTime day = rangeStart.Date.AddDays(i);
+            byDay.TryGetValue(day, out AssignationContentModel? assignation);
+
+            WorkShiftTemplateModel? template = null;
+            if (null != assignation && !string.IsNullOrWhiteSpace(assignation.Definitive))
+            {
+                WorkShiftTemplateCollectionModel? plan = mvarTimeSlice.GetPlan(day);
+                if (null != plan)
+                    template = plan.Template(assignation.Definitive, day, mvarTimeSlice.GetFestive(day));
+            }
+
+            AgentRows.Add(new AgentDayRow
+            {
+                Date = day,
+                Assignation = assignation,
+                Template = template,
+                IsToday = day == DateTime.Today
+            });
+        }
+    }
+
+    private void SelectDay(DateTime day)
+    {
+        mvarSelectedDate = day.Date;
+        mvarQueryDate = day.Date;
+        SelectDayInternal(day.Date);
+        _ = Auth.LogActivity(
+            Common.sessionEventType.scheduleDayViewed,
+            $"cf={ViewedUser?.CF}|día={day:yyyy-MM-dd}|turno={SelectedRow?.Assignation?.Definitive ?? "—"}|origen=tourmaline");
+    }
+
+    private void SelectDayInternal(DateTime day)
+    {
+        SelectedRow = AgentRows.FirstOrDefault(r => r.Date.Date == day.Date);
+        SelectedTrains = new List<TrainWorkShiftContentModel>();
+        SelectedDepots = new List<AttWorkShiftContentModel>();
+
+        if (SelectedRow?.Template is AttTemplateModel att && null != att.Content)
+        {
+            SelectedTrains = att.Content
+                .OfType<TrainWorkShiftContentModel>()
+                .OrderBy(t => t.StartTime)
+                .ToList();
+            SelectedDepots = att.Content
+                .OfType<AttWorkShiftContentModel>()
+                .OrderBy(d => d.StartTime)
+                .ToList();
+        }
+
+        EnsureClockTimer();
+    }
+
+    private async Task StartTrainAsync(TrainWorkShiftContentModel train)
+    {
+        mvarActionMessage = null;
+        if (string.IsNullOrWhiteSpace(train.TrainId))
+            return;
+
+        bool ok = await Tourmaline.StartCirculationFromTrainTokenAsync(train.TrainId, train.StartTime);
+        if (ok)
+        {
+            mvarActionMessage = $"Ruta {train.TrainId} en servicio.";
+        }
+        else
+        {
+            mvarActionMessage = $"No está en el plan de hoy el tren {train.TrainId}.";
+        }
+    }
+
+    private async Task QueryShiftAsync()
+    {
+        mvarQueryError = null;
+        mvarQueryRan = false;
+        QueryResults = new List<AssignationContentModel>();
+
+        if (string.IsNullOrWhiteSpace(mvarQueryShift))
+        {
+            mvarQueryError = "Indica el código de turno.";
+            return;
+        }
+
+        DateTime day = mvarQueryDate.Date;
+        List<AssignationContentModel> dayAssignations;
+        if (null != mvarTimeSlice
+            && day >= mvarTimeSlice.InitialDate.Date
+            && day < mvarTimeSlice.InitialDate.Date.AddDays(DayHorizon))
+        {
+            dayAssignations = mcolRangeAssignations.Where(a => a.Date.Date == day).ToList();
+        }
+        else
+        {
+            List<AssignationContentModel>? fetched = await Expert.Assignations(day, 1);
+            dayAssignations = fetched ?? new List<AssignationContentModel>();
+        }
+
+        string key = mvarQueryShift.Trim();
+        QueryResults = dayAssignations
+            .Where(a => string.Equals(a.Definitive?.Trim(), key, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(a => GetUserDisplay(a.AgentId))
+            .ToList();
+        mvarQueryRan = true;
+
+        await Auth.LogActivity(
+            Common.sessionEventType.scheduleShiftQueried,
+            $"día={day:yyyy-MM-dd}|turno={key}|resultados={QueryResults.Count}|origen=tourmaline");
+    }
+
+    private bool IsActiveTrain(TrainWorkShiftContentModel train)
+    {
+        Circulation? current = Tourmaline.SessionConfig.Cabin?.Circulation;
+        if (current is null || string.IsNullOrWhiteSpace(train.TrainId))
+            return false;
+        string token = train.TrainId.Trim();
+        string service = current.HasServiceNumber ? current.ServiceNumber : current.Id;
+        return service.Contains(token, StringComparison.OrdinalIgnoreCase)
+            || current.Id.Contains(token, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsSelectedRow(AgentDayRow row)
+        => null != SelectedRow && SelectedRow.Date.Date == row.Date.Date;
+
+    private SlotStatus GetSlotStatus(TimeSpan start, TimeSpan end)
+    {
+        DateTime day = SelectedDate.Date;
+        DateTime today = DateTime.Today;
+        if (day < today) return SlotStatus.Past;
+        if (day > today) return SlotStatus.Future;
+        TimeSpan now = DateTime.Now.TimeOfDay;
+        if (end <= start)
+            return now >= start ? SlotStatus.Current : SlotStatus.Future;
+        if (now >= end) return SlotStatus.Past;
+        if (now >= start) return SlotStatus.Current;
+        return SlotStatus.Future;
+    }
+
+    private static string SlotCss(SlotStatus status)
+        => status switch
+        {
+            SlotStatus.Current => "is-current",
+            SlotStatus.Past => "is-past",
+            _ => "is-upcoming"
+        };
+
+    private static string GetTemplateStyle(WorkShiftTemplateModel? template, bool isTd)
+        => Utils.WorkShiftTemplateStyle(template, isTd: isTd, missingTemplateStyle: "background: #dc3545; color: #fff;");
+
+    private static string GetTrainColorStyle(TrainWorkShiftContentModel train)
+    {
+        var asim = Utils.GetAsimilation(train.TrainId);
+        return $"--train-accent: {Utils.AsimilationColor(asim)};";
+    }
+
+    private string GetUserDisplay(Guid agentId)
+    {
+        if (mcolUsers.TryGetValue(agentId, out UserModelBase? u) && null != u)
+            return $"({u.CF}) {u.Name}";
+        return "Desconocido";
+    }
+
+    private static string? FormatAssignationNote(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+        const string marker = "nnn";
+        int idx = raw.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (idx < 0)
+            return null;
+        string rest = raw.Substring(idx + marker.Length).Trim();
+        return string.IsNullOrWhiteSpace(rest) ? null : rest;
+    }
+
+    private static string DayName(DateTime day)
+        => day.ToString("ddd", CultureEs);
+
+    private void EnsureClockTimer()
+    {
+        bool need = SelectedDate.Date == DateTime.Today
+            && (SelectedTrains.Count > 0 || SelectedDepots.Count > 0);
+        if (need)
+        {
+            mvarClockTimer ??= new System.Threading.Timer(
+                _ => _ = InvokeAsync(StateHasChanged),
+                null,
+                TimeSpan.FromSeconds(20),
+                TimeSpan.FromSeconds(20));
+        }
+        else
+        {
+            mvarClockTimer?.Dispose();
+            mvarClockTimer = null;
+        }
+    }
+
+    private sealed class AgentDayRow
+    {
+        public DateTime Date { get; set; }
+        public AssignationContentModel? Assignation { get; set; }
+        public WorkShiftTemplateModel? Template { get; set; }
+        public bool IsToday { get; set; }
+    }
+}

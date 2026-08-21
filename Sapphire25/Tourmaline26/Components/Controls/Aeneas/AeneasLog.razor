@@ -169,6 +169,10 @@
             await database.SaveChangesAsync();
             await TourmalineService.DoAeneasSync();
         }
+        catch (SessionExpiredException)
+        {
+            logger.LogWarning("Sincronización Aeneas: token Sapphire no renovado; se usa el almacén local");
+        }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Fallo al sincronizar Aeneas con Zafiro");

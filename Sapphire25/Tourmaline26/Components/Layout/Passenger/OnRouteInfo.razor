@@ -34,7 +34,7 @@
         else if(InformationMode==Enums.PassengerInformationMode.Default)
         {
             <div class="panel-body centered-image-panel">
-                <img class="centered-image" src="/img/TrenCoso.jpg"/>
+                <img class="centered-image" src="/img/TrenMinator.jpg"/>
                 @* Anuncio solo sobre panel-body (no cubre cabecera; aquí no hay header). *@
                 @if (ActiveAnnouncement is not null)
                 {
@@ -49,14 +49,21 @@
                 null != Circulation && null != Circulation.Asimilation)
                 {
                     <span class="train-number">
-                        <span class="train-number-icon @(TrainMoving ? "train-number-icon--moving" : null)">
-                            <ColorIcon Name="Train"
-                                       Color="@(Circulation.HasColor ? Circulation.Color : "#336699")"
-                                       Size="72"
-                                       Glow="@TrainMoving"
-                                       GlowColor="#88aacc" />
-                        </span>
-                        <span class="train-number-text">@DisplayServiceName destinació</span>
+                        @if (AtFinalStation)
+                        {
+                            <span class="train-number-text">Final de trajecte</span>
+                        }
+                        else
+                        {
+                            <span class="train-number-icon @(TrainMoving ? "train-number-icon--moving" : null)">
+                                <ColorIcon Name="Train"
+                                           Color="@(Circulation.HasColor ? Circulation.Color : "#336699")"
+                                           Size="72"
+                                           Glow="@TrainMoving"
+                                           GlowColor="#88aacc" />
+                            </span>
+                            <span class="train-number-text">@DisplayServiceName</span>
+                        }
                     </span>
                     <span class="panel-time">@CurrentTime</span>
                     <div class="destination">
@@ -136,7 +143,8 @@
                         {
                             <div class="route-live-fg">
                                 <NextStationTable NextStationName="@NextStationName"
-                                                  TrainDestinationName="@DestinationName" />
+                                                  TrainDestinationName="@DestinationName"
+                                                  HideStationHero="NextStationIsDestination" />
                             </div>
                         }
                         else if (InformationMode != Enums.PassengerInformationMode.Cruise)
@@ -303,6 +311,16 @@
             return null;
         }
     }
+
+    private bool NextStationIsDestination =>
+        PassengerLedMapping.IsNextStationTheDestination(mvarTourmaline.SessionConfig);
+
+    /// <summary>
+    /// Última estación del recorrido: se ocultan icono y número de tren.
+    /// </summary>
+    private bool AtFinalStation =>
+        InformationMode == Enums.PassengerInformationMode.EndOfTrip
+        || PassengerLedMapping.IsAtDestinationStation(mvarTourmaline.SessionConfig);
 
     /// <summary>Estación de llegada / parada actual (modo Arriv).</summary>
     private string NextStationName =>

@@ -34,6 +34,10 @@
                     {
                         <AeneasLog />
                     }
+                    else if (SchedulePanelVisible)
+                    {
+                        <DriverSchedulePanel />
+                    }
                     else if (ItineraryPanelVisible)
                     {
                         <ItinerarySheet />
@@ -106,6 +110,7 @@
         "Cameras",
         "Microphone",
         "Itinerary",
+        "Schedule",
         "DamageClipboard"
     };
     private static readonly string[] SessionRequiredKeys =
@@ -129,7 +134,7 @@
         var view3D = new TeslaButton("3DOff", "3DOn", true, EventCallback.Factory.Create(this, () => OnButtonInternalChanged()));
         view3D.Selected = true;
         buttonData.Add("View3D", view3D);
-        buttonData.Add("Spc0", null);
+        buttonData.Add("Schedule", new TeslaButton("User", null, true, EventCallback.Factory.Create(this, () => OnPanelButtonChanged("Schedule"))));
         buttonData.Add("Spc1", null);
         buttonData.Add("Itinerary", new TeslaButton("Itinerary", null, true, EventCallback.Factory.Create(this, () => OnPanelButtonChanged("Itinerary")), false, false));
         buttonData.Add("DamageClipboard", new TeslaButton("Clipboard", null, true, EventCallback.Factory.Create(this, () => OnPanelButtonChanged("DamageClipboard")),false,true));
@@ -275,9 +280,21 @@
     {        
         get => string.Equals(VisibleOverlayKey, "DamageClipboard", StringComparison.Ordinal);
     }
+    private bool SchedulePanelVisible
+    {
+        get => string.Equals(VisibleOverlayKey, "Schedule", StringComparison.Ordinal);
+    }
     private bool ItineraryPanelVisible
     {
         get => string.Equals(VisibleOverlayKey, "Itinerary", StringComparison.Ordinal);
+    }
+    private bool CanOpenSchedule
+    {
+        get
+        {
+            SessionModel? session = mvarTourmaline.SessionConfig.Session;
+            return Utils.isEngineer(session) || Utils.isExpert(session);
+        }
     }
     private bool HasActiveTrain
     {
@@ -299,6 +316,9 @@
 
         if (buttonData.TryGetValue("Itinerary", out var itinerary) && itinerary is not null)
             itinerary.Enabled = HasActiveTrain;
+
+        if (buttonData.TryGetValue("Schedule", out var schedule) && schedule is not null)
+            schedule.Enabled = loggedIn && CanOpenSchedule;
 
         int s = 0;
         while (s < SessionRequiredKeys.Length)
@@ -441,10 +461,17 @@
 
     protected async Task OnLoginRequest()
     {
-        if(null==mvarTourmaline.SessionConfig.Session)
-            LoginMode = true;
-        else
+        if (LoginMode)
+        {
+            LoginMode = false;
+            OnButtonInternalChanged();
+            return;
+        }
+
+        // Al meter credenciales (otro usuario o el mismo) se extingue la sesión actual.
+        if (null != mvarTourmaline.SessionConfig.Session)
             await mvarTourmaline.UserLogout();
+        LoginMode = true;
         OnButtonInternalChanged();
     }
     protected async Task OnUserLogin((string username, string password) credentials)
@@ -488,6 +515,15 @@
             catch (Exception ex)
             {
                 Logger.LogWarning(ex, "Turno grafiado no cargado tras login");
+            }
+
+            try
+            {
+                await mvarTourmaline.TryReportOdometerAfterLoginAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Odómetro no enviado a Sapphire tras login");
             }
 
             OnButtonInternalChanged();

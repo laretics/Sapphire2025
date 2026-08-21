@@ -113,17 +113,26 @@ namespace Tourmaline26.Logic
 		}
 
 		/// <summary>
+		/// El tren está en el área de la última estación del recorrido.
+		/// </summary>
+		public static bool IsAtDestinationStation(SessionConfiguration session)
+		{
+			CabinEnvironment? cabin = session.Cabin;
+			StationInfo? dest = cabin?.Asimilation?.Destination
+				?? cabin?.Circulation?.Asimilation?.Destination;
+			StationInfo? current = cabin?.CurrentStation;
+			if (dest is null || current is null)
+				return false;
+			return string.Equals(current.Id, dest.Id, StringComparison.Ordinal);
+		}
+
+		/// <summary>
 		/// Cartel de llegada en TFT, pero el tren ya está parado en el destino:
 		/// el LED interior anuncia destino y coche, no la próxima estación.
 		/// </summary>
 		public static bool IsStoppedAtDestination(SessionConfiguration session)
 		{
-			CabinEnvironment? cabin = session.Cabin;
-			StationInfo? dest = cabin?.Asimilation?.Destination;
-			StationInfo? current = cabin?.CurrentStation;
-			if (cabin is null || dest is null || current is null)
-				return false;
-			if (!string.Equals(current.Id, dest.Id, StringComparison.Ordinal))
+			if (!IsAtDestinationStation(session))
 				return false;
 			return session.CurrentSpeed <= 0;
 		}
@@ -158,6 +167,25 @@ namespace Tourmaline26.Logic
 		{
 			return session.Cabin?.Asimilation?.Destination
 				?? session.Cabin?.Circulation?.Asimilation?.Destination;
+		}
+
+		/// <summary>
+		/// True si la estación anunciada (próxima / actual) es el destino de la circulación.
+		/// </summary>
+		public static bool IsNextStationTheDestination(SessionConfiguration session)
+		{
+			StationInfo? next = NextStation(session);
+			StationInfo? dest = DestinationStation(session);
+			if (next is null || dest is null)
+				return false;
+			if (!string.IsNullOrWhiteSpace(next.Id)
+				&& !string.IsNullOrWhiteSpace(dest.Id)
+				&& string.Equals(next.Id, dest.Id, StringComparison.OrdinalIgnoreCase))
+				return true;
+			return string.Equals(
+				(next.Name ?? string.Empty).Trim(),
+				(dest.Name ?? string.Empty).Trim(),
+				StringComparison.OrdinalIgnoreCase);
 		}
 
 		public static string NextStationName(SessionConfiguration session) =>

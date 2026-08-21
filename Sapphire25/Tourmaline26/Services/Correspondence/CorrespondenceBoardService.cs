@@ -8,13 +8,13 @@ namespace Tourmaline26.Services.Correspondence
 	/// <summary>
 	/// Compone la lista de enlaces de una estación: trenes SFM + buses TIB/EMT,
 	/// ordenados por hora de salida, sin expediciones ya pasadas.
-	/// Los buses (TIB o EMT) con menos de un minuto de margen no se anuncian.
+	/// No se anuncian servicios (tren o bus) con menos de 5 minutos de margen.
 	/// Tampoco se anuncian servicios que terminen en la estación anunciada
 	/// ni en el destino de este tren (no son un enlace útil).
 	/// </summary>
 	public sealed class CorrespondenceBoardService : IDisposable
 	{
-		private static readonly TimeSpan BusCatchWindow = TimeSpan.FromMinutes(1);
+		private static readonly TimeSpan MinimumLeadTime = TimeSpan.FromMinutes(5);
 
 		private readonly SfmDeparturesService mvarSfm;
 		private readonly TibDeparturesService mvarTib;
@@ -115,9 +115,19 @@ namespace Tourmaline26.Services.Correspondence
 		/// (normalmente el destino de este tren). Se omiten trenes y buses
 		/// que terminen en esa estación o en ese destino.
 		/// </summary>
+		public void SetContext(string? stationName, string? excludeDestination)
+		{
+			SetContext(stationName, excludeDestination, maxDepartures: null, stationHint: null);
+		}
+
 		public void SetContext(string? stationName, string? excludeDestination, int maxDepartures)
 		{
 			SetContext(stationName, excludeDestination, maxDepartures, stationHint: null);
+		}
+
+		public void SetContext(StationInfo? station, string? excludeDestination)
+		{
+			SetContext(station?.Name, excludeDestination, maxDepartures: null, station);
 		}
 
 		public void SetContext(StationInfo? station, string? excludeDestination, int maxDepartures)
@@ -128,10 +138,9 @@ namespace Tourmaline26.Services.Correspondence
 		private void SetContext(
 			string? stationName,
 			string? excludeDestination,
-			int maxDepartures,
+			int? maxDepartures,
 			StationInfo? stationHint)
 		{
-			int take = maxDepartures > 0 ? maxDepartures : 10;
 			bool resubscribe;
 			lock (mvarLock)
 			{
@@ -141,7 +150,8 @@ namespace Tourmaline26.Services.Correspondence
 				mvarStationName = stationName;
 				mvarStationHint = stationHint;
 				mvarExcludeDestination = excludeDestination;
-				mvarMaxDepartures = take;
+				if (maxDepartures.HasValue && maxDepartures.Value > 0)
+					mvarMaxDepartures = maxDepartures.Value;
 			}
 
 			if (resubscribe)
@@ -502,16 +512,9 @@ namespace Tourmaline26.Services.Correspondence
 				return false;
 
 			DateTime local = ToLocal(row.SortTime);
-			if (row.IsBus)
-			{
-				// Al viajero no le da tiempo a coger un bus que sale en menos de un minuto.
-				if (local < now + BusCatchWindow)
-					return false;
-			}
-			else if (local < now)
-			{
+			// Solo salidas a 5 minutos o más: no da tiempo a coger las más inmediatas.
+			if (local < now + MinimumLeadTime)
 				return false;
-			}
 
 			if (TerminatesHere(row.DestinationName, excludeDestination, place, stationName))
 				return false;

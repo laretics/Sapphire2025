@@ -241,7 +241,7 @@ namespace Sapphire2025.Storage
 					TrainName = trainName
 				};
 				string request = JsonSerializer.Serialize(question);
-				HttpResponseMessage respuesta = await sendPutRequest("logout",request);
+				HttpResponseMessage respuesta = await sendPutRequest("logout", request, checkSession: false);
                 
                 return true;
             }

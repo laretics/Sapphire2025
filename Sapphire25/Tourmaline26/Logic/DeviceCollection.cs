@@ -1,7 +1,21 @@
-﻿namespace Tourmaline26.Logic
+﻿using System.Net;
+
+namespace Tourmaline26.Logic
 {
     public class DeviceCollection : List<DeviceMapped>
     {
+        public DeviceMapped? ByAddress(IPAddress? ip)
+        {
+            if (ip is null)
+                return null;
+            foreach (DeviceMapped device in this)
+            {
+                if (ClientAddress.Equals(device.Address, ip))
+                    return device;
+            }
+            return null;
+        }
+
         public DeviceCollection ByCoach(Enums.CoachEnum coach)
         {
             var result = new DeviceCollection();
