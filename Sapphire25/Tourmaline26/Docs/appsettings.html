@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Tourmaline26 — Guía de appsettings</title>
+	<style>
+		:root {
+			--ink: #1c2430;
+			--muted: #5b6573;
+			--line: #d8dee8;
+			--bg: #f4f6f9;
+			--card: #fff;
+			--accent: #1a5fb4;
+			--ok: #1b7f4a;
+			--warn: #8a6d12;
+			--warn-bg: #fff6d8;
+			--warn-bd: #e0b94a;
+			--err-bg: #fdecea;
+			--err-bd: #d24c3e;
+			--code: #0f1724;
+		}
+		* { box-sizing: border-box; }
+		body {
+			margin: 0;
+			font-family: "Segoe UI", system-ui, sans-serif;
+			color: var(--ink);
+			background: var(--bg);
+			line-height: 1.55;
+		}
+		header {
+			background: #152238;
+			color: #fff;
+			padding: 2rem 8vw 1.6rem;
+		}
+		header h1 { margin: 0 0 0.35rem; font-size: 1.7rem; }
+		header p { margin: 0; color: #c5d0e0; max-width: 52rem; }
+		main { padding: 1.5rem 8vw 4rem; max-width: 72rem; }
+		nav.toc {
+			background: var(--card);
+			border: 1px solid var(--line);
+			border-radius: 10px;
+			padding: 1rem 1.25rem;
+			margin: 1.2rem 0 2rem;
+		}
+		nav.toc h2 { margin: 0 0 0.5rem; font-size: 1rem; }
+		nav.toc ol { margin: 0; padding-left: 1.2rem; }
+		nav.toc a { color: var(--accent); text-decoration: none; }
+		nav.toc a:hover { text-decoration: underline; }
+		h2 { color: var(--accent); margin-top: 2.2rem; border-bottom: 1px solid var(--line); padding-bottom: 0.3rem; }
+		h3 { margin-top: 1.6rem; }
+		p, li { max-width: 58rem; }
+		code, kbd {
+			font-family: Consolas, "Cascadia Mono", monospace;
+			font-size: 0.92em;
+			background: #eef1f6;
+			padding: 0.08em 0.35em;
+			border-radius: 4px;
+		}
+		pre {
+			background: var(--code);
+			color: #e8eef6;
+			padding: 1rem 1.1rem;
+			border-radius: 8px;
+			overflow-x: auto;
+			font-size: 0.86rem;
+			line-height: 1.45;
+		}
+		pre .c { color: #8aa0b8; }
+		pre .k { color: #9cdcfe; }
+		table {
+			border-collapse: collapse;
+			width: 100%;
+			background: var(--card);
+			margin: 0.8rem 0 1.2rem;
+			font-size: 0.93rem;
+		}
+		th, td {
+			border: 1px solid var(--line);
+			padding: 0.55rem 0.7rem;
+			vertical-align: top;
+			text-align: left;
+		}
+		th { background: #e8eef6; }
+		td.mono { font-family: Consolas, monospace; white-space: nowrap; }
+		.note, .warn, .danger {
+			padding: 0.85rem 1rem;
+			border-radius: 8px;
+			margin: 1rem 0;
+			max-width: 58rem;
+		}
+		.note { background: #e8f1fb; border-left: 5px solid var(--accent); }
+		.warn { background: var(--warn-bg); border-left: 5px solid var(--warn-bd); }
+		.danger { background: var(--err-bg); border-left: 5px solid var(--err-bd); }
+		.tag {
+			display: inline-block;
+			font-size: 0.75rem;
+			font-weight: 700;
+			letter-spacing: 0.03em;
+			padding: 0.12em 0.5em;
+			border-radius: 999px;
+			vertical-align: middle;
+		}
+		.tag-req { background: #fdecea; color: #9b1c12; }
+		.tag-opt { background: #e8f6ee; color: var(--ok); }
+		.tag-fw { background: #eee6fa; color: #5b2d91; }
+		.tag-dbg { background: #fff3cd; color: #7a5b00; }
+		footer { color: var(--muted); font-size: 0.85rem; margin-top: 3rem; }
+	</style>
+</head>
+<body>
+<header>
+	<h1>Tourmaline26 — qué lee de la configuración y cómo rellenarla</h1>
+	<p>
+		Inventario extraído del código (agosto 2026), no del JSON desplegado.
+		Solo aparecen claves que el programa consulta, con el valor que usa si la clave no está.
+	</p>
+</header>
+<main>
+
+<nav class="toc">
+	<h2>Índice</h2>
+	<ol>
+		<li><a href="#archivo">Qué archivo carga realmente</a></li>
+		<li><a href="#no-json">Lo que no sale del JSON</a></li>
+		<li><a href="#raiz">Claves de raíz</a></li>
+		<li><a href="#sistema">SystemConfiguration</a></li>
+		<li><a href="#gps">GPS (<code>SystemConfiguration.gps</code>)</a></li>
+		<li><a href="#devices">Devices</a></li>
+		<li><a href="#cameras">Cameras</a></li>
+		<li><a href="#debug">debugStartSession (opcional)</a></li>
+		<li><a href="#trampas">Trampas al rellenar</a></li>
+		<li><a href="#plantilla">Plantilla JSON recomendada</a></li>
+	</ol>
+</nav>
+
+<h2 id="archivo">1. Qué archivo carga realmente</h2>
+<p>
+	En <code>Program.cs</code> Tourmaline <strong>borra todas las fuentes de configuración</strong>
+	(incluido <code>appsettings.json</code>, variables de entorno y línea de comandos)
+	y deja solo:
+</p>
+<pre>appsettings.{ASPNETCORE_ENVIRONMENT}.json</pre>
+<ul>
+	<li>Con Visual Studio / <code>launchSettings.json</code> el entorno es <code>Development</code> → lee <code>appsettings.Development.json</code>.</li>
+	<li>En el tren (producción) suele ser <code>Production</code> → lee <code>appsettings.Production.json</code>.</li>
+	<li>El fichero es <strong>obligatorio</strong> (<code>optional: false</code>). Si falta, el proceso no arranca.</li>
+	<li>Un <code>appsettings.json</code> genérico <strong>no se usa</strong>, aunque exista al lado.</li>
+</ul>
+<div class="warn">
+	<strong>Consecuencia:</strong> hay que mantener las mismas claves en el JSON del entorno que vaya a ejecutarse.
+	Lo que pongas solo en <code>appsettings.json</code> no llega al programa.
+</div>
+
+<h2 id="no-json">2. Lo que no sale del JSON</h2>
+<p>Estos valores están fijos en código. No tiene sentido ponerlos en el JSON porque nadie los lee.</p>
+<table>
+	<thead>
+		<tr><th>Qué</th><th>Valor en código</th></tr>
+	</thead>
+	<tbody>
+		<tr><td>Versión de Tourmaline</td><td class="mono">SystemConfiguration.Version = "V1.13B"</td></tr>
+		<tr><td>Fecha de release del binario</td><td class="mono">SystemConfiguration.Release (hardcoded)</td></tr>
+		<tr><td>Base SQLite local</td><td class="mono">Data Source=tourmaline.db</td></tr>
+		<tr><td>Timeout HTTP MVB</td><td>2 s</td></tr>
+		<tr><td>Timeout Experience</td><td>2 s</td></tr>
+		<tr><td>Timeout Armandito</td><td>10 s</td></tr>
+		<tr><td>Timeout panel SFM</td><td>90 s</td></tr>
+		<tr><td>Timeout TIB / EMT</td><td>45 s / 20 s</td></tr>
+		<tr><td>Logs</td><td>Consola + carpeta <code>Logs/</code> junto al exe (no usa la sección <code>Logging</code> del JSON para el proveedor propio)</td></tr>
+	</tbody>
+</table>
+<p>
+	ASP.NET todavía entiende, <em>si las pones en ese mismo JSON de entorno</em>,
+	claves de host: <code>Urls</code>, <code>AllowedHosts</code>, <code>Logging</code>, <code>Kestrel</code>.
+	Tourmaline no las interpreta; solo el runtime.
+</p>
+
+<h2 id="raiz">3. Claves de raíz</h2>
+<table>
+	<thead>
+		<tr>
+			<th>Clave</th>
+			<th>Obligatoria</th>
+			<th>Default si falta</th>
+			<th>Quién la usa</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td class="mono">ApiBaseAddress</td>
+			<td><span class="tag tag-req">recomendada</span></td>
+			<td class="mono">https://material.trensfm.com:5031/api/</td>
+			<td>
+				Clientes REST de Zafiro (login, odómetro, partes, cuadrante…).
+				Si no acaba en <code>/</code>, el código se la añade.
+				<strong>No confundir con <code>SystemConfiguration.SapphireUrl</code></strong> (esa solo se muestra en el menú).
+			</td>
+		</tr>
+		<tr>
+			<td class="mono">DetailedErrors</td>
+			<td><span class="tag tag-dbg">diagnóstico</span></td>
+			<td class="mono">false</td>
+			<td>
+				En Home: si es <code>true</code>, permite forzar el dispositivo con
+				<code>?as=192.168.0.40</code> y muestra esa pista cuando la IP no coincide.
+			</td>
+		</tr>
+		<tr>
+			<td class="mono">Diamond:Documents:CompanyLogo</td>
+			<td><span class="tag tag-opt">opcional</span></td>
+			<td class="mono">img/sfmImg.png</td>
+			<td>Logotipo en consignas / libro itinerario (ruta relativa a <code>wwwroot</code>).</td>
+		</tr>
+		<tr>
+			<td class="mono">Devices</td>
+			<td><span class="tag tag-req">necesaria</span></td>
+			<td>lista vacía → «dispositivo desconocido»</td>
+			<td>Identifica HMI / TFT / LED por IP del cliente. Ver <a href="#devices">§6</a>.</td>
+		</tr>
+		<tr>
+			<td class="mono">Cameras</td>
+			<td><span class="tag tag-opt">opcional</span></td>
+			<td>lista vacía</td>
+			<td>Respaldo si no hay cámaras dentro de <code>SystemConfiguration</code>. Ver <a href="#cameras">§7</a>.</td>
+		</tr>
+		<tr>
+			<td class="mono">debugStartSession</td>
+			<td><span class="tag tag-dbg">diagnóstico</span></td>
+			<td>no se aplica</td>
+			<td>Rellena la sesión al arrancar. Ver <a href="#debug">§8</a>.</td>
+		</tr>
+		<tr>
+			<td class="mono">Diamond:TopoId</td>
+			<td><em>obsoleta</em></td>
+			<td>—</td>
+			<td>Ya no se lee. La topología va en <code>SystemConfiguration.DiamondTopologyId</code>.</td>
+		</tr>
+	</tbody>
+</table>
+
+<h2 id="sistema">4. SystemConfiguration</h2>
+<p>
+	Se deserializa entera con <code>Get&lt;SystemConfiguration&gt;()</code>.
+	Si falta la sección, se usan los defaults de la clase.
+	Si la sección existe pero una propiedad no está, esa propiedad conserva el default C#.
+</p>
+<div class="warn">
+	<strong>Excepción importante:</strong> varios servicios leen la clave <em>en crudo</em>
+	(<code>config["SystemConfiguration:MVBUrl"]</code>, etc.) <strong>antes o en lugar</strong>
+	del objeto. En esos casos, si la clave no está en el JSON, <strong>no aplica el default de la clase</strong>:
+	queda cadena vacía y el servicio no arranca. Están marcadas abajo.
+</div>
+
+<h3>Identidad del tren</h3>
+<table>
+	<thead><tr><th>Clave</th><th>Default C#</th><th>Uso</th></tr></thead>
+	<tbody>
+		<tr>
+			<td class="mono">TrainId</td>
+			<td class="mono">00000000-…</td>
+			<td>Guid del material en Zafiro. Login, odómetro, partes. Si está vacío se intenta rellenar desde <code>tourmaline.db</code>.</td>
+		</tr>
+		<tr>
+			<td class="mono">Name</td>
+			<td class="mono">"Tren"</td>
+			<td>Nombre de unidad (p. ej. <code>8105-8106</code>). Busca el tren local y aparece en logs / actividad.</td>
+		</tr>
+		<tr>
+			<td class="mono">LastRelease</td>
+			<td><code>0001-01-01</code></td>
+			<td>Solo se muestra en el menú de sistema (fecha de instalación de hardware).</td>
+		</tr>
+		<tr>
+			<td class="mono">ToniCruz</td>
+			<td class="mono">"right"</td>
+			<td>Lado del HMI en cabina. <code>right</code> o <code>left</code>: cambia el layout Tesla (stream a un lado u otro).</td>
+		</tr>
+		<tr>
+			<td class="mono">DiamondTopologyId</td>
+			<td class="mono">70062022-f986-4e2f-ab38-e5034621fac3</td>
+			<td>Guid de la topología Diamond (Mallorca). Sin un Guid válido no hay malla ni circulaciones locales.</td>
+		</tr>
+	</tbody>
+</table>
+
+<h3>URLs y servicios de a bordo</h3>
+<table>
+	<thead><tr><th>Clave</th><th>Default</th><th>Lectura</th><th>Uso</th></tr></thead>
+	<tbody>
+		<tr>
+			<td class="mono">SapphireUrl</td>
+			<td class="mono">https://material.trensfm.com:5031</td>
+			<td>objeto</td>
+			<td>Solo informativa en el menú. El HTTP real usa <code>ApiBaseAddress</code>.</td>
+		</tr>
+		<tr>
+			<td class="mono">MVBUrl</td>
+			<td class="mono">http://172.16.20.11:8000/data <em>(clase)</em></td>
+			<td><strong>crudo</strong> → si falta, <code>""</code></td>
+			<td>Polling del bus MVB. Hay que ponerla en el JSON o MVB no arranca.</td>
+		</tr>
+		<tr>
+			<td class="mono">MVBRetries</td>
+			<td class="mono">5</td>
+			<td>crudo (no está en la clase)</td>
+			<td>Tope de fallos consecutivos / backoff. No forma parte de <code>SystemConfiguration.cs</code>, pero sí se lee.</td>
+		</tr>
+		<tr>
+			<td class="mono">TExperienceUrl</td>
+			<td class="mono">http://172.16.20.12:5005/server <em>(clase)</em></td>
+			<td><strong>crudo</strong> → si falta, <code>""</code></td>
+			<td>API REST de Tourmaline Experience (demo). Hay que ponerla o Experience queda «no configurado».</td>
+		</tr>
+		<tr>
+			<td class="mono">TExperienceStr</td>
+			<td class="mono">http://192.168.0.9:5005/stream</td>
+			<td>objeto</td>
+			<td>URL del stream de vídeo para TFT y HMI (<code>SimulatorStream</code>).</td>
+		</tr>
+	</tbody>
+</table>
+
+<h3>Tierra: Armandito, panel SFM, TIB, EMT, meteo</h3>
+<table>
+	<thead><tr><th>Clave</th><th>Default</th><th>Uso</th></tr></thead>
+	<tbody>
+		<tr>
+			<td class="mono">SfmInfoUrl</td>
+			<td class="mono">https://info.trensfm.com:8084</td>
+			<td>Armandito (incidencias / avisos de tierra). Program.cs añade <code>/</code> si falta.</td>
+		</tr>
+		<tr>
+			<td class="mono">SfmInfoToken</td>
+			<td class="mono">SFM2026</td>
+			<td>Bearer para Armandito.</td>
+		</tr>
+		<tr>
+			<td class="mono">SfmPanelUrl</td>
+			<td class="mono">https://info.trensfm.com</td>
+			<td>Panel de salidas SFM (REST + Socket.IO). Alias aceptado: <code>SfmDeparturesUrl</code>.</td>
+		</tr>
+		<tr>
+			<td class="mono">SfmPanelDefaultStation</td>
+			<td><em>ninguna</em></td>
+			<td>Entero <code>cod_ubicacion</code> opcional para el panel si aún no hay estación anunciada.</td>
+		</tr>
+		<tr>
+			<td class="mono">TibBaseUrl</td>
+			<td class="mono">https://www.tib.org</td>
+			<td>Portal TIB (correspondencias bus). Lo usa el HttpClient en Program.cs.</td>
+		</tr>
+		<tr>
+			<td class="mono">TibEntity</td>
+			<td class="mono">ctmr4</td>
+			<td>Entidad TIB en la API de salidas.</td>
+		</tr>
+		<tr>
+			<td class="mono">TibGroupId</td>
+			<td class="mono">20124</td>
+			<td>Grupo TIB.</td>
+		</tr>
+		<tr>
+			<td class="mono">TibPollSeconds</td>
+			<td class="mono">30</td>
+			<td>Periodo de refresco TIB. Mínimo efectivo 10 s (valores menores se ignoran y queda 30).</td>
+		</tr>
+		<tr>
+			<td class="mono">EmtBaseUrl</td>
+			<td class="mono">https://www.emtpalma.cat/maas/api/v1</td>
+			<td>API MaaS EMT Palma.</td>
+		</tr>
+		<tr>
+			<td class="mono">EmtPollSeconds</td>
+			<td class="mono">20</td>
+			<td>Periodo EMT. Mínimo efectivo 10 s (si no, queda 20).</td>
+		</tr>
+		<tr>
+			<td class="mono">DefaultLocation</td>
+			<td class="mono">39.57634918310896,2.6546805667305313</td>
+			<td>Lat,lon (cultura invariante, punto decimal) para Open-Meteo si no hay GPS. Palma.</td>
+		</tr>
+	</tbody>
+</table>
+
+<h3>Información al viajero (TFT)</h3>
+<table>
+	<thead><tr><th>Clave</th><th>Default</th><th>Uso</th></tr></thead>
+	<tbody>
+		<tr>
+			<td class="mono">WelcomeDistanceMeters</td>
+			<td class="mono">150</td>
+			<td>Metros desde el PK de origen con pantalla «Benvinguts a bord». Si es negativo, se trata como 0.</td>
+		</tr>
+		<tr>
+			<td class="mono">CorrespondenceBaseMeters</td>
+			<td class="mono">300</td>
+			<td>Antelación base (m) para pasar al cartel de correspondencias / próxima estación.</td>
+		</tr>
+		<tr>
+			<td class="mono">CorrespondenceMetersPerBus</td>
+			<td class="mono">100</td>
+			<td>Metros extra de antelación por cada bus anunciado en la tabla.</td>
+		</tr>
+	</tbody>
+</table>
+<p>
+	Fórmula: <code>lookahead = CorrespondenceBaseMeters + CorrespondenceMetersPerBus × nº de buses anunciados</code>.
+	Cuando el tren está a esa distancia (o menos) de la próxima parada comercial, el TFT muestra correspondencias.
+</p>
+
+<h2 id="gps">5. GPS — <code>SystemConfiguration.gps</code></h2>
+<p>
+	No es una propiedad de la clase <code>SystemConfiguration</code>; <code>GPSService</code> lee la sección a mano.
+	Si la sección no existe, GPS queda desconfigurado (aviso en log) y el resto del HMI sigue.
+</p>
+<p>Hay dos modos. <code>Mode</code> no distingue mayúsculas.</p>
+
+<h3>Receptor UDP</h3>
+<p><code>Mode</code> = <code>Receiver</code> o <code>Udp</code> (el tren recibe NMEA por red, p. ej. desde GpsEmitter).</p>
+<table>
+	<thead><tr><th>Clave</th><th>Default</th><th>Uso</th></tr></thead>
+	<tbody>
+		<tr><td class="mono">ListenPort</td><td>0 (inválido)</td><td>Puerto UDP de escucha en todas las interfaces. Obligatorio en este modo.</td></tr>
+	</tbody>
+</table>
+
+<h3>Emisor serie</h3>
+<p>Cualquier otro <code>Mode</code> (o ausente) + <code>Port</code> definido: lee el GPS por COM y opcionalmente reenvía UDP.</p>
+<table>
+	<thead><tr><th>Clave</th><th>Default</th><th>Uso</th></tr></thead>
+	<tbody>
+		<tr><td class="mono">Port</td><td>—</td><td>Puerto serie, p. ej. <code>COM6</code>. Obligatorio en este modo.</td></tr>
+		<tr><td class="mono">BaudRate</td><td>9600</td><td>Baudios.</td></tr>
+		<tr><td class="mono">DataBits</td><td>8</td><td></td></tr>
+		<tr><td class="mono">Parity</td><td>None</td><td>Enum <code>System.IO.Ports.Parity</code>: None, Odd, Even, Mark, Space.</td></tr>
+		<tr><td class="mono">StopBits</td><td>One</td><td>None, One, Two, OnePointFive.</td></tr>
+		<tr><td class="mono">Handshake</td><td>None</td><td>None, XOnXOff, RequestToSend, RequestToSendXOnXOff.</td></tr>
+		<tr><td class="mono">BroadcastPort</td><td>0 = no reenvía</td><td>Si &gt; 0, reemite NMEA por UDP.</td></tr>
+		<tr><td class="mono">BroadcastAddress</td><td>255.255.255.255</td><td>Destino del reenvío.</td></tr>
+	</tbody>
+</table>
+
+<h2 id="devices">6. Devices</h2>
+<p>
+	Array en la raíz <code>Devices</code>. Si está vacío, se intenta
+	<code>SystemConfiguration:Devices</code> (misma forma).
+</p>
+<p>
+	Tourmaline elige HMI / TFT / LED comparando la <strong>IP del navegador que abre la página</strong>
+	(no la URL del servidor) con <code>Address</code>. Acepta IPv4 y la forma mapeada <code>::ffff:x.x.x.x</code>.
+</p>
+<table>
+	<thead><tr><th>Campo</th><th>Default si falta</th><th>Valores / notas</th></tr></thead>
+	<tbody>
+		<tr>
+			<td class="mono">Address</td>
+			<td class="mono">0.0.0.0</td>
+			<td>IP de esa pantalla. Hay que poner la IP real de cada equipo.</td>
+		</tr>
+		<tr>
+			<td class="mono">Type</td>
+			<td class="mono">Led</td>
+			<td><code>HMI</code>, <code>TFT</code>, <code>Led</code>, <code>Server3D</code> (sin distinguir mayúsculas).</td>
+		</tr>
+		<tr>
+			<td class="mono">Coach</td>
+			<td class="mono">?</td>
+			<td>
+				<strong>Hay que ponerlo.</strong> El default <code>?</code> no es un valor del enum y
+				<code>Enum.Parse</code> lanzará. Valores: <code>Undeterminated</code>, <code>M1</code>…<code>M4</code>,
+				<code>N1</code>…<code>N4</code>, <code>R1</code>…<code>R4</code>.
+			</td>
+		</tr>
+		<tr>
+			<td class="mono">Side</td>
+			<td class="mono">Forward</td>
+			<td><code>Neutral</code>, <code>Forward</code>, <code>Backward</code>.</td>
+		</tr>
+		<tr>
+			<td class="mono">HeaderSize</td>
+			<td class="mono">0</td>
+			<td>
+				Alto del encabezado TFT en <code>vh</code>. El default de la clase es 30, pero si omites
+				la clave el parser usa <code>"0"</code>. En TFT conviene poner <code>30</code> (o el valor de esa unidad).
+			</td>
+		</tr>
+		<tr>
+			<td class="mono">Lines</td>
+			<td class="mono">0</td>
+			<td>Filas de la tabla de estaciones. Mismo aviso: si omites la clave queda 0. En TFT suele ser <code>7</code>.</td>
+		</tr>
+		<tr>
+			<td class="mono">PublicId</td>
+			<td class="mono">[]</td>
+			<td>Texto público del coche en el LED interior, p. ej. <code>Coche 1</code>. Los dígitos finales son el número anunciado.</td>
+		</tr>
+	</tbody>
+</table>
+<div class="danger">
+	Sin un dispositivo cuya <code>Address</code> coincida con la IP del cliente, Home muestra
+	«Dispositivo no reconocido» y no entra al HMI ni al TFT.
+</div>
+
+<h2 id="cameras">7. Cameras</h2>
+<p>
+	Lista preferida: <code>SystemConfiguration.Cameras</code>.
+	Si está vacía: raíz <code>Cameras</code>, y si también está vacía:
+	<code>SystemConfiguration:Cameras</code> otra vez (el streamer lo reintenta).
+	Un <code>Id</code> duplicado: se queda la primera y se registra un warning.
+	<code>Id &lt; 0</code> se ignora (el default de la clase es <code>-1</code>: hay que numerarlas).
+</p>
+<table>
+	<thead><tr><th>Campo</th><th>Default</th><th>Uso</th></tr></thead>
+	<tbody>
+		<tr><td class="mono">Id</td><td>-1 (se descarta)</td><td>Entero único. Las URLs HMI son <code>/api/cameras/{id}/mjpeg</code> y <code>…/snapshot.jpg</code>.</td></tr>
+		<tr><td class="mono">Name</td><td>Camera</td><td>Etiqueta en la vista de cámaras.</td></tr>
+		<tr><td class="mono">CoachId</td><td>0</td><td>Coche donde está la cámara.</td></tr>
+		<tr><td class="mono">Essential</td><td>false</td><td>Si entra en la vista reducida.</td></tr>
+		<tr><td class="mono">Address</td><td>0.0.0.0</td><td>IP de la cámara (string IPv4/IPv6).</td></tr>
+		<tr><td class="mono">CameraType</td><td>None</td><td><code>None</code>, <code>Inside</code>, <code>Frontal</code>, <code>Outside</code>, <code>Pantograph</code>, <code>Mirror</code>, <code>Other</code>.</td></tr>
+		<tr><td class="mono">Codec</td><td>R2P</td><td><code>None</code>, <code>R2P</code>, <code>other</code>.</td></tr>
+		<tr><td class="mono">RtspPort</td><td>554</td><td></td></tr>
+		<tr><td class="mono">RtspPath</td><td>/v2</td><td></td></tr>
+		<tr><td class="mono">StreamUrl</td><td>null</td><td>Si hay URL completa, se usa tal cual y se ignoran Address/Port/Path.</td></tr>
+		<tr><td class="mono">Username / Password</td><td>vacío</td><td>Auth RTSP opcional.</td></tr>
+	</tbody>
+</table>
+<p>URL construida si no hay <code>StreamUrl</code>:</p>
+<pre>rtsp://[user:pass@]{Address}:{RtspPort}{RtspPath}</pre>
+
+<h2 id="debug">8. debugStartSession (opcional)</h2>
+<p>
+	Si la sección existe, se hace <code>Bind</code> sobre <code>SessionConfiguration</code> al iniciar.
+	Sirve para arrancar ya en modo servicio / demo sin pulsar el menú.
+	En un tren en servicio <strong>no debería ir</strong>.
+</p>
+<p>Lo útil de poner (el resto de la clase es estado en vivo y no conviene serializarlo):</p>
+<table>
+	<thead><tr><th>Ruta</th><th>Default en código</th><th>Efecto</th></tr></thead>
+	<tbody>
+		<tr><td class="mono">ServiceMode:Main</td><td>false</td><td>Modo servicio (menú de mantenimiento).</td></tr>
+		<tr><td class="mono">ServiceMode:DemoMode</td><td>false</td><td>Demo a tren parado; enciende dummies GPS y MVB.</td></tr>
+		<tr><td class="mono">ServiceMode:MVBEnabled</td><td>true</td><td>Usar el bus MVB real.</td></tr>
+		<tr><td class="mono">ServiceMode:MVBDummy</td><td>false</td><td>Emular MVB (solo efectivo si Main).</td></tr>
+		<tr><td class="mono">ServiceMode:GPSDummy</td><td>false</td><td>Posición desde Experience (solo si Main).</td></tr>
+		<tr><td class="mono">ServiceMode:PassengerScreenOnHMI</td><td>false</td><td>Muestra el TFT dentro del HMI.</td></tr>
+		<tr><td class="mono">MainSwitches:PASEnabled</td><td>true</td><td>Sistema de información al viajero.</td></tr>
+		<tr><td class="mono">MainSwitches:TFTEnabled</td><td>true</td><td></td></tr>
+		<tr><td class="mono">MainSwitches:TeleindicatorsEnabled</td><td>true</td><td>LED interiores.</td></tr>
+		<tr><td class="mono">MainSwitches:ExternalTeleindicatorsEnabled</td><td>true</td><td>LED de destino.</td></tr>
+		<tr><td class="mono">MainSwitches:SoundEnabled</td><td>true</td><td></td></tr>
+		<tr><td class="mono">MainSwitches:AutoCameras</td><td>true</td><td>Cámaras al abrir puertas.</td></tr>
+		<tr><td class="mono">MainSwitches:ManualCameras</td><td>true</td><td>Botón de cámaras.</td></tr>
+		<tr><td class="mono">MainSwitches:ArmanditoEnabled</td><td>true</td><td>Avisos de tierra.</td></tr>
+		<tr><td class="mono">GPSEnabled</td><td>true</td><td></td></tr>
+		<tr><td class="mono">InternetEnabled</td><td>true</td><td></td></tr>
+		<tr><td class="mono">InformationLevel</td><td>Route</td><td><code>Disabled</code>, <code>Route</code>, <code>Forbidden</code>.</td></tr>
+		<tr><td class="mono">InformationMode</td><td>Default</td><td><code>Default</code>, <code>BeginOfTrip</code>, <code>NextStopsList</code>, <code>NextStopInfo</code>, <code>Cruise</code>, <code>EndOfTrip</code>.</td></tr>
+	</tbody>
+</table>
+
+<h2 id="trampas">9. Trampas al rellenar</h2>
+<ol>
+	<li>
+		<strong>El fichero que cuenta es el del entorno</strong>
+		(<code>appsettings.Production.json</code> en el tren), no un <code>appsettings.json</code> suelto.
+	</li>
+	<li>
+		<strong><code>ApiBaseAddress</code> vs <code>SapphireUrl</code>.</strong>
+		El cliente HTTP usa la primera (con <code>/api/</code> al final).
+		La segunda solo se pinta en el menú. Si apuntan a sitios distintos, el menú miente.
+	</li>
+	<li>
+		<strong><code>MVBUrl</code> y <code>TExperienceUrl</code> hay que escribirlas.</strong>
+		El default de la clase no llega a esos servicios.
+	</li>
+	<li>
+		<strong>Cada pantalla necesita un <code>Devices[]</code> con su IP.</strong>
+		La IP es la de la NIC del equipo que abre el navegador.
+	</li>
+	<li>
+		<strong><code>Coach</code> es obligatorio</strong> en cada dispositivo. No lo dejes en blanco.
+	</li>
+	<li>
+		En TFT, pon <code>HeaderSize</code> y <code>Lines</code> explícitos (p. ej. 30 y 7).
+		Si omites las claves quedan a 0.
+	</li>
+	<li>
+		Las cámaras necesitan <code>Id</code> ≥ 0 y único. Sin eso el proxy RTSP las salta.
+	</li>
+	<li>
+		<code>Diamond:TopoId</code> en la raíz ya no se lee. Usa <code>DiamondTopologyId</code> dentro de sistema.
+	</li>
+	<li>
+		El editor antiguo (<code>AppSettingsEditor</code>) todavía habla de <code>Series</code> y no conoce
+		panel SFM / TIB / EMT / correspondencias. No lo uses como fuente de verdad.
+	</li>
+</ol>
+
+<h2 id="plantilla">10. Plantilla JSON recomendada</h2>
+<p>
+	Estructura completa con defaults del código. Sustituye IPs, Guid del tren y lista de pantallas/cámaras.
+	Guárdala como <code>appsettings.Production.json</code> (tren) o <code>appsettings.Development.json</code> (banco).
+</p>
+<pre>{
+  "DetailedErrors": false,
+  "AllowedHosts": "*",
+  "Urls": "http://0.0.0.0:80",
+
+  "ApiBaseAddress": "https://material.trensfm.com:5031/api/",
+
+  "Diamond": {
+    "Documents": {
+      "CompanyLogo": "img/sfmImg.png"
+    }
+  },
+
+  "SystemConfiguration": {
+    "TrainId": "00000000-0000-0000-0000-000000000000",
+    "Name": "8105-8106",
+    "LastRelease": "2026-01-01T00:00:00",
+    "ToniCruz": "right",
+    "DiamondTopologyId": "70062022-f986-4e2f-ab38-e5034621fac3",
+
+    "SapphireUrl": "https://material.trensfm.com:5031",
+    "MVBUrl": "http://172.16.20.11:8000/data",
+    "MVBRetries": 5,
+    "TExperienceUrl": "http://172.16.20.12:5005/server",
+    "TExperienceStr": "http://192.168.0.9:5005/stream",
+
+    "SfmInfoUrl": "https://info.trensfm.com:8084",
+    "SfmInfoToken": "SFM2026",
+    "SfmPanelUrl": "https://info.trensfm.com",
+
+    "TibBaseUrl": "https://www.tib.org",
+    "TibEntity": "ctmr4",
+    "TibGroupId": 20124,
+    "TibPollSeconds": 30,
+
+    "EmtBaseUrl": "https://www.emtpalma.cat/maas/api/v1",
+    "EmtPollSeconds": 20,
+
+    "DefaultLocation": "39.57634918310896,2.6546805667305313",
+    "WelcomeDistanceMeters": 150,
+    "CorrespondenceBaseMeters": 300,
+    "CorrespondenceMetersPerBus": 100,
+
+    "gps": {
+      "Mode": "Receiver",
+      "ListenPort": 5005
+    },
+
+    "Cameras": [
+      {
+        "Id": 1,
+        "Name": "Frontal M1",
+        "CoachId": 1,
+        "Essential": true,
+        "Address": "172.16.21.11",
+        "CameraType": "Frontal",
+        "Codec": "R2P",
+        "RtspPort": 554,
+        "RtspPath": "/v2"
+      }
+    ]
+  },
+
+  "Devices": [
+    {
+      "Address": "192.168.0.40",
+      "Type": "HMI",
+      "Coach": "M1",
+      "Side": "Forward",
+      "HeaderSize": 30,
+      "Lines": 7,
+      "PublicId": "Coche 1"
+    },
+    {
+      "Address": "192.168.0.41",
+      "Type": "TFT",
+      "Coach": "M1",
+      "Side": "Forward",
+      "HeaderSize": 30,
+      "Lines": 7,
+      "PublicId": "Coche 1"
+    },
+    {
+      "Address": "192.168.0.50",
+      "Type": "Led",
+      "Coach": "M1",
+      "Side": "Forward",
+      "HeaderSize": 0,
+      "Lines": 1,
+      "PublicId": "Coche 1"
+    }
+  ]
+}
+</pre>
+
+<p>GPS por puerto serie en lugar de UDP (alternativa a la sección <code>gps</code> de arriba):</p>
+<pre>{
+  "gps": {
+    "Mode": "Emitter",
+    "Port": "COM6",
+    "BaudRate": 9600,
+    "DataBits": 8,
+    "Parity": "None",
+    "StopBits": "One",
+    "Handshake": "None",
+    "BroadcastAddress": "255.255.255.255",
+    "BroadcastPort": 5005
+  }
+}
+</pre>
+
+<footer>
+	Fuente: lecturas reales en <code>Tourmaline26/Program.cs</code>,
+	<code>Logic/SystemConfiguration.cs</code>, <code>Services/TourmalineService.cs</code>,
+	GPS / MVB / Experience / correspondencias / cámaras / Home.
+	Los defaults son los del código en la fecha de esta guía. No se ha copiado el JSON desplegado.
+</footer>
+</main>
+</body>
+</html>
