@@ -18,7 +18,8 @@
 			--warn-bd: #e0b94a;
 			--err-bg: #fdecea;
 			--err-bd: #d24c3e;
-			--code: #0f1724;
+			--code: #1c2430;
+			--code-bg: #f7f8fb;
 		}
 		* { box-sizing: border-box; }
 		body {
@@ -29,12 +30,13 @@
 			line-height: 1.55;
 		}
 		header {
-			background: #152238;
-			color: #fff;
+			background: var(--card);
+			color: var(--ink);
 			padding: 2rem 8vw 1.6rem;
+			border-bottom: 3px solid var(--accent);
 		}
 		header h1 { margin: 0 0 0.35rem; font-size: 1.7rem; }
-		header p { margin: 0; color: #c5d0e0; max-width: 52rem; }
+		header p { margin: 0; color: var(--muted); max-width: 52rem; }
 		main { padding: 1.5rem 8vw 4rem; max-width: 72rem; }
 		nav.toc {
 			background: var(--card);
@@ -58,16 +60,17 @@
 			border-radius: 4px;
 		}
 		pre {
-			background: var(--code);
-			color: #e8eef6;
+			background: var(--code-bg);
+			color: var(--code);
+			border: 1px solid var(--line);
 			padding: 1rem 1.1rem;
 			border-radius: 8px;
 			overflow-x: auto;
 			font-size: 0.86rem;
 			line-height: 1.45;
 		}
-		pre .c { color: #8aa0b8; }
-		pre .k { color: #9cdcfe; }
+		pre .c { color: var(--muted); }
+		pre .k { color: var(--accent); }
 		table {
 			border-collapse: collapse;
 			width: 100%;
@@ -106,6 +109,14 @@
 		.tag-fw { background: #eee6fa; color: #5b2d91; }
 		.tag-dbg { background: #fff3cd; color: #7a5b00; }
 		footer { color: var(--muted); font-size: 0.85rem; margin-top: 3rem; }
+		@media print {
+			body, header, main, nav.toc, table, th, td, pre, code, kbd,
+			.note, .warn, .danger, .tag { background: #fff !important; color: #000 !important; }
+			header { border-bottom: 2px solid #000; }
+			pre, table, th, td, nav.toc { border-color: #999; }
+			.note, .warn, .danger { border-left-color: #000; }
+			a { color: #000; text-decoration: none; }
+		}
 	</style>
 </head>
 <body>
