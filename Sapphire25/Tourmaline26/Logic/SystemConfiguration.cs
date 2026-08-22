@@ -6,8 +6,8 @@ namespace Tourmaline26.Logic
 	/// </summary>
 	public class SystemConfiguration
 	{
-		public string Version  => "V1.13B"; //Versión de este programa.
-		public DateTime Release => new DateTime(2026,8,21);
+		public string Version  => "V1.14B"; //Versión de este programa.
+		public DateTime Release => new DateTime(2026,8,22);
 		public Guid TrainId { get; set; } //Guid de este material móvil según Zafiro.
         public string Name { get; set; } = "Tren";
 		public DateTime LastRelease { get; set; } //Fecha de la última instalación de hardware.
@@ -49,6 +49,13 @@ namespace Tourmaline26.Logic
 		/// Metros extra de antelación por cada bus anunciado en la tabla.
 		/// </summary>
 		public int CorrespondenceMetersPerBus { get; set; } = 100;
+
+		/// <summary>
+		/// Multiplicador del zoom del mapa overlay (función de la velocidad).
+		/// 1 = curva por defecto (11.4 parado … 9.1 a 110 km/h). En TFT 1024×768
+		/// un valor 1.15–1.3 acerca las vías. Rango efectivo 0.5–2.
+		/// </summary>
+		public double MapZoomFactor { get; set; } = 1;
 
 	}
 }

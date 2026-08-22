@@ -9,10 +9,10 @@
 	position: absolute;
 	right: 1.8vw;
 	bottom: 2.2vh;
-	width: min(44vh, 40vw);
-	height: min(44vh, 40vw);
-	min-width: 160px;
-	min-height: 160px;
+	width: clamp(220px, min(50vh, 42vw), 560px);
+	height: clamp(220px, min(50vh, 42vw), 560px);
+	min-width: 220px;
+	min-height: 220px;
 	z-index: 6;
 	pointer-events: none;
 	overflow: visible;

@@ -608,15 +608,11 @@ namespace Tourmaline26.Services
 			}
 			else if (currentStation is not null && sameStation(currentStation, originStation))
 			{
-				next = InMotionSlow(session)
-					? Enums.PassengerInformationMode.NextStopsList
-					: Enums.PassengerInformationMode.Cruise;
+				next = CruiseOrStopsList(session, remainingMeters);
 			}
 			else if (IsTechnicalStop(circulation, currentStation))
 			{
-				next = InMotionSlow(session)
-					? Enums.PassengerInformationMode.NextStopsList
-					: Enums.PassengerInformationMode.Cruise;
+				next = CruiseOrStopsList(session, remainingMeters);
 			}
 			else if (withinLookahead)
 			{
@@ -626,9 +622,7 @@ namespace Tourmaline26.Services
 			}
 			else
 			{
-				next = InMotionSlow(session)
-					? Enums.PassengerInformationMode.NextStopsList
-					: Enums.PassengerInformationMode.Cruise;
+				next = CruiseOrStopsList(session, remainingMeters);
 			}
 
 			session.PreviewArrivalStation = preview;
@@ -636,8 +630,12 @@ namespace Tourmaline26.Services
 				session.InformationMode = next;
 		}
 
-		private static bool InMotionSlow(SessionConfiguration session) =>
-			session.CurrentSpeed < 60;
+		private static Enums.PassengerInformationMode CruiseOrStopsList(
+			SessionConfiguration session,
+			long remainingMeters) =>
+			PassengerCruiseRules.ShowNextStopsList(session.CurrentSpeed, remainingMeters)
+				? Enums.PassengerInformationMode.NextStopsList
+				: Enums.PassengerInformationMode.Cruise;
 
 		private int CorrespondenceLookaheadMeters()
 		{
@@ -698,7 +696,9 @@ namespace Tourmaline26.Services
 			await mvarTourmalineExperienceService.Stop();
 
 			LaunchRequest request = new LaunchRequest();
-			request.Climate = 0;
+			TourmalineExperienceService.SampleWeatherType climate =
+				ExperienceWeather.From(SessionConfig.CurrentWeather);
+			request.Climate = (int)climate;
 			request.Consist = "Triple81";
 			request.Now = DateTime.Now.ToString("HH:mm");
 			// Paths hardcodeados SFM (T11/T12/T21/T22/T31/T32) según vista y sentido.
@@ -731,6 +731,20 @@ namespace Tourmaline26.Services
 				mvarLogger.LogWarning(
 					"No se pudo lanzar Tourmaline Experience para {Route}. La circulación Diamond queda seleccionada.",
 					request.RoutePath);
+				return;
+			}
+
+			if (SessionConfig.CurrentWeather is not null)
+			{
+				try
+				{
+					await mvarTourmalineExperienceService.SetWeather(climate);
+					mvarLogger.LogInformation("TE clima al lanzar: {Kind}", climate);
+				}
+				catch (Exception ex)
+				{
+					mvarLogger.LogWarning(ex, "TE clima al lanzar: no se pudo aplicar {Kind}", climate);
+				}
 			}
 		}
 

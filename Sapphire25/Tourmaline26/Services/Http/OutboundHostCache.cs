@@ -30,6 +30,7 @@ namespace Tourmaline26.Services.Http
 		{
 			["info.trensfm.com"] = ["213.99.47.36"],
 			["www.tib.org"] = ["85.62.90.188"],
+			["tib.org"] = ["85.62.90.188"],
 			["www.emtpalma.cat"] = ["15.237.152.252"],
 			["emtpalma.cat"] = ["15.237.152.252"]
 		};

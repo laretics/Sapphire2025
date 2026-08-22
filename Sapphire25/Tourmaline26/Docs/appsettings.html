@@ -413,6 +413,11 @@
 			<td class="mono">100</td>
 			<td>Metros extra de antelación por cada bus anunciado en la tabla.</td>
 		</tr>
+		<tr>
+			<td class="mono">MapZoomFactor</td>
+			<td class="mono">1</td>
+			<td>Multiplicador del zoom del mapa overlay. Zoom = f(velocidad) × factor. En TFT 1024×768 conviene 1.15–1.3 para que las vías no se vean como un hilo. Rango 0.5–2.</td>
+		</tr>
 	</tbody>
 </table>
 <p>
@@ -656,6 +661,7 @@
     "WelcomeDistanceMeters": 150,
     "CorrespondenceBaseMeters": 300,
     "CorrespondenceMetersPerBus": 100,
+    "MapZoomFactor": 1.2,
 
     "gps": {
       "Mode": "Receiver",

@@ -2,6 +2,7 @@ using Diamond.Cabin;
 using Diamond.Project;
 using Tourmaline26.Logic;
 using Tourmaline26.Services.Armandito;
+using Tourmaline26.Services.OpenMeteo;
 using Tourmaline26.Services.TourmalineExperience;
 
 namespace Tourmaline26.Services
@@ -76,27 +77,13 @@ namespace Tourmaline26.Services
         private Task? mvarShutdownLogoutTask;
         private const int CabOffLogoutSeconds = 300;
 
-        // --- Cámara automática Tourmaline Experience ---
-        /// <summary>0=&lt;10 lateral, 1=10–49 drone, 2=50–69 cenital, 3=≥70 rotación.</summary>
-        private int mvarLastCameraSpeedBand = -1;
+        // --- Cámara automática Tourmaline Experience (sorteo, sin franjas de velocidad) ---
         private TourmalineCameraOrder? mvarLastAutoCameraOrder;
-        /// <summary>Órbita deseada para la vista actual (puede estar pendiente de la transición).</summary>
-        private bool mvarLastAutoCameraOrbit;
         private bool mvarLastAutoCameraSide;
-        /// <summary>
-        /// Órbita ya activa en el simulador (tras el comando Order=Orbit).
-        /// </summary>
-        private bool mvarOrbitActive;
-        /// <summary>
-        /// Tras pasar a Drone, el sim necesita ~6 s de transición antes de aceptar órbita.
-        /// Si no es null, a esa hora UTC hay que enviar Order=Orbit.
-        /// </summary>
-        private DateTime? mvarOrbitEnableAfterUtc;
-        private DateTime mvarNextHighSpeedCameraChange = DateTime.MinValue;
+        private DateTime mvarNextAutoCameraChange = DateTime.MinValue;
         private Task? mvarAutoCameraTask;
-        private const int HighSpeedCameraIntervalSeconds = 15;
-        /// <summary>Tiempo de transición entre vistas (cenital→drone, etc.) antes de poder orbitar.</summary>
-        private const int CameraTransitionSeconds = 6;
+        private const int AutoCameraIntervalSeconds = 15;
+        private TourmalineExperienceService.SampleWeatherType? mvarLastExperienceWeather;
 
         public TourmalineBackground(
             ILogger<TourmalineBackground> logger,
@@ -400,7 +387,10 @@ namespace Tourmaline26.Services
             {
                 try
                 {
-                    return await mvarMeteoService.ReadLoop();
+                    bool ok = await mvarMeteoService.ReadLoop();
+                    if (ok)
+                        await PushExperienceWeatherAsync();
+                    return ok;
                 }
                 catch (Exception ex)
                 {
@@ -408,6 +398,40 @@ namespace Tourmaline26.Services
                 }
             }
             return false;
+        }
+
+        /// <summary>
+        /// Replica el parte de Open-Meteo en Tourmaline Experience cuando cambia el tipo.
+        /// </summary>
+        private async Task PushExperienceWeatherAsync()
+        {
+            if (!mvarExperience.IsConfigured)
+                return;
+
+            WeatherValue? weather = mvarTourmaline.SessionConfig.CurrentWeather;
+            if (weather is null)
+                return;
+
+            TourmalineExperienceService.SampleWeatherType kind = ExperienceWeather.From(weather);
+            if (mvarLastExperienceWeather == kind)
+                return;
+
+            try
+            {
+                await mvarExperience.SetWeather(kind);
+                mvarLastExperienceWeather = kind;
+                mvarLogger.LogInformation(
+                    "TE clima: WMO={Code} nubes={Clouds}% lluvia={Rain} vis={Vis} → {Kind}",
+                    weather.WeatherCode,
+                    weather.CloudCover,
+                    weather.Rain,
+                    weather.Visibility,
+                    kind);
+            }
+            catch (Exception ex)
+            {
+                mvarLogger.LogWarning(ex, "TE clima: no se pudo aplicar {Kind}", kind);
+            }
         }
         private async Task<bool> PoolGPS()
         {
@@ -1031,7 +1055,7 @@ namespace Tourmaline26.Services
         /// <item><b>Servicio real:</b> flanco ZeroSpeed MVB con lazo de puertas cerrado.</item>
         /// </list>
         /// Así <see cref="CabinEnvironment.CurrentStation"/> puede volver a null
-        /// y el panel de viajero entra en NextStopsList / Cruise.
+        /// y el panel de viajero entra en NextStopsList o Cruise.
         /// </summary>
         private void UpdateStationLeaveFromMvb()
         {
@@ -1080,272 +1104,43 @@ namespace Tourmaline26.Services
         }
 
         /// <summary>
-        /// Cámara TE según velocidad:
-        /// &lt;10 lateral; 10–49 drone sin órbita (lado aleatorio); 50–69 cenital;
-        /// ≥70 alterna elevada+órbita / frontal / frikis cada 15 s
-        /// (elevada con el doble de probabilidad que cada una de las otras).
-        /// Órbita: primero Drone, esperar ~6 s de transición, luego Order=Orbit.
+        /// Cámara TE al azar entre cenital, drone (lado aleatorio), frikis y cabina.
+        /// Cambia cada <see cref="AutoCameraIntervalSeconds"/> s, sin repetir la vista anterior.
         /// </summary>
         private void UpdateExperienceCamera()
         {
             if (mvarAutoCameraTask != null && !mvarAutoCameraTask.IsCompleted)
                 return;
 
-            // Fase 2 de elevada+órbita: la transición a Drone ya terminó → enviar Orbit.
-            if (mvarOrbitEnableAfterUtc.HasValue
-                && DateTime.UtcNow >= mvarOrbitEnableAfterUtc.Value
-                && !mvarOrbitActive
-                && mvarLastAutoCameraOrbit
-                && mvarLastAutoCameraOrder == TourmalineCameraOrder.Drone)
-            {
-                mvarAutoCameraTask = EnableOrbitAfterTransitionAsync(mvarLastAutoCameraSide);
-                return;
-            }
-
-            // Si aún esperamos la transición a Drone, no cambiar de vista.
-            if (mvarOrbitEnableAfterUtc.HasValue
-                && DateTime.UtcNow < mvarOrbitEnableAfterUtc.Value
-                && mvarLastAutoCameraOrbit)
+            if (mvarLastAutoCameraOrder is not null
+                && DateTime.UtcNow < mvarNextAutoCameraChange)
                 return;
 
-            int speed = mvarTourmaline.SessionConfig.CurrentSpeed;
-            if (speed < 0) speed = 0;
-
-            // 0=&lt;10  1=10–49  2=50–69  3=≥70
-            int band = speed < 10 ? 0 : speed < 45 ? 1 : speed < 65 ? 2 : 3;
-            bool bandChanged = band != mvarLastCameraSpeedBand;
-
-            TourmalineCameraOrder order;
-            bool wantOrbit = false;
-            bool side = mvarLastAutoCameraSide;
-            bool needChange;
-
-            if (band == 0)
-            {
-                order = TourmalineCameraOrder.Lateral;
-                wantOrbit = false;
-                needChange = bandChanged
-                    || mvarLastAutoCameraOrder != order
-                    || mvarOrbitActive
-                    || mvarOrbitEnableAfterUtc.HasValue;
-            }
-            else if (band == 1)
-            {
-                order = TourmalineCameraOrder.Drone;
-                wantOrbit = false;
-                if (bandChanged)
-                    side = Random.Shared.Next(2) == 1;
-                needChange = bandChanged
-                    || mvarLastAutoCameraOrder != order
-                    || mvarOrbitActive
-                    || mvarOrbitEnableAfterUtc.HasValue;
-            }
-            else if (band == 2)
-            {
-                order = TourmalineCameraOrder.Cenital;
-                wantOrbit = false;
-                needChange = bandChanged
-                    || mvarLastAutoCameraOrder != order
-                    || mvarOrbitActive
-                    || mvarOrbitEnableAfterUtc.HasValue;
-            }
-            else
-            {
-                DateTime now = DateTime.UtcNow;
-                bool hasHighSpeedView = IsHighSpeedCamera(mvarLastAutoCameraOrder);
-                // Si la órbita está pendiente, no rotar todavía.
-                bool orbitPending = mvarOrbitEnableAfterUtc.HasValue && mvarLastAutoCameraOrbit;
-                bool intervalElapsed = now >= mvarNextHighSpeedCameraChange;
-                bool mustApply = !orbitPending
-                    && (bandChanged || !hasHighSpeedView || intervalElapsed);
-
-                if (!mustApply)
-                    return;
-
-                (order, wantOrbit, side) = PickHighSpeedCamera(mvarLastAutoCameraOrder);
-                needChange = true;
-            }
-
-            if (!needChange)
-                return;
-
+            (TourmalineCameraOrder order, bool side) = ExperienceAutoCamera.Pick(mvarLastAutoCameraOrder);
             mvarLogger.LogInformation(
-                "Cámara automática: speed={Speed} band={Band} (lastBand={LastBand}) → {Order} orbit={Orbit} side={Side}",
-                speed, band, mvarLastCameraSpeedBand, order, wantOrbit, side);
-
-            mvarAutoCameraTask = SendAutoCameraAsync(order, side, wantOrbit, band);
+                "Cámara automática: {Prev} → {Order} side={Side}",
+                mvarLastAutoCameraOrder,
+                order,
+                side);
+            mvarAutoCameraTask = SendAutoCameraAsync(order, side);
         }
 
-        private static bool IsHighSpeedCamera(TourmalineCameraOrder? order) =>
-            order is TourmalineCameraOrder.Drone
-                or TourmalineCameraOrder.Brakeman
-                or TourmalineCameraOrder.TrackSide;
-
-        /// <summary>
-        /// Pesos: elevada+órbita = 2, frontal = 1, frikis = 1
-        /// → 50% elevada, 25% frontal, 25% frikis.
-        /// </summary>
-        private static (TourmalineCameraOrder order, bool orbit, bool side) PickHighSpeedCamera(
-            TourmalineCameraOrder? previous)
-        {
-            bool side = Random.Shared.Next(2) == 1;
-            TourmalineCameraOrder order = TourmalineCameraOrder.Drone;
-            bool orbit = true;
-
-            for (int attempt = 0; attempt < 5; attempt++)
-            {
-                int roll = Random.Shared.Next(4); // 0,1 elevada; 2 frontal; 3 frikis
-                if (roll < 2)
-                {
-                    order = TourmalineCameraOrder.Drone;
-                    orbit = true;
-                }
-                else if (roll == 2)
-                {
-                    order = TourmalineCameraOrder.Brakeman;
-                    orbit = false;
-                }
-                else
-                {
-                    order = TourmalineCameraOrder.TrackSide;
-                    orbit = false;
-                }
-
-                if (order != previous)
-                    return (order, orbit, side);
-            }
-
-            if (previous == TourmalineCameraOrder.Drone)
-                return (TourmalineCameraOrder.Brakeman, false, side);
-            return (TourmalineCameraOrder.Drone, true, side);
-        }
-
-        /// <summary>
-        /// Segundo paso de elevada+órbita: la vista Drone ya se estabilizó (~6 s).
-        /// </summary>
-        private async Task EnableOrbitAfterTransitionAsync(bool side)
+        private async Task SendAutoCameraAsync(TourmalineCameraOrder order, bool side)
         {
             try
             {
-                await mvarExperience.SetCamera(TourmalineCameraOrder.Orbit, side);
-                mvarOrbitActive = true;
-                mvarOrbitEnableAfterUtc = null;
-                mvarLastAutoCameraOrbit = true;
-                mvarLogger.LogInformation(
-                    "Cámara automática: órbita ON (tras {Sec}s de transición a Drone)",
-                    CameraTransitionSeconds);
-
-                if (mvarLastCameraSpeedBand == 3)
-                    mvarNextHighSpeedCameraChange = DateTime.UtcNow.AddSeconds(HighSpeedCameraIntervalSeconds);
-            }
-            catch (Exception ex)
-            {
-                mvarLogger.LogWarning(ex, "Cámara automática: error activando órbita tras transición");
-                mvarOrbitEnableAfterUtc = DateTime.UtcNow.AddSeconds(2); // reintento breve
-            }
-        }
-
-        /// <summary>
-        /// Aplica la vista. Si se desea órbita y no estamos ya en Drone:
-        /// 1) Drone ya, 2) Orbit solo tras <see cref="CameraTransitionSeconds"/> s.
-        /// </summary>
-        private async Task SendAutoCameraAsync(
-            TourmalineCameraOrder order,
-            bool side,
-            bool wantOrbit,
-            int band)
-        {
-            try
-            {
-                if (wantOrbit)
-                    order = TourmalineCameraOrder.Drone;
-                else if (order == TourmalineCameraOrder.Orbit)
-                    order = TourmalineCameraOrder.Drone;
-
-                if (wantOrbit)
-                {
-                    bool alreadyOnDrone = mvarLastAutoCameraOrder == TourmalineCameraOrder.Drone;
-
-                    if (!alreadyOnDrone)
-                    {
-                        // 1) Primero elevada. La órbita va después de la transición.
-                        await mvarExperience.SetCamera(TourmalineCameraOrder.Drone, side);
-                        mvarLogger.LogInformation(
-                            "Cámara automática: vista Drone side={Side}; órbita en {Sec}s",
-                            side, CameraTransitionSeconds);
-
-                        mvarLastCameraSpeedBand = band;
-                        mvarLastAutoCameraOrder = TourmalineCameraOrder.Drone;
-                        mvarLastAutoCameraSide = side;
-                        mvarLastAutoCameraOrbit = true; // deseada, aún no activa
-                        mvarOrbitActive = false;
-                        mvarOrbitEnableAfterUtc = DateTime.UtcNow.AddSeconds(CameraTransitionSeconds);
-
-                        // No rotar hasta completar órbita + intervalo de alta velocidad.
-                        if (band == 3)
-                        {
-                            mvarNextHighSpeedCameraChange = DateTime.UtcNow
-                                .AddSeconds(CameraTransitionSeconds + HighSpeedCameraIntervalSeconds);
-                        }
-                        return;
-                    }
-
-                    // Ya en Drone: activar órbita si procede (tras espera o si ya estaba lista).
-                    if (!mvarOrbitActive)
-                    {
-                        if (mvarOrbitEnableAfterUtc.HasValue
-                            && DateTime.UtcNow < mvarOrbitEnableAfterUtc.Value)
-                        {
-                            // Todavía en transición; no spamear.
-                            mvarLastCameraSpeedBand = band;
-                            mvarLastAutoCameraOrbit = true;
-                            return;
-                        }
-
-                        await mvarExperience.SetCamera(TourmalineCameraOrder.Orbit, side);
-                        mvarOrbitActive = true;
-                        mvarOrbitEnableAfterUtc = null;
-                        mvarLogger.LogInformation("Cámara automática: órbita ON (ya en Drone)");
-                    }
-
-                    mvarLastCameraSpeedBand = band;
-                    mvarLastAutoCameraOrder = TourmalineCameraOrder.Drone;
-                    mvarLastAutoCameraOrbit = true;
-                    mvarLastAutoCameraSide = side;
-                    if (band == 3)
-                        mvarNextHighSpeedCameraChange = DateTime.UtcNow.AddSeconds(HighSpeedCameraIntervalSeconds);
-                    return;
-                }
-
-                // --- Sin órbita: cancelar pendiente y aplicar vista ---
-                mvarOrbitEnableAfterUtc = null;
-
                 await mvarExperience.SetCamera(order, side);
+                mvarLastAutoCameraOrder = order;
+                mvarLastAutoCameraSide = side;
+                mvarNextAutoCameraChange = DateTime.UtcNow.AddSeconds(AutoCameraIntervalSeconds);
                 mvarLogger.LogInformation(
                     "Cámara automática: vista {Order} side={Side}", order, side);
-
-                if (mvarOrbitActive)
-                {
-                    await mvarExperience.SetCamera(TourmalineCameraOrder.Orbit, side);
-                    mvarOrbitActive = false;
-                    mvarLogger.LogInformation("Cámara automática: órbita OFF");
-                }
-
-                mvarLastCameraSpeedBand = band;
-                mvarLastAutoCameraOrder = order;
-                mvarLastAutoCameraOrbit = false;
-                mvarLastAutoCameraSide = side;
-                if (band == 3)
-                    mvarNextHighSpeedCameraChange = DateTime.UtcNow.AddSeconds(HighSpeedCameraIntervalSeconds);
             }
             catch (Exception ex)
             {
-                mvarLogger.LogWarning(ex, "Cámara automática: error aplicando {Order} orbit={Orbit}", order, wantOrbit);
-                mvarLastCameraSpeedBand = -1;
+                mvarLogger.LogWarning(ex, "Cámara automática: error aplicando {Order}", order);
                 mvarLastAutoCameraOrder = null;
-                mvarOrbitEnableAfterUtc = null;
-                if (band == 3)
-                    mvarNextHighSpeedCameraChange = DateTime.MinValue;
+                mvarNextAutoCameraChange = DateTime.MinValue;
             }
         }
     }

@@ -34,6 +34,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Diamond.Controls", "Diamond
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GpsEmitter", "GpsEmitter\GpsEmitter.csproj", "{94C38B15-8489-4BC4-B8D6-F17F9860EB3A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tourmaline26.Tests", "Tourmaline26.Tests\Tourmaline26.Tests.csproj", "{4492BDCD-7C91-4D4C-B981-2D70BCB61796}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -281,6 +283,24 @@ Global
 		{94C38B15-8489-4BC4-B8D6-F17F9860EB3A}.Zafiro|x64.Build.0 = Release|Any CPU
 		{94C38B15-8489-4BC4-B8D6-F17F9860EB3A}.Zafiro|x86.ActiveCfg = Release|Any CPU
 		{94C38B15-8489-4BC4-B8D6-F17F9860EB3A}.Zafiro|x86.Build.0 = Release|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Debug|x64.Build.0 = Debug|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Debug|x86.Build.0 = Debug|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Release|x64.ActiveCfg = Release|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Release|x64.Build.0 = Release|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Release|x86.ActiveCfg = Release|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Release|x86.Build.0 = Release|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Zafiro|Any CPU.ActiveCfg = Zafiro|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Zafiro|Any CPU.Build.0 = Zafiro|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Zafiro|x64.ActiveCfg = Zafiro|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Zafiro|x64.Build.0 = Zafiro|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Zafiro|x86.ActiveCfg = Zafiro|Any CPU
+		{4492BDCD-7C91-4D4C-B981-2D70BCB61796}.Zafiro|x86.Build.0 = Zafiro|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

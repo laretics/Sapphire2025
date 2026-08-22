@@ -34,7 +34,8 @@
             await JS.InvokeVoidAsync("SfmMap.create", mvarHost, new
             {
                 mode = Overlay ? "overlay" : "page",
-                baseUrl = "/maps/sfm/"
+                baseUrl = "/maps/sfm/",
+                zoomFactor = Tourmaline.SystemConfig.MapZoomFactor
             });
             await JS.InvokeVoidAsync("SfmMap.resize", mvarHost);
             mvarReady = true;
@@ -75,6 +76,7 @@
             }
 
             int speed = Tourmaline.SessionConfig.CurrentSpeed;
+            double zoomFactor = Tourmaline.SystemConfig.MapZoomFactor;
             if (mvarLastHadTrain
                 && Math.Abs(lat - mvarLastLat) < 1e-6
                 && Math.Abs(lon - mvarLastLon) < 1e-6
@@ -86,7 +88,9 @@
             await JS.InvokeVoidAsync("SfmMap.setTrainPosition", mvarHost, lat, lon, new
             {
                 follow = true,
-                speed
+                speed,
+                zoomFactor,
+                zoom = SfmMapZoom.ForSpeed(speed, zoomFactor)
             });
             mvarLastLat = lat;
             mvarLastLon = lon;

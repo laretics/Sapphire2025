@@ -121,6 +121,13 @@
     });
   }
 
+  function stationLabel(name) {
+    if (!name) {
+      return '';
+    }
+    return String(name).replace(/\s+And[eé]n\s+\S+\s*$/i, '').trim();
+  }
+
   function uniqueStationStops(geojson) {
     const seen = {};
     const features = [];
@@ -134,9 +141,76 @@
         return;
       }
       seen[key] = true;
+      feature.properties.stop_label = stationLabel(feature.properties.stop_name);
       features.push(feature);
     });
     return { type: 'FeatureCollection', features: features };
+  }
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function overlayMetrics(sizePx) {
+    const size = Math.max(160, sizePx || 320);
+    return {
+      routeText: clamp(size * 0.056, 14, 30),
+      stationText: clamp(size * 0.046, 13, 24),
+      placeText: clamp(size * 0.052, 14, 26),
+      townText: clamp(size * 0.042, 12, 20),
+      routeWidth: clamp(size * 0.012, 3, 7),
+      outlineWidth: clamp(size * 0.021, 5.2, 12),
+      shadowWidth: clamp(size * 0.03, 7.5, 16),
+      stopRadius: clamp(size * 0.013, 3.4, 7.5),
+      trainRadius: clamp(size * 0.02, 5.5, 11),
+      islandOutline: clamp(size * 0.012, 3.2, 7),
+      symbolSpacing: clamp(size * 0.26, 58, 140)
+    };
+  }
+
+  function containerSize(map) {
+    const el = map && map.getContainer ? map.getContainer() : null;
+    if (!el) {
+      return 320;
+    }
+    return Math.min(el.clientWidth || 0, el.clientHeight || 0) || 320;
+  }
+
+  function trySetPaint(map, layerId, prop, value) {
+    if (!map.getLayer(layerId)) {
+      return;
+    }
+    map.setPaintProperty(layerId, prop, value);
+  }
+
+  function trySetLayout(map, layerId, prop, value) {
+    if (!map.getLayer(layerId)) {
+      return;
+    }
+    map.setLayoutProperty(layerId, prop, value);
+  }
+
+  function applyOverlayMetrics(instance) {
+    if (!instance || !instance.map || instance.mode !== 'overlay') {
+      return;
+    }
+    const map = instance.map;
+    const metrics = overlayMetrics(containerSize(map));
+    instance.metrics = metrics;
+    trySetPaint(map, 'route-line-shadows', 'line-width', metrics.shadowWidth);
+    trySetPaint(map, 'route-outlines', 'line-width', metrics.outlineWidth);
+    trySetPaint(map, 'routes', 'line-width', metrics.routeWidth);
+    trySetPaint(map, 'stops', 'circle-radius', metrics.stopRadius);
+    trySetLayout(map, 'route-labels', 'text-size', metrics.routeText);
+    trySetLayout(map, 'route-labels', 'symbol-spacing', metrics.symbolSpacing);
+    trySetLayout(map, 'stop-labels', 'text-size', metrics.stationText);
+    trySetLayout(map, 'context-label-city', 'text-size', metrics.placeText);
+    trySetLayout(map, 'context-label-town', 'text-size', metrics.townText);
+    trySetLayout(map, 'context-label-village', 'text-size', metrics.townText);
+    trySetPaint(map, 'sfm-island-outline', 'line-width', metrics.islandOutline);
+    trySetPaint(map, 'sfm-island-outline-light', 'line-width', metrics.islandOutline * 1.6);
+    trySetPaint(map, 'sfm-train', 'circle-radius', metrics.trainRadius);
+    trySetPaint(map, 'sfm-train-halo', 'circle-radius', metrics.trainRadius * 1.65);
   }
 
   function extendBounds(bounds, coordinates) {
@@ -404,26 +478,38 @@
     });
   }
 
-  function zoomForSpeed(kmh) {
+  function zoomForSpeed(kmh, factor) {
     const speed = Math.max(0, Math.min(110, kmh || 0));
-    return 11.3 - (speed / 110) * 2.3;
+    const base = 11.4 - (speed / 110) * 2.3;
+    let f = factor;
+    if (f == null || !(f > 0)) {
+      f = 1;
+    }
+    f = Math.max(0.5, Math.min(2, f));
+    return Math.max(7.5, Math.min(14, base * f));
   }
 
   function addRouteLayers(map, geojson, overlay) {
     const beforeId = overlay ? undefined : firstLabelLayerId(map);
+    const metrics = overlay ? overlayMetrics(containerSize(map)) : null;
     const shadowWidth = overlay
-      ? 8
+      ? metrics.shadowWidth
       : { base: 12, stops: [[14, 20], [18, 42]] };
     const outlineWidth = overlay
-      ? 5.6
+      ? metrics.outlineWidth
       : { base: 8, stops: [[14, 12], [18, 32]] };
     const routeWidth = overlay
-      ? 3.2
+      ? metrics.routeWidth
       : { base: 4, stops: [[14, 6], [18, 16]] };
-    const stopRadius = overlay ? 3.6 : { base: 1.75, stops: [[12, 4], [22, 100]] };
+    const stopRadius = overlay
+      ? metrics.stopRadius
+      : { base: 1.75, stops: [[12, 4], [22, 100]] };
     const stopOpacity = overlay
       ? 1
       : ['interpolate', ['linear'], ['zoom'], 13, 0, 13.5, 1];
+    const routeText = overlay ? metrics.routeText : 14;
+    const routeSpacing = overlay ? metrics.symbolSpacing : 250;
+    const stationText = overlay ? metrics.stationText : 13;
 
     map.addLayer(
       {
@@ -496,17 +582,50 @@
       layout: {
         'symbol-placement': 'line',
         'text-field': ['get', 'route_short_name'],
-        'text-size': overlay ? 15 : 14,
-        'text-font': ['Noto Sans Regular'],
-        'symbol-spacing': overlay ? 80 : 250
+        'text-size': routeText,
+        'text-font': overlay ? ['Noto Sans Bold'] : ['Noto Sans Regular'],
+        'symbol-spacing': routeSpacing,
+        'text-max-angle': 30
       },
       paint: {
         'text-color': '#000000',
-        'text-halo-width': overlay ? 2.6 : 2,
+        'text-halo-width': overlay ? 2.8 : 2,
         'text-halo-color': '#ffffff'
       },
       filter: ['has', 'route_short_name']
     });
+
+    if (overlay) {
+      map.addLayer({
+        id: 'stop-labels',
+        type: 'symbol',
+        source: { type: 'geojson', data: geojson },
+        minzoom: 8.4,
+        layout: {
+          'text-field': [
+            'coalesce',
+            ['get', 'stop_label'],
+            ['get', 'stop_name']
+          ],
+          'text-font': ['Noto Sans Bold'],
+          'text-size': stationText,
+          'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
+          'text-radial-offset': 1.15,
+          'text-padding': 3,
+          'text-optional': true,
+          'text-max-width': 8,
+          'text-allow-overlap': false,
+          'icon-allow-overlap': true
+        },
+        paint: {
+          'text-color': '#0f172a',
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 2.4,
+          'text-halo-blur': 0.25
+        },
+        filter: ['has', 'stop_id']
+      });
+    }
   }
 
   function addTrainLayers(map) {
@@ -548,8 +667,13 @@
     source.setData(trainFeature(lat, lon));
     instance.hasTrain = true;
     const settings = options || {};
+    if (settings.zoomFactor != null) {
+      instance.zoomFactor = settings.zoomFactor;
+    }
     if (instance.mode === 'overlay' && settings.follow !== false) {
-      const zoom = zoomForSpeed(settings.speed);
+      const zoom = settings.zoom != null
+        ? settings.zoom
+        : zoomForSpeed(settings.speed, instance.zoomFactor);
       instance.map.easeTo({
         center: [lon, lat],
         zoom: zoom,
@@ -740,7 +864,7 @@
       container: container,
       style: style,
       center: bounds.getCenter(),
-      zoom: overlay ? 8.2 : 11,
+      zoom: overlay ? zoomForSpeed(0, settings.zoomFactor) : 11,
       attributionControl: !overlay,
       interactive: !overlay,
       dragPan: !overlay,
@@ -762,15 +886,18 @@
       mode: overlay ? 'overlay' : 'page',
       pendingTrain: null,
       hasTrain: false,
-      resizeObserver: null
+      resizeObserver: null,
+      zoomFactor: settings.zoomFactor
     };
     instances.set(container, instance);
 
     if (typeof ResizeObserver !== 'undefined') {
       instance.resizeObserver = new ResizeObserver(() => {
-        if (instance.map) {
-          instance.map.resize();
+        if (!instance.map) {
+          return;
         }
+        instance.map.resize();
+        applyOverlayMetrics(instance);
       });
       instance.resizeObserver.observe(container);
     }
@@ -787,16 +914,21 @@
         addContextPlaceLabels(map);
       }
       addTrainLayers(map);
+      if (overlay) {
+        applyOverlayMetrics(instance);
+      }
       if (!overlay) {
         setupHover(map);
       }
       const overlayPad = Math.round(
         Math.min(container.clientWidth, container.clientHeight) * 0.16
       );
-      map.fitBounds(bounds, {
-        padding: overlay ? Math.max(24, overlayPad) : 40,
-        duration: 0
-      });
+      if (!overlay || !instance.pendingTrain) {
+        map.fitBounds(bounds, {
+          padding: overlay ? Math.max(24, overlayPad) : 40,
+          duration: 0
+        });
+      }
       if (instance.pendingTrain) {
         applyTrain(
           instance,
@@ -832,6 +964,7 @@
     const instance = container ? getInstance(container) : firstInstance();
     if (instance && instance.map) {
       instance.map.resize();
+      applyOverlayMetrics(instance);
     }
   }
 

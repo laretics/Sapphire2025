@@ -76,7 +76,7 @@ namespace Tourmaline26.Logic
         {
             Default = 0,        // TFT: imagen de tren. LED: destino y coche.
             BeginOfTrip = 1,    // TFT: bienvenida. LED int: destino y coche. LED ext: destino.
-            NextStopsList = 2,  // TFT: lista de próximas estaciones. LED int: hora/temp/vel. LED ext: número de tren.
+            NextStopsList = 2,  // TFT: lista de próximas estaciones (<20 km/h o <1 km a la siguiente). LED int: hora/temp/vel. LED ext: número de tren.
             NextStopInfo = 3,   // TFT: cartel de correspondencias. LED int: próxima estación (destino y coche si parado en destino). LED ext: destino.
             Cruise = 4,         // TFT: stream Experience + mapa. LED int: hora/temp/vel. LED ext: número de tren (destino si parado en estación).
             EndOfTrip = 5       // TFT: mismo cartel de llegada. LED int: próxima estación, o destino y coche si parado en destino. LED ext: destino.

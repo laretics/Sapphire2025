@@ -87,6 +87,10 @@ namespace AppSettingsEditor.Models.Tourmaline
         [Display(Name = "Distancia de bienvenida (m)",
             Description = "Metros desde el PK de origen durante los que se muestra la pantalla de bienvenida")]
         public int WelcomeDistanceMeters { get; set; } = 150;
+
+        [Display(Name = "Factor de zoom del mapa",
+            Description = "Multiplica el zoom del overlay SFM (función de la velocidad). 1 = default; 1.2 acerca vías en TFT 1024×768")]
+        public double MapZoomFactor { get; set; } = 1;
     }
 
     public class GpsConfig
