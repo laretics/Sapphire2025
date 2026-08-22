@@ -115,6 +115,12 @@ namespace Tourmaline26.Services.Http
 					}
 				}
 
+				mvarLogger?.LogInformation(
+					"OutboundHttp: probando {Count} IP(s) cacheadas para {Host}:{Port}: {Ips}",
+					cached.Count,
+					host,
+					port,
+					string.Join(", ", cached.Select(a => a.ToString())));
 				IPAddress[]? resolved = await TryResolveAsync(host, cancellationToken).ConfigureAwait(false);
 				if (resolved is { Length: > 0 })
 				{
@@ -125,7 +131,14 @@ namespace Tourmaline26.Services.Http
 						Stream? dnsStream = await TryConnectListAsync(host, port, fresh, cancellationToken)
 							.ConfigureAwait(false);
 						if (dnsStream is not null)
+						{
+							mvarLogger?.LogInformation(
+								"OutboundHttp: DNS resuelto para {Host}: {Ips}",
+								host,
+								string.Join(", ", resolved.Select(a => a.ToString())));
 							return dnsStream;
+						}
+							
 					}
 				}
 
