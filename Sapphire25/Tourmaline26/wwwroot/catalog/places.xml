@@ -207,7 +207,7 @@
     <keys avr="llc" sfm="6">
       <diamond id="07" />
     </keys>
-    <names canonical="Verge de Lluc" internal="Verge de Lluc" external="Verge de Lluc" tft="Verge de Lluc" tfta="V. de Lluc" />
+    <names canonical="Verge de Lluc" internal="Verge de Lluc" external="Verge de Lluc" tft="Verge de Lluc" tfta="V. Lluc" />
     <announce>
       <clip role="enum" file="catalog/announce/verge-de-lluc.enum.wav" />
       <clip role="final" file="catalog/announce/verge-de-lluc.final.wav" />
@@ -224,7 +224,7 @@
     <keys avr="pdi" sfm="7">
       <diamond id="08" />
     </keys>
-    <names canonical="Pont d'Inca" internal="Pont d'Inca" external="Pont d'Inca" tft="Pont d'Inca" tfta="P. d'Inca" />
+    <names canonical="Pont d'Inca" internal="Pont d'Inca" external="Pont d'Inca" tft="Pont d'Inca" tfta="P. Inca" />
     <announce>
       <clip role="enum" file="catalog/announce/pont-dinca.enum.wav" />
       <clip role="final" file="catalog/announce/pont-dinca.final.wav" />
@@ -240,7 +240,7 @@
     <keys avr="pdn" sfm="8">
       <diamond id="09" />
     </keys>
-    <names canonical="Pont d'Inca Nou" internal="Pont d'Inca Nou" external="Pont d'Inca Nou" tft="P. d'Inca Nou" tfta="P. d'Inca N." />
+    <names canonical="Pont d'Inca Nou" internal="Pont d'Inca Nou" external="Pont d'Inca Nou" tft="P. d'Inca Nou" tfta="P. Inca Nou" />
     <announce>
       <clip role="enum" file="catalog/announce/pont-dinca-nou.enum.wav" />
       <clip role="final" file="catalog/announce/pont-dinca-nou.final.wav" />
@@ -254,7 +254,7 @@
     <keys avr="pol" sfm="9">
       <diamond id="10" />
     </keys>
-    <names canonical="Polígon de Marratxí" internal="Poligon de Marratxí" external="Polígon Marratxí" tft="Plg Marratxí" tfta="Plg Marratxí" />
+    <names canonical="Polígon de Marratxí" internal="Poligon de Marratxí" external="Pol. Marratxí" tft="Poligon Mtx." tfta="Pol Marratxí" />
     <announce>
       <clip role="enum" file="catalog/announce/poligon-marratxi.enum.wav" />
       <clip role="final" file="catalog/announce/poligon-marratxi.final.wav" />

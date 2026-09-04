@@ -236,7 +236,6 @@
     font-weight: 700;
     font-size: 3.4vw;
     letter-spacing: 0.04em;
-    text-transform: uppercase;
 }
 
 /* —— Sobre vídeo de fondo: contraste + sombra de lectura —— */
@@ -284,6 +283,7 @@
     color: #0a1628;
     font-weight: 700;
     font-size: clamp(3vw, 3.6vw, 4.2vw);
+    text-transform: none;
 }
 
 .route-box--overlay .stop-time {

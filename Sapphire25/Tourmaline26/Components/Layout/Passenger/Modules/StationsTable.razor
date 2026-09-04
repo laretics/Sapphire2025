@@ -21,7 +21,7 @@
                                 <span class="stop-rail-line" aria-hidden="true"></span>
                                 <span class="stop-dot"></span>
                             </td>
-                            <td class="@NameClass(row.Station)">@TftaName(row.Station)</td>
+                            <td class="stop-name">@TftaName(row.Station)</td>
                             <td class="stop-corr">
                                 @if (place is not null && place.HasEmtCorrespondence)
                                 {
@@ -191,15 +191,6 @@
         if (row.IsDestination)
             css += " stop-row--dest";
         return css;
-    }
-
-    private static string NameClass(ProjectStationInfo? station)
-    {
-        if (station is not null
-            && !string.IsNullOrEmpty(station.Avr)
-            && station.Avr == station.Avr.ToUpperInvariant())
-            return "stop-name stop-name-high";
-        return "stop-name";
     }
 
     private static string FormatClock(TimeSpan time) =>
