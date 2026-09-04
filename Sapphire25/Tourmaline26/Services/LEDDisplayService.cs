@@ -6,8 +6,9 @@ using Tourmaline26.Services.Catalog;
 namespace Tourmaline26.Services
 {
     /// <summary>
-    /// Teleindicadores LED. El contenido lo decide
-    /// <see cref="PassengerLedMapping"/> a partir del mismo modo que los TFT.
+    /// Teleindicadores LED. Interior usa <see cref="PlaceNameChannel.Internal"/>;
+    /// exterior/frontal, <see cref="PlaceNameChannel.External"/>.
+    /// El modo lo decide <see cref="PassengerLedMapping"/>.
     /// </summary>
     public class LEDDisplayService
     {
@@ -133,7 +134,7 @@ namespace Tourmaline26.Services
                     await ShowClockWeatherSpeed(session);
                     return;
                 case Enums.PassengerLedKind.NextStation:
-                    string next = LedName(PassengerLedMapping.NextStation(session));
+                    string next = InteriorName(PassengerLedMapping.NextStation(session));
                     if (string.IsNullOrWhiteSpace(next))
                     {
                         await ShowDestinationAndCar(session);
@@ -157,7 +158,7 @@ namespace Tourmaline26.Services
                     await Print(false, OutOfServiceDisplay.Combined, true);
                     return;
                 case Enums.PassengerLedExteriorKind.Destination:
-                    string dest = LedName(PassengerLedMapping.DestinationStation(session));
+                    string dest = ExteriorName(PassengerLedMapping.DestinationStation(session));
                     if (!string.IsNullOrWhiteSpace(dest))
                     {
                         await Print(false, dest, false);
@@ -177,12 +178,15 @@ namespace Tourmaline26.Services
             await Print(false, string.IsNullOrWhiteSpace(number) ? " " : number, false);
         }
 
-        private string LedName(Diamond.Project.StationInfo? station) =>
-            mvarPlaces.NameFor(PlaceNameChannel.Led, station);
+        private string InteriorName(Diamond.Project.StationInfo? station) =>
+            mvarPlaces.NameFor(PlaceNameChannel.Internal, station);
+
+        private string ExteriorName(Diamond.Project.StationInfo? station) =>
+            mvarPlaces.NameFor(PlaceNameChannel.External, station);
 
         private async Task ShowDestinationAndCar(SessionConfiguration session)
         {
-            string dest = LedName(PassengerLedMapping.DestinationStation(session));
+            string dest = InteriorName(PassengerLedMapping.DestinationStation(session));
             if (string.IsNullOrWhiteSpace(dest)
                 || session.InformationLevel != Enums.InformationLevel.Route)
             {

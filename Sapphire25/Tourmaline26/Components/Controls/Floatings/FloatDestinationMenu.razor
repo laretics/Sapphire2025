@@ -97,19 +97,19 @@
     }
     else if (string.IsNullOrWhiteSpace(SearchString))
     {
-        <p class="dest-hint">
-            @(OnlyUpcoming
-                ? "No hay salidas posteriores a ahora. Desactive el pin para ver el día completo."
-                : "Escriba un número de tren, una hora o un destino.")
-        </p>
+        <p class="dest-hint">@EmptyHint</p>
     }
     else
     {
-        <p class="dest-hint">
-            @(OnlyUpcoming
-                ? $"Ninguna salida posterior coincide con «{SearchString}»."
-                : $"Ningún tren coincide con «{SearchString}».")
-        </p>
+        <p class="dest-hint">@NoMatchHint</p>
+        @if (CanUseUnscheduled)
+        {
+            <button type="button"
+                    class="btn btn-outline-primary dest-unscheduled-btn"
+                    @onclick="UseUnscheduledAsync">
+                Usar tren @NormalizedToken sin malla
+            </button>
+        }
     }
 </div>
 
@@ -123,10 +123,49 @@
     [Parameter]
     public EventCallback<ProjectCirculation> OnCirculationSelected { get; set; }
     [Parameter]
+    public EventCallback<string> OnUnscheduledTrainSelected { get; set; }
+    [Parameter]
     public bool OnlyUpcoming { get; set; } = true;
 
     private Task HandleCirculationSelected(ProjectCirculation cir)
         => OnCirculationSelected.InvokeAsync(cir);
+
+    private Task UseUnscheduledAsync()
+        => OnUnscheduledTrainSelected.InvokeAsync(NormalizedToken);
+
+    private bool HasPlan => Environment?.Cabin?.DayProject is not null;
+
+    private string NormalizedToken =>
+        string.IsNullOrWhiteSpace(SearchString)
+            ? string.Empty
+            : UnscheduledCirculation.NormalizeToken(SearchString);
+
+    private bool CanUseUnscheduled =>
+        !HasAnyList && UnscheduledCirculation.LooksLikeTrainToken(SearchString);
+
+    private string EmptyHint
+    {
+        get
+        {
+            if (!HasPlan)
+                return "No hay plan de circulaciones. Escriba un número de tren para seleccionarlo sin malla.";
+            return OnlyUpcoming
+                ? "No hay salidas posteriores a ahora. Desactive el pin para ver el día completo."
+                : "Escriba un número de tren, una hora o un destino.";
+        }
+    }
+
+    private string NoMatchHint
+    {
+        get
+        {
+            if (!HasPlan)
+                return $"No hay malla cargada. Puede usar «{NormalizedToken}» sin datos.";
+            return OnlyUpcoming
+                ? $"Ninguna salida posterior coincide con «{SearchString}»."
+                : $"Ningún tren coincide con «{SearchString}».";
+        }
+    }
 
     private string panelClass
     {

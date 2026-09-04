@@ -58,7 +58,9 @@
     [Parameter]
     public bool OnlyUpcoming { get; set; } = true;
 
-    private bool HasCirculation => Environment?.Cabin?.Circulation is not null;
+    private bool HasCirculation =>
+        Environment?.Cabin?.Circulation is not null
+        || (Environment?.HasUnscheduledTrain ?? false);
 
     private string panelClass
     {
@@ -85,9 +87,9 @@
         get
         {
             Diamond.Project.Circulation? cir = Environment?.Cabin?.Circulation;
-            if (cir is null)
-                return string.Empty;
-            return cir.HasServiceNumber ? cir.ServiceNumber : cir.Id;
+            if (cir is not null)
+                return cir.HasServiceNumber ? cir.ServiceNumber : cir.Id;
+            return Environment?.UnscheduledTrainToken ?? string.Empty;
         }
     }
 
@@ -97,7 +99,7 @@
         {
             Diamond.Project.Circulation? cir = Environment?.Cabin?.Circulation;
             if (cir is null)
-                return string.Empty;
+                return Environment?.HasUnscheduledTrain == true ? "Sin malla" : string.Empty;
             return cir.Origin.DisplayCode + " → " + cir.Destination.DisplayCode;
         }
     }

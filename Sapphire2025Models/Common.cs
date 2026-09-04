@@ -448,7 +448,10 @@ namespace Sapphire2025Models
 			// Cabina Tourmaline (HMI del tren)
 			tourmalineLogin = 100,             //Inicio de sesión desde Tourmaline
 			tourmalineLogout = 101,            //Cierre de sesión desde Tourmaline
-			tourmalineTripStarted = 102        //Selección de circulación / inicio de viaje
+			tourmalineTripStarted = 102,       //Selección de circulación / inicio de viaje
+
+			// Catálogo Tourmaline (places.xml)
+			placesCatalogEdited = 110          //Edición del catálogo de lugares
 		}
 
 		/// <summary>
@@ -504,6 +507,7 @@ namespace Sapphire2025Models
 				sessionEventType.tourmalineLogin => "Login Tourmaline",
 				sessionEventType.tourmalineLogout => "Logout Tourmaline",
 				sessionEventType.tourmalineTripStarted => "Inicio de viaje Tourmaline",
+				sessionEventType.placesCatalogEdited => "Edición de places.xml",
 				_ => "¿?"
 			};
 		}

@@ -6,21 +6,30 @@
 @implements IDisposable
 
 <div class="floating-traject-card shadow @panelClass">
-    <div class="fts-top">
-        <span class="fts-eta" title="Arribada estimada">@EtaLabel</span>
-        <span class="fts-remain" title="Distància pendent">@RemainingLabel</span>
-        <span class="fts-pct" style="--pct: @ProgressPercent;" title="Recorregut">
-            <span class="fts-pct-inner">@ProgressPercent.ToString(CultureInfo.InvariantCulture)%</span>
-        </span>
-    </div>
-
-    <div class="fts-route">
-        <span class="fts-origin" title="@OriginName">@OriginName</span>
-        <div class="fts-bars" role="img" aria-label="Progrés del trajecte">
-            <div class="fts-bar fts-bar--sched" style="width: @ScheduledWidth;"></div>
-            <div class="fts-bar fts-bar--real" style="width: @ActualWidth;"></div>
+    @if (IsUnscheduled)
+    {
+        <div class="fts-route">
+            <span class="fts-origin" title="Sin datos de malla">Sin malla</span>
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="fts-top">
+            <span class="fts-eta" title="Arribada estimada">@EtaLabel</span>
+            <span class="fts-remain" title="Distància pendent">@RemainingLabel</span>
+            <span class="fts-pct" style="--pct: @ProgressPercent;" title="Recorregut">
+                <span class="fts-pct-inner">@ProgressPercent.ToString(CultureInfo.InvariantCulture)%</span>
+            </span>
+        </div>
+
+        <div class="fts-route">
+            <span class="fts-origin" title="@OriginName">@OriginName</span>
+            <div class="fts-bars" role="img" aria-label="Progrés del trajecte">
+                <div class="fts-bar fts-bar--sched" style="width: @ScheduledWidth;"></div>
+                <div class="fts-bar fts-bar--real" style="width: @ActualWidth;"></div>
+            </div>
+        </div>
+    }
 
     <button class="btn btn-outline-secondary fts-end" onclick="@onTerminateCirculation">@Prefs.T("tm.end")</button>
 </div>
@@ -40,6 +49,9 @@
     private CabinEnvironment? Cabin => Tourmaline.SessionConfig.Cabin;
 
     private Diamond.Project.Circulation? Circulation => Cabin?.Circulation;
+
+    private bool IsUnscheduled =>
+        Circulation is null && (Tourmaline.SessionConfig.HasUnscheduledTrain);
 
     protected override void OnInitialized()
     {

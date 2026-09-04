@@ -341,6 +341,7 @@
             mvarTourmaline.SessionConfig.Cabin?.Asimilation?.Origin
                 ?? Circulation?.Asimilation.Origin);
 
+    /// <summary>Destino y próxima parada: canal TFT (no la lista compacta tfta).</summary>
     private string TftName(Diamond.Project.StationInfo? station, string? fallback = null) =>
         Places.NameFor(PlaceNameChannel.Tft, station, fallback);
 

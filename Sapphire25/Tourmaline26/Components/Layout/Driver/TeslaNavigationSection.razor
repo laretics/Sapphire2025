@@ -2,6 +2,7 @@
 @using Tourmaline26.Components.Controls.Generical
 @using Tourmaline26.Components.Controls.Generical.SideMenu
 @using Tourmaline26.Components.Controls
+@using Diamond.Cabin
 @using ProjectCirculation = Diamond.Project.Circulation
 @inject TourmalineService Tourmaline
 @inject Sapphire2025.Storage.ExpertClient ExpertClient
@@ -17,17 +18,18 @@
         {
             <FloatDestinationMenu
                 OnlyUpcoming="mvarOnlyUpcoming"
-                OnCirculationSelected="CirculationSelected"/>
+                OnCirculationSelected="CirculationSelected"
+                OnUnscheduledTrainSelected="UnscheduledTrainSelected"/>
 
             <VirtualKeyboard
                 KeyPressed="KeyPressed"
+                EnterPressed="ConfirmSearch"
                 IsNumericByDefault="true"
                 />
         }
         @if(null!=Tourmaline.SessionConfig)
         {
-            @if (null != Tourmaline.SessionConfig.Cabin &&
-            null != Tourmaline.SessionConfig.Cabin.Circulation)
+            @if (Tourmaline.SessionConfig.HasActiveTrain)
             {
                 <FloatTrajectScheme OnTerminateCirculationRequest="TerminateCirculation" />
             }
@@ -84,10 +86,10 @@
     private async Task TerminateCirculation()
     {
         mvarSearchString = null;
-        if (null != Tourmaline.SessionConfig.Cabin)
-            Tourmaline.SessionConfig.Cabin.Circulation = null;
-        Tourmaline.UpdatePassengerInformationMode();
-        await Tourmaline.RecallEndTourmalineExperience();
+        mvarSearchingCirculation = false;
+        await Tourmaline.TerminateActiveCirculationAsync();
+        Tourmaline.RaiseHMIUpdate();
+        Tourmaline.RaisePassengerUpdate();
     }
     private void KeyPressed(char e)
     {
@@ -117,5 +119,27 @@
         await Tourmaline.DoCirculationSelect(cir);
         Tourmaline.RaiseHMIUpdate();
         Tourmaline.RaisePassengerUpdate();
+    }
+
+    private async Task UnscheduledTrainSelected(string token)
+    {
+        if (!await Tourmaline.SelectUnscheduledTrainAsync(token))
+            return;
+
+        mvarSearchingCirculation = false;
+        mvarSearchString = null;
+    }
+
+    private async Task ConfirmSearch()
+    {
+        if (!UnscheduledCirculation.LooksLikeTrainToken(mvarSearchString))
+            return;
+
+        CabinEnvironment? cabin = Tourmaline.SessionConfig.Cabin;
+        if (cabin?.DayProject is not null
+            && cabin.SearchCirculations(mvarSearchString).Count > 0)
+            return;
+
+        await UnscheduledTrainSelected(mvarSearchString);
     }
 }

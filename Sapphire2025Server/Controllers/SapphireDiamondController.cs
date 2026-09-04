@@ -3,8 +3,10 @@ using Diamond.Timed;
 using Diamond.Topo;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Sapphire2025Models;
 using Sapphire2025Models.Diamond;
 using Sapphire2025Server.Comunications;
+using Sapphire2025Server.Storage;
 using Sapphire2026.Data;
 using Sapphire2026.Data.Diamond;
 using Sapphire2026.Data.Models;
@@ -971,6 +973,104 @@ namespace Sapphire2025Server.Controllers
 				result.Message = "No se pudo guardar el festivo: " + ex.Message;
 				return result;
 			}
+		}
+
+		/// <summary>Hash y fecha del places.xml del servidor (sin payload).</summary>
+		[HttpGet("placesheader")]
+		public ActionResult<PlacesCatalogHeaderModel> GetPlacesHeader()
+		{
+			PlacesCatalogHeaderModel header = PlacesCatalogStore.GetHeader(mvarConfig);
+			if (!header.Exists)
+				return NotFound();
+			return header;
+		}
+
+		/// <summary>XML del catálogo de lugares (editor Zafiro y tren).</summary>
+		[HttpGet("placesxml")]
+		public ActionResult<PlacesCatalogContentModel> GetPlacesXml()
+		{
+			PlacesCatalogContentModel? content = PlacesCatalogStore.ReadContent(mvarConfig);
+			if (content is null)
+				return NotFound();
+			return content;
+		}
+
+		/// <summary>
+		/// Guarda places.xml. Requiere sesión de ingeniero o root.
+		/// Si el hash no cambia, no se escribe ni se registra en el log.
+		/// </summary>
+		[HttpPost("saveplaces")]
+		public async Task<PlacesCatalogSaveResult> SavePlaces([FromBody] PlacesCatalogSaveRequest? request)
+		{
+			PlacesCatalogSaveResult result = new PlacesCatalogSaveResult();
+			if (request is null || string.IsNullOrWhiteSpace(request.Xml))
+			{
+				result.Success = false;
+				result.Message = "No se ha recibido el documento.";
+				return result;
+			}
+
+			if (Guid.Empty.Equals(request.SessionToken))
+			{
+				result.Success = false;
+				result.Message = "Se requiere una sesión activa.";
+				return result;
+			}
+
+			bool canEdit =
+				await hasBasicPermission(request.SessionToken, Common.UserRole.Engineer)
+				|| await hasBasicPermission(request.SessionToken, Common.UserRole.Root);
+			if (!canEdit)
+			{
+				result.Success = false;
+				result.Message = "No tiene permiso para editar el catálogo de lugares.";
+				return result;
+			}
+
+			string? validation = PlacesCatalogStore.ValidateXml(request.Xml);
+			if (validation is not null)
+			{
+				result.Success = false;
+				result.Message = validation;
+				return result;
+			}
+
+			PlacesCatalogHeaderModel current = PlacesCatalogStore.GetHeader(mvarConfig);
+			byte[] incoming = System.Text.Encoding.UTF8.GetBytes(request.Xml);
+			string incomingHash = PlacesCatalogStore.Sha256Hex(incoming);
+			if (current.Exists
+				&& string.Equals(current.ContentHash, incomingHash, StringComparison.OrdinalIgnoreCase))
+			{
+				result.Success = true;
+				result.Changed = false;
+				result.ContentHash = current.ContentHash;
+				result.UpdatedUtc = current.UpdatedUtc;
+				result.Message = "Sin cambios.";
+				return result;
+			}
+
+			PlacesCatalogHeaderModel saved = PlacesCatalogStore.WriteXml(mvarConfig, request.Xml);
+			result.Success = true;
+			result.Changed = true;
+			result.ContentHash = saved.ContentHash;
+			result.UpdatedUtc = saved.UpdatedUtc;
+			result.Message = "Catálogo de lugares guardado.";
+
+			User? actor = await retrieveSessionUser(request.SessionToken);
+			if (actor is not null)
+			{
+				string detail = string.Format(
+					System.Globalization.CultureInfo.InvariantCulture,
+					"places.xml bytes={0} hash={1}",
+					saved.ByteLength,
+					saved.ContentHash.Length > 12 ? saved.ContentHash.Substring(0, 12) : saved.ContentHash);
+				await addLoginRecord(
+					actor.Id,
+					Common.sessionEventType.placesCatalogEdited,
+					TruncateHostPoint(detail));
+			}
+
+			return result;
 		}
 
 		private static string Trunc(string? s, int max)

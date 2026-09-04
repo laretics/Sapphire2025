@@ -27,27 +27,115 @@
     }
 
 .route-table {
+    --stop-rail: #1d4ed8;
+    --stop-dot: #1d4ed8;
+    --stop-line: #64748b;
     width: 100%;
     border-collapse: collapse;
+    table-layout: auto;
 }
 
     .route-table td {
         border: none;
-        padding: 0.5vh 0.5vw;
+        padding: 0.7vh 0.55vw;
         font-size: 3.2vw;
         vertical-align: middle;
     }
 
+.stop-row td {
+    border-bottom: 1px solid rgba(15, 23, 42, 0.14);
+}
+
+.stop-row.stop-row--last td {
+    border-bottom: none;
+}
+
+.stop-name,
+.stop-corr,
+.stop-time,
+.stop-extra {
+    border-left: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.stop-rail {
+    position: relative;
+    width: 4.2vw;
+    min-width: 1.6rem;
+    padding-left: 0.2vw;
+    padding-right: 0.4vw;
+    text-align: center;
+}
+
+.stop-rail-line {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 0.38vw;
+    min-width: 3px;
+    background: var(--stop-line);
+    transform: translateX(-50%);
+    z-index: 0;
+}
+
+.stop-row--first .stop-rail-line {
+    top: 50%;
+}
+
+.stop-row--last .stop-rail-line {
+    bottom: 50%;
+}
+
+.stop-rail-line--gap {
+    background: repeating-linear-gradient(
+        to bottom,
+        var(--stop-line) 0 0.45vh,
+        transparent 0.45vh 0.9vh
+    );
+}
+
 .stop-dot {
-    width: 3vw;
-    height: 3vw;
-    min-width: 22px;
-    min-height: 22px;
-    margin-right: 1.5vw;
-    border: 0.5vw solid #1f2937;
+    position: relative;
+    z-index: 1;
+    width: 2.35vw;
+    height: 2.35vw;
+    min-width: 14px;
+    min-height: 14px;
+    margin: 0 auto;
+    border: 0.38vw solid var(--stop-dot);
     border-radius: 50%;
-    display: inline-block;
+    display: block;
     box-sizing: border-box;
+    background: #fff;
+    box-shadow: 0 0 0 0.18vw rgba(255, 255, 255, 0.9);
+}
+
+.stop-row--first .stop-dot {
+    background: var(--stop-dot);
+    border-color: var(--stop-dot);
+    width: 2.7vw;
+    height: 2.7vw;
+    min-width: 16px;
+    min-height: 16px;
+}
+
+.stop-row--dest .stop-dot {
+    background: var(--stop-dot);
+    border-color: var(--stop-dot);
+    width: 2.7vw;
+    height: 2.7vw;
+    min-width: 16px;
+    min-height: 16px;
+}
+
+.stop-dot--gap {
+    width: 1.1vw;
+    height: 1.1vw;
+    min-width: 8px;
+    min-height: 8px;
+    background: var(--stop-line);
+    border-color: var(--stop-line);
+    box-shadow: none;
 }
 
 .stop-time {
@@ -55,8 +143,43 @@
     font-weight: 700;
     font-size: 3vw;
     text-align: right;
-    padding-left: 2vw;
+    padding-left: 1.1vw;
+    padding-right: 0.7vw;
     white-space: nowrap;
+    width: 1%;
+    font-variant-numeric: tabular-nums;
+}
+
+.stop-extra {
+    text-align: right;
+    white-space: nowrap;
+    width: 1%;
+    padding-left: 0.85vw;
+    padding-right: 0.35vw;
+    min-width: 4.8vw;
+    font-variant-numeric: tabular-nums;
+}
+
+.stop-eta {
+    color: #c2410c;
+    font-weight: 800;
+    font-size: 3vw;
+    letter-spacing: -0.02em;
+}
+
+.stop-dwell {
+    color: #334155;
+    font-weight: 700;
+    font-size: 2.7vw;
+}
+
+.stop-dwell-unit {
+    font-size: 0.52em;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-left: 0.12em;
+    vertical-align: super;
+    opacity: 0.75;
 }
 
 .stop-name {
@@ -67,6 +190,45 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    width: 100%;
+    padding-left: 1vw;
+}
+
+.stop-name--gap {
+    color: #64748b;
+    letter-spacing: 0.35em;
+    font-weight: 600;
+}
+
+.stop-corr {
+    white-space: nowrap;
+    width: 1%;
+    padding-left: 0.9vw;
+    padding-right: 0.7vw;
+    vertical-align: middle;
+}
+
+.stop-corr-logo {
+    display: inline-block;
+    vertical-align: middle;
+    width: auto;
+    height: auto;
+    max-height: clamp(2.4vw, 3.1vw, 3.8vw);
+    object-fit: contain;
+    object-position: center;
+    margin-right: 0.45vw;
+}
+
+.stop-corr-logo:last-child {
+    margin-right: 0;
+}
+
+.stop-corr-logo--emt {
+    max-width: 5.4vw;
+}
+
+.stop-corr-logo--tib {
+    max-width: 6.6vw;
 }
 
 .stop-name-high {
@@ -75,9 +237,6 @@
     font-size: 3.4vw;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 /* —— Sobre vídeo de fondo: contraste + sombra de lectura —— */
@@ -101,7 +260,18 @@
 }
 
 .route-box--overlay .route-table td {
-    padding: 0.85vh 0.6vw;
+    padding: 0.95vh 0.65vw;
+}
+
+.route-box--overlay .stop-row td {
+    border-bottom-color: rgba(15, 23, 42, 0.16);
+}
+
+.route-box--overlay .stop-name,
+.route-box--overlay .stop-corr,
+.route-box--overlay .stop-time,
+.route-box--overlay .stop-extra {
+    border-left-color: rgba(15, 23, 42, 0.16);
 }
 
 .route-box--overlay .stop-name {
@@ -122,7 +292,26 @@
     font-size: clamp(2.6vw, 3.2vw, 3.8vw);
 }
 
+.route-box--overlay .stop-eta {
+    font-size: clamp(2.6vw, 3.2vw, 3.8vw);
+}
+
+.route-box--overlay .stop-dwell {
+    font-size: clamp(2.3vw, 2.8vw, 3.3vw);
+}
+
+.route-box--overlay .stop-corr-logo {
+    max-height: clamp(2.6vw, 3.4vw, 4.1vw);
+}
+
+.route-box--overlay .stop-corr-logo--emt {
+    max-width: 5.8vw;
+}
+
+.route-box--overlay .stop-corr-logo--tib {
+    max-width: 7vw;
+}
+
 .route-box--overlay .stop-dot {
-    border-color: #111111;
-    background: #111111;
+    box-shadow: 0 0 0 0.2vw rgba(255, 255, 255, 0.95);
 }

@@ -113,12 +113,14 @@
         "Schedule",
         "DamageClipboard"
     };
+    /// <summary>
+    /// Paneles que piden identidad Zafiro. Cámaras e itinerario no: funcionan
+    /// con la configuración local y la malla en caché (o un tren sin datos).
+    /// </summary>
     private static readonly string[] SessionRequiredKeys =
     {
-        "Cameras",
         "Microphone",
         "View3D",
-        "Itinerary",
         "DamageClipboard"
     };
     private bool HasSession => mvarTourmaline.SessionConfig.Session is not null;
@@ -298,7 +300,7 @@
     }
     private bool HasActiveTrain
     {
-        get => mvarTourmaline.SessionConfig.Cabin?.Circulation is not null;
+        get => mvarTourmaline.SessionConfig.HasActiveTrain;
     }
 
     private void SyncPanelAvailability()
@@ -313,6 +315,9 @@
             if (null != auxBoton && auxBoton.DisableOnMotion)
                 auxBoton.Enabled = zeroSpeed;
         }
+
+        if (buttonData.TryGetValue("Cameras", out var cameras) && cameras is not null)
+            cameras.Enabled = mvarTourmaline.SessionConfig.MainSwitches.ManualCameras;
 
         if (buttonData.TryGetValue("Itinerary", out var itinerary) && itinerary is not null)
             itinerary.Enabled = HasActiveTrain;
@@ -331,8 +336,7 @@
                 {
                     required.Enabled = false;
                 }
-                else if (!required.DisableOnMotion
-                    && !string.Equals(key, "Itinerary", StringComparison.Ordinal))
+                else if (!required.DisableOnMotion)
                 {
                     required.Enabled = true;
                 }

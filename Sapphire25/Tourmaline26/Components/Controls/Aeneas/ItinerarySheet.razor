@@ -5,14 +5,25 @@
 
 <FloatRightContainer>
     <div class="itinerary-sheet-fill">
-        <CabinItinerarySheetView Circulation="cabin?.Circulation"
-                                 Topo="cabin?.Topo"
-                                 DayProject="cabin?.DayProject"
-                                 PlanName="@(cabin?.PublishedPlanName ?? string.Empty)"
-                                 PlanningDay="@(cabin?.DayProject?.PlanningDay)"
-                                 NightMode="NightMode"
-                                 RoutePk="@(cabin?.PK ?? 0)"
-                                 StationAreaMeters="@(cabin?.StationAreaMeters ?? 250)" />
+        @if (Tourmaline.SessionConfig.HasUnscheduledTrain && cabin?.Circulation is null)
+        {
+            <div class="itinerary-unscheduled">
+                <h3>Tren @Tourmaline.SessionConfig.UnscheduledTrainToken</h3>
+                <p>No hay malla Diamond para este tren. Puede circular sin datos de horario ni paradas.</p>
+                <p>Cuando haya plan en caché o sesión en Zafiro, vuelva a seleccionarlo para cargar el itinerario.</p>
+            </div>
+        }
+        else
+        {
+            <CabinItinerarySheetView Circulation="cabin?.Circulation"
+                                     Topo="cabin?.Topo"
+                                     DayProject="cabin?.DayProject"
+                                     PlanName="@(cabin?.PublishedPlanName ?? string.Empty)"
+                                     PlanningDay="@(cabin?.DayProject?.PlanningDay)"
+                                     NightMode="NightMode"
+                                     RoutePk="@(cabin?.PK ?? 0)"
+                                     StationAreaMeters="@(cabin?.StationAreaMeters ?? 250)" />
+        }
     </div>
 </FloatRightContainer>
 

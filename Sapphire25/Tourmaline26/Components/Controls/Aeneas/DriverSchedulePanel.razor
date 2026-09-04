@@ -537,7 +537,9 @@
         bool ok = await Tourmaline.StartCirculationFromTrainTokenAsync(train.TrainId, train.StartTime);
         if (ok)
         {
-            mvarActionMessage = $"Ruta {train.TrainId} en servicio.";
+            mvarActionMessage = Tourmaline.SessionConfig.HasUnscheduledTrain
+                ? $"Tren {train.TrainId} en servicio sin malla."
+                : $"Ruta {train.TrainId} en servicio.";
         }
         else
         {

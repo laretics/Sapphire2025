@@ -149,6 +149,21 @@ namespace Tourmaline26.Logic
 		}
 
 		/// <summary>
+		/// Número de tren elegido a mano cuando no hay malla Diamond ni sesión Zafiro.
+		/// </summary>
+		public string? UnscheduledTrainToken { get; set; }
+
+		public bool HasUnscheduledTrain => !string.IsNullOrWhiteSpace(UnscheduledTrainToken);
+
+		public bool HasActiveTrain =>
+			Cabin?.Circulation is not null || HasUnscheduledTrain;
+
+		public void ClearUnscheduledTrain()
+		{
+			UnscheduledTrainToken = null;
+		}
+
+		/// <summary>
 		/// Entorno Diamond de cabina (topo + plan publicado + misión).
 		/// </summary>
 		public CabinEnvironment? Cabin { get; set; } = null;
