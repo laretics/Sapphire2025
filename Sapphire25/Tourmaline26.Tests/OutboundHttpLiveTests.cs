@@ -5,7 +5,7 @@ namespace Tourmaline26.Tests;
 public sealed class OutboundHttpLiveTests
 {
 	[Fact]
-	public async Task SocketIo_handshake_through_cached_ip_and_sni()
+	public async Task SocketIo_handshake_with_sni()
 	{
 		using var handler = OutboundHttp.CreateHandler();
 		using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(25) };
@@ -19,7 +19,7 @@ public sealed class OutboundHttpLiveTests
 	}
 
 	[Fact]
-	public async Task Tib_departures_through_cached_ip_and_sni()
+	public async Task Tib_departures_with_sni()
 	{
 		using var handler = OutboundHttp.CreateHandler();
 		using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(25) };

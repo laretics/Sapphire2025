@@ -9,48 +9,30 @@ using System.Security.Cryptography.X509Certificates;
 namespace Tourmaline26.Services.Http
 {
 	/// <summary>
-	/// HTTP de salida pensado para la red del tren: IPv4 primero,
-	/// HTTP/1.1 (los WAF de TIB/SFM se llevan mal con HTTP/2), cabeceras de navegador
-	/// y conexión por la última IP conocida (SFM/TIB/EMT) si DNS no responde.
+	/// HTTP de salida pensado para la red del tren: Happy Eyeballs corto
+	/// (IPv4 nativa, AAAA, NAT64 sintetizada), HTTP/1.1 (los WAF de TIB/SFM
+	/// se llevan mal con HTTP/2) y cabeceras de navegador.
 	/// </summary>
 	internal static class OutboundHttp
 	{
 		public const string BrowserUserAgent =
 			"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
-		private static readonly object mvarInitLock = new();
-		private static readonly ConcurrentDictionary<string, byte> mcolLoggedHosts =
+		internal static readonly TimeSpan HappyEyeballsNat64Delay = TimeSpan.FromMilliseconds(250);
+		internal static readonly TimeSpan TcpConnectTimeout = TimeSpan.FromSeconds(4);
+
+		private static readonly ConcurrentDictionary<string, string> mcolLoggedTargets =
+			new(StringComparer.OrdinalIgnoreCase);
+		private static readonly ConcurrentDictionary<string, OutboundConnectInfo> mcolLastConnect =
 			new(StringComparer.OrdinalIgnoreCase);
 
 		private static ILogger? mvarLogger;
-		private static OutboundHostCache? mvarCache;
 
-		public static void Configure(string contentRoot, ILoggerFactory? loggerFactory)
+		public static void Configure(ILoggerFactory? loggerFactory, IConfiguration? configuration = null)
 		{
 			ILogger? logger = loggerFactory?.CreateLogger("Tourmaline26.Services.Http.OutboundHttp");
-			string path = System.IO.Path.Combine(contentRoot, OutboundHostCache.RelativePath);
-			lock (mvarInitLock)
-			{
-				mvarLogger = logger;
-				mvarCache = OutboundHostCache.Load(path, logger);
-			}
-		}
-
-		private static OutboundHostCache Cache
-		{
-			get
-			{
-				OutboundHostCache? cache = mvarCache;
-				if (cache is not null)
-					return cache;
-				lock (mvarInitLock)
-				{
-					mvarCache ??= OutboundHostCache.Load(
-						System.IO.Path.Combine(AppContext.BaseDirectory, OutboundHostCache.RelativePath),
-						mvarLogger);
-					return mvarCache;
-				}
-			}
+			mvarLogger = logger;
+			Nat64PrefixCache.Configure(configuration?["OutboundHttp:Nat64Prefix"], logger);
 		}
 
 		public static SocketsHttpHandler CreateHandler()
@@ -63,7 +45,7 @@ namespace Tourmaline26.Services.Http
 				PooledConnectionIdleTimeout = TimeSpan.FromSeconds(45),
 				UseCookies = true,
 				CookieContainer = new CookieContainer(),
-				ConnectCallback = ConnectPreferIPv4Async
+				ConnectCallback = ConnectDualStackOrNat64Async
 			};
 		}
 
@@ -84,7 +66,10 @@ namespace Tourmaline26.Services.Http
 				client.DefaultRequestHeaders.Referrer = referrer;
 		}
 
-		private static async ValueTask<Stream> ConnectPreferIPv4Async(
+		internal static bool TryGetLastConnect(string host, out OutboundConnectInfo info) =>
+			mcolLastConnect.TryGetValue(host, out info!);
+
+		private static async ValueTask<Stream> ConnectDualStackOrNat64Async(
 			SocketsHttpConnectionContext context,
 			CancellationToken cancellationToken)
 		{
@@ -93,116 +78,291 @@ namespace Tourmaline26.Services.Http
 			string? sslHost = SslHostName(context);
 
 			if (IPAddress.TryParse(host, out IPAddress? literal))
-				return await ConnectAddressAsync(literal, port, sslHost, cancellationToken).ConfigureAwait(false);
-
-			IReadOnlyList<IPAddress> cached = Cache.Candidates(host);
-			if (cached.Count > 0)
 			{
-				QueueDnsRefresh(host);
-				mvarLogger?.LogDebug(
-					"OutboundHttp: {Host}:{Port} vía caché {Ips}",
-					host,
-					port,
-					string.Join(", ", cached.Select(a => a.ToString())));
-
-				Exception? cacheLast = null;
-				var failed = new HashSet<IPAddress>();
-				foreach (IPAddress address in cached)
-				{
-					cancellationToken.ThrowIfCancellationRequested();
-					try
-					{
-						Stream stream = await ConnectAddressAsync(address, port, sslHost, cancellationToken)
-							.ConfigureAwait(false);
-						Cache.RememberSuccess(host, address);
-						LogConnectOnce(host, port, address, fromCache: true);
-						return stream;
-					}
-					catch (Exception ex) when (ex is not OperationCanceledException)
-					{
-						failed.Add(address);
-						cacheLast = ex;
-						mvarLogger?.LogWarning(
-							ex,
-							"OutboundHttp: {Host}:{Port} no usable en {Ip} (caché).",
-							host,
-							port,
-							address);
-					}
-				}
-
-				IPAddress[]? resolved = await TryResolveAsync(host, cancellationToken).ConfigureAwait(false);
-				if (resolved is { Length: > 0 })
-				{
-					Cache.UpdateFromDns(host, resolved);
-					IPAddress[] fresh = resolved.Where(a => !failed.Contains(a)).ToArray();
-					if (fresh.Length > 0)
-					{
-						Stream? dnsStream = await TryConnectListAsync(host, port, sslHost, fresh, cancellationToken)
-							.ConfigureAwait(false);
-						if (dnsStream is not null)
-						{
-							mvarLogger?.LogInformation(
-								"OutboundHttp: DNS resuelto para {Host}: {Ips}",
-								host,
-								string.Join(", ", resolved.Select(a => a.ToString())));
-							return dnsStream;
-						}
-					}
-				}
-
-				throw cacheLast ?? new SocketException((int)SocketError.HostUnreachable);
+				IReadOnlyList<Nat64Prefix> literalPrefixes = Socket.OSSupportsIPv6
+					? await Nat64PrefixCache.GetPrefixesAsync(cancellationToken).ConfigureAwait(false)
+					: Array.Empty<Nat64Prefix>();
+				IReadOnlyList<ConnectCandidate> literalCandidates = BuildConnectCandidates(
+					[literal],
+					literalPrefixes,
+					Socket.OSSupportsIPv6);
+				return await ConnectCandidatesToStreamAsync(
+						host,
+						port,
+						sslHost,
+						literalCandidates,
+						cancellationToken)
+					.ConfigureAwait(false);
 			}
 
-			IPAddress[]? firstResolve = await TryResolveAsync(host, cancellationToken).ConfigureAwait(false);
-			if (firstResolve is { Length: > 0 })
+			IPAddress[]? resolved = await TryResolveAsync(host, cancellationToken).ConfigureAwait(false);
+			if (resolved is { Length: > 0 })
 			{
-				Cache.UpdateFromDns(host, firstResolve);
-				Stream? stream = await TryConnectListAsync(host, port, sslHost, firstResolve, cancellationToken)
-					.ConfigureAwait(false);
-				if (stream is not null)
-					return stream;
+				IReadOnlyList<Nat64Prefix> prefixes = Socket.OSSupportsIPv6
+					? await Nat64PrefixCache.GetPrefixesAsync(cancellationToken).ConfigureAwait(false)
+					: Array.Empty<Nat64Prefix>();
+				IReadOnlyList<ConnectCandidate> candidates = BuildConnectCandidates(
+					resolved,
+					prefixes,
+					Socket.OSSupportsIPv6);
+				if (candidates.Count > 0)
+				{
+					return await ConnectCandidatesToStreamAsync(
+							host,
+							port,
+							sslHost,
+							candidates,
+							cancellationToken)
+						.ConfigureAwait(false);
+				}
 			}
 
 			return await ConnectSocketAsync(context.DnsEndPoint, sslHost, cancellationToken).ConfigureAwait(false);
 		}
 
-		private static async Task<Stream?> TryConnectListAsync(
+		private static async Task<Stream> ConnectCandidatesToStreamAsync(
 			string host,
 			int port,
 			string? sslHost,
-			IReadOnlyList<IPAddress> addresses,
+			IReadOnlyList<ConnectCandidate> candidates,
 			CancellationToken cancellationToken)
 		{
-			IEnumerable<IPAddress> ordered = addresses
-				.Where(IsUsable)
-				.Where(a => a.AddressFamily == AddressFamily.InterNetwork)
-				.Concat(addresses.Where(IsUsable).Where(a => a.AddressFamily == AddressFamily.InterNetworkV6));
+			(ConnectCandidate candidate, Socket socket) = await RaceCandidatesAsync(
+					candidates,
+					(c, ct) => ConnectTcpAsync(c.Address, port, ct),
+					HappyEyeballsNat64Delay,
+					lost => lost.Dispose(),
+					OnCandidateFailed,
+					cancellationToken)
+				.ConfigureAwait(false);
 
-			Exception? last = null;
-			var seen = new HashSet<IPAddress>();
-			foreach (IPAddress address in ordered)
+			try
 			{
-				if (!seen.Add(address))
-					continue;
-				cancellationToken.ThrowIfCancellationRequested();
-				try
-				{
-					Stream stream = await ConnectAddressAsync(address, port, sslHost, cancellationToken)
-						.ConfigureAwait(false);
-					Cache.RememberSuccess(host, address);
-					LogConnectOnce(host, port, address, fromCache: false);
+				RememberConnect(host, candidate);
+				LogConnect(host, port, candidate);
+				Stream stream = new NetworkStream(socket, ownsSocket: true);
+				socket = null!;
+				if (string.IsNullOrEmpty(sslHost) || IPAddress.TryParse(sslHost, out _))
 					return stream;
-				}
-				catch (Exception ex) when (ex is not OperationCanceledException)
+				return await AuthenticateHttpsAsync(stream, sslHost, candidate.Address, cancellationToken)
+					.ConfigureAwait(false);
+			}
+			catch
+			{
+				socket?.Dispose();
+				throw;
+			}
+		}
+
+		private static void OnCandidateFailed(ConnectCandidate candidate, Exception exception)
+		{
+			if (candidate.Kind != ConnectCandidateKind.Nat64)
+				return;
+			mvarLogger?.LogWarning(
+				exception,
+				"IPv4 unreachable, NAT64 fail, prefix={Prefix} ip={Ip}",
+				candidate.Prefix?.ToString() ?? "(ninguno)",
+				candidate.Address);
+		}
+
+		internal static IReadOnlyList<ConnectCandidate> BuildConnectCandidates(
+			IReadOnlyList<IPAddress> addresses,
+			IReadOnlyList<Nat64Prefix> prefixes,
+			bool ipv6Available)
+		{
+			var list = new List<ConnectCandidate>();
+			var seen = new HashSet<IPAddress>();
+
+			foreach (IPAddress address in addresses)
+			{
+				if (!IsUsable(address) || address.AddressFamily != AddressFamily.InterNetwork)
+					continue;
+				if (seen.Add(address))
+					list.Add(new ConnectCandidate(address, ConnectCandidateKind.NativeIPv4));
+			}
+
+			if (!ipv6Available)
+				return list;
+
+			foreach (IPAddress address in addresses)
+			{
+				if (!IsUsable(address) || address.AddressFamily != AddressFamily.InterNetworkV6)
+					continue;
+				if (seen.Add(address))
+					list.Add(new ConnectCandidate(address, ConnectCandidateKind.NativeIPv6));
+			}
+
+			foreach (IPAddress ipv4 in addresses)
+			{
+				if (!IsUsable(ipv4) || ipv4.AddressFamily != AddressFamily.InterNetwork)
+					continue;
+				foreach (Nat64Prefix prefix in prefixes)
 				{
-					last = ex;
+					IPAddress synthesized = prefix.Synthesize(ipv4);
+					if (!seen.Add(synthesized))
+						continue;
+					list.Add(new ConnectCandidate(
+						synthesized,
+						ConnectCandidateKind.Nat64,
+						ipv4,
+						prefix));
 				}
 			}
 
-			if (last is not null)
-				mvarLogger?.LogDebug(last, "OutboundHttp: no se pudo conectar a {Host} por las IPs DNS.", host);
-			return null;
+			return list;
+		}
+
+		internal static async Task<(ConnectCandidate Candidate, T Result)> RaceCandidatesAsync<T>(
+			IReadOnlyList<ConnectCandidate> candidates,
+			Func<ConnectCandidate, CancellationToken, Task<T>> connectAsync,
+			TimeSpan nat64Delay,
+			Action<T> disposeIfLost,
+			Action<ConnectCandidate, Exception>? onFailure,
+			CancellationToken cancellationToken)
+		{
+			if (candidates.Count == 0)
+				throw new SocketException((int)SocketError.HostUnreachable);
+
+			List<ConnectCandidate> native = candidates
+				.Where(c => c.Kind != ConnectCandidateKind.Nat64)
+				.ToList();
+			List<ConnectCandidate> nat64 = candidates
+				.Where(c => c.Kind == ConnectCandidateKind.Nat64)
+				.ToList();
+
+			using var raceCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+			var winner = new TaskCompletionSource<(ConnectCandidate, T)>(
+				TaskCreationOptions.RunContinuationsAsynchronously);
+
+			int inflight = 0;
+			int nat64Gate = nat64.Count > 0 && native.Count > 0 ? 1 : 0;
+			int nat64Launched = 0;
+			int nativeRemaining = native.Count;
+			Exception? lastNative = null;
+			Exception? lastNat64 = null;
+
+			void CompleteIfIdle()
+			{
+				if (Volatile.Read(ref inflight) != 0 || Volatile.Read(ref nat64Gate) != 0)
+					return;
+				Exception fail = lastNat64 ?? lastNative ?? new SocketException((int)SocketError.HostUnreachable);
+				winner.TrySetException(fail);
+			}
+
+			void TryLaunchNat64()
+			{
+				if (winner.Task.IsCompleted)
+				{
+					Interlocked.Exchange(ref nat64Gate, 0);
+					return;
+				}
+
+				if (Interlocked.Exchange(ref nat64Launched, 1) != 0)
+					return;
+
+				foreach (ConnectCandidate candidate in nat64)
+					_ = RunOne(candidate);
+				Interlocked.Exchange(ref nat64Gate, 0);
+				CompleteIfIdle();
+			}
+
+			async Task RunOne(ConnectCandidate candidate)
+			{
+				Interlocked.Increment(ref inflight);
+				try
+				{
+					T result = await connectAsync(candidate, raceCts.Token).ConfigureAwait(false);
+					if (winner.TrySetResult((candidate, result)))
+					{
+						try
+						{
+							raceCts.Cancel();
+						}
+						catch (ObjectDisposedException)
+						{
+						}
+					}
+					else
+					{
+						try
+						{
+							disposeIfLost(result);
+						}
+						catch
+						{
+						}
+					}
+				}
+				catch (OperationCanceledException)
+				{
+					// Ganador o cancelación del request.
+				}
+				catch (Exception ex)
+				{
+					if (candidate.Kind == ConnectCandidateKind.Nat64)
+						lastNat64 = ex;
+					else
+						lastNative = ex;
+					try
+					{
+						onFailure?.Invoke(candidate, ex);
+					}
+					catch
+					{
+					}
+
+					if (candidate.Kind == ConnectCandidateKind.NativeIPv4 && IsUnreachable(ex))
+						TryLaunchNat64();
+				}
+				finally
+				{
+					if (candidate.Kind != ConnectCandidateKind.Nat64
+						&& Interlocked.Decrement(ref nativeRemaining) == 0
+						&& !winner.Task.IsCompleted)
+					{
+						TryLaunchNat64();
+					}
+
+					Interlocked.Decrement(ref inflight);
+					CompleteIfIdle();
+				}
+			}
+
+			foreach (ConnectCandidate candidate in native)
+				_ = RunOne(candidate);
+
+			if (native.Count == 0)
+				TryLaunchNat64();
+			else if (nat64.Count > 0)
+			{
+				_ = DelayNat64Async();
+			}
+
+			async Task DelayNat64Async()
+			{
+				try
+				{
+					await Task.Delay(nat64Delay, raceCts.Token).ConfigureAwait(false);
+					TryLaunchNat64();
+				}
+				catch (OperationCanceledException)
+				{
+					if (!winner.Task.IsCompleted)
+					{
+						Interlocked.Exchange(ref nat64Gate, 0);
+						CompleteIfIdle();
+					}
+				}
+			}
+
+			try
+			{
+				return await winner.Task.ConfigureAwait(false);
+			}
+			catch (Exception) when (cancellationToken.IsCancellationRequested)
+			{
+				throw new OperationCanceledException(cancellationToken);
+			}
 		}
 
 		private static async Task<IPAddress[]?> TryResolveAsync(string host, CancellationToken cancellationToken)
@@ -220,39 +380,9 @@ namespace Tourmaline26.Services.Http
 			}
 			catch (Exception ex)
 			{
-				mvarLogger?.LogWarning(ex, "OutboundHttp: DNS de {Host} falló; se mantiene la caché.", host);
+				mvarLogger?.LogWarning(ex, "OutboundHttp: DNS de {Host} falló.", host);
 				return null;
 			}
-		}
-
-		private static void QueueDnsRefresh(string host)
-		{
-			if (!Cache.TryBeginDnsRefresh(host))
-				return;
-
-			_ = Task.Run(async () =>
-			{
-				try
-				{
-					using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
-					IPAddress[] addresses = await Dns.GetHostAddressesAsync(host, timeout.Token)
-						.ConfigureAwait(false);
-					if (addresses.Length > 0)
-						Cache.UpdateFromDns(host, addresses);
-				}
-				catch (OperationCanceledException)
-				{
-					// Timeout de refresco: se sigue con la IP persistida.
-				}
-				catch (Exception ex)
-				{
-					mvarLogger?.LogDebug(ex, "OutboundHttp: refresco DNS de {Host} omitido.", host);
-				}
-				finally
-				{
-					Cache.EndDnsRefresh(host);
-				}
-			});
 		}
 
 		private static string? SslHostName(SocketsHttpConnectionContext context)
@@ -263,37 +393,60 @@ namespace Tourmaline26.Services.Http
 			return null;
 		}
 
-		/// <summary>
-		/// TCP a la IP y, si el destino es HTTPS, TLS aquí mismo con SNI = hostname
-		/// (nunca la IP). Si solo devolvemos el socket, Schannel en algunos equipos
-		/// valida el certificado contra 213.99.47.36 → RemoteCertificateNameMismatch
-		/// aunque el cert sea *.trensfm.com.
-		/// </summary>
-		private static async Task<Stream> ConnectAddressAsync(
+		private static async Task<Socket> ConnectTcpAsync(
 			IPAddress address,
 			int port,
-			string? sslHost,
 			CancellationToken cancellationToken)
 		{
-			Socket? socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
-			{
-				NoDelay = true
-			};
+			Socket socket = CreateSocket(address.AddressFamily);
 			try
 			{
-				await socket.ConnectAsync(new IPEndPoint(address, port), cancellationToken).ConfigureAwait(false);
-				Stream stream = new NetworkStream(socket, ownsSocket: true);
-				socket = null;
-				if (string.IsNullOrEmpty(sslHost) || IPAddress.TryParse(sslHost, out _))
-					return stream;
-				return await AuthenticateHttpsAsync(stream, sslHost, address, cancellationToken)
-					.ConfigureAwait(false);
+				using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+				timeoutCts.CancelAfter(TcpConnectTimeout);
+				await socket.ConnectAsync(new IPEndPoint(address, port), timeoutCts.Token).ConfigureAwait(false);
+				return socket;
+			}
+			catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+			{
+				socket.Dispose();
+				throw new SocketException((int)SocketError.TimedOut);
 			}
 			catch
 			{
-				socket?.Dispose();
+				socket.Dispose();
 				throw;
 			}
+		}
+
+		private static Socket CreateSocket(AddressFamily family)
+		{
+			var socket = new Socket(family, SocketType.Stream, ProtocolType.Tcp)
+			{
+				NoDelay = true
+			};
+			if (family == AddressFamily.InterNetworkV6)
+			{
+				try
+				{
+					socket.DualMode = true;
+				}
+				catch (SocketException)
+				{
+				}
+			}
+
+			try
+			{
+				socket.DontFragment = false;
+			}
+			catch (SocketException)
+			{
+			}
+			catch (NotSupportedException)
+			{
+			}
+
+			return socket;
 		}
 
 		private static async Task<Stream> ConnectSocketAsync(
@@ -304,7 +457,28 @@ namespace Tourmaline26.Services.Http
 			Socket? socket = new Socket(SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
 			try
 			{
-				await socket.ConnectAsync(endPoint, cancellationToken).ConfigureAwait(false);
+				try
+				{
+					socket.DontFragment = false;
+				}
+				catch (SocketException)
+				{
+				}
+				catch (NotSupportedException)
+				{
+				}
+
+				using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+				timeoutCts.CancelAfter(TcpConnectTimeout);
+				try
+				{
+					await socket.ConnectAsync(endPoint, timeoutCts.Token).ConfigureAwait(false);
+				}
+				catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+				{
+					throw new SocketException((int)SocketError.TimedOut);
+				}
+
 				IPAddress? remote = (socket.RemoteEndPoint as IPEndPoint)?.Address;
 				Stream stream = new NetworkStream(socket, ownsSocket: true);
 				socket = null;
@@ -459,17 +633,115 @@ namespace Tourmaline26.Services.Http
 			return names.Count == 0 ? "(ninguno)" : string.Join(", ", names);
 		}
 
-		private static void LogConnectOnce(string host, int port, IPAddress address, bool fromCache)
+		private static void RememberConnect(string host, ConnectCandidate candidate)
 		{
-			if (!mcolLoggedHosts.TryAdd(host, 0))
+			mcolLastConnect[host] = new OutboundConnectInfo(
+				candidate.Address,
+				candidate.Address.AddressFamily,
+				candidate.Kind == ConnectCandidateKind.Nat64,
+				candidate.Prefix?.ToString());
+		}
+
+		private static void LogConnect(string host, int port, ConnectCandidate candidate)
+		{
+			string target = $"{candidate.Kind}:{candidate.Address}";
+			if (mcolLoggedTargets.TryGetValue(host, out string? previous) && previous == target)
 				return;
+			mcolLoggedTargets[host] = target;
+
+			string path = candidate.Kind switch
+			{
+				ConnectCandidateKind.NativeIPv4 => "IPv4",
+				ConnectCandidateKind.NativeIPv6 => "IPv6",
+				ConnectCandidateKind.Nat64 => $"NAT64 prefix={candidate.Prefix}",
+				_ => candidate.Kind.ToString()
+			};
 			mvarLogger?.LogInformation(
-				fromCache
-					? "OutboundHttp: {Host}:{Port} → {Ip} (caché persistida, DNS no bloquea)"
-					: "OutboundHttp: {Host}:{Port} → {Ip} (DNS)",
+				"OutboundHttp: {Host}:{Port} → {Ip} ({Family} {Path})",
 				host,
 				port,
-				address);
+				candidate.Address,
+				candidate.Address.AddressFamily,
+				path);
+		}
+
+		internal static bool IsUnreachable(Exception ex)
+		{
+			foreach (Exception inner in Flatten(ex))
+			{
+				if (inner is not SocketException socket)
+					continue;
+				switch (socket.SocketErrorCode)
+				{
+					case SocketError.HostUnreachable:
+					case SocketError.NetworkUnreachable:
+					case SocketError.TimedOut:
+					case SocketError.NetworkDown:
+					case SocketError.HostDown:
+					case SocketError.AddressNotAvailable:
+					case SocketError.TryAgain:
+					case SocketError.HostNotFound:
+					case SocketError.NoData:
+						return true;
+				}
+			}
+
+			return false;
+		}
+
+		internal static bool IsConnectionReset(Exception ex)
+		{
+			foreach (Exception inner in Flatten(ex))
+			{
+				if (inner is SocketException socket)
+				{
+					switch (socket.SocketErrorCode)
+					{
+						case SocketError.ConnectionReset:
+						case SocketError.ConnectionAborted:
+						case SocketError.Shutdown:
+							return true;
+					}
+				}
+
+				if (inner is AuthenticationException)
+					return true;
+
+				if (inner is IOException)
+				{
+					string message = inner.Message;
+					if (message.Contains("forzada", StringComparison.OrdinalIgnoreCase)
+						|| message.Contains("forcibly", StringComparison.OrdinalIgnoreCase)
+						|| message.Contains("interrupted", StringComparison.OrdinalIgnoreCase)
+						|| message.Contains("connection was reset", StringComparison.OrdinalIgnoreCase)
+						|| message.Contains("conexión existente", StringComparison.OrdinalIgnoreCase))
+					{
+						return true;
+					}
+				}
+			}
+
+			return false;
+		}
+
+		private static IEnumerable<Exception> Flatten(Exception ex)
+		{
+			var stack = new Stack<Exception>();
+			stack.Push(ex);
+			while (stack.Count > 0)
+			{
+				Exception current = stack.Pop();
+				yield return current;
+				if (current is AggregateException aggregate)
+				{
+					foreach (Exception child in aggregate.InnerExceptions)
+						stack.Push(child);
+				}
+				else if (current.InnerException is not null)
+				{
+					stack.Push(current.InnerException);
+				}
+			}
 		}
 
 		private static bool IsUsable(IPAddress address)
@@ -481,4 +753,23 @@ namespace Tourmaline26.Services.Http
 			return true;
 		}
 	}
+
+	internal enum ConnectCandidateKind
+	{
+		NativeIPv4,
+		NativeIPv6,
+		Nat64
+	}
+
+	internal sealed record ConnectCandidate(
+		IPAddress Address,
+		ConnectCandidateKind Kind,
+		IPAddress? SourceIPv4 = null,
+		Nat64Prefix? Prefix = null);
+
+	internal sealed record OutboundConnectInfo(
+		IPAddress Address,
+		AddressFamily Family,
+		bool IsNat64,
+		string? Nat64Prefix);
 }
