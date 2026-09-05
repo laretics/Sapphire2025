@@ -5,11 +5,13 @@ using Microsoft.EntityFrameworkCore;
 using Sapphire2025.Storage;
 using Sapphire2025Models.Aeneas;
 using Sapphire2025Models.Authentication;
+using Sapphire2025Models.Diamond;
 using Sapphire2025Models.Expert;
 using Sapphire2025Models.Expert.WorkshiftTemplates;
 using Sapphire2026.Data.Models;
 using Tourmaline26.Logic;
 using Tourmaline26.Services.CabinCache;
+using Tourmaline26.Services.Catalog;
 using Tourmaline26.Services.Correspondence;
 using Tourmaline26.Services.LocalDataModel;
 using Tourmaline26.Services.TourmalineExperience;
@@ -402,6 +404,7 @@ namespace Tourmaline26.Services
 				return;
 
 			// La misión Diamond se aplica siempre; Experience es opcional.
+			SessionConfig.ClearUnscheduledTrain();
 			SessionConfig.Cabin.Circulation = rhs;
 			UpdatePassengerInformationMode();
 
@@ -420,10 +423,39 @@ namespace Tourmaline26.Services
 			}
 		}
 
+		/// <summary>
+		/// Elige un número de tren sin malla (sin plan Diamond ni sesión Zafiro).
+		/// </summary>
+		public async Task<bool> SelectUnscheduledTrainAsync(string? trainToken)
+		{
+			if (!UnscheduledCirculation.LooksLikeTrainToken(trainToken))
+				return false;
+
+			string token = UnscheduledCirculation.NormalizeToken(trainToken);
+			if (null != SessionConfig.Cabin)
+				SessionConfig.Cabin.Circulation = null;
+			SessionConfig.UnscheduledTrainToken = token;
+			UpdatePassengerInformationMode();
+			try
+			{
+				await RecallEndTourmalineExperience();
+			}
+			catch (Exception ex)
+			{
+				mvarLogger.LogWarning(ex, "Experience no detenida al elegir tren sin malla.");
+			}
+
+			mvarLogger.LogInformation("Tren {Train} seleccionado sin datos de malla.", token);
+			RaiseHMIUpdate();
+			RaisePassengerUpdate();
+			return true;
+		}
+
 		public async Task TerminateActiveCirculationAsync()
 		{
 			if (null != SessionConfig.Cabin)
 				SessionConfig.Cabin.Circulation = null;
+			SessionConfig.ClearUnscheduledTrain();
 			UpdatePassengerInformationMode();
 			try
 			{
@@ -448,8 +480,10 @@ namespace Tourmaline26.Services
 				null);
 			if (matches.Count == 0)
 			{
-				mvarLogger.LogWarning("No hay circulación {Train} en el plan publicado de hoy.", trainId);
-				return false;
+				mvarLogger.LogWarning(
+					"No hay circulación {Train} en el plan publicado de hoy; se usa sin malla.",
+					trainId);
+				return await SelectUnscheduledTrainAsync(trainId);
 			}
 
 			Circulation chosen = matches[0];
@@ -1002,6 +1036,64 @@ namespace Tourmaline26.Services
 					Success = false,
 					Message = ex.Message
 				};
+			}
+			finally
+			{
+				await TrySyncPlacesCatalogAsync(client);
+			}
+		}
+
+		/// <summary>
+		/// Descarga places.xml de Zafiro solo si el hash remoto cambió.
+		/// Cualquier fallo deja el catálogo local intacto.
+		/// </summary>
+		public async Task TrySyncPlacesCatalogAsync(DiamondClient client)
+		{
+			if (client is null)
+				return;
+
+			try
+			{
+				PlacesCatalogHeaderModel? header = await client.GetPlacesCatalogHeaderAsync();
+				if (header is null || !header.Exists || string.IsNullOrWhiteSpace(header.ContentHash))
+				{
+					mvarLogger.LogDebug("places.xml remoto no disponible; se conserva el catálogo local.");
+					return;
+				}
+
+				PlacesCatalog catalog = mvarServiceProvider.GetRequiredService<PlacesCatalog>();
+				if (string.Equals(catalog.ContentHash, header.ContentHash, StringComparison.OrdinalIgnoreCase))
+				{
+					mvarLogger.LogDebug("places.xml ya está al día ({Hash}).", header.ContentHash);
+					return;
+				}
+
+				PlacesCatalogContentModel? content = await client.DownloadPlacesCatalogAsync();
+				if (content is null || string.IsNullOrWhiteSpace(content.Xml))
+				{
+					mvarLogger.LogWarning("places.xml remoto cambió pero no se pudo descargar; se conserva el local.");
+					return;
+				}
+
+				if (!string.Equals(content.ContentHash, header.ContentHash, StringComparison.OrdinalIgnoreCase)
+					&& !string.IsNullOrWhiteSpace(content.ContentHash))
+				{
+					mvarLogger.LogWarning("Hash de places.xml inconsistente entre cabecera y contenido; se omite.");
+					return;
+				}
+
+				if (!catalog.TryReplaceWithXml(content.Xml, out string error))
+				{
+					mvarLogger.LogWarning("places.xml descargado no es válido ({Error}); se conserva el local.", error);
+					return;
+				}
+
+				RaiseHMIUpdate();
+				RaisePassengerUpdate();
+			}
+			catch (Exception ex)
+			{
+				mvarLogger.LogWarning(ex, "Sincronización de places.xml omitida; se conserva el catálogo local.");
 			}
 		}
 

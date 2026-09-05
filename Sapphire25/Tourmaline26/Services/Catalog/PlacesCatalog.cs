@@ -1,80 +1,115 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Xml.Linq;
 using Diamond.Project;
 using Microsoft.AspNetCore.Hosting;
+using Tourmaline26.Logic;
 
 namespace Tourmaline26.Services.Catalog
 {
 	/// <summary>
 	/// Catálogo de lugares (estaciones SFM y destinos de bus) cargado desde
-	/// <c>wwwroot/catalog/places.xml</c>.
+	/// <c>cache/catalog/places.xml</c> si existe, o el empaquetado en wwwroot.
 	/// </summary>
 	public sealed class PlacesCatalog
 	{
 		public const string RelativePath = "catalog/places.xml";
+		public const string CacheRelativePath = "cache/catalog/places.xml";
 
-		private readonly IReadOnlyList<Place> mcolPlaces;
-		private readonly Dictionary<string, Place> mcolById;
-		private readonly Dictionary<string, Place> mcolByDiamond;
-		private readonly Dictionary<string, Place> mcolByAvr;
-		private readonly Dictionary<int, Place> mcolBySfm;
-		private readonly Dictionary<string, Place> mcolByTibName;
+		private readonly IWebHostEnvironment mvarEnvironment;
+		private readonly ILogger<PlacesCatalog> mvarLogger;
+
+		private IReadOnlyList<Place> mcolPlaces = Array.Empty<Place>();
+		private Dictionary<string, Place> mcolById = new(StringComparer.OrdinalIgnoreCase);
+		private Dictionary<string, Place> mcolByDiamond = new(StringComparer.OrdinalIgnoreCase);
+		private Dictionary<string, Place> mcolByAvr = new(StringComparer.OrdinalIgnoreCase);
+		private Dictionary<int, Place> mcolBySfm = new();
+		private Dictionary<string, Place> mcolByTibName = new(StringComparer.OrdinalIgnoreCase);
+		private string mvarLoadedPath = string.Empty;
+		private string mvarContentHash = string.Empty;
+		private IReadOnlyList<PassengerInformation> mcolAnnouncements = Array.Empty<PassengerInformation>();
 
 		public PlacesCatalog(IWebHostEnvironment environment, ILogger<PlacesCatalog> logger)
 		{
-			string root = environment.WebRootPath ?? AppContext.BaseDirectory;
-			string path = Path.Combine(root, "catalog", "places.xml");
-			if (!File.Exists(path) && !string.IsNullOrEmpty(environment.ContentRootPath))
+			mvarEnvironment = environment;
+			mvarLogger = logger;
+			ApplyEmpty();
+			string path = ResolvePath();
+			if (string.IsNullOrEmpty(path) || !File.Exists(path))
 			{
-				string alt = Path.Combine(environment.ContentRootPath, "wwwroot", "catalog", "places.xml");
-				if (File.Exists(alt))
-					path = alt;
-			}
-			if (!File.Exists(path))
-			{
-				logger.LogWarning("PlacesCatalog: no se encontró {Path}.", path);
-				mcolPlaces = Array.Empty<Place>();
-				mcolById = new Dictionary<string, Place>(StringComparer.OrdinalIgnoreCase);
-				mcolByDiamond = new Dictionary<string, Place>(StringComparer.OrdinalIgnoreCase);
-				mcolByAvr = new Dictionary<string, Place>(StringComparer.OrdinalIgnoreCase);
-				mcolBySfm = new Dictionary<int, Place>();
-				mcolByTibName = new Dictionary<string, Place>(StringComparer.OrdinalIgnoreCase);
+				logger.LogWarning("PlacesCatalog: no se encontró places.xml.");
 				return;
 			}
 
-			XDocument doc = XDocument.Load(path);
-			var places = new List<Place>();
-			foreach (XElement el in doc.Root?.Elements("place") ?? Enumerable.Empty<XElement>())
-			{
-				Place? place = ReadPlace(el);
-				if (place is not null)
-					places.Add(place);
-			}
-
-			mcolPlaces = places;
-			mcolById = new Dictionary<string, Place>(StringComparer.OrdinalIgnoreCase);
-			mcolByDiamond = new Dictionary<string, Place>(StringComparer.OrdinalIgnoreCase);
-			mcolByAvr = new Dictionary<string, Place>(StringComparer.OrdinalIgnoreCase);
-			mcolBySfm = new Dictionary<int, Place>();
-			mcolByTibName = new Dictionary<string, Place>(StringComparer.OrdinalIgnoreCase);
-
-			foreach (Place place in places)
-			{
-				mcolById[place.Id] = place;
-				if (!string.IsNullOrEmpty(place.Avr))
-					mcolByAvr.TryAdd(place.Avr, place);
-				if (place.SfmCode is int sfm)
-					mcolBySfm.TryAdd(sfm, place);
-				if (!string.IsNullOrEmpty(place.TibName))
-					mcolByTibName.TryAdd(place.TibName, place);
-				foreach (string diamond in place.DiamondIds)
-					mcolByDiamond.TryAdd(diamond, place);
-			}
-
-			logger.LogInformation("PlacesCatalog: {Count} lugares desde {Path}.", places.Count, path);
+			LoadFromFile(path);
 		}
 
 		public IReadOnlyList<Place> Places => mcolPlaces;
+
+		/// <summary>Anuncios pregrabados leídos de <c>messages/message</c>.</summary>
+		public IReadOnlyList<PassengerInformation> Announcements => mcolAnnouncements;
+
+		public string ContentHash => mvarContentHash;
+
+		public string LoadedPath => mvarLoadedPath;
+
+		public string CacheFilePath =>
+			Path.Combine(
+				mvarEnvironment.ContentRootPath ?? AppContext.BaseDirectory,
+				CacheRelativePath);
+
+		/// <summary>
+		/// Sustituye el catálogo en memoria y en caché. False si el XML no es válido
+		/// (se conserva el catálogo anterior).
+		/// </summary>
+		public bool TryReplaceWithXml(string xml, out string error)
+		{
+			error = string.Empty;
+			if (string.IsNullOrWhiteSpace(xml))
+			{
+				error = "Documento vacío.";
+				return false;
+			}
+
+			XDocument doc;
+			try
+			{
+				doc = XDocument.Parse(xml, LoadOptions.PreserveWhitespace);
+			}
+			catch (Exception ex)
+			{
+				error = ex.Message;
+				return false;
+			}
+
+			if (!TryBuild(doc, out List<Place> places, out Dictionaries maps, out List<PassengerInformation> announcements, out error))
+				return false;
+
+			string dest = CacheFilePath;
+			string? dir = Path.GetDirectoryName(dest);
+			if (!string.IsNullOrEmpty(dir))
+				Directory.CreateDirectory(dir);
+
+			byte[] bytes = Encoding.UTF8.GetBytes(xml);
+			string temp = dest + ".tmp";
+			File.WriteAllBytes(temp, bytes);
+			if (File.Exists(dest))
+			{
+				File.Copy(temp, dest, overwrite: true);
+				File.Delete(temp);
+			}
+			else
+				File.Move(temp, dest);
+
+			Assign(places, maps, announcements, dest, Sha256Hex(bytes));
+			mvarLogger.LogInformation(
+				"PlacesCatalog: actualizado desde Zafiro ({Count} lugares, {Messages} anuncios, hash {Hash}).",
+				places.Count,
+				announcements.Count,
+				mvarContentHash.Length > 12 ? mvarContentHash.Substring(0, 12) : mvarContentHash);
+			return true;
+		}
 
 		public Place? FindById(string? id) =>
 			string.IsNullOrWhiteSpace(id) ? null : mcolById.GetValueOrDefault(id.Trim());
@@ -102,7 +137,8 @@ namespace Tourmaline26.Services.Catalog
 		}
 
 		/// <summary>
-		/// Nombre para LED o TFT. Si el lugar no está en el catálogo, se devuelve
+		/// Nombre para el canal pedido (LED interior/exterior o TFT).
+		/// Si el lugar no está en el catálogo, se devuelve
 		/// <paramref name="fallback"/> o el nombre Diamond.
 		/// </summary>
 		public string NameFor(PlaceNameChannel channel, StationInfo? station, string? fallback = null)
@@ -119,7 +155,7 @@ namespace Tourmaline26.Services.Catalog
 			return raw;
 		}
 
-		/// <summary>Nombre para LED o TFT a partir de una cadena ya mostrada.</summary>
+		/// <summary>Nombre para un canal a partir de una cadena ya mostrada.</summary>
 		public string NameFor(PlaceNameChannel channel, string? raw)
 		{
 			string fallback = (raw ?? string.Empty).Trim();
@@ -135,12 +171,23 @@ namespace Tourmaline26.Services.Catalog
 				return string.Empty;
 			string named = channel switch
 			{
-				PlaceNameChannel.Led => place.Names.Led,
-				PlaceNameChannel.Teleindicator => place.Names.Teleindicator,
-				PlaceNameChannel.Tft => place.Names.Tft,
+				PlaceNameChannel.Internal => FirstNonEmpty(place.Names.Internal, place.Names.Canonical),
+				PlaceNameChannel.External => FirstNonEmpty(place.Names.External, place.Names.Canonical),
+				PlaceNameChannel.Tft => FirstNonEmpty(place.Names.Tft, place.Names.Canonical),
+				PlaceNameChannel.Tfta => FirstNonEmpty(place.Names.Tfta, place.Names.Tft, place.Names.Canonical),
 				_ => place.Names.Canonical
 			};
 			return (named ?? string.Empty).Trim();
+		}
+
+		private static string FirstNonEmpty(params string?[] values)
+		{
+			foreach (string? value in values)
+			{
+				if (!string.IsNullOrWhiteSpace(value))
+					return value.Trim();
+			}
+			return string.Empty;
 		}
 
 		/// <summary>Resuelve un lugar por nombre de panel, AVR o id Diamond.</summary>
@@ -164,8 +211,9 @@ namespace Tourmaline26.Services.Catalog
 			{
 				int score = ScoreName(needle, place.Names.Canonical);
 				score = Math.Max(score, ScoreName(needle, place.Names.Tft));
-				score = Math.Max(score, ScoreName(needle, place.Names.Led));
-				score = Math.Max(score, ScoreName(needle, place.Names.Teleindicator));
+				score = Math.Max(score, ScoreName(needle, place.Names.Tfta));
+				score = Math.Max(score, ScoreName(needle, place.Names.Internal));
+				score = Math.Max(score, ScoreName(needle, place.Names.External));
 				score = Math.Max(score, ScoreName(needle, place.TibName));
 				if (score > bestScore)
 				{
@@ -192,6 +240,223 @@ namespace Tourmaline26.Services.Catalog
 		/// <summary>Locución: <paramref name="lastOrAlone"/> true = entonación descendente.</summary>
 		public static string AnnounceFile(Place place, bool lastOrAlone) =>
 			lastOrAlone ? place.Announce.FinalFile : place.Announce.EnumFile;
+
+		private string ResolvePath()
+		{
+			string cache = CacheFilePath;
+			if (File.Exists(cache))
+				return cache;
+
+			string root = mvarEnvironment.WebRootPath ?? AppContext.BaseDirectory;
+			string bundled = Path.Combine(root, "catalog", "places.xml");
+			if (File.Exists(bundled))
+				return bundled;
+
+			if (!string.IsNullOrEmpty(mvarEnvironment.ContentRootPath))
+			{
+				string alt = Path.Combine(mvarEnvironment.ContentRootPath, "wwwroot", "catalog", "places.xml");
+				if (File.Exists(alt))
+					return alt;
+			}
+
+			return bundled;
+		}
+
+		private void LoadFromFile(string path)
+		{
+			XDocument doc = XDocument.Load(path);
+			if (!TryBuild(doc, out List<Place> places, out Dictionaries maps, out List<PassengerInformation> announcements, out string error))
+			{
+				mvarLogger.LogWarning("PlacesCatalog: {Path} no válido ({Error}).", path, error);
+				return;
+			}
+
+			byte[] bytes = File.ReadAllBytes(path);
+			Assign(places, maps, announcements, path, Sha256Hex(bytes));
+			mvarLogger.LogInformation(
+				"PlacesCatalog: {Count} lugares, {Messages} anuncios desde {Path}.",
+				places.Count,
+				announcements.Count,
+				path);
+		}
+
+		private void ApplyEmpty()
+		{
+			Assign(
+				new List<Place>(),
+				new Dictionaries(),
+				new List<PassengerInformation>(),
+				string.Empty,
+				string.Empty);
+		}
+
+		private void Assign(
+			List<Place> places,
+			Dictionaries maps,
+			List<PassengerInformation> announcements,
+			string path,
+			string hash)
+		{
+			mcolPlaces = places;
+			mcolById = maps.ById;
+			mcolByDiamond = maps.ByDiamond;
+			mcolByAvr = maps.ByAvr;
+			mcolBySfm = maps.BySfm;
+			mcolByTibName = maps.ByTibName;
+			mcolAnnouncements = announcements;
+			mvarLoadedPath = path;
+			mvarContentHash = hash;
+		}
+
+		private static bool TryBuild(
+			XDocument doc,
+			out List<Place> places,
+			out Dictionaries maps,
+			out List<PassengerInformation> announcements,
+			out string error)
+		{
+			places = new List<Place>();
+			maps = new Dictionaries();
+			announcements = new List<PassengerInformation>();
+			error = string.Empty;
+			if (doc.Root is null
+				|| !string.Equals(doc.Root.Name.LocalName, "places", StringComparison.OrdinalIgnoreCase))
+			{
+				error = "La raíz debe ser <places>.";
+				return false;
+			}
+
+			foreach (XElement el in doc.Root.Elements("place"))
+			{
+				Place? place = ReadPlace(el);
+				if (place is not null)
+					places.Add(place);
+			}
+
+			if (places.Count == 0)
+			{
+				error = "Sin lugares.";
+				return false;
+			}
+
+			foreach (Place place in places)
+			{
+				maps.ById[place.Id] = place;
+				if (!string.IsNullOrEmpty(place.Avr))
+					maps.ByAvr.TryAdd(place.Avr, place);
+				if (place.SfmCode is int sfm)
+					maps.BySfm.TryAdd(sfm, place);
+				if (!string.IsNullOrEmpty(place.TibName))
+					maps.ByTibName.TryAdd(place.TibName, place);
+				foreach (string diamond in place.DiamondIds)
+					maps.ByDiamond.TryAdd(diamond, place);
+			}
+
+			foreach (XElement group in doc.Root.Elements("messages"))
+			{
+				foreach (XElement msg in group.Elements("message"))
+				{
+					PassengerInformation? info = ReadAnnouncement(msg);
+					if (info is not null)
+						announcements.Add(info);
+				}
+			}
+
+			return true;
+		}
+
+		internal static string Sha256Hex(byte[] payload)
+		{
+			byte[] hash = SHA256.HashData(payload);
+			StringBuilder sb = new StringBuilder(hash.Length * 2);
+			foreach (byte b in hash)
+				sb.Append(b.ToString("x2", CultureInfo.InvariantCulture));
+			return sb.ToString();
+		}
+
+		private sealed class Dictionaries
+		{
+			public Dictionary<string, Place> ById { get; } =
+				new Dictionary<string, Place>(StringComparer.OrdinalIgnoreCase);
+			public Dictionary<string, Place> ByDiamond { get; } =
+				new Dictionary<string, Place>(StringComparer.OrdinalIgnoreCase);
+			public Dictionary<string, Place> ByAvr { get; } =
+				new Dictionary<string, Place>(StringComparer.OrdinalIgnoreCase);
+			public Dictionary<int, Place> BySfm { get; } = new Dictionary<int, Place>();
+			public Dictionary<string, Place> ByTibName { get; } =
+				new Dictionary<string, Place>(StringComparer.OrdinalIgnoreCase);
+		}
+
+		private static PassengerInformation? ReadAnnouncement(XElement el)
+		{
+			string id = ((string?)el.Attribute("id") ?? string.Empty).Trim();
+			string comment = ((string?)el.Attribute("comment") ?? string.Empty).Trim();
+			if (comment.Length == 0)
+			{
+				string? nested = el.Element("comment")?.Value;
+				comment = (nested ?? string.Empty).Trim();
+			}
+			if (comment.Length == 0)
+				comment = id.Length > 0 ? id : "Mensaje";
+
+			string icon = ((string?)el.Attribute("icon") ?? string.Empty).Trim();
+			byte importance = PassengerInformation.MediumImportance;
+			string? importanceRaw = (string?)el.Attribute("importance");
+			if (byte.TryParse(importanceRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out byte parsed))
+				importance = parsed;
+
+			string titles = PackLanguages(el, "title", "titles");
+			string texts = PackLanguages(el, "text", "texts");
+			if (titles.Length == 0 && texts.Length == 0)
+				return null;
+
+			return new PassengerInformation
+			{
+				Comment = comment,
+				IconKey = icon,
+				Importance = importance,
+				LanguageIndex = 0,
+				TitleText = titles,
+				MessageText = texts
+			};
+		}
+
+		private static string PackLanguages(XElement parent, string childName, string packedAttribute)
+		{
+			string packed = ((string?)parent.Attribute(packedAttribute) ?? string.Empty).Trim();
+			if (packed.Length > 0)
+				return packed;
+
+			string ca = string.Empty;
+			string es = string.Empty;
+			string en = string.Empty;
+			XElement? compact = parent.Element(childName);
+			if (compact is not null)
+			{
+				ca = ((string?)compact.Attribute("ca") ?? string.Empty).Trim();
+				es = ((string?)compact.Attribute("es") ?? string.Empty).Trim();
+				en = ((string?)compact.Attribute("en") ?? string.Empty).Trim();
+			}
+
+			foreach (XElement child in parent.Elements(childName))
+			{
+				string lang = ((string?)child.Attribute("lang") ?? string.Empty).Trim();
+				string value = child.Value.Trim();
+				if (value.Length == 0)
+					continue;
+				if (lang.Equals("ca", StringComparison.OrdinalIgnoreCase))
+					ca = value;
+				else if (lang.Equals("es", StringComparison.OrdinalIgnoreCase)
+					|| lang.Equals("es-es", StringComparison.OrdinalIgnoreCase))
+					es = value;
+				else if (lang.Equals("en", StringComparison.OrdinalIgnoreCase))
+					en = value;
+			}
+
+			if (ca.Length == 0 && es.Length == 0 && en.Length == 0)
+				return string.Empty;
+			return string.Join("|", new[] { ca, es, en });
+		}
 
 		private static Place? ReadPlace(XElement el)
 		{
@@ -220,9 +485,10 @@ namespace Tourmaline26.Services.Catalog
 				sfm = sfmCode;
 
 			string canonical = (string?)names?.Attribute("canonical") ?? id;
-			string led = (string?)names?.Attribute("led") ?? canonical;
-			string tele = (string?)names?.Attribute("teleindicator") ?? canonical;
-			string tft = (string?)names?.Attribute("tft") ?? canonical;
+			string internalName = ReadName(names, canonical, "internal", "led");
+			string externalName = ReadName(names, canonical, "external", "teleindicator");
+			string tft = ReadName(names, canonical, "tft");
+			string tfta = ReadName(names, tft, "tfta");
 			string icon = ((string?)names?.Attribute("icon") ?? string.Empty).Trim();
 			PlaceIconMode iconMode = ParseIconMode((string?)names?.Attribute("iconMode"), icon);
 
@@ -271,9 +537,10 @@ namespace Tourmaline26.Services.Catalog
 				Names = new PlaceNames
 				{
 					Canonical = canonical,
-					Led = led,
-					Teleindicator = tele,
+					Internal = internalName,
+					External = externalName,
 					Tft = tft,
+					Tfta = tfta,
 					Icon = icon,
 					IconMode = iconMode
 				},
@@ -330,6 +597,20 @@ namespace Tourmaline26.Services.Catalog
 			return stops;
 		}
 
+		private static string ReadName(XElement? names, string fallback, params string[] attributes)
+		{
+			if (names is not null)
+			{
+				foreach (string attr in attributes)
+				{
+					string? value = (string?)names.Attribute(attr);
+					if (!string.IsNullOrWhiteSpace(value))
+						return value.Trim();
+				}
+			}
+			return fallback;
+		}
+
 		private static int? ParseBay(string? raw)
 		{
 			if (string.IsNullOrWhiteSpace(raw))
@@ -373,14 +654,21 @@ namespace Tourmaline26.Services.Catalog
 		/// <summary>Paradas EMT Palma (entity emt).</summary>
 		public IReadOnlyList<TibStopRef> EmtStops { get; init; } = Array.Empty<TibStopRef>();
 		public bool HasCorrespondence => CorrespondenceStops.Count > 0 || EmtStops.Count > 0;
+		public bool HasTibCorrespondence => CorrespondenceStops.Count > 0;
+		public bool HasEmtCorrespondence => EmtStops.Count > 0;
 	}
 
 	public enum PlaceNameChannel
 	{
 		Canonical = 0,
-		Led = 1,
-		Teleindicator = 2,
-		Tft = 3
+		/// <summary>Teleindicador interior.</summary>
+		Internal = 1,
+		/// <summary>Teleindicador exterior / frontal.</summary>
+		External = 2,
+		/// <summary>Destino del tren y próxima parada en TFT.</summary>
+		Tft = 3,
+		/// <summary>Lista de próximas estaciones (tft abreviado).</summary>
+		Tfta = 4
 	}
 
 	public enum PlaceIconMode
@@ -393,9 +681,10 @@ namespace Tourmaline26.Services.Catalog
 	public sealed class PlaceNames
 	{
 		public string Canonical { get; init; } = string.Empty;
-		public string Led { get; init; } = string.Empty;
-		public string Teleindicator { get; init; } = string.Empty;
+		public string Internal { get; init; } = string.Empty;
+		public string External { get; init; } = string.Empty;
 		public string Tft { get; init; } = string.Empty;
+		public string Tfta { get; init; } = string.Empty;
 		/// <summary>Clave GenIco para el TFT (vacío = sólo texto).</summary>
 		public string Icon { get; init; } = string.Empty;
 		public PlaceIconMode IconMode { get; init; }

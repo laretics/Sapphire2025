@@ -12,3 +12,19 @@
     flex: 1 1 auto;
     min-height: 0;
 }
+
+.itinerary-unscheduled {
+    padding: 1.25rem 1rem;
+    max-width: 36rem;
+}
+
+.itinerary-unscheduled h3 {
+    margin: 0 0 0.75rem;
+    font-size: 1.6rem;
+}
+
+.itinerary-unscheduled p {
+    margin: 0 0 0.6rem;
+    opacity: 0.8;
+    font-size: 1.05rem;
+}

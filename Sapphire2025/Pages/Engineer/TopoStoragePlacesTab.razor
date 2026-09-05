@@ -1,0 +1,167 @@
+@using Sapphire2025.Icons
+@using Sapphire2025Models.Diamond
+@inject DiamondClient mvarDiamond
+
+@if (!string.IsNullOrEmpty(mvarNotice))
+{
+	<div class="alert @(mvarNoticeOk ? "alert-success" : "alert-warning") alert-dismissible fade show" role="alert">
+		@mvarNotice
+		<button type="button" class="btn-close" @onclick="() => mvarNotice = null"></button>
+	</div>
+}
+
+<div class="topo-toolbar mb-3 flex-wrap align-items-center">
+	<button type="button" class="btn btn-primary btn-sm" @onclick="ReloadAsync" disabled="@mvarBusy">
+		<GenIcon Name="Refresh" Size="16" /> @Prefs.T("common.refresh")
+	</button>
+	<button type="button" class="btn btn-success btn-sm" @onclick="SaveAsync" disabled="@(mvarBusy || !mvarLoaded)">
+		<GenIcon Name="Save" Size="16" /> @Prefs.T("common.save")
+	</button>
+	@if (!string.IsNullOrEmpty(mvarHash))
+	{
+		<span class="small text-muted topo-hash" title="@mvarHash">SHA-256 @ShortHash</span>
+	}
+	@if (mvarUpdatedUtc.HasValue && mvarUpdatedUtc.Value > DateTime.MinValue)
+	{
+		<span class="small text-muted">@mvarUpdatedUtc.Value.ToLocalTime().ToString("g")</span>
+	}
+</div>
+
+<div class="topo-panel places-editor-panel">
+	<div class="topo-panel-header">
+		<h2>places.xml</h2>
+		<span class="text-muted small">Lugares y mensajes pregrabados. El tren lo descarga si el hash cambia.</span>
+	</div>
+	@if (mvarBusy && !mvarLoaded)
+	{
+		<div class="topo-empty-state">
+			<div class="spinner-border text-primary mb-2"></div>
+			<div>Cargando catálogo…</div>
+		</div>
+	}
+	else if (!mvarLoaded)
+	{
+		<div class="topo-empty-state">
+			<div class="mb-2"><GenIcon Name="Warning" Size="24" /></div>
+			<div>No se pudo abrir el catálogo del servidor. Se conserva el archivo local de cada tren.</div>
+		</div>
+	}
+	else
+	{
+		<div class="places-monaco-host">
+			<StandaloneCodeEditor @ref="mvarEditor"
+								  Id="places-xml-editor"
+								  ConstructionOptions="EditorOptions"
+								  CssClass="places-monaco" />
+		</div>
+	}
+</div>
+
+@code {
+	private StandaloneCodeEditor? mvarEditor;
+	private bool mvarBusy;
+	private bool mvarLoaded;
+	private string? mvarNotice;
+	private bool mvarNoticeOk;
+	private string mvarXml = string.Empty;
+	private string mvarHash = string.Empty;
+	private DateTime? mvarUpdatedUtc;
+
+	private string ShortHash =>
+		mvarHash.Length <= 12 ? mvarHash : mvarHash.Substring(0, 12);
+
+	protected override async Task OnInitializedAsync()
+	{
+		await ReloadAsync();
+	}
+
+	private StandaloneEditorConstructionOptions EditorOptions(StandaloneCodeEditor editor)
+	{
+		return new StandaloneEditorConstructionOptions
+		{
+			AutomaticLayout = true,
+			Language = "xml",
+			Theme = "vs",
+			Value = mvarXml,
+			Minimap = new EditorMinimapOptions { Enabled = false },
+			FontSize = 13,
+			LineNumbers = "on",
+			WordWrap = "on",
+			ScrollBeyondLastLine = false,
+			TabSize = 2,
+			InsertSpaces = true
+		};
+	}
+
+	private async Task ReloadAsync()
+	{
+		mvarBusy = true;
+		mvarNotice = null;
+		try
+		{
+			PlacesCatalogContentModel? content = await mvarDiamond.DownloadPlacesCatalogAsync();
+			if (content is null || string.IsNullOrWhiteSpace(content.Xml))
+			{
+				mvarLoaded = false;
+				mvarNoticeOk = false;
+				mvarNotice = "No hay places.xml en el servidor o no hay conexión.";
+				return;
+			}
+
+			mvarXml = content.Xml;
+			mvarHash = content.ContentHash ?? string.Empty;
+			mvarUpdatedUtc = content.UpdatedUtc;
+			mvarLoaded = true;
+			if (mvarEditor is not null)
+				await mvarEditor.SetValue(mvarXml);
+		}
+		catch (Exception ex)
+		{
+			mvarLoaded = false;
+			mvarNoticeOk = false;
+			mvarNotice = "No se pudo cargar places.xml: " + ex.Message;
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
+	private async Task SaveAsync()
+	{
+		if (mvarEditor is null)
+			return;
+
+		mvarBusy = true;
+		mvarNotice = null;
+		try
+		{
+			string xml = await mvarEditor.GetValue();
+			PlacesCatalogSaveResult? result = await mvarDiamond.SavePlacesCatalogAsync(xml);
+			if (result is null)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "El servidor no respondió al guardar.";
+				return;
+			}
+
+			mvarNoticeOk = result.Success;
+			mvarNotice = result.Message;
+			if (result.Success)
+			{
+				mvarXml = xml;
+				mvarHash = result.ContentHash ?? string.Empty;
+				mvarUpdatedUtc = result.UpdatedUtc;
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "No se pudo guardar: " + ex.Message;
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+}

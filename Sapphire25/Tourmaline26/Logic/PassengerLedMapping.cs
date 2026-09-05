@@ -37,7 +37,7 @@ namespace Tourmaline26.Logic
 					Enums.PassengerLedKind.ClockWeatherSpeed,
 				Enums.PassengerInformationMode.NextStopInfo
 					or Enums.PassengerInformationMode.EndOfTrip =>
-					IsStoppedAtDestination(session)
+					IsStoppedAtStation(session)
 						? Enums.PassengerLedKind.DestinationAndCar
 						: Enums.PassengerLedKind.NextStation,
 				_ => Enums.PassengerLedKind.DestinationAndCar

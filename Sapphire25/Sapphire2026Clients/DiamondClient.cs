@@ -608,5 +608,57 @@ namespace Sapphire2025.Storage
 				return null;
 			}
 		}
+
+		// ── Catálogo Tourmaline (places.xml) ──────────────────────────────
+
+		/// <summary>
+		/// Hash del places.xml del servidor. Null si no hay archivo o no hay red.
+		/// </summary>
+		public async Task<PlacesCatalogHeaderModel?> GetPlacesCatalogHeaderAsync()
+		{
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(composeUri("placesheader"));
+				return await response.Content.ReadFromJsonAsync<PlacesCatalogHeaderModel>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+			catch (Exception)
+			{
+				return null;
+			}
+		}
+
+		/// <summary>Descarga el XML. Null si el servidor no lo tiene o falla la red.</summary>
+		public async Task<PlacesCatalogContentModel?> DownloadPlacesCatalogAsync()
+		{
+			try
+			{
+				HttpResponseMessage response = await sendGetRequest(composeUri("placesxml"));
+				return await response.Content.ReadFromJsonAsync<PlacesCatalogContentModel>();
+			}
+			catch (HttpRequestException)
+			{
+				return null;
+			}
+			catch (Exception)
+			{
+				return null;
+			}
+		}
+
+		public async Task<PlacesCatalogSaveResult?> SavePlacesCatalogAsync(string xml)
+		{
+			PlacesCatalogSaveRequest body = new PlacesCatalogSaveRequest
+			{
+				SessionToken = await getCurrentToken(),
+				Xml = xml ?? string.Empty
+			};
+			string json = System.Text.Json.JsonSerializer.Serialize(body);
+			HttpResponseMessage response = await sendPostRequest("saveplaces", json);
+			return await response.Content.ReadFromJsonAsync<PlacesCatalogSaveResult>();
+		}
 	}
 }

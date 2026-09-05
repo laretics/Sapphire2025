@@ -553,7 +553,9 @@ namespace Tourmaline26.Services.Correspondence
 				return false;
 			return destNorm == PlaceNameText.Normalize(place.Names.Canonical)
 				|| destNorm == PlaceNameText.Normalize(place.Names.Tft)
-				|| destNorm == PlaceNameText.Normalize(place.Names.Teleindicator)
+				|| destNorm == PlaceNameText.Normalize(place.Names.Tfta)
+				|| destNorm == PlaceNameText.Normalize(place.Names.Internal)
+				|| destNorm == PlaceNameText.Normalize(place.Names.External)
 				|| destNorm == PlaceNameText.Normalize(place.TibName);
 		}
 

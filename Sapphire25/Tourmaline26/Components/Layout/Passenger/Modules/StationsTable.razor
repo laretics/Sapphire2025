@@ -12,30 +12,65 @@
             <tbody>
                 @for (int index = 0; index < mcolItinerary.Length; index++)
                 {
-                    <tr>
-                        @if (null != mcolItinerary[index].Station)
+                    RowContent row = mcolItinerary[index];
+                    <tr class="@RowClass(index, row)" style="@RailColorStyle">
+                        @if (row.Station is not null)
                         {
-                            <td>
+                            Place? place = Places.Find(row.Station);
+                            <td class="stop-rail">
+                                <span class="stop-rail-line" aria-hidden="true"></span>
                                 <span class="stop-dot"></span>
                             </td>
-                            @if (!string.IsNullOrEmpty(mcolItinerary[index].Station?.Avr)
-                                 && mcolItinerary[index].Station!.Avr == mcolItinerary[index].Station.Avr.ToUpperInvariant())
+                            <td class="stop-name">@TftaName(row.Station)</td>
+                            <td class="stop-corr">
+                                @if (place is not null && place.HasEmtCorrespondence)
+                                {
+                                    <img src="/img/correspondence/EmtPalma.png"
+                                         class="stop-corr-logo stop-corr-logo--emt"
+                                         alt="EMT Palma"
+                                         title="EMT Palma" />
+                                }
+                                @if (place is not null && place.HasTibCorrespondence)
+                                {
+                                    <img src="/img/correspondence/Tib_logo.png"
+                                         class="stop-corr-logo stop-corr-logo--tib"
+                                         alt="TIB"
+                                         title="TIB" />
+                                }
+                            </td>
+                            @if (ShowEstimatedTimes)
                             {
-                                <td class="stop-name-high">@TftName(mcolItinerary[index].Station)</td>
-                            }
-                            else
-                            {
-                                <td class="stop-name">@TftName(mcolItinerary[index].Station)</td>
-                            }
-                            @if (ShowEstimatedTimes && mcolItinerary[index].Arrival.Ticks > 0)
-                            {
-                                <td class="stop-time">@Enums.autoInterval(mcolItinerary[index].Arrival, true, false)</td>
+                                <td class="stop-time">
+                                    @if (row.ScheduledArrival.Ticks > 0)
+                                    {
+                                        @FormatClock(row.ScheduledArrival)
+                                    }
+                                </td>
+                                <td class="stop-extra">
+                                    @if (Delayed && row.EstimatedArrival.Ticks > 0)
+                                    {
+                                        <span class="stop-eta">@FormatClock(row.EstimatedArrival)</span>
+                                    }
+                                    else if (DwellMinutes(row) >= 1)
+                                    {
+                                        <span class="stop-dwell">@DwellMinutes(row)<span class="stop-dwell-unit">min</span></span>
+                                    }
+                                </td>
                             }
                         }
                         else
                         {
-                            <td></td>
-                            <td><p>...</p></td>
+                            <td class="stop-rail">
+                                <span class="stop-rail-line stop-rail-line--gap" aria-hidden="true"></span>
+                                <span class="stop-dot stop-dot--gap"></span>
+                            </td>
+                            <td class="stop-name stop-name--gap">···</td>
+                            <td class="stop-corr"></td>
+                            @if (ShowEstimatedTimes)
+                            {
+                                <td class="stop-time"></td>
+                                <td class="stop-extra"></td>
+                            }
                         }
                     </tr>
                 }
@@ -80,8 +115,6 @@
 
         CabinEnvironment cabin = Session.Cabin;
         TimeSpan delay = cabin.CurrentDelay.Ticks > 0 ? cabin.CurrentDelay : TimeSpan.Zero;
-        Dictionary<string, TimeSpan> scheduledByStationId =
-            CabinItinerary.ScheduledArrivalsWithDelay(Circulation, delay);
 
         IReadOnlyList<ProjectTimedCall> remaining =
             CabinItinerary.RemainingCommercialCalls(Circulation, cabin.PK, includeCurrentStation: false);
@@ -91,17 +124,13 @@
         while (i < remaining.Count)
         {
             ProjectTimedCall call = remaining[i];
-            TimeSpan arrival = TimeSpan.Zero;
-            if (call.Station.Id.Length > 0
-                && scheduledByStationId.TryGetValue(call.Station.Id, out TimeSpan scheduled))
-            {
-                arrival = scheduled;
-            }
-
             auxItinerary.Add(new RowContent
             {
                 Station = call.Station,
-                Arrival = arrival
+                ScheduledArrival = call.Arrival,
+                EstimatedArrival = WrapDay(call.Arrival + delay),
+                Dwell = call.Dwell,
+                IsDestination = call.IsDestination
             });
             i++;
         }
@@ -135,14 +164,57 @@
         mcolItinerary = result.ToArray();
     }
 
-    private string TftName(ProjectStationInfo? station) =>
-        Places.NameFor(PlaceNameChannel.Tft, station);
+    private string TftaName(ProjectStationInfo? station) =>
+        Places.NameFor(PlaceNameChannel.Tfta, station);
+
+    private bool Delayed =>
+        (Session?.Cabin?.CurrentDelay ?? TimeSpan.Zero).TotalMinutes >= 1;
+
+    private string TrainAccent =>
+        Circulation is not null && Circulation.HasColor
+            ? Circulation.Color
+            : "#1d4ed8";
+
+    private string RailColorStyle => $"--stop-rail:{TrainAccent};--stop-dot:{TrainAccent};";
+
+    private string RowClass(int index, RowContent row)
+    {
+        if (row.Separator || row.Station is null)
+            return "stop-row stop-row--gap";
+        bool first = index == 0;
+        bool last = index == mcolItinerary.Length - 1;
+        string css = "stop-row";
+        if (first)
+            css += " stop-row--first";
+        if (last)
+            css += " stop-row--last";
+        if (row.IsDestination)
+            css += " stop-row--dest";
+        return css;
+    }
+
+    private static string FormatClock(TimeSpan time) =>
+        Enums.autoInterval(time, true, false);
+
+    private static TimeSpan WrapDay(TimeSpan value)
+    {
+        if (value < TimeSpan.Zero)
+            value += TimeSpan.FromDays(1);
+        if (value >= TimeSpan.FromDays(1))
+            value -= TimeSpan.FromDays(1);
+        return value;
+    }
+
+    private static int DwellMinutes(RowContent row) =>
+        (int)Math.Floor(row.Dwell.TotalMinutes);
 
     private struct RowContent
     {
         public ProjectStationInfo? Station { get; set; }
-        public TimeSpan Arrival { get; set; }
+        public TimeSpan ScheduledArrival { get; set; }
+        public TimeSpan EstimatedArrival { get; set; }
+        public TimeSpan Dwell { get; set; }
+        public bool IsDestination { get; set; }
         public bool Separator { get; set; }
-        public bool Pointer { get; set; }
     }
 }
