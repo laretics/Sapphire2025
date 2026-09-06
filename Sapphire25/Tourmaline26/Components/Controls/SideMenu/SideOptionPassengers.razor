@@ -7,6 +7,7 @@
 @using ProjectStationInfo = Diamond.Project.StationInfo
 @using ProjectTimedCall = Diamond.Project.TimedCall
 @inject TourmalineService TourmalineService
+@inject PassengerAudioService PassengerAudio
 
 <div class="pas-panel">
 
@@ -47,6 +48,16 @@
             <Switch Label="Frontales de destino"
                     Value="@Session.MainSwitches.ExternalTeleindicatorsEnabled"
                     ValueChanged="@((bool v) => SetExternalTeleindicatorsEnabled(v))" />
+            <button type="button"
+                    class="btn btn-outline-primary pas-btn"
+                    disabled="@PassengerAudio.IsPlaying"
+                    @onclick="PlayTestAnnouncement">
+                @(PassengerAudio.IsPlaying ? "Reproduciendo…" : "Probar locución")
+            </button>
+            @if (mvarAudioStatus.Length > 0)
+            {
+                <div class="@AudioStatusCssClass">@mvarAudioStatus</div>
+            }
         </div>
     </div>
 
@@ -173,6 +184,8 @@
 
     private string mvarPreviewStatus = string.Empty;
     private bool mvarPreviewIsError;
+    private string mvarAudioStatus = string.Empty;
+    private bool mvarAudioIsError;
 
     private SessionConfiguration Session => TourmalineService.SessionConfig;
 
@@ -228,6 +241,11 @@
             ? "pas-preview-status pas-preview-status--err"
             : "pas-preview-status pas-preview-status--ok";
 
+    private string AudioStatusCssClass =>
+        mvarAudioIsError
+            ? "pas-preview-status pas-preview-status--err"
+            : "pas-preview-status pas-preview-status--ok";
+
     private void SetCaret(bool value)
     {
         Session.ServiceMode.PassengerCaretOnServiceMode = value;
@@ -273,6 +291,23 @@
     {
         Session.MainSwitches.SoundEnabled = value;
         TourmalineService.RaiseHMIUpdate();
+    }
+
+    private async Task PlayTestAnnouncement()
+    {
+        try
+        {
+            var composed = await PassengerAudio.PlayTestAsync();
+            mvarAudioIsError = false;
+            mvarAudioStatus = $"Locución {composed.Duration.TotalSeconds:0.0} s · {PassengerAudio.Options().SinkKind}";
+        }
+        catch (Exception ex)
+        {
+            mvarAudioIsError = true;
+            mvarAudioStatus = ex.Message;
+        }
+
+        UpdateView?.Invoke();
     }
 
     private void SetTeleindicatorsEnabled(bool value)

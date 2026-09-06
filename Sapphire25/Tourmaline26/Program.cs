@@ -11,6 +11,7 @@ using Tourmaline26.Services.Logging;
 using Tourmaline26.Services.Catalog;
 using Tourmaline26.Services.Correspondence;
 using Tourmaline26.Services.Http;
+using Tourmaline26.Services.PassengerAudio;
 using Tourmaline26.Services.SfmInfo;
 using Tourmaline26.Services.TourmalineExperience;
 
@@ -138,6 +139,7 @@ builder.Services.AddHttpClient(EmtDeparturesService.HttpClientName, client =>
 builder.Services.AddSingleton<EmtDeparturesService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<EmtDeparturesService>());
 builder.Services.AddSingleton<CorrespondenceBoardService>();
+builder.Services.AddSingleton<PassengerAudioService>();
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -199,5 +201,33 @@ app.MapGet("/api/cameras", (CameraStreamService cameras) =>
         Stream = $"/api/cameras/{c.Id}/mjpeg",
         Snapshot = $"/api/cameras/{c.Id}/snapshot.jpg"
     }))).DisableAntiforgery();
+
+app.MapGet("/api/pa/status", (PassengerAudioService pa) => Results.Ok(pa.Status()))
+    .DisableAntiforgery();
+
+app.MapGet("/api/pa/devices", (PassengerAudioService pa) => Results.Ok(pa.ListAnalogDevices()))
+    .DisableAntiforgery();
+
+app.MapMethods("/api/pa/test", new[] { "GET", "POST" }, async (
+    PassengerAudioService pa,
+    CancellationToken ct) =>
+{
+    try
+    {
+        var composed = await pa.PlayTestAsync(ct);
+        return Results.Ok(new
+        {
+            durationMs = composed.Duration.TotalMilliseconds,
+            sampleRate = composed.SampleRate,
+            bits = composed.BitsPerSample,
+            channels = composed.Channels,
+            parts = composed.Parts
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+}).DisableAntiforgery();
 
 app.Run();
