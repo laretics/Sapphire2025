@@ -1027,11 +1027,17 @@ namespace Sapphire2025Server.Controllers
 				return result;
 			}
 
-			string? validation = PlacesCatalogStore.ValidateXml(request.Xml);
-			if (validation is not null)
+			IReadOnlyList<PlacesXmlIssue> issues = PlacesCatalogStore.ValidateXml(request.Xml);
+			if (issues.Count > 0)
 			{
 				result.Success = false;
-				result.Message = validation;
+				result.Errors = issues.ToList();
+				result.Message = issues.Count == 1
+					? issues[0].Message
+					: string.Format(
+						System.Globalization.CultureInfo.InvariantCulture,
+						"No se ha actualizado el catálogo: {0} errores de formato.",
+						issues.Count);
 				return result;
 			}
 

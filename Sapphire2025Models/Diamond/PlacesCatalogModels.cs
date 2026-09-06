@@ -42,5 +42,18 @@ namespace Sapphire2025Models.Diamond
 		public DateTime? UpdatedUtc { get; set; }
 
 		public bool Changed { get; set; }
+
+		/// <summary>Errores de formato. Si hay alguno, no se escribe el archivo.</summary>
+		public List<PlacesXmlIssue> Errors { get; set; } = new List<PlacesXmlIssue>();
+	}
+
+	/// <summary>Un problema de formato de places.xml, con posición en el documento.</summary>
+	public sealed class PlacesXmlIssue
+	{
+		public int Line { get; set; }
+
+		public int Column { get; set; }
+
+		public string Message { get; set; } = string.Empty;
 	}
 }

@@ -147,7 +147,9 @@ builder.Logging.AddProvider(new TourmalineLogger(Path.Combine(AppContext.BaseDir
 
 var app = builder.Build();
 
-OutboundHttp.Configure(app.Environment.ContentRootPath, app.Services.GetRequiredService<ILoggerFactory>());
+OutboundHttp.Configure(
+    app.Services.GetRequiredService<ILoggerFactory>(),
+    app.Configuration);
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("API Address for SFM: {ApiAddress}", auxApiAddress);

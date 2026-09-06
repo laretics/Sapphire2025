@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Hosting;
 using Tourmaline26.Services.Catalog;
+using Tourmaline26.Services.Http;
 
 namespace Tourmaline26.Services.Correspondence
 {
@@ -33,6 +34,8 @@ namespace Tourmaline26.Services.Correspondence
 		private string mvarLastError = string.Empty;
 		private DateTime mvarUpdatedUtc = DateTime.MinValue;
 		private CancellationTokenSource? mvarWake;
+		private int mvarNoRouteStreak;
+		private bool mvarLastPollNoRoute;
 
 		public event EventHandler? Updated;
 
@@ -151,6 +154,7 @@ namespace Tourmaline26.Services.Correspondence
 				{
 					lock (mvarLock)
 						mvarLastError = ex.Message;
+					mvarLastPollNoRoute = OutboundHttp.IsUnreachable(ex);
 					mvarLogger.LogWarning(ex, "TibDepartures: error de poll.");
 					RaiseUpdated();
 				}
@@ -161,6 +165,7 @@ namespace Tourmaline26.Services.Correspondence
 				try
 				{
 					using var linked = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, wake.Token);
+					TimeSpan wait = NextPollDelay();
 					while (!linked.Token.IsCancellationRequested)
 					{
 						lock (mvarLock)
@@ -171,7 +176,7 @@ namespace Tourmaline26.Services.Correspondence
 
 						try
 						{
-							await Task.Delay(mvarPollInterval, linked.Token).ConfigureAwait(false);
+							await Task.Delay(wait, linked.Token).ConfigureAwait(false);
 							break;
 						}
 						catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)
@@ -200,10 +205,15 @@ namespace Tourmaline26.Services.Correspondence
 				stops = mcolRequestedStops;
 
 			if (stops.Length == 0)
+			{
+				mvarLastPollNoRoute = false;
 				return;
+			}
 
 			HttpClient http = mvarHttpClientFactory.CreateClient(HttpClientName);
 			var errors = new List<string>();
+			bool anySuccess = false;
+			bool anyNoRoute = false;
 
 			foreach (string stop in stops)
 			{
@@ -219,6 +229,7 @@ namespace Tourmaline26.Services.Correspondence
 						mvarUpdatedUtc = DateTime.UtcNow;
 					}
 
+					anySuccess = true;
 					mvarLogger.LogInformation("TibDepartures: {Stop} → {Count} salidas", stop, mapped.Count);
 				}
 				catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -228,9 +239,20 @@ namespace Tourmaline26.Services.Correspondence
 				catch (Exception ex)
 				{
 					errors.Add($"{stop}: {ex.Message}");
-					mvarLogger.LogWarning(ex, "TibDepartures: fallo parada {Stop}", stop);
+					LogStopFailure(http, stop, ex);
+					if (OutboundHttp.IsUnreachable(ex) && !OutboundHttp.IsConnectionReset(ex))
+					{
+						anyNoRoute = true;
+						mvarLogger.LogWarning(
+							"TibDepartures: sin ruta IPv4; se omiten el resto de paradas este ciclo.");
+						break;
+					}
 				}
 			}
+
+			mvarLastPollNoRoute = anyNoRoute && !anySuccess;
+			if (anySuccess)
+				mvarNoRouteStreak = 0;
 
 			lock (mvarLock)
 				mvarLastError = errors.Count == 0 ? string.Empty : string.Join("; ", errors);
@@ -330,17 +352,100 @@ namespace Tourmaline26.Services.Correspondence
 				catch (Exception ex) when (attempt < maxAttempts && ex is not InvalidOperationException)
 				{
 					last = ex;
-					mvarLogger.LogWarning(
-						ex,
-						"TibDepartures: {Stop} intento {Attempt}/{Max} falló, se reintenta.",
-						stop,
-						attempt,
-						maxAttempts);
-					await Task.Delay(TimeSpan.FromSeconds(attempt), cancellationToken).ConfigureAwait(false);
+					TimeSpan? delay = DelayForRetry(ex, attempt);
+					LogAttemptFailure(http, stop, attempt, maxAttempts, ex, retry: delay is not null);
+					if (delay is null)
+						break;
+					await Task.Delay(delay.Value, cancellationToken).ConfigureAwait(false);
 				}
 			}
 
 			throw last ?? new InvalidOperationException($"TIB: sin respuesta para {stop}.");
+		}
+
+		private TimeSpan NextPollDelay()
+		{
+			if (!mvarLastPollNoRoute)
+				return mvarPollInterval;
+
+			mvarNoRouteStreak = Math.Min(mvarNoRouteStreak + 1, 3);
+			TimeSpan wait = mvarNoRouteStreak switch
+			{
+				1 => TimeSpan.FromSeconds(15),
+				2 => TimeSpan.FromSeconds(30),
+				_ => TimeSpan.FromSeconds(60)
+			};
+			mvarLogger.LogWarning(
+				"TibDepartures: sin ruta IPv4 (racha {Streak}); siguiente poll en {Wait}s.",
+				mvarNoRouteStreak,
+				wait.TotalSeconds);
+			return wait;
+		}
+
+		private static TimeSpan? DelayForRetry(Exception ex, int failedAttempt)
+		{
+			if (OutboundHttp.IsConnectionReset(ex))
+				return failedAttempt == 1 ? TimeSpan.FromMilliseconds(500) : TimeSpan.FromSeconds(5);
+			if (OutboundHttp.IsUnreachable(ex))
+				return null;
+			return TimeSpan.FromSeconds(failedAttempt);
+		}
+
+		private void LogAttemptFailure(
+			HttpClient http,
+			string stop,
+			int attempt,
+			int maxAttempts,
+			Exception ex,
+			bool retry)
+		{
+			FormatLastConnect(http, out string family, out string ip, out string path);
+			if (retry)
+			{
+				mvarLogger.LogWarning(
+					ex,
+					"TibDepartures: {Stop} intento {Attempt}/{Max} falló ({Family} {Ip} {Path}), se reintenta.",
+					stop,
+					attempt,
+					maxAttempts,
+					family,
+					ip,
+					path);
+				return;
+			}
+
+			mvarLogger.LogWarning(
+				ex,
+				"TibDepartures: {Stop} sin ruta IPv4 ({Family} {Ip} {Path}); no se reintenta en caliente.",
+				stop,
+				family,
+				ip,
+				path);
+		}
+
+		private void LogStopFailure(HttpClient http, string stop, Exception ex)
+		{
+			FormatLastConnect(http, out string family, out string ip, out string path);
+			mvarLogger.LogWarning(
+				ex,
+				"TibDepartures: fallo parada {Stop} ({Family} {Ip} {Path})",
+				stop,
+				family,
+				ip,
+				path);
+		}
+
+		private static void FormatLastConnect(HttpClient http, out string family, out string ip, out string path)
+		{
+			family = "-";
+			ip = "-";
+			path = "-";
+			string? host = http.BaseAddress?.Host;
+			if (string.IsNullOrEmpty(host) || !OutboundHttp.TryGetLastConnect(host, out OutboundConnectInfo info))
+				return;
+			family = info.Family.ToString();
+			ip = info.Address.ToString();
+			path = info.IsNat64 ? $"NAT64 {info.Nat64Prefix}" : "native";
 		}
 
 		private static string Truncate(string? value, int max = 180)

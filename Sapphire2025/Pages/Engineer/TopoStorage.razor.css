@@ -305,9 +305,35 @@
 	flex: 1 1 auto;
 	min-height: 32rem;
 	height: min(70vh, 44rem);
+	background: #1e1e1e;
 }
 
 .topo-storage-page ::deep .places-monaco {
 	height: 100%;
 	min-height: 32rem;
+}
+
+.topo-storage-page ::deep .places-issues {
+	padding: 0.85rem 1rem;
+}
+
+.topo-storage-page ::deep .places-issues-list {
+	padding-left: 1.25rem;
+	margin: 0;
+	max-height: 14rem;
+	overflow: auto;
+}
+
+.topo-storage-page ::deep .places-issues-list li + li {
+	margin-top: 0.35rem;
+}
+
+.topo-storage-page ::deep .places-issue-line {
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.topo-storage-page ::deep .places-issue-sep {
+	margin: 0 0.25rem;
+	opacity: 0.6;
 }

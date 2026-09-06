@@ -43,13 +43,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Update="cache\outbound-hosts.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
     <Content Update="wwwroot\bmp\left_arrow.bmp">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

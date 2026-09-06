@@ -1,12 +1,39 @@
+@using BlazorMonaco
+@using BlazorMonaco.Editor
 @using Sapphire2025.Icons
 @using Sapphire2025Models.Diamond
 @inject DiamondClient mvarDiamond
 
 @if (!string.IsNullOrEmpty(mvarNotice))
 {
-	<div class="alert @(mvarNoticeOk ? "alert-success" : "alert-warning") alert-dismissible fade show" role="alert">
+	<div class="alert @(mvarNoticeOk ? "alert-success" : "alert-danger") alert-dismissible fade show" role="alert">
 		@mvarNotice
 		<button type="button" class="btn-close" @onclick="() => mvarNotice = null"></button>
+	</div>
+}
+
+@if (mcolIssues.Count > 0)
+{
+	<div class="alert alert-danger places-issues" role="alert">
+		<div class="fw-bold mb-2">No se puede actualizar el catálogo. Corrija estos @mcolIssues.Count error(es):</div>
+		<ol class="places-issues-list mb-0">
+			@foreach (PlacesXmlIssue issue in mcolIssues)
+			{
+				<li>
+					@if (issue.Line > 0)
+					{
+						<button type="button"
+								class="btn btn-link btn-sm p-0 align-baseline places-issue-line"
+								@onclick="() => GoToIssueAsync(issue)"
+								title="Ir a la línea @issue.Line">
+							Línea @issue.Line
+						</button>
+						<span class="places-issue-sep">·</span>
+					}
+					<span>@issue.Message</span>
+				</li>
+			}
+		</ol>
 	</div>
 }
 
@@ -14,7 +41,10 @@
 	<button type="button" class="btn btn-primary btn-sm" @onclick="ReloadAsync" disabled="@mvarBusy">
 		<GenIcon Name="Refresh" Size="16" /> @Prefs.T("common.refresh")
 	</button>
-	<button type="button" class="btn btn-success btn-sm" @onclick="SaveAsync" disabled="@(mvarBusy || !mvarLoaded)">
+	<button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ReviewAsync" disabled="@(mvarBusy || !mvarLoaded)">
+		<GenIcon Name="CheckBoxChecked" Size="16" /> Revisar formato
+	</button>
+	<button type="button" class="btn btn-success btn-sm" @onclick="SaveAsync" disabled="@(mvarBusy || !mvarLoaded || mcolIssues.Count > 0)">
 		<GenIcon Name="Save" Size="16" /> @Prefs.T("common.save")
 	</button>
 	@if (!string.IsNullOrEmpty(mvarHash))
@@ -52,6 +82,7 @@
 			<StandaloneCodeEditor @ref="mvarEditor"
 								  Id="places-xml-editor"
 								  ConstructionOptions="EditorOptions"
+								  OnDidChangeModelContent="OnEditorChangedAsync"
 								  CssClass="places-monaco" />
 		</div>
 	}
@@ -66,6 +97,8 @@
 	private string mvarXml = string.Empty;
 	private string mvarHash = string.Empty;
 	private DateTime? mvarUpdatedUtc;
+	private List<PlacesXmlIssue> mcolIssues = new List<PlacesXmlIssue>();
+	private bool mvarReviewed;
 
 	private string ShortHash =>
 		mvarHash.Length <= 12 ? mvarHash : mvarHash.Substring(0, 12);
@@ -81,22 +114,39 @@
 		{
 			AutomaticLayout = true,
 			Language = "xml",
-			Theme = "vs",
+			Theme = "vs-dark",
 			Value = mvarXml,
 			Minimap = new EditorMinimapOptions { Enabled = false },
 			FontSize = 13,
 			LineNumbers = "on",
 			WordWrap = "on",
 			ScrollBeyondLastLine = false,
+			RenderLineHighlight = "all",
 			TabSize = 2,
 			InsertSpaces = true
 		};
+	}
+
+	private Task OnEditorChangedAsync(ModelContentChangedEvent _)
+	{
+		if (mcolIssues.Count > 0 || mvarReviewed)
+		{
+			mcolIssues = new List<PlacesXmlIssue>();
+			mvarReviewed = false;
+			if (!mvarNoticeOk)
+				mvarNotice = null;
+			StateHasChanged();
+		}
+
+		return Task.CompletedTask;
 	}
 
 	private async Task ReloadAsync()
 	{
 		mvarBusy = true;
 		mvarNotice = null;
+		mcolIssues = new List<PlacesXmlIssue>();
+		mvarReviewed = false;
 		try
 		{
 			PlacesCatalogContentModel? content = await mvarDiamond.DownloadPlacesCatalogAsync();
@@ -127,6 +177,40 @@
 		}
 	}
 
+	private async Task ReviewAsync()
+	{
+		if (mvarEditor is null)
+			return;
+
+		mvarBusy = true;
+		mvarNotice = null;
+		try
+		{
+			string xml = await mvarEditor.GetValue();
+			ApplyIssues(PlacesXmlValidator.Validate(xml));
+			mvarReviewed = true;
+			if (mcolIssues.Count == 0)
+			{
+				mvarNoticeOk = true;
+				mvarNotice = "Formato correcto. Puede guardar el catálogo.";
+			}
+			else
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "Hay errores de formato. El catálogo no se actualizará hasta corregirlos.";
+			}
+		}
+		catch (Exception ex)
+		{
+			mvarNoticeOk = false;
+			mvarNotice = "No se pudo revisar el documento: " + ex.Message;
+		}
+		finally
+		{
+			mvarBusy = false;
+		}
+	}
+
 	private async Task SaveAsync()
 	{
 		if (mvarEditor is null)
@@ -137,11 +221,30 @@
 		try
 		{
 			string xml = await mvarEditor.GetValue();
+			ApplyIssues(PlacesXmlValidator.Validate(xml));
+			mvarReviewed = true;
+			if (mcolIssues.Count > 0)
+			{
+				mvarNoticeOk = false;
+				mvarNotice = "No se ha actualizado el catálogo. Corrija los errores de formato.";
+				return;
+			}
+
 			PlacesCatalogSaveResult? result = await mvarDiamond.SavePlacesCatalogAsync(xml);
 			if (result is null)
 			{
 				mvarNoticeOk = false;
 				mvarNotice = "El servidor no respondió al guardar.";
+				return;
+			}
+
+			if (result.Errors is not null && result.Errors.Count > 0)
+			{
+				ApplyIssues(result.Errors);
+				mvarNoticeOk = false;
+				mvarNotice = string.IsNullOrWhiteSpace(result.Message)
+					? "El servidor rechazó el documento por errores de formato."
+					: result.Message;
 				return;
 			}
 
@@ -152,6 +255,8 @@
 				mvarXml = xml;
 				mvarHash = result.ContentHash ?? string.Empty;
 				mvarUpdatedUtc = result.UpdatedUtc;
+				mcolIssues = new List<PlacesXmlIssue>();
+				mvarReviewed = false;
 			}
 		}
 		catch (Exception ex)
@@ -163,5 +268,33 @@
 		{
 			mvarBusy = false;
 		}
+	}
+
+	private async Task GoToIssueAsync(PlacesXmlIssue issue)
+	{
+		if (mvarEditor is null || issue.Line <= 0)
+			return;
+
+		try
+		{
+			int column = issue.Column > 0 ? issue.Column : 1;
+			await mvarEditor.SetPosition(new BlazorMonaco.Position
+			{
+				LineNumber = issue.Line,
+				Column = column
+			}, "places-goto");
+			await mvarEditor.RevealLineInCenter(issue.Line);
+			await mvarEditor.Focus();
+		}
+		catch
+		{
+		}
+	}
+
+	private void ApplyIssues(IReadOnlyList<PlacesXmlIssue> issues)
+	{
+		mcolIssues = issues is List<PlacesXmlIssue> list
+			? list
+			: new List<PlacesXmlIssue>(issues);
 	}
 }

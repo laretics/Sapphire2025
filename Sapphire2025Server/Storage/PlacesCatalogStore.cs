@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using System.Xml.Linq;
 using Sapphire2025Models.Diamond;
 
 namespace Sapphire2025Server.Storage
@@ -12,7 +11,7 @@ namespace Sapphire2025Server.Storage
 	/// </summary>
 	public static class PlacesCatalogStore
 	{
-		public const int MaxXmlBytes = 2 * 1024 * 1024;
+		public const int MaxXmlBytes = PlacesXmlValidator.MaxXmlBytes;
 
 		public static string GetFilePath(IConfiguration config)
 		{
@@ -73,51 +72,8 @@ namespace Sapphire2025Server.Storage
 			};
 		}
 
-		public static string? ValidateXml(string? xml)
-		{
-			if (string.IsNullOrWhiteSpace(xml))
-				return "El documento está vacío.";
-
-			int byteLength = Encoding.UTF8.GetByteCount(xml);
-			if (byteLength > MaxXmlBytes)
-			{
-				return string.Format(
-					CultureInfo.InvariantCulture,
-					"El documento supera el tamaño máximo ({0} bytes).",
-					MaxXmlBytes);
-			}
-
-			XDocument doc;
-			try
-			{
-				doc = XDocument.Parse(xml, LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo);
-			}
-			catch (Exception ex)
-			{
-				return "XML no válido: " + ex.Message;
-			}
-
-			XElement? root = doc.Root;
-			if (root is null
-				|| !string.Equals(root.Name.LocalName, "places", StringComparison.OrdinalIgnoreCase))
-			{
-				return "La raíz del documento debe ser <places>.";
-			}
-
-			int count = 0;
-			foreach (XElement place in root.Elements("place"))
-			{
-				string id = ((string?)place.Attribute("id") ?? string.Empty).Trim();
-				if (id.Length == 0)
-					return "Hay un <place> sin atributo id.";
-				count++;
-			}
-
-			if (count == 0)
-				return "El catálogo no contiene ningún <place>.";
-
-			return null;
-		}
+		public static IReadOnlyList<PlacesXmlIssue> ValidateXml(string? xml) =>
+			PlacesXmlValidator.Validate(xml);
 
 		public static PlacesCatalogHeaderModel WriteXml(IConfiguration config, string xml)
 		{

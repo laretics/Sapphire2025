@@ -9,7 +9,7 @@ namespace Sapphire2025Models
 {
 	public static class Common
 	{
-		public static string SapphireSoftwareVersion => "26.8.18";
+		public static string SapphireSoftwareVersion => "26.9.5";
 
 		/// <summary>
 		/// Interruptor global: si es false, nunca se exige recarga aunque haya cambios con RequiresReload.
@@ -37,42 +37,10 @@ namespace Sapphire2025Models
 		public static readonly SoftwareReleaseChange[] ReleaseChanges =
 		{
 			new SoftwareReleaseChange(
-				"rel.docs.title",
-				"rel.docs.body",
+				"rel.places.title",
+				"rel.places.body",
 				requiresReload: true,
-				UserRole.Engineer, UserRole.Expert, UserRole.Inspector,
-				UserRole.Station, UserRole.Oficial, UserRole.Root),
-
-			new SoftwareReleaseChange(
-				"rel.nav.title",
-				"rel.nav.body",
-				requiresReload: true,
-				UserRole.Anonymous, UserRole.Inspector, UserRole.Expert,
-				UserRole.Oficial, UserRole.Mechanic, UserRole.Engineer, UserRole.Station, UserRole.Root),
-
-			new SoftwareReleaseChange(
-				"rel.media.title",
-				"rel.media.body",
-				requiresReload: true,
-				UserRole.Inspector, UserRole.Expert, UserRole.Oficial,
-				UserRole.Mechanic, UserRole.Engineer, UserRole.Station, UserRole.Root),
-
-			new SoftwareReleaseChange(
-				"rel.diamond.title",
-				"rel.diamond.body",
-				requiresReload: true,
-				UserRole.Engineer, UserRole.Root),
-
-			new SoftwareReleaseChange(
-				"rel.i18n.title",
-				"rel.i18n.body",
-				requiresReload: true),
-
-			new SoftwareReleaseChange(
-				"rel.sched.title",
-				"rel.sched.body",
-				requiresReload: true,
-				UserRole.Anonymous, UserRole.Expert, UserRole.Inspector, UserRole.Root),
+				UserRole.Engineer),
 		};
 
 		/// <summary>
